@@ -1,10 +1,11 @@
 {
   "name": "Go",
+  "displayName": "Go",
   "version": "0.14.3",
-  "publisher": "ms-vscode",
+  "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
-    "name": "Microsoft Corporation - Development Labs"
+    "name": "Go Team at Google"
   },
   "license": "MIT",
   "icon": "images/go-logo-blue.png",
@@ -22,7 +23,10 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-go.git"
+    "url": "https://github.com/golang/vscode-go"
+  },
+  "bugs": {
+    "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
     "multi-root ready"
