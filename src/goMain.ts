@@ -50,6 +50,8 @@ import {
 	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
 	getGoVersion, getToolsEnvVars, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
 } from './util';
+import { cpus } from 'os';
+import { reportIssue } from './issueReporter';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -539,6 +541,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				});
 		})
 	);
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.report.issue', () => {
+		reportIssue();
+	}));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g

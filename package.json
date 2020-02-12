@@ -29,6 +29,9 @@
   "bugs": {
     "url": "https://github.com/golang/vscode-go/issues"
   },
+  "bugs": {
+    "url": "https://github.com/Microsoft/vscode-go/issues"
+  },
   "keywords": [
     "multi-root ready"
   ],
@@ -314,6 +317,11 @@
         "command": "go.install.package",
         "title": "Go: Install Current Package",
         "description": "Install the current package."
+      },
+      {
+        "command": "go.report.issue",
+        "title": "Go: Report Issue",
+        "description": "Report VS Code Go extension issue."
       },
       {
         "command": "go.test.cancel",
