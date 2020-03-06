@@ -36,7 +36,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
 
 interface LanguageServerConfig {
 	enabled: boolean;
@@ -366,8 +366,8 @@ function registerUsualProviders(ctx: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions);
 }
 
-const defaultLatestVersion = semver.coerce('0.1.7');
-const defaultLatestVersionTime = moment('2019-09-18', 'YYYY-MM-DD');
+const defaultLatestVersion = semver.coerce('0.3.1');
+const defaultLatestVersionTime = moment('2020-02-04', 'YYYY-MM-DD');
 async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
@@ -391,8 +391,8 @@ async function shouldUpdateLanguageServer(
 		return false;
 	}
 
-	// Get the latest gopls version.
-	let latestVersion = makeProxyCall ? await latestGopls(tool) : defaultLatestVersion;
+	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
+	let latestVersion = makeProxyCall ? await latestGopls(tool, isForNightly) : defaultLatestVersion;
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -467,7 +467,7 @@ async function goplsVersionTimestamp(tool: Tool, version: semver.SemVer): Promis
 	return time;
 }
 
-async function latestGopls(tool: Tool): Promise<semver.SemVer> {
+async function latestGopls(tool: Tool, includePrerelease: boolean): Promise<semver.SemVer> {
 	// If the user has a version of gopls that we understand,
 	// ask the proxy for the latest version, and if the user's version is older,
 	// prompt them to update.
@@ -489,6 +489,9 @@ async function latestGopls(tool: Tool): Promise<semver.SemVer> {
 	}
 	versions.sort(semver.rcompare);
 
+	if (includePrerelease) {
+		return versions[0];  // The first one in the prerelease.
+	}
 	// The first version in the sorted list without a prerelease tag.
 	return versions.find((version) => !version.prerelease || !version.prerelease.length);
 }
