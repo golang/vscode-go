@@ -1,12 +1,15 @@
 name: build
 
 on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
   push:
     branches:
-      - 'master'
+      - *
   pull_request:
-    branches: 
-      - '*'
+    branches:
+      - master
+
 env:
   GOPATH: /tmp/go
   # Because some tests require explicit setting of GOPATH. TODO: FIX THEM.
