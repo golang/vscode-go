@@ -71,7 +71,7 @@ suite('Go Extension Tests', function() {
 	const generateTestsSourcePath = path.join(repoPath, 'generatetests');
 	const generateFunctionTestSourcePath = path.join(repoPath, 'generatefunctiontest');
 	const generatePackageTestSourcePath = path.join(repoPath, 'generatePackagetest');
-	const toolsGopath = getToolsGopath() || getCurrentGoPath();
+	const toolsGopath = getToolsGopath() || gopath;
 
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
 
