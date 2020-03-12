@@ -20,7 +20,8 @@ import {
 	getTool,
 	hasModSuffix,
 	isGocode,
-	Tool
+	Tool,
+	containsString
 } from './goTools';
 import {
 	getBinPath,
@@ -41,7 +42,13 @@ const declinedInstalls: Tool[] = [];
 
 export async function installAllTools(updateExistingToolsOnly: boolean = false) {
 	const goVersion = await getGoVersion();
-	const allTools = getConfiguredTools(goVersion);
+	let allTools = getConfiguredTools(goVersion);
+
+	// exclude tools replaced by alternateTools.
+	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	allTools = allTools.filter((tool) => {
+		return !alternateTools[tool.name];
+	});
 
 	// Update existing tools by finding all tools the user has already installed.
 	if (updateExistingToolsOnly) {
@@ -275,6 +282,9 @@ export function installTools(missing: Tool[], goVersion: GoVersion): Promise<voi
 			const failures = res.filter((x) => x != null);
 			if (failures.length === 0) {
 				outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+				if (containsString(missing, 'gopls')) {
+					vscode.commands.executeCommand('go.languageserver.restart');
+				}
 				return;
 			}
 
@@ -314,7 +324,6 @@ export async function promptForMissingTool(toolName: string) {
 			return;
 		}
 	}
-
 	const installOptions = ['Install'];
 	let missing = await getMissingTools(goVersion);
 	if (!containsTool(missing, tool)) {

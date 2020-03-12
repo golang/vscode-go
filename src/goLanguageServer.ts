@@ -15,21 +15,10 @@ import {
 	FormattingOptions,
 	HandleDiagnosticsSignature,
 	LanguageClient,
-	ProvideCompletionItemsSignature,
-	ProvideDefinitionSignature,
 	ProvideDocumentFormattingEditsSignature,
-	ProvideDocumentHighlightsSignature,
 	ProvideDocumentLinksSignature,
-	ProvideDocumentSymbolsSignature,
-	ProvideHoverSignature,
-	ProvideReferencesSignature,
-	ProvideRenameEditsSignature,
-	ProvideSignatureHelpSignature,
-	ProvideWorkspaceSymbolsSignature,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { ProvideImplementationSignature } from 'vscode-languageclient/lib/implementation';
-import { ProvideTypeDefinitionSignature } from 'vscode-languageclient/lib/typeDefinition';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
 import { GoHoverProvider } from './goExtraInfo';
@@ -47,7 +36,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
 
 interface LanguageServerConfig {
 	enabled: boolean;
@@ -78,9 +67,17 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 	// The user has opted into the language server.
 	const languageServerToolPath = getLanguageServerToolPath();
 	const toolName = getToolFromToolPath(languageServerToolPath);
+	if (!toolName) {
+		// language server binary is not installed yet.
+		// Return immediately. The information messages such as
+		// offering to install missing tools, and suggesting to
+		// reload the window after installing the language server
+		// should be presented by now.
+		return;
+	}
 	const env = getToolsEnvVars();
 
-	// The user may not have the most up-to-date version of the language server.
+	// If installed, check. The user may not have the most up-to-date version of the language server.
 	const tool = getTool(toolName);
 	const update = await shouldUpdateLanguageServer(tool, languageServerToolPath, config.checkForUpdates);
 	if (update) {
@@ -294,13 +291,11 @@ export function parseLanguageServerConfig(): LanguageServerConfig {
 }
 
 /**
- * Get the absolute path to the language server to be used.
- * If the required tool is not available, then user is prompted to install it.
- * This supports the language servers from both Google and Sourcegraph with the
- * former getting a precedence over the latter
+ * If the user has enabled the language server, return the absolute path to the
+ * correct binary. If the required tool is not available, prompt the user to
+ * install it. Only gopls is officially supported.
  */
 export function getLanguageServerToolPath(): string {
-	// If language server is not enabled, return
 	const goConfig = getGoConfig();
 	if (!goConfig['useLanguageServer']) {
 		return;
@@ -314,36 +309,40 @@ export function getLanguageServerToolPath(): string {
 		return;
 	}
 
-	// Get the path to gopls or any alternative that the user might have set for gopls.
-	const goplsBinaryPath = getBinPath('gopls');
-	if (path.isAbsolute(goplsBinaryPath)) {
-		return goplsBinaryPath;
-	}
-
-	// Get the path to go-langserver or any alternative that the user might have set for go-langserver.
-	const golangserverBinaryPath = getBinPath('go-langserver');
-	if (path.isAbsolute(golangserverBinaryPath)) {
-		return golangserverBinaryPath;
-	}
-
-	// If no language server path has been found, notify the user.
+	// Determine which language server the user has selected.
+	// gopls is the default choice.
 	let languageServerOfChoice = 'gopls';
 	if (goConfig['alternateTools']) {
 		const goplsAlternate = goConfig['alternateTools']['gopls'];
-		const golangserverAlternate = goConfig['alternateTools']['go-langserver'];
-		if (typeof goplsAlternate === 'string') {
+
+		// Check if the user has set the deprecated "go-langserver" setting.
+		if (goConfig['alternateTools']['go-langserver']) {
+			vscode.window.showErrorMessage(`The "go.alternateTools" setting for "go-langserver" has been deprecated.
+Please set "gopls" instead, and then reload the VS Code window.`);
+			return;
+		}
+		if (goplsAlternate) {
+			if (typeof goplsAlternate !== 'string') {
+				vscode.window.showErrorMessage(`Unexpected type for "go.alternateTools" setting for "gopls": ${typeof goplsAlternate}.`);
+				return;
+			}
 			languageServerOfChoice = getToolFromToolPath(goplsAlternate);
-		} else if (typeof golangserverAlternate === 'string') {
-			languageServerOfChoice = getToolFromToolPath(golangserverAlternate);
 		}
 	}
-	// Only gopls and go-langserver are supported.
-	if (languageServerOfChoice !== 'gopls' && languageServerOfChoice !== 'go-langserver') {
+	// Get the path to the language server binary.
+	const languageServerBinPath = getBinPath(languageServerOfChoice);
+	if (path.isAbsolute(languageServerBinPath)) {
+		return languageServerBinPath;
+	}
+
+	// Installation of gopls is supported. Other language servers must be installed manually.
+	if (languageServerOfChoice !== 'gopls') {
 		vscode.window.showErrorMessage(
-			`Cannot find the language server ${languageServerOfChoice}. Please install it.`
+			`Cannot find the language server ${languageServerOfChoice}. Please install it and reload this VS Code window.`
 		);
 		return;
 	}
+
 	// Otherwise, prompt the user to install the language server.
 	promptForMissingTool(languageServerOfChoice);
 }
@@ -378,8 +377,8 @@ function registerUsualProviders(ctx: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions);
 }
 
-const defaultLatestVersion = semver.coerce('0.1.7');
-const defaultLatestVersionTime = moment('2019-09-18', 'YYYY-MM-DD');
+const defaultLatestVersion = semver.coerce('0.3.1');
+const defaultLatestVersionTime = moment('2020-02-04', 'YYYY-MM-DD');
 async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
@@ -403,8 +402,8 @@ async function shouldUpdateLanguageServer(
 		return false;
 	}
 
-	// Get the latest gopls version.
-	let latestVersion = makeProxyCall ? await latestGopls(tool) : defaultLatestVersion;
+	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
+	let latestVersion = makeProxyCall ? await latestGopls(tool, isForNightly) : defaultLatestVersion;
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -479,7 +478,7 @@ async function goplsVersionTimestamp(tool: Tool, version: semver.SemVer): Promis
 	return time;
 }
 
-async function latestGopls(tool: Tool): Promise<semver.SemVer> {
+async function latestGopls(tool: Tool, includePrerelease: boolean): Promise<semver.SemVer> {
 	// If the user has a version of gopls that we understand,
 	// ask the proxy for the latest version, and if the user's version is older,
 	// prompt them to update.
@@ -501,6 +500,9 @@ async function latestGopls(tool: Tool): Promise<semver.SemVer> {
 	}
 	versions.sort(semver.rcompare);
 
+	if (includePrerelease) {
+		return versions[0];  // The first one in the prerelease.
+	}
 	// The first version in the sorted list without a prerelease tag.
 	return versions.find((version) => !version.prerelease || !version.prerelease.length);
 }

@@ -121,7 +121,8 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	// Add the linter that was chosen by the user.
 	maybeAddTool(goConfig['lintTool']);
 
-	// Add the language server for Go versions > 1.10 if user has choosen to do so
+	// Add the language server for Go versions > 1.10 if user has choosen to do so.
+	// Respect the go.alternateTools setting.
 	if (goConfig['useLanguageServer'] && goVersion.gt('1.10')) {
 		maybeAddTool('gopls');
 	}
@@ -148,7 +149,7 @@ const allToolsInformation: { [key: string]: Tool } = {
 	},
 	'gopkgs': {
 		name: 'gopkgs',
-		importPath: 'github.com/uudashr/gopkgs/cmd/gopkgs',
+		importPath: 'github.com/uudashr/gopkgs/v2/cmd/gopkgs',
 		isImportant: true,
 		description: 'Auto-completion of unimported packages & Add Import feature'
 	},
@@ -259,12 +260,6 @@ const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/mgechev/revive',
 		isImportant: true,
 		description: 'Linter'
-	},
-	'go-langserver': {
-		name: 'go-langserver',
-		importPath: 'github.com/sourcegraph/go-langserver',
-		isImportant: false,
-		description: 'Language Server from Sourcegraph'
 	},
 	'gopls': {
 		name: 'gopls',

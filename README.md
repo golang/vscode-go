@@ -1,10 +1,30 @@
-# Go for Visual Studio Code
+# Go Nightly for VS Code
 
-[![Join the chat at https://gitter.im/Microsoft/vscode-go](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Microsoft/vscode-go?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/Microsoft/vscode-go.svg?branch=master)](https://travis-ci.org/Microsoft/vscode-go)
+> ### **ATTENTION**
+>**Go Nightly for VS Code** is the insider version of
+[VS Code Go extension](https://github.com/microsoft/vscode-go)
+for early feedback and testing. This extension works best with
+[VS Code Insiders](https://code.visualstudio.com/insiders).
+Go Nightly contains previews of new features and bug fixes that are still
+under review or testing, so can be unstable. If you are looking for the stable version,
+please use [the stable version](https://marketplace.visualstudio.com/items?itemName=ms-vscode.go) instead.
+>
+> **NOTE:**
+If you have both stable (aka "Go") and nightly version (aka "Go Nightly") installed,
+you MUST DISABLE one of them. Docs on how to disable an extension can be found
+[here](https://code.visualstudio.com/docs/editor/extension-gallery#_disable-an-extension).
 
-This extension adds rich language support for the [Go language](https://golang.org/) to VS Code.
-
-Read the [Changelog](https://github.com/Microsoft/vscode-go/blob/master/CHANGELOG.md) to know what has changed over the last few versions of this extension.
+> ### Difference between VS Code Go and VS Code Go Nightly
+> - Go Nightly is maintained and released by Go Tools team at Google.
+> - Go Nightly is released more frequently than the stable version.
+> - Go Nightly includes features and bug fixes that are still under testing or not finalized yet.
+> - Go Nightly may use the latest pre-release versions of tools (e.g. `gopls`) instead of release versions.
+> - For now, Go and Go Nightly maintain separate repositories. Both repositories
+>   welcome all contributors. For contribution to Go Nightly repo, see the Go
+>   project's [contribution guide](https://golang.org/doc/contribute.html).
+>   Go team members who has signed the Microsoft CLA will send a syncing PR upstream to
+>   https://github.com/microsoft/vscode-go every two weeks.
+> - [Here](https://github.com/microsoft/vscode-go/compare/master...golang:master) is the full list of local modifications.
 
 ## Table of Contents
 
@@ -36,16 +56,16 @@ Read the [Changelog](https://github.com/Microsoft/vscode-go/blob/master/CHANGELO
 
 ### IntelliSense
 
-- Auto Completion of symbols as you type (using `gocode`)
-- Signature Help for functions as you type (using `gogetdoc` or `godef`+`go doc`)
-- Quick Info on the symbol as you hover over it (using `gogetdoc` or `godef`+`go doc`)
+- Auto Completion of symbols as you type (using language server or `gocode`)
+- Signature Help for functions as you type (using language server or `gogetdoc` or `godef`+`go doc`)
+- Quick Info on the symbol as you hover over it (using language server or `gogetdoc` or `godef`+`go doc`)
 
 ### Code Navigation
 
-- Go to or Peek Definition of symbols (using `gogetdoc` or `godef`+`go doc`)
-- Find References of symbols and Implementations of interfaces (using `guru`)
+- Go to or Peek Definition of symbols (using language server or `gogetdoc` or `godef`+`go doc`)
+- Find References of symbols and Implementations of interfaces (using language server or `guru`)
 - Go to symbol in file or see the file outline (using `go-outline`)
-- Go to symbol in workspace (using `go-symbols`)
+- Go to symbol in workspace (using language server or `go-symbols`)
 - Toggle between a Go program and the corresponding test file.
 
 ### Code Editing
@@ -93,7 +113,7 @@ You will see `Analysis Tools Missing` in the bottom right, clicking this will of
 
 **Note 2**: The `Format on save` feature has a timeout of 750ms after which the formatting is aborted. You can change this timeout using the setting `editor.formatOnSaveTimeout`. This feature gets disabled when you have enabled the `Auto Save` feature in Visual Studio Code.
 
-**Note 3**:  This extension uses `gocode` to provide completion lists as you type. If you have disabled the `go.buildOnSave` setting, then you may not get fresh results from not-yet-built dependencies. Therefore, ensure you have built your dependencies manually in such cases.
+**Note 3**:  Unless `go.useLanguageServer` is set to `true`, this extension uses `gocode` to provide completion lists as you type. If you have disabled the `go.buildOnSave` setting, then you may not get fresh results from not-yet-built dependencies. Therefore, ensure you have built your dependencies manually in such cases.
 
 ### Customizing the Go extension features
 
@@ -117,7 +137,7 @@ Previously, we added support to use `go-langserver`, the [language server from S
 
 Ideally, you would see prompts to use/install/update the language server.
 Follow the prompts and the language server should get set up correctly.
-If you want to manually install/update the language server, 
+If you want to manually install/update the language server,
 - Ensure you have set `go.useLanguageServer` to `true` in your settings
 - Use the `Go: Install/Update Tools` command, select `gopls` from the list and press Ok.
 
@@ -126,7 +146,8 @@ If you want to manually install/update the language server,
 
 Below are the settings you can use to control the use of the language server. You need to reload the VS Code window for any changes in these settings to take effect.
 
-- Set `go.useLanguageServer` to `true` to enable the use of language server
+- Set `go.useLanguageServer` to `true` to enable the use of language server.
+- When using `gopls`, see the [recommended settings](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md).
 - Some of the features from the language server can be disabled if needed using the setting `go.languageServerExperimentalFeatures`. Below are the features you can thus control. By default, all are set to `true` i.e are enabled.
 ```json
   "go.languageServerExperimentalFeatures": {
