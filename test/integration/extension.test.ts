@@ -36,9 +36,29 @@ import {
 	isVendorSupported
 } from '../../src/util';
 
+function queryDefaultGopathSync(): string {
+	const goExecutable = getBinPath('go');
+	if (!goExecutable) {
+		console.warn(`Failed to run "go env GOPATH" to find mod file as the "go" binary cannot be found`);
+		return null;
+	}
+	let gopath: string;
+	try {
+		const stdout = cp.execFileSync(goExecutable, ['env', 'GOPATH']);
+		console.log(`Got go env GOPATH result: ${stdout}`);
+		gopath = stdout.toString().trim();
+	} catch (err) {
+		console.warn(`Error when running go env GOPATH: ${err}`);
+	}
+	return gopath;
+}
+
 suite('Go Extension Tests', function() {
 	this.timeout(10000);
-	const gopath = getCurrentGoPath();
+	let gopath = getCurrentGoPath();
+	if (!gopath) {
+			gopath = queryDefaultGopathSync();
+	}
 	if (!gopath) {
 		assert.ok(gopath, 'Cannot run tests if GOPATH is not set as environment variable');
 		return;
