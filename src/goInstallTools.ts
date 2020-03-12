@@ -13,6 +13,7 @@ import { getLanguageServerToolPath } from './goLanguageServer';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
+	containsString,
 	containsTool,
 	disableModulesForWildcard,
 	getConfiguredTools,
@@ -21,7 +22,6 @@ import {
 	hasModSuffix,
 	isGocode,
 	Tool,
-	containsString
 } from './goTools';
 import {
 	getBinPath,
