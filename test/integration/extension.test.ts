@@ -36,7 +36,7 @@ import {
 	isVendorSupported
 } from '../../src/util';
 
-function queryDefaultGopathSync(): string {
+function queryDefaultGopathSync(): string | null {
 	const goExecutable = getBinPath('go');
 	if (!goExecutable) {
 		console.warn(`Failed to run "go env GOPATH" to find mod file as the "go" binary cannot be found`);
