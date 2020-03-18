@@ -49,8 +49,8 @@ jobs:
                golang.org/x/lint/golint \
                golang.org/x/tools/cmd/gorename
         env:
-          GO111MODULE: on   
-          
+          GO111MODULE: on
+
       - name: Install Go tools (GOPATH mode)
         run: |
           go version
@@ -60,21 +60,20 @@ jobs:
             # Because some tests depend on the source code checked in GOPATH. TODO: FIX THEM.
         env:
           GO111MODULE: off
-      
+
       - name: Prepare Release
         run: build/all.bash prepare_nightly
 
       - name: Run unit tests
         run: npm run unit-test
         continue-on-error: true
-        
+
       - name: Run tests
         uses: GabrielBB/xvfb-action@v1.0
         with:
           run: npm run test
         env:
-          CODE_VERSION: ${{ matrix.version }}
-        continue-on-error: ${{ matrix.version == 'insiders' }}
+          CODE_VERSION: 'insiders'
 
       - name: Publish
         if: github.ref == 'refs/heads/master' && github.repository == 'golang/vscode-go'
