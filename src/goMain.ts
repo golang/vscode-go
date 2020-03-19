@@ -5,6 +5,7 @@
 
 'use strict';
 
+import fs = require('fs');
 import * as path from 'path';
 import vscode = require('vscode');
 import { browsePackages } from './goBrowsePackage';
@@ -43,8 +44,9 @@ import { clearCacheForTools, fileExists } from './goPath';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { showHideStatus } from './goStatus';
+import { outputChannel, showHideStatus } from './goStatus';
 import { testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
+import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
 import { getFromGlobalState, setGlobalState, updateGlobalState } from './stateUtils';
 import { disposeTelemetryReporter, sendTelemetryEventForConfig } from './telemetry';
@@ -186,6 +188,28 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 			vscode.window.showInformationMessage(msg);
 			return gopath;
+		})
+	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.locate.tools', async () => {
+			outputChannel.show();
+			outputChannel.clear();
+			outputChannel.appendLine('Checking configured tools....');
+
+			const goVersion = await getGoVersion();
+			const allTools = getConfiguredTools(goVersion);
+
+			allTools.forEach((tool) => {
+				const toolPath = getBinPath(tool.name);
+				fs.exists(toolPath, (exists) => {
+					let msg = 'not found';
+					if (exists) {
+						msg = `installed`;
+					}
+					outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
+				});
+			});
 		})
 	);
 
