@@ -16,6 +16,7 @@ import {
 	FormattingOptions,
 	HandleDiagnosticsSignature,
 	LanguageClient,
+	ProvideCompletionItemsSignature,
 	ProvideDocumentFormattingEditsSignature,
 	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn
