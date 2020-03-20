@@ -196,16 +196,31 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			outputChannel.show();
 			outputChannel.clear();
 			outputChannel.appendLine('Checking configured tools....');
+			// Tool's path search is done by getBinPathWithPreferredGopath
+			// which searches places in the following order
+			// 1) absolute path for the alternateTool
+			// 2) GOBIN
+			// 3) toolsGopath
+			// 4) gopath
+			// 5) GOROOT
+			// 6) PATH
+			outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
+			outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
+			outputChannel.appendLine('gopath: ' + getCurrentGoPath());
+			outputChannel.appendLine('GOROOT: ' + process.env['GOROOT']);
+			outputChannel.appendLine('PATH: ' + process.env['PATH']);
+			outputChannel.appendLine('');
 
 			const goVersion = await getGoVersion();
 			const allTools = getConfiguredTools(goVersion);
 
 			allTools.forEach((tool) => {
 				const toolPath = getBinPath(tool.name);
+				// TODO(hyangah): print alternate tool info if set.
 				fs.exists(toolPath, (exists) => {
 					let msg = 'not found';
 					if (exists) {
-						msg = `installed`;
+						msg = 'installed';
 					}
 					outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
 				});
