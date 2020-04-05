@@ -37,6 +37,8 @@ import { Tool, getTool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
 import { getToolFromToolPath } from './goPath';
+import treeKill = require('tree-kill');
+var deepEqual = require('deep-equal');
 
 interface LanguageServerConfig {
 	name: string,
@@ -51,9 +53,13 @@ interface LanguageServerConfig {
 	checkForUpdates: boolean;
 }
 
+// Global variables used for management of the language client.
+// They are global so that the server can be easily restarted with
+// new configurations.
 var languageClient: LanguageClient;
 var languageServerDisposable: vscode.Disposable;
 var latestConfig: LanguageServerConfig;
+var serverOutputChannel: vscode.OutputChannel;
 
 // registerLanguageFeatures registers providers for all the language features.
 // It looks to either the language server or the standard providers for these features.
@@ -62,9 +68,12 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(e)));
 
 	// Support a command to restart the language server.
-	const config = parseLanguageServerConfig();
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.languageserver.restart', (ctx, config) => restartLanguageServer(ctx, config)));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.languageserver.restart', () => {
+		const config = parseLanguageServerConfig();
+		return restartLanguageServer(ctx, config);
+	}));
 
+	const config = parseLanguageServerConfig();
 	const tool = getTool(config.name);
 	const update = await shouldUpdateLanguageServer(tool, config.path, config.checkForUpdates);
 	if (update) {
@@ -73,7 +82,7 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 
 	// gopls is the only language server that provides live diagnostics on type,
 	// so use gotype if it's not enabled.
-	if (!(config.name === 'gopls' && config.features['diagnostics'])) {
+	if (!(config.name === 'gopls' && config.features.diagnostics)) {
 		vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions);
 	}
 
@@ -86,6 +95,8 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 }
 
 async function restartLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
+	// If the client has already been started, make sure to clear existing
+	// diagnostics and stop it.
 	if (languageClient) {
 		if (languageClient.diagnostics) {
 			languageClient.diagnostics.clear();
@@ -95,8 +106,10 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 			languageServerDisposable.dispose();
 		}
 	}
+	// Check if we should recreate the language client. This may be necessary
+	// if the user has changed settings in their config.
 	if (rebuildLanguageClient(config)) {
-		// Make sure to track the latest config used to start the language server.
+		// Track the latest config used to start the language server.
 		latestConfig = config;
 
 		// If the user has not enabled or installed the language server,
@@ -104,12 +117,17 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 		if (!config.enabled || !config.path) {
 			return false;
 		}
+
+		// Reuse the same output channel for each instance of the server.
+		if (!serverOutputChannel) {
+			serverOutputChannel = vscode.window.createOutputChannel(config.name);
+		}
 		languageClient = new LanguageClient(
 			getToolFromToolPath(config.path),
 			{
 				command: config.path,
 				args: ['-mode=stdio', ...config.flags],
-				options: { env: config.env }
+				options: { env: config.env },
 			},
 			{
 				initializationOptions: {},
@@ -120,6 +138,7 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 						(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
 					protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 				},
+				outputChannel: serverOutputChannel,
 				revealOutputChannelOn: RevealOutputChannelOn.Never,
 				middleware: {
 					handleDiagnostics: (
@@ -211,6 +230,8 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 	ctx.subscriptions.push(languageServerDisposable);
 }
 
+// rebuildLanguageClient returns true if the current language server config
+// differs from the latest one used to build the language client.
 function rebuildLanguageClient(config: LanguageServerConfig): boolean {
 	if (!languageClient || !latestConfig) {
 		return true;
@@ -218,6 +239,8 @@ function rebuildLanguageClient(config: LanguageServerConfig): boolean {
 	if (config.enabled !== latestConfig.enabled) {
 		return true;
 	}
+	// TODO(stamblerre): We should really track the time that the executable
+	// was last modified, in case the user has installed a new version.
 	if (config.path !== latestConfig.path) {
 		return true;
 	}
@@ -230,7 +253,10 @@ function rebuildLanguageClient(config: LanguageServerConfig): boolean {
 	if (config.flags !== latestConfig.flags) {
 		return true;
 	}
-	// TODO: figure out how to handle the env
+	if (!deepEqual(config.env, latestConfig.env)) {
+		return true;
+	}
+	return false;
 }
 
 function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
