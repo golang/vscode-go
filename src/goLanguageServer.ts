@@ -6,6 +6,7 @@
 'use strict';
 
 import cp = require('child_process');
+import deepEqual = require('deep-equal');
 import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
@@ -28,21 +29,19 @@ import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import { GO_MODE } from './goMode';
 import { GoDocumentSymbolProvider } from './goOutline';
+import { getToolFromToolPath } from './goPath';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { Tool, getTool } from './goTools';
+import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
-import { getToolFromToolPath } from './goPath';
-import treeKill = require('tree-kill');
-var deepEqual = require('deep-equal');
 
 interface LanguageServerConfig {
-	name: string,
-	path: string,
+	name: string;
+	path: string;
 	enabled: boolean;
 	flags: string[];
 	env: any;
@@ -56,10 +55,10 @@ interface LanguageServerConfig {
 // Global variables used for management of the language client.
 // They are global so that the server can be easily restarted with
 // new configurations.
-var languageClient: LanguageClient;
-var languageServerDisposable: vscode.Disposable;
-var latestConfig: LanguageServerConfig;
-var serverOutputChannel: vscode.OutputChannel;
+let languageClient: LanguageClient;
+let languageServerDisposable: vscode.Disposable;
+let latestConfig: LanguageServerConfig;
+let serverOutputChannel: vscode.OutputChannel;
 
 // registerLanguageFeatures registers providers for all the language features.
 // It looks to either the language server or the standard providers for these features.
@@ -69,8 +68,7 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 
 	// Support a command to restart the language server.
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.languageserver.restart', () => {
-		const config = parseLanguageServerConfig();
-		return restartLanguageServer(ctx, config);
+		return restartLanguageServer(ctx, parseLanguageServerConfig());
 	}));
 
 	const config = parseLanguageServerConfig();
@@ -296,12 +294,12 @@ function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
 
 export function parseLanguageServerConfig(): LanguageServerConfig {
 	const goConfig = getGoConfig();
-	const env = getToolsEnvVars();
-	const path = getLanguageServerToolPath();
-	const name = getToolFromToolPath(path);
+	const toolsEnv = getToolsEnvVars();
+	const languageServerPath = getLanguageServerToolPath();
+	const languageServerName = getToolFromToolPath(languageServerPath);
 	return {
-		name: name,
-		path: path,
+		name: languageServerName,
+		path: languageServerPath,
 		enabled: goConfig['useLanguageServer'],
 		flags: goConfig['languageServerFlags'] || [],
 		features: {
@@ -310,7 +308,7 @@ export function parseLanguageServerConfig(): LanguageServerConfig {
 			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
 			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
-		env: env,
+		env: toolsEnv,
 		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
 	};
 }
