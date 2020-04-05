@@ -13,11 +13,9 @@ import util = require('util');
 import vscode = require('vscode');
 import {
 	Command,
-	FormattingOptions,
 	HandleDiagnosticsSignature,
 	LanguageClient,
 	ProvideCompletionItemsSignature,
-	ProvideDocumentFormattingEditsSignature,
 	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -30,22 +28,24 @@ import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import { GO_MODE } from './goMode';
 import { GoDocumentSymbolProvider } from './goOutline';
-import { getToolFromToolPath } from './goPath';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { getTool, Tool } from './goTools';
+import { Tool, getTool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
+import { getToolFromToolPath } from './goPath';
 
 interface LanguageServerConfig {
+	name: string,
+	path: string,
 	enabled: boolean;
 	flags: string[];
+	env: any;
 	features: {
 		diagnostics: boolean;
-		format: boolean;
 		documentLink: boolean;
 	};
 	checkForUpdates: boolean;
@@ -53,6 +53,7 @@ interface LanguageServerConfig {
 
 var languageClient: LanguageClient;
 var languageServerDisposable: vscode.Disposable;
+var latestConfig: LanguageServerConfig;
 
 // registerLanguageFeatures registers providers for all the language features.
 // It looks to either the language server or the standard providers for these features.
@@ -60,238 +61,176 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext) {
 	// Subscribe to notifications for changes to the configuration of the language server.
 	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(e)));
 
-	const update = await shouldUpdateLanguageServer(tool, languageServerToolPath, config.checkForUpdates);
+	// Support a command to restart the language server.
+	const config = parseLanguageServerConfig();
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.languageserver.restart', (ctx, config) => restartLanguageServer(ctx, config)));
+
+	const tool = getTool(config.name);
+	const update = await shouldUpdateLanguageServer(tool, config.path, config.checkForUpdates);
 	if (update) {
-		promptForUpdatingTool(toolName);
+		promptForUpdatingTool(config.name);
 	}
-
-	languageClient = getLanguageClient();
-
-	languageClient.onReady().then(() => {
-		const capabilities = languageClient.initializeResult && languageClient.initializeResult.capabilities;
-		if (!capabilities) {
-			return vscode.window.showErrorMessage(
-				'The language server is not able to serve any features at the moment.'
-			);
-		}
-
-		// Fallback to default providers for unsupported or disabled features.
-
-		if (!capabilities.completionProvider) {
-			const provider = new GoCompletionItemProvider(ctx.globalState);
-			ctx.subscriptions.push(provider);
-			ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, provider, '.', '"'));
-		}
-		if (!config.features.format || !capabilities.documentFormattingProvider) {
-			ctx.subscriptions.push(
-				vscode.languages.registerDocumentFormattingEditProvider(GO_MODE, new GoDocumentFormattingEditProvider())
-			);
-		}
-
-		if (!capabilities.renameProvider) {
-			ctx.subscriptions.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
-		}
-
-		if (!capabilities.typeDefinitionProvider) {
-			ctx.subscriptions.push(
-				vscode.languages.registerTypeDefinitionProvider(GO_MODE, new GoTypeDefinitionProvider())
-			);
-		}
-
-		if (!capabilities.hoverProvider) {
-			ctx.subscriptions.push(vscode.languages.registerHoverProvider(GO_MODE, new GoHoverProvider()));
-		}
-
-		if (!capabilities.definitionProvider) {
-			ctx.subscriptions.push(vscode.languages.registerDefinitionProvider(GO_MODE, new GoDefinitionProvider()));
-		}
-
-		if (!capabilities.referencesProvider) {
-			ctx.subscriptions.push(vscode.languages.registerReferenceProvider(GO_MODE, new GoReferenceProvider()));
-		}
-
-		if (!capabilities.documentSymbolProvider) {
-			ctx.subscriptions.push(
-				vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoDocumentSymbolProvider())
-			);
-		}
-
-		if (!capabilities.signatureHelpProvider) {
-			ctx.subscriptions.push(
-				vscode.languages.registerSignatureHelpProvider(GO_MODE, new GoSignatureHelpProvider(), '(', ',')
-			);
-		}
-
-		if (!capabilities.workspaceSymbolProvider) {
-			ctx.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new GoWorkspaceSymbolProvider()));
-		}
-
-		if (!capabilities.implementationProvider) {
-			ctx.subscriptions.push(
-				vscode.languages.registerImplementationProvider(GO_MODE, new GoImplementationProvider())
-			);
-		}
-	});
-
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer, ctx));
 
 	// gopls is the only language server that provides live diagnostics on type,
 	// so use gotype if it's not enabled.
-	if (!(toolName === 'gopls' && config.features['diagnostics'])) {
+	if (!(config.name === 'gopls' && config.features['diagnostics'])) {
 		vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions);
 	}
 
 	// This function handles the case when the server isn't started yet,
 	// so we can call it to start the language server.
-	restartLanguageServer(ctx);
+	const ok = await restartLanguageServer(ctx, config);
+	if (!ok) {
+		registerUsualProviders(ctx);
+	}
 }
 
-function getLanguageClient(ctx: vscode.ExtensionContext): LanguageClient {
-	const config = parseLanguageServerConfig();
-
-	// If the user has not enabled the language server,
-	// register the default language features and return.
-	if (!config.enabled) {
-		registerUsualProviders(ctx);
-		return;
+async function restartLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
+	if (languageClient) {
+		if (languageClient.diagnostics) {
+			languageClient.diagnostics.clear();
+		}
+		await languageClient.stop();
+		if (languageServerDisposable) {
+			languageServerDisposable.dispose();
+		}
 	}
+	if (rebuildLanguageClient(config)) {
+		// Make sure to track the latest config used to start the language server.
+		latestConfig = config;
 
-	// The user has opted into the language server.
-	const languageServerToolPath = getLanguageServerToolPath();
-	const toolName = getToolFromToolPath(languageServerToolPath);
-	if (!toolName) {
-		// language server binary is not installed yet.
-		// Return immediately. The information messages such as
-		// offering to install missing tools, and suggesting to
-		// reload the window after installing the language server
-		// should be presented by now.
-		return;
-	}
-	const env = getToolsEnvVars();
-
-	// If installed, check. The user may not have the most up-to-date version of the language server.
-	const tool = getTool(toolName);
-
-
-	languageClient = new LanguageClient(
-		toolName,
-		{
-			command: languageServerToolPath,
-			args: ['-mode=stdio', ...config.flags],
-			options: { env }
-		},
-		{
-			initializationOptions: {},
-			documentSelector: ['go', 'go.mod', 'go.sum'],
-			uriConverters: {
-				// Apply file:/// scheme to all file paths.
-				code2Protocol: (uri: vscode.Uri): string =>
-					(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
-				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
+		// If the user has not enabled or installed the language server,
+		// register the default language features and return.
+		if (!config.enabled || !config.path) {
+			return false;
+		}
+		languageClient = new LanguageClient(
+			getToolFromToolPath(config.path),
+			{
+				command: config.path,
+				args: ['-mode=stdio', ...config.flags],
+				options: { env: config.env }
 			},
-			revealOutputChannelOn: RevealOutputChannelOn.Never,
-			middleware: {
-				provideDocumentFormattingEdits: (
-					document: vscode.TextDocument,
-					options: FormattingOptions,
-					token: vscode.CancellationToken,
-					next: ProvideDocumentFormattingEditsSignature
-				) => {
-					if (!config.features.format) {
-						return [];
-					}
-					return next(document, options, token);
+			{
+				initializationOptions: {},
+				documentSelector: ['go', 'go.mod', 'go.sum'],
+				uriConverters: {
+					// Apply file:/// scheme to all file paths.
+					code2Protocol: (uri: vscode.Uri): string =>
+						(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
+					protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 				},
-				handleDiagnostics: (
-					uri: vscode.Uri,
-					diagnostics: vscode.Diagnostic[],
-					next: HandleDiagnosticsSignature
-				) => {
-					if (!config.features.diagnostics) {
-						return null;
-					}
-					return next(uri, diagnostics);
-				},
-				provideDocumentLinks: (
-					document: vscode.TextDocument,
-					token: vscode.CancellationToken,
-					next: ProvideDocumentLinksSignature
-				) => {
-					if (!config.features.documentLink) {
-						return null;
-					}
-					return next(document, token);
-				},
-				provideCompletionItem: (
-					document: vscode.TextDocument,
-					position: vscode.Position,
-					context: vscode.CompletionContext,
-					token: vscode.CancellationToken,
-					next: ProvideCompletionItemsSignature
-				) => {
-					// TODO(hyangah): when v1.42+ api is available, we can simplify
-					// language-specific configuration lookup using the new
-					// ConfigurationScope.
-					//    const paramHintsEnabled = vscode.workspace.getConfiguration(
-					//          'editor.parameterHints',
-					//          { languageId: 'go', uri: document.uri });
-
-					const editorParamHintsEnabled = vscode.workspace.getConfiguration(
-						'editor.parameterHints',
-						document.uri
-					)['enabled'];
-					const goParamHintsEnabled = vscode.workspace.getConfiguration('[go]', document.uri)[
-						'editor.parameterHints.enabled'
-					];
-
-					let paramHintsEnabled: boolean = false;
-					if (typeof goParamHintsEnabled === 'undefined') {
-						paramHintsEnabled = editorParamHintsEnabled;
-					} else {
-						paramHintsEnabled = goParamHintsEnabled;
-					}
-					let cmd: Command;
-					if (paramHintsEnabled) {
-						cmd = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
-					}
-
-					function configureCommands(
-						r: vscode.CompletionItem[] | vscode.CompletionList | null | undefined
-					): vscode.CompletionItem[] | vscode.CompletionList | null | undefined {
-						if (r) {
-							(Array.isArray(r) ? r : r.items).forEach((i: vscode.CompletionItem) => {
-								i.command = cmd;
-							});
+				revealOutputChannelOn: RevealOutputChannelOn.Never,
+				middleware: {
+					handleDiagnostics: (
+						uri: vscode.Uri,
+						diagnostics: vscode.Diagnostic[],
+						next: HandleDiagnosticsSignature
+					) => {
+						if (!config.features.diagnostics) {
+							return null;
 						}
-						return r;
-					}
-					const ret = next(document, position, context, token);
+						return next(uri, diagnostics);
+					},
+					provideDocumentLinks: (
+						document: vscode.TextDocument,
+						token: vscode.CancellationToken,
+						next: ProvideDocumentLinksSignature
+					) => {
+						if (!config.features.documentLink) {
+							return null;
+						}
+						return next(document, token);
+					},
+					provideCompletionItem: (
+						document: vscode.TextDocument,
+						position: vscode.Position,
+						context: vscode.CompletionContext,
+						token: vscode.CancellationToken,
+						next: ProvideCompletionItemsSignature
+					) => {
+						// TODO(hyangah): when v1.42+ api is available, we can simplify
+						// language-specific configuration lookup using the new
+						// ConfigurationScope.
+						//    const paramHintsEnabled = vscode.workspace.getConfiguration(
+						//          'editor.parameterHints',
+						//          { languageId: 'go', uri: document.uri });
 
-					const isThenable = <T>(obj: vscode.ProviderResult<T>): obj is Thenable<T> =>
-						obj && (<any>obj)['then'];
-					if (isThenable<vscode.CompletionItem[] | vscode.CompletionList | null | undefined>(ret)) {
-						return ret.then(configureCommands);
+						const editorParamHintsEnabled = vscode.workspace.getConfiguration(
+							'editor.parameterHints',
+							document.uri
+						)['enabled'];
+						const goParamHintsEnabled = vscode.workspace.getConfiguration('[go]', document.uri)[
+							'editor.parameterHints.enabled'
+						];
+
+						let paramHintsEnabled: boolean = false;
+						if (typeof goParamHintsEnabled === 'undefined') {
+							paramHintsEnabled = editorParamHintsEnabled;
+						} else {
+							paramHintsEnabled = goParamHintsEnabled;
+						}
+						let cmd: Command;
+						if (paramHintsEnabled) {
+							cmd = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
+						}
+
+						function configureCommands(
+							r: vscode.CompletionItem[] | vscode.CompletionList | null | undefined
+						): vscode.CompletionItem[] | vscode.CompletionList | null | undefined {
+							if (r) {
+								(Array.isArray(r) ? r : r.items).forEach((i: vscode.CompletionItem) => {
+									i.command = cmd;
+								});
+							}
+							return r;
+						}
+						const ret = next(document, position, context, token);
+
+						const isThenable = <T>(obj: vscode.ProviderResult<T>): obj is Thenable<T> =>
+							obj && (<any>obj)['then'];
+						if (isThenable<vscode.CompletionItem[] | vscode.CompletionList | null | undefined>(ret)) {
+							return ret.then(configureCommands);
+						}
+						return configureCommands(ret);
 					}
-					return configureCommands(ret);
 				}
 			}
-		}
-	);
-}
+		);
+		languageClient.onReady().then(() => {
+			const capabilities = languageClient.initializeResult && languageClient.initializeResult.capabilities;
+			if (!capabilities) {
+				return vscode.window.showErrorMessage(
+					'The language server is not able to serve any features at the moment.'
+				);
+			}
+		});
+	}
 
-async function restartLanguageServer(ctx: vscode.ExtensionContext) {
-	if (!languageClient) {
-		// TODO
-	}
-	if (languageClient.diagnostics) {
-		languageClient.diagnostics.clear();
-	}
-	await languageClient.stop();
-	if (languageServerDisposable) {
-		languageServerDisposable.dispose();
-	}
 	languageServerDisposable = languageClient.start();
 	ctx.subscriptions.push(languageServerDisposable);
+}
+
+function rebuildLanguageClient(config: LanguageServerConfig): boolean {
+	if (!languageClient || !latestConfig) {
+		return true;
+	}
+	if (config.enabled !== latestConfig.enabled) {
+		return true;
+	}
+	if (config.path !== latestConfig.path) {
+		return true;
+	}
+	if (config.features.diagnostics !== latestConfig.features.diagnostics) {
+		return true;
+	}
+	if (config.features.documentLink !== latestConfig.features.documentLink) {
+		return true;
+	}
+	if (config.flags !== latestConfig.flags) {
+		return true;
+	}
+	// TODO: figure out how to handle the env
 }
 
 function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
@@ -331,21 +270,23 @@ function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
 
 export function parseLanguageServerConfig(): LanguageServerConfig {
 	const goConfig = getGoConfig();
-
-	const config = {
+	const env = getToolsEnvVars();
+	const path = getLanguageServerToolPath();
+	const name = getToolFromToolPath(path);
+	return {
+		name: name,
+		path: path,
 		enabled: goConfig['useLanguageServer'],
 		flags: goConfig['languageServerFlags'] || [],
 		features: {
 			// TODO: We should have configs that match these names.
 			// Ultimately, we should have a centralized language server config rather than separate fields.
 			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
-			format: goConfig['languageServerExperimentalFeatures']['format'],
-			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink'],
-			highlight: goConfig['languageServerExperimentalFeatures']['highlight']
+			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
+		env: env,
 		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
 	};
-	return config;
 }
 
 /**
