@@ -20,11 +20,15 @@ import {
 	updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
+import { GoDefinitionProvider } from './goDeclaration';
 import { extractFunction, extractVariable } from './goDoctor';
+import { GoHoverProvider } from './goExtraInfo';
 import { runFillStruct } from './goFillStruct';
+import { GoDocumentFormattingEditProvider } from './goFormat';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
 import { implCursor } from './goImpl';
+import { GoImplementationProvider } from './goImplementations';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
@@ -34,17 +38,26 @@ import {
 	promptForMissingTool,
 	updateGoPathGoRootFromConfig
 } from './goInstallTools';
+import { startLanguageServer } from './goLanguageServer';
 import { lintCode } from './goLint';
+import { parseLiveFile } from './goLiveErrors';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
+import { GoDocumentSymbolProvider } from './goOutline';
 import { clearCacheForTools, fileExists } from './goPath';
 import { playgroundCommand } from './goPlayground';
+import { GoReferenceProvider } from './goReferences';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
+import { GoRenameProvider } from './goRename';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
+import { GoSignatureHelpProvider } from './goSignature';
 import { outputChannel, showHideStatus } from './goStatus';
+import { GoCompletionItemProvider } from './goSuggest';
+import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
+import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { vetCode } from './goVet';
 import {
 	getFromGlobalState,
@@ -69,19 +82,6 @@ import {
 	handleDiagnosticErrors,
 	isGoPathSet
 } from './util';
-import { startLanguageServer } from './goLanguageServer';
-import { GoCompletionItemProvider } from './goSuggest';
-import { GoHoverProvider } from './goExtraInfo';
-import { GoDefinitionProvider } from './goDeclaration';
-import { GoReferenceProvider } from './goReferences';
-import { GoDocumentSymbolProvider } from './goOutline';
-import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { GoSignatureHelpProvider } from './goSignature';
-import { GoImplementationProvider } from './goImplementations';
-import { GoDocumentFormattingEditProvider } from './goFormat';
-import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { GoRenameProvider } from './goRename';
-import { parseLiveFile } from './goLiveErrors';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -658,4 +658,3 @@ function checkToolExists(tool: string) {
 		promptForMissingTool(tool);
 	}
 }
-
