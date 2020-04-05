@@ -58,6 +58,7 @@
     "deep-equal": "^2.0.2"
   },
   "devDependencies": {
+    "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.0.0",
     "@types/glob": "^7.1.1",
     "@types/mocha": "^5.2.7",

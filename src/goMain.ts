@@ -34,7 +34,6 @@ import {
 	promptForMissingTool,
 	updateGoPathGoRootFromConfig
 } from './goInstallTools';
-import { registerLanguageFeatures } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
@@ -70,6 +69,19 @@ import {
 	handleDiagnosticErrors,
 	isGoPathSet
 } from './util';
+import { startLanguageServer } from './goLanguageServer';
+import { GoCompletionItemProvider } from './goSuggest';
+import { GoHoverProvider } from './goExtraInfo';
+import { GoDefinitionProvider } from './goDeclaration';
+import { GoReferenceProvider } from './goReferences';
+import { GoDocumentSymbolProvider } from './goOutline';
+import { GoWorkspaceSymbolProvider } from './goSymbol';
+import { GoSignatureHelpProvider } from './goSignature';
+import { GoImplementationProvider } from './goImplementations';
+import { GoDocumentFormattingEditProvider } from './goFormat';
+import { GoTypeDefinitionProvider } from './goTypeDefinition';
+import { GoRenameProvider } from './goRename';
+import { parseLiveFile } from './goLiveErrors';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -133,7 +145,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 		// This handles all of the configurations and registrations for the language server.
 		// It also registers the necessary language feature providers that the language server may not support.
-		await registerLanguageFeatures(ctx);
+		const ok = await startLanguageServer(ctx);
+		if (!ok) {
+			registerUsualProviders(ctx);
+		}
 
 		if (
 			vscode.window.activeTextEditor &&
@@ -605,6 +620,28 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 	);
 }
 
+// registerUsualProviders registers the language feature providers if the language server is not enabled.
+function registerUsualProviders(ctx: vscode.ExtensionContext) {
+	const provider = new GoCompletionItemProvider(ctx.globalState);
+	ctx.subscriptions.push(provider);
+	ctx.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, provider, '.', '"'));
+	ctx.subscriptions.push(vscode.languages.registerHoverProvider(GO_MODE, new GoHoverProvider()));
+	ctx.subscriptions.push(vscode.languages.registerDefinitionProvider(GO_MODE, new GoDefinitionProvider()));
+	ctx.subscriptions.push(vscode.languages.registerReferenceProvider(GO_MODE, new GoReferenceProvider()));
+	ctx.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoDocumentSymbolProvider()));
+	ctx.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new GoWorkspaceSymbolProvider()));
+	ctx.subscriptions.push(
+		vscode.languages.registerSignatureHelpProvider(GO_MODE, new GoSignatureHelpProvider(), '(', ',')
+	);
+	ctx.subscriptions.push(vscode.languages.registerImplementationProvider(GO_MODE, new GoImplementationProvider()));
+	ctx.subscriptions.push(
+		vscode.languages.registerDocumentFormattingEditProvider(GO_MODE, new GoDocumentFormattingEditProvider())
+	);
+	ctx.subscriptions.push(vscode.languages.registerTypeDefinitionProvider(GO_MODE, new GoTypeDefinitionProvider()));
+	ctx.subscriptions.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
+	vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions);
+}
+
 function addOnChangeTextDocumentListeners(ctx: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(removeCodeCoverageOnFileChange, null, ctx.subscriptions);
 	vscode.workspace.onDidChangeTextDocument(removeTestStatus, null, ctx.subscriptions);
@@ -621,3 +658,4 @@ function checkToolExists(tool: string) {
 		promptForMissingTool(tool);
 	}
 }
+
