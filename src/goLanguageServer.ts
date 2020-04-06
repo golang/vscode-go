@@ -93,8 +93,7 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 		// Track the latest config used to start the language server.
 		latestConfig = config;
 
-		// If the user has not enabled or installed the language server,
-		// register the default language features and return.
+		// If the user has not enabled or installed the language server, return.
 		if (!config.enabled || !config.path) {
 			return false;
 		}
@@ -103,7 +102,7 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 			serverOutputChannel = vscode.window.createOutputChannel(config.name);
 		}
 		languageClient = new LanguageClient(
-			getToolFromToolPath(config.path),
+			config.name,
 			{
 				command: config.path,
 				args: ['-mode=stdio', ...config.flags],
