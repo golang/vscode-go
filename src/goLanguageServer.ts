@@ -66,9 +66,9 @@ export async function startLanguageServer(ctx: vscode.ExtensionContext): Promise
 	if (!tool) {
 		return false;
 	}
-	const update = await shouldUpdateLanguageServer(tool, config.path, config.checkForUpdates);
-	if (update) {
-		promptForUpdatingTool(config.name);
+	const versionToUpdate = await shouldUpdateLanguageServer(tool, config.path, config.checkForUpdates);
+	if (versionToUpdate) {
+		promptForUpdatingTool(tool.name, versionToUpdate);
 	}
 	// This function handles the case when the server isn't started yet,
 	// so we can call it to start the language server.
@@ -356,23 +356,18 @@ async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
 	makeProxyCall: boolean
-): Promise<boolean> {
+): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (!tool || tool.name !== 'gopls') {
-		return false;
+	if (tool.name !== 'gopls') {
+		return null;
 	}
 
 	// First, run the "gopls version" command and parse its results.
-	// If "gopls" is so old that it doesn't have the "gopls version" command,
-	// or its version doesn't match our expectations, prompt the user to download.
 	const usersVersion = await goplsVersion(languageServerToolPath);
-	if (!usersVersion) {
-		return true;
-	}
 
 	// We might have a developer version. Don't make the user update.
 	if (usersVersion === '(devel)') {
-		return false;
+		return null;
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
@@ -381,6 +376,13 @@ async function shouldUpdateLanguageServer(
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
 		latestVersion = defaultLatestVersion;
+	}
+
+	// If "gopls" is so old that it doesn't have the "gopls version" command,
+	// or its version doesn't match our expectations, usersVersion will be empty.
+	// Suggest the latestVersion.
+	if (!usersVersion) {
+		return latestVersion;
 	}
 
 	// The user may have downloaded golang.org/x/tools/gopls@master,
@@ -392,12 +394,12 @@ async function shouldUpdateLanguageServer(
 		if (!latestTime) {
 			latestTime = defaultLatestVersionTime;
 		}
-		return usersTime.isBefore(latestTime);
+		return usersTime.isBefore(latestTime) ? latestVersion : null;
 	}
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	return semver.lt(usersVersion, latestVersion);
+	return semver.lt(usersVersion, latestVersion) ? latestVersion : null;
 }
 
 // Copied from src/cmd/go/internal/modfetch.
