@@ -27,7 +27,7 @@ import { getTool, Tool } from './goTools';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars, isForNightly } from './util';
 
 interface LanguageServerConfig {
-	name: string;
+	serverName: string;
 	path: string;
 	enabled: boolean;
 	flags: string[];
@@ -62,7 +62,7 @@ export async function startLanguageServer(ctx: vscode.ExtensionContext): Promise
 	if (!config || !config.enabled) {
 		return false;
 	}
-	const tool = getTool(config.name);
+	const tool = getTool(config.serverName);
 	if (!tool) {
 		return false;
 	}
@@ -110,10 +110,10 @@ async function restartLanguageServer(ctx: vscode.ExtensionContext, config: Langu
 function rebuildLanguageClient(config: LanguageServerConfig) {
 	// Reuse the same output channel for each instance of the server.
 	if (!serverOutputChannel) {
-		serverOutputChannel = vscode.window.createOutputChannel(config.name);
+		serverOutputChannel = vscode.window.createOutputChannel(config.serverName);
 	}
 	languageClient = new LanguageClient(
-		config.name,
+		config.serverName,
 		{
 			command: config.path,
 			args: ['-mode=stdio', ...config.flags],
@@ -257,7 +257,7 @@ export function parseLanguageServerConfig(): LanguageServerConfig {
 	const languageServerPath = getLanguageServerToolPath();
 	const languageServerName = getToolFromToolPath(languageServerPath);
 	return {
-		name: languageServerName,
+		serverName: languageServerName,
 		path: languageServerPath,
 		enabled: goConfig['useLanguageServer'],
 		flags: goConfig['languageServerFlags'] || [],
