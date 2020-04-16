@@ -131,5 +131,6 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 			}
 		});
 	}
+
 	return Promise.all(runningToolsPromises);
 }
