@@ -1457,11 +1457,11 @@ encountered.
 			vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')),
 			config2
 		).then((diagnostics) => {
-			assert.equal(1, diagnostics.length, `unexpected number of diagnostics: want 1, got ${diagnostics.length}`);
+			assert.equal(1, diagnostics.length, 'check with multiple buildtags failed. Unexpected errors found');
 			assert.equal(
 				1,
 				diagnostics[0].errors.length,
-				`unexpected number of errors found for diagnostic ${diagnostics[0].errors}`
+				'check with multiple buildtags failed. Unexpected errors found'
 			);
 			assert.equal(diagnostics[0].errors[0].msg, 'undefined: fmt.Prinln');
 		});
