@@ -77,7 +77,7 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext): Pr
 		} else {
 			// Only prompt users to fill out the gopls survey if we are not
 			// also prompting them to update (both would be too much).
-			maybePromptForGoplsSurvey(ctx);
+			maybePromptForGoplsSurvey();
 		}
 	}
 
@@ -267,11 +267,6 @@ export function parseLanguageServerConfig(): LanguageServerConfig {
 	const toolsEnv = getToolsEnvVars();
 	const languageServerPath = getLanguageServerToolPath();
 	const languageServerName = getToolFromToolPath(languageServerPath);
-	const surveyConfig: SurveyConfig = {
-		dateAccepted: goConfig['goplsSurveyDateAccepted'],
-		datePrompted: goConfig['goplsSurveyDatePrompted'],
-		prompt: goConfig['goplsPromptForSurvey'],
-	};
 	return {
 		serverName: languageServerName,
 		path: languageServerPath,
@@ -567,101 +562,120 @@ function goProxy(): string[] {
 	return split;
 }
 
+function maybePromptForGoplsSurvey() {
+	const prompt = shouldPromptForGoplsSurvey();
+	if (!prompt) {
+		return;
+	}
+	const timeout = 1000 * 60 * 60; // 1 hour
+	setTimeout(async () => {
+		const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
+		Would you be willing to fill out a quick survey about your experience with gopls ? `, 'Yes', 'Not now', 'Never');
+
+		// Update the time last asked.
+		const now = new Date();
+		updateGlobalState('goplsSurveyConfig_datePrompted', now);
+
+		switch (selected) {
+			case 'Yes':
+				// Update the time the survey was last accepted.
+				updateGlobalState('goplsSurveyConfig_dateAccepted', now);
+
+				// Update the setting for the user's openness to surveys.
+				updateGlobalState('goplsSurveyConfig_Prompt', true);
+
+				// TODO(rstambler): Is the information message necessary?
+				vscode.window.showInformationMessage(`Thank you! We'll redirect you to the survey now.`);
+
+				// Open the link to the survey.
+				vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+				break;
+			case 'Not now':
+				// Update the setting for the user's openness to surveys.
+				updateGlobalState('goplsSurveyConfig_Prompt', true);
+
+				vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
+				break;
+			case 'Never':
+				// Update the setting for the user's openness to surveys.
+				updateGlobalState('goplsSurveyConfig_Prompt', false);
+
+				vscode.window.showInformationMessage(`No problem! We won't ask again.`);
+				break;
+		}
+	}, timeout);
+}
+
+export function shouldPromptForGoplsSurvey(): boolean {
+	const cfg = buildSurveyConfig();
+	console.log(cfg);
+
+	// If the prompt value is not set, assume we haven't prompted the user
+	// and should do so.
+	if (cfg.prompt === undefined) {
+		cfg.prompt = true;
+	}
+	if (!cfg.prompt) {
+		return;
+	}
+
+	const now = new Date();
+
+	// Check if the user has taken the survey in the last year.
+	if (cfg.lastDateAccepted) {
+		const timeSinceAccepted = now.getTime() - cfg.lastDateAccepted.getTime();
+		console.log(timeSinceAccepted);
+	}
+	return true;
+}
+
 interface SurveyConfig {
 	// prompt is true if the user can be prompted to take the survey.
 	// It is false if the user has responded "Never" to the prompt.
 	// The persistent storage key is 'goplsSurveyConfig_Prompt'.
 	prompt: boolean;
 
-	// shouldPromptThisMonth ...
+	// promptThisMonth ...
 	// The persistent storage key is 'goplsSurveyConfig_shouldPromptThisMonth'.
-	shouldPromptThisMonth: boolean;
+	promptThisMonth: boolean;
 
-	// mostRecentlyActivated ...
-	// The persistent storage key is 'goplsSurveyConfig_mostRecentlyActivated'.
-	mostRecentlyActivated: Date;
+	// dateActivated ...
+	// The persistent storage key is 'goplsSurveyConfig_dateActivated'.
+	lastDateActivated: Date;
 
 	// datePrompted is the most recent date that the user has been prompted.
 	// The persistent storage key is 'goplsSurveyConfig_datePrompted'.
-	datePrompted: Date;
+	lastDatePrompted: Date;
 
 	// dateAccepted is the most recent date that the user responded "Yes"
 	// to the survey prompt. The user need not have completed the survey.
 	// The persistent storage key is 'goplsSurveyConfig_dateAccepted'.
-	dateAccepted: Date;
+	lastDateAccepted: Date;
 }
 
-function maybePromptForGoplsSurvey(ctx: vscode.ExtensionContext) {
+export const surveyConfigPrefix = 'goplsSurveyConfig';
+
+function buildSurveyConfig(): SurveyConfig {
 	// NOTE (for development) - to clear the global state on a Mac:
 	// Quit VS Code instances and run:
 	// $ rm -rf ~/Library/Application\ Support/Code\ -\ Insiders/User/globalStorage/*
 
-	// Check if the user is open to surveys.
-	let prompt = getFromGlobalState('goplsSurveyConfig_Prompt');
-
-	// If we haven't yet saved any global state for the user,
-	// assume that we've never prompted them yet, and prompt.
-	if (prompt === undefined) {
-		prompt = true;
-	}
-	// An unknown type for this setting. Assume we shouldn't prompt.
-	if (typeof prompt !== 'boolean') {
-		return;
-	}
-	// The user has requested not to be prompted.
-	if (!prompt) {
-		return;
-	}
-
-	// Check if the extension has been activated this month.
-	const mostRecentlyActivated = getFromGlobalState('goplsSurveyConfig_mostRecentlyActivated');
-	if (mostRecentlyActivated === undefined) {
-
-	}
-	if (typeof mostRecentlyActivated !== Date) {
-		return;
-	}
-	const now = new Date();
-
-
-	let timeout = 1000 * 60 * 60; // 1 hour
-	timeout = 1000; // 1 second for testing
-	setTimeout(promptForGoplsSurvey, timeout);
-}
-
-async function promptForGoplsSurvey() {
-	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
-Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
-
-	// Update the time last asked.
-	const now = new Date();
-	updateGlobalState('goplsSurveyConfig_datePrompted', now);
-
-	switch (selected) {
-		case 'Yes':
-			// Update the time the survey was last accepted.
-			updateGlobalState('goplsSurveyConfig_dateAccepted', now);
-
-			// Update the setting for the user's openness to surveys.
-			updateGlobalState('goplsSurveyConfig_Prompt', true);
-
-			// TODO(rstambler): Is the information message necessary?
-			vscode.window.showInformationMessage(`Thank you! We'll redirect you to the survey now.`);
-
-			// Open the link to the survey.
-			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
-			break;
-		case 'Not now':
-			// Update the setting for the user's openness to surveys.
-			updateGlobalState('goplsSurveyConfig_Prompt', true);
-
-			vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
-			break;
-		case 'Never':
-			// Update the setting for the user's openness to surveys.
-			updateGlobalState('goplsSurveyConfig_Prompt', false);
-
-			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
-			break;
-	}
+	const processDate = (x: any): Date => {
+		if (x !== undefined && typeof x === 'string') {
+			return new Date(x);
+		}
+	};
+	const processBoolean = (x: any): boolean => {
+		if (typeof x === 'boolean') {
+			return x;
+		}
+	};
+	const cfg: SurveyConfig = {
+		lastDateAccepted: processDate(getFromGlobalState(`${surveyConfigPrefix}_dateAccepted`)),
+		lastDatePrompted: processDate(getFromGlobalState(`${surveyConfigPrefix}_datePrompted`)),
+		lastDateActivated: processDate(getFromGlobalState(`${surveyConfigPrefix}_dateActivated`)),
+		prompt: processBoolean(getFromGlobalState(`${surveyConfigPrefix}_prompt`)),
+		promptThisMonth: processBoolean(getFromGlobalState(`${surveyConfigPrefix}_promptThisMonth`)),
+	};
+	return cfg;
 }
