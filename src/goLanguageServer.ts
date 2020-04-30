@@ -573,6 +573,14 @@ interface SurveyConfig {
 	// The persistent storage key is 'goplsSurveyConfig_Prompt'.
 	prompt: boolean;
 
+	// shouldPromptThisMonth ...
+	// The persistent storage key is 'goplsSurveyConfig_shouldPromptThisMonth'.
+	shouldPromptThisMonth: boolean;
+
+	// mostRecentlyActivated ...
+	// The persistent storage key is 'goplsSurveyConfig_mostRecentlyActivated'.
+	mostRecentlyActivated: Date;
+
 	// datePrompted is the most recent date that the user has been prompted.
 	// The persistent storage key is 'goplsSurveyConfig_datePrompted'.
 	datePrompted: Date;
@@ -604,8 +612,20 @@ function maybePromptForGoplsSurvey(ctx: vscode.ExtensionContext) {
 	if (!prompt) {
 		return;
 	}
-	// TODO(rstambler): Figure out the correct timeout.
-	const timeout = 1000; // use 1 second for testing
+
+	// Check if the extension has been activated this month.
+	const mostRecentlyActivated = getFromGlobalState('goplsSurveyConfig_mostRecentlyActivated');
+	if (mostRecentlyActivated === undefined) {
+
+	}
+	if (typeof mostRecentlyActivated !== Date) {
+		return;
+	}
+	const now = new Date();
+
+
+	let timeout = 1000 * 60 * 60; // 1 hour
+	timeout = 1000; // 1 second for testing
 	setTimeout(promptForGoplsSurvey, timeout);
 }
 
