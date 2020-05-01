@@ -82,8 +82,9 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext): Pr
 			// also prompting them to update (both would be too much).
 			if (goplsSurveyOn) {
 				const cfg = buildSurveyConfig();
-				maybePromptForGoplsSurvey(cfg);
-				flushSurveyConfig(cfg);
+				const now = new Date();
+				maybePromptForGoplsSurvey(now, cfg);
+				flushSurveyConfig(now, cfg);
 			}
 		}
 	}
@@ -597,8 +598,7 @@ export interface SurveyConfig {
 	lastDateAccepted: Date;
 }
 
-function maybePromptForGoplsSurvey(cfg: SurveyConfig) {
-	const now = new Date();
+function maybePromptForGoplsSurvey(now: Date, cfg: SurveyConfig) {
 	const prompt = shouldPromptForGoplsSurvey(now, cfg);
 	if (!prompt) {
 		return;
@@ -647,7 +647,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolea
 	}
 
 	// Check if the user has taken the survey in the last year.
-	// Don't prompt them if they have beeh.
+	// Don't prompt them if they have been.
 	if (cfg.lastDateAccepted) {
 		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
 			return false;
@@ -690,16 +690,6 @@ function daysBetween(a: Date, b: Date) {
 export const surveyConfigPrefix = 'goplsSurveyConfig';
 
 export function buildSurveyConfig(): SurveyConfig {
-	const asDate = (x: any): Date => {
-		if (x !== undefined && typeof x === 'string') {
-			return new Date(x);
-		}
-	};
-	const asBoolean = (x: any): boolean => {
-		if (typeof x === 'boolean') {
-			return x;
-		}
-	};
 	// Create an empty config to get its keys.
 	const cfg: SurveyConfig = {
 		lastDateAccepted: null,
@@ -715,6 +705,16 @@ export function buildSurveyConfig(): SurveyConfig {
 		}
 		m.set(key, getFromGlobalState(`${surveyConfigPrefix}_${key}`));
 	}
+	const asDate = (x: any): Date => {
+		if (x !== undefined) {
+			return new Date(x);
+		}
+	};
+	const asBoolean = (x: any): boolean => {
+		if (typeof x === 'boolean') {
+			return x;
+		}
+	};
 	// TODO(rstambler): Find a programmatic way to set these values.
 	cfg.lastDateAccepted = asDate(m.get('lastDateAccepted'));
 	cfg.lastDateActivated = asDate(m.get('lastDateActivated'));
@@ -725,9 +725,9 @@ export function buildSurveyConfig(): SurveyConfig {
 	return cfg;
 }
 
-function flushSurveyConfig(cfg: SurveyConfig) {
+function flushSurveyConfig(now: Date, cfg: SurveyConfig) {
 	// Always update the last date activated to the current date.
-	cfg.lastDateActivated = new Date();
+	cfg.lastDateActivated = now;
 
 	const entries = Object.entries(cfg);
 	for (let i = 0; i < entries.length; i++) {
