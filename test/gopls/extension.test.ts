@@ -3,7 +3,9 @@ import cp = require('child_process');
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { updateGoPathGoRootFromConfig } from '../../src/goInstallTools';
 import { extensionId } from '../../src/telemetry';
+import { getCurrentGoPath } from '../../src/util';
 
 // Env is a collection of test related variables
 // that define the test environment such as vscode workspace.
@@ -59,7 +61,7 @@ class Env {
 					files.filter((filename) => filename !== '.gitignore').map((file) => {
 						fs.remove(path.resolve(this.workspaceDir, file));
 					}));
-			});
+				});
 
 			if (!fixtureDirName) {
 				return;

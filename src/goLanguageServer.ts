@@ -48,6 +48,9 @@ let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 let serverOutputChannel: vscode.OutputChannel;
 
+// When enabled, users may be prompted to fill out the gopls survey.
+const goplsSurveyOn: boolean = false;
+
 // startLanguageServer starts the language server (if enabled), returning
 // true on success.
 export async function registerLanguageFeatures(ctx: vscode.ExtensionContext): Promise<boolean> {
@@ -77,7 +80,11 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext): Pr
 		} else {
 			// Only prompt users to fill out the gopls survey if we are not
 			// also prompting them to update (both would be too much).
-			maybePromptForGoplsSurvey();
+			if (goplsSurveyOn) {
+				const cfg = buildSurveyConfig();
+				maybePromptForGoplsSurvey(cfg);
+				flushSurveyConfig(cfg);
+			}
 		}
 	}
 
@@ -562,8 +569,37 @@ function goProxy(): string[] {
 	return split;
 }
 
-function maybePromptForGoplsSurvey() {
-	const prompt = shouldPromptForGoplsSurvey();
+// SurveyConfig is the set of global properties used to determine if
+// we should prompt a user to take the gopls survey.
+export interface SurveyConfig {
+	// prompt is true if the user can be prompted to take the survey.
+	// It is false if the user has responded "Never" to the prompt.
+	// Its persistent storage key is 'goplsSurveyConfig_prompt'.
+	prompt: boolean;
+
+	// promptThisMonth is true if we have used a random number generator
+	// to determine if the user should be prompted this month.
+	// It is undefined if we have not yet made the determination.
+	// Its persistent storage key is 'goplsSurveyConfig_promptThisMonth'.
+	promptThisMonth: boolean;
+
+	// lastDateActivated is the last date that the user activated the extension.
+	// Its persistent storage key is 'goplsSurveyConfig_lastDateActivated'.
+	lastDateActivated: Date;
+
+	// lastDatePrompted is the most recent date that the user has been prompted.
+	// Its persistent storage key is 'goplsSurveyConfig_lastDatePrompted'.
+	lastDatePrompted: Date;
+
+	// lastDateAccepted is the most recent date that the user responded "Yes"
+	// to the survey prompt. The user need not have completed the survey.
+	// The persistent storage key is 'goplsSurveyConfig_lastDateAccepted'.
+	lastDateAccepted: Date;
+}
+
+function maybePromptForGoplsSurvey(cfg: SurveyConfig) {
+	const now = new Date();
+	const prompt = shouldPromptForGoplsSurvey(now, cfg);
 	if (!prompt) {
 		return;
 	}
@@ -573,16 +609,12 @@ function maybePromptForGoplsSurvey() {
 		Would you be willing to fill out a quick survey about your experience with gopls ? `, 'Yes', 'Not now', 'Never');
 
 		// Update the time last asked.
-		const now = new Date();
-		updateGlobalState('goplsSurveyConfig_datePrompted', now);
+		cfg.lastDatePrompted = now;
 
 		switch (selected) {
 			case 'Yes':
-				// Update the time the survey was last accepted.
-				updateGlobalState('goplsSurveyConfig_dateAccepted', now);
-
-				// Update the setting for the user's openness to surveys.
-				updateGlobalState('goplsSurveyConfig_Prompt', true);
+				cfg.lastDateAccepted = now;
+				cfg.prompt = true;
 
 				// TODO(rstambler): Is the information message necessary?
 				vscode.window.showInformationMessage(`Thank you! We'll redirect you to the survey now.`);
@@ -591,14 +623,12 @@ function maybePromptForGoplsSurvey() {
 				vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
 				break;
 			case 'Not now':
-				// Update the setting for the user's openness to surveys.
-				updateGlobalState('goplsSurveyConfig_Prompt', true);
+				cfg.prompt = true;
 
 				vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
 				break;
 			case 'Never':
-				// Update the setting for the user's openness to surveys.
-				updateGlobalState('goplsSurveyConfig_Prompt', false);
+				cfg.prompt = false;
 
 				vscode.window.showInformationMessage(`No problem! We won't ask again.`);
 				break;
@@ -606,76 +636,106 @@ function maybePromptForGoplsSurvey() {
 	}, timeout);
 }
 
-export function shouldPromptForGoplsSurvey(): boolean {
-	const cfg = buildSurveyConfig();
-	console.log(cfg);
-
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
 		cfg.prompt = true;
 	}
 	if (!cfg.prompt) {
-		return;
+		return false;
 	}
-
-	const now = new Date();
 
 	// Check if the user has taken the survey in the last year.
+	// Don't prompt them if they have beeh.
 	if (cfg.lastDateAccepted) {
-		const timeSinceAccepted = now.getTime() - cfg.lastDateAccepted.getTime();
-		console.log(timeSinceAccepted);
+		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+			return false;
+		}
 	}
-	return true;
+
+	// Check if the user has been prompted for the survey in the last 90 days.
+	// Don't prompt them if they have been.
+	if (cfg.lastDatePrompted) {
+		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+			return false;
+		}
+	}
+
+	// Check if the extension has been activated this month. If not, generate a random
+	// number to decide if we should prompt the user this month with a 5% chance.
+	if (cfg.lastDateActivated) {
+		// The extension has been activated this month, so we should have already
+		// decided if the user should be prompted.
+		if (daysBetween(now, cfg.lastDateActivated) < 30) {
+			return cfg.promptThisMonth;
+		}
+	}
+
+	// This is the first activation this month (or ever),
+	// so decide if we should prompt the user.
+	const r = Math.floor(Math.random() * 20);
+	cfg.promptThisMonth = (r % 20 === 0);
+
+	return cfg.promptThisMonth;
 }
 
-interface SurveyConfig {
-	// prompt is true if the user can be prompted to take the survey.
-	// It is false if the user has responded "Never" to the prompt.
-	// The persistent storage key is 'goplsSurveyConfig_Prompt'.
-	prompt: boolean;
-
-	// promptThisMonth ...
-	// The persistent storage key is 'goplsSurveyConfig_shouldPromptThisMonth'.
-	promptThisMonth: boolean;
-
-	// dateActivated ...
-	// The persistent storage key is 'goplsSurveyConfig_dateActivated'.
-	lastDateActivated: Date;
-
-	// datePrompted is the most recent date that the user has been prompted.
-	// The persistent storage key is 'goplsSurveyConfig_datePrompted'.
-	lastDatePrompted: Date;
-
-	// dateAccepted is the most recent date that the user responded "Yes"
-	// to the survey prompt. The user need not have completed the survey.
-	// The persistent storage key is 'goplsSurveyConfig_dateAccepted'.
-	lastDateAccepted: Date;
+// daysBetween returns the number of days between a and b,
+// assuming that a occurs after b.
+function daysBetween(a: Date, b: Date) {
+	const ms = a.getTime() - b.getTime();
+	return ms / (1000 * 60 * 60 * 24);
 }
 
 export const surveyConfigPrefix = 'goplsSurveyConfig';
 
-function buildSurveyConfig(): SurveyConfig {
-	// NOTE (for development) - to clear the global state on a Mac:
-	// Quit VS Code instances and run:
-	// $ rm -rf ~/Library/Application\ Support/Code\ -\ Insiders/User/globalStorage/*
-
-	const processDate = (x: any): Date => {
+export function buildSurveyConfig(): SurveyConfig {
+	const asDate = (x: any): Date => {
 		if (x !== undefined && typeof x === 'string') {
 			return new Date(x);
 		}
 	};
-	const processBoolean = (x: any): boolean => {
+	const asBoolean = (x: any): boolean => {
 		if (typeof x === 'boolean') {
 			return x;
 		}
 	};
+	// Create an empty config to get its keys.
 	const cfg: SurveyConfig = {
-		lastDateAccepted: processDate(getFromGlobalState(`${surveyConfigPrefix}_dateAccepted`)),
-		lastDatePrompted: processDate(getFromGlobalState(`${surveyConfigPrefix}_datePrompted`)),
-		lastDateActivated: processDate(getFromGlobalState(`${surveyConfigPrefix}_dateActivated`)),
-		prompt: processBoolean(getFromGlobalState(`${surveyConfigPrefix}_prompt`)),
-		promptThisMonth: processBoolean(getFromGlobalState(`${surveyConfigPrefix}_promptThisMonth`)),
+		lastDateAccepted: null,
+		lastDateActivated: null,
+		lastDatePrompted: null,
+		prompt: null,
+		promptThisMonth: null,
 	};
+	const m = new Map<string, any>();
+	for (const key of Object.keys(cfg)) {
+		if (typeof key !== 'string') {
+			continue;
+		}
+		m.set(key, getFromGlobalState(`${surveyConfigPrefix}_${key}`));
+	}
+	// TODO(rstambler): Find a programmatic way to set these values.
+	cfg.lastDateAccepted = asDate(m.get('lastDateAccepted'));
+	cfg.lastDateActivated = asDate(m.get('lastDateActivated'));
+	cfg.lastDatePrompted = asDate(m.get('lastDatePrompted'));
+	cfg.prompt = asBoolean(m.get('prompt'));
+	cfg.promptThisMonth = asBoolean(m.get('promptThisMonth'));
+
 	return cfg;
+}
+
+function flushSurveyConfig(cfg: SurveyConfig) {
+	// Always update the last date activated to the current date.
+	cfg.lastDateActivated = new Date();
+
+	const entries = Object.entries(cfg);
+	for (let i = 0; i < entries.length; i++) {
+		const key = Object.keys(cfg)[i];
+		const value = Object.values(cfg)[i];
+		if (typeof key !== 'string') {
+			continue;
+		}
+		updateGlobalState(`${surveyConfigPrefix}_${key}`, value);
+	}
 }
