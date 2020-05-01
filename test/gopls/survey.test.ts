@@ -113,7 +113,7 @@ suite('gopls survey tests', () => {
 				return testGlobalState.get(key);
 			}));
 
-			// Replace Math.Random so that it always returns 20. This means
+			// Replace Math.Random so that it always returns 1. This means
 			// that we will always choose to prompt, in the event that the
 			// user can be prompted that month.
 			sinon.replace(Math, 'random', () => 1);
