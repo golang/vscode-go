@@ -81,17 +81,18 @@ export async function registerLanguageFeatures(ctx: vscode.ExtensionContext): Pr
 			// Only prompt users to fill out the gopls survey if we are not
 			// also prompting them to update (both would be too much).
 			if (goplsSurveyOn) {
-				const cfg = buildSurveyConfig();
-				const now = new Date();
-				maybePromptForGoplsSurvey(now, cfg);
-				flushSurveyConfig(now, cfg);
+				const timeout = 1000 * 60 * 60; // 1 hour
+				setTimeout(async () => {
+					const cfg = await maybePromptForGoplsSurvey();
+					flushSurveyConfig(cfg);
+				}, timeout);
 			}
 		}
-	}
 
-	// This function handles the case when the server isn't started yet,
-	// so we can call it to start the language server.
-	return startLanguageServer(ctx, config);
+		// This function handles the case when the server isn't started yet,
+		// so we can call it to start the language server.
+		return startLanguageServer(ctx, config);
+	}
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -598,42 +599,39 @@ export interface SurveyConfig {
 	lastDateAccepted: Date;
 }
 
-function maybePromptForGoplsSurvey(now: Date, cfg: SurveyConfig) {
+async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
+	const now = new Date();
+	const cfg = getSurveyConfig();
 	const prompt = shouldPromptForGoplsSurvey(now, cfg);
 	if (!prompt) {
-		return;
+		return cfg;
 	}
-	const timeout = 1000 * 60 * 60; // 1 hour
-	setTimeout(async () => {
-		const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
-		Would you be willing to fill out a quick survey about your experience with gopls ? `, 'Yes', 'Not now', 'Never');
+	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
+Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
-		// Update the time last asked.
-		cfg.lastDatePrompted = now;
+	// Update the time last asked.
+	cfg.lastDatePrompted = now;
 
-		switch (selected) {
-			case 'Yes':
-				cfg.lastDateAccepted = now;
-				cfg.prompt = true;
+	switch (selected) {
+		case 'Yes':
+			cfg.lastDateAccepted = now;
+			cfg.prompt = true;
 
-				// TODO(rstambler): Is the information message necessary?
-				vscode.window.showInformationMessage(`Thank you! We'll redirect you to the survey now.`);
+			// Open the link to the survey.
+			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+			break;
+		case 'Not now':
+			cfg.prompt = true;
 
-				// Open the link to the survey.
-				vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
-				break;
-			case 'Not now':
-				cfg.prompt = true;
+			vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
+			break;
+		case 'Never':
+			cfg.prompt = false;
 
-				vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
-				break;
-			case 'Never':
-				cfg.prompt = false;
-
-				vscode.window.showInformationMessage(`No problem! We won't ask again.`);
-				break;
-		}
-	}, timeout);
+			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
+			break;
+	}
+	return cfg;
 }
 
 export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
@@ -687,55 +685,25 @@ function daysBetween(a: Date, b: Date) {
 	return ms / (1000 * 60 * 60 * 24);
 }
 
-export const surveyConfigPrefix = 'goplsSurveyConfig';
+export const goplsSurveyConfig = 'goplsSurveyConfig';
 
-export function buildSurveyConfig(): SurveyConfig {
-	// Create an empty config to get its keys.
-	const cfg: SurveyConfig = {
-		lastDateAccepted: null,
-		lastDateActivated: null,
-		lastDatePrompted: null,
-		prompt: null,
-		promptThisMonth: null,
-	};
-	const m = new Map<string, any>();
-	for (const key of Object.keys(cfg)) {
-		if (typeof key !== 'string') {
-			continue;
-		}
-		m.set(key, getFromGlobalState(`${surveyConfigPrefix}_${key}`));
+function getSurveyConfig(): SurveyConfig {
+	const saved = getFromGlobalState(goplsSurveyConfig);
+	if (saved === undefined) {
+		return <SurveyConfig>{};
 	}
-	const asDate = (x: any): Date => {
-		if (x !== undefined) {
-			return new Date(x);
+	const cfg = <SurveyConfig>JSON.parse(saved, (key: string, value: any) => {
+		// Make sure values that should be dates are correctly converted.
+		if (key.includes('Date')) {
+			return new Date(value);
 		}
-	};
-	const asBoolean = (x: any): boolean => {
-		if (typeof x === 'boolean') {
-			return x;
-		}
-	};
-	// TODO(rstambler): Find a programmatic way to set these values.
-	cfg.lastDateAccepted = asDate(m.get('lastDateAccepted'));
-	cfg.lastDateActivated = asDate(m.get('lastDateActivated'));
-	cfg.lastDatePrompted = asDate(m.get('lastDatePrompted'));
-	cfg.prompt = asBoolean(m.get('prompt'));
-	cfg.promptThisMonth = asBoolean(m.get('promptThisMonth'));
-
+		return value;
+	});
 	return cfg;
 }
 
-function flushSurveyConfig(now: Date, cfg: SurveyConfig) {
+function flushSurveyConfig(cfg: SurveyConfig) {
 	// Always update the last date activated to the current date.
-	cfg.lastDateActivated = now;
-
-	const entries = Object.entries(cfg);
-	for (let i = 0; i < entries.length; i++) {
-		const key = Object.keys(cfg)[i];
-		const value = Object.values(cfg)[i];
-		if (typeof key !== 'string') {
-			continue;
-		}
-		updateGlobalState(`${surveyConfigPrefix}_${key}`, value);
-	}
+	cfg.lastDateActivated = new Date();
+	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
 }
