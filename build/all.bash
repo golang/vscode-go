@@ -73,8 +73,9 @@ prepare_nightly() {
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md.nightly + Release commit info.
-  # TODO(hyangah): Update README.md
   printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md.nightly > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
+  # Replace the heading of README.md with the heading for Go Nightly.
+  sed '/^# Go for Visual Studio Code$/d' README.md | cat README.md.nightly - > /tmp/README.md.new && mv /tmp/README.md.new README.md
 }
 
 main() {
