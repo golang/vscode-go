@@ -73,8 +73,6 @@ const goplsSurveyOn: boolean = false;
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
-	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(e)));
-
 	const cfg = buildLanguageServerConfig();
 
 	// If the language server is gopls, we can check if the user needs to
