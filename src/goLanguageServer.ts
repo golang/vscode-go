@@ -19,11 +19,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
-<<<<<<< HEAD
 import { toolExecutionEnvironment } from './goEnv';
-=======
-import { getToolsEnvironment } from './goEnv';
->>>>>>> d2e943a... src: suggest filing an issue when the user manually restarts gopls
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -40,12 +36,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
-<<<<<<< HEAD
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
-=======
-import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
->>>>>>> d2e943a... src: suggest filing an issue when the user manually restarts gopls
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -134,14 +125,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// Set up the command to allow the user to manually restart the
 	// language server.
 	if (!restartCommand) {
-<<<<<<< HEAD
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
-=======
-		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
-			await suggestFilingAnIssue();
-			restartLanguageServer();
-		});
->>>>>>> d2e943a... src: suggest filing an issue when the user manually restarts gopls
 	}
 	ctx.subscriptions.push(restartCommand);
 
@@ -636,48 +620,3 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	}
 	return null;
 }
-<<<<<<< HEAD
-=======
-
-function goProxy(): string[] {
-	const output: string = process.env['GOPROXY'];
-	if (!output || !output.trim()) {
-		return [];
-	}
-	const split = output.trim().split(',');
-	return split;
-}
-
-// suggestFilingAnIssue prompts gopls users to file an issue before they
-// restart the language server.
-async function suggestFilingAnIssue() {
-	if (latestConfig.serverName !== 'gopls') {
-		return;
-	}
-	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
-	const prompt = getFromGlobalState(promptForIssueOnGoplsRestartKey, true);
-	if (!prompt) {
-		return;
-	}
-	const selected = await vscode.window.showInformationMessage(`Before you restart the language server,
-would you like to file an issue with gopls?`, 'Yes', 'Next time', 'Never');
-	switch (selected) {
-		case 'Yes':
-			// Run the `gopls bug` command directly for now. When
-			// https://github.com/golang/go/issues/38942 is
-			// resolved, we'll be able to do this through the
-			// language client.
-
-			// Wait for the command to finish before restarting the
-			// server, but don't bother handling errors.
-			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], getToolsEnvironment());
-			break;
-		case 'Next time':
-			break;
-		case 'Never':
-			updateGlobalState(promptForIssueOnGoplsRestartKey, false);
-			break;
-	}
-}
->>>>>>> d2e943a... src: suggest filing an issue when the user manually restarts gopls

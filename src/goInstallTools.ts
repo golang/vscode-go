@@ -10,11 +10,7 @@ import fs = require('fs');
 import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
-<<<<<<< HEAD
 import { toolInstallationEnvironment } from './goEnv';
-=======
-import { getToolsEnvironment } from './goEnv';
->>>>>>> d2e943a... src: suggest filing an issue when the user manually restarts gopls
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
