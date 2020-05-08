@@ -10,6 +10,7 @@ import fs = require('fs');
 import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
+import { getToolsEnvironment } from './goEnv';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
@@ -29,11 +30,9 @@ import {
 } from './goTools';
 import {
 	getBinPath,
-	getCurrentGoPath,
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
-	getToolsGopath,
 	GoVersion,
 	resolvePath
 } from './util';
@@ -111,56 +110,22 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 		return;
 	}
 
-	// http.proxy setting takes precedence over environment variables
-	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
-	let envForTools = Object.assign({}, process.env);
-	if (httpProxy) {
-		envForTools = Object.assign({}, process.env, {
-			http_proxy: httpProxy,
-			HTTP_PROXY: httpProxy,
-			https_proxy: httpProxy,
-			HTTPS_PROXY: httpProxy
-		});
-	}
-
 	outputChannel.show();
 	outputChannel.clear();
 
-	// If the go.toolsGopath is set, use its value as the GOPATH for the "go get" child process.
-	// Else use the Current Gopath
-	let toolsGopath = getToolsGopath();
-	if (toolsGopath) {
-		// User has explicitly chosen to use toolsGopath, so ignore GOBIN
-		envForTools['GOBIN'] = '';
-		outputChannel.appendLine(`Using the value ${toolsGopath} from the go.toolsGopath setting.`);
-	} else {
-		toolsGopath = getCurrentGoPath();
-		outputChannel.appendLine(`go.toolsGopath setting is not set. Using GOPATH ${toolsGopath}`);
+	const envForTools = getToolsEnvironment();
+	const toolsGopath = envForTools['GOPATH'];
+	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
+	if (envForTools['GOBIN']) {
+		envMsg += `, GOBIN=${envForTools['GOBIN']}`;
 	}
-	if (toolsGopath) {
-		const paths = toolsGopath.split(path.delimiter);
-		toolsGopath = paths[0];
-		envForTools['GOPATH'] = toolsGopath;
-	} else {
-		const msg = 'Cannot install Go tools. Set either go.gopath or go.toolsGopath in settings.';
-		vscode.window.showInformationMessage(msg, 'Open User Settings', 'Open Workspace Settings').then((selected) => {
-			switch (selected) {
-				case 'Open User Settings':
-					vscode.commands.executeCommand('workbench.action.openGlobalSettings');
-					break;
-				case 'Open Workspace Settings':
-					vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
-					break;
-			}
-		});
-		return;
-	}
+	outputChannel.appendLine(envMsg);
 
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
 	if (envForTools['GOBIN']) {
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
-		installingMsg += toolsGopath + path.sep + 'bin';
+		installingMsg += `${toolsGopath}${path.sep}bin`;
 	}
 
 	// If the user is on Go >= 1.11, tools should be installed with modules enabled.

@@ -19,6 +19,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
+import { getToolsEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -35,6 +36,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
 
 interface LanguageServerConfig {
@@ -124,9 +126,12 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// Set up the command to allow the user to manually restart the
 	// language server.
 	if (!restartCommand) {
-		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
-		ctx.subscriptions.push(restartCommand);
+		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
+			await suggestFilingAnIssue();
+			restartLanguageServer();
+		});
 	}
+	ctx.subscriptions.push(restartCommand);
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.
@@ -620,4 +625,37 @@ function goProxy(): string[] {
 	}
 	const split = output.trim().split(',');
 	return split;
+}
+
+// suggestFilingAnIssue prompts gopls users to file an issue before they
+// restart the language server.
+async function suggestFilingAnIssue() {
+	if (latestConfig.serverName !== 'gopls') {
+		return;
+	}
+	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
+	const prompt = getFromGlobalState(promptForIssueOnGoplsRestartKey, true);
+	if (!prompt) {
+		return;
+	}
+	const selected = await vscode.window.showInformationMessage(`Before you restart the language server,
+would you like to file an issue with gopls?`, 'Yes', 'Next time', 'Never');
+	switch (selected) {
+		case 'Yes':
+			// Run the `gopls bug` command directly for now. When
+			// https://github.com/golang/go/issues/38942 is
+			// resolved, we'll be able to do this through the
+			// language client.
+
+			// Wait for the command to finish before restarting the
+			// server, but don't bother handling errors.
+			const execFile = util.promisify(cp.execFile);
+			await execFile(latestConfig.path, ['bug'], getToolsEnvironment());
+			break;
+		case 'Next time':
+			break;
+		case 'Never':
+			updateGlobalState(promptForIssueOnGoplsRestartKey, false);
+			break;
+	}
 }
