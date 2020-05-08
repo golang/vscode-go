@@ -19,6 +19,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
+import { getToolsEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -125,8 +126,8 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// language server.
 	if (!restartCommand) {
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
-		ctx.subscriptions.push(restartCommand);
 	}
+	ctx.subscriptions.push(restartCommand);
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.
