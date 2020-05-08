@@ -127,7 +127,6 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	if (!restartCommand) {
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
 	}
-	ctx.subscriptions.push(restartCommand);
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.
