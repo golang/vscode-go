@@ -405,7 +405,8 @@ function allFoldersHaveSameGopath(): boolean {
 const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
 const defaultLatestVersion = semver.coerce('0.4.0');
 const defaultLatestVersionTime = moment('2020-04-08', 'YYYY-MM-DD');
-async function shouldUpdateLanguageServer(
+
+export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
 	makeProxyCall: boolean
@@ -416,7 +417,7 @@ async function shouldUpdateLanguageServer(
 	}
 
 	// First, run the "gopls version" command and parse its results.
-	const usersVersion = await goplsVersion(languageServerToolPath);
+	const usersVersion = await getLocalGoplsVersion(languageServerToolPath);
 
 	// We might have a developer version. Don't make the user update.
 	if (usersVersion === '(devel)') {
@@ -424,7 +425,7 @@ async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = makeProxyCall ? await latestGopls(tool) : defaultLatestVersion;
+	let latestVersion = makeProxyCall ? await getLatestGoplsVersion(tool) : defaultLatestVersion;
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -440,10 +441,10 @@ async function shouldUpdateLanguageServer(
 
 	// The user may have downloaded golang.org/x/tools/gopls@master,
 	// which means that they have a pseudoversion.
-	const usersTime = parsePseudoversionTimestamp(usersVersion);
+	const usersTime = parseTimestampFromPseudoversion(usersVersion);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
-		let latestTime = makeProxyCall ? await goplsVersionTimestamp(tool, latestVersion) : defaultLatestVersionTime;
+		let latestTime = makeProxyCall ? await getTimestampForVersion(tool, latestVersion) : defaultLatestVersionTime;
 		if (!latestTime) {
 			latestTime = defaultLatestVersionTime;
 		}
@@ -455,13 +456,13 @@ async function shouldUpdateLanguageServer(
 	return semver.lt(usersVersion, latestVersion) ? latestVersion : null;
 }
 
-// Copied from src/cmd/go/internal/modfetch.
+// Copied from src/cmd/go/internal/modfetch.go.
 const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+incompatible)?$/;
 
-// parsePseudoVersion reports whether v is a pseudo-version.
-// The timestamp is the center component, and it has the format "YYYYMMDDHHmmss".
-
-function parsePseudoversionTimestamp(version: string): moment.Moment {
+// parseTimestampFromPseudoversion returns the timestamp for the given
+// pseudoversion. The timestamp is the center component, and it has the
+// format "YYYYMMDDHHmmss".
+function parseTimestampFromPseudoversion(version: string): moment.Moment {
 	const split = version.split('-');
 	if (split.length < 2) {
 		return null;
@@ -497,7 +498,7 @@ function parsePseudoversionTimestamp(version: string): moment.Moment {
 	return moment.utc(timestamp, 'YYYYMMDDHHmmss');
 }
 
-async function goplsVersionTimestamp(tool: Tool, version: semver.SemVer): Promise<moment.Moment> {
+export async function getTimestampForVersion(tool: Tool, version: semver.SemVer): Promise<moment.Moment> {
 	const data = await goProxyRequest(tool, `v${version.format()}.info`);
 	if (!data) {
 		return null;
@@ -506,7 +507,7 @@ async function goplsVersionTimestamp(tool: Tool, version: semver.SemVer): Promis
 	return time;
 }
 
-async function latestGopls(tool: Tool): Promise<semver.SemVer> {
+export async function getLatestGoplsVersion(tool: Tool): Promise<semver.SemVer> {
 	// If the user has a version of gopls that we understand,
 	// ask the proxy for the latest version, and if the user's version is older,
 	// prompt them to update.
@@ -537,7 +538,10 @@ async function latestGopls(tool: Tool): Promise<semver.SemVer> {
 	return versions.find((version) => !version.prerelease || !version.prerelease.length);
 }
 
-async function goplsVersion(goplsPath: string): Promise<string> {
+// getLocalGoplsVersion returns the version of gopls that is currently
+// installed on the user's machine. This is determined by running the
+// `gopls version` command.
+export async function getLocalGoplsVersion(goplsPath: string): Promise<string> {
 	const env = getToolsEnvVars();
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
@@ -594,9 +598,15 @@ async function goplsVersion(goplsPath: string): Promise<string> {
 }
 
 async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
-	const proxies = goProxy();
+	// Get the user's value of GOPROXY.
+	// If it is not set, we cannot make the request.
+	const output: string = process.env['GOPROXY'];
+	if (!output || !output.trim()) {
+		return null;
+	}
 	// Try each URL set in the user's GOPROXY environment variable.
 	// If none is set, don't make the request.
+	const proxies = output.trim().split(',');
 	for (const proxy of proxies) {
 		if (proxy === 'direct') {
 			continue;
@@ -613,13 +623,4 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 		return data;
 	}
 	return null;
-}
-
-function goProxy(): string[] {
-	const output: string = process.env['GOPROXY'];
-	if (!output || !output.trim()) {
-		return [];
-	}
-	const split = output.trim().split(',');
-	return split;
 }
