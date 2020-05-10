@@ -11,6 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
 import { getLanguageServerToolPath } from './goLanguageServer';
+import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
@@ -35,7 +36,6 @@ import {
 	GoVersion,
 	resolvePath
 } from './util';
-import { restartLanguageServer } from './goMain';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
