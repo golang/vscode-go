@@ -21,7 +21,8 @@ suite('gopls update tests', () => {
 			['v0.3.1', true, latestPrerelease], // outdated tagged version, accept pre-release
 			['v0.4.0', false, null], // up-to-date tagged version
 			['v0.4.0', true, latestPrerelease], // up-to-date tagged version, accept pre-release
-			['(devel)', false, null], // pre-release version
+			['(devel)', false, null], // developer version
+			['(devel)', true, null], // developer version, accept pre-release
 			['nosuchversion', false, null], // nonsense version
 			[
 				'v0.4.1-pre1 h1:w6e4AmFe6sDSVrgaRkf4WqLyVAlByUrr9QM5xH7z1e4=',
