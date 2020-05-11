@@ -403,7 +403,7 @@ function allFoldersHaveSameGopath(): boolean {
 }
 
 const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
-async function shouldUpdateLanguageServer(
+export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
 	makeProxyCall: boolean
