@@ -11,6 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
 import { getLanguageServerToolPath } from './goLanguageServer';
+import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
@@ -299,10 +300,12 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 			outputChannel.appendLine(''); // Blank line for spacing
 			const failures = res.filter((x) => x != null);
 			if (failures.length === 0) {
-				if (containsString(missing, 'gopls')) {
-					outputChannel.appendLine('Reload VS Code window to use the Go language server');
-				}
 				outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+
+				// Restart the language server since a new binary has been installed.
+				if (containsString(missing, 'gopls')) {
+					restartLanguageServer();
+				}
 				return;
 			}
 
@@ -519,9 +522,8 @@ export async function offerToInstallTools() {
 		vscode.window.showInformationMessage(promptMsg, installLabel, disableLabel).then((selected) => {
 			if (selected === installLabel) {
 				installTools([getTool('gopls')], goVersion).then(() => {
-					vscode.window.showInformationMessage(
-						'Reload VS Code window to enable the use of Go language server'
-					);
+					// Restart the language server since the binary has changed.
+					restartLanguageServer();
 				});
 			} else if (selected === disableLabel) {
 				const goConfig = getGoConfig();
