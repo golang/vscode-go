@@ -166,7 +166,6 @@ const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
 		description: 'Auto-completion, does not work with modules',
-		maximumGoVersion: semver.coerce('1.10'),
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
