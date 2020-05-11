@@ -17,9 +17,12 @@ export interface Tool {
 	description: string;
 
 	// latestVersion and latestVersionTimestamp are hardcoded default values
-	// for the last known version of the given tool.
+	// for the last known version of the given tool. We also hardcode values
+	// for the latest known pre-release of the tool for the Nightly extension.
 	latestVersion?: semver.SemVer;
 	latestVersionTimestamp?: moment.Moment;
+	latestPrereleaseVersion?: semver.SemVer;
+	latestPrereleaseVersionTimestamp?: moment.Moment;
 
 	// minimumGoVersion and maximumGoVersion set the range for the versions of
 	// Go with which this tool can be used.
@@ -298,6 +301,8 @@ const allToolsInformation: { [key: string]: Tool } = {
 		minimumGoVersion: semver.coerce('1.12'),
 		latestVersion: semver.coerce('0.4.0'),
 		latestVersionTimestamp: moment('2020-04-08', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.coerce('0.4.1-pre2'),
+		latestPrereleaseVersionTimestamp: moment('2020-05-11', 'YYYY-MM-DD'),
 	},
 	'dlv': {
 		name: 'dlv',
