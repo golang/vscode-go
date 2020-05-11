@@ -303,7 +303,9 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 				outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
 
 				// Restart the language server since a new binary has been installed.
-				restartLanguageServer();
+				if (containsString(missing, 'gopls')) {
+					restartLanguageServer();
+				}
 				return;
 			}
 
