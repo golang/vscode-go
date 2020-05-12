@@ -107,7 +107,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	}
 
 	// http.proxy setting takes precedence over environment variables
-	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
+	const httpProxy = vscode.workspace.getConfiguration('http').get('proxy', null);
 	let envForTools = Object.assign({}, process.env);
 	if (httpProxy) {
 		envForTools = Object.assign({}, process.env, {
@@ -130,7 +130,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		outputChannel.appendLine(`Using the value ${toolsGopath} from the go.toolsGopath setting.`);
 	} else {
 		toolsGopath = getCurrentGoPath();
-		outputChannel.appendLine(`go.toolsGopath setting is not set. Using GOPATH ${toolsGopath}`);
+		outputChannel.appendLine(`go.toolsGopath setting is not set.Using GOPATH ${toolsGopath} `);
 	}
 	if (toolsGopath) {
 		const paths = toolsGopath.split(path.delimiter);
@@ -151,9 +151,9 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		return;
 	}
 
-	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
+	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at`;
 	if (envForTools['GOBIN']) {
-		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
+		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']} `;
 	} else {
 		installingMsg += toolsGopath + path.sep + 'bin';
 	}
@@ -225,13 +225,15 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		try {
 			const opts = {
 				env: envForTools,
-				cwd: toolsTmpDir
+				cwd: toolsTmpDir,
+				timeout: 1000,
 			};
 			const execFile = util.promisify(cp.execFile);
 			const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
-			output = `${stdout} ${stderr}`;
+			console.log(`stdout: ${stdout}, stderr: ${stderr} `);
+			output = `${stdout} ${stderr} `;
 			if (stderr.indexOf('unexpected directory layout:') > -1) {
-				outputChannel.appendLine(`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`);
+				outputChannel.appendLine(`Installing ${importPath} failed with error "unexpected directory layout".Retrying...`);
 				await execFile(goRuntimePath, args, opts);
 			} else if (hasModSuffix(tool)) {
 				const outputFile = path.join(toolsGopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
@@ -240,8 +242,9 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 			outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
 			successes.push(tool);
 		} catch (e) {
+			console.log(`error: ${e} `);
 			outputChannel.appendLine(`Installing ${importPath} FAILED`);
-			failures.push({ tool, reason: `${e} ${output}` });
+			failures.push({ tool, reason: `${e} ${output} ` });
 		}
 		// Make sure to delete the temporary go.mod file, if it exists.
 		if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
@@ -261,7 +264,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	} else {
 		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
-			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason}`);
+			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
 }
