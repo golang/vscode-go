@@ -662,26 +662,21 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 export interface SurveyConfig {
 	// prompt is true if the user can be prompted to take the survey.
 	// It is false if the user has responded "Never" to the prompt.
-	// Its persistent storage key is 'goplsSurveyConfig_prompt'.
 	prompt?: boolean;
 
 	// promptThisMonth is true if we have used a random number generator
 	// to determine if the user should be prompted this month.
 	// It is undefined if we have not yet made the determination.
-	// Its persistent storage key is 'goplsSurveyConfig_promptThisMonth'.
 	promptThisMonth?: boolean;
 
 	// lastDateActivated is the last date that the user activated the extension.
-	// Its persistent storage key is 'goplsSurveyConfig_lastDateActivated'.
-	lastDateActivated?: Date;
+	promptThisMonthTimestamp?: Date;
 
 	// lastDatePrompted is the most recent date that the user has been prompted.
-	// Its persistent storage key is 'goplsSurveyConfig_lastDatePrompted'.
 	lastDatePrompted?: Date;
 
 	// lastDateAccepted is the most recent date that the user responded "Yes"
 	// to the survey prompt. The user need not have completed the survey.
-	// The persistent storage key is 'goplsSurveyConfig_lastDateAccepted'.
 	lastDateAccepted?: Date;
 }
 
@@ -746,20 +741,20 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolea
 		}
 	}
 
-	// Check if the extension has been activated this month. If not, generate a random
-	// number to decide if we should prompt the user this month with a 5% chance.
-	if (cfg.lastDateActivated) {
+	// Check if the extension has been activated this month.
+	if (cfg.promptThisMonthTimestamp) {
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.lastDateActivated) < 30) {
+		if (daysBetween(now, cfg.promptThisMonthTimestamp) < 30) {
 			return cfg.promptThisMonth;
 		}
 	}
-
-	// This is the first activation this month (or ever),
-	// so decide if we should prompt the user.
+	// This is the first activation this month (or ever), so decide if we
+	// should prompt the user. This is done by generating a random number
+	// and % 20 to get a 5% chance.
 	const r = Math.floor(Math.random() * 20);
 	cfg.promptThisMonth = (r % 20 === 0);
+	cfg.promptThisMonthTimestamp = now;
 
 	return cfg.promptThisMonth;
 }
@@ -771,19 +766,22 @@ function getSurveyConfig(): SurveyConfig {
 	if (saved === undefined) {
 		return {};
 	}
-	const cfg = JSON.parse(saved, (key: string, value: any) => {
-		// Make sure values that should be dates are correctly converted.
-		if (key.includes('Date')) {
-			return new Date(value);
-		}
-		return value;
-	});
-	return cfg;
+	try {
+		const cfg = JSON.parse(saved, (key: string, value: any) => {
+			// Make sure values that should be dates are correctly converted.
+			if (key.includes('Date')) {
+				return new Date(value);
+			}
+			return value;
+		});
+		return cfg;
+	} catch (err) {
+		console.log(`Error parsing JSON from ${saved}: ${err}`);
+		return {};
+	}
 }
 
 function flushSurveyConfig(cfg: SurveyConfig) {
-	// Always update the last date activated to the current date.
-	cfg.lastDateActivated = new Date();
 	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
 }
 
@@ -809,7 +807,7 @@ async function suggestGoplsIssueReport(msg: string) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue?`, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
 			// Run the `gopls bug` command directly for now. When

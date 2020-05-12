@@ -20,7 +20,7 @@ suite('gopls survey tests', () => {
 			[
 				{
 					lastDateAccepted: new Date('2020-04-02'),
-					lastDateActivated: new Date('2020-04-10'),
+					promptThisMonthTimestamp: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: true,
 					promptThisMonth: false,
@@ -30,7 +30,7 @@ suite('gopls survey tests', () => {
 			// User who has declined survey prompting.
 			[
 				{
-					lastDateActivated: new Date('2020-04-10'),
+					promptThisMonthTimestamp: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: false,
 				},
@@ -39,7 +39,7 @@ suite('gopls survey tests', () => {
 			// User who hasn't activated the extension in a while, but has opted in to prompting.
 			[
 				{
-					lastDateActivated: new Date('2019-04-10'),
+					promptThisMonthTimestamp: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
 				},
@@ -48,7 +48,7 @@ suite('gopls survey tests', () => {
 			// User who hasn't activated the extension in a while, and has never been prompted.
 			[
 				{
-					lastDateActivated: new Date('2019-04-10'),
+					promptThisMonthTimestamp: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 				},
 				true,
@@ -57,7 +57,7 @@ suite('gopls survey tests', () => {
 			[
 				{
 					lastDateAccepted: undefined,
-					lastDateActivated: new Date('2020-04-10'),
+					promptThisMonthTimestamp: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
 					promptThisMonth: true,
