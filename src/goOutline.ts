@@ -7,12 +7,12 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
-	getToolsEnvVars,
 	killProcess,
 	makeMemoizedByteOffsetConverter
 } from './util';
@@ -92,7 +92,7 @@ export function runGoOutline(
 		}
 
 		// Spawn `go-outline` process
-		p = cp.execFile(gooutline, gooutlineFlags, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+		p = cp.execFile(gooutline, gooutlineFlags, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool('go-outline');
@@ -193,7 +193,7 @@ function convertToCodeSymbols(
 }
 
 export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
-	constructor(private includeImports?: boolean) {}
+	constructor(private includeImports?: boolean) { }
 
 	public provideDocumentSymbols(
 		document: vscode.TextDocument,

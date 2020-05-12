@@ -6,10 +6,11 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { envPath, fixDriveCasingInWindows, getCurrentGoWorkspaceFromGOPATH } from './goPath';
 import { sendTelemetryEventForGopkgs } from './telemetry';
-import { getBinPath, getCurrentGoPath, getGoVersion, getToolsEnvVars, isVendorSupported } from './util';
+import { getBinPath, getCurrentGoPath, getGoVersion, isVendorSupported } from './util';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
@@ -46,7 +47,7 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 			args.push('-workDir', workDir);
 		}
 
-		const cmd = cp.spawn(gopkgsBinPath, args, { env: getToolsEnvVars() });
+		const cmd = cp.spawn(gopkgsBinPath, args, { env: toolExecutionEnvironment() });
 		const chunks: any[] = [];
 		const errchunks: any[] = [];
 		let err: any;
@@ -271,7 +272,7 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 		const childProcess = cp.spawn(
 			goRuntimePath,
 			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', './...'],
-			{ cwd: currentFolderPath, env: getToolsEnvVars() }
+			{ cwd: currentFolderPath, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];
 		childProcess.stdout.on('data', (stdout) => {

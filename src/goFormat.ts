@@ -8,9 +8,10 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { sendTelemetryEventForFormatting } from './telemetry';
-import { getBinPath, getGoConfig, getToolsEnvVars, killTree } from './util';
+import { getBinPath, getGoConfig, killTree } from './util';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
 	public provideDocumentFormattingEdits(
@@ -72,7 +73,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			}
 
 			const t0 = Date.now();
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const cwd = path.dirname(document.fileName);
 			let stdout = '';
 			let stderr = '';

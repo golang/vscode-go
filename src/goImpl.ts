@@ -8,8 +8,9 @@
 import cp = require('child_process');
 import { dirname } from 'path';
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { getBinPath, getToolsEnvVars } from './util';
+import { getBinPath } from './util';
 
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w./]+)$/;
@@ -49,7 +50,7 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 	const p = cp.execFile(
 		goimpl,
 		args,
-		{ env: getToolsEnvVars(), cwd: dirname(editor.document.fileName) },
+		{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
 		(err, stdout, stderr) => {
 			if (err && (<any>err).code === 'ENOENT') {
 				promptForMissingTool('impl');

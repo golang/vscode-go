@@ -5,12 +5,12 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { vetDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
 	getGoConfig,
 	getGoVersion,
-	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
 	ICheckResult,
@@ -81,7 +81,7 @@ export async function goVet(
 	}
 
 	const vetFlags: string[] = goConfig['vetFlags'] || [];
-	const vetEnv = Object.assign({}, getToolsEnvVars());
+	const vetEnv = toolExecutionEnvironment();
 	const args: string[] = [];
 
 	vetFlags.forEach((flag) => {

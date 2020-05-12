@@ -5,11 +5,11 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
 	getGoConfig,
-	getToolsEnvVars,
 	getToolsGopath,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
@@ -83,7 +83,7 @@ export function goLint(
 
 	const lintTool = goConfig['lintTool'] || 'golint';
 	const lintFlags: string[] = goConfig['lintFlags'] || [];
-	const lintEnv = Object.assign({}, getToolsEnvVars());
+	const lintEnv = toolExecutionEnvironment();
 	const args: string[] = [];
 
 	lintFlags.forEach((flag) => {

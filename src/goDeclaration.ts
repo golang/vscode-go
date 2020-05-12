@@ -8,6 +8,7 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { getModFolderPath, promptToUpdateToolForModules } from './goModules';
 import {
@@ -16,7 +17,6 @@ import {
 	getFileArchive,
 	getGoConfig,
 	getModuleCache,
-	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	goKeywords,
 	isPositionInString,
@@ -132,7 +132,7 @@ function definitionLocation_godef(
 		return Promise.reject(missingToolMsg + godefTool);
 	}
 	const offset = byteOffsetAt(input.document, input.position);
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 	let p: cp.ChildProcess;
 	if (token) {
 		token.onCancellationRequested(() => killTree(p.pid));
@@ -223,7 +223,7 @@ function definitionLocation_gogetdoc(
 		return Promise.reject(missingToolMsg + 'gogetdoc');
 	}
 	const offset = byteOffsetAt(input.document, input.position);
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 	let p: cp.ChildProcess;
 	if (token) {
 		token.onCancellationRequested(() => killTree(p.pid));
@@ -297,7 +297,7 @@ function definitionLocation_guru(
 		return Promise.reject(missingToolMsg + 'guru');
 	}
 	const offset = byteOffsetAt(input.document, input.position);
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 	let p: cp.ChildProcess;
 	if (token) {
 		token.onCancellationRequested(() => killTree(p.pid));
