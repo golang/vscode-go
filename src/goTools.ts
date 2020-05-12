@@ -5,10 +5,13 @@
 
 'use strict';
 
+import cp = require('child_process');
 import moment = require('moment');
+import path = require('path');
 import semver = require('semver');
+import util = require('util');
 import { goLiveErrorsEnabled } from './goLiveErrors';
-import { getGoConfig, GoVersion } from './util';
+import { getBinPath, getGoConfig, GoVersion } from './util';
 
 export interface Tool {
 	name: string;
@@ -28,6 +31,11 @@ export interface Tool {
 	// Go with which this tool can be used.
 	minimumGoVersion?: semver.SemVer;
 	maximumGoVersion?: semver.SemVer;
+
+	// close performs any shutdown tasks that a tool must execute before a new
+	// version is installed. It returns a string containing an error message on
+	// failure.
+	close?: () => Promise<string>;
 }
 
 /**
@@ -169,6 +177,22 @@ const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
 		description: 'Auto-completion, does not work with modules',
+		close: async (): Promise<string> => {
+			const toolBinPath = getBinPath('gocode');
+			if (!path.isAbsolute(toolBinPath)) {
+				return '';
+			}
+			try {
+				const execFile = util.promisify(cp.execFile);
+				const { stderr } = await execFile(toolBinPath, ['close']);
+				if (stderr.indexOf(`rpc: can't find service Server.`) > -1) {
+					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
+				}
+			} catch (err) {
+				return `Failed to close gocode process: ${err}.`;
+			}
+			return '';
+		},
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
