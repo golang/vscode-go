@@ -403,7 +403,6 @@ function allFoldersHaveSameGopath(): boolean {
 }
 
 const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
-
 export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
@@ -604,7 +603,7 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	}
 	// Try each URL set in the user's GOPROXY environment variable.
 	// If none is set, don't make the request.
-	const proxies = output.trim().split(',');
+	const proxies = output.trim().split(',|');
 	for (const proxy of proxies) {
 		if (proxy === 'direct') {
 			continue;
