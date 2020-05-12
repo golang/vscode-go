@@ -330,7 +330,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		case 1:
 			vendorSupport =
 				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
+					((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
 					? true
 					: false;
 			break;
@@ -905,9 +905,14 @@ export function rmdirRecursive(dir: string) {
 		fs.readdirSync(dir).forEach((file) => {
 			const relPath = path.join(dir, file);
 			if (fs.lstatSync(relPath).isDirectory()) {
-				rmdirRecursive(dir);
+				rmdirRecursive(relPath);
 			} else {
-				fs.unlinkSync(relPath);
+				try {
+					fs.unlinkSync(relPath);
+				} catch (err) {
+					console.log(err);
+				}
+
 			}
 		});
 		fs.rmdirSync(dir);
