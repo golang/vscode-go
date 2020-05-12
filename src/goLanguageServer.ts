@@ -172,6 +172,7 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
 				);
+				serverOutputChannel.show();
 				suggestGoplsIssueReport(`The gopls server failed to initialize.`);
 				return false;
 			},
@@ -651,8 +652,13 @@ async function suggestGoplsIssueReport(msg: string) {
 		return;
 	}
 	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
-	const saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
-
+	let saved: any;
+	try {
+		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+	} catch (err) {
+		console.log(`Failed to parse as JSON ${getFromGlobalState(promptForIssueOnGoplsRestartKey, true)}: ${err}`);
+		return;
+	}
 	// If the user has already seen this prompt, they may have opted-out for
 	// the future. Only prompt again if it's been more than a year since.
 	if (saved['date'] && saved['prompt']) {
