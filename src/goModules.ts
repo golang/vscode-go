@@ -6,13 +6,14 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { installTools } from './goInstallTools';
 import { restartLanguageServer } from './goMain';
 import { envPath, fixDriveCasingInWindows } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { sendTelemetryEventForModulesUsage } from './telemetry';
-import { getBinPath, getGoConfig, getGoVersion, getModuleCache, getToolsEnvVars } from './util';
+import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';
 
 export let GO111MODULE: string;
 
@@ -24,10 +25,10 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 		);
 		return;
 	}
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 	GO111MODULE = env['GO111MODULE'];
 	return new Promise((resolve) => {
-		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env: getToolsEnvVars() }, (err, stdout) => {
+		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env }, (err, stdout) => {
 			if (err) {
 				console.warn(`Error when running go env GOMOD: ${err}`);
 				return resolve();
@@ -181,7 +182,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 		return;
 	}
 	return new Promise<string>((resolve) => {
-		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: getToolsEnvVars() });
+		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: toolExecutionEnvironment() });
 		const chunks: any[] = [];
 		childProcess.stdout.on('data', (stdout) => {
 			chunks.push(stdout);

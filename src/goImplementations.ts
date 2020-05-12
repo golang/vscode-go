@@ -8,6 +8,7 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { envPath } from './goPath';
 import {
@@ -15,7 +16,6 @@ import {
 	canonicalizeGOPATHPrefix,
 	getBinPath,
 	getGoConfig,
-	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	killTree
 } from './util';
@@ -66,7 +66,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 			if (token.isCancellationRequested) {
 				return resolve(null);
 			}
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const listProcess = cp.execFile(
 				goRuntimePath,
 				['list', '-e', '-json'],

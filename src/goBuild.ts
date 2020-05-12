@@ -5,6 +5,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { getNonVendorPackages } from './goPackages';
@@ -16,7 +17,6 @@ import {
 	getGoConfig,
 	getModuleCache,
 	getTempFilePath,
-	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
 	ICheckResult,
@@ -100,14 +100,14 @@ export async function goBuild(
 		return [];
 	}
 
-	const buildEnv = Object.assign({}, getToolsEnvVars());
+	const buildEnv = toolExecutionEnvironment();
 	const tmpPath = getTempFilePath('go-code-check');
 	const isTestFile = fileUri && fileUri.fsPath.endsWith('_test.go');
 	const buildFlags: string[] = isTestFile
 		? getTestFlags(goConfig)
 		: Array.isArray(goConfig['buildFlags'])
-		? [...goConfig['buildFlags']]
-		: [];
+			? [...goConfig['buildFlags']]
+			: [];
 	const buildArgs: string[] = isTestFile ? ['test', '-c'] : ['build'];
 
 	if (goConfig['installDependenciesWhenBuilding'] === true && !isMod) {

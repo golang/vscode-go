@@ -11,6 +11,7 @@ import semver = require('semver');
 import kill = require('tree-kill');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import {

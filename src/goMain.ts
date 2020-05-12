@@ -17,6 +17,7 @@ import {
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
+import { toolExecutionEnvironment } from './goEnv';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -48,7 +49,7 @@ import { disposeTelemetryReporter, sendTelemetryEventForConfig } from './telemet
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
 	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
-	getGoVersion, getToolsEnvVars, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
+	getGoVersion, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
@@ -411,7 +412,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				updateCodeCoverageDecorators(updatedGoConfig['coverageDecorator']);
 			}
 			if (e.affectsConfiguration('go.toolsEnvVars')) {
-				const env = getToolsEnvVars();
+				const env = toolExecutionEnvironment();
 				if (GO111MODULE !== env['GO111MODULE']) {
 					const reloadMsg =
 						'Reload VS Code window so that the Go tools can respect the change to GO111MODULE';

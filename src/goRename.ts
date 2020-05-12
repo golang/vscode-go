@@ -8,9 +8,10 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { Edit, FilePatch, getEditsFromUnifiedDiffStr, isDiffToolAvailable } from './diffUtils';
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig, getToolsEnvVars, killTree } from './util';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig, killTree } from './util';
 
 export class GoRenameProvider implements vscode.RenameProvider {
 	public provideRenameEdits(
@@ -35,7 +36,7 @@ export class GoRenameProvider implements vscode.RenameProvider {
 			const range = document.getWordRangeAtPosition(position);
 			const pos = range ? range.start : position;
 			const offset = byteOffsetAt(document, pos);
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const gorename = getBinPath('gorename');
 			const buildTags = getGoConfig(document.uri)['buildTags'];
 			const gorenameArgs = ['-offset', filename + ':#' + offset, '-to', newName];
