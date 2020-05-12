@@ -30,6 +30,7 @@ import {
 	getCurrentGoPath,
 	getGoConfig,
 	getGoVersion,
+	getToolsEnvVars,
 	getToolsGopath,
 	GoVersion,
 	resolvePath
@@ -103,15 +104,13 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	}
 
 	// http.proxy setting takes precedence over environment variables
-	const httpProxy = vscode.workspace.getConfiguration('http').get('proxy', null);
-	let envForTools = Object.assign({}, process.env);
+	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
+	const envForTools = Object.assign({}, process.env, getToolsEnvVars());
 	if (httpProxy) {
-		envForTools = Object.assign({}, process.env, {
-			http_proxy: httpProxy,
-			HTTP_PROXY: httpProxy,
-			https_proxy: httpProxy,
-			HTTPS_PROXY: httpProxy
-		});
+		envForTools['http_proxy'] = httpProxy;
+		envForTools['HTTP_PROXY'] = httpProxy;
+		envForTools['https_proxy'] = httpProxy;
+		envForTools['HTTPS_PROXY'] = httpProxy;
 	}
 
 	outputChannel.show();

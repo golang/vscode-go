@@ -92,10 +92,7 @@ export function getTool(name: string): Tool {
 }
 
 export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtVersion {
-	return {
-		...allToolsInformation[name],
-		version,
-	};
+	return { ...allToolsInformation[name], version };
 }
 
 // hasModSuffix returns true if the given tool has a different, module-specific

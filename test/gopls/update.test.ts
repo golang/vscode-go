@@ -4,7 +4,6 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import moment = require('moment');
 import semver = require('semver');
 import sinon = require('sinon');
 import lsp = require('../../src/goLanguageServer');
