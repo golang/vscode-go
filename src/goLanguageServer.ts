@@ -19,7 +19,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
-import { getToolsEnvironment } from './goEnv';
+import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -37,7 +37,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -308,7 +308,6 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 
 export function buildLanguageServerConfig(): LanguageServerConfig {
 	const goConfig = getGoConfig();
-	const toolsEnv = getToolsEnvVars();
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -321,7 +320,7 @@ export function buildLanguageServerConfig(): LanguageServerConfig {
 			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
 			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
-		env: toolsEnv,
+		env: toolExecutionEnvironment(),
 		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
 	};
 	// Don't look for the path if the server is not enabled.
@@ -541,11 +540,10 @@ async function latestGopls(tool: Tool): Promise<semver.SemVer> {
 }
 
 async function goplsVersion(goplsPath: string): Promise<string> {
-	const env = getToolsEnvVars();
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(goplsPath, ['version'], { env });
+		const { stdout } = await execFile(goplsPath, ['version'], { env: toolExecutionEnvironment() });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
@@ -634,9 +632,16 @@ async function suggestFilingAnIssue() {
 		return;
 	}
 	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
-	const prompt = getFromGlobalState(promptForIssueOnGoplsRestartKey, true);
-	if (!prompt) {
-		return;
+	const saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+
+	// If the user has already seen this prompt, they may have opted-out for
+	// the future. Only prompt again if it's been more than a year since.
+	if (saved['date'] && saved['prompt']) {
+		const dateSaved = new Date(saved['date']);
+		const prompt = <boolean>saved['prompt'];
+		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {
+			return;
+		}
 	}
 	const selected = await vscode.window.showInformationMessage(`Before you restart the language server,
 would you like to file an issue with gopls?`, 'Yes', 'Next time', 'Never');
@@ -650,12 +655,22 @@ would you like to file an issue with gopls?`, 'Yes', 'Next time', 'Never');
 			// Wait for the command to finish before restarting the
 			// server, but don't bother handling errors.
 			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], getToolsEnvironment());
+			await execFile(latestConfig.path, ['bug'], { env: toolExecutionEnvironment() });
 			break;
 		case 'Next time':
 			break;
 		case 'Never':
-			updateGlobalState(promptForIssueOnGoplsRestartKey, false);
+			updateGlobalState(promptForIssueOnGoplsRestartKey, JSON.stringify({
+				prompt: false,
+				date: new Date(),
+			}));
 			break;
 	}
+}
+
+// daysBetween returns the number of days between a and b,
+// assuming that a occurs after b.
+function daysBetween(a: Date, b: Date) {
+	const ms = a.getTime() - b.getTime();
+	return ms / (1000 * 60 * 60 * 24);
 }
