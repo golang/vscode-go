@@ -11,6 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
 import { getLanguageServerToolPath } from './goLanguageServer';
+import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
@@ -23,7 +24,8 @@ import {
 	getTool,
 	hasModSuffix,
 	isGocode,
-	Tool
+	Tool,
+	ToolAtVersion
 } from './goTools';
 import {
 	getBinPath,
@@ -88,14 +90,6 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
 				goVersion
 			);
 		});
-}
-
-/**
- * ToolAtVersion is a Tool with version annotation.
- * Lack of version implies the latest version
- */
-export interface ToolAtVersion extends Tool {
-	version?: SemVer;
 }
 
 /**
@@ -299,10 +293,12 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 			outputChannel.appendLine(''); // Blank line for spacing
 			const failures = res.filter((x) => x != null);
 			if (failures.length === 0) {
-				if (containsString(missing, 'gopls')) {
-					outputChannel.appendLine('Reload VS Code window to use the Go language server');
-				}
 				outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+
+				// Restart the language server since a new binary has been installed.
+				if (containsString(missing, 'gopls')) {
+					restartLanguageServer();
+				}
 				return;
 			}
 
@@ -324,24 +320,17 @@ export async function promptForMissingTool(toolName: string) {
 	}
 
 	const goVersion = await getGoVersion();
-	// Show error messages for outdated tools.
-	if (goVersion.lt('1.9')) {
-		let outdatedErrorMsg;
-		switch (tool.name) {
-			case 'golint':
-				outdatedErrorMsg =
-					'golint no longer supports go1.8 or below, update your settings to use golangci-lint as go.lintTool and install golangci-lint';
-				break;
-			case 'gotests':
-				outdatedErrorMsg =
-					'Generate unit tests feature is not supported as gotests tool needs go1.9 or higher.';
-				break;
-		}
-		if (outdatedErrorMsg) {
-			vscode.window.showInformationMessage(outdatedErrorMsg);
-			return;
-		}
+
+	// Show error messages for outdated tools or outdated Go versions.
+	if (tool.minimumGoVersion && goVersion.lt(tool.minimumGoVersion.format())) {
+		vscode.window.showInformationMessage(`You are using go${goVersion.format()}, but ${tool.name} requires at least go${tool.minimumGoVersion.format()}.`);
+		return;
 	}
+	if (tool.maximumGoVersion && goVersion.gt(tool.maximumGoVersion.format())) {
+		vscode.window.showInformationMessage(`You are using go${goVersion.format()}, but ${tool.name} only supports go${tool.maximumGoVersion.format()} and below.`);
+		return;
+	}
+
 	const installOptions = ['Install'];
 	let missing = await getMissingTools(goVersion);
 	if (!containsTool(missing, tool)) {
@@ -388,7 +377,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 		choices.push('Release Notes');
 	}
 	if (newVersion) {
-		updateMsg = `New version of ${tool.name} (${newVersion}) is available. Please update for an improved experience.`;
+		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
 	}
 	vscode.window.showInformationMessage(updateMsg, ...choices).then((selected) => {
 		switch (selected) {
@@ -519,9 +508,8 @@ export async function offerToInstallTools() {
 		vscode.window.showInformationMessage(promptMsg, installLabel, disableLabel).then((selected) => {
 			if (selected === installLabel) {
 				installTools([getTool('gopls')], goVersion).then(() => {
-					vscode.window.showInformationMessage(
-						'Reload VS Code window to enable the use of Go language server'
-					);
+					// Restart the language server since the binary has changed.
+					restartLanguageServer();
 				});
 			} else if (selected === disableLabel) {
 				const goConfig = getGoConfig();

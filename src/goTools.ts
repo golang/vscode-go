@@ -5,7 +5,8 @@
 
 'use strict';
 
-import { SemVer } from 'semver';
+import moment = require('moment');
+import semver = require('semver');
 import { goLiveErrorsEnabled } from './goLiveErrors';
 import { getGoConfig, GoVersion } from './util';
 
@@ -14,6 +15,27 @@ export interface Tool {
 	importPath: string;
 	isImportant: boolean;
 	description: string;
+
+	// latestVersion and latestVersionTimestamp are hardcoded default values
+	// for the last known version of the given tool. We also hardcode values
+	// for the latest known pre-release of the tool for the Nightly extension.
+	latestVersion?: semver.SemVer;
+	latestVersionTimestamp?: moment.Moment;
+	latestPrereleaseVersion?: semver.SemVer;
+	latestPrereleaseVersionTimestamp?: moment.Moment;
+
+	// minimumGoVersion and maximumGoVersion set the range for the versions of
+	// Go with which this tool can be used.
+	minimumGoVersion?: semver.SemVer;
+	maximumGoVersion?: semver.SemVer;
+}
+
+/**
+ * ToolAtVersion is a Tool at a specific version.
+ * Lack of version implies the latest version.
+ */
+export interface ToolAtVersion extends Tool {
+	version?: semver.SemVer;
 }
 
 /**
@@ -29,7 +51,7 @@ export function getImportPath(tool: Tool, goVersion: GoVersion): string {
 	return tool.importPath;
 }
 
-export function getImportPathWithVersion(tool: Tool, version: SemVer, goVersion: GoVersion): string {
+export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goVersion: GoVersion): string {
 	const importPath = getImportPath(tool, goVersion);
 	if (version) {
 		return importPath + '@v' + version;
@@ -146,13 +168,14 @@ const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
-		description: 'Auto-completion, does not work with modules'
+		description: 'Auto-completion, does not work with modules',
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
 		importPath: 'github.com/stamblerre/gocode',
 		isImportant: true,
-		description: 'Auto-completion, works with modules'
+		description: 'Auto-completion, works with modules',
+		minimumGoVersion: semver.coerce('1.11'),
 	},
 	'gopkgs': {
 		name: 'gopkgs',
@@ -242,13 +265,15 @@ const allToolsInformation: { [key: string]: Tool } = {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
 		isImportant: true,
-		description: 'Linter'
+		description: 'Linter',
+		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'gotests': {
 		name: 'gotests',
 		importPath: 'github.com/cweill/gotests/...',
 		isImportant: false,
-		description: 'Generate unit tests'
+		description: 'Generate unit tests',
+		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'staticcheck': {
 		name: 'staticcheck',
@@ -272,7 +297,12 @@ const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gopls',
 		importPath: 'golang.org/x/tools/gopls',
 		isImportant: false,
-		description: 'Language Server from Google'
+		description: 'Language Server from Google',
+		minimumGoVersion: semver.coerce('1.12'),
+		latestVersion: semver.coerce('0.4.0'),
+		latestVersionTimestamp: moment('2020-04-08', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.coerce('0.4.1-pre2'),
+		latestPrereleaseVersionTimestamp: moment('2020-05-11', 'YYYY-MM-DD'),
 	},
 	'dlv': {
 		name: 'dlv',
