@@ -900,14 +900,20 @@ export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: nu
 	};
 }
 
+// TODO(rstambler): There is now experimental support for a recursive option
+// on fs.rmdir, so this function should be replaced.
 export function rmdirRecursive(dir: string) {
 	if (fs.existsSync(dir)) {
 		fs.readdirSync(dir).forEach((file) => {
 			const relPath = path.join(dir, file);
 			if (fs.lstatSync(relPath).isDirectory()) {
-				rmdirRecursive(dir);
+				rmdirRecursive(relPath);
 			} else {
-				fs.unlinkSync(relPath);
+				try {
+					fs.unlinkSync(relPath);
+				} catch (err) {
+					console.log(`failed to remove ${relPath}: ${err}`);
+				}
 			}
 		});
 		fs.rmdirSync(dir);

@@ -16,15 +16,12 @@ import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
-	containsString,
 	containsTool,
 	disableModulesForWildcard,
 	getConfiguredTools,
 	getImportPath,
-	getImportPathWithVersion,
 	getTool,
-	hasModSuffix,
-	isGocode,
+	installTool,
 	Tool,
 	ToolAtVersion
 } from './goTools';
@@ -33,7 +30,6 @@ import {
 	getCurrentGoPath,
 	getGoConfig,
 	getGoVersion,
-	getTempFilePath,
 	getToolsGopath,
 	GoVersion,
 	resolvePath
@@ -179,94 +175,39 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 
 	outputChannel.appendLine(''); // Blank line for spacing.
 
-	// Install tools in a temporary directory, to avoid altering go.mod files.
-	const toolsTmpDir = fs.mkdtempSync(getTempFilePath('go-tools-'));
-
-	const failures: { tool: ToolAtVersion, reason: string }[] = [];
-	const successes: ToolAtVersion[] = [];
+	const toInstall: Promise<string>[] = [];
 	for (const tool of missing) {
-		// Some tools may have to be closed before we reinstall them.
-		if (tool.close && !(await tool.close(outputChannel))) {
-			failures.push({ tool, reason: 'failed to close' });
-			continue;
-		}
 		// Disable modules for tools which are installed with the "..." wildcard.
 		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
-		let tmpGoModFile: string;
-		if (modulesOffForTool) {
-			envForTools['GO111MODULE'] = 'off';
-		} else {
-			envForTools['GO111MODULE'] = 'on';
-			// Write a temporary go.mod file to avoid version conflicts.
-			tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
-			fs.writeFileSync(tmpGoModFile, 'module tools');
-		}
 
-		// Build the arguments list for the tool installation.
-		const args = ['get', '-v'];
-		// Only get tools at master if we are not using modules.
-		if (modulesOffForTool) {
-			args.push('-u');
-		}
-		// Tools with a "mod" suffix should not be installed,
-		// instead we run "go build -o" to rename them.
-		if (hasModSuffix(tool)) {
-			args.push('-d');
-		}
-		let importPath: string;
-		if (modulesOffForTool) {
-			importPath = getImportPath(tool, goVersion);
-		} else {
-			importPath = getImportPathWithVersion(tool, tool.version, goVersion);
-		}
-		args.push(importPath);
-
-		let output: string;
-		try {
-			const opts = {
-				env: envForTools,
-				cwd: toolsTmpDir,
-				timeout: 1000,
-			};
-			const execFile = util.promisify(cp.execFile);
-			const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
-			console.log(`stdout: ${stdout}, stderr: ${stderr} `);
-			output = `${stdout} ${stderr} `;
-			if (stderr.indexOf('unexpected directory layout:') > -1) {
-				outputChannel.appendLine(`Installing ${importPath} failed with error "unexpected directory layout".Retrying...`);
-				await execFile(goRuntimePath, args, opts);
-			} else if (hasModSuffix(tool)) {
-				const outputFile = path.join(toolsGopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
-				await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
-			}
-			outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
-			successes.push(tool);
-		} catch (e) {
-			console.log(`error: ${e} `);
-			outputChannel.appendLine(`Installing ${importPath} FAILED`);
-			failures.push({ tool, reason: `${e} ${output} ` });
-		}
-		// Make sure to delete the temporary go.mod file, if it exists.
-		if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
-			fs.unlinkSync(tmpGoModFile);
-		}
+		// Does this work or will this work synchronously because the await is here?
+		toInstall.push(installTool(goRuntimePath, goVersion, envForTools, !modulesOffForTool, tool));
 	}
 
-	// Restart the language server if a new binary has been installed.
-	if (containsString(successes, 'gopls')) {
-		restartLanguageServer();
-	}
+	const results = await Promise.all(toInstall);
 
-	// Report detailed information about any failures.
-	outputChannel.appendLine(''); // blank line for spacing
-	if (failures.length === 0) {
-		outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
-	} else {
-		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
-		for (const failure of failures) {
-			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
-		}
-	}
+	// const failures: { tool: ToolAtVersion, reason: string }[] = [];
+	// for (const result of results) {
+	// 	if (result.reason === '') {
+	// 		// Restart the language server if a new binary has been installed.
+	// 		if (result.tool.name === 'gopls') {
+	// 			restartLanguageServer();
+	// 		}
+	// 	} else {
+	// 		failures.push(result);
+	// 	}
+	// }
+
+	// // Report detailed information about any failures.
+	// outputChannel.appendLine(''); // blank line for spacing
+	// if (failures.length === 0) {
+	// 	outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+	// } else {
+	// 	outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+	// 	for (const failure of failures) {
+	// 		outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+	// 	}
+	// }
 }
 
 export async function promptForMissingTool(toolName: string) {

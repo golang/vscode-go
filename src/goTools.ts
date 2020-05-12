@@ -11,9 +11,8 @@ import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
 import util = require('util');
-import vscode = require('vscode');
 import { goLiveErrorsEnabled } from './goLiveErrors';
-import { getBinPath, getGoConfig, GoVersion } from './util';
+import { getBinPath, getGoConfig, getTempFilePath, GoVersion, rmdirRecursive } from './util';
 
 export interface Tool {
 	name: string;
@@ -35,7 +34,7 @@ export interface Tool {
 	maximumGoVersion?: semver.SemVer;
 
 	// close ...
-	close?: (outputChannel: vscode.OutputChannel) => Promise<boolean>;
+	close?: () => Promise<string>;
 }
 
 /**
@@ -178,29 +177,98 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	return tools;
 }
 
+export async function installTool(
+	goRuntimePath: string, goVersion: GoVersion, envForTools: NodeJS.Dict<string>, modulesOn: boolean,
+	tool: ToolAtVersion): Promise<string> {
+	// Some tools may have to be closed before we reinstall them.
+	if (tool.close) {
+		const reason = await tool.close();
+		if (reason) {
+			return reason;
+		}
+	}
+	// Install tools in a temporary directory, to avoid altering go.mod files.
+	const mkdtemp = util.promisify(fs.mkdtemp);
+	const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
+	const env = Object.assign({}, envForTools);
+	let tmpGoModFile: string;
+	if (modulesOn) {
+		env['GO111MODULE'] = 'on';
+
+		// Write a temporary go.mod file to avoid version conflicts.
+		tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
+		const writeFile = util.promisify(fs.writeFile);
+		await writeFile(tmpGoModFile, 'module tools');
+	} else {
+		envForTools['GO111MODULE'] = 'off';
+	}
+
+	// Build the arguments list for the tool installation.
+	const args = ['get', '-v'];
+	// Only get tools at master if we are not using modules.
+	if (!modulesOn) {
+		args.push('-u');
+	}
+	// Tools with a "mod" suffix should not be installed,
+	// instead we run "go build -o" to rename them.
+	if (hasModSuffix(tool)) {
+		args.push('-d');
+	}
+	let importPath: string;
+	if (!modulesOn) {
+		importPath = getImportPath(tool, goVersion);
+	} else {
+		importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+	}
+	args.push(importPath);
+	const opts = {
+		env,
+		cwd: toolsTmpDir,
+	};
+	let output: string;
+	try {
+		const execFile = util.promisify(cp.execFile);
+		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
+		output = `${stdout} ${stderr}`;
+		if (stderr.indexOf('unexpected directory layout:') > -1) {
+			await execFile(goRuntimePath, args, opts);
+		} else if (hasModSuffix(tool)) {
+			const gopath = env['GOPATH'];
+			if (!gopath) {
+				return `GOPATH not configured in environment`;
+			}
+			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
+			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
+		}
+	} catch (e) {
+		return `${e} ${output} `;
+	}
+	// Delete the temporary installation directory.
+	rmdirRecursive(toolsTmpDir);
+	return '';
+}
+
 const allToolsInformation: { [key: string]: Tool } = {
 	'gocode': {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
 		description: 'Auto-completion, does not work with modules',
-		close: async (outputChannel: vscode.OutputChannel): Promise<boolean> => {
+		close: async (): Promise<string> => {
 			const toolBinPath = getBinPath('gocode');
 			if (!path.isAbsolute(toolBinPath)) {
-				return true;
+				return '';
 			}
 			try {
 				const execFile = util.promisify(cp.execFile);
 				const { stderr } = await execFile(toolBinPath, ['close']);
 				if (stderr.indexOf(`rpc: can't find service Server.`) > -1) {
-					outputChannel.appendLine(`Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`);
-					return false;
+					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
 				}
 			} catch (err) {
-				outputChannel.appendLine(`Failed to close gocode process: ${err}.`);
-				return false;
+				return `Failed to close gocode process: ${err}.`;
 			}
-			return true;
+			return '';
 		},
 	},
 	'gocode-gomod': {
