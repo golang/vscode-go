@@ -35,8 +35,8 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
-import { updateGlobalState, getFromGlobalState } from './stateUtils';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -128,7 +128,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
 			// TODO(rstambler): Enable this behavior when gopls reaches v1.0.
 			if (false) {
-				await suggestGoplsIssueReport(`Before you restart the language server, would you like to report a gopls issue?`);
+				await suggestGoplsIssueReport(`Looks like you're about to manually restart the language server.`);
 			}
 			restartLanguageServer();
 		});
@@ -172,6 +172,7 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
 				);
+				suggestGoplsIssueReport(`The gopls server failed to initialize.`);
 				return false;
 			},
 			errorHandler: {
@@ -187,7 +188,7 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				},
 				closed: (): CloseAction => {
 					serverOutputChannel.show();
-					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed. Would you like to report a gopls issue?`);
+					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed.`);
 					return CloseAction.DoNotRestart;
 				},
 			},
@@ -661,7 +662,7 @@ async function suggestGoplsIssueReport(msg: string) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg}`, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue?`, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
 			// Run the `gopls bug` command directly for now. When
