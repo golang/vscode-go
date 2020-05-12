@@ -9,6 +9,8 @@ import path = require('path');
 import vscode = require('vscode');
 import { getCurrentGoPath, getGoConfig, getToolsGopath, resolvePath } from './util';
 
+// toolInstallationEnvironment returns the environment in which tools should
+// be installed. It always returns a new object.
 export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	const env = newEnvironment();
 
@@ -42,6 +44,8 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	return env;
 }
 
+// toolInstallationEnvironment returns the environment in which tools should
+// be executed. It always returns a new object.
 export function toolExecutionEnvironment(): NodeJS.Dict<string> {
 	const env = newEnvironment();
 	const gopath = getCurrentGoPath();
