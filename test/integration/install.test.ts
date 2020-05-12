@@ -17,13 +17,11 @@ import { getGoVersion, rmdirRecursive } from '../../src/util';
 
 suite('Installation Tests', () => {
 	test('install tools', async () => {
-		// Assume that the 'go' command is installed.
 		const goVersion = await getGoVersion();
 		const testCases: string[][] = [
 			['gopls'],
 			['gopls', 'guru'],
 		];
-
 		const proxyDir = buildFakeProxy([].concat(...testCases));
 
 		for (const missing of testCases) {
@@ -52,13 +50,14 @@ suite('Installation Tests', () => {
 			sinon.assert.calledWith(configStub);
 			sandbox.restore();
 
-			// Read the $GOPATH/bin to confirm that the expect tools were installed.
+			// Read the $GOPATH/bin to confirm that the expected tools were
+			// installed.
 			const readdir = util.promisify(fs.readdir);
 			const files = await readdir(path.join(tmpToolsGopath, 'bin'));
 			assert.deepEqual(files, missing, `tool installation failed for ${missing}`);
 
-			// A module cache gets created in $GOPATH/pkg with different
-			// permissions, and fs.chown doesn't seem to work on it.
+			// TODO(rstambler): A module cache gets created in $GOPATH/pkg with
+			// different permissions, and fs.chown doesn't seem to work on it.
 			// Not sure how to remove the files so that the temporary directory
 			// can be deleted.
 		}
