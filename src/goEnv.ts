@@ -7,17 +7,38 @@
 
 import path = require('path');
 import vscode = require('vscode');
+<<<<<<< HEAD
 import { getCurrentGoPath, getGoConfig, getToolsGopath, resolvePath } from './util';
 
 export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	const env = newEnvironment();
+=======
+import { getCurrentGoPath, getToolsGopath } from './util';
+
+export function getToolsEnvironment(): NodeJS.Dict<string> {
+	// http.proxy setting takes precedence over environment variables
+	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
+	let envForTools = Object.assign({}, process.env);
+	if (httpProxy) {
+		envForTools = Object.assign({}, process.env, {
+			http_proxy: httpProxy,
+			HTTP_PROXY: httpProxy,
+			https_proxy: httpProxy,
+			HTTPS_PROXY: httpProxy
+		});
+	}
+>>>>>>> 62c233ab1ae82dd96f06a984a6ab4e6c0b76282c
 
 	// If the go.toolsGopath is set, use its value as the GOPATH for `go` processes.
 	// Else use the Current Gopath
 	let toolsGopath = getToolsGopath();
 	if (toolsGopath) {
 		// User has explicitly chosen to use toolsGopath, so ignore GOBIN.
+<<<<<<< HEAD
 		env['GOBIN'] = '';
+=======
+		envForTools['GOBIN'] = '';
+>>>>>>> 62c233ab1ae82dd96f06a984a6ab4e6c0b76282c
 	} else {
 		toolsGopath = getCurrentGoPath();
 	}
@@ -37,6 +58,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	}
 
 	const paths = toolsGopath.split(path.delimiter);
+<<<<<<< HEAD
 	env['GOPATH'] = paths[0];
 
 	return env;
@@ -71,4 +93,9 @@ function newEnvironment(): NodeJS.Dict<string> {
 		env['HTTPS_PROXY'] = httpProxy;
 	}
 	return env;
+=======
+	envForTools['GOPATH'] = paths[0];
+
+	return envForTools;
+>>>>>>> 62c233ab1ae82dd96f06a984a6ab4e6c0b76282c
 }
