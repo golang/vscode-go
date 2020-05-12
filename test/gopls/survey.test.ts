@@ -13,7 +13,7 @@ suite('gopls survey tests', () => {
 		const testCases: [SurveyConfig, boolean][] = [
 			// User who is activating the extension for the first time.
 			[
-				<SurveyConfig>{},
+				{},
 				true,
 			],
 			// User who has already taken the survey.
@@ -29,7 +29,7 @@ suite('gopls survey tests', () => {
 			],
 			// User who has declined survey prompting.
 			[
-				<SurveyConfig>{
+				{
 					lastDateActivated: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: false,
@@ -38,7 +38,7 @@ suite('gopls survey tests', () => {
 			],
 			// User who hasn't activated the extension in a while, but has opted in to prompting.
 			[
-				<SurveyConfig>{
+				{
 					lastDateActivated: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
@@ -47,7 +47,7 @@ suite('gopls survey tests', () => {
 			],
 			// User who hasn't activated the extension in a while, and has never been prompted.
 			[
-				<SurveyConfig>{
+				{
 					lastDateActivated: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 				},

@@ -640,26 +640,26 @@ export interface SurveyConfig {
 	// prompt is true if the user can be prompted to take the survey.
 	// It is false if the user has responded "Never" to the prompt.
 	// Its persistent storage key is 'goplsSurveyConfig_prompt'.
-	prompt: boolean;
+	prompt?: boolean;
 
 	// promptThisMonth is true if we have used a random number generator
 	// to determine if the user should be prompted this month.
 	// It is undefined if we have not yet made the determination.
 	// Its persistent storage key is 'goplsSurveyConfig_promptThisMonth'.
-	promptThisMonth: boolean;
+	promptThisMonth?: boolean;
 
 	// lastDateActivated is the last date that the user activated the extension.
 	// Its persistent storage key is 'goplsSurveyConfig_lastDateActivated'.
-	lastDateActivated: Date;
+	lastDateActivated?: Date;
 
 	// lastDatePrompted is the most recent date that the user has been prompted.
 	// Its persistent storage key is 'goplsSurveyConfig_lastDatePrompted'.
-	lastDatePrompted: Date;
+	lastDatePrompted?: Date;
 
 	// lastDateAccepted is the most recent date that the user responded "Yes"
 	// to the survey prompt. The user need not have completed the survey.
 	// The persistent storage key is 'goplsSurveyConfig_lastDateAccepted'.
-	lastDateAccepted: Date;
+	lastDateAccepted?: Date;
 }
 
 async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
@@ -753,9 +753,9 @@ export const goplsSurveyConfig = 'goplsSurveyConfig';
 function getSurveyConfig(): SurveyConfig {
 	const saved = getFromGlobalState(goplsSurveyConfig);
 	if (saved === undefined) {
-		return <SurveyConfig>{};
+		return {};
 	}
-	const cfg = <SurveyConfig>JSON.parse(saved, (key: string, value: any) => {
+	const cfg = JSON.parse(saved, (key: string, value: any) => {
 		// Make sure values that should be dates are correctly converted.
 		if (key.includes('Date')) {
 			return new Date(value);
