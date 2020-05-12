@@ -14,8 +14,8 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
-	Command, HandleDiagnosticsSignature, LanguageClient, ProvideCompletionItemsSignature,
-	ProvideDocumentLinksSignature, RevealOutputChannelOn
+	CloseAction, Command, ErrorAction, HandleDiagnosticsSignature, InitializeError, LanguageClient,
+	Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature, RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
@@ -36,6 +36,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+import { updateGlobalState, getFromGlobalState } from './stateUtils';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -124,7 +125,13 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// Set up the command to allow the user to manually restart the
 	// language server.
 	if (!restartCommand) {
-		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
+		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
+			// TODO(rstambler): Enable this behavior when gopls reaches v1.0.
+			if (false) {
+				await suggestGoplsIssueReport(`Before you restart the language server, would you like to report a gopls issue?`);
+			}
+			restartLanguageServer();
+		});
 		ctx.subscriptions.push(restartCommand);
 	}
 
@@ -161,6 +168,29 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 			},
 			outputChannel: serverOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
+			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
+				vscode.window.showErrorMessage(
+					`The language server is not able to serve any features. Initialization failed: ${error}. `
+				);
+				return false;
+			},
+			errorHandler: {
+				error: (error: Error, message: Message, count: number): ErrorAction => {
+					vscode.window.showErrorMessage(
+						`Error communicating with the language server: ${error}: ${message}.`
+					);
+					// Stick with the default number of 5 crashes before shutdown.
+					if (count >= 5) {
+						return ErrorAction.Shutdown;
+					}
+					return ErrorAction.Continue;
+				},
+				closed: (): CloseAction => {
+					serverOutputChannel.show();
+					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed. Would you like to report a gopls issue?`);
+					return CloseAction.DoNotRestart;
+				},
+			},
 			middleware: {
 				handleDiagnostics: (
 					uri: vscode.Uri,
@@ -237,14 +267,6 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 			}
 		}
 	);
-	c.onReady().then(() => {
-		const capabilities = languageClient.initializeResult && languageClient.initializeResult.capabilities;
-		if (!capabilities) {
-			return vscode.window.showErrorMessage(
-				'The language server is not able to serve any features at the moment.'
-			);
-		}
-	});
 	return c;
 }
 
@@ -620,4 +642,52 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 		return data;
 	}
 	return null;
+}
+
+// suggestGoplsIssueReport prompts users to file an issue with gopls.
+async function suggestGoplsIssueReport(msg: string) {
+	if (latestConfig.serverName !== 'gopls') {
+		return;
+	}
+	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
+	const saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+
+	// If the user has already seen this prompt, they may have opted-out for
+	// the future. Only prompt again if it's been more than a year since.
+	if (saved['date'] && saved['prompt']) {
+		const dateSaved = new Date(saved['date']);
+		const prompt = <boolean>saved['prompt'];
+		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {
+			return;
+		}
+	}
+	const selected = await vscode.window.showInformationMessage(`${msg}`, 'Yes', 'Next time', 'Never');
+	switch (selected) {
+		case 'Yes':
+			// Run the `gopls bug` command directly for now. When
+			// https://github.com/golang/go/issues/38942 is
+			// resolved, we'll be able to do this through the
+			// language client.
+
+			// Wait for the command to finish before restarting the
+			// server, but don't bother handling errors.
+			const execFile = util.promisify(cp.execFile);
+			await execFile(latestConfig.path, ['bug'], { env: getToolsEnvVars() });
+			break;
+		case 'Next time':
+			break;
+		case 'Never':
+			updateGlobalState(promptForIssueOnGoplsRestartKey, JSON.stringify({
+				prompt: false,
+				date: new Date(),
+			}));
+			break;
+	}
+}
+
+// daysBetween returns the number of days between a and b,
+// assuming that a occurs after b.
+function daysBetween(a: Date, b: Date) {
+	const ms = a.getTime() - b.getTime();
+	return ms / (1000 * 60 * 60 * 24);
 }
