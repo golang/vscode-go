@@ -403,14 +403,8 @@ function allFoldersHaveSameGopath(): boolean {
 }
 
 const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
-<<<<<<< HEAD
-async function shouldUpdateLanguageServer(
-=======
-const defaultLatestVersion = semver.coerce('0.4.0');
-const defaultLatestVersionTime = moment('2020-04-08', 'YYYY-MM-DD');
 
 export async function shouldUpdateLanguageServer(
->>>>>>> 79fc877... add tests for the gopls update logic
 	tool: Tool,
 	languageServerToolPath: string,
 	makeProxyCall: boolean
@@ -429,11 +423,7 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-<<<<<<< HEAD
 	let latestVersion = makeProxyCall ? await getLatestGoplsVersion(tool) : tool.latestVersion;
-=======
-	let latestVersion = makeProxyCall ? await getLatestGoplsVersion(tool) : defaultLatestVersion;
->>>>>>> 79fc877... add tests for the gopls update logic
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -452,11 +442,7 @@ export async function shouldUpdateLanguageServer(
 	const usersTime = parseTimestampFromPseudoversion(usersVersion);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
-<<<<<<< HEAD
 		let latestTime = makeProxyCall ? await getTimestampForVersion(tool, latestVersion) : tool.latestVersionTimestamp;
-=======
-		let latestTime = makeProxyCall ? await getTimestampForVersion(tool, latestVersion) : defaultLatestVersionTime;
->>>>>>> 79fc877... add tests for the gopls update logic
 		if (!latestTime) {
 			latestTime = tool.latestVersionTimestamp;
 		}
