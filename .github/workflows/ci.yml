@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Setup Node
         uses: actions/setup-node@v1
@@ -46,7 +46,8 @@ jobs:
                github.com/uudashr/gopkgs/v2/cmd/gopkgs \
                github.com/zmb3/gogetdoc \
                golang.org/x/lint/golint \
-               golang.org/x/tools/cmd/gorename
+               golang.org/x/tools/cmd/gorename \
+               golang.org/x/tools/gopls
         env:
           GO111MODULE: on   
           
@@ -70,7 +71,6 @@ jobs:
           run: npm run test
         env:
           CODE_VERSION: ${{ matrix.version }}
-        continue-on-error: ${{ matrix.version == 'insiders' }}
 
   eslint:
     runs-on: ubuntu-latest
