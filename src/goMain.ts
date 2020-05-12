@@ -366,7 +366,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('go.tools.install', async (args) => {
 			if (Array.isArray(args) && args.length) {
 				const goVersion = await getGoVersion();
-				installTools(args, goVersion);
+				await installTools(args, goVersion);
 				return;
 			}
 			installAllTools();
