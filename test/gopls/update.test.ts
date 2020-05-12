@@ -67,7 +67,7 @@ suite('gopls update tests', () => {
 				true, tool.latestPrereleaseVersion,
 			],
 		];
-		const results = testCases.map(async ([name, usersVersion, acceptPrerelease, want], i) => {
+		for (const [name, usersVersion, acceptPrerelease, want] of testCases) {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
 				return usersVersion;
 			});
@@ -86,9 +86,8 @@ suite('gopls update tests', () => {
 				}
 			});
 			const got = await lsp.shouldUpdateLanguageServer(tool, 'bad/path/to/gopls', true);
-			assert.equal(got, want, `${name}@${i} failed`);
+			assert.equal(got, want, `${name}: failed`);
 			sinon.restore();
-		});
-		await Promise.all(results);
+		}
 	});
 });
