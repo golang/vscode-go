@@ -10,7 +10,7 @@ import fs = require('fs');
 import path = require('path');
 import { SemVer } from 'semver';
 import vscode = require('vscode');
-import { getToolsEnvironment } from './goEnv';
+import { toolInstallationEnvironment } from './goEnv';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
@@ -113,7 +113,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 	outputChannel.show();
 	outputChannel.clear();
 
-	const envForTools = getToolsEnvironment();
+	const envForTools = toolInstallationEnvironment();
 	const toolsGopath = envForTools['GOPATH'];
 	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
 	if (envForTools['GOBIN']) {

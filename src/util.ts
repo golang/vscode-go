@@ -330,7 +330,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		case 1:
 			vendorSupport =
 				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
+					((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
 					? true
 					: false;
 			break;
@@ -426,24 +426,6 @@ export function getBinPath(tool: string): string {
 export function getFileArchive(document: vscode.TextDocument): string {
 	const fileContents = document.getText();
 	return document.fileName + '\n' + Buffer.byteLength(fileContents, 'utf8') + '\n' + fileContents;
-}
-
-export function getToolsEnvVars(): any {
-	const config = getGoConfig();
-	const toolsEnvVars = config['toolsEnvVars'];
-
-	const gopath = getCurrentGoPath();
-	const envVars = Object.assign({}, process.env, gopath ? { GOPATH: gopath } : {});
-
-	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
-		Object.keys(toolsEnvVars).forEach(
-			(key) =>
-				(envVars[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
-		);
-	}
-
-	return envVars;
 }
 
 export function substituteEnv(input: string): string {
@@ -975,7 +957,7 @@ export function runGodoc(
 				symbol = receiver + '.' + symbol;
 			}
 
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const args = ['doc', '-c', '-cmd', '-u', packageImportPath, symbol];
 			const p = cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
 				if (err) {
