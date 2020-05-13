@@ -10,6 +10,8 @@ import semver = require('semver');
 import { goLiveErrorsEnabled } from './goLiveErrors';
 import { getGoConfig, GoVersion } from './util';
 
+// this is a test
+
 export interface Tool {
 	name: string;
 	importPath: string;
