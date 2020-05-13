@@ -191,7 +191,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 		.reduce((res: Promise<string[]>, tool: ToolAtVersion) => {
 			return res.then(
 				(sofar) =>
-					new Promise<string[]>((resolve, reject) => {
+					new Promise<string[]>(async (resolve, reject) => {
 						// Disable modules for tools which are installed with the "..." wildcard.
 						// TODO: ... will be supported in Go 1.13, so enable these tools to use modules then.
 						const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
@@ -204,17 +204,18 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
 							fs.writeFileSync(tmpGoModFile, 'module tools');
 						}
+						let importPath: string;
+						if (modulesOffForTool) {
+							importPath = getImportPath(tool, goVersion);
+						} else {
+							importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+						}
 
-						const opts = {
-							env: envForTools,
-							cwd: toolsTmpDir
-						};
 						const callback = (err: Error, stdout: string, stderr: string) => {
 							// Make sure to delete the temporary go.mod file, if it exists.
 							if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
 								fs.unlinkSync(tmpGoModFile);
 							}
-							const importPath = getImportPathWithVersion(tool, tool.version, goVersion);
 							if (err) {
 								outputChannel.appendLine('Installing ' + importPath + ' FAILED');
 								const failureReason = tool.name + ';;' + err + stdout.toString() + stderr.toString();
@@ -225,66 +226,51 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							}
 						};
 
-						let closeToolPromise = Promise.resolve(true);
-						const toolBinPath = getBinPath(tool.name);
-						if (path.isAbsolute(toolBinPath) && isGocode(tool)) {
-							closeToolPromise = new Promise<boolean>((innerResolve) => {
-								cp.execFile(toolBinPath, ['close'], {}, (err, stdout, stderr) => {
-									if (stderr && stderr.indexOf(`rpc: can't find service Server.`) > -1) {
-										outputChannel.appendLine(
-											'Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.'
-										);
-										return innerResolve(false);
-									}
-									innerResolve(true);
-								});
-							});
-						}
-
-						closeToolPromise.then((success) => {
-							if (!success) {
+						// Perform any on-close actions before reinstalling the tool.
+						if (tool.close) {
+							const errMsg = await tool.close();
+							if (errMsg) {
+								outputChannel.appendLine(errMsg);
 								resolve([...sofar, null]);
 								return;
 							}
-							const args = ['get', '-v'];
-							// Only get tools at master if we are not using modules.
-							if (modulesOffForTool) {
-								args.push('-u');
-							}
-							// Tools with a "mod" suffix should not be installed,
-							// instead we run "go build -o" to rename them.
-							if (hasModSuffix(tool)) {
-								args.push('-d');
-							}
-							let importPath: string;
-							if (modulesOffForTool) {
-								importPath = getImportPath(tool, goVersion);
+						}
+						const args = ['get', '-v'];
+						// Only get tools at master if we are not using modules.
+						if (modulesOffForTool) {
+							args.push('-u');
+						}
+						// Tools with a "mod" suffix should not be installed,
+						// instead we run "go build -o" to rename them.
+						if (hasModSuffix(tool)) {
+							args.push('-d');
+						}
+						args.push(importPath);
+						const opts = {
+							env: envForTools,
+							cwd: toolsTmpDir
+						};
+						cp.execFile(goRuntimePath, args, opts, (err, stdout, stderr) => {
+							if (stderr.indexOf('unexpected directory layout:') > -1) {
+								outputChannel.appendLine(
+									`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`
+								);
+								cp.execFile(goRuntimePath, args, opts, callback);
+							} else if (!err && hasModSuffix(tool)) {
+								const outputFile = path.join(
+									toolsGopath,
+									'bin',
+									process.platform === 'win32' ? `${tool.name}.exe` : tool.name
+								);
+								cp.execFile(
+									goRuntimePath,
+									['build', '-o', outputFile, getImportPath(tool, goVersion)],
+									opts,
+									callback
+								);
 							} else {
-								importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+								callback(err, stdout, stderr);
 							}
-							args.push(importPath);
-							cp.execFile(goRuntimePath, args, opts, (err, stdout, stderr) => {
-								if (stderr.indexOf('unexpected directory layout:') > -1) {
-									outputChannel.appendLine(
-										`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`
-									);
-									cp.execFile(goRuntimePath, args, opts, callback);
-								} else if (!err && hasModSuffix(tool)) {
-									const outputFile = path.join(
-										toolsGopath,
-										'bin',
-										process.platform === 'win32' ? `${tool.name}.exe` : tool.name
-									);
-									cp.execFile(
-										goRuntimePath,
-										['build', '-o', outputFile, getImportPath(tool, goVersion)],
-										opts,
-										callback
-									);
-								} else {
-									callback(err, stdout, stderr);
-								}
-							});
 						});
 					})
 			);
