@@ -8,7 +8,7 @@ import vscode = require('vscode');
 let globalState: vscode.Memento;
 let workspaceState: vscode.Memento;
 
-export function getFromGlobalState(key: string, defaultValue?: any) {
+export function getFromGlobalState(key: string, defaultValue?: any): any {
 	if (!globalState) {
 		return defaultValue;
 	}

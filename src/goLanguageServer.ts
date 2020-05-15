@@ -67,6 +67,9 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // server.
 let restartCommand: vscode.Disposable;
 
+// When enabled, users may be prompted to fill out the gopls survey.
+const goplsSurveyOn: boolean = false;
+
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
@@ -81,6 +84,14 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 			const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
 			if (versionToUpdate) {
 				promptForUpdatingTool(tool.name, versionToUpdate);
+			} else if (goplsSurveyOn) {
+				// Only prompt users to fill out the gopls survey if we are not
+				// also prompting them to update (both would be too much).
+				const timeout = 1000 * 60 * 60; // 1 hour
+				setTimeout(async () => {
+					const surveyCfg = await maybePromptForGoplsSurvey();
+					flushSurveyConfig(surveyCfg);
+				}, timeout);
 			}
 		}
 	}
@@ -341,7 +352,7 @@ export function buildLanguageServerConfig(): LanguageServerConfig {
 			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
 		env: toolsEnv,
-		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
+		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates'],
 	};
 	// Don't look for the path if the server is not enabled.
 	if (!cfg.enabled) {
@@ -646,6 +657,135 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	return null;
 }
 
+// SurveyConfig is the set of global properties used to determine if
+// we should prompt a user to take the gopls survey.
+export interface SurveyConfig {
+	// prompt is true if the user can be prompted to take the survey.
+	// It is false if the user has responded "Never" to the prompt.
+	prompt?: boolean;
+
+	// promptThisMonth is true if we have used a random number generator
+	// to determine if the user should be prompted this month.
+	// It is undefined if we have not yet made the determination.
+	promptThisMonth?: boolean;
+
+	// promptThisMonthTimestamp is the date on which we determined if the user
+	// should be prompted this month.
+	promptThisMonthTimestamp?: Date;
+
+	// lastDatePrompted is the most recent date that the user has been prompted.
+	lastDatePrompted?: Date;
+
+	// lastDateAccepted is the most recent date that the user responded "Yes"
+	// to the survey prompt. The user need not have completed the survey.
+	lastDateAccepted?: Date;
+}
+
+async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
+	const now = new Date();
+	const cfg = getSurveyConfig();
+	const prompt = shouldPromptForGoplsSurvey(now, cfg);
+	if (!prompt) {
+		return cfg;
+	}
+	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
+Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
+
+	// Update the time last asked.
+	cfg.lastDatePrompted = now;
+
+	switch (selected) {
+		case 'Yes':
+			cfg.lastDateAccepted = now;
+			cfg.prompt = true;
+
+			// Open the link to the survey.
+			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+			break;
+		case 'Not now':
+			cfg.prompt = true;
+
+			vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
+			break;
+		case 'Never':
+			cfg.prompt = false;
+
+			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
+			break;
+	}
+	return cfg;
+}
+
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
+	// If the prompt value is not set, assume we haven't prompted the user
+	// and should do so.
+	if (cfg.prompt === undefined) {
+		cfg.prompt = true;
+	}
+	if (!cfg.prompt) {
+		return false;
+	}
+
+	// Check if the user has taken the survey in the last year.
+	// Don't prompt them if they have been.
+	if (cfg.lastDateAccepted) {
+		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+			return false;
+		}
+	}
+
+	// Check if the user has been prompted for the survey in the last 90 days.
+	// Don't prompt them if they have been.
+	if (cfg.lastDatePrompted) {
+		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+			return false;
+		}
+	}
+
+	// Check if the extension has been activated this month.
+	if (cfg.promptThisMonthTimestamp) {
+		// The extension has been activated this month, so we should have already
+		// decided if the user should be prompted.
+		if (daysBetween(now, cfg.promptThisMonthTimestamp) < 30) {
+			return cfg.promptThisMonth;
+		}
+	}
+	// This is the first activation this month (or ever), so decide if we
+	// should prompt the user. This is done by generating a random number
+	// and % 20 to get a 5% chance.
+	const r = Math.floor(Math.random() * 20);
+	cfg.promptThisMonth = (r % 20 === 0);
+	cfg.promptThisMonthTimestamp = now;
+
+	return cfg.promptThisMonth;
+}
+
+export const goplsSurveyConfig = 'goplsSurveyConfig';
+
+function getSurveyConfig(): SurveyConfig {
+	const saved = getFromGlobalState(goplsSurveyConfig);
+	if (saved === undefined) {
+		return {};
+	}
+	try {
+		const cfg = JSON.parse(saved, (key: string, value: any) => {
+			// Make sure values that should be dates are correctly converted.
+			if (key.includes('Date')) {
+				return new Date(value);
+			}
+			return value;
+		});
+		return cfg;
+	} catch (err) {
+		console.log(`Error parsing JSON from ${saved}: ${err}`);
+		return {};
+	}
+}
+
+function flushSurveyConfig(cfg: SurveyConfig) {
+	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+}
+
 // suggestGoplsIssueReport prompts users to file an issue with gopls.
 async function suggestGoplsIssueReport(msg: string) {
 	if (latestConfig.serverName !== 'gopls') {
@@ -668,7 +808,7 @@ async function suggestGoplsIssueReport(msg: string) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue?`, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
 			// Run the `gopls bug` command directly for now. When
