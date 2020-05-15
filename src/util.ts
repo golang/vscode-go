@@ -3,6 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
+// test PR for https://github.com/golang/go/issues/23850
+
 import cp = require('child_process');
 import fs = require('fs');
 import os = require('os');
