@@ -125,7 +125,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		outputChannel.appendLine(`Using the value ${toolsGopath} from the go.toolsGopath setting.`);
 	} else {
 		toolsGopath = getCurrentGoPath();
-		outputChannel.appendLine(`go.toolsGopath setting is not set.Using GOPATH ${toolsGopath} `);
+		outputChannel.appendLine(`go.toolsGopath setting is not set. Using GOPATH ${toolsGopath}`);
 	}
 	if (toolsGopath) {
 		const paths = toolsGopath.split(path.delimiter);
@@ -146,9 +146,9 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		return;
 	}
 
-	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at`;
+	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
 	if (envForTools['GOBIN']) {
-		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']} `;
+		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
 		installingMsg += toolsGopath + path.sep + 'bin';
 	}
@@ -174,39 +174,39 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 
 	outputChannel.appendLine(''); // Blank line for spacing.
 
-	const toInstall: Promise<string>[] = [];
+	const toInstall: Promise<{ tool: Tool, reason: string }>[] = [];
 	for (const tool of missing) {
 		// Disable modules for tools which are installed with the "..." wildcard.
 		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
 
-		// Does this work or will this work synchronously because the await is here?
-		toInstall.push(installTool(goRuntimePath, goVersion, envForTools, !modulesOffForTool, tool));
+		const reason = installTool(goRuntimePath, goVersion, envForTools, !modulesOffForTool, tool);
+		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
 
 	const results = await Promise.all(toInstall);
 
-	// const failures: { tool: ToolAtVersion, reason: string }[] = [];
-	// for (const result of results) {
-	// 	if (result.reason === '') {
-	// 		// Restart the language server if a new binary has been installed.
-	// 		if (result.tool.name === 'gopls') {
-	// 			restartLanguageServer();
-	// 		}
-	// 	} else {
-	// 		failures.push(result);
-	// 	}
-	// }
+	const failures: { tool: ToolAtVersion, reason: string }[] = [];
+	for (const result of results) {
+		if (result.reason === '') {
+			// Restart the language server if a new binary has been installed.
+			if (result.tool.name === 'gopls') {
+				restartLanguageServer();
+			}
+		} else {
+			failures.push(result);
+		}
+	}
 
-	// // Report detailed information about any failures.
-	// outputChannel.appendLine(''); // blank line for spacing
-	// if (failures.length === 0) {
-	// 	outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
-	// } else {
-	// 	outputChannel.appendLine(failures.length + ' tools failed to install.\n');
-	// 	for (const failure of failures) {
-	// 		outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
-	// 	}
-	// }
+	// Report detailed information about any failures.
+	outputChannel.appendLine(''); // blank line for spacing
+	if (failures.length === 0) {
+		outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+	} else {
+		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+		for (const failure of failures) {
+			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+		}
+	}
 }
 
 export async function promptForMissingTool(toolName: string) {
