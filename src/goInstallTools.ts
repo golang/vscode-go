@@ -156,9 +156,9 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	// If the user is on Go >= 1.11, tools should be installed with modules enabled.
 	// This ensures that users get the latest tagged version, rather than master,
 	// which may be unstable.
-	let modulesOff = false;
+	let modulesOn = true;
 	if (goVersion.lt('1.11')) {
-		modulesOff = true;
+		modulesOn = false;
 	} else {
 		installingMsg += ' in module mode.';
 	}
@@ -177,9 +177,9 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	const toInstall: Promise<{ tool: Tool, reason: string }>[] = [];
 	for (const tool of missing) {
 		// Disable modules for tools which are installed with the "..." wildcard.
-		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
+		const modulesOnForTool = modulesOn || !disableModulesForWildcard(tool, goVersion);
 
-		const reason = installTool(goRuntimePath, goVersion, envForTools, !modulesOffForTool, tool);
+		const reason = installTool(goRuntimePath, goVersion, envForTools, modulesOnForTool, tool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
 
