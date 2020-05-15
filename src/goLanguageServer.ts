@@ -669,7 +669,8 @@ export interface SurveyConfig {
 	// It is undefined if we have not yet made the determination.
 	promptThisMonth?: boolean;
 
-	// lastDateActivated is the last date that the user activated the extension.
+	// promptThisMonthTimestamp is the date on which we determined if the user
+	// should be prompted this month.
 	promptThisMonthTimestamp?: Date;
 
 	// lastDatePrompted is the most recent date that the user has been prompted.
