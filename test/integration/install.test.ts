@@ -26,12 +26,12 @@ suite('Installation Tests', () => {
 		const proxyDir = buildFakeProxy([].concat(...testCases));
 
 		for (const missing of testCases) {
-			const sandbox = sinon.createSandbox();
-
-			const tmpToolsGopath = fs.mkdtempSync(path.join(os.tmpdir(), 'test-install'));
+			// Create a temporary directory in which to install tools.
+			const tmpToolsGopath = fs.mkdtempSync(path.join(os.tmpdir(), 'install-test'));
 			fs.mkdirSync(path.join(tmpToolsGopath, 'bin'));
 			fs.mkdirSync(path.join(tmpToolsGopath, 'src'));
 
+			const sandbox = sinon.createSandbox();
 			const utils = require('../../src/util');
 			const toolsGopathStub = sandbox.stub(utils, 'getToolsGopath').returns(tmpToolsGopath);
 			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {

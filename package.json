@@ -45,7 +45,10 @@
   },
   "extensionDependencies": [],
   "dependencies": {
+<<<<<<< HEAD
     "adm-zip": "^0.4.14",
+=======
+>>>>>>> cf9cbaff0a79eeacdd5ace2693365188303a43e5
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
     "json-rpc2": "^1.0.2",
@@ -59,6 +62,10 @@
     "web-request": "^1.0.7"
   },
   "devDependencies": {
+<<<<<<< HEAD
+=======
+    "adm-zip": "^0.4.14",
+>>>>>>> cf9cbaff0a79eeacdd5ace2693365188303a43e5
     "@types/adm-zip": "^0.4.33",
     "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.1.0",

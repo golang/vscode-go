@@ -33,7 +33,9 @@ export interface Tool {
 	minimumGoVersion?: semver.SemVer;
 	maximumGoVersion?: semver.SemVer;
 
-	// close ...
+	// close performs any shutdown tasks that a tool must execute before a new
+	// version is installed. It returns a string containing an error message on
+	// failure.
 	close?: () => Promise<string>;
 }
 
