@@ -14,8 +14,13 @@ import { getBinPath, getCurrentGoPath, getImportPath } from './util';
 
 export function goGetPackage() {
 	const editor = vscode.window.activeTextEditor;
-	const selection = editor.selection;
-	const selectedText = editor.document.lineAt(selection.active.line).text;
+	if (!editor) {
+		vscode.window.showErrorMessage('No active editor');
+		return;
+	}
+
+	const selection = editor!.selection;
+	const selectedText = editor!.document.lineAt(selection.active.line).text;
 
 	const importPath = getImportPath(selectedText);
 	if (importPath === '') {

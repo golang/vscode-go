@@ -68,7 +68,7 @@ export function toggleTestFile(): void {
 export function generateTestCurrentPackage(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return Promise.resolve(false);
 	}
 	return generateTests(
 		{
@@ -82,7 +82,7 @@ export function generateTestCurrentPackage(): Promise<boolean> {
 export function generateTestCurrentFile(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return Promise.resolve(false);
 	}
 
 	return generateTests(
@@ -97,12 +97,12 @@ export function generateTestCurrentFile(): Promise<boolean> {
 export async function generateTestCurrentFunction(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return Promise.resolve(false);
 	}
 
 	const functions = await getFunctions(editor.document);
 	const selection = editor.selection;
-	const currentFunction: vscode.DocumentSymbol = functions.find(
+	const currentFunction = functions.find(
 		(func) => selection && func.range.contains(selection.start)
 	);
 
@@ -222,6 +222,8 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 
 async function getFunctions(doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
-	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, null);
+	const tokenSrc = new vscode.CancellationTokenSource();
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, tokenSrc.token);
+	tokenSrc.dispose();
 	return symbols[0].children.filter((sym) => sym.kind === vscode.SymbolKind.Function);
 }

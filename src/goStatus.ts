@@ -20,7 +20,7 @@ statusBarItemModule.tooltip =
 	'Modules is enabled for this project. Click to learn more about Modules support in VS Code.';
 statusBarItemModule.command = 'go.open.modulewiki';
 
-export function showHideStatus(editor: vscode.TextEditor) {
+export function showHideStatus(editor: vscode.TextEditor|undefined) {
 	if (statusBarEntry) {
 		if (!editor) {
 			statusBarEntry.hide();

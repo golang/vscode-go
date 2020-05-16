@@ -72,7 +72,7 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 				);
 				return resolve(pkgs);
 			}
-			const goroot = process.env['GOROOT'];
+			const goroot = process.env['GOROOT'] || '';
 			const output = chunks.join('');
 			if (output.indexOf(';') === -1) {
 				// User might be using the old gopkgs tool, prompt to update
@@ -129,7 +129,7 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 			gopkgs(workDir).then((pkgMap) => {
 				gopkgsRunning.delete(workDir);
 				gopkgsSubscriptions.delete(workDir);
-				subs.forEach((cb) => cb(pkgMap));
+				subs!.forEach((cb) => cb(pkgMap));
 			});
 		}
 	});
@@ -144,8 +144,8 @@ export async function getAllPackages(workDir: string): Promise<Map<string, Packa
 	const cache = allPkgsCache.get(workDir);
 	const useCache = cache && new Date().getTime() - cache.lastHit < cacheTimeout;
 	if (useCache) {
-		cache.lastHit = new Date().getTime();
-		return Promise.resolve(cache.entry);
+		cache!.lastHit = new Date().getTime();
+		return Promise.resolve(cache!.entry);
 	}
 
 	const pkgs = await getAllPackagesNoCache(workDir);
@@ -265,7 +265,7 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 		console.warn(
 			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve(new Map<string, string>());
 	}
 	return new Promise<Map<string, string>>((resolve, reject) => {
 		const childProcess = cp.spawn(
@@ -283,7 +283,7 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 			const result = new Map<string, string>();
 
 			const version = await getGoVersion();
-			const vendorAlreadyExcluded = version.gt('1.8');
+			const vendorAlreadyExcluded = !version || version.gt('1.8');
 
 			lines.forEach((line) => {
 				const matches = line.match(pkgToFolderMappingRegex);

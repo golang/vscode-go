@@ -18,6 +18,11 @@ export const playgroundCommand = () => {
 		vscode.window.showInformationMessage('No editor is active.');
 		return;
 	}
+	const playgroundCfg = getGoConfig(editor.document.uri).get('playground') as vscode.WorkspaceConfiguration|undefined;
+	if (!playgroundCfg) {
+		vscode.window.showInformationMessage('No go.playground configuration is set.');
+		return;
+	}
 
 	const binaryLocation = getBinPath(TOOL_CMD_NAME);
 	if (!path.isAbsolute(binaryLocation)) {
@@ -30,7 +35,7 @@ export const playgroundCommand = () => {
 
 	const selection = editor.selection;
 	const code = selection.isEmpty ? editor.document.getText() : editor.document.getText(selection);
-	goPlay(code, getGoConfig(editor.document.uri).get('playground')).then(
+	goPlay(code, playgroundCfg).then(
 		(result) => {
 			outputChannel.append(result);
 		},
@@ -61,7 +66,7 @@ ${stdout || stderr}
 Finished running tool: ${binaryLocation} ${cliArgs.join(' ')} -\n`
 			);
 		});
-		if (p.pid) {
+		if (p && p.pid && p.stdin) {
 			p.stdin.end(code);
 		}
 	});

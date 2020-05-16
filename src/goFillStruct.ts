@@ -17,16 +17,17 @@ interface GoFillStructOutput {
 	code: string;
 }
 
-export function runFillStruct(editor: vscode.TextEditor): Promise<void> {
+export function runFillStruct(editor: vscode.TextEditor|undefined): Promise<void> {
 	const args = getCommonArgs(editor);
 	if (!args) {
 		return Promise.reject('No args');
 	}
 
-	return execFillStruct(editor, args);
+	// editor can't be undefined. Otherwise, getCommonArgs would return undefined already.
+	return execFillStruct(editor!, args);
 }
 
-function getCommonArgs(editor: vscode.TextEditor): string[] | undefined {
+function getCommonArgs(editor: vscode.TextEditor|undefined): string[] | undefined {
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
 		return;
@@ -96,7 +97,7 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 				reject(e);
 			}
 		});
-		if (p.pid) {
+		if (p && p.pid && p.stdin) {
 			p.stdin.end(input);
 		}
 	});

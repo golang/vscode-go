@@ -67,8 +67,8 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	updateGoPathGoRootFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
 		interface GoInfo {
-			goroot: string;
-			version: string;
+			goroot: string|null;
+			version: string|null;
 		}
 		const toolsGoInfo: { [id: string]: GoInfo } = ctx.globalState.get('toolsGoInfo') || {};
 		const toolsGopath = getToolsGopath() || getCurrentGoPath();
@@ -76,7 +76,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			toolsGoInfo[toolsGopath] = { goroot: null, version: null };
 		}
 		const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-		const currentGoroot: string = process.env['GOROOT'] && process.env['GOROOT'].toLowerCase();
+		const currentGoroot: string = (process.env['GOROOT'] && process.env['GOROOT'].toLowerCase()) || '';
 		if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
 			vscode.window
 				.showInformationMessage(
@@ -139,7 +139,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		) {
 			// Check mod status so that cache is updated and then run build/lint/vet
 			isModSupported(vscode.window.activeTextEditor.document.uri).then(() => {
-				runBuilds(vscode.window.activeTextEditor.document, getGoConfig());
+				runBuilds(vscode.window.activeTextEditor!.document, getGoConfig());
 			});
 		}
 	});
@@ -514,6 +514,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				vscode.window.showErrorMessage('Cannot apply coverage profile when no Go file is open.');
 				return;
 			}
+			const goFile = vscode.window.activeTextEditor.document.fileName;
 			const lastCoverProfilePathKey = 'lastCoverProfilePathKey';
 			const lastCoverProfilePath = getFromWorkspaceState(lastCoverProfilePathKey, '');
 			vscode.window
@@ -534,13 +535,13 @@ export function activate(ctx: vscode.ExtensionContext): void {
 					}
 					applyCodeCoverageToAllEditors(
 						coverProfilePath,
-						path.dirname(vscode.window.activeTextEditor.document.fileName)
+						path.dirname(goFile)
 					);
 				});
 		})
 	);
 
-	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
+	vscode.languages.setLanguageConfiguration(GO_MODE.language!, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
 

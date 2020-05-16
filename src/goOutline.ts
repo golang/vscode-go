@@ -61,20 +61,21 @@ export interface GoOutlineOptions {
 
 export async function documentSymbols(
 	options: GoOutlineOptions,
-	token: vscode.CancellationToken
+	token: vscode.CancellationToken | null
 ): Promise<vscode.DocumentSymbol[]> {
 	const decls = await runGoOutline(options, token);
+	const doc = options.document;
 	return convertToCodeSymbols(
-		options.document,
+		doc,
 		decls,
 		options.importsOption !== GoOutlineImportsOptions.Exclude,
-		makeMemoizedByteOffsetConverter(Buffer.from(options.document.getText()))
+		makeMemoizedByteOffsetConverter(Buffer.from(doc ? doc.getText() : ''))
 	);
 }
 
 export function runGoOutline(
 	options: GoOutlineOptions,
-	token: vscode.CancellationToken
+	token: vscode.CancellationToken | null
 ): Promise<GoOutlineDeclaration[]> {
 	return new Promise<GoOutlineDeclaration[]>((resolve, reject) => {
 		const gooutline = getBinPath('go-outline');
@@ -86,9 +87,11 @@ export function runGoOutline(
 			gooutlineFlags.push('-modified');
 		}
 
-		let p: cp.ChildProcess;
+		let p: cp.ChildProcess|undefined;
 		if (token) {
-			token.onCancellationRequested(() => killProcess(p));
+			token.onCancellationRequested(() => {
+				if (p && p.pid) {	killProcess(p); }
+			});
 		}
 
 		// Spawn `go-outline` process
@@ -103,15 +106,15 @@ export function runGoOutline(
 						options.importsOption = GoOutlineImportsOptions.Include;
 					}
 					if (stderr.startsWith('flag provided but not defined: -modified')) {
-						options.document = null;
+						options.document = undefined;
 					}
-					p = null;
+					p = undefined;
 					return runGoOutline(options, token).then((results) => {
 						return resolve(results);
 					});
 				}
 				if (err) {
-					return resolve(null);
+					return resolve();
 				}
 				const result = stdout.toString();
 				const decls = <GoOutlineDeclaration[]>JSON.parse(result);
@@ -120,7 +123,7 @@ export function runGoOutline(
 				reject(e);
 			}
 		});
-		if (options.document && p.pid) {
+		if (options.document && p && p.pid && p.stdin) {
 			p.stdin.end(getFileArchive(options.document));
 		}
 	});
@@ -138,12 +141,15 @@ const goKindToCodeKind: { [key: string]: vscode.SymbolKind } = {
 };
 
 function convertToCodeSymbols(
-	document: vscode.TextDocument,
+	document: vscode.TextDocument | undefined,
 	decls: GoOutlineDeclaration[],
 	includeImports: boolean,
 	byteOffsetToDocumentOffset: (byteOffset: number) => number
 ): vscode.DocumentSymbol[] {
 	const symbols: vscode.DocumentSymbol[] = [];
+	if (!document) {
+		return symbols;
+	}
 	(decls || []).forEach((decl) => {
 		if (!includeImports && decl.type === 'import') {
 			return;

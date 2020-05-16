@@ -66,7 +66,7 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 			});
 		}
 	);
-	if (p.pid) {
+	if (p && p.pid && p.stdin) {
 		p.stdin.end();
 	}
 }

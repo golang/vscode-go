@@ -74,7 +74,7 @@ export function removeTags(commandArgs: GoTagsConfig) {
 	});
 }
 
-function getCommonArgs(): string[] {
+function getCommonArgs(): string[]|undefined {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -102,7 +102,7 @@ function getCommonArgs(): string[] {
 	return args;
 }
 
-function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Thenable<string[]> {
+function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Thenable<(string|undefined)[]> {
 	const tags = commandArgs && commandArgs.hasOwnProperty('tags') ? commandArgs['tags'] : config['tags'];
 	const options = commandArgs && commandArgs.hasOwnProperty('options') ? commandArgs['options'] : config['options'];
 	const promptForTags =
@@ -136,6 +136,9 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 function runGomodifytags(args: string[]) {
 	const gomodifytags = getBinPath('gomodifytags');
 	const editor = vscode.window.activeTextEditor;
+	if (!editor || !editor.document) {
+		return;
+	}
 	const input = getFileArchive(editor.document);
 	const p = cp.execFile(gomodifytags, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
@@ -147,11 +150,11 @@ function runGomodifytags(args: string[]) {
 			return;
 		}
 		const output = <GomodifytagsOutput>JSON.parse(stdout);
-		vscode.window.activeTextEditor.edit((editBuilder) => {
+		editor.edit((editBuilder) => {
 			editBuilder.replace(new vscode.Range(output.start - 1, 0, output.end, 0), output.lines.join('\n') + '\n');
 		});
 	});
-	if (p.pid) {
+	if (p && p.pid && p.stdin) {
 		p.stdin.end(input);
 	}
 }
