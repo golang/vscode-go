@@ -27,14 +27,14 @@ export function vetCode(vetWorkspace?: boolean) {
 		vscode.window.showInformationMessage('No editor is active, cannot find current package to vet');
 		return;
 	}
-	if (editor.document.languageId !== 'go' && !vetWorkspace) {
+	if ((!editor || editor.document.languageId !== 'go') && !vetWorkspace) {
 		vscode.window.showInformationMessage(
 			'File in the active editor is not a Go file, cannot find current package to vet'
 		);
 		return;
 	}
 
-	const documentUri = editor ? editor.document.uri : null;
+	const documentUri = editor ? editor.document.uri : undefined;
 	const goConfig = getGoConfig(documentUri);
 
 	outputChannel.clear(); // Ensures stale output from vet on save is cleared
@@ -43,7 +43,7 @@ export function vetCode(vetWorkspace?: boolean) {
 
 	goVet(documentUri, goConfig, vetWorkspace)
 		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, vetDiagnosticCollection);
+			handleDiagnosticErrors(editor ? editor.document : undefined, warnings, vetDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
 		})
 		.catch((err) => {
@@ -60,7 +60,7 @@ export function vetCode(vetWorkspace?: boolean) {
  * @param vetWorkspace If true vets code in all workspace.
  */
 export async function goVet(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri|undefined,
 	goConfig: vscode.WorkspaceConfiguration,
 	vetWorkspace?: boolean
 ): Promise<ICheckResult[]> {
@@ -75,7 +75,8 @@ export async function goVet(
 	tokenSource = new vscode.CancellationTokenSource();
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
-	const cwd = vetWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const fsPath = fileUri ? fileUri.fsPath : '';
+	const cwd = vetWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fsPath);
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
 	}
@@ -105,14 +106,14 @@ export async function goVet(
 	}
 
 	let vetArgs = ['vet', ...args, ...tagsArg, vetWorkspace ? './...' : '.'];
-	if (goVersion.lt('1.10') && args.length) {
+	if (goVersion && goVersion.lt('1.10') && args.length) {
 		vetArgs = ['tool', 'vet', ...args, ...tagsArg, '.'];
 	}
 
 	outputChannel.appendLine(`Starting "go vet" under the folder ${cwd}`);
 
 	running = true;
-	return runTool(vetArgs, cwd, 'warning', true, null, vetEnv, false, tokenSource.token).then((result) => {
+	return runTool(vetArgs, cwd, 'warning', true, undefined, vetEnv, false, tokenSource.token).then((result) => {
 		if (closureEpoch === epoch) {
 			running = false;
 		}

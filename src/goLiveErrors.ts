@@ -19,7 +19,7 @@ interface GoLiveErrorsConfig {
 	enabled: boolean;
 }
 
-let runner: NodeJS.Timer;
+let runner: NodeJS.Timer|undefined;
 
 export function goLiveErrorsEnabled() {
 	const goConfig = <GoLiveErrorsConfig>getGoConfig()['liveErrors'];
@@ -58,7 +58,7 @@ export function parseLiveFile(e: vscode.TextDocumentChangeEvent) {
 	}
 	runner = setTimeout(() => {
 		processFile(e);
-		runner = null;
+		runner = undefined;
 	}, getGoConfig(e.document.uri)['liveErrors']['delay']);
 }
 
@@ -96,7 +96,12 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 					return;
 				}
 				// extract the line, column and error message from the gotype output
-				const [_, file, line, column, message] = /^(.+):(\d+):(\d+):\s+(.+)/.exec(error);
+				const m = /^(.+):(\d+):(\d+):\s+(.+)/.exec(error);
+				if (!m) {
+					console.log(`output in invalid format: ${error}`);
+					return;
+				}
+				const [_, file, line, column, message] = m;
 				// get canonical file path
 				const canonicalFilePath = vscode.Uri.file(file).toString();
 				const range = new vscode.Range(+line - 1, +column, +line - 1, +column);
@@ -113,7 +118,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 			});
 		}
 	});
-	if (p.pid) {
+	if (p && p.pid && p.stdin) {
 		p.stdin.end(fileContents);
 	}
 }

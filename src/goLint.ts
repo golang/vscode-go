@@ -26,14 +26,14 @@ export function lintCode(scope?: string) {
 		vscode.window.showInformationMessage('No editor is active, cannot find current package to lint');
 		return;
 	}
-	if (editor.document.languageId !== 'go' && scope !== 'workspace') {
+	if ((!editor || editor.document.languageId !== 'go') && scope !== 'workspace') {
 		vscode.window.showInformationMessage(
 			'File in the active editor is not a Go file, cannot find current package to lint'
 		);
 		return;
 	}
 
-	const documentUri = editor ? editor.document.uri : null;
+	const documentUri = editor ? editor.document.uri : undefined;
 	const goConfig = getGoConfig(documentUri);
 
 	outputChannel.clear(); // Ensures stale output from lint on save is cleared
@@ -42,7 +42,7 @@ export function lintCode(scope?: string) {
 
 	goLint(documentUri, goConfig, scope)
 		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
+			handleDiagnosticErrors(editor ? editor.document : undefined, warnings, lintDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
 		})
 		.catch((err) => {
@@ -59,7 +59,7 @@ export function lintCode(scope?: string) {
  * @param scope Scope in which to run the linter.
  */
 export function goLint(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri|undefined,
 	goConfig: vscode.WorkspaceConfiguration,
 	scope?: string
 ): Promise<ICheckResult[]> {
@@ -75,7 +75,7 @@ export function goLint(
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
 
-	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri ? fileUri.fsPath : '');
 
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
@@ -131,8 +131,9 @@ export function goLint(
 		args.push('./...');
 		outputChannel.appendLine(`Starting linting the current workspace at ${currentWorkspace}`);
 	} else if (scope === 'file') {
-		args.push(fileUri.fsPath);
-		outputChannel.appendLine(`Starting linting the current file at ${fileUri.fsPath}`);
+		const fsPath = fileUri ? fileUri.fsPath : '';
+		args.push(fsPath);
+		outputChannel.appendLine(`Starting linting the current file at ${fsPath}`);
 	} else {
 		outputChannel.appendLine(`Starting linting the current package at ${cwd}`);
 	}
