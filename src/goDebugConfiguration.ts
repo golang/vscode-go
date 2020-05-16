@@ -44,7 +44,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json
 			if (!activeEditor || activeEditor.document.languageId !== 'go') {
-				return;
+				return debugConfiguration;
 			}
 
 			debugConfiguration = Object.assign(debugConfiguration || {}, {
@@ -102,7 +102,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration['dlvToolPath'] = getBinPath('dlv');
 		if (!path.isAbsolute(debugConfiguration['dlvToolPath'])) {
 			promptForMissingTool('dlv');
-			return;
+			return debugConfiguration;
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {
