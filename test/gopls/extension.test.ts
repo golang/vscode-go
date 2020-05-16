@@ -30,10 +30,12 @@ class Env {
 		}
 		this.workspaceDir = path.resolve(projectDir, 'test/gopls/testfixtures/src/workspace');
 		this.fixturesRoot = path.resolve(projectDir, 'test/fixtures');
-		this.extension = vscode.extensions.getExtension(extensionId);
+		this.extension = vscode.extensions.getExtension(extensionId)!;
 
 		// Ensure the vscode extension host is configured as expected.
-		const workspaceFolder = path.resolve(vscode.workspace.workspaceFolders[0].uri.fsPath);
+		const folders = vscode.workspace.workspaceFolders;
+		assert(folders, `workspace folders is undefined`);
+		const workspaceFolder = path.resolve(folders![0].uri.fsPath);
 		if (this.workspaceDir !== workspaceFolder) {
 			assert.fail(`specified workspaceDir: ${this.workspaceDir} does not match the workspace folder: ${workspaceFolder}`);
 		}
@@ -119,6 +121,8 @@ suite('Go Extension Tests With Gopls', function () {
 				assert.equal(hovers.length, 0, `check hovers over ${name} failed: unexpected non-empty hover message.`);
 				return;
 			}
+			assert.ok(hovers.length > 0,
+				`check hovers over ${name} failed: unexpected number of hover results ${hovers.length}`);
 
 			const hover = hovers[0];
 			assert.equal(hover.contents.length, 1, `check hovers over ${name} failed: unexpected number of hover messages.`);

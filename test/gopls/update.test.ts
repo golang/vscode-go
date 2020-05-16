@@ -12,24 +12,24 @@ import { getTool, Tool } from '../../src/goTools';
 suite('gopls update tests', () => {
 	test('prompt for update', () => {
 		const tool = getTool('gopls');
-		const testCases: [string, string, boolean, semver.SemVer][] = [
+		const testCases: [string, string, boolean, semver.SemVer?][] = [
 			['outdated, tagged', 'v0.3.1', false, tool.latestVersion],
 			['outdated, tagged (pre-release)', '0.3.1', true, tool.latestPrereleaseVersion],
-			['up-to-date, tagged', 'v0.4.0', false, null],
+			['up-to-date, tagged', 'v0.4.0', false, undefined],
 			['up-to-date tagged (pre-release)', 'v0.4.0', true, tool.latestPrereleaseVersion],
-			['developer version', '(devel)', false, null],
-			['developer version (pre-release)', '(devel)', true, null],
-			['nonsense version', 'nosuchversion', false, null],
-			['nonsense version (pre-release)', 'nosuchversion', true, null],
+			['developer version', '(devel)', false, undefined],
+			['developer version (pre-release)', '(devel)', true, undefined],
+			['nonsense version', 'nosuchversion', false, undefined],
+			['nonsense version (pre-release)', 'nosuchversion', true, undefined],
 			[
 				'latest pre-release',
 				'v0.4.1-pre1 h1:w6e4AmFe6sDSVrgaRkf4WqLyVAlByUrr9QM5xH7z1e4=',
-				false, null,
+				false, undefined,
 			],
 			[
 				'latest pre-release (pre-release)',
 				'v0.4.1-pre1 h1:w6e4AmFe6sDSVrgaRkf4WqLyVAlByUrr9QM5xH7z1e4=',
-				true, null,
+				true, undefined,
 			],
 			[
 				'outdated pre-release version',
@@ -44,12 +44,12 @@ suite('gopls update tests', () => {
 			[
 				'recent pseudoversion after pre-release',
 				'v0.0.0-20200509030707-2212a7e161a5 h1:0gSpZ0Z2URJoo3oilGRq9ViMLDTlmNSDCyeZNHHrvd4=',
-				false, null,
+				false, undefined,
 			],
 			[
 				'recent pseudoversion before pre-release',
 				'v0.0.0-20200501030707-2212a7e161a5 h1:0gSpZ0Z2URJoo3oilGRq9ViMLDTlmNSDCyeZNHHrvd4=',
-				false, null,
+				false, undefined,
 			],
 			[
 				'recent pseudoversion before pre-release (pre-release)',
@@ -77,7 +77,7 @@ suite('gopls update tests', () => {
 				}
 				return tool.latestVersion;
 			});
-			sinon.replace(lsp, 'getTimestampForVersion', async (_: Tool, version: semver.SemVer) => {
+			sinon.replace(lsp, 'getTimestampForVersion', async (_: Tool, version?: semver.SemVer) => {
 				if (version === tool.latestVersion) {
 					return tool.latestVersionTimestamp;
 				}
