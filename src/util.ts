@@ -77,9 +77,9 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 ]);
 
 export class GoVersion {
-	public sv: semver.SemVer;
-	public isDevel: boolean;
-	private commit: string;
+	public sv: semver.SemVer | null = null;
+	public isDevel: boolean = false;
+	private commit: string = '';
 
 	constructor(version: string) {
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
@@ -106,7 +106,7 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return false;
 		}
-		return semver.lt(this.sv, semver.coerce(version));
+		return semver.lt(this.sv, semver.coerce(version) || '');
 	}
 
 	public gt(version: string): boolean {
@@ -115,20 +115,20 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return true;
 		}
-		return semver.gt(this.sv, semver.coerce(version));
+		return semver.gt(this.sv, semver.coerce(version) || '');
 	}
 }
 
-let cachedGoVersion: GoVersion = null;
-let vendorSupport: boolean = null;
-let toolsGopath: string;
+let cachedGoVersion: GoVersion | null = null;
+let vendorSupport: boolean = false;
+let toolsGopath: string = '';
 
 export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;
 		} else {
-			uri = null;
+			uri = undefined;
 		}
 	}
 	return vscode.workspace.getConfiguration('go', uri);
@@ -142,7 +142,7 @@ export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Pos
 
 export interface Prelude {
 	imports: Array<{ kind: string; start: number; end: number; pkgs: string[] }>;
-	pkg: { start: number; end: number; name: string };
+	pkg: { start: number; end: number; name: string } | null;
 }
 
 export function parseFilePrelude(text: string): Prelude {
@@ -229,7 +229,7 @@ export function canonicalizeGOPATHPrefix(filename: string): string {
 
 	// In case of multiple workspaces, find current workspace by checking if current file is
 	// under any of the workspaces in $GOPATH
-	let currentWorkspace: string = null;
+	let currentWorkspace: string | undefined;
 	for (const workspace of workspaces) {
 		// In case of nested workspaces, (example: both /Users/me and /Users/me/a/b/c are in $GOPATH)
 		// both parent & child workspace in the nested workspaces pair can make it inside the above if block
@@ -282,7 +282,7 @@ export function getUserNameHash() {
  * Gets version of Go based on the output of the command `go version`.
  * Returns null if go is being used from source/tip in which case `go version` will not return release tag like go1.6.3
  */
-export async function getGoVersion(): Promise<GoVersion> {
+export async function getGoVersion(): Promise<GoVersion | null> {
 	const goRuntimePath = getBinPath('go');
 
 	if (!goRuntimePath) {
@@ -320,7 +320,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		return Promise.resolve(vendorSupport);
 	}
 	const goVersion = await getGoVersion();
-	if (!goVersion.sv) {
+	if (!goVersion || !goVersion.sv) {
 		return process.env['GO15VENDOREXPERIMENT'] === '0' ? false : true;
 	}
 	switch (goVersion.sv.major) {
@@ -404,16 +404,22 @@ function resolveToolsGopath(): string {
 
 	// If any of the folders in multi root have toolsGopath set, use it.
 	for (const folder of vscode.workspace.workspaceFolders) {
-		let toolsGopathFromConfig = <string>getGoConfig(folder.uri).inspect('toolsGopath').workspaceFolderValue;
-		toolsGopathFromConfig = resolvePath(toolsGopathFromConfig, folder.uri.fsPath);
-		if (toolsGopathFromConfig) {
-			return toolsGopathFromConfig;
+		const toolsGoPath = getGoConfig(folder.uri).inspect('toolsGopath');
+		if (toolsGoPath) {
+
+			let toolsGopathFromConfig = <string>toolsGoPath.workspaceFolderValue;
+			toolsGopathFromConfig = resolvePath(toolsGopathFromConfig, folder.uri.fsPath);
+			if (toolsGopathFromConfig) {
+				return toolsGopathFromConfig;
+			}
 		}
 	}
+	return '';
 }
 
 export function getBinPath(tool: string): string {
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	const alternateTools: { [key: string]: string }
+		= getGoConfig().get('alternateTools') || {} as { [key: string]: string };
 	const alternateToolPath: string = alternateTools[tool];
 
 	return getBinPathWithPreferredGopath(
@@ -455,15 +461,15 @@ export function substituteEnv(input: string): string {
 let currentGopath = '';
 export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 	const activeEditorUri = vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri;
-	const currentFilePath = fixDriveCasingInWindows(activeEditorUri && activeEditorUri.fsPath);
-	const currentRoot = (workspaceUri && workspaceUri.fsPath) || getWorkspaceFolderPath(activeEditorUri);
+	const currentFilePath = fixDriveCasingInWindows(activeEditorUri && activeEditorUri.fsPath || '');
+	const currentRoot = (workspaceUri && workspaceUri.fsPath) || getWorkspaceFolderPath(activeEditorUri) || '';
 	const config = getGoConfig(workspaceUri || activeEditorUri);
 
 	// Infer the GOPATH from the current root or the path of the file opened in current editor
 	// Last resort: Check for the common case where GOPATH itself is opened directly in VS Code
-	let inferredGopath: string;
+	let inferredGopath = '';
 	if (config['inferGopath'] === true) {
-		inferredGopath = getInferredGopath(currentRoot) || getInferredGopath(currentFilePath);
+		inferredGopath = getInferredGopath(currentRoot) || getInferredGopath(currentFilePath) || '';
 		if (!inferredGopath) {
 			try {
 				if (fs.statSync(path.join(currentRoot, 'src')).isDirectory()) {
@@ -479,24 +485,28 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 	}
 
 	const configGopath = config['gopath'] ? resolvePath(substituteEnv(config['gopath']), currentRoot) : '';
-	currentGopath = inferredGopath ? inferredGopath : configGopath || process.env['GOPATH'];
+	currentGopath = inferredGopath ? inferredGopath : configGopath || process.env['GOPATH'] || '';
 	return currentGopath;
 }
 
 export function getModuleCache(): string {
+	// TODO: ask `go` command about the module cache location.
 	if (currentGopath) {
 		return path.join(currentGopath.split(path.delimiter)[0], 'pkg', 'mod');
 	}
+	return '';
 }
 
 export function getExtensionCommands(): any[] {
-	const pkgJSON = vscode.extensions.getExtension(extensionId).packageJSON;
-	if (!pkgJSON.contributes || !pkgJSON.contributes.commands) {
-		return;
+	const extension = extensionId ? vscode.extensions.getExtension(extensionId) : undefined;
+	if (!extension) {
+		return [];
 	}
-	const extensionCommands: any[] = vscode.extensions
-		.getExtension(extensionId)
-		.packageJSON.contributes.commands.filter((x: any) => x.command !== 'go.show.commands');
+	const pkgJSON = extension.packageJSON;
+	if (!pkgJSON.contributes || !pkgJSON.contributes.commands) {
+		return [];
+	}
+	const extensionCommands: any[] = pkgJSON.contributes.commands.filter((x: any) => x.command !== 'go.show.commands');
 	return extensionCommands;
 }
 
@@ -519,7 +529,7 @@ export class LineBuffer {
 	}
 
 	public done() {
-		this.fireDone(this.buf !== '' ? this.buf : null);
+		this.fireDone(this.buf !== '' ? this.buf : '');
 	}
 
 	public onLine(listener: (line: string) => void) {
@@ -656,7 +666,7 @@ export function runTool(
 	cwd: string,
 	severity: string,
 	useStdErr: boolean,
-	toolName: string,
+	toolName: string|undefined,
 	env: any,
 	printUnexpectedOutput: boolean,
 	token?: vscode.CancellationToken
@@ -754,7 +764,7 @@ export function runTool(
 }
 
 export function handleDiagnosticErrors(
-	document: vscode.TextDocument,
+	document: vscode.TextDocument | undefined,
 	errors: ICheckResult[],
 	diagnosticCollection: vscode.DiagnosticCollection
 ) {
@@ -773,13 +783,16 @@ export function handleDiagnosticErrors(
 				document.lineAt(error.line - 1).range.end.character + 1
 			);
 			const text = document.getText(tempRange);
-			const [_, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
-			if (!error.col) {
-				startColumn = leading.length;
-			} else {
-				startColumn = error.col - 1; // range is 0-indexed
+			const match = /^(\s*).*(\s*)$/.exec(text);
+			if (match) {
+				const [_, leading, trailing] = match;
+				if (!error.col) {
+					startColumn = leading.length;
+				} else {
+					startColumn = error.col - 1; // range is 0-indexed
+				}
+				endColumn = text.length - trailing.length;
 			}
-			endColumn = text.length - trailing.length;
 		}
 		const range = new vscode.Range(error.line - 1, startColumn, error.line - 1, endColumn);
 		const severity = mapSeverityToVSCodeSeverity(error.severity);
@@ -801,19 +814,19 @@ export function handleDiagnosticErrors(
 			if (lintDiagnosticCollection.has(fileUri)) {
 				lintDiagnosticCollection.set(
 					fileUri,
-					deDupeDiagnostics(newDiagnostics, lintDiagnosticCollection.get(fileUri).slice())
+					deDupeDiagnostics(newDiagnostics, (lintDiagnosticCollection.get(fileUri) || []).slice())
 				);
 			}
 
 			if (vetDiagnosticCollection.has(fileUri)) {
 				vetDiagnosticCollection.set(
 					fileUri,
-					deDupeDiagnostics(newDiagnostics, vetDiagnosticCollection.get(fileUri).slice())
+					deDupeDiagnostics(newDiagnostics, (vetDiagnosticCollection.get(fileUri) || []).slice())
 				);
 			}
 		} else if (buildDiagnosticCollection.has(fileUri)) {
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
-			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri).slice(), newDiagnostics);
+			newDiagnostics = deDupeDiagnostics((buildDiagnosticCollection.get(fileUri) || []).slice(), newDiagnostics);
 		}
 		diagnosticCollection.set(fileUri, newDiagnostics);
 	});
@@ -838,7 +851,7 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
-export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
+export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string | undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);
 		if (workspace) {
@@ -851,6 +864,7 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	if (folders && folders.length) {
 		return fixDriveCasingInWindows(folders[0].uri.fsPath);
 	}
+	return;
 }
 
 export const killTree = (processId: number): void => {
@@ -881,11 +895,11 @@ export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: nu
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
 	const memo = new NearestNeighborDict(defaultValue, NearestNeighborDict.NUMERIC_DISTANCE_FUNCTION);
 	return (byteOffset: number) => {
-		const nearest = memo.getNearest(byteOffset);
+		const nearest = memo.getNearest(byteOffset)!;
 		const byteDelta = byteOffset - nearest.key;
 
 		if (byteDelta === 0) {
-			return nearest.value;
+			return nearest.value || 0;
 		}
 
 		let charDelta: number;
@@ -895,8 +909,9 @@ export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: nu
 			charDelta = -buffer.toString('utf8', byteOffset, nearest.key).length;
 		}
 
-		memo.insert(byteOffset, nearest.value + charDelta);
-		return nearest.value + charDelta;
+		const nearestValue = nearest.value || 0;
+		memo.insert(byteOffset, (nearestValue + charDelta));
+		return nearestValue + charDelta;
 	};
 }
 
@@ -919,7 +934,7 @@ export function rmdirRecursive(dir: string) {
 	}
 }
 
-let tmpDir: string;
+let tmpDir: string | undefined;
 
 /**
  * Returns file path for given name in temp dir

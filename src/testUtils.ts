@@ -148,10 +148,10 @@ export function getTestFunctions(
  *
  * @param symbolName Symbol Name to extract method name from.
  */
-export function extractInstanceTestName(symbolName: string): string {
+export function extractInstanceTestName(symbolName: string): string|undefined {
 	const match = symbolName.match(testMethodRegex);
 	if (!match || match.length !== 3) {
-		return null;
+		return;
 	}
 	return match[2];
 }
@@ -261,7 +261,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 
 		const currentGoWorkspace = testconfig.isMod
 			? ''
-			: getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
+			: getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir) || '';
 		let targets = targetArgs(testconfig);
 		let getCurrentPackagePromise = Promise.resolve('');
 		if (testconfig.isMod) {
@@ -277,7 +277,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				pkgMapPromise = getNonVendorPackages(testconfig.dir);
 			} else {
 				pkgMapPromise = getGoVersion().then((goVersion) => {
-					if (goVersion.gt('1.8')) {
+					if (goVersion && goVersion.gt('1.8')) {
 						targets = ['./...'];
 						return null; // We dont need mapping, as we can derive the absolute paths from package path
 					}
@@ -331,10 +331,10 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				const processTestResultLine = (line: string) => {
 					testResultLines.push(line);
 					const result = line.match(packageResultLineRE);
-					if (result && (pkgMap.has(result[2]) || currentGoWorkspace)) {
+					if (result && (pkgMap!.has(result[2]) || currentGoWorkspace)) {
 						const hasTestFailed = line.startsWith('FAIL');
 						const packageNameArr = result[2].split('/');
-						const baseDir = pkgMap.get(result[2]) || path.join(currentGoWorkspace, ...packageNameArr);
+						const baseDir = pkgMap!.get(result[2]) || path.join(currentGoWorkspace, ...packageNameArr);
 						testResultLines.forEach((testResultLine) => {
 							if (hasTestFailed && lineWithErrorRE.test(testResultLine)) {
 								outputChannel.appendLine(expandFilePathInOutput(testResultLine, baseDir));
@@ -448,7 +448,7 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			if (testifyMethods.length > 0) {
 				// filter out testify methods
 				testFunctions = testFunctions.filter((fn) => !testMethodRegex.test(fn));
-				testifyMethods = testifyMethods.map(extractInstanceTestName);
+				testifyMethods = testifyMethods.map(extractInstanceTestName).filter((m) => m) as string[];
 			}
 
 			// we might skip the '-run' param when running only testify methods, which will result
