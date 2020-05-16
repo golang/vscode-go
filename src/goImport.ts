@@ -21,7 +21,8 @@ export async function listPackages(excludeImportedPkgs: boolean = false): Promis
 		excludeImportedPkgs && vscode.window.activeTextEditor
 			? await getImports(vscode.window.activeTextEditor.document)
 			: [];
-	const pkgMap = await getImportablePackages(vscode.window.activeTextEditor.document.fileName, true);
+	const editor = vscode.window.activeTextEditor;
+	const pkgMap = await getImportablePackages(editor ? editor.document.fileName : '', true);
 	const stdLibs: string[] = [];
 	const nonStdLibs: string[] = [];
 	pkgMap.forEach((value, key) => {
@@ -74,10 +75,11 @@ async function askUserForImport(): Promise<string | undefined> {
 export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 	// Import name wasn't provided
 	if (arg === undefined) {
-		return null;
+		return [];
 	}
 
-	const { imports, pkg } = parseFilePrelude(vscode.window.activeTextEditor.document.getText());
+	const editor = vscode.window.activeTextEditor;
+	const { imports, pkg } = parseFilePrelude(editor ? editor.document.getText() : '');
 	if (imports.some((block) => block.pkgs.some((pkgpath) => pkgpath === arg))) {
 		return [];
 	}
@@ -100,7 +102,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 
 		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
 		minusCgo.forEach((element) => {
-			const currentLine = vscode.window.activeTextEditor.document.lineAt(element.start).text;
+			const currentLine = editor ? editor.document.lineAt(element.start).text : '';
 			const updatedLine = currentLine.replace(/^\s*import\s*/, '\t');
 			edits.push(
 				vscode.TextEdit.replace(
