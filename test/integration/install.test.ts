@@ -22,7 +22,7 @@ suite('Installation Tests', () => {
 			['gopls'],
 			['gopls', 'guru'],
 		];
-		const proxyDir = buildFakeProxy([].concat(...testCases));
+		const proxyDir = buildFakeProxy(([] as string[]).concat(...testCases));
 
 		for (const missing of testCases) {
 			// Create a temporary directory in which to install tools.

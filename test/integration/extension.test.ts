@@ -208,13 +208,14 @@ suite('Go Extension Tests', function () {
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 		const definitionInfo = await provider.provideDefinition(textDocument, position, dummyCancellationSource.token);
 
+		assert(definitionInfo);
 		assert.equal(
-			definitionInfo.uri.path.toLowerCase(),
+			definitionInfo!.uri.path.toLowerCase(),
 			uri.path.toLowerCase(),
-			`${definitionInfo.uri.path} is not the same as ${uri.path}`
+			`${definitionInfo!.uri.path} is not the same as ${uri.path}`
 		);
-		assert.equal(definitionInfo.range.start.line, 6);
-		assert.equal(definitionInfo.range.start.character, 5);
+		assert.equal(definitionInfo!.range.start.line, 6);
+		assert.equal(definitionInfo!.range.start.character, 5);
 	}
 
 	async function testSignatureHelpProvider(
@@ -231,12 +232,12 @@ suite('Go Extension Tests', function () {
 					sigHelp,
 					`No signature for gogetdocTestData/test.go:${position.line + 1}:${position.character + 1}`
 				);
-				assert.equal(sigHelp.signatures.length, 1, 'unexpected number of overloads');
-				assert.equal(sigHelp.signatures[0].label, expected);
-				assert.equal(sigHelp.signatures[0].documentation, expectedDoc);
-				assert.equal(sigHelp.signatures[0].parameters.length, expectedParams.length);
+				assert.equal(sigHelp!.signatures.length, 1, 'unexpected number of overloads');
+				assert.equal(sigHelp!.signatures[0].label, expected);
+				assert.equal(sigHelp!.signatures[0].documentation, expectedDoc);
+				assert.equal(sigHelp!.signatures[0].parameters.length, expectedParams.length);
 				for (let i = 0; i < expectedParams.length; i++) {
-					assert.equal(sigHelp.signatures[0].parameters[i].label, expectedParams[i]);
+					assert.equal(sigHelp!.signatures[0].parameters[i].label, expectedParams[i]);
 				}
 			})
 		);
@@ -257,12 +258,13 @@ suite('Go Extension Tests', function () {
 					assert.equal(res, null);
 					return;
 				}
+				assert(res);
 				let expectedHover = '\n```go\n' + expectedSignature + '\n```\n';
 				if (expectedDocumentation != null) {
 					expectedHover += expectedDocumentation;
 				}
-				assert.equal(res.contents.length, 1);
-				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
+				assert.equal(res!.contents.length, 1);
+				assert.equal((<vscode.MarkdownString>res!.contents[0]).value, expectedHover);
 			})
 		);
 		return Promise.all(promises);
