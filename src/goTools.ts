@@ -29,8 +29,8 @@ export interface Tool {
 
 	// minimumGoVersion and maximumGoVersion set the range for the versions of
 	// Go with which this tool can be used.
-	minimumGoVersion?: semver.SemVer;
-	maximumGoVersion?: semver.SemVer;
+	minimumGoVersion?: semver.SemVer|null;
+	maximumGoVersion?: semver.SemVer|null;
 
 	// close performs any shutdown tasks that a tool must execute before a new
 	// version is installed. It returns a string containing an error message on
@@ -51,15 +51,16 @@ export interface ToolAtVersion extends Tool {
  * @param tool 		Object of type `Tool` for the Go tool.
  * @param goVersion The current Go version.
  */
-export function getImportPath(tool: Tool, goVersion: GoVersion): string {
+export function getImportPath(tool: Tool, goVersion: GoVersion|null): string {
 	// For older versions of Go, install the older version of gocode.
-	if (tool.name === 'gocode' && goVersion.lt('1.10')) {
+	if (tool.name === 'gocode' && goVersion && goVersion.lt('1.10')) {
 		return 'github.com/nsf/gocode';
 	}
 	return tool.importPath;
 }
 
-export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goVersion: GoVersion): string {
+export function getImportPathWithVersion(
+	tool: Tool, version: semver.SemVer|undefined, goVersion: GoVersion|null): string {
 	const importPath = getImportPath(tool, goVersion);
 	if (version) {
 		return importPath + '@v' + version;
@@ -72,12 +73,12 @@ export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goV
  * @param tool  	Object of type `Tool` for the Go tool.
  * @param goVersion The current Go version.
  */
-export function disableModulesForWildcard(tool: Tool, goVersion: GoVersion): boolean {
+export function disableModulesForWildcard(tool: Tool, goVersion: GoVersion|null): boolean {
 	const importPath = getImportPath(tool, goVersion);
 	const isWildcard = importPath.endsWith('...');
 
 	// Only Go >= 1.13 supports installing wildcards in module mode.
-	return isWildcard && goVersion.lt('1.13');
+	return isWildcard && !!goVersion && goVersion.lt('1.13');
 }
 
 export function containsTool(tools: Tool[], tool: Tool): boolean {
@@ -106,7 +107,7 @@ export function isGocode(tool: Tool): boolean {
 	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
-export function getConfiguredTools(goVersion: GoVersion): Tool[] {
+export function getConfiguredTools(goVersion: GoVersion|null): Tool[] {
 	const tools: Tool[] = [];
 	function maybeAddTool(name: string) {
 		const tool = allToolsInformation[name];
@@ -141,7 +142,7 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	}
 
 	// gocode-gomod needed in go 1.11 & higher
-	if (goVersion.gt('1.10')) {
+	if (goVersion && goVersion.gt('1.10')) {
 		maybeAddTool('gocode-gomod');
 	}
 
@@ -164,7 +165,8 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	maybeAddTool(goConfig['lintTool']);
 
 	// Add the language server for Go versions > 1.10 if user has choosen to do so.
-	if (goConfig['useLanguageServer'] && goVersion.gt('1.10')) {
+	// TODO: gopls compilation requires go1.12+. Suggesting build gopls will be misleading.
+	if (goConfig['useLanguageServer'] && goVersion && goVersion.gt('1.10')) {
 		maybeAddTool('gopls');
 	}
 
@@ -327,9 +329,9 @@ const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: false,
 		description: 'Language Server from Google',
 		minimumGoVersion: semver.coerce('1.12'),
-		latestVersion: semver.coerce('0.4.0'),
+		latestVersion: semver.coerce('0.4.0') || undefined,
 		latestVersionTimestamp: moment('2020-04-08', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.coerce('0.4.1-pre2'),
+		latestPrereleaseVersion: semver.coerce('0.4.1-pre2') || undefined,
 		latestPrereleaseVersionTimestamp: moment('2020-05-11', 'YYYY-MM-DD'),
 	},
 	'dlv': {

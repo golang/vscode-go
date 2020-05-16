@@ -50,9 +50,9 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
 	let allTools = getConfiguredTools(goVersion);
 
 	// exclude tools replaced by alternateTools.
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	const alternateTools: { [key: string]: string } | undefined = getGoConfig().get('alternateTools');
 	allTools = allTools.filter((tool) => {
-		return !alternateTools[tool.name];
+		return !alternateTools || !alternateTools[tool.name];
 	});
 
 	// Update existing tools by finding all tools the user has already installed.
@@ -100,16 +100,16 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
  *                If a tool's version is not specified, it will install the latest.
  * @param goVersion version of Go that affects how to install the tool. (e.g. modules vs legacy GOPATH mode)
  */
-export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Promise<void> {
+export function installTools(missing: ToolAtVersion[], goVersion: GoVersion|null): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
 			`Failed to run "go get" to install the packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve();  // TODO: are we catching rejected promises?
 	}
 	if (!missing) {
-		return;
+		return Promise.resolve();
 	}
 
 	// http.proxy setting takes precedence over environment variables
@@ -152,7 +152,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 					break;
 			}
 		});
-		return;
+		return Promise.resolve();
 	}
 
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
@@ -166,7 +166,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 	// This ensures that users get the latest tagged version, rather than master,
 	// which may be unstable.
 	let modulesOff = false;
-	if (goVersion.lt('1.11')) {
+	if (goVersion && goVersion.lt('1.11')) {
 		modulesOff = true;
 	} else {
 		installingMsg += ' in module mode.';
@@ -210,7 +210,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							importPath = getImportPathWithVersion(tool, tool.version, goVersion);
 						}
 
-						const callback = (err: Error, stdout: string, stderr: string) => {
+						const callback = (err: cp.ExecException|null, stdout: string|Buffer, stderr: string|Buffer) => {
 							// Make sure to delete the temporary go.mod file, if it exists.
 							if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
 								fs.unlinkSync(tmpGoModFile);
@@ -221,7 +221,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 								resolve([...sofar, failureReason]);
 							} else {
 								outputChannel.appendLine('Installing ' + importPath + ' SUCCEEDED');
-								resolve([...sofar, null]);
+								resolve([...sofar, '']);
 							}
 						};
 
@@ -230,7 +230,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							const errMsg = await tool.close();
 							if (errMsg) {
 								outputChannel.appendLine(errMsg);
-								resolve([...sofar, null]);
+								resolve([...sofar, '']);
 								return;
 							}
 						}
@@ -307,11 +307,11 @@ export async function promptForMissingTool(toolName: string) {
 	const goVersion = await getGoVersion();
 
 	// Show error messages for outdated tools or outdated Go versions.
-	if (tool.minimumGoVersion && goVersion.lt(tool.minimumGoVersion.format())) {
+	if (tool.minimumGoVersion && goVersion && goVersion.lt(tool.minimumGoVersion.format())) {
 		vscode.window.showInformationMessage(`You are using go${goVersion.format()}, but ${tool.name} requires at least go${tool.minimumGoVersion.format()}.`);
 		return;
 	}
-	if (tool.maximumGoVersion && goVersion.gt(tool.maximumGoVersion.format())) {
+	if (tool.maximumGoVersion && goVersion && goVersion.gt(tool.maximumGoVersion.format())) {
 		vscode.window.showInformationMessage(`You are using go${goVersion.format()}, but ${tool.name} only supports go${tool.maximumGoVersion.format()} and below.`);
 		return;
 	}
@@ -398,12 +398,12 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 		vscode.window.showErrorMessage(
 			`Failed to run "go env" to find GOPATH as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve();
 	}
 	const goRuntimeBasePath = path.dirname(goRuntimePath);
 
 	// cgo and a few other Go tools expect Go binary to be in the path
-	let pathEnvVar: string;
+	let pathEnvVar = '';
 	if (process.env.hasOwnProperty('PATH')) {
 		pathEnvVar = 'PATH';
 	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
@@ -484,8 +484,9 @@ export async function offerToInstallTools() {
 		});
 	}
 
-	const usingSourceGraph = getToolFromToolPath(getLanguageServerToolPath()) === 'go-langserver';
-	if (usingSourceGraph && goVersion.gt('1.10')) {
+	const langServerToolPath = getLanguageServerToolPath();
+	const usingSourceGraph = langServerToolPath && getToolFromToolPath(langServerToolPath) === 'go-langserver';
+	if (usingSourceGraph && !!goVersion && goVersion.gt('1.10')) {
 		const promptMsg =
 			'The language server from Sourcegraph is no longer under active development and it does not support Go modules as well. Please install and use the language server from Google or disable the use of language servers altogether.';
 		const disableLabel = 'Disable language server';
@@ -499,9 +500,9 @@ export async function offerToInstallTools() {
 			} else if (selected === disableLabel) {
 				const goConfig = getGoConfig();
 				const inspectLanguageServerSetting = goConfig.inspect('useLanguageServer');
-				if (inspectLanguageServerSetting.globalValue === true) {
+				if (inspectLanguageServerSetting && inspectLanguageServerSetting.globalValue === true) {
 					goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.Global);
-				} else if (inspectLanguageServerSetting.workspaceFolderValue === true) {
+				} else if (inspectLanguageServerSetting && inspectLanguageServerSetting.workspaceFolderValue === true) {
 					goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.WorkspaceFolder);
 				}
 			}
@@ -509,17 +510,18 @@ export async function offerToInstallTools() {
 	}
 }
 
-function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
+function getMissingTools(goVersion: GoVersion|null): Promise<Tool[]> {
 	const keys = getConfiguredTools(goVersion);
-	return Promise.all<Tool>(
+	return Promise.all<Tool|null>(
 		keys.map(
 			(tool) =>
-				new Promise<Tool>((resolve, reject) => {
+				new Promise<Tool|null>((resolve) => {
 					const toolPath = getBinPath(tool.name);
+					// getBinPath returns the absolute path if the tool is already installed.
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
 		)
 	).then((res) => {
-		return res.filter((x) => x != null);
+		return res.filter((x) => x != null) as Tool[];
 	});
 }
