@@ -22,12 +22,12 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 		console.warn(
 			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve('');
 	}
 	const env = getToolsEnvVars();
 	GO111MODULE = env['GO111MODULE'];
 	return new Promise((resolve) => {
-		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env: getToolsEnvVars() }, (err, stdout) => {
+		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env: getToolsEnvVars() }, (err, stdout, stderr) => {
 			if (err) {
 				console.warn(`Error when running go env GOMOD: ${err}`);
 				return resolve();
@@ -38,14 +38,19 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 	});
 }
 
-export function isModSupported(fileuri: vscode.Uri): Promise<boolean> {
+export function isModSupported(fileuri: vscode.Uri | undefined): Promise<boolean> {
+	// TODO(hyangah): remove this module mode detection heuristic.
+	if (!fileuri) {
+		return Promise.resolve(false);
+	}
 	return getModFolderPath(fileuri).then((modPath) => !!modPath);
 }
 
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
-export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
-	const pkgPath = path.dirname(fileuri.fsPath);
+export async function getModFolderPath(fileuri: vscode.Uri | undefined): Promise<string> {
+	const fsPath = fileuri ? fileuri.fsPath : '';
+	const pkgPath = path.dirname(fsPath);
 	if (packagePathToGoModPathMap[pkgPath]) {
 		return packagePathToGoModPathMap[pkgPath];
 	}
@@ -53,12 +58,12 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 	// We never would be using the path under module cache for anything
 	// So, dont bother finding where exactly is the go.mod file
 	const moduleCache = getModuleCache();
-	if (fixDriveCasingInWindows(fileuri.fsPath).startsWith(moduleCache)) {
+	if (fixDriveCasingInWindows(fsPath).startsWith(moduleCache)) {
 		return moduleCache;
 	}
 	const goVersion = await getGoVersion();
-	if (goVersion.lt('1.11')) {
-		return;
+	if (goVersion && goVersion.lt('1.11')) {
+		return Promise.resolve('');
 	}
 
 	let goModEnvResult = await runGoModEnv(pkgPath);
@@ -129,11 +134,12 @@ export async function promptToUpdateToolForModules(
 				goConfig.update('formatTool', 'goimports', vscode.ConfigurationTarget.Global);
 			} else {
 				installTools([getTool(tool)], goVersion).then(() => {
-					if (tool === 'gopls') {
+					if (tool === 'gopls' && goConfig) {
 						if (goConfig.get('useLanguageServer') === false) {
 							goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.Global);
 						}
-						if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+						const inspect = goConfig.inspect('useLanguageServer')!;
+						if (inspect.workspaceFolderValue === false) {
 							goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.WorkspaceFolder);
 						}
 						restartLanguageServer();
@@ -158,7 +164,7 @@ export async function promptToUpdateToolForModules(
 const folderToPackageMapping: { [key: string]: string } = {};
 export async function getCurrentPackage(cwd: string): Promise<string> {
 	if (folderToPackageMapping[cwd]) {
-		return folderToPackageMapping[cwd];
+		return Promise.resolve(folderToPackageMapping[cwd]);
 	}
 
 	const moduleCache = getModuleCache();
@@ -170,7 +176,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 		}
 
 		folderToPackageMapping[cwd] = importPath;
-		return importPath;
+		return Promise.resolve(importPath);
 	}
 
 	const goRuntimePath = getBinPath('go');
@@ -178,7 +184,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 		console.warn(
 			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve('');
 	}
 	return new Promise<string>((resolve) => {
 		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: getToolsEnvVars() });

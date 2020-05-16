@@ -49,7 +49,9 @@ export function testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
 
 	editor.document.save().then(async () => {
 		try {
-			const testFunctions = await getFunctions(editor.document, null);
+			const tokenSrc = new vscode.CancellationTokenSource();
+			const testFunctions = await getFunctions(editor.document, tokenSrc.token);
+			tokenSrc.dispose();
 			// We use functionName if it was provided as argument
 			// Otherwise find any test function containing the cursor.
 			const testFunctionName =
@@ -179,16 +181,17 @@ export async function testCurrentPackage(goConfig: vscode.WorkspaceConfiguration
  * @param goConfig Configuration for the Go extension.
  */
 export function testWorkspace(goConfig: vscode.WorkspaceConfiguration, args: any) {
-	if (!vscode.workspace.workspaceFolders.length) {
+	const folders = vscode.workspace.workspaceFolders;
+	if (!folders || folders.length) {
 		vscode.window.showInformationMessage('No workspace is open to run tests.');
 		return;
 	}
-	let workspaceUri = vscode.workspace.workspaceFolders[0].uri;
+	let workspaceUri = folders[0].uri;
 	if (
 		vscode.window.activeTextEditor &&
 		vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)
 	) {
-		workspaceUri = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri).uri;
+		workspaceUri = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)!.uri;
 	}
 
 	const testConfig: TestConfig = {
@@ -222,11 +225,11 @@ export async function testCurrentFile(
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
-		return;
+		return false;
 	}
 	if (!editor.document.fileName.endsWith('_test.go')) {
 		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
-		return;
+		return false;
 	}
 
 	const getFunctions = isBenchmark ? getBenchmarkFunctions : getTestFunctions;
@@ -235,7 +238,9 @@ export async function testCurrentFile(
 	return editor.document
 		.save()
 		.then(() => {
-			return getFunctions(editor.document, null).then((testFunctions) => {
+			const tokenSrc = new vscode.CancellationTokenSource();
+			return getFunctions(editor.document, tokenSrc.token).then((testFunctions) => {
+				tokenSrc.dispose();
 				const testConfig: TestConfig = {
 					goConfig,
 					dir: path.dirname(editor.document.fileName),
@@ -250,7 +255,7 @@ export async function testCurrentFile(
 				return goTest(testConfig);
 			});
 		})
-		.then(null, (err) => {
+		.then(undefined, (err) => {
 			console.error(err);
 			return Promise.resolve(false);
 		});

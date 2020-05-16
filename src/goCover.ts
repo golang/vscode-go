@@ -259,7 +259,7 @@ function setCoverageData(filePath: string, data: CoverageData) {
  * Apply the code coverage highlighting in given editor
  * @param editor
  */
-export function applyCodeCoverage(editor: vscode.TextEditor) {
+export function applyCodeCoverage(editor: vscode.TextEditor|undefined) {
 	if (!editor || editor.document.languageId !== 'go' || editor.document.fileName.endsWith('_test.go')) {
 		return;
 	}
