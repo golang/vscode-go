@@ -45,13 +45,13 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 		document: vscode.TextDocument,
 		position: vscode.Position,
 		token: vscode.CancellationToken
-	): Thenable<vscode.Definition> {
+	): Promise<vscode.Definition|undefined> {
 		// To keep `guru implements` fast we want to restrict the scope of the search to current workspace
 		// If no workspace is open, then no-op
 		const root = getWorkspaceFolderPath(document.uri);
 		if (!root) {
 			vscode.window.showInformationMessage('Cannot find implementations when there is no workspace open.');
-			return;
+			return Promise.resolve(undefined);
 		}
 
 		const goRuntimePath = getBinPath('go');
@@ -59,12 +59,12 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 			vscode.window.showErrorMessage(
 				`Failed to run "go list" to get the scope to find implementations as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
 			);
-			return;
+			return Promise.resolve(undefined);
 		}
 
 		return new Promise<vscode.Definition>((resolve, reject) => {
 			if (token.isCancellationRequested) {
-				return resolve(null);
+				return resolve();
 			}
 			const env = getToolsEnvVars();
 			const listProcess = cp.execFile(
@@ -90,7 +90,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 					const guruProcess = cp.execFile(goGuru, args, { env }, (guruErr, guruStdOut, guruStdErr) => {
 						if (guruErr && (<any>guruErr).code === 'ENOENT') {
 							promptForMissingTool('guru');
-							return resolve(null);
+							return resolve();
 						}
 
 						if (guruErr) {

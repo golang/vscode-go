@@ -61,10 +61,10 @@ interface GuruDefinitionOuput {
 export function definitionLocation(
 	document: vscode.TextDocument,
 	position: vscode.Position,
-	goConfig: vscode.WorkspaceConfiguration,
+	goConfig: vscode.WorkspaceConfiguration|undefined,
 	includeDocs: boolean,
 	token: vscode.CancellationToken
-): Promise<GoDefinitionInformation> {
+): Promise<GoDefinitionInformation|null> {
 	const adjustedPos = adjustWordPosition(document, position);
 	if (!adjustedPos[0]) {
 		return Promise.resolve(null);
@@ -111,7 +111,7 @@ export function adjustWordPosition(
 		word.match(/^\d+.?\d+$/) ||
 		goKeywords.indexOf(word) > 0
 	) {
-		return [false, null, null];
+		return [false, word, position];
 	}
 	if (position.isEqual(wordRange.end) && position.isAfter(wordRange.start)) {
 		position = position.translate(0, -1);
@@ -133,9 +133,13 @@ function definitionLocation_godef(
 	}
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = getToolsEnvVars();
-	let p: cp.ChildProcess;
+	let p: cp.ChildProcess|undefined;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => {
+			if (p && p.pid) {
+				killTree(p.pid);
+			}
+		});
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -164,7 +168,7 @@ function definitionLocation_godef(
 					}
 					if (stderr.indexOf('flag provided but not defined: -r') !== -1) {
 						promptForUpdatingTool('godef');
-						p = null;
+						p = undefined;
 						return definitionLocation_godef(input, token, false).then(resolve, reject);
 					}
 					return reject(err.message || stderr);
@@ -175,7 +179,7 @@ function definitionLocation_godef(
 				if (!match) {
 					// TODO: Gotodef on pkg name:
 					// /usr/local/go/src/html/template\n
-					return resolve(null);
+					return resolve();
 				}
 				const [_, file, line, col] = match;
 				const pkgPath = path.dirname(file);
@@ -185,8 +189,8 @@ function definitionLocation_godef(
 					column: +col - 1,
 					declarationlines: lines.slice(1),
 					toolUsed: 'godef',
-					doc: null,
-					name: null
+					doc: '',
+					name: ''
 				};
 				if (!input.includeDocs || godefImportDefinitionRegex.test(definitionInformation.declarationlines[0])) {
 					return resolve(definitionInformation);
@@ -207,7 +211,7 @@ function definitionLocation_godef(
 				reject(e);
 			}
 		});
-		if (p.pid) {
+		if (p.pid && p.stdin) {
 			p.stdin.end(input.document.getText());
 		}
 	});
@@ -224,9 +228,9 @@ function definitionLocation_gogetdoc(
 	}
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = getToolsEnvVars();
-	let p: cp.ChildProcess;
+	let p: cp.ChildProcess|undefined;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => { if (p && p.pid) { killTree(p.pid); }});
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -246,7 +250,7 @@ function definitionLocation_gogetdoc(
 					return reject(missingToolMsg + 'gogetdoc');
 				}
 				if (stderr && stderr.startsWith('flag provided but not defined: -tags')) {
-					p = null;
+					p = undefined;
 					return definitionLocation_gogetdoc(input, token, false).then(resolve, reject);
 				}
 				if (err) {
@@ -255,14 +259,14 @@ function definitionLocation_gogetdoc(
 							'gogetdoc',
 							`To get the Go to Definition feature when using Go modules, please update your version of the "gogetdoc" tool.`
 						);
-						return resolve(null);
+						return resolve();
 					}
 					return reject(err.message || stderr);
 				}
 				const goGetDocOutput = <GoGetDocOuput>JSON.parse(stdout.toString());
 				const match = /(.*):(\d+):(\d+)/.exec(goGetDocOutput.pos);
 				const definitionInfo: GoDefinitionInformation = {
-					file: null,
+					file: '',
 					line: 0,
 					column: 0,
 					toolUsed: 'gogetdoc',
@@ -282,7 +286,7 @@ function definitionLocation_gogetdoc(
 				reject(e);
 			}
 		});
-		if (p.pid) {
+		if (p && p.pid && p.stdin) {
 			p.stdin.end(getFileArchive(input.document));
 		}
 	});
@@ -318,13 +322,13 @@ function definitionLocation_guru(
 					const guruOutput = <GuruDefinitionOuput>JSON.parse(stdout.toString());
 					const match = /(.*):(\d+):(\d+)/.exec(guruOutput.objpos);
 					const definitionInfo: GoDefinitionInformation = {
-						file: null,
+						file: '',
 						line: 0,
 						column: 0,
 						toolUsed: 'guru',
 						declarationlines: [guruOutput.desc],
-						doc: null,
-						name: null
+						doc: '',
+						name: ''
 					};
 					if (!match) {
 						return resolve(definitionInfo);
@@ -339,7 +343,7 @@ function definitionLocation_guru(
 				}
 			}
 		);
-		if (p.pid) {
+		if (p.pid && p.stdin) {
 			p.stdin.end(getFileArchive(input.document));
 		}
 	});
@@ -353,11 +357,11 @@ export function parseMissingError(err: any): [boolean, string] {
 			return [true, err.substr(missingToolMsg.length)];
 		}
 	}
-	return [false, null];
+	return [false, ''];
 }
 
 export class GoDefinitionProvider implements vscode.DefinitionProvider {
-	private goConfig: vscode.WorkspaceConfiguration = null;
+	private goConfig: vscode.WorkspaceConfiguration|undefined;
 
 	constructor(goConfig?: vscode.WorkspaceConfiguration) {
 		this.goConfig = goConfig;
@@ -367,7 +371,7 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 		document: vscode.TextDocument,
 		position: vscode.Position,
 		token: vscode.CancellationToken
-	): Thenable<vscode.Location> {
+	): Thenable<vscode.Location|null> {
 		return definitionLocation(document, position, this.goConfig, false, token).then(
 			(definitionInfo) => {
 				if (definitionInfo == null || definitionInfo.file == null) {

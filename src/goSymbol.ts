@@ -39,7 +39,7 @@ export class GoWorkspaceSymbolProvider implements vscode.WorkspaceSymbolProvider
 				return;
 			}
 			for (const decl of decls) {
-				let kind: vscode.SymbolKind;
+				let kind = vscode.SymbolKind.File;  // 0
 				if (decl.kind !== '') {
 					kind = this.goKindToCodeKind[decl.kind];
 				}
@@ -61,10 +61,10 @@ export class GoWorkspaceSymbolProvider implements vscode.WorkspaceSymbolProvider
 
 		if (!root && !goConfig.gotoSymbol.includeGoroot) {
 			vscode.window.showInformationMessage('No workspace is open to find symbols.');
-			return;
+			return Promise.resolve([] as vscode.SymbolInformation[]);
 		}
 
-		return getWorkspaceSymbols(root, query, token, goConfig).then((results) => {
+		return getWorkspaceSymbols(root!, query, token, goConfig).then((results) => {
 			const symbols: vscode.SymbolInformation[] = [];
 			convertToCodeSymbols(results, symbols);
 			return symbols;
@@ -92,13 +92,13 @@ export function getWorkspaceSymbols(
 	calls.push(callGoSymbols([...baseArgs, workspacePath, query], token));
 
 	if (gotoSymbolConfig.includeGoroot) {
-		const goRoot = process.env['GOROOT'];
+		const goRoot = process.env['GOROOT'] || '';
 		const gorootCall = callGoSymbols([...baseArgs, goRoot, query], token);
 		calls.push(gorootCall);
 	}
 
 	return Promise.all(calls)
-		.then(([...results]) => <GoSymbolDeclaration[]>[].concat(...results))
+		.then(([...results]) => (<GoSymbolDeclaration[]>[]).concat(...results))
 		.catch((err: Error) => {
 			if (err && (<any>err).code === 'ENOENT') {
 				promptForMissingTool('go-symbols');
@@ -107,6 +107,7 @@ export function getWorkspaceSymbols(
 				promptForUpdatingTool('go-symbols');
 				return getWorkspaceSymbols(workspacePath, query, token, goConfig, false);
 			}
+			return [] as GoSymbolDeclaration[];
 		});
 }
 

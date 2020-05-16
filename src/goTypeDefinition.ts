@@ -70,7 +70,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 				try {
 					if (guruErr && (<any>guruErr).code === 'ENOENT') {
 						promptForMissingTool('guru');
-						return resolve(null);
+						return resolve();
 					}
 
 					if (guruErr) {
@@ -89,7 +89,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 						}
 
 						// Fall back to position of declaration
-						return definitionLocation(document, position, null, false, token).then(
+						return definitionLocation(document, position, undefined, false, token).then(
 							(definitionInfo) => {
 								if (definitionInfo == null || definitionInfo.file == null) {
 									return null;
@@ -127,7 +127,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 					reject(e);
 				}
 			});
-			if (process.pid) {
+			if (process && process.pid && process.stdin) {
 				process.stdin.end(getFileArchive(document));
 			}
 			token.onCancellationRequested(() => killTree(process.pid));

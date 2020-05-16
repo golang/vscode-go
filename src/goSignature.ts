@@ -25,14 +25,18 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 		document: TextDocument,
 		position: Position,
 		token: CancellationToken
-	): Promise<SignatureHelp> {
+	): Promise<SignatureHelp|undefined> {
 		let goConfig = this.goConfig || getGoConfig(document.uri);
 
 		const theCall = this.walkBackwardsToBeginningOfCall(document, position);
 		if (theCall == null) {
-			return Promise.resolve(null);
+			return;
 		}
 		const callerPos = this.previousTokenPosition(document, theCall.openParen);
+		if (!callerPos) {
+			// can't determine caller position.
+			return;
+		}
 		// Temporary fix to fall back to godoc if guru is the set docsTool
 		if (goConfig['docsTool'] === 'guru') {
 			goConfig = Object.assign({}, goConfig, { docsTool: 'godoc' });
@@ -41,15 +45,15 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 			const res = await definitionLocation(document, callerPos, goConfig, true, token);
 			if (!res) {
 				// The definition was not found
-				return null;
+				return;
 			}
 			if (res.line === callerPos.line) {
 				// This must be a function definition
-				return null;
+				return;
 			}
 			let declarationText: string = (res.declarationlines || []).join(' ').trim();
 			if (!declarationText) {
-				return null;
+				return;
 			}
 			const result = new SignatureHelp();
 			let sig: string;
@@ -70,6 +74,9 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 				}
 				si = new SignatureInformation(declarationText, res.doc);
 				sig = declarationText.substring(res.name.length);
+			} else {
+				// unknown tool - we don't know how to parse the result.
+				return;
 			}
 			si.parameters = getParametersAndReturnType(sig).params.map(
 				(paramText) => new ParameterInformation(paramText)
@@ -79,11 +86,11 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 			result.activeParameter = Math.min(theCall.commas.length, si.parameters.length - 1);
 			return result;
 		} catch (e) {
-			return null;
+			return;
 		}
 	}
 
-	private previousTokenPosition(document: TextDocument, position: Position): Position {
+	private previousTokenPosition(document: TextDocument, position: Position): Position|undefined {
 		while (position.character > 0) {
 			const word = document.getWordRangeAtPosition(position);
 			if (word) {
@@ -91,7 +98,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 			}
 			position = position.translate(0, -1);
 		}
-		return null;
+		return;
 	}
 
 	/**
