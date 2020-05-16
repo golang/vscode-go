@@ -14,9 +14,12 @@ import path = require('path');
 
 let binPathCache: { [bin: string]: string } = {};
 
-export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : undefined);
 
-export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appendBinToPath: boolean): string {
+export function getBinPathFromEnvVar(
+	toolName: string,
+	envVarValue: string|undefined,
+	appendBinToPath: boolean): string | undefined {
 	toolName = correctBinname(toolName);
 	if (envVarValue) {
 		const paths = envVarValue.split(path.delimiter);
@@ -27,7 +30,7 @@ export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appe
 			}
 		}
 	}
-	return null;
+	return;
 }
 
 export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths: string[], alternateTool?: string) {
@@ -79,7 +82,7 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 			binPathCache[toolName] = defaultPathForGo;
 			return defaultPathForGo;
 		}
-		return;
+		return 'go';
 	}
 
 	// Else return the binary name directly (this will likely always fail downstream)
@@ -160,7 +163,7 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 }
 
 // Walks up given folder path to return the closest ancestor that has `src` as a child
-export function getInferredGopath(folderPath: string): string {
+export function getInferredGopath(folderPath: string): string | undefined {
 	if (!folderPath) {
 		return;
 	}
@@ -179,7 +182,7 @@ export function getInferredGopath(folderPath: string): string {
  * @param gopath string Current Gopath. Can be ; or : separated (as per os) to support multiple paths
  * @param currentFileDirPath string
  */
-export function getCurrentGoWorkspaceFromGOPATH(gopath: string, currentFileDirPath: string): string {
+export function getCurrentGoWorkspaceFromGOPATH(gopath: string, currentFileDirPath: string): string | undefined {
 	if (!gopath) {
 		return;
 	}
