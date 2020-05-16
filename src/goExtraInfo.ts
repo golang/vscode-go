@@ -17,7 +17,7 @@ export class GoHoverProvider implements HoverProvider {
 		this.goConfig = goConfig;
 	}
 
-	public provideHover(document: TextDocument, position: Position, token: CancellationToken): Thenable<Hover> {
+	public async provideHover(document: TextDocument, position: Position, token: CancellationToken): Promise<Hover|null> {
 		if (!this.goConfig) {
 			this.goConfig = getGoConfig(document.uri);
 		}
@@ -27,27 +27,19 @@ export class GoHoverProvider implements HoverProvider {
 		if (goConfig['docsTool'] === 'guru') {
 			goConfig = Object.assign({}, goConfig, { docsTool: 'godoc' });
 		}
-		return definitionLocation(document, position, goConfig, true, token).then(
-			(definitionInfo) => {
-				if (definitionInfo == null) {
-					return null;
-				}
-				const lines = definitionInfo.declarationlines
-					.filter((line) => line !== '')
-					.map((line) => line.replace(/\t/g, '    '));
-				let text;
-				text = lines.join('\n').replace(/\n+$/, '');
-				const hoverTexts = new vscode.MarkdownString();
-				hoverTexts.appendCodeblock(text, 'go');
-				if (definitionInfo.doc != null) {
-					hoverTexts.appendMarkdown(definitionInfo.doc);
-				}
-				const hover = new Hover(hoverTexts);
-				return hover;
-			},
-			() => {
-				return null;
-			}
-		);
+		const definitionInfo = await definitionLocation(document, position, goConfig, true, token);
+		if (!definitionInfo) {
+			return null;
+		}
+		const lines = definitionInfo.declarationlines
+			.filter((line) => line !== '')
+			.map((line) => line.replace(/\t/g, '    '));
+		const text = lines.join('\n').replace(/\n+$/, '');
+		const hoverTexts = new vscode.MarkdownString();
+		hoverTexts.appendCodeblock(text, 'go');
+		if (definitionInfo.doc != null) {
+			hoverTexts.appendMarkdown(definitionInfo.doc);
+		}
+		return new Hover(hoverTexts);
 	}
 }
