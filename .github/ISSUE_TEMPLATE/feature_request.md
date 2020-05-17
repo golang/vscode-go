@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-If you have a question, please ask it on https://gitter.im/Microsoft/vscode-go or on the VSCode channel in Gophers Slack(https://invite.slack.golangbridge.org/)
+If you have a question, please ask it on the `#vscode` or `#vscode-go` channels in Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode).
 
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
