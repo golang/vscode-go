@@ -13,9 +13,9 @@ Please direct general questions to:
 Please review the [documentation](https://github.com/golang/vscode-go/tree/master/docs) before filing an issue.
 Helpful pages include:
 
-- [GOPATH](../../docs/gopath.md)
-- [Module Support](../../docs/modules.md)
-- [Debugging](../../docs/debugging.md)
+- [GOPATH](https://github.com/golang/vscode-go/tree/master/docs/gopath.md)
+- [Module Support](https://github.com/golang/vscode-go/tree/master/docs/modules.md)
+- [Debugging](https://github.com/golang/vscode-go/tree/master/docs/debugging.md)
   - Set "trace": "log" and share the resulting logs in the debug console when logging an issue.
 
 Please answer these questions before submitting your issue. Thanks!
