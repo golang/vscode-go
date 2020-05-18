@@ -14,10 +14,10 @@ Extra settings to fine tune `gopls` are available. Please see the [gopls documen
 
 * [Troubleshooting and reporting issues](https://golang.org/s/gopls/doc/troubleshooting.md)
 
-In addition to the Go language server, VS Code extension may use additional [Go tools](Go-tools-that-the-Go-extension-depends-on.md) to provide features like code navigation, code completion, build, lint etc. Some tools may not have a good support for Go modules yet. Please report [an issue](https://github.com/microsoft/vscode-go/issues/new) if you encounter problems.
+In addition to the Go language server, VS Code extension may use additional [Go tools](tools.md) to provide features like code navigation, code completion, build, lint etc. Some tools may not have a good support for Go modules yet. Please report [an issue](https://github.com/microsoft/vscode-go/issues/new) if you encounter problems.
 
 
-If you don't want to use the language server for any reason, then please know that not all the [Go tools](Go-tools-that-the-Go-extension-depends-on.md) that this extension depends on supports Go modules. https://golang.org/issues/24661 is the issue used by the Go tools team to track the update of Go modules support in various Go tools.
+If you don't want to use the language server for any reason, then please know that not all the [Go tools](tools.md) that this extension depends on supports Go modules. https://golang.org/issues/24661 is the issue used by the Go tools team to track the update of Go modules support in various Go tools.
 
 ## FAQ
 

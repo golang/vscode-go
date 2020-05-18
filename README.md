@@ -112,11 +112,11 @@ This extension requires the `go` tools. See [Go's installation guide](https://go
 
 Install and open [Visual Studio Code](https://code.visualstudio.com). Press `Ctrl+Shift+X` or `Cmd+Shift+X` to open the Extensions pane. Find and install the Go extension. You can also install the extension from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-vscode.Go). Open any `.go` file in VS Code. The extension is now activated.
 
-This extension uses a set of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have these tools in a separate location, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](https://github.com/microsoft/vscode-go/blob/master/docs/Go-tools-that-the-Go-extension-depends-on.md).
+This extension uses a set of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have these tools in a separate location, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](docs/tools.md).
 
 You will see `Analysis Tools Missing` in the bottom right, clicking this will offer to install all of the dependent Go tools. You can also run the [command](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) `Go: Install/Update tools` to install/update the same. You need to have git installed for these tool installations to work.
 
-**Note 1**: Read [GOPATH in the VS Code Go extension](https://github.com/Microsoft/vscode-go/blob/master/docs/GOPATH-in-the-VS-Code-Go-extension.md) to learn about the different ways you can get the extension to set GOPATH.
+**Note 1**: Read [GOPATH in the VS Code Go extension](docs/gopath.md) to learn about the different ways you can get the extension to set GOPATH.
 
 **Note 2**: The `Format on save` feature has a timeout of 750ms after which the formatting is aborted. You can change this timeout using the setting `editor.formatOnSaveTimeout`. This feature gets disabled when you have enabled the `Auto Save` feature in Visual Studio Code.
 
@@ -124,12 +124,11 @@ You will see `Analysis Tools Missing` in the bottom right, clicking this will of
 
 ### Customizing the Go extension features
 
-The Go extension is ready to use on the get go. If you want to customize the features, you can edit the settings in your User or Workspace settings. Read [All Settings & Commands in Visual Studio Code Go extension](https://github.com/Microsoft/vscode-go/blob/master/docs/All-Settings-&-Commands-in-Visual-Studio-Code-Go-extension.md) for the full list of options and their descriptions.
-
+The Go extension is ready to use on the get go. If you want to customize the features, you can edit the settings in your User or Workspace settings. Read [All Settings & Commands in Visual Studio Code Go extension](docs/commands.md) for the full list of options and their descriptions.
 
 ### Go Language Server
 
-The Go extension uses a host of [Go tools](https://github.com/Microsoft/vscode-go/blob/master/docs/Go-tools-that-the-Go-extension-depends-on.md) to provide the various language features. An alternative is to use a single language server that provides the same features using the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). 
+The Go extension uses a host of [Go tools](docs/tools.md) to provide the various language features. An alternative is to use a single language server that provides the same features using the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). 
 
 [`gopls`](https://golang.org/s/gopls/README.md) from Google is the official language server for
 the Go language and is currently in active development. You can choose to use this by setting
@@ -233,7 +232,7 @@ A few of these are available in the editor context menu as an experimental featu
 
 ### _Optional_: Debugging
 
-To use the debugger, you must currently manually [install delve](https://github.com/derekparker/delve/tree/master/Documentation/installation). For more read [Debugging Go Code Using VS Code](https://github.com/microsoft/vscode-go/blob/master/docs/Debugging-Go-code-using-VS-Code.md).
+To use the debugger, you must currently manually [install delve](https://github.com/derekparker/delve/tree/master/Documentation/installation). For more read [Debugging Go Code Using VS Code](docs/debugging.md).
 
 #### Debugging in WSL
 
@@ -241,24 +240,24 @@ If using WSL on Windows, you will need the WSL 2 Linux kernel.  See [WSL 2 Insta
 
 #### Remote Debugging
 
-To remote debug using VS Code, read [Remote Debugging](https://github.com/microsoft/vscode-go/blob/master/docs/Debugging-Go-code-using-VS-Code.md#remote-debugging).
+To remote debug using VS Code, read [Remote Debugging](docs/debugging.md#remote-debugging).
 
 ## Install or update all dependencies
 
-To quickly get all dependencies installed (or updated) see the [Go Tools wiki page](https://github.com/microsoft/vscode-go/blob/master/docs/Go-tools-that-the-Go-extension-depends-on.md).
+To quickly get all dependencies installed (or updated) see the [Go Tools wiki page](docs/tools.md).
 
 ## Building and Debugging the Extension
 
 You can set up a development environment for debugging the extension during extension development.
-Read more at [Building, Debugging and Sideloading the extension in Visual Studio Code](https://github.com/microsoft/vscode-go/blob/master/docs/Building,-Debugging-and-Sideloading-the-extension-in-Visual-Studio-Code.md).
+Read more at [Building, Debugging and Sideloading the extension in Visual Studio Code](docs/contributing.md).
 
 ## Tools this extension depends on
 
-This extension uses a host of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have the extension use a separate GOPATH for its tools, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](https://github.com/microsoft/vscode-go/blob/master/docs/Go-tools-that-the-Go-extension-depends-on.md).
+This extension uses a host of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have the extension use a separate GOPATH for its tools, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](docs/tools.md).
 
 ## Frequently Asked Questions (FAQ)
 
-Please see our wiki on [Frequently Asked Questions](https://github.com/microsoft/vscode-go/blob/master/docs/Go-with-VS-Code-FAQ-and-Troubleshooting.md) to get answers to your questions or get started with troubleshooting.
+Please see our wiki on [Frequently Asked Questions](docs/troubleshooting.md) to get answers to your questions or get started with troubleshooting.
 
 ## Contributing
 
@@ -272,4 +271,5 @@ For more information see the [Code of Conduct FAQ](https://opensource.microsoft.
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
 ## License
+
 [MIT](LICENSE)
