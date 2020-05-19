@@ -177,8 +177,8 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 }
 
 export async function installTool(
-	goRuntimePath: string, goVersion: GoVersion, envForTools: NodeJS.Dict<string>, modulesOn: boolean,
-	tool: ToolAtVersion): Promise<string> {
+	tool: ToolAtVersion,
+	goRuntimePath: string, goVersion: GoVersion, envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
 		const reason = await tool.close();
@@ -220,15 +220,17 @@ export async function installTool(
 		importPath = getImportPathWithVersion(tool, tool.version, goVersion);
 	}
 	args.push(importPath);
-	const opts = {
-		env,
-		cwd: toolsTmpDir,
-	};
+
 	let output: string;
 	try {
+		const opts = {
+			env,
+			cwd: toolsTmpDir,
+		};
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
 		output = `${stdout} ${stderr}`;
+
 		if (stderr.indexOf('unexpected directory layout:') > -1) {
 			await execFile(goRuntimePath, args, opts);
 		} else if (hasModSuffix(tool)) {
@@ -240,10 +242,12 @@ export async function installTool(
 			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
 		}
 	} catch (e) {
-		return `${e} ${output} `;
+		return `failed to install ${tool}: ${e} ${output} `;
 	}
+
 	// Delete the temporary installation directory.
 	rmdirRecursive(toolsTmpDir);
+
 	return '';
 }
 

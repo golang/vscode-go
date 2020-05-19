@@ -23,7 +23,6 @@ suite('Installation Tests', () => {
 			['gopls'],
 			['gopls', 'guru'],
 		];
-
 		const proxyDir = buildFakeProxy([].concat(...testCases));
 
 		for (const missing of testCases) {

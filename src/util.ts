@@ -900,8 +900,6 @@ export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: nu
 	};
 }
 
-// TODO(rstambler): There is now experimental support for a recursive option
-// on fs.rmdir, so this function should be replaced.
 export function rmdirRecursive(dir: string) {
 	if (fs.existsSync(dir)) {
 		fs.readdirSync(dir).forEach((file) => {
