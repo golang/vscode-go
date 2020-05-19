@@ -5,6 +5,7 @@
 
 import AdmZip = require('adm-zip');
 import * as assert from 'assert';
+import cp = require('child_process');
 import fs = require('fs');
 import os = require('os');
 import path = require('path');
@@ -13,7 +14,7 @@ import util = require('util');
 import vscode = require('vscode');
 import { installTools } from '../../src/goInstallTools';
 import { getTool, getToolAtVersion } from '../../src/goTools';
-import { getGoVersion, rmdirRecursive } from '../../src/util';
+import { getBinPath, getGoVersion, rmdirRecursive } from '../../src/util';
 
 suite('Installation Tests', () => {
 	test('install tools', async () => {
@@ -57,10 +58,15 @@ suite('Installation Tests', () => {
 			const files = await readdir(path.join(tmpToolsGopath, 'bin'));
 			assert.deepEqual(files, missing, `tool installation failed for ${missing}`);
 
-			// TODO(rstambler): A module cache gets created in $GOPATH/pkg with
-			// different permissions, and fs.chown doesn't seem to work on it.
-			// Not sure how to remove the files so that the temporary directory
-			// can be deleted.
+			// Clean up the temporary GOPATH. To delete the module cache, run `go clean -modcache`.
+			const goRuntimePath = getBinPath('go');
+			const envForTest = Object.assign({}, process.env);
+			envForTest['GOPATH'] = tmpToolsGopath;
+			const execFile = util.promisify(cp.execFile);
+			await execFile(goRuntimePath, ['clean', '-modcache'], {
+				env: envForTest,
+			});
+			rmdirRecursive(tmpToolsGopath);
 		}
 
 		rmdirRecursive(proxyDir);
