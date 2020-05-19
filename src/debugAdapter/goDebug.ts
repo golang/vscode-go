@@ -90,17 +90,17 @@ interface DebuggerState {
 	Running: boolean;
 }
 
-interface PackageBuildInfo {
+export interface PackageBuildInfo {
 	ImportPath: string;
 	DirectoryPath: string;
 	Files: string[];
 }
 
-interface ListPackagesBuildInfoOut {
+export interface ListPackagesBuildInfoOut {
 	List: PackageBuildInfo[];
 }
 
-interface ListSourcesOut {
+export interface ListSourcesOut {
 	Sources: string[];
 }
 
@@ -324,6 +324,10 @@ function findPathSeparator(filePath: string) {
 	return filePath.includes('/') ? '/' : '\\';
 }
 
+export function escapeGoModPath(filePath: string) {
+	return filePath.replace(/[A-Z]/g, (match: string) => `!${match.toLocaleLowerCase()}`);
+}
+
 function normalizePath(filePath: string) {
 	if (process.platform === 'win32') {
 		const pathSeparator = findPathSeparator(filePath);
@@ -339,7 +343,7 @@ function getBaseName(filePath: string) {
 	return filePath.includes('/') ? path.basename(filePath) : path.win32.basename(filePath);
 }
 
-class Delve {
+export class Delve {
 	public program: string;
 	public remotePath: string;
 	public loadConfig: LoadConfig;
@@ -735,7 +739,7 @@ class Delve {
 	}
 }
 
-class GoDebugSession extends LoggingDebugSession {
+export class GoDebugSession extends LoggingDebugSession {
 	private variableHandles: Handles<DebugVariable>;
 	private breakpoints: Map<string, DebugBreakpoint[]>;
 	// Editing breakpoints requires halting delve, skip sending Stop Event to VS Code in such cases
@@ -757,7 +761,10 @@ class GoDebugSession extends LoggingDebugSession {
 
 	private continueEpoch = 0;
 	private continueRequestRunning = false;
-	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
+	public constructor(
+			debuggerLinesStartAt1: boolean,
+			isServer: boolean = false,
+			readonly fileSystem = fs) {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
 		this.skipStopEventOnce = false;
@@ -856,8 +863,10 @@ class GoDebugSession extends LoggingDebugSession {
 	 * For example, if filePath is /usr/local/foo/bar/main.go
 	 * and potentialPaths are abc/xyz/main.go, bar/main.go
 	 * then bar/main.go will be the result.
+	 * NOTE: This function assumes that potentialPaths array only contains
+	 * files with the same base names as filePath.
 	 */
-	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]) {
+	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string|undefined {
 		if (!potentialPaths.length) {
 			return;
 		}
@@ -975,53 +984,96 @@ class GoDebugSession extends LoggingDebugSession {
 			this.remotePathSeparator = findPathSeparator(remotePackage.DirectoryPath);
 		}
 
+		// Escaping package path.
+		// It seems like sometimes Delve don't escape the path properly
+		// so we should do it.
+		remotePath = escapeGoModPath(remotePath);
+		const escapedImportPath = escapeGoModPath(remotePackage.ImportPath);
+
 		// The remotePackage.DirectoryPath should be something like
 		// <gopath|goroot|source>/<import-path>/xyz...
 		// Directory Path can be like "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp"
 		// and Import Path can be like "github.com/google/go-cmp/cmp"
-		const importPathIndex = remotePackage.DirectoryPath.replace(/@v(\d+\.)*(\d+)*/, '')
-			.indexOf(remotePackage.ImportPath);
+		// and Remote Path "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp/blah.go"
+		const importPathIndex = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '')
+			.indexOf(escapedImportPath);
 		if (importPathIndex < 0) {
 			return;
 		}
 
-		const localRelativeDirectoryPath = remotePackage.DirectoryPath
+		const relativeRemotePath = remotePath
 			.substr(importPathIndex)
 			.split(this.remotePathSeparator)
 			.join(this.localPathSeparator);
+		const pathToConvertWithLocalSeparator = remotePath.split(this.remotePathSeparator).join(this.localPathSeparator);
 
 		// Scenario 1: The package is inside the current working directory.
-		const localWorkspacePath = path.join(this.delve.program, localRelativeDirectoryPath);
-		if (fs.existsSync(localWorkspacePath)) {
-			return path.join(this.delve.program,
-				remotePath
-					.substr(importPathIndex)
-					.split(this.remotePathSeparator)
-					.join(this.localPathSeparator));
+		const localWorkspacePath = path.join(this.delve.program, relativeRemotePath);
+		if (this.fileSystem.existsSync(localWorkspacePath)) {
+			return localWorkspacePath;
 		}
 
 		// Scenario 2: The package is inside GOPATH.
-		const pathToConvertWithLocalSeparator = remotePath.split(this.remotePathSeparator).join(this.localPathSeparator);
-		const indexGoModCache = pathToConvertWithLocalSeparator.indexOf(
-			`${this.localPathSeparator}pkg${this.localPathSeparator}mod${this.localPathSeparator}`
-		);
-		const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
-		const localGoPathImportPath = path.join(
-			gopath,
-			pathToConvertWithLocalSeparator.substr(indexGoModCache));
-		if (fs.existsSync(localGoPathImportPath)) {
+		const localGoPathImportPath = this.inferLocalPathInGoPathFromRemoteGoPackage(
+			pathToConvertWithLocalSeparator, relativeRemotePath);
+		if (localGoPathImportPath) {
 			return localGoPathImportPath;
 		}
 
-		// Scenario 3: The package is inside GOROOT.
-		const srcIndex = pathToConvertWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
+		// Scenario 4: The package is inside GOROOT.
+		return this.inferLocalPathInGoRootFromRemoteGoPackage(pathToConvertWithLocalSeparator, relativeRemotePath);
+	}
+
+	/**
+	 * Given a remotePath, check whether the file path exists in $GOROOT/src.
+	 * Return the path if it exists.
+	 * We are assuming that remotePath is of the form <prefix>/src/<suffix>.
+	 */
+	protected inferLocalPathInGoRootFromRemoteGoPackage(
+			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		const srcIndex = remotePathWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
 		const goroot = process.env['GOROOT'];
 		const localGoRootImportPath = path.join(
 			goroot,
-			pathToConvertWithLocalSeparator
-				.substr(srcIndex));
-		if (fs.existsSync(localGoRootImportPath)) {
+			srcIndex >= 0
+				? remotePathWithLocalSeparator.substr(srcIndex)
+				: path.join('src', relativeRemotePath));
+		if (this.fileSystem.existsSync(localGoRootImportPath)) {
 			return localGoRootImportPath;
+		}
+	}
+
+	/**
+	 * Given a remotePath, check whether the file path exists in $GOPATH.
+	 * This can be either in $GOPATH/pkg/mod or $GOPATH/src. If so, return that path.
+	 * remotePath can be something like /usr/local/gopath/src/hello-world/main.go
+	 * and relativeRemotePath should be hello-world/main.go. In other words,
+	 * relativeRemotePath is a relative version of remotePath starting
+	 * from the import path of the module.
+	 */
+	protected inferLocalPathInGoPathFromRemoteGoPackage(
+			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		// Scenario 1: The package is inside GOPATH.
+		const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
+
+		const indexGoModCache = remotePathWithLocalSeparator.indexOf(
+			`${this.localPathSeparator}pkg${this.localPathSeparator}mod${this.localPathSeparator}`
+		);
+		const localGoPathImportPath = path.join(
+			gopath,
+			indexGoModCache >= 0
+				? remotePathWithLocalSeparator.substr(indexGoModCache)
+				: path.join('pkg', 'mod', relativeRemotePath));
+		if (this.fileSystem.existsSync(localGoPathImportPath)) {
+			return localGoPathImportPath;
+		}
+
+		// Scenario 2: The file is in a package in GOPATH/src.
+		const localGoPathSrcPath = path.join(
+				gopath, 'src',
+				relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator));
+		if (this.fileSystem.existsSync(localGoPathSrcPath)) {
+			return localGoPathSrcPath;
 		}
 	}
 
@@ -2137,7 +2189,7 @@ class GoDebugSession extends LoggingDebugSession {
 // Class for fetching remote sources and packages
 // in the remote program using Delve.
 // tslint:disable-next-line:max-classes-per-file
-class RemoteSourcesAndPackages extends EventEmitter {
+export class RemoteSourcesAndPackages extends EventEmitter {
 	public static readonly INITIALIZED = 'INITIALIZED';
 
 	public initializingRemoteSourceFiles = false;
@@ -2184,6 +2236,8 @@ class RemoteSourcesAndPackages extends EventEmitter {
 				}
 				this.remoteSourceFilesNameGrouping.get(fileName).push(sourceFile);
 			});
+		} catch (error) {
+			logError(`Failed to initialize remote sources and packages: ${error && error.message}`);
 		} finally {
 			this.emit(RemoteSourcesAndPackages.INITIALIZED);
 			this.initializedRemoteSourceFiles = true;
