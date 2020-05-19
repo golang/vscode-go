@@ -91,7 +91,7 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
  *                If a tool's version is not specified, it will install the latest.
  * @param goVersion version of Go that affects how to install the tool. (e.g. modules vs legacy GOPATH mode)
  */
-export async function installTools(missing: ToolAtVersion[], goVersion: GoVersion) {
+export async function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
@@ -239,11 +239,8 @@ export async function promptForMissingTool(toolName: string) {
 		// Offer the option to install all tools.
 		installOptions.push('Install All');
 	}
-	const msg = `The "${tool.name}" command is not available.Run "go get -v ${getImportPath(
-		tool,
-		goVersion
-	)
-		} " to install.`;
+	const msg = `The "${tool.name}" command is not available.
+Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 	const selected = await vscode.window.showInformationMessage(msg, ...installOptions);
 	switch (selected) {
 		case 'Install':
