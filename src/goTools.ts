@@ -12,7 +12,7 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import { goLiveErrorsEnabled } from './goLiveErrors';
-import { getBinPath, getGoConfig, getTempFilePath, GoVersion, rmdirRecursive } from './util';
+import { getBinPath, getGoConfig, GoVersion } from './util';
 
 export interface Tool {
 	name: string;
@@ -174,81 +174,6 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	}
 
 	return tools;
-}
-
-export async function installTool(
-	tool: ToolAtVersion,
-	goRuntimePath: string, goVersion: GoVersion, envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
-	// Some tools may have to be closed before we reinstall them.
-	if (tool.close) {
-		const reason = await tool.close();
-		if (reason) {
-			return reason;
-		}
-	}
-	// Install tools in a temporary directory, to avoid altering go.mod files.
-	const mkdtemp = util.promisify(fs.mkdtemp);
-	const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
-	const env = Object.assign({}, envForTools);
-	let tmpGoModFile: string;
-	if (modulesOn) {
-		env['GO111MODULE'] = 'on';
-
-		// Write a temporary go.mod file to avoid version conflicts.
-		tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
-		const writeFile = util.promisify(fs.writeFile);
-		await writeFile(tmpGoModFile, 'module tools');
-	} else {
-		envForTools['GO111MODULE'] = 'off';
-	}
-
-	// Build the arguments list for the tool installation.
-	const args = ['get', '-v'];
-	// Only get tools at master if we are not using modules.
-	if (!modulesOn) {
-		args.push('-u');
-	}
-	// Tools with a "mod" suffix should not be installed,
-	// instead we run "go build -o" to rename them.
-	if (hasModSuffix(tool)) {
-		args.push('-d');
-	}
-	let importPath: string;
-	if (!modulesOn) {
-		importPath = getImportPath(tool, goVersion);
-	} else {
-		importPath = getImportPathWithVersion(tool, tool.version, goVersion);
-	}
-	args.push(importPath);
-
-	let output: string;
-	try {
-		const opts = {
-			env,
-			cwd: toolsTmpDir,
-		};
-		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
-		output = `${stdout} ${stderr}`;
-
-		if (stderr.indexOf('unexpected directory layout:') > -1) {
-			await execFile(goRuntimePath, args, opts);
-		} else if (hasModSuffix(tool)) {
-			const gopath = env['GOPATH'];
-			if (!gopath) {
-				return `GOPATH not configured in environment`;
-			}
-			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
-			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
-		}
-	} catch (e) {
-		return `failed to install ${tool}: ${e} ${output} `;
-	}
-
-	// Delete the temporary installation directory.
-	rmdirRecursive(toolsTmpDir);
-
-	return '';
 }
 
 const allToolsInformation: { [key: string]: Tool } = {
