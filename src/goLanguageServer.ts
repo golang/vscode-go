@@ -234,6 +234,9 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					next: ProvideCompletionItemsSignature
 				) => {
 					const list = await next(document, position, context, token);
+					if (!list) {
+						return list;
+					}
 					const items = Array.isArray(list) ? list : list.items;
 
 					// Give all the candidates the same filterText to trick VSCode
@@ -243,9 +246,13 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					// ordering. We can only do this in tandem with
 					// "incompleteResults" since otherwise client side filtering is
 					// important.
-					if (!Array.isArray(list) && list.isIncomplete) {
+					if (!Array.isArray(list) && list.isIncomplete && list.items.length > 1) {
+						let hardcodedFilterText = items[0].filterText;
+						if (!hardcodedFilterText) {
+							hardcodedFilterText = '';
+						}
 						for (const item of items) {
-							item.filterText = list.items[0].filterText;
+							item.filterText = hardcodedFilterText;
 						}
 					}
 					// TODO(hyangah): when v1.42+ api is available, we can simplify
