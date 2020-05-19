@@ -2,14 +2,14 @@
 
 The Debug Adapter code runs in a separate Nodejs process spawned by Visual Studio Code when you debug Go code.
 
-Please see [The Debug Adapter Protocol](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) to understand how the Debug Adapter acts as an intermediary between VS Code and the debugger which in case of Go is [delve](https://github.com/derekparker/delve)
+Please see [The Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/) to understand how the Debug Adapter acts as an intermediary between VS Code and the debugger which in case of Go is [delve](https://github.com/go-delve/delve). We are currently working on utilizing `delve`'s [native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap).
 
 ## Set up local dev environment
 
-Clone this [repo](https://github.com/Microsoft/vscode-go) and then run `npm install`
+Clone this [repo](https://go.googlesource.com/vscode-go) and then run `npm install`
 
 ```shell
-git clone https://github.com/Microsoft/vscode-go
+git clone https://go.googlesource.com/vscode-go
 cd vscode-go
 npm install
 ```
@@ -52,7 +52,7 @@ This setup involves three instances of Visual Studio Code:
 
 In some edge cases (like veryfing workbench behavior and state before executing debug adapter apicalls) debugging VS Code itself can be helpful. Once you ensure that you can [build and run Visual Studio Code](https://github.com/Microsoft/vscode/wiki/How-to-Contribute#build-and-run) from source successfully, follow the below steps:
 
-1. Follow the [preliminary steps to build vscode-go](#preliminary-steps)
+1. Follow the [preliminary steps to build vscode-go](#set-up-local-dev-environment)
 2. Sideload the your local vscode-go extension to the locally run Visual Studio Code. This is done by copying the contents of the vscode-go folder into `$HOME/.vscode-oss-dev/extensions/ms-vscode.go` (the location may vary by OS)
 3. Open the `vscode` folder in Visual Studio Code. Launch the VS Code debug instance (OSS - Code) by choosing the `Launch VS Code` debug configuraion from the drop down in the debug viewlet. Add a breakpoint in the desired localtion.
 4. In another instance of Visual Studio Code, open the `vscode-go` folder. Choose the `Launch as server` debug configuration from the drop down in the debug viewlet. Add a breakpoint in the desired localtion in the `vscode-go/src/debugAdapter/goDebug.ts` file
