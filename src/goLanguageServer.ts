@@ -243,15 +243,11 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					// ordering. We can only do this in tandem with
 					// "incompleteResults" since otherwise client side filtering is
 					// important.
-					if (items.length > 1) {
-						const hardcodedFilterText = items[0].filterText;
-						if (!Array.isArray(list) && list.isIncomplete) {
-							for (const item of items) {
-								item.filterText = hardcodedFilterText;
-							}
+					if (!Array.isArray(list) && list.isIncomplete) {
+						for (const item of items) {
+							item.filterText = list.items[0].filterText;
 						}
 					}
-
 					// TODO(hyangah): when v1.42+ api is available, we can simplify
 					// language-specific configuration lookup using the new
 					// ConfigurationScope.
