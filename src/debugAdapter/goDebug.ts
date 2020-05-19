@@ -1020,7 +1020,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			return localGoPathImportPath;
 		}
 
-		// Scenario 4: The package is inside GOROOT.
+		// Scenario 3: The package is inside GOROOT.
 		return this.inferLocalPathInGoRootFromRemoteGoPackage(pathToConvertWithLocalSeparator, relativeRemotePath);
 	}
 
@@ -1032,7 +1032,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	protected inferLocalPathInGoRootFromRemoteGoPackage(
 			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
 		const srcIndex = remotePathWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
-		const goroot = process.env['GOROOT'];
+		const goroot = process.env['GOROOT'] || '';
 		const localGoRootImportPath = path.join(
 			goroot,
 			srcIndex >= 0
@@ -1053,7 +1053,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 */
 	protected inferLocalPathInGoPathFromRemoteGoPackage(
 			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
-		// Scenario 1: The package is inside GOPATH.
+		// Scenario 1: The package is inside $GOPATH/pkg/mod.
 		const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
 
 		const indexGoModCache = remotePathWithLocalSeparator.indexOf(
@@ -1068,7 +1068,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			return localGoPathImportPath;
 		}
 
-		// Scenario 2: The file is in a package in GOPATH/src.
+		// Scenario 2: The file is in a package in $GOPATH/src.
 		const localGoPathSrcPath = path.join(
 				gopath, 'src',
 				relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator));

@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import {IMock, Mock} from 'typemoq';
+import * as sinon from 'sinon';
 import { Delve, escapeGoModPath, GoDebugSession,
 	PackageBuildInfo, RemoteSourcesAndPackages } from '../../src/debugAdapter/goDebug';
 
@@ -11,21 +11,31 @@ suite('Path Manipulation Tests', () => {
 	});
 });
 
-suite('GoDebugSession Tests', () => {
+suite.only('GoDebugSession Tests', () => {
 	const workspaceFolder = '/usr/workspacefolder';
+	const delve: Delve = {} as Delve;
+	const previousGoPath = process.env.GOPATH;
+	const previousGoRoot = process.env.GOROOT;
 
 	let goDebugSession: GoDebugSession;
-	let remoteSourcesAndPackagesMock: IMock<RemoteSourcesAndPackages>;
-	let fileSystemMock: IMock<typeof fs>;
-	let delve: IMock<Delve>;
+	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
+	let fileSystem: typeof fs;
 	setup(() => {
-		remoteSourcesAndPackagesMock = Mock.ofType<RemoteSourcesAndPackages>();
-		fileSystemMock = Mock.ofType<typeof fs>();
-		delve = Mock.ofType<Delve>();
-		delve.setup((mock) => mock.program).returns(() => workspaceFolder);
-		goDebugSession = new GoDebugSession(true, false, fileSystemMock.object);
-		goDebugSession['delve'] = delve.object;
-		goDebugSession['remoteSourcesAndPackages'] = remoteSourcesAndPackagesMock.object;
+		process.env.GOPATH = '/usr/gopath';
+		process.env.GOROOT = '/usr/goroot';
+		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
+		fileSystem = { existsSync: () => false } as unknown as typeof fs;
+		delve.program = workspaceFolder;
+		delve.isApiV1 = false;
+		goDebugSession = new GoDebugSession(true, false, fileSystem);
+		goDebugSession['delve'] = delve;
+		goDebugSession['remoteSourcesAndPackages'] = remoteSourcesAndPackages;
+	});
+
+	teardown(() => {
+		process.env.GOPATH = previousGoPath;
+		process.env.GOROOT = previousGoRoot;
+		sinon.restore();
 	});
 
 	test('inferRemotePathFromLocalPath works', () => {
@@ -33,8 +43,7 @@ suite('GoDebugSession Tests', () => {
 		sourceFileMapping.set('main.go', ['/app/hello-world/main.go', '/app/main.go']);
 		sourceFileMapping.set('blah.go', ['/app/blah.go']);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remoteSourceFilesNameGrouping)
-			.returns(() => (sourceFileMapping));
+		remoteSourcesAndPackages.remoteSourceFilesNameGrouping = sourceFileMapping;
 
 		const inferredPath = goDebugSession['inferRemotePathFromLocalPath'](
 			'C:\\Users\\Documents\\src\\hello-world\\main.go');
@@ -55,13 +64,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['remote/pkg/mod/!foo!bar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOPATH = '/usr/go';
 		const localPath = path.join(workspaceFolder, 'hello-world/morestrings/morestrings.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -82,13 +89,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['remote/pkg/mod/!foo!bar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOPATH = '/usr/go';
 		const localPath = path.join(process.env.GOPATH, 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -109,13 +114,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['!foo!bar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOPATH = '/usr/go';
 		const localPath = path.join(process.env.GOPATH, 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -123,7 +126,7 @@ suite('GoDebugSession Tests', () => {
 	});
 
 	test('inferLocalPathFromRemoteGoPackage works for package in GOPATH/src', () => {
-		const remotePath = 'remote/gopath/src/foobar/test@v1.0.2/test.go';
+		const remotePath = 'remote/gopath/src/foobar/test@v1.0.2-abcde-34/test.go';
 		const helloPackage: PackageBuildInfo = {
 			ImportPath: 'hello-world',
 			DirectoryPath: '/src/hello-world',
@@ -132,17 +135,15 @@ suite('GoDebugSession Tests', () => {
 
 		const testPackage: PackageBuildInfo = {
 			ImportPath: 'foobar/test',
-			DirectoryPath: 'remote/gopath/src/foobar/test@v1.0.2',
-			Files: ['remote/gopath/src/foobar/test@v1.0.2/test.go']
+			DirectoryPath: 'remote/gopath/src/foobar/test@v1.0.2-abcde-34',
+			Files: ['remote/gopath/src/foobar/test@v1.0.2-abcde-34/test.go']
 		};
 
-		process.env.GOPATH = '/usr/go';
-		const localPath = path.join(process.env.GOPATH, 'src', 'foobar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const localPath = path.join(process.env.GOPATH, 'src', 'foobar/test@v1.0.2-abcde-34/test.go');
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -163,13 +164,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['foobar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOPATH = '/usr/go';
 		const localPath = path.join(process.env.GOPATH, 'src', 'foobar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -190,13 +189,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['remote/goroot/src/foobar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOROOT = '/usr/go';
 		const localPath = path.join(process.env.GOROOT, 'src', 'foobar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -217,13 +214,11 @@ suite('GoDebugSession Tests', () => {
 			Files: ['foobar/test@v1.0.2/test.go']
 		};
 
-		process.env.GOROOT = '/usr/go';
 		const localPath = path.join(process.env.GOROOT, 'src', 'foobar/test@v1.0.2/test.go');
-		fileSystemMock.setup((mock) => mock.existsSync(localPath))
-			.returns(() => true);
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
 
-		remoteSourcesAndPackagesMock.setup((mock) => mock.remotePackagesBuildInfo)
-			.returns(() => [helloPackage, testPackage]);
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
 
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
@@ -244,20 +239,24 @@ suite('RemoteSourcesAndPackages Tests', () => {
 	};
 	const sources = ['src/hello-world/hello.go', 'src/hello-world/world.go', 'src/test/test.go'];
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
-	let delve: IMock<Delve>;
+	let delve: Delve;
 	setup(() => {
-		delve = Mock.ofType<Delve>();
-		delve.setup((mock) => mock.isApiV1).returns(() => false);
+		delve = {callPromise: () => ({}), isApiV1: false} as unknown as Delve;
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
 	});
 
-	test('initializeRemotePackagesAndSources retrieves remote packages and sources', async () => {
-		delve.setup((mock) => mock.callPromise('ListPackagesBuildInfo', [{IncludeFiles: true}]))
-			.returns(() => Promise.resolve({List: [helloPackage, testPackage]}));
-		delve.setup((mock) => mock.callPromise('ListSources', [{}]))
-			.returns(() => Promise.resolve({Sources: sources}));
+	teardown(() => {
+		sinon.restore();
+	});
 
-		await remoteSourcesAndPackages.initializeRemotePackagesAndSources(delve.object);
+	test('initializeRemotePackagesAndSources retrieves remote packages and sources', async () => {
+		const stub = sinon.stub(delve, 'callPromise');
+		stub.withArgs('ListPackagesBuildInfo', [{IncludeFiles: true}])
+			.returns(Promise.resolve({List: [helloPackage, testPackage]}));
+		stub.withArgs('ListSources', [{}])
+			.returns(Promise.resolve({Sources: sources}));
+
+		await remoteSourcesAndPackages.initializeRemotePackagesAndSources(delve);
 		assert.deepEqual(remoteSourcesAndPackages.remoteSourceFiles, sources);
 		assert.deepEqual(remoteSourcesAndPackages.remotePackagesBuildInfo, [helloPackage, testPackage]);
 	});

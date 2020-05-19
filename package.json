@@ -46,7 +46,6 @@
     "moment": "^2.24.0",
     "semver": "^7.3.2",
     "tree-kill": "^1.2.2",
-    "typemoq": "^2.1.0",
     "vscode-debugadapter": "^1.40.0",
     "vscode-debugprotocol": "^1.40.0",
     "vscode-extension-telemetry": "^0.1.2",
