@@ -134,4 +134,33 @@ suite('Go Extension Tests With Gopls', function () {
 		});
 		return Promise.all(promises);
 	});
+
+	test('Completion middleware', async () => {
+		await env.reset('gogetdocTestData');
+		const { uri } = await env.openDoc('test.go');
+		const testCases: [string, vscode.Position, string][] = [
+			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
+		];
+		for (const [name, position, wantFilterText] of testCases) {
+			const list = await vscode.commands.executeCommand(
+				'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
+
+			// Confirm that the hardcoded filter text hack has been applied.
+			if (!list.isIncomplete) {
+				assert.fail(`gopls should provide an incomplete list by default`);
+			}
+			// TODO(rstambler): For some reason, the filter text gets deleted
+			// from the first item. I can't reproduce this outside of the test
+			// suite.
+			for (let i = 1; i < list.items.length; i++) {
+				const item = list.items[i];
+				assert.equal(item.filterText, wantFilterText, `${uri}:${name} failed, unexpected filter text (got ${item.filterText}, want ${wantFilterText})`);
+			}
+			for (const item of list.items) {
+				if (item.kind === vscode.CompletionItemKind.Method || item.kind === vscode.CompletionItemKind.Function) {
+					assert.ok(item.command, `${uri}:${name}: expected command associated with ${item.label}, found none`);
+				}
+			}
+		}
+	});
 });
