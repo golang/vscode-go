@@ -8,6 +8,8 @@ async function main() {
 		// Passed to `--extensionDevelopmentPath`
 	const extensionDevelopmentPath = path.resolve(__dirname, '../../');
 
+	let failed = false;
+
 	try {
 		// The path to the extension test script
 		// Passed to --extensionTestsPath
@@ -17,7 +19,7 @@ async function main() {
 		await runTests({ extensionDevelopmentPath, extensionTestsPath });
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
-		process.exit(1);
+		failed = true;
 	}
 
 	// Integration tests using gopls.
@@ -40,6 +42,11 @@ async function main() {
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);
+		// failed = true; TODO(hyangah): reenable this after golang.org/cl/233517
+	}
+
+	if (failed) {
+		process.exit(1);
 	}
 }
 

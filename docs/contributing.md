@@ -39,4 +39,4 @@ After making changes to the extension, you might want to test it end to end inst
 
 ## Use the beta version of this extension
 
-If you want to help with testing the next update to this extension or you want to use the latest features that arent released yet, its easy to do so. Please see [Use the beta version of the Go extension](Use-the-beta-version-of-the-latest-Go-extension.md)
+If you want to help with testing the next update to this extension or you want to use the latest features that arent released yet, its easy to do so. Please see [Use the beta version of the Go extension](beta.md).

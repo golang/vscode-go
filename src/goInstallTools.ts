@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -55,7 +55,7 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
 
 	// Update existing tools by finding all tools the user has already installed.
 	if (updateExistingToolsOnly) {
-		installTools(
+		await installTools(
 			allTools.filter((tool) => {
 				const toolPath = getBinPath(tool.name);
 				return toolPath && path.isAbsolute(toolPath);
@@ -66,29 +66,23 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
 	}
 
 	// Otherwise, allow the user to select which tools to install or update.
-	vscode.window
-		.showQuickPick(
-			allTools.map((x) => {
-				const item: vscode.QuickPickItem = {
-					label: x.name,
-					description: x.description
-				};
-				return item;
-			}),
-			{
-				canPickMany: true,
-				placeHolder: 'Select the tools to install/update.'
-			}
-		)
-		.then((selectedTools) => {
-			if (!selectedTools) {
-				return;
-			}
-			installTools(
-				selectedTools.map((x) => getTool(x.label)),
-				goVersion
-			);
-		});
+	const selected = await vscode.window.showQuickPick(
+		allTools.map((x) => {
+			const item: vscode.QuickPickItem = {
+				label: x.name,
+				description: x.description
+			};
+			return item;
+		}),
+		{
+			canPickMany: true,
+			placeHolder: 'Select the tools to install/update.'
+		}
+	);
+	if (!selected) {
+		return;
+	}
+	await installTools(selected.map((x) => getTool(x.label)), goVersion);
 }
 
 /**
@@ -98,7 +92,7 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
  *                If a tool's version is not specified, it will install the latest.
  * @param goVersion version of Go that affects how to install the tool. (e.g. modules vs legacy GOPATH mode)
  */
-export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Promise<void> {
+export async function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
@@ -156,7 +150,7 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 		.reduce((res: Promise<string[]>, tool: ToolAtVersion) => {
 			return res.then(
 				(sofar) =>
-					new Promise<string[]>((resolve, reject) => {
+					new Promise<string[]>(async (resolve, reject) => {
 						// Disable modules for tools which are installed with the "..." wildcard.
 						// TODO: ... will be supported in Go 1.13, so enable these tools to use modules then.
 						const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
@@ -169,17 +163,18 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
 							fs.writeFileSync(tmpGoModFile, 'module tools');
 						}
+						let importPath: string;
+						if (modulesOffForTool) {
+							importPath = getImportPath(tool, goVersion);
+						} else {
+							importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+						}
 
-						const opts = {
-							env: envForTools,
-							cwd: toolsTmpDir
-						};
 						const callback = (err: Error, stdout: string, stderr: string) => {
 							// Make sure to delete the temporary go.mod file, if it exists.
 							if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
 								fs.unlinkSync(tmpGoModFile);
 							}
-							const importPath = getImportPathWithVersion(tool, tool.version, goVersion);
 							if (err) {
 								outputChannel.appendLine('Installing ' + importPath + ' FAILED');
 								const failureReason = tool.name + ';;' + err + stdout.toString() + stderr.toString();
@@ -190,66 +185,51 @@ export function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Pr
 							}
 						};
 
-						let closeToolPromise = Promise.resolve(true);
-						const toolBinPath = getBinPath(tool.name);
-						if (path.isAbsolute(toolBinPath) && isGocode(tool)) {
-							closeToolPromise = new Promise<boolean>((innerResolve) => {
-								cp.execFile(toolBinPath, ['close'], {}, (err, stdout, stderr) => {
-									if (stderr && stderr.indexOf(`rpc: can't find service Server.`) > -1) {
-										outputChannel.appendLine(
-											'Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.'
-										);
-										return innerResolve(false);
-									}
-									innerResolve(true);
-								});
-							});
-						}
-
-						closeToolPromise.then((success) => {
-							if (!success) {
+						// Perform any on-close actions before reinstalling the tool.
+						if (tool.close) {
+							const errMsg = await tool.close();
+							if (errMsg) {
+								outputChannel.appendLine(errMsg);
 								resolve([...sofar, null]);
 								return;
 							}
-							const args = ['get', '-v'];
-							// Only get tools at master if we are not using modules.
-							if (modulesOffForTool) {
-								args.push('-u');
-							}
-							// Tools with a "mod" suffix should not be installed,
-							// instead we run "go build -o" to rename them.
-							if (hasModSuffix(tool)) {
-								args.push('-d');
-							}
-							let importPath: string;
-							if (modulesOffForTool) {
-								importPath = getImportPath(tool, goVersion);
+						}
+						const args = ['get', '-v'];
+						// Only get tools at master if we are not using modules.
+						if (modulesOffForTool) {
+							args.push('-u');
+						}
+						// Tools with a "mod" suffix should not be installed,
+						// instead we run "go build -o" to rename them.
+						if (hasModSuffix(tool)) {
+							args.push('-d');
+						}
+						args.push(importPath);
+						const opts = {
+							env: envForTools,
+							cwd: toolsTmpDir
+						};
+						cp.execFile(goRuntimePath, args, opts, (err, stdout, stderr) => {
+							if (stderr.indexOf('unexpected directory layout:') > -1) {
+								outputChannel.appendLine(
+									`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`
+								);
+								cp.execFile(goRuntimePath, args, opts, callback);
+							} else if (!err && hasModSuffix(tool)) {
+								const outputFile = path.join(
+									toolsGopath,
+									'bin',
+									process.platform === 'win32' ? `${tool.name}.exe` : tool.name
+								);
+								cp.execFile(
+									goRuntimePath,
+									['build', '-o', outputFile, getImportPath(tool, goVersion)],
+									opts,
+									callback
+								);
 							} else {
-								importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+								callback(err, stdout, stderr);
 							}
-							args.push(importPath);
-							cp.execFile(goRuntimePath, args, opts, (err, stdout, stderr) => {
-								if (stderr.indexOf('unexpected directory layout:') > -1) {
-									outputChannel.appendLine(
-										`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`
-									);
-									cp.execFile(goRuntimePath, args, opts, callback);
-								} else if (!err && hasModSuffix(tool)) {
-									const outputFile = path.join(
-										toolsGopath,
-										'bin',
-										process.platform === 'win32' ? `${tool.name}.exe` : tool.name
-									);
-									cp.execFile(
-										goRuntimePath,
-										['build', '-o', outputFile, getImportPath(tool, goVersion)],
-										opts,
-										callback
-									);
-								} else {
-									callback(err, stdout, stderr);
-								}
-							});
 						});
 					})
 			);
@@ -306,25 +286,22 @@ export async function promptForMissingTool(toolName: string) {
 		// Offer the option to install all tools.
 		installOptions.push('Install All');
 	}
-	const msg = `The "${tool.name}" command is not available. Run "go get -v ${getImportPath(
-		tool,
-		goVersion
-	)}" to install.`;
-	vscode.window.showInformationMessage(msg, ...installOptions).then((selected) => {
-		switch (selected) {
-			case 'Install':
-				installTools([tool], goVersion);
-				break;
-			case 'Install All':
-				installTools(missing, goVersion);
-				hideGoStatus();
-				break;
-			default:
-				// The user has declined to install this tool.
-				declinedInstalls.push(tool);
-				break;
-		}
-	});
+	const msg = `The "${tool.name}" command is not available.
+Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
+	const selected = await vscode.window.showInformationMessage(msg, ...installOptions);
+	switch (selected) {
+		case 'Install':
+			await installTools([tool], goVersion);
+			break;
+		case 'Install All':
+			await installTools(missing, goVersion);
+			hideGoStatus();
+			break;
+		default:
+			// The user has declined to install this tool.
+			declinedInstalls.push(tool);
+			break;
+	}
 }
 
 export async function promptForUpdatingTool(toolName: string, newVersion?: SemVer) {
@@ -344,22 +321,21 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	if (newVersion) {
 		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
 	}
-	vscode.window.showInformationMessage(updateMsg, ...choices).then((selected) => {
-		switch (selected) {
-			case 'Update':
-				installTools([toolVersion], goVersion);
-				break;
-			case 'Release Notes':
-				vscode.commands.executeCommand(
-					'vscode.open',
-					vscode.Uri.parse('https://github.com/golang/go/issues/33030#issuecomment-510151934')
-				);
-				break;
-			default:
-				declinedUpdates.push(tool);
-				break;
-		}
-	});
+	const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
+	switch (selected) {
+		case 'Update':
+			await installTools([toolVersion], goVersion);
+			break;
+		case 'Release Notes':
+			vscode.commands.executeCommand(
+				'vscode.open',
+				vscode.Uri.parse('https://github.com/golang/go/issues/33030#issuecomment-510151934')
+			);
+			break;
+		default:
+			declinedUpdates.push(tool);
+			break;
+	}
 }
 
 export function updateGoPathGoRootFromConfig(): Promise<void> {
@@ -435,9 +411,9 @@ export async function offerToInstallTools() {
 		vscode.commands.registerCommand('go.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',
-				command() {
+				async command() {
 					hideGoStatus();
-					installTools(missing, goVersion);
+					await installTools(missing, goVersion);
 				}
 			};
 			const showItem = {
@@ -470,22 +446,18 @@ export async function offerToInstallTools() {
 			'The language server from Sourcegraph is no longer under active development and it does not support Go modules as well. Please install and use the language server from Google or disable the use of language servers altogether.';
 		const disableLabel = 'Disable language server';
 		const installLabel = 'Install';
-		vscode.window.showInformationMessage(promptMsg, installLabel, disableLabel).then((selected) => {
-			if (selected === installLabel) {
-				installTools([getTool('gopls')], goVersion).then(() => {
-					// Restart the language server since the binary has changed.
-					restartLanguageServer();
-				});
-			} else if (selected === disableLabel) {
-				const goConfig = getGoConfig();
-				const inspectLanguageServerSetting = goConfig.inspect('useLanguageServer');
-				if (inspectLanguageServerSetting.globalValue === true) {
-					goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.Global);
-				} else if (inspectLanguageServerSetting.workspaceFolderValue === true) {
-					goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.WorkspaceFolder);
-				}
+		const selected = await vscode.window.showInformationMessage(promptMsg, installLabel, disableLabel);
+		if (selected === installLabel) {
+			await installTools([getTool('gopls')], goVersion);
+		} else if (selected === disableLabel) {
+			const goConfig = getGoConfig();
+			const inspectLanguageServerSetting = goConfig.inspect('useLanguageServer');
+			if (inspectLanguageServerSetting.globalValue === true) {
+				goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.Global);
+			} else if (inspectLanguageServerSetting.workspaceFolderValue === true) {
+				goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.WorkspaceFolder);
 			}
-		});
+		}
 	}
 }
 

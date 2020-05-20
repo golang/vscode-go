@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -14,8 +14,9 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
-	Command, HandleDiagnosticsSignature, LanguageClient, ProvideCompletionItemsSignature,
-	ProvideDocumentLinksSignature, RevealOutputChannelOn
+	CloseAction, CompletionItemKind, ErrorAction, HandleDiagnosticsSignature, InitializeError,
+	LanguageClient, Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature,
+	RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
@@ -67,6 +68,9 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // server.
 let restartCommand: vscode.Disposable;
 
+// When enabled, users may be prompted to fill out the gopls survey.
+const goplsSurveyOn: boolean = false;
+
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
@@ -81,6 +85,14 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 			const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
 			if (versionToUpdate) {
 				promptForUpdatingTool(tool.name, versionToUpdate);
+			} else if (goplsSurveyOn) {
+				// Only prompt users to fill out the gopls survey if we are not
+				// also prompting them to update (both would be too much).
+				const timeout = 1000 * 60 * 60; // 1 hour
+				setTimeout(async () => {
+					const surveyCfg = await maybePromptForGoplsSurvey();
+					flushSurveyConfig(surveyCfg);
+				}, timeout);
 			}
 		}
 	}
@@ -125,7 +137,14 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// Set up the command to allow the user to manually restart the
 	// language server.
 	if (!restartCommand) {
-		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', restartLanguageServer);
+		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
+			// TODO(rstambler): Enable this behavior when gopls reaches v1.0.
+			if (false) {
+				await suggestGoplsIssueReport(`Looks like you're about to manually restart the language server.`);
+			}
+			restartLanguageServer();
+		});
+		ctx.subscriptions.push(restartCommand);
 	}
 	ctx.subscriptions.push(restartCommand);
 
@@ -162,6 +181,31 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 			},
 			outputChannel: serverOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
+			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
+				vscode.window.showErrorMessage(
+					`The language server is not able to serve any features. Initialization failed: ${error}. `
+				);
+				serverOutputChannel.show();
+				suggestGoplsIssueReport(`The gopls server failed to initialize.`);
+				return false;
+			},
+			errorHandler: {
+				error: (error: Error, message: Message, count: number): ErrorAction => {
+					vscode.window.showErrorMessage(
+						`Error communicating with the language server: ${error}: ${message}.`
+					);
+					// Stick with the default number of 5 crashes before shutdown.
+					if (count >= 5) {
+						return ErrorAction.Shutdown;
+					}
+					return ErrorAction.Continue;
+				},
+				closed: (): CloseAction => {
+					serverOutputChannel.show();
+					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed.`);
+					return CloseAction.DoNotRestart;
+				},
+			},
 			middleware: {
 				handleDiagnostics: (
 					uri: vscode.Uri,
@@ -183,20 +227,41 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					}
 					return next(document, token);
 				},
-				provideCompletionItem: (
+				provideCompletionItem: async (
 					document: vscode.TextDocument,
 					position: vscode.Position,
 					context: vscode.CompletionContext,
 					token: vscode.CancellationToken,
 					next: ProvideCompletionItemsSignature
 				) => {
+					const list = await next(document, position, context, token);
+					if (!list) {
+						return list;
+					}
+					const items = Array.isArray(list) ? list : list.items;
+
+					// Give all the candidates the same filterText to trick VSCode
+					// into not reordering our candidates. All the candidates will
+					// appear to be equally good matches, so VSCode's fuzzy
+					// matching/ranking just maintains the natural "sortText"
+					// ordering. We can only do this in tandem with
+					// "incompleteResults" since otherwise client side filtering is
+					// important.
+					if (!Array.isArray(list) && list.isIncomplete && list.items.length > 1) {
+						let hardcodedFilterText = items[0].filterText;
+						if (!hardcodedFilterText) {
+							hardcodedFilterText = '';
+						}
+						for (const item of items) {
+							item.filterText = hardcodedFilterText;
+						}
+					}
 					// TODO(hyangah): when v1.42+ api is available, we can simplify
 					// language-specific configuration lookup using the new
 					// ConfigurationScope.
 					//    const paramHintsEnabled = vscode.workspace.getConfiguration(
 					//          'editor.parameterHints',
 					//          { languageId: 'go', uri: document.uri });
-
 					const editorParamHintsEnabled = vscode.workspace.getConfiguration(
 						'editor.parameterHints',
 						document.uri
@@ -204,48 +269,26 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					const goParamHintsEnabled = vscode.workspace.getConfiguration('[go]', document.uri)[
 						'editor.parameterHints.enabled'
 					];
-
 					let paramHintsEnabled: boolean = false;
 					if (typeof goParamHintsEnabled === 'undefined') {
 						paramHintsEnabled = editorParamHintsEnabled;
 					} else {
 						paramHintsEnabled = goParamHintsEnabled;
 					}
-					let cmd: Command;
+					// If the user has parameterHints (signature help) enabled,
+					// trigger it for function or method completion items.
 					if (paramHintsEnabled) {
-						cmd = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
-					}
-
-					function configureCommands(
-						r: vscode.CompletionItem[] | vscode.CompletionList | null | undefined
-					): vscode.CompletionItem[] | vscode.CompletionList | null | undefined {
-						if (r) {
-							(Array.isArray(r) ? r : r.items).forEach((i: vscode.CompletionItem) => {
-								i.command = cmd;
-							});
+						for (const item of items) {
+							if (item.kind === CompletionItemKind.Method || item.kind === CompletionItemKind.Function) {
+								item.command = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
+							}
 						}
-						return r;
 					}
-					const ret = next(document, position, context, token);
-
-					const isThenable = <T>(obj: vscode.ProviderResult<T>): obj is Thenable<T> =>
-						obj && (<any>obj)['then'];
-					if (isThenable<vscode.CompletionItem[] | vscode.CompletionList | null | undefined>(ret)) {
-						return ret.then(configureCommands);
-					}
-					return configureCommands(ret);
+					return list;
 				}
 			}
 		}
 	);
-	c.onReady().then(() => {
-		const capabilities = languageClient.initializeResult && languageClient.initializeResult.capabilities;
-		if (!capabilities) {
-			return vscode.window.showErrorMessage(
-				'The language server is not able to serve any features at the moment.'
-			);
-		}
-	});
 	return c;
 }
 
@@ -619,4 +662,186 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 		return data;
 	}
 	return null;
+}
+
+// SurveyConfig is the set of global properties used to determine if
+// we should prompt a user to take the gopls survey.
+export interface SurveyConfig {
+	// prompt is true if the user can be prompted to take the survey.
+	// It is false if the user has responded "Never" to the prompt.
+	prompt?: boolean;
+
+	// promptThisMonth is true if we have used a random number generator
+	// to determine if the user should be prompted this month.
+	// It is undefined if we have not yet made the determination.
+	promptThisMonth?: boolean;
+
+	// promptThisMonthTimestamp is the date on which we determined if the user
+	// should be prompted this month.
+	promptThisMonthTimestamp?: Date;
+
+	// lastDatePrompted is the most recent date that the user has been prompted.
+	lastDatePrompted?: Date;
+
+	// lastDateAccepted is the most recent date that the user responded "Yes"
+	// to the survey prompt. The user need not have completed the survey.
+	lastDateAccepted?: Date;
+}
+
+async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
+	const now = new Date();
+	const cfg = getSurveyConfig();
+	const prompt = shouldPromptForGoplsSurvey(now, cfg);
+	if (!prompt) {
+		return cfg;
+	}
+	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
+Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
+
+	// Update the time last asked.
+	cfg.lastDatePrompted = now;
+
+	switch (selected) {
+		case 'Yes':
+			cfg.lastDateAccepted = now;
+			cfg.prompt = true;
+
+			// Open the link to the survey.
+			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+			break;
+		case 'Not now':
+			cfg.prompt = true;
+
+			vscode.window.showInformationMessage(`No problem! We'll ask you again another time.`);
+			break;
+		case 'Never':
+			cfg.prompt = false;
+
+			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
+			break;
+	}
+	return cfg;
+}
+
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
+	// If the prompt value is not set, assume we haven't prompted the user
+	// and should do so.
+	if (cfg.prompt === undefined) {
+		cfg.prompt = true;
+	}
+	if (!cfg.prompt) {
+		return false;
+	}
+
+	// Check if the user has taken the survey in the last year.
+	// Don't prompt them if they have been.
+	if (cfg.lastDateAccepted) {
+		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+			return false;
+		}
+	}
+
+	// Check if the user has been prompted for the survey in the last 90 days.
+	// Don't prompt them if they have been.
+	if (cfg.lastDatePrompted) {
+		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+			return false;
+		}
+	}
+
+	// Check if the extension has been activated this month.
+	if (cfg.promptThisMonthTimestamp) {
+		// The extension has been activated this month, so we should have already
+		// decided if the user should be prompted.
+		if (daysBetween(now, cfg.promptThisMonthTimestamp) < 30) {
+			return cfg.promptThisMonth;
+		}
+	}
+	// This is the first activation this month (or ever), so decide if we
+	// should prompt the user. This is done by generating a random number
+	// and % 20 to get a 5% chance.
+	const r = Math.floor(Math.random() * 20);
+	cfg.promptThisMonth = (r % 20 === 0);
+	cfg.promptThisMonthTimestamp = now;
+
+	return cfg.promptThisMonth;
+}
+
+export const goplsSurveyConfig = 'goplsSurveyConfig';
+
+function getSurveyConfig(): SurveyConfig {
+	const saved = getFromGlobalState(goplsSurveyConfig);
+	if (saved === undefined) {
+		return {};
+	}
+	try {
+		const cfg = JSON.parse(saved, (key: string, value: any) => {
+			// Make sure values that should be dates are correctly converted.
+			if (key.includes('Date')) {
+				return new Date(value);
+			}
+			return value;
+		});
+		return cfg;
+	} catch (err) {
+		console.log(`Error parsing JSON from ${saved}: ${err}`);
+		return {};
+	}
+}
+
+function flushSurveyConfig(cfg: SurveyConfig) {
+	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+}
+
+// suggestGoplsIssueReport prompts users to file an issue with gopls.
+async function suggestGoplsIssueReport(msg: string) {
+	if (latestConfig.serverName !== 'gopls') {
+		return;
+	}
+	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
+	let saved: any;
+	try {
+		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+	} catch (err) {
+		console.log(`Failed to parse as JSON ${getFromGlobalState(promptForIssueOnGoplsRestartKey, true)}: ${err}`);
+		return;
+	}
+	// If the user has already seen this prompt, they may have opted-out for
+	// the future. Only prompt again if it's been more than a year since.
+	if (saved['date'] && saved['prompt']) {
+		const dateSaved = new Date(saved['date']);
+		const prompt = <boolean>saved['prompt'];
+		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {
+			return;
+		}
+	}
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
+	switch (selected) {
+		case 'Yes':
+			// Run the `gopls bug` command directly for now. When
+			// https://github.com/golang/go/issues/38942 is
+			// resolved, we'll be able to do this through the
+			// language client.
+
+			// Wait for the command to finish before restarting the
+			// server, but don't bother handling errors.
+			const execFile = util.promisify(cp.execFile);
+			await execFile(latestConfig.path, ['bug'], { env: getToolsEnvVars() });
+			break;
+		case 'Next time':
+			break;
+		case 'Never':
+			updateGlobalState(promptForIssueOnGoplsRestartKey, JSON.stringify({
+				prompt: false,
+				date: new Date(),
+			}));
+			break;
+	}
+}
+
+// daysBetween returns the number of days between a and b,
+// assuming that a occurs after b.
+function daysBetween(a: Date, b: Date) {
+	const ms = a.getTime() - b.getTime();
+	return ms / (1000 * 60 * 60 * 24);
 }

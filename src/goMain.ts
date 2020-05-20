@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -59,7 +59,7 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // restartLanguageServer wraps all of the logic needed to restart the
 // language server. It can be used to enable, disable, or otherwise change
 // the configuration of the server.
-export let restartLanguageServer: () => {};
+export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
@@ -367,7 +367,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('go.tools.install', async (args) => {
 			if (Array.isArray(args) && args.length) {
 				const goVersion = await getGoVersion();
-				installTools(args, goVersion);
+				await installTools(args, goVersion);
 				return;
 			}
 			installAllTools();
