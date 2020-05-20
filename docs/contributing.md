@@ -11,7 +11,7 @@ This guide will explain the process of setting up your development environment t
   * [Run](#run)
   * [Test](#test)
   * [Sideload](#sideload)
-* [Mail your change](#mail-your-change)
+* [Mail your change for review](#mail-your-change-for-review)
 
 ## Before you start coding
 
@@ -21,7 +21,7 @@ If you wish to work on an existing issue, please add a comment saying so, as som
 
 ### Ask for help
 
-The VS Code Go maintainers are reachable via the issue tracker and the [#vscode-dev](https://gophers.slack.com/archives/CUWGEKH5Z) channel on the [Gophers Slack](https://invite.slack.golangbridge.org/). Please reach out on Slack with questions, suggestions, or ideas. If you have trouble getting started on an issue, we'd be happy to give pointers and advice.
+The VS Code Go maintainers are reachable via the issue tracker and the [#vscode-dev] channel on the [Gophers Slack]. Please reach out on Slack with questions, suggestions, or ideas. If you have trouble getting started on an issue, we'd be happy to give pointers and advice.
 
 ## Developing
 
@@ -76,6 +76,21 @@ After making changes to the extension, you may want to test it end-to-end instea
 6. Click on the "..." in the top-right corner, select "Install
 from VSIX...", and choose the generated VSIX file. Alternatively, you can run `code --install-extension path/to/go.vsix` or open the Command Palette and run the "Extensions: Install from VSIX..." command.
 
-## Mail your change
+## Mail your change for review
 
-Once you have coded, built, and tested your change, it's ready for review!
+Once you have coded, built, and tested your change, it's ready for review! There are two ways to contribute your change: (1) [a GitHub pull request (PR)](https://golang.org/doc/contribute.html#sending_a_change_github), and (2) a [Gerrit code review](https://golang.org/doc/contribute.html#sending_a_change_gerrit).
+
+<!--TODO(rstambler): The content on https://golang.org/doc/contribute.html needs to be generalized to all x/ repos.-->
+
+In either case, code review will happen in [Gerrit](https://www.gerritcodereview.com/), which is used for all repositories in the Go project. GitHub pull requests will be mirrored into Gerrit, so you can follow a more traditional GitHub workflow, but you will still have to look at Gerrit to read comments.
+
+The easiest way to start is by reading this [detailed guide for contributing to the Go project](https://golang.org/doc/contribute.html). Important things to note are:
+
+* You will need to sign the [Google CLA](https://golang.org/doc/contribute.html#cla).
+* Your commit message should follow the described on the [Commit Message Wiki page](https://github.com/golang/go/wiki/CommitMessage).<!--TODO(rstambler): What should the prefix be for vscode-go CLs? I feel like we still haven't figured this out.-->
+* Your change should include tests (if possible).
+
+Once you've sent out your change, a maintainer will take a look at your contribution within a few weeks. If you don't hear back in that time, feel free to ping the issue or send a message to the [#vscode-dev] channel of the [Gophers Slack].
+
+[#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
+[Gophers Slack]: https://invite.slack.golangbridge.org/
