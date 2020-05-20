@@ -69,7 +69,6 @@ import {
 	updateGlobalState,
 	updateWorkspaceState
 } from './stateUtils';
-import { disposeTelemetryReporter, sendTelemetryEventForConfig } from './telemetry';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
 	cleanupTempDir,
@@ -405,7 +404,6 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			sendTelemetryEventForConfig(updatedGoConfig);
 			updateGoPathGoRootFromConfig();
 
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
@@ -563,12 +561,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
-
-	sendTelemetryEventForConfig(getGoConfig());
 }
 
 export function deactivate() {
-	return Promise.all([disposeTelemetryReporter(), cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
+	return Promise.all([cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
 }
 
 function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {

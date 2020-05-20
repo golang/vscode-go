@@ -51,7 +51,6 @@
     "tree-kill": "^1.2.2",
     "vscode-debugadapter": "^1.40.0",
     "vscode-debugprotocol": "^1.40.0",
-    "vscode-extension-telemetry": "^0.1.2",
     "vscode-languageclient": "6.1.0",
     "web-request": "^1.0.7",
     "deep-equal": "^2.0.2"

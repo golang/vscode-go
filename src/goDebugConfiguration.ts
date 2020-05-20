@@ -10,7 +10,6 @@ import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { sendTelemetryEventForDebugConfiguration } from './telemetry';
 import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -36,10 +35,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
 	): vscode.DebugConfiguration {
-		if (debugConfiguration) {
-			sendTelemetryEventForDebugConfiguration(debugConfiguration);
-		}
-
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json

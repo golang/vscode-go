@@ -10,7 +10,6 @@ import { installTools } from './goInstallTools';
 import { envPath, fixDriveCasingInWindows } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { sendTelemetryEventForModulesUsage } from './telemetry';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache, getToolsEnvVars } from './util';
 
 export let GO111MODULE: string;
@@ -99,7 +98,6 @@ function logModuleUsage() {
 		return;
 	}
 	moduleUsageLogged = true;
-	sendTelemetryEventForModulesUsage();
 }
 
 const promptedToolsForCurrentSession = new Set<string>();
