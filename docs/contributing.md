@@ -54,7 +54,7 @@ To debug the Go debugger, see the [debugAdapter README](../src/debugAdapter/READ
 
 ## Test
 
-To run the tests locally, open the Debug viewlet (`Ctrl+Shift+D`), select `Launch Tests`, then hit run (`F5`)
+There are currently three test launch configurations: (1) Launch Extension Tests, (2) Launch Extension Tests with Gopls, and (3) Launch Unit Tests. To run the tests locally, open the Run view (`Ctrl+Shift+D`), select the relevant launch configuration, and hit the Play button (`F5`).
 
 ## Sideload
 
