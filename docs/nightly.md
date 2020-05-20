@@ -6,9 +6,11 @@ If you try out Go Nightly, please file issues when you notice bugs. You can also
 
 ## Installation
 
-To switch from the default Go extension to Go Nightly, open the Extensions pane in VS Code. You can uninstall the Go extension if you'd like to make a permanent switch or disable it temporarily. Then, search for Go Nightly in the VS Code Marketplace and install it.
+To use the Go Nightly extension, you must first disable the standard Go extension. The two are not compatible and will cause conflicts if enabled simultaneously. If you'd like to make a permanent switch, you can uninstall the Go extension. Otherwise, you can disable it temporarily. To do so, open the Extensions view in VS Code, click on the gear icon next to the Go extension, and select Disable. Then, search for Go Nightly in the VS Code Marketplace and install it instead.
 
 ## Testing pre-releases
+
+**Note**: Pre-releases are not yet available.
 
 Pre-releases of the Go extension will be made available on the [Releases page](https://github.com/golang/vscode-go/releases/tag/latest) on GitHub. If you would like to try a pre-release, follow these instructions:
 
