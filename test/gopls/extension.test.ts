@@ -132,7 +132,7 @@ suite('Go Extension Tests With Gopls', function () {
 				&& (!expectedDoc || gotMessage.includes(expectedDoc)),
 				`check hovers over ${name} failed: got ${gotMessage}`);
 		});
-		return Promise.all(promises);
+		await Promise.all(promises);
 	});
 
 	test('Completion middleware', async () => {
@@ -141,7 +141,7 @@ suite('Go Extension Tests With Gopls', function () {
 		const testCases: [string, vscode.Position, string][] = [
 			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
 		];
-		for (const [name, position, wantFilterText] of testCases) {
+		const promises = testCases.map(async ([name, position, wantFilterText]) => {
 			const list = await vscode.commands.executeCommand(
 				'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
 
@@ -161,6 +161,7 @@ suite('Go Extension Tests With Gopls', function () {
 					assert.ok(item.command, `${uri}:${name}: expected command associated with ${item.label}, found none`);
 				}
 			}
-		}
+		});
+		await Promise.all(promises);
 	});
 });
