@@ -128,17 +128,7 @@ export async function promptToUpdateToolForModules(
 			if (tool === 'switchFormatToolToGoimports') {
 				goConfig.update('formatTool', 'goimports', vscode.ConfigurationTarget.Global);
 			} else {
-				installTools([getTool(tool)], goVersion).then(() => {
-					if (tool === 'gopls') {
-						if (goConfig.get('useLanguageServer') === false) {
-							goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.Global);
-						}
-						if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
-							goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.WorkspaceFolder);
-						}
-						restartLanguageServer();
-					}
-				});
+				await installTools([getTool(tool)], goVersion);
 			}
 			promptedToolsForModules[tool] = true;
 			updateGlobalState('promptedToolsForModules', promptedToolsForModules);

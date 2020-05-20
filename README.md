@@ -6,7 +6,7 @@ This extension adds rich language support for the [Go language](https://golang.o
 
 See the [Changelog](https://github.com/Microsoft/vscode-go/blob/master/CHANGELOG.md) to know what has changed over the last few versions of this extension.
 
-> This is the future home for the VS Code Go extension. Please follow the progress of the migration work [here](https://github.com/microsoft/vscode-go/issues/3247).
+> This is the future home for the VS Code Go extension and migration is in progress. Read [the announcement in the old repo](https://github.com/microsoft/vscode-go/blob/master/README.md#we-are-moving---) section to learn about the transition and subscribe to [Microsoft/vscode-go#3247](https://github.com/microsoft/vscode-go/issues/3247) for updates.
 
 ## Table of Contents
 

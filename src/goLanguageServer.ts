@@ -14,8 +14,9 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
-	CloseAction, Command, ErrorAction, HandleDiagnosticsSignature, InitializeError, LanguageClient,
-	Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature, RevealOutputChannelOn,
+	CloseAction, CompletionItemKind, ErrorAction, HandleDiagnosticsSignature, InitializeError,
+	LanguageClient, Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature,
+	RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
@@ -225,20 +226,41 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					}
 					return next(document, token);
 				},
-				provideCompletionItem: (
+				provideCompletionItem: async (
 					document: vscode.TextDocument,
 					position: vscode.Position,
 					context: vscode.CompletionContext,
 					token: vscode.CancellationToken,
 					next: ProvideCompletionItemsSignature
 				) => {
+					const list = await next(document, position, context, token);
+					if (!list) {
+						return list;
+					}
+					const items = Array.isArray(list) ? list : list.items;
+
+					// Give all the candidates the same filterText to trick VSCode
+					// into not reordering our candidates. All the candidates will
+					// appear to be equally good matches, so VSCode's fuzzy
+					// matching/ranking just maintains the natural "sortText"
+					// ordering. We can only do this in tandem with
+					// "incompleteResults" since otherwise client side filtering is
+					// important.
+					if (!Array.isArray(list) && list.isIncomplete && list.items.length > 1) {
+						let hardcodedFilterText = items[0].filterText;
+						if (!hardcodedFilterText) {
+							hardcodedFilterText = '';
+						}
+						for (const item of items) {
+							item.filterText = hardcodedFilterText;
+						}
+					}
 					// TODO(hyangah): when v1.42+ api is available, we can simplify
 					// language-specific configuration lookup using the new
 					// ConfigurationScope.
 					//    const paramHintsEnabled = vscode.workspace.getConfiguration(
 					//          'editor.parameterHints',
 					//          { languageId: 'go', uri: document.uri });
-
 					const editorParamHintsEnabled = vscode.workspace.getConfiguration(
 						'editor.parameterHints',
 						document.uri
@@ -246,36 +268,22 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					const goParamHintsEnabled = vscode.workspace.getConfiguration('[go]', document.uri)[
 						'editor.parameterHints.enabled'
 					];
-
 					let paramHintsEnabled: boolean = false;
 					if (typeof goParamHintsEnabled === 'undefined') {
 						paramHintsEnabled = editorParamHintsEnabled;
 					} else {
 						paramHintsEnabled = goParamHintsEnabled;
 					}
-					let cmd: Command;
+					// If the user has parameterHints (signature help) enabled,
+					// trigger it for function or method completion items.
 					if (paramHintsEnabled) {
-						cmd = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
-					}
-
-					function configureCommands(
-						r: vscode.CompletionItem[] | vscode.CompletionList | null | undefined
-					): vscode.CompletionItem[] | vscode.CompletionList | null | undefined {
-						if (r) {
-							(Array.isArray(r) ? r : r.items).forEach((i: vscode.CompletionItem) => {
-								i.command = cmd;
-							});
+						for (const item of items) {
+							if (item.kind === CompletionItemKind.Method || item.kind === CompletionItemKind.Function) {
+								item.command = { title: 'triggerParameterHints', command: 'editor.action.triggerParameterHints' };
+							}
 						}
-						return r;
 					}
-					const ret = next(document, position, context, token);
-
-					const isThenable = <T>(obj: vscode.ProviderResult<T>): obj is Thenable<T> =>
-						obj && (<any>obj)['then'];
-					if (isThenable<vscode.CompletionItem[] | vscode.CompletionList | null | undefined>(ret)) {
-						return ret.then(configureCommands);
-					}
-					return configureCommands(ret);
+					return list;
 				}
 			}
 		}
