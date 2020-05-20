@@ -1,42 +1,96 @@
-You can set up a development environment for debugging the extension during extension development.
+# Contributing
 
-## Building and Debugging the extension
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code.
 
-Ensure you have [node](https://nodejs.org/en/) installed.
-Clone the repo, run `npm install` and open a development instance of Code.
+This guide will explain the process of setting up your development environment to work on the VS Code Go extension, as well as the process of sending out your change for review. If you're interested in testing the master branch or pre-releases of the extension, please see the [Go Nightly documentation](nightly.md).
 
-```bash
-git clone https://github.com/Microsoft/vscode-go
-cd vscode-go
-npm install
-code .
-```
+* [Before you start coding](#before-you-start-coding)
+  * [Ask for help](#ask-for-help)
+* [Developing](#developing)
+  * [Setup](#setup)
+  * [Run](#run)
+  * [Test](#test)
+  * [Sideload](#sideload)
+* [Mail your change for review](#mail-your-change-for-review)
 
-Make sure the `window.openFoldersInNewWindow` setting is not `"on"`.
+## Before you start coding
 
-You can now go to the Debug viewlet (`Ctrl+Shift+D`) and select `Launch Extension` then hit run (`F5`).
+If you are interested in fixing a bug or contributing a feature, please [file an issue](https://github.com/golang/vscode-go/issues/new/choose) first. Wait for a project maintainer to respond before you spend time coding.
 
-This will open a new VS Code window which will have the title `[Extension Development Host]`. In this window, open any folder with Go code. 
+If you wish to work on an existing issue, please add a comment saying so, as someone may already be working on it. A project maintainer may respond with advice on how to get started. If you're not sure which issues are available, search from issues with the [help wanted label](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 
-In the original VS Code window, you can now add breakpoints which will be hit when you use any of the the plugin's features in the second window.
+### Ask for help
 
-If you make edits in the extension `.ts` files, just reload (`cmd-r`) the `[Extension Development Host]` instance of Code to load in the new extension code.  The debugging instance will automatically reattach.
+The VS Code Go maintainers are reachable via the issue tracker and the [#vscode-dev] channel on the [Gophers Slack]. Please reach out on Slack with questions, suggestions, or ideas. If you have trouble getting started on an issue, we'd be happy to give pointers and advice.
 
-To debug the debugger, see [the debugAdapter readme](/Microsoft/vscode-go/tree/master/src/debugAdapter).
+## Developing
 
-## Running the tests
-To run the tests locally, open the Debug viewlet (`Ctrl+Shift+D`), select `Launch Tests`, then hit run (`F5`)
+### Setup
 
-## Sideloading the extension
-After making changes to the extension, you might want to test it end to end instead of running it in debug mode. To do this, you can sideload the extension. This can be done by preparing the extension and loading it directly.
+1) Install [node](https://nodejs.org/en/).
+2) Clone the repository, run `npm install` and open VS Code:
 
-1. `npm install -g vsce` to make sure you have vsce installed globally
-2. `git clone https://github.com/Microsoft/vscode-go` to clone the repo if you havent already done so
-3. `cd vscode-go`
-4. `npm install` to install dependencies if you havent already done so
-5. `vsce package` to build the package. This will generate a file with extension `vsix`
-6. Run the command `Extensions: Install from VSIX...`, choose the vsix file generated in the previous step
+    ```bash
+    git clone https://github.com/golang/vscode-go
+    cd vscode-go
+    npm install
+    code .
+    ```
 
-## Use the beta version of this extension
+3) Make sure the `window.ope
+nFoldersInNewWindow` setting is not `"on"`. <!--TODO(rstambler): Confirm that this is still required.-->
 
-If you want to help with testing the next update to this extension or you want to use the latest features that arent released yet, its easy to do so. Please see [Use the beta version of the Go extension](beta.md).
+### Run
+
+To run the extension with your patch, open the Run view (`Ctrl+Shift+D`), select `Launch Extension`, and click the Play button (`F5`).
+
+This will open a new VS Code window with the title `[Extension Development Host]`. You can then open a folder that contains Go code and try out your changes.
+
+You can also set breakpoints, which will work as you run the extension.
+
+If you make further edits in the codebase, you can reload (`Ctrl+R`) the `[Extension Development Host]` instance of VS Code, which will load the new code. The debugging instance will automatically reattach.
+
+To debug the Go debugger, see the [debugAdapter README](../src/debugAdapter/README.md).
+
+## Test
+
+There are currently three test launch configurations: (1) Launch Extension Tests, (2) Launch Extension Tests with Gopls, and (3) Launch Unit Tests. To run the tests locally, open the Run view (`Ctrl+Shift+D`), select the relevant launch configuration, and hit the Play button (`F5`).
+
+## Sideload
+
+After making changes to the extension, you may want to test it end-to-end instead of running it in debug mode. To do this, you can sideload the extension.
+
+1. Install the [vsce](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#vsce) tool for packaging extensions (`npm install -g vsce`).
+2. `cd` into your `vscode-go` directory.
+3. Install all dependencies by running `npm install`.
+4. Run `vsce package` to build the package. This will generate a file with a `.vsix` extension in your current directory.
+
+    ```bash
+    npm install -g vsce
+    cd vscode-go
+    npm install
+    vsce package
+    ```
+
+5. Open a VS Code window, navigate to the Extensions view, and disable or uninstall the default Go extension.
+6. Click on the "..." in the top-right corner, select "Install
+from VSIX...", and choose the generated VSIX file. Alternatively, you can run `code --install-extension path/to/go.vsix` or open the Command Palette and run the "Extensions: Install from VSIX..." command.
+
+## Mail your change for review
+
+Once you have coded, built, and tested your change, it's ready for review! There are two ways to contribute your change: (1) [a GitHub pull request (PR)](https://golang.org/doc/contribute.html#sending_a_change_github), or (2) a [Gerrit code review](https://golang.org/doc/contribute.html#sending_a_change_gerrit).
+
+<!--TODO(rstambler): The content on https://golang.org/doc/contribute.html needs to be generalized to all x/ repos.-->
+
+In either case, code review will happen in [Gerrit](https://www.gerritcodereview.com/), which is used for all repositories in the Go project. GitHub pull requests will be mirrored into Gerrit, so you can follow a more traditional GitHub workflow, but you will still have to look at Gerrit to read comments.
+
+The easiest way to start is by reading this [detailed guide for contributing to the Go project](https://golang.org/doc/contribute.html). Important things to note are:
+
+* You will need to sign the [Google CLA](https://golang.org/doc/contribute.html#cla).
+* Your commit message should follow the standards described on the [Commit Message Wiki page](https://github.com/golang/go/wiki/CommitMessage).<!--TODO(rstambler): What should the prefix be for vscode-go CLs? I feel like we still haven't figured this out.-->
+* Your change should include tests (if possible).
+
+Once you've sent out your change, a maintainer will take a look at your contribution within a few weeks. If you don't hear back in that time, feel free to ping the issue or send a message to the [#vscode-dev] channel of the [Gophers Slack].
+
+[#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
+[Gophers Slack]: https://invite.slack.golangbridge.org/
