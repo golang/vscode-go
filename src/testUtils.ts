@@ -122,24 +122,28 @@ export function getTestTags(goConfig: vscode.WorkspaceConfiguration): string {
  * @param the URI of a Go source file.
  * @return test function symbols for the source file.
  */
-export function getTestFunctions(
+export async function getTestFunctions(
 	doc: vscode.TextDocument,
 	token: vscode.CancellationToken
-): Thenable<vscode.DocumentSymbol[]> {
+): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider(true);
-	return documentSymbolProvider
-		.provideDocumentSymbols(doc, token)
-		.then((symbols) => symbols[0].children)
-		.then((symbols) => {
-			const testify = symbols.some(
-				(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
-			);
-			return symbols.filter(
-				(sym) =>
-					sym.kind === vscode.SymbolKind.Function &&
-					(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
-			);
-		});
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	if (!symbols || symbols.length === 0) {
+		return null;
+	}
+	const symbol = symbols[0];
+	if (!symbol) {
+		return null;
+	}
+	const children = symbol.children;
+	const testify = children.some(
+		(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
+	);
+	return children.filter(
+		(sym) =>
+			sym.kind === vscode.SymbolKind.Function &&
+			(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+	);
 }
 
 /**
@@ -202,17 +206,21 @@ export function findAllTestSuiteRuns(
  * @param the URI of a Go source file.
  * @return benchmark function symbols for the source file.
  */
-export function getBenchmarkFunctions(
+export async function getBenchmarkFunctions(
 	doc: vscode.TextDocument,
 	token: vscode.CancellationToken
-): Thenable<vscode.DocumentSymbol[]> {
+): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
-	return documentSymbolProvider
-		.provideDocumentSymbols(doc, token)
-		.then((symbols) => symbols[0].children)
-		.then((symbols) =>
-			symbols.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name))
-		);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	if (!symbols || symbols.length === 0) {
+		return null;
+	}
+	const symbol = symbols[0];
+	if (!symbol) {
+		return null;
+	}
+	const children = symbol.children;
+	return children.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name));
 }
 
 /**
