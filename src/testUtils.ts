@@ -129,11 +129,11 @@ export async function getTestFunctions(
 	const documentSymbolProvider = new GoDocumentSymbolProvider(true);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
-		return null;
+		return;
 	}
 	const symbol = symbols[0];
 	if (!symbol) {
-		return null;
+		return;
 	}
 	const children = symbol.children;
 	const testify = children.some(
@@ -213,11 +213,11 @@ export async function getBenchmarkFunctions(
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
-		return null;
+		return;
 	}
 	const symbol = symbols[0];
 	if (!symbol) {
-		return null;
+		return;
 	}
 	const children = symbol.children;
 	return children.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name));
