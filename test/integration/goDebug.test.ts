@@ -11,7 +11,7 @@ suite('Path Manipulation Tests', () => {
 	});
 });
 
-suite.only('GoDebugSession Tests', () => {
+suite('GoDebugSession Tests', () => {
 	const workspaceFolder = '/usr/workspacefolder';
 	const delve: Delve = {} as Delve;
 	const previousGoPath = process.env.GOPATH;
