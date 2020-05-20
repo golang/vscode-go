@@ -37,6 +37,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
 
 interface LanguageServerConfig {
@@ -826,7 +827,7 @@ async function suggestGoplsIssueReport(msg: string) {
 			// Wait for the command to finish before restarting the
 			// server, but don't bother handling errors.
 			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], { env: getToolsEnvVars() });
+			await execFile(latestConfig.path, ['bug'], { env: toolExecutionEnvironment() });
 			break;
 		case 'Next time':
 			break;

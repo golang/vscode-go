@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -37,9 +37,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 		});
 		return;
 	}
-
-	const paths = toolsGopath.split(path.delimiter);
-	env['GOPATH'] = paths[0];
+	env['GOPATH'] = toolsGopath;
 
 	return env;
 }
