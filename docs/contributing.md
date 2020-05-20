@@ -63,7 +63,7 @@ After making changes to the extension, you may want to test it end-to-end instea
 1. Install the [vsce](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#vsce) tool for packaging extensions (`npm install -g vsce`).
 2. `cd` into your `vscode-go` directory.
 3. Install all dependencies by running `npm install`.
-4. Run `vsce package` to build the package. This will generate a file a `.vsix` extension in your current directory.
+4. Run `vsce package` to build the package. This will generate a file with a `.vsix` extension in your current directory.
 
     ```bash
     npm install -g vsce
@@ -78,7 +78,7 @@ from VSIX...", and choose the generated VSIX file. Alternatively, you can run `c
 
 ## Mail your change for review
 
-Once you have coded, built, and tested your change, it's ready for review! There are two ways to contribute your change: (1) [a GitHub pull request (PR)](https://golang.org/doc/contribute.html#sending_a_change_github), and (2) a [Gerrit code review](https://golang.org/doc/contribute.html#sending_a_change_gerrit).
+Once you have coded, built, and tested your change, it's ready for review! There are two ways to contribute your change: (1) [a GitHub pull request (PR)](https://golang.org/doc/contribute.html#sending_a_change_github), or (2) a [Gerrit code review](https://golang.org/doc/contribute.html#sending_a_change_gerrit).
 
 <!--TODO(rstambler): The content on https://golang.org/doc/contribute.html needs to be generalized to all x/ repos.-->
 
@@ -87,7 +87,7 @@ In either case, code review will happen in [Gerrit](https://www.gerritcodereview
 The easiest way to start is by reading this [detailed guide for contributing to the Go project](https://golang.org/doc/contribute.html). Important things to note are:
 
 * You will need to sign the [Google CLA](https://golang.org/doc/contribute.html#cla).
-* Your commit message should follow the described on the [Commit Message Wiki page](https://github.com/golang/go/wiki/CommitMessage).<!--TODO(rstambler): What should the prefix be for vscode-go CLs? I feel like we still haven't figured this out.-->
+* Your commit message should follow the standards described on the [Commit Message Wiki page](https://github.com/golang/go/wiki/CommitMessage).<!--TODO(rstambler): What should the prefix be for vscode-go CLs? I feel like we still haven't figured this out.-->
 * Your change should include tests (if possible).
 
 Once you've sent out your change, a maintainer will take a look at your contribution within a few weeks. If you don't hear back in that time, feel free to ping the issue or send a message to the [#vscode-dev] channel of the [Gophers Slack].
