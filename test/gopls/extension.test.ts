@@ -44,11 +44,6 @@ class Env {
 	}
 
 	public async setup() {
-		const wscfg = vscode.workspace.getConfiguration('go');
-		if (!wscfg.get('useLanguageServer')) {
-			wscfg.update('useLanguageServer', true, vscode.ConfigurationTarget.Workspace);
-		}
-
 		await this.reset();
 		await this.extension.activate();
 		await sleep(2000);  // allow extension host + gopls to start.
@@ -60,7 +55,7 @@ class Env {
 			// needed to keep the empty directory in vcs.
 			await fs.readdir(this.workspaceDir).then((files) => {
 				return Promise.all(
-					files.filter((filename) => filename !== '.gitignore').map((file) => {
+					files.filter((filename) => filename !== '.gitignore' && filename !== '.vscode').map((file) => {
 						fs.remove(path.resolve(this.workspaceDir, file));
 					}));
 			});
@@ -90,7 +85,7 @@ async function sleep(ms: number) {
 }
 
 suite('Go Extension Tests With Gopls', function () {
-	this.timeout(1000000);
+	this.timeout(300000);
 	const projectDir = path.join(__dirname, '..', '..', '..');
 	const env = new Env(projectDir);
 
@@ -162,5 +157,6 @@ suite('Go Extension Tests With Gopls', function () {
 				}
 			}
 		}
+
 	});
 });
