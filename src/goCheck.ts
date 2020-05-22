@@ -51,7 +51,7 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 		return !!text.match(/^\/\/ .*DO NOT EDIT\.?$/);
 	};
 
-	const filesLookupTbl: { [id: string ]: number; } = ctx.globalState.get( 'lookupsGenerated' ) || {};
+	const filesLookupTbl: { [id: string ]: number; } = ctx.workspaceState.get( 'lookupsGenerated' ) || {};
 
 	if ( filesLookupTbl[e.document.fileName] ) {
 		const previous = filesLookupTbl[e.document.fileName];
@@ -66,7 +66,7 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 			continue;
 		} else if ( e.document.lineAt(line).text.slice(0, 2) === '//' && isGenerated(e.document.lineAt(line).text) ) {
 			filesLookupTbl[e.document.fileName] = line;
-			ctx.globalState.update( 'lookupsGenerated', filesLookupTbl);
+			ctx.workspaceState.update( 'lookupsGenerated', filesLookupTbl);
 			vscode.window.showWarningMessage(doNotEditMessage, neverAgain).then(maybeSaveNeverAgain);
 			return;
 		}
