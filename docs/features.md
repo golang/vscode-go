@@ -1,21 +1,46 @@
-**NOTE:** If `go.useLanguageServer` is enabled, many of the following features will be
-offered through the Go language server `gopls`.
+# Features
 
-### IntelliSense
+This document describes the features supported by this extension.
 
-- Auto Completion of symbols as you type (using `gocode` or `gopls`)
-- Signature Help for functions as you type (using `gogetdoc` or `godef`+`godoc` or `gopls`)
-- Quick Info on the symbol as you hover over it (using `gogetdoc` or `godef`+`godoc` or `gopls`)
+If you are using the Go language server, `gopls`, please the [gopls documentation](gopls.md) instead. (You can check if you are using `gopls` by opening your VS Code settings and checking if `go.useLanguageServer` is set to `true`.)
 
-### Code Navigation
+## Table of Contents
 
-- Go to or Peek Definition of symbols (using `gogetdoc` or `godef`+`godoc` or `gopls`)
-- Find References of symbols and Implementations of interfaces (using `guru` or `gopls`)
-- Go to symbol in file or see the file outline (using `go-outline` or `gopls`)
+* [IntelliSense](#intellisense)
+* [Code Navigation](#code-navigation)
+* [Code Editing](#code-editing)
+* [Diagnostics](#diagnostics)
+* [Testing](#testing)
+
+## [IntelliSense](https://code.visualstudio.com/docs/editor/intellisense)
+
+This extension supports the following IntelliSense features:
+
+* Code completion of symbols as you type.
+* Signature help for functions.
+* Quick info for symbols on hover.
+
+### Customizability
+
+* Code completion is provided by the [`gocode`](tools.md#gocode) tool. Different versions of `gocode` are used depending on your version of Go.
+  * Go 1.8 and below: [nsf/gocode](https://github.com/nsf/gocode)
+  * Go 1.9 and above: [mdempsky/gocode](https://github.com/mdempsky/gocode)
+  * Go 1.11 and above, with modules enabled: [stamblerre/gocode](https://github.com/stamblerre/gocode)
+    * If you find code completion slow with modules, consider using [gopls](gopls.md) instead.
+* Signature help and quick info are provided by the [`gogetdoc`](tools.md#gogetdoc) tool. If `gogetdoc` does not work for you, a combination of the [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) tools can be used.
+  * Configure this via the `"go.docsTool"` setting.
+
+## [Code Navigation](https://code.visualstudio.com/docs/editor/editingevolved)
+
+* Go to Definition of symbols.
+* Find References of symbols and Implementations of interfaces (using `guru` or `gopls`)
+* Go to symbol in file or see the file outline (using `go-outline` or `gopls`)
 - Go to symbol in workspace (using `go-symbols` or `gopls`)
 - Toggle between a Go program and the corresponding test file.
 
-### Code Editing
+[Learn more about Code Navigation in VS Code].
+
+## Code Editing
 
 - Code Snippets for quick coding
 - Format code on file save as well as format manually (using `goreturns` or `goimports` or `gofmt` or `gopls`)
@@ -25,14 +50,14 @@ offered through the Go language server `gopls`.
 - Generate method stubs for interfaces (using `impl`)
 - Fill struct literals with default values (using `fillstruct`)
 
-### Diagnostics
+## Diagnostics
 
 - Build-on-save to compile code and show build errors. (using `go build` and `go test`)
 - Vet-on-save to run `go vet` and show errors as warnings (`gopls`)
 - Lint-on-save to show linting errors as warnings (using `golint`, `gometalinter`, `megacheck`, `golangci-lint` or `revive` or `gopls`)
 - Semantic/Syntactic error reporting as you type (using `gotype-live` or `gopls`)
 
-### Testing
+## Testing
 
 - Run Tests under the cursor, in current file, in current package, in the whole workspace using either commands or codelens 
 - Run Benchmarks under the cursor using either commands or codelens
