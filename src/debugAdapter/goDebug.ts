@@ -41,8 +41,17 @@ import {
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);
 
-// This enum should stay in sync with https://golang.org/pkg/reflect/#Kind
+enum LaunchMode {
+	Auto = 'auto',
+	Debug = 'debug',
+	Remote = 'remote',
+	Test = 'test',
+	Exec = 'exec',
+	Replay = 'replay',
+	Core = 'core'
+}
 
+// This enum should stay in sync with https://golang.org/pkg/reflect/#Kind
 enum GoReflectKind {
 	Invalid = 0,
 	Bool,
@@ -78,6 +87,11 @@ enum GoReflectKind {
 
 interface CommandOut {
 	State: DebuggerState;
+}
+
+interface RecordedOut {
+	Recorded: boolean;
+	TraceDirectory: string;
 }
 
 interface DebuggerState {
@@ -251,7 +265,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	logOutput?: string;
 	cwd?: string;
 	env?: { [key: string]: string };
-	mode?: 'auto' | 'debug' | 'remote' | 'test' | 'exec';
+	mode?: LaunchMode;
 	remotePath?: string;
 	port?: number;
 	host?: string;
@@ -272,6 +286,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 
 	showGlobalVariables?: boolean;
 	packagePathToGoModPathMap: { [key: string]: string };
+
+	executable?: string;
+	traceDirectory?: string;
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -281,7 +298,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	showLog?: boolean;
 	logOutput?: string;
 	cwd?: string;
-	mode?: 'local' | 'remote';
+	mode?: 'local' | 'remote' | 'replay';
 	remotePath?: string;
 	port?: number;
 	host?: string;
@@ -356,6 +373,7 @@ export class Delve {
 	public dlvEnv: any;
 	public stackTraceDepth: number;
 	public isRemoteDebugging: boolean;
+	public mode: LaunchMode;
 	private localDebugeePath: string | undefined;
 	private debugProcess: ChildProcess;
 	private request: 'attach' | 'launch';
@@ -504,11 +522,24 @@ export class Delve {
 
 				const currentGOWorkspace = getCurrentGoWorkspaceFromGOPATH(env['GOPATH'], dirname);
 				dlvArgs.push(mode || 'debug');
+
 				if (mode === 'exec' || (mode === 'debug' && !isProgramDirectory)) {
 					dlvArgs.push(program);
+				} else if (mode === 'replay') {
+					if (launchArgs.backend !== 'rr') {
+						return reject('Invalid debugger backend. Only rr is supported for replay mode');
+					}
+					dlvArgs.push(launchArgs.traceDirectory);
+				} else if (mode === 'core') {
+					if (launchArgs.backend !== 'coredump') {
+						return reject('Invalid debugger backend. Only coredump is supported for core mode');
+					}
+					dlvArgs.push(launchArgs.executable);
+					dlvArgs.push(launchArgs.coreDumpPath);
 				} else if (currentGOWorkspace && !launchArgs.packagePathToGoModPathMap[dirname]) {
 					dlvArgs.push(dirname.substr(currentGOWorkspace.length + 1));
 				}
+
 				dlvArgs.push('--headless=true', `--listen=${launchArgs.host}:${launchArgs.port}`);
 				if (!this.isApiV1) {
 					dlvArgs.push('--api-version=2');
@@ -761,6 +792,10 @@ export class GoDebugSession extends LoggingDebugSession {
 
 	private continueEpoch = 0;
 	private continueRequestRunning = false;
+
+	private rewindEpoch = 0;
+	private rewindRequestRunning = false;
+
 	public constructor(
 			debuggerLinesStartAt1: boolean,
 			isServer: boolean = false,
@@ -783,6 +818,14 @@ export class GoDebugSession extends LoggingDebugSession {
 		// This debug adapter implements the configurationDoneRequest.
 		response.body.supportsConfigurationDoneRequest = true;
 		response.body.supportsSetVariable = true;
+
+		// rr which is required for reverse continue is only supported on linux and for certain Intel architectures
+		// See https://github.com/mozilla/rr/wiki/Building-And-Installing#supported-hardware
+		const cpuModel: string = os.cpus()[0].model;
+		if ((process.platform === 'linux') && (cpuModel.toLowerCase().includes('intel'))) {
+			response.body.supportsStepBack = true;
+		}
+
 		this.sendResponse(response);
 		log('InitializeResponse');
 	}
@@ -845,7 +888,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.ConfigurationDoneArguments
 	): Promise<void> {
 		log('ConfigurationDoneRequest');
-		if (this.stopOnEntry) {
+		if (this.stopOnEntry || this.isCoreDumpRecord()) {
 			this.sendEvent(new StoppedEvent('entry', 1));
 			log('StoppedEvent("entry")');
 			this.sendResponse(response);
@@ -1128,6 +1171,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.SetBreakpointsArguments
 	): Promise<void> {
 		log('SetBreakPointsRequest');
+
 		try {
 			// If a program is launched with --continue, the program is running
 			// before we can run attach. So we would need to check the state.
@@ -1137,16 +1181,22 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.logDelveError(error, 'Failed to get state');
 		}
 
-		if (!this.debugState.Running && !this.continueRequestRunning) {
+		if (!this.debugState.Running && !this.continueRequestRunning && !this.rewindRequestRunning) {
 			await this.setBreakPoints(response, args);
 		} else {
 			this.skipStopEventOnce = this.continueRequestRunning;
 			this.delve.callPromise('Command', [{ name: 'halt' }]).then(
 				() => {
 					return this.setBreakPoints(response, args).then(() => {
-						return this.continue(true).then(null, (err) => {
-							this.logDelveError(err, 'Failed to continue delve after halting it to set breakpoints');
-						});
+						if (this.continueRequestRunning) {
+							return this.continue(true).then(null, (err) => {
+								this.logDelveError(err, 'Failed to continue delve after halting it to set breakpoints');
+							});
+						} else if (this.rewindRequestRunning) {
+							return this.rewind(true).then(null, (err) => {
+								this.logDelveError(err, 'Failed to rewind delve after halting it to set breakpoints');
+							});
+						}
 					});
 				},
 				(err) => {
@@ -1164,12 +1214,25 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+		log('ThreadsRequest');
+
 		if (this.continueRequestRunning) {
 			// Thread request to delve is syncronous and will block if a previous async continue request didn't return
 			response.body = { threads: [new Thread(1, 'Dummy')] };
+			log('ThreadsResponse', response.body);
 			return this.sendResponse(response);
 		}
-		log('ThreadsRequest');
+
+		if (this.isCoreDumpRecord()) {
+			// Thread request to delve is handled via a ListGoroutines/Goroutines call, so return a dummy thread
+			// to be handled later on by the request
+			// TODO: delve needs thread id 0 to get the core process stacktrace, but we can't use
+			// it as the debug adapter will not trigger the request for that case
+			response.body = { threads: [new Thread(1, 'Core Dump')] };
+			log('ThreadsResponse', response.body);
+			return this.sendResponse(response);
+		}
+
 		this.delve.call<DebugGoroutine[] | ListGoroutinesOut>('ListGoroutines', [], (err, out) => {
 			if (this.debugState && this.debugState.exited) {
 				// If the program exits very quickly, the initial threadsRequest will complete after it has exited.
@@ -1209,12 +1272,27 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.StackTraceArguments
 	): void {
 		log('StackTraceRequest');
+		let goroutineId = args.threadId;
+
+		if (this.isCoreDumpRecord()) {
+			// If the thread id differs from the expected placeholder id, don't return anything
+			if (args.threadId !== 1) {
+				response.body = { stackFrames: <any>[], totalFrames: 0 };
+				this.sendResponse(response);
+				log('StackTraceResponse');
+				return;
+			}
+			// Set the goroutine id to 0, as it is required by delve to successfully
+			// retrieve the active stacktrace during a core dump debug scenario
+			goroutineId = 0;
+		}
+
 		// delve does not support frame paging, so we ask for a large depth
-		const goroutineId = args.threadId;
 		const stackTraceIn = { id: goroutineId, depth: this.delve.stackTraceDepth };
 		if (!this.delve.isApiV1) {
 			Object.assign(stackTraceIn, { full: false, cfg: this.delve.loadConfig });
 		}
+
 		this.delve.call<DebugLocation[] | StacktraceOut>(
 			this.delve.isApiV1 ? 'StacktraceGoroutine' : 'Stacktrace',
 			[stackTraceIn],
@@ -1500,7 +1578,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 	}
 
-	protected continueRequest(response: DebugProtocol.ContinueResponse): void {
+	protected async continueRequest(response: DebugProtocol.ContinueResponse): Promise<void> {
 		log('ContinueRequest');
 		this.continue();
 		this.sendResponse(response);
@@ -1570,25 +1648,6 @@ export class GoDebugSession extends LoggingDebugSession {
 		log('PauseResponse');
 	}
 
-	protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
-		log('EvaluateRequest');
-		this.evaluateRequestImpl(args).then(
-			(out) => {
-				const variable = this.delve.isApiV1 ? <DebugVariable>out : (<EvalOut>out).Variable;
-				// #2326: Set the fully qualified name for variable mapping
-				variable.fullyQualifiedName = variable.name;
-				response.body = this.convertDebugVariableToProtocolVariable(variable);
-				this.sendResponse(response);
-				log('EvaluateResponse');
-			},
-			(err) => {
-				this.sendErrorResponse(response, 2009, 'Unable to eval expression: "{e}"', {
-					e: err.toString()
-				});
-			}
-		);
-	}
-
 	protected setVariableRequest(
 		response: DebugProtocol.SetVariableResponse,
 		args: DebugProtocol.SetVariableArguments
@@ -1611,6 +1670,33 @@ export class GoDebugSession extends LoggingDebugSession {
 			response.body = { value: args.value };
 			this.sendResponse(response);
 			log('SetVariableResponse');
+		});
+	}
+
+	protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments): void {
+		logError('Step back is not currently supported by Delve');
+		this.sendResponse(response);
+	}
+
+	// tslint:disable-next-line: max-line-length
+	protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments): void {
+		log('ReverseContinueRequest');
+		this.rewind();
+		this.sendResponse(response);
+		log('ReverseContinueResponse');
+	}
+
+	protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
+		log('EvaluateRequest');
+		this.evaluateRequestImpl(args).then((out) => {
+			const variable = this.delve.isApiV1 ? <DebugVariable>out : (<EvalOut>out).Variable;
+			// #2326: Set the fully qualified name for variable mapping
+			variable.fullyQualifiedName = variable.name;
+			response.body = this.convertDebugVariableToProtocolVariable(variable);
+			this.sendResponse(response);
+			log('EvaluateResponse');
+		}, (err) => {
+			this.sendErrorResponse(response, 2009, 'Unable to eval expression: "{e}"', { e: err.toString() });
 		});
 	}
 
@@ -1756,6 +1842,14 @@ export class GoDebugSession extends LoggingDebugSession {
 		response: DebugProtocol.SetBreakpointsResponse,
 		args: DebugProtocol.SetBreakpointsArguments
 	): Promise<void> {
+		// Cannot set breakpoints on core dump debug processes, return empty response
+		if (this.isCoreDumpRecord()) {
+			response.body = { breakpoints: <any>[] };
+			this.sendResponse(response);
+			log('SetBreakPointsResponse');
+			return;
+		}
+
 		const file = normalizePath(args.source.path);
 		if (!this.breakpoints.get(file)) {
 			this.breakpoints.set(file, []);
@@ -1770,8 +1864,9 @@ export class GoDebugSession extends LoggingDebugSession {
 				]);
 			})
 		)
-			.then(() => {
+			.then(async () => {
 				log('All cleared');
+
 				let existingBreakpoints: DebugBreakpoint[] | undefined;
 				return Promise.all(
 					args.breakpoints.map((breakpoint) => {
@@ -1831,7 +1926,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				let convertedBreakpoints: DebugBreakpoint[];
 				if (!this.delve.isApiV1) {
 					// Unwrap breakpoints from v2 apicall
-					convertedBreakpoints = newBreakpoints.map((bp, i) => {
+					convertedBreakpoints = newBreakpoints.map((bp) => {
 						return bp ? (bp as CreateBreakpointOut).Breakpoint : null;
 					});
 				} else {
@@ -1863,6 +1958,24 @@ export class GoDebugSession extends LoggingDebugSession {
 						e: err.toString()
 					});
 					logError(err);
+				}
+			);
+	}
+
+	private async isCoreDumpRecord(): Promise<boolean> {
+		const recordedStatus = await this.getRecordedState();
+		log('Recorded ' + JSON.stringify(recordedStatus));
+		return recordedStatus.Recorded && this.delve.mode === LaunchMode.Core;
+	}
+
+	private async getRecordedState(): Promise<RecordedOut> {
+		return await this.delve.callPromise<RecordedOut>('Recorded', [])
+			.then(
+				(out) => out,
+				(err) => {
+					if (err) {
+						this.logDelveError(err, 'Failed to check recorded');
+					}
 				}
 			);
 	}
@@ -2026,6 +2139,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			});
 		}
 	}
+
 	private continue(calledWhenSettingBreakpoint?: boolean): Thenable<void> {
 		this.continueEpoch++;
 		const closureEpoch = this.continueEpoch;
@@ -2054,6 +2168,32 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		return this.delve.callPromise('Command', [{ name: 'continue' }]).then(callback, errorCallback);
+	}
+	private rewind(calledWhenSettingBreakpoint?: boolean): Thenable<void> {
+		this.rewindEpoch++;
+		const closureEpoch = this.rewindEpoch;
+		this.rewindRequestRunning = true;
+
+		const callback = (out: any) => {
+			if (closureEpoch === this.rewindEpoch) {
+				this.rewindRequestRunning = false;
+			}
+			const state: DebuggerState = <DebuggerState>out;
+			log('rewind state', state);
+			this.debugState = state;
+			this.handleReenterDebug('breakpoint');
+		};
+
+		// If called when setting breakpoint internally, we want the error to bubble up.
+		const errorCallback = calledWhenSettingBreakpoint ? null : (err: any) => {
+			if (err) {
+				logError('Failed to rewind - ' + err.toString());
+			}
+			this.handleReenterDebug('breakpoint');
+			throw err;
+		};
+
+		return this.delve.callPromise('Command', [{ name: 'rewind' }]).then(callback, errorCallback);
 	}
 
 	private evaluateRequestImpl(args: DebugProtocol.EvaluateArguments): Thenable<EvalOut | DebugVariable> {

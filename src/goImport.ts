@@ -95,7 +95,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 		return [vscode.TextEdit.insert(new vscode.Position(lastImportSection.start + 1, 0), '\t"' + arg + '"\n')];
 	} else if (minusCgo.length > 0) {
 		// There are some number of single line imports, which can just be collapsed into a block import.
-		const edits = [];
+		const edits: any[] = [];
 
 		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
 		minusCgo.forEach((element) => {
