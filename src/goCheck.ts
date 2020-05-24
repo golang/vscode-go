@@ -21,6 +21,8 @@ const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignmen
 statusBarItem.command = 'go.test.showOutput';
 const neverAgain = { title: `Don't Show Again` };
 
+const filesLookupTbl: { [id: string ]: number; } = {};
+
 export function removeTestStatus(e: vscode.TextDocumentChangeEvent) {
 	if (e.document.isUntitled) {
 		return;
@@ -51,8 +53,6 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 		return !!text.match(/^\/\/ .*DO NOT EDIT\.?$/);
 	};
 
-	const filesLookupTbl: { [id: string ]: number; } = ctx.workspaceState.get( 'lookupsGenerated' ) || {};
-
 	if ( filesLookupTbl[e.document.fileName] ) {
 		const previous = filesLookupTbl[e.document.fileName];
 		if ( previous <= e.document.lineCount && isGenerated( e.document.lineAt( previous ).text ) ) {
@@ -64,9 +64,8 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 	for ( let line = 0; line < e.document.lineCount; line++ ) {
 		if ( e.document.lineAt(line).text.match( '^\s*$' ) ) {
 			continue;
-		} else if ( e.document.lineAt(line).text.slice(0, 2) === '//' && isGenerated(e.document.lineAt(line).text) ) {
+		} else if ( e.document.lineAt(line).text.startsWith('//') && isGenerated(e.document.lineAt(line).text) ) {
 			filesLookupTbl[e.document.fileName] = line;
-			ctx.workspaceState.update( 'lookupsGenerated', filesLookupTbl);
 			vscode.window.showWarningMessage(doNotEditMessage, neverAgain).then(maybeSaveNeverAgain);
 			return;
 		}
