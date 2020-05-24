@@ -1,11 +1,13 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import { ChildProcess, execFile, spawn } from 'child_process';
+import { ChildProcess, execFile, execSync, spawn, spawnSync } from 'child_process';
+import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { existsSync, lstatSync } from 'fs';
+import * as glob from 'glob';
 import { Client, RPCConnection } from 'json-rpc2';
 import * as os from 'os';
 import * as path from 'path';
@@ -100,6 +102,20 @@ interface DebuggerState {
 	currentThread: DebugThread;
 	currentGoroutine: DebugGoroutine;
 	Running: boolean;
+}
+
+export interface PackageBuildInfo {
+	ImportPath: string;
+	DirectoryPath: string;
+	Files: string[];
+}
+
+export interface ListPackagesBuildInfoOut {
+	List: PackageBuildInfo[];
+}
+
+export interface ListSourcesOut {
+	Sources: string[];
 }
 
 interface CreateBreakpointOut {
@@ -325,6 +341,10 @@ function findPathSeparator(filePath: string) {
 	return filePath.includes('/') ? '/' : '\\';
 }
 
+export function escapeGoModPath(filePath: string) {
+	return filePath.replace(/[A-Z]/g, (match: string) => `!${match.toLocaleLowerCase()}`);
+}
+
 function normalizePath(filePath: string) {
 	if (process.platform === 'win32') {
 		const pathSeparator = findPathSeparator(filePath);
@@ -336,7 +356,11 @@ function normalizePath(filePath: string) {
 	return filePath;
 }
 
-class Delve {
+function getBaseName(filePath: string) {
+	return filePath.includes('/') ? path.basename(filePath) : path.win32.basename(filePath);
+}
+
+export class Delve {
 	public program: string;
 	public remotePath: string;
 	public loadConfig: LoadConfig;
@@ -746,7 +770,7 @@ class Delve {
 	}
 }
 
-class GoDebugSession extends LoggingDebugSession {
+export class GoDebugSession extends LoggingDebugSession {
 	private variableHandles: Handles<DebugVariable>;
 	private breakpoints: Map<string, DebugBreakpoint[]>;
 	// Editing breakpoints requires halting delve, skip sending Stop Event to VS Code in such cases
@@ -760,6 +784,9 @@ class GoDebugSession extends LoggingDebugSession {
 	private stopOnEntry: boolean;
 	private logLevel: Logger.LogLevel = Logger.LogLevel.Error;
 	private readonly initdone = 'initdone·';
+	private remoteSourcesAndPackages = new RemoteSourcesAndPackages();
+	private localToRemotePathMapping = new Map<string, string>();
+	private remoteToLocalPathMapping = new Map<string, string>();
 
 	private showGlobalVariables: boolean = false;
 
@@ -768,7 +795,11 @@ class GoDebugSession extends LoggingDebugSession {
 
 	private rewindEpoch = 0;
 	private rewindRequestRunning = false;
-	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
+
+	public constructor(
+			debuggerLinesStartAt1: boolean,
+			isServer: boolean = false,
+			readonly fileSystem = fs) {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
 		this.skipStopEventOnce = false;
@@ -869,10 +900,80 @@ class GoDebugSession extends LoggingDebugSession {
 		}
 	}
 
-	protected toDebuggerPath(filePath: string): string {
+	/**
+	 * Given a potential list of paths in potentialPaths array, we will
+	 * find the path that has the longest suffix matching filePath.
+	 * For example, if filePath is /usr/local/foo/bar/main.go
+	 * and potentialPaths are abc/xyz/main.go, bar/main.go
+	 * then bar/main.go will be the result.
+	 * NOTE: This function assumes that potentialPaths array only contains
+	 * files with the same base names as filePath.
+	 */
+	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string|undefined {
+		if (!potentialPaths.length) {
+			return;
+		}
+
+		if (potentialPaths.length === 1) {
+			return potentialPaths[0];
+		}
+
+		const filePathSegments = filePath.split(/\/|\\/).reverse();
+		let bestPathSoFar = potentialPaths[0];
+		let bestSegmentsCount = 0;
+		for (const potentialPath of potentialPaths) {
+			const potentialPathSegments = potentialPath.split(/\/|\\/).reverse();
+			let i = 0;
+			for (; i < filePathSegments.length
+					&& i < potentialPathSegments.length
+					&& filePathSegments[i] === potentialPathSegments[i]; i++) {
+				if (i > bestSegmentsCount) {
+					bestSegmentsCount = i;
+					bestPathSoFar = potentialPath;
+				}
+			}
+		}
+		return bestPathSoFar;
+	}
+
+	/**
+	 * Given a local path, try to find matching file in the remote machine
+	 * using remote sources and remote packages info that we get from Delve.
+	 * The result would be cached in localToRemotePathMapping.
+	 */
+	protected inferRemotePathFromLocalPath(localPath: string): string|undefined {
+		if (this.localToRemotePathMapping.has(localPath)) {
+			return this.localToRemotePathMapping.get(localPath);
+		}
+
+		const fileName = getBaseName(localPath);
+		const potentialMatchingRemoteFiles = this.remoteSourcesAndPackages.remoteSourceFilesNameGrouping.get(fileName);
+		const bestMatchingRemoteFile = this.findPathWithBestMatchingSuffix(localPath, potentialMatchingRemoteFiles);
+		if (!bestMatchingRemoteFile) {
+			return;
+		}
+
+		this.localToRemotePathMapping.set(localPath, bestMatchingRemoteFile);
+		return bestMatchingRemoteFile;
+	}
+
+	protected async toDebuggerPath(filePath: string): Promise<string> {
 		if (this.delve.remotePath.length === 0) {
+			if (this.delve.isRemoteDebugging) {
+				// The user trusts us to infer the remote path mapping!
+				try {
+					await this.initializeRemotePackagesAndSources();
+					const matchedRemoteFile = this.inferRemotePathFromLocalPath(filePath);
+					if (matchedRemoteFile) {
+						return matchedRemoteFile;
+					}
+				} catch (error) {
+					log(`Failing to initialize remote sources: ${error}`);
+				}
+			}
 			return this.convertClientPathToDebugger(filePath);
 		}
+
 		// The filePath may have a different path separator than the localPath
 		// So, update it to use the same separator as the remote path to ease
 		// in replacing the local path in it with remote path
@@ -880,18 +981,183 @@ class GoDebugSession extends LoggingDebugSession {
 		return filePath.replace(this.delve.program.replace(/\/|\\/g, this.remotePathSeparator), this.delve.remotePath);
 	}
 
+	/**
+	 * Given a remote path, try to infer the matching local path.
+	 * We attempt to find the path in local Go packages as well as workspaceFolder.
+	 * Cache the result in remoteToLocalPathMapping.
+	 */
+	protected inferLocalPathFromRemotePath(remotePath: string): string|undefined {
+		if (this.remoteToLocalPathMapping.has(remotePath)) {
+			return this.remoteToLocalPathMapping.get(remotePath);
+		}
+
+		const convertedLocalPackageFile = this.inferLocalPathFromRemoteGoPackage(remotePath);
+		if (convertedLocalPackageFile) {
+			this.remoteToLocalPathMapping.set(remotePath, convertedLocalPackageFile);
+			return convertedLocalPackageFile;
+		}
+
+		// If we cannot find the path in packages, most likely it will be in the current directory.
+		const fileName = getBaseName(remotePath);
+		const globSync = glob.sync(fileName, {matchBase: true,
+			cwd: this.delve.program });
+		const bestMatchingLocalPath = this.findPathWithBestMatchingSuffix(remotePath, globSync);
+		if (bestMatchingLocalPath) {
+			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
+			this.remoteToLocalPathMapping.set(remotePath, fullLocalPath);
+			return fullLocalPath;
+		}
+	}
+
+	/**
+	 * Given a remote path, we attempt to infer the local path by first checking
+	 * if it is in any remote packages. If so, then we attempt to find the matching
+	 * local package and find the local path from there.
+	 */
+	protected inferLocalPathFromRemoteGoPackage(remotePath: string): string|undefined {
+		const remotePackage = this.remoteSourcesAndPackages.remotePackagesBuildInfo.find(
+			(buildInfo) => remotePath.startsWith(buildInfo.DirectoryPath));
+		// Since we know pathToConvert exists in a remote package, we can try to find
+		// that same package in the local client. We can use import path to search for the package.
+		if (!remotePackage) {
+			return;
+		}
+
+		if (!this.remotePathSeparator) {
+			this.remotePathSeparator = findPathSeparator(remotePackage.DirectoryPath);
+		}
+
+		// Escaping package path.
+		// It seems like sometimes Delve don't escape the path properly
+		// so we should do it.
+		remotePath = escapeGoModPath(remotePath);
+		const escapedImportPath = escapeGoModPath(remotePackage.ImportPath);
+
+		// The remotePackage.DirectoryPath should be something like
+		// <gopath|goroot|source>/<import-path>/xyz...
+		// Directory Path can be like "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp"
+		// and Import Path can be like "github.com/google/go-cmp/cmp"
+		// and Remote Path "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp/blah.go"
+		const importPathIndex = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '')
+			.indexOf(escapedImportPath);
+		if (importPathIndex < 0) {
+			return;
+		}
+
+		const relativeRemotePath = remotePath
+			.substr(importPathIndex)
+			.split(this.remotePathSeparator)
+			.join(this.localPathSeparator);
+		const pathToConvertWithLocalSeparator = remotePath.split(this.remotePathSeparator).join(this.localPathSeparator);
+
+		// Scenario 1: The package is inside the current working directory.
+		const localWorkspacePath = path.join(this.delve.program, relativeRemotePath);
+		if (this.fileSystem.existsSync(localWorkspacePath)) {
+			return localWorkspacePath;
+		}
+
+		// Scenario 2: The package is inside GOPATH.
+		const localGoPathImportPath = this.inferLocalPathInGoPathFromRemoteGoPackage(
+			pathToConvertWithLocalSeparator, relativeRemotePath);
+		if (localGoPathImportPath) {
+			return localGoPathImportPath;
+		}
+
+		// Scenario 3: The package is inside GOROOT.
+		return this.inferLocalPathInGoRootFromRemoteGoPackage(pathToConvertWithLocalSeparator, relativeRemotePath);
+	}
+
+	/**
+	 * Given a remotePath, check whether the file path exists in $GOROOT/src.
+	 * Return the path if it exists.
+	 * We are assuming that remotePath is of the form <prefix>/src/<suffix>.
+	 */
+	protected inferLocalPathInGoRootFromRemoteGoPackage(
+			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		const srcIndex = remotePathWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
+		const goroot = process.env['GOROOT'] || '';
+		const localGoRootImportPath = path.join(
+			goroot,
+			srcIndex >= 0
+				? remotePathWithLocalSeparator.substr(srcIndex)
+				: path.join('src', relativeRemotePath));
+		if (this.fileSystem.existsSync(localGoRootImportPath)) {
+			return localGoRootImportPath;
+		}
+	}
+
+	/**
+	 * Given a remotePath, check whether the file path exists in $GOPATH.
+	 * This can be either in $GOPATH/pkg/mod or $GOPATH/src. If so, return that path.
+	 * remotePath can be something like /usr/local/gopath/src/hello-world/main.go
+	 * and relativeRemotePath should be hello-world/main.go. In other words,
+	 * relativeRemotePath is a relative version of remotePath starting
+	 * from the import path of the module.
+	 */
+	protected inferLocalPathInGoPathFromRemoteGoPackage(
+			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		// Scenario 1: The package is inside $GOPATH/pkg/mod.
+		const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
+
+		const indexGoModCache = remotePathWithLocalSeparator.indexOf(
+			`${this.localPathSeparator}pkg${this.localPathSeparator}mod${this.localPathSeparator}`
+		);
+		const localGoPathImportPath = path.join(
+			gopath,
+			indexGoModCache >= 0
+				? remotePathWithLocalSeparator.substr(indexGoModCache)
+				: path.join('pkg', 'mod', relativeRemotePath));
+		if (this.fileSystem.existsSync(localGoPathImportPath)) {
+			return localGoPathImportPath;
+		}
+
+		// Scenario 2: The file is in a package in $GOPATH/src.
+		const localGoPathSrcPath = path.join(
+				gopath, 'src',
+				relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator));
+		if (this.fileSystem.existsSync(localGoPathSrcPath)) {
+			return localGoPathSrcPath;
+		}
+	}
+
+	/**
+	 * This functions assumes that remote packages and paths information
+	 * have been initialized.
+	 */
 	protected toLocalPath(pathToConvert: string): string {
 		if (this.delve.remotePath.length === 0) {
+			// User trusts use to infer the path
+			if (this.delve.isRemoteDebugging) {
+				const inferredPath = this.inferLocalPathFromRemotePath(pathToConvert);
+				if (inferredPath) {
+					return inferredPath;
+				}
+			}
 			return this.convertDebuggerPathToClient(pathToConvert);
 		}
 
-		// Fix for https://github.com/Microsoft/vscode-go/issues/1178
-		// When the pathToConvert is under GOROOT, replace the remote GOROOT with local GOROOT
+		// When the pathToConvert is under GOROOT or Go module cache, replace path appropriately
 		if (!pathToConvert.startsWith(this.delve.remotePath)) {
+			// Fix for https://github.com/Microsoft/vscode-go/issues/1178
 			const index = pathToConvert.indexOf(`${this.remotePathSeparator}src${this.remotePathSeparator}`);
 			const goroot = process.env['GOROOT'];
 			if (goroot && index > 0) {
 				return path.join(goroot, pathToConvert.substr(index));
+			}
+
+			const indexGoModCache = pathToConvert.indexOf(
+				`${this.remotePathSeparator}pkg${this.remotePathSeparator}mod${this.remotePathSeparator}`
+			);
+			const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
+
+			if (gopath && indexGoModCache > 0) {
+				return path.join(
+					gopath,
+					pathToConvert
+						.substr(indexGoModCache)
+						.split(this.remotePathSeparator)
+						.join(this.localPathSeparator)
+				);
 			}
 		}
 		return pathToConvert
@@ -1030,7 +1296,7 @@ class GoDebugSession extends LoggingDebugSession {
 		this.delve.call<DebugLocation[] | StacktraceOut>(
 			this.delve.isApiV1 ? 'StacktraceGoroutine' : 'Stacktrace',
 			[stackTraceIn],
-			(err, out) => {
+			async (err, out) => {
 				if (err) {
 					this.logDelveError(err, 'Failed to produce stacktrace');
 					return this.sendErrorResponse(response, 2004, 'Unable to produce stack trace: "{e}"', {
@@ -1039,6 +1305,9 @@ class GoDebugSession extends LoggingDebugSession {
 				}
 				const locations = this.delve.isApiV1 ? <DebugLocation[]>out : (<StacktraceOut>out).Locations;
 				log('locations', locations);
+
+				await this.initializeRemotePackagesAndSources();
+
 				let stackFrames = locations.map((location, frameId) => {
 					const uniqueStackFrameId = this.stackFrameHandles.create([goroutineId, frameId]);
 					return new StackFrame(
@@ -1470,8 +1739,8 @@ class GoDebugSession extends LoggingDebugSession {
 			args.remotePath = '';
 		}
 
+		this.localPathSeparator = findPathSeparator(localPath);
 		if (args.remotePath.length > 0) {
-			this.localPathSeparator = findPathSeparator(localPath);
 			this.remotePathSeparator = findPathSeparator(args.remotePath);
 
 			const llist = localPath.split(/\/|\\/).reverse();
@@ -1546,10 +1815,33 @@ class GoDebugSession extends LoggingDebugSession {
 		);
 	}
 
-	private setBreakPoints(
+	/**
+	 * Initializing remote packages and sources.
+	 * We use event model to prevent race conditions.
+	 */
+	private async initializeRemotePackagesAndSources(): Promise<void> {
+		if (this.remoteSourcesAndPackages.initializedRemoteSourceFiles) {
+			return;
+		}
+
+		if (!this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
+			await this.remoteSourcesAndPackages.initializeRemotePackagesAndSources(this.delve);
+			return;
+		}
+
+		if (this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
+			await new Promise((resolve) => {
+				this.remoteSourcesAndPackages.on(RemoteSourcesAndPackages.INITIALIZED, () => {
+					resolve();
+				});
+			});
+		}
+	}
+
+	private async setBreakPoints(
 		response: DebugProtocol.SetBreakpointsResponse,
 		args: DebugProtocol.SetBreakpointsArguments
-	): Thenable<void> {
+	): Promise<void> {
 		// Cannot set breakpoints on core dump debug processes, return empty response
 		if (this.isCoreDumpRecord()) {
 			response.body = { breakpoints: <any>[] };
@@ -1562,7 +1854,7 @@ class GoDebugSession extends LoggingDebugSession {
 		if (!this.breakpoints.get(file)) {
 			this.breakpoints.set(file, []);
 		}
-		const remoteFile = this.toDebuggerPath(file);
+		const remoteFile = await this.toDebuggerPath(file);
 
 		return Promise.all(
 			this.breakpoints.get(file).map((existingBP) => {
@@ -1688,12 +1980,13 @@ class GoDebugSession extends LoggingDebugSession {
 			);
 	}
 
-	private getPackageInfo(debugState: DebuggerState): Thenable<string> {
+	private async getPackageInfo(debugState: DebuggerState): Promise<string> {
 		if (!debugState.currentThread || !debugState.currentThread.file) {
 			return Promise.resolve(null);
 		}
+		await this.initializeRemotePackagesAndSources();
 		const dir = path.dirname(
-			this.delve.remotePath.length
+			this.delve.remotePath.length || this.delve.isRemoteDebugging
 				? this.toLocalPath(debugState.currentThread.file)
 				: debugState.currentThread.file
 		);
@@ -1957,21 +2250,19 @@ class GoDebugSession extends LoggingDebugSession {
 		}
 
 		let errorMessage = err.toString();
-		// Handle unpropagated fatalpanic errors with a more user friendly message:
+		// Use a more user friendly message for an unpropagated SIGSEGV (EXC_BAD_ACCESS)
+		// signal that delve is unable to send back to the target process to be
+		// handled as a panic.
 		// https://github.com/microsoft/vscode-go/issues/1903#issuecomment-460126884
 		// https://github.com/go-delve/delve/issues/852
-		// This affects macOS only although we're agnostic of the OS at this stage, only handle the error
+		// This affects macOS only although we're agnostic of the OS at this stage.
 		if (errorMessage === 'bad access') {
+			// Reuse the panic message from the Go runtime.
 			errorMessage =
-				'unpropagated fatalpanic: signal SIGSEGV (EXC_BAD_ACCESS). This fatalpanic is not traceable on macOS, see https://github.com/go-delve/delve/issues/852';
+				`runtime error: invalid memory address or nil pointer dereference [signal SIGSEGV: segmentation violation]\nUnable to propogate EXC_BAD_ACCESS signal to target process and panic (see https://github.com/go-delve/delve/issues/852)`;
 		}
 
 		logError(message + ' - ' + errorMessage);
-
-		if (errorMessage === 'bad access') {
-			logError('WARNING: this stack might not be from the expected active goroutine');
-		}
-
 		this.dumpStacktrace();
 	}
 
@@ -2032,6 +2323,65 @@ class GoDebugSession extends LoggingDebugSession {
 				logError(output);
 			}
 		);
+	}
+}
+
+// Class for fetching remote sources and packages
+// in the remote program using Delve.
+// tslint:disable-next-line:max-classes-per-file
+export class RemoteSourcesAndPackages extends EventEmitter {
+	public static readonly INITIALIZED = 'INITIALIZED';
+
+	public initializingRemoteSourceFiles = false;
+	public initializedRemoteSourceFiles = false;
+
+	public remotePackagesBuildInfo: PackageBuildInfo[] = [];
+	public remoteSourceFiles: string[] = [];
+	public remoteSourceFilesNameGrouping = new Map<string, string[]>();
+
+	/**
+	 * Initialize and fill out remote packages build info and remote source files.
+	 * Emits the INITIALIZED event once initialization is complete.
+	 */
+	public async initializeRemotePackagesAndSources(delve: Delve): Promise<void> {
+		this.initializingRemoteSourceFiles = true;
+
+		try {
+			// ListPackagesBuildInfo is not available on V1.
+			if (!delve.isApiV1 && this.remotePackagesBuildInfo.length === 0) {
+				const packagesBuildInfoResponse: ListPackagesBuildInfoOut = await delve.callPromise(
+					'ListPackagesBuildInfo', [{IncludeFiles: true}]
+				);
+				if (packagesBuildInfoResponse && packagesBuildInfoResponse.List) {
+					this.remotePackagesBuildInfo = packagesBuildInfoResponse.List;
+				}
+			}
+
+			// List sources will return all the source files used by Delve.
+			if (delve.isApiV1) {
+				this.remoteSourceFiles = await delve.callPromise('ListSources', []);
+			} else {
+				const listSourcesResponse: ListSourcesOut = await delve.callPromise('ListSources', [{}]);
+				if (listSourcesResponse && listSourcesResponse.Sources) {
+					this.remoteSourceFiles = listSourcesResponse.Sources;
+				}
+			}
+
+			// Group the source files by name for easy searching later.
+			this.remoteSourceFiles = this.remoteSourceFiles.filter((sourceFile) => !sourceFile.startsWith('<'));
+			this.remoteSourceFiles.forEach((sourceFile) => {
+				const fileName = getBaseName(sourceFile);
+				if (!this.remoteSourceFilesNameGrouping.has(fileName)) {
+					this.remoteSourceFilesNameGrouping.set(fileName, []);
+				}
+				this.remoteSourceFilesNameGrouping.get(fileName).push(sourceFile);
+			});
+		} catch (error) {
+			logError(`Failed to initialize remote sources and packages: ${error && error.message}`);
+		} finally {
+			this.emit(RemoteSourcesAndPackages.INITIALIZED);
+			this.initializedRemoteSourceFiles = true;
+		}
 	}
 }
 

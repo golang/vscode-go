@@ -1,11 +1,10 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
 
-import fs = require('fs');
 import * as path from 'path';
 import vscode = require('vscode');
 import { browsePackages } from './goBrowsePackage';
@@ -13,13 +12,8 @@ import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
 import { GoCodeActionProvider } from './goCodeAction';
 import {
-	applyCodeCoverage,
-	applyCodeCoverageToAllEditors,
-	initCoverageDecorators,
-	removeCodeCoverageOnFileSave,
-	toggleCoverageCurrentPackage,
-	trackCodeCoverageRemovalOnFileChange,
-	updateCodeCoverageDecorators
+	applyCodeCoverage, applyCodeCoverageToAllEditors, initCoverageDecorators, removeCodeCoverageOnFileSave,
+	toggleCoverageCurrentPackage, trackCodeCoverageRemovalOnFileChange, updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
@@ -30,13 +24,10 @@ import { implCursor } from './goImpl';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
-	installAllTools,
-	installTools,
-	offerToInstallTools,
-	promptForMissingTool,
+	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
 	updateGoPathGoRootFromConfig
 } from './goInstallTools';
-import { registerLanguageFeatures } from './goLanguageServer';
+import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
@@ -50,32 +41,23 @@ import { testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWo
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
 import {
-	getFromGlobalState,
-	getFromWorkspaceState,
-	setGlobalState,
-	setWorkspaceState,
-	updateGlobalState,
+	getFromGlobalState, getFromWorkspaceState, setGlobalState, setWorkspaceState, updateGlobalState,
 	updateWorkspaceState
 } from './stateUtils';
-import { disposeTelemetryReporter, sendTelemetryEventForConfig } from './telemetry';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
-	cleanupTempDir,
-	getBinPath,
-	getCurrentGoPath,
-	getExtensionCommands,
-	getGoConfig,
-	getGoVersion,
-	getToolsEnvVars,
-	getToolsGopath,
-	getWorkspaceFolderPath,
-	handleDiagnosticErrors,
-	isGoPathSet
+	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
+	getGoVersion, getToolsEnvVars, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
 export let vetDiagnosticCollection: vscode.DiagnosticCollection;
+
+// restartLanguageServer wraps all of the logic needed to restart the
+// language server. It can be used to enable, disable, or otherwise change
+// the configuration of the server.
+export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
@@ -133,9 +115,21 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 		offerToInstallTools();
 
-		// This handles all of the configurations and registrations for the language server.
-		// It also registers the necessary language feature providers that the language server may not support.
-		await registerLanguageFeatures(ctx);
+		// Subscribe to notifications for changes to the configuration
+		// of the language server, even if it's not currently in use.
+		ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration(
+			(e) => watchLanguageServerConfiguration(e)
+		));
+
+		// Set the function that is used to restart the language server.
+		// This is necessary, even if the language server is not currently
+		// in use.
+		restartLanguageServer = async () => {
+			startLanguageServerWithFallback(ctx, false);
+		};
+
+		// Start the language server, or fallback to the default language providers.
+		startLanguageServerWithFallback(ctx, true);
 
 		if (
 			vscode.window.activeTextEditor &&
@@ -371,7 +365,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('go.tools.install', async (args) => {
 			if (Array.isArray(args) && args.length) {
 				const goVersion = await getGoVersion();
-				installTools(args, goVersion);
+				await installTools(args, goVersion);
 				return;
 			}
 			installAllTools();
@@ -390,7 +384,6 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			sendTelemetryEventForConfig(updatedGoConfig);
 			updateGoPathGoRootFromConfig();
 
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
@@ -548,12 +541,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
-
-	sendTelemetryEventForConfig(getGoConfig());
 }
 
 export function deactivate() {
-	return Promise.all([disposeTelemetryReporter(), cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
+	return Promise.all([cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
 }
 
 function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {

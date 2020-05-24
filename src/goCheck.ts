@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -8,7 +8,7 @@
 import path = require('path');
 import vscode = require('vscode');
 import { goBuild } from './goBuild';
-import { parseLanguageServerConfig } from './goLanguageServer';
+import { buildLanguageServerConfig } from './goLanguageServer';
 import { goLint } from './goLint';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
@@ -59,7 +59,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 
 	// If a user has enabled diagnostics via a language server,
 	// then we disable running build or vet to avoid duplicate errors and warnings.
-	const lspConfig = parseLanguageServerConfig();
+	const lspConfig = buildLanguageServerConfig();
 	const disableBuildAndVet = lspConfig.enabled && lspConfig.features.diagnostics;
 
 	let testPromise: Thenable<boolean>;

@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -11,7 +11,6 @@ import { promptForMissingTool } from './goInstallTools';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
 import { envPath } from './goPath';
-import { sendTelemetryEventForAddImportCmd } from './telemetry';
 import { getBinPath, getImportPath, getToolsEnvVars, parseFilePrelude } from './util';
 
 const missingToolMsg = 'Missing tool: ';
@@ -83,6 +82,8 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 	}
 
 	const multis = imports.filter((x) => x.kind === 'multi');
+	const minusCgo = imports.filter((x) => x.kind !== 'pseudo');
+
 	if (multis.length > 0) {
 		// There is a multiple import declaration, add to the last one
 		const lastImportSection = multis[multis.length - 1];
@@ -92,12 +93,12 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 		}
 		// Add import at the start of the block so that goimports/goreturns can order them correctly
 		return [vscode.TextEdit.insert(new vscode.Position(lastImportSection.start + 1, 0), '\t"' + arg + '"\n')];
-	} else if (imports.length > 0) {
+	} else if (minusCgo.length > 0) {
 		// There are some number of single line imports, which can just be collapsed into a block import.
 		const edits: any[] = [];
 
-		edits.push(vscode.TextEdit.insert(new vscode.Position(imports[0].start, 0), 'import (\n\t"' + arg + '"\n'));
-		imports.forEach((element) => {
+		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
+		minusCgo.forEach((element) => {
 			const currentLine = vscode.window.activeTextEditor.document.lineAt(element.start).text;
 			const updatedLine = currentLine.replace(/^\s*import\s*/, '\t');
 			edits.push(
@@ -107,7 +108,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 				)
 			);
 		});
-		edits.push(vscode.TextEdit.insert(new vscode.Position(imports[imports.length - 1].end + 1, 0), ')\n'));
+		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[minusCgo.length - 1].end + 1, 0), ')\n'));
 
 		return edits;
 	} else if (pkg && pkg.start >= 0) {
@@ -130,7 +131,6 @@ export function addImport(arg: { importPath: string; from: string }) {
 		if (!imp) {
 			return;
 		}
-		sendTelemetryEventForAddImportCmd(arg);
 		const edits = getTextEditForAddImport(imp);
 		if (edits && edits.length > 0) {
 			const edit = new vscode.WorkspaceEdit();

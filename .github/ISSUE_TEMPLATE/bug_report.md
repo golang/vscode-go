@@ -8,15 +8,15 @@ assignees: ''
 ---
 
 Please direct general questions to:
-- [Gitter](https://gitter.im/Microsoft/vscode-go)
-- [Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode)
+- [`#vscode` channel in Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode)
 
-Please review the [Wiki](https://github.com/microsoft/vscode-go/wiki) before filing an issue.
+Please review the [documentation](https://github.com/golang/vscode-go/tree/master/docs) before filing an issue.
 Helpful pages include:
-- [GOPATH](https://github.com/Microsoft/vscode-go/wiki/GOPATH-in-the-VS-Code-Go-extension)
-- [Module Support](https://github.com/microsoft/vscode-go/wiki/Go-modules-support-in-Visual-Studio-Code)
-- [Debugging](https://github.com/Microsoft/vscode-go/wiki/Debugging-Go-code-using-VS-Code)
-	- Set "trace": "log" and share the resulting logs in the debug console when logging an issue.
+
+- [GOPATH](https://github.com/golang/vscode-go/tree/master/docs/gopath.md)
+- [Module Support](https://github.com/golang/vscode-go/tree/master/docs/modules.md)
+- [Debugging](https://github.com/golang/vscode-go/tree/master/docs/debugging.md)
+  - Set "trace": "log" and share the resulting logs in the debug console when logging an issue.
 
 Please answer these questions before submitting your issue. Thanks!
 
@@ -27,13 +27,13 @@ Please answer these questions before submitting your issue. Thanks!
 	- <Paste VS Code version here>
 - Check your installed extensions to get the version of the VS Code Go extension 
 	- <Paste Go extension version here>
-- Run `go env GOOS GOARCH` to get the operating system and processor architecture details
-	- <Paste OS and arch details here>
+- Run `go env` to get the go development environment details
+	- <Paste the output here>
 
 ### Share the Go related settings you have added/edited
 
 Run `Preferences: Open Settings (JSON)` command to open your settings.json file.
-Share all the settings with the `go.` or `["go"]` prefixes.
+Share all the settings with the `go.` or `["go"]` or `gopls` prefixes.
 
 ### Describe the bug
 A clear and concise description of what the bug.
@@ -46,5 +46,3 @@ A clear and concise description of what you expected to happen.
 
 ### Screenshots or recordings
 If applicable, add screenshots or recordings to help explain your problem.
-
-

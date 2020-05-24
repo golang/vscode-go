@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
@@ -32,6 +32,7 @@ import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,
 	getCurrentGoPath,
+	getGoConfig,
 	getGoVersion,
 	getImportPath,
 	getToolsGopath,
@@ -161,6 +162,10 @@ suite('Go Extension Tests', function () {
 		fs.copySync(
 			path.join(fixtureSourcePath, 'importTest', 'singleImports.go'),
 			path.join(fixturePath, 'importTest', 'singleImports.go')
+		);
+		fs.copySync(
+			path.join(fixtureSourcePath, 'importTest', 'cgoImports.go'),
+			path.join(fixturePath, 'importTest', 'cgoImports.go')
 		);
 		fs.copySync(
 			path.join(fixtureSourcePath, 'fillStruct', 'input_1.go'),
@@ -1306,7 +1311,7 @@ encountered.
 					expected.length,
 					labels.length,
 					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${
-						position.line + 1
+					position.line + 1
 					},${position.character + 1}) ${labels}`
 				);
 				expected.forEach((entry, index) => {
@@ -1431,67 +1436,44 @@ encountered.
 	});
 
 	test('Build Tags checking', async () => {
-		const config1 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: 'randomtag' }
-		});
+		// Note: The following checks can't be parallelized because the underlying go build command
+		// runner (goBuild) will cancel any outstanding go build commands.
 
-		const checkWithTags = check(vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')), config1).then(
-			(diagnostics) => {
-				assert.equal(1, diagnostics.length, 'check with buildtag failed. Unexpected errors found');
-				assert.equal(1, diagnostics[0].errors.length, 'check with buildtag failed. Unexpected errors found');
-				assert.equal(diagnostics[0].errors[0].msg, 'undefined: fmt.Prinln');
-			}
+		const checkWithTags = async (tags: string) => {
+			const fileUri = vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go'));
+			const defaultGoCfg = getGoConfig(fileUri);
+			const cfg = Object.create(defaultGoCfg, {
+				vetOnSave: { value: 'off' },
+				lintOnSave: { value: 'off' },
+				buildOnSave: { value: 'package' },
+				buildTags: { value: tags }
+			}) as vscode.WorkspaceConfiguration;
+
+			const diagnostics = await check(fileUri, cfg);
+			return ([] as string[]).concat(...diagnostics.map<string[]>((d) => {
+				return d.errors.map((e) => e.msg) as string[];
+			}));
+		};
+
+		const errors1 = await checkWithTags('randomtag');
+		assert.deepEqual(errors1, ['undefined: fmt.Prinln'], 'check with buildtag "randomtag" failed. Unexpected errors found.');
+
+		// TODO(hyangah): after go1.13, -tags expects a comma-separated tag list.
+		// For backwards compatibility, space-separated tag lists are still recognized,
+		// but change to a space-separated list once we stop testing with go1.12.
+		const errors2 = await checkWithTags('randomtag other');
+		assert.deepEqual(errors2, ['undefined: fmt.Prinln'],
+			'check with multiple buildtags "randomtag,other" failed. Unexpected errors found.');
+
+		const errors3 = await checkWithTags('');
+		assert.equal(errors3.length, 1,
+			'check without buildtag failed. Unexpected number of errors found' + JSON.stringify(errors3));
+		const errMsg = errors3[0];
+		assert.ok(
+			errMsg.includes(`can't load package: package test/testfixture/buildTags`) ||
+			errMsg.includes(`build constraints exclude all Go files`),
+			`check without buildtags failed. Go files not excluded. ${errMsg}`
 		);
-
-		const config2 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: 'randomtag othertag' }
-		});
-
-		const checkWithMultipleTags = check(
-			vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')),
-			config2
-		).then((diagnostics) => {
-			assert.equal(1, diagnostics.length, 'check with multiple buildtags failed. Unexpected errors found');
-			assert.equal(
-				1,
-				diagnostics[0].errors.length,
-				'check with multiple buildtags failed. Unexpected errors found'
-			);
-			assert.equal(diagnostics[0].errors[0].msg, 'undefined: fmt.Prinln');
-		});
-
-		const config3 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: '' }
-		});
-
-		const checkWithoutTags = check(vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')), config3).then(
-			(diagnostics) => {
-				assert.equal(1, diagnostics.length, 'check without buildtags failed. Unexpected errors found');
-				assert.equal(
-					1,
-					diagnostics[0].errors.length,
-					'check without buildtags failed. Unexpected errors found'
-				);
-				const errMsg = diagnostics[0].errors[0].msg;
-				assert.equal(
-					errMsg.includes(`can't load package: package test/testfixture/buildTags`) ||
-						errMsg.includes(`build constraints exclude all Go files`),
-					true,
-					`check without buildtags failed. Go files not excluded. ${diagnostics[0].errors[0].msg}`
-				);
-			}
-		);
-
-		return Promise.all([checkWithTags, checkWithMultipleTags, checkWithoutTags]);
 	});
 
 	test('Test Tags checking', async () => {
@@ -1582,6 +1564,24 @@ encountered.
 			.replace(
 				'import "fmt"\nimport . "math" // comment',
 				'import (\n\t"bytes"\n\t"fmt"\n\t. "math" // comment\n)'
+			);
+		const edits = getTextEditForAddImport('bytes');
+		const edit = new vscode.WorkspaceEdit();
+		edit.set(document.uri, edits);
+		await vscode.workspace.applyEdit(edit);
+		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
+	});
+
+	test('Add imports and avoid pseudo package imports for cgo', async () => {
+		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'cgoImports.go'));
+		const document = await vscode.workspace.openTextDocument(uri);
+		await vscode.window.showTextDocument(document);
+
+		const expectedText = document
+			.getText()
+			.replace(
+				'import "math"',
+				'import (\n\t"bytes"\n\t"math"\n)'
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();

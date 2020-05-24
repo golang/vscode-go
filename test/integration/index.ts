@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import * as glob from 'glob';
 import * as Mocha from 'mocha';
@@ -8,7 +8,7 @@ import * as path from 'path';
 export function run(): Promise<void> {
 	// Create the mocha test
 	const mocha = new Mocha({
-		ui: 'tdd'
+		ui: 'tdd',
 	});
 	mocha.useColors(true);
 

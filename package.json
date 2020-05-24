@@ -1,11 +1,13 @@
 {
-  "name": "Go",
-  "version": "0.14.1",
-  "publisher": "ms-vscode",
-  "description": "Rich Go language support for Visual Studio Code",
+  "name": "go-nightly",
+  "displayName": "Go Nightly",
+  "version": "0.0.0",
+  "publisher": "golang",
+  "description": "Rich Go language support for Visual Studio Code (Nightly)",
   "author": {
-    "name": "Microsoft Corporation - Development Labs"
+    "name": "Go Team at Google"
   },
+  "preview": true,
   "license": "MIT",
   "icon": "images/go-logo-blue.png",
   "categories": [
@@ -22,7 +24,10 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-go.git"
+    "url": "https://github.com/golang/vscode-go"
+  },
+  "bugs": {
+    "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
     "multi-root ready"
@@ -40,6 +45,7 @@
   },
   "extensionDependencies": [],
   "dependencies": {
+    "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
     "json-rpc2": "^1.0.2",
     "moment": "^2.24.0",
@@ -47,11 +53,13 @@
     "tree-kill": "^1.2.2",
     "vscode-debugadapter": "^1.40.0",
     "vscode-debugprotocol": "^1.40.0",
-    "vscode-extension-telemetry": "^0.1.2",
     "vscode-languageclient": "6.1.0",
     "web-request": "^1.0.7"
   },
   "devDependencies": {
+    "adm-zip": "^0.4.14",
+    "@types/adm-zip": "^0.4.33",
+    "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.1.0",
     "@types/glob": "^7.1.1",
     "@types/mocha": "^7.0.2",
@@ -1127,11 +1135,6 @@
         "go.languageServerExperimentalFeatures": {
           "type": "object",
           "properties": {
-            "format": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, gofmt is used by the language server to format files."
-            },
             "diagnostics": {
               "type": "boolean",
               "default": true,
@@ -1144,11 +1147,20 @@
             }
           },
           "default": {
-            "format": true,
             "diagnostics": true,
             "documentLink": true
           },
           "description": "Use this setting to enable/disable experimental features from the language server."
+        },
+        "go.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the Go language server."
         },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",

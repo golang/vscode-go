@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import cp = require('child_process');
@@ -21,7 +21,7 @@ import {
 	resolveHomeDir
 } from './goPath';
 import { outputChannel } from './goStatus';
-import { extensionId, sendTelemetryEventForGoVersion, sendTelemetryEventForKillingProcess } from './telemetry';
+import { extensionId } from './telemetry';
 
 let userNameHash: number = 0;
 
@@ -90,7 +90,6 @@ export class GoVersion {
 			this.isDevel = true;
 			this.commit = matchesDevel[0];
 		}
-		sendTelemetryEventForGoVersion(this.format());
 	}
 
 	public format(): string {
@@ -156,11 +155,12 @@ export function parseFilePrelude(text: string): Prelude {
 		}
 		if (line.match(/^(\s)*import(\s)+\(/)) {
 			ret.imports.push({ kind: 'multi', start: i, end: -1, pkgs: [] });
-		}
-		if (line.match(/^(\s)*import(\s)+[^\(]/)) {
+		} else if (line.match(/^\s*import\s+"C"/)) {
+			ret.imports.push({ kind: 'pseudo', start: i, end: i, pkgs: [] });
+		} else if (line.match(/^(\s)*import(\s)+[^\(]/)) {
 			ret.imports.push({ kind: 'single', start: i, end: i, pkgs: [] });
 		}
-		if (line.match(/^(\s)*(\/\*.*\*\/)*\s*\)/)) {
+		if (line.match(/^(\s)*(\/\*.*\*\/)*\s*\)/)) {  // /* comments */
 			if (ret.imports[ret.imports.length - 1].end === -1) {
 				ret.imports[ret.imports.length - 1].end = i;
 			}
@@ -291,7 +291,6 @@ export async function getGoVersion(): Promise<GoVersion> {
 		return Promise.resolve(null);
 	}
 	if (cachedGoVersion && (cachedGoVersion.sv || cachedGoVersion.isDevel)) {
-		sendTelemetryEventForGoVersion(cachedGoVersion.format());
 		return Promise.resolve(cachedGoVersion);
 	}
 	return new Promise<GoVersion>((resolve) => {
@@ -329,7 +328,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		case 1:
 			vendorSupport =
 				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
+					((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
 					? true
 					: false;
 			break;
@@ -866,12 +865,6 @@ export function killProcess(p: cp.ChildProcess) {
 			p.kill();
 		} catch (e) {
 			console.log('Error killing process: ' + e);
-			if (e && e.message && e.stack) {
-				const matches = e.stack.match(/(src.go[a-z,A-Z]+\.js)/g);
-				if (matches) {
-					sendTelemetryEventForKillingProcess(e.message, matches);
-				}
-			}
 		}
 	}
 }
@@ -904,9 +897,14 @@ export function rmdirRecursive(dir: string) {
 		fs.readdirSync(dir).forEach((file) => {
 			const relPath = path.join(dir, file);
 			if (fs.lstatSync(relPath).isDirectory()) {
-				rmdirRecursive(dir);
+				rmdirRecursive(relPath);
 			} else {
-				fs.unlinkSync(relPath);
+				try {
+					fs.unlinkSync(relPath);
+				} catch (err) {
+					console.log(err);
+				}
+
 			}
 		});
 		fs.rmdirSync(dir);

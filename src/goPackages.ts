@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import cp = require('child_process');
@@ -8,7 +8,6 @@ import path = require('path');
 import vscode = require('vscode');
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { envPath, fixDriveCasingInWindows, getCurrentGoWorkspaceFromGOPATH } from './goPath';
-import { sendTelemetryEventForGopkgs } from './telemetry';
 import { getBinPath, getCurrentGoPath, getGoVersion, getToolsEnvVars, isVendorSupported } from './util';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
@@ -101,7 +100,6 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 				});
 			});
 			const timeTaken = Date.now() - t0;
-			sendTelemetryEventForGopkgs(timeTaken);
 			cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
 			return resolve(pkgs);
 		});

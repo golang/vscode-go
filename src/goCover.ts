@@ -1,6 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 'use strict';
@@ -32,7 +32,7 @@ let decoratorConfig: {
 // a list of modified, unsaved go files with actual code edits (rather than comment edits)
 let modifiedFiles: {
 	[key: string]: boolean;
-};
+} = {};
 
 /**
  * Initializes the decorators used for Code coverage.
@@ -298,7 +298,7 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
  * @param e TextDocument
  */
 export function removeCodeCoverageOnFileSave(e: vscode.TextDocument) {
-	if (e.languageId !== 'go' || !isCoverageApplied || !e.isDirty) {
+	if (e.languageId !== 'go' || !isCoverageApplied) {
 		return;
 	}
 
