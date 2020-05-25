@@ -657,13 +657,15 @@ export function runTool(
 	toolName: string,
 	env: any,
 	printUnexpectedOutput: boolean,
+	// tslint:disable-next-line: no-shadowed-variable
+	timeout: number,
 	token?: vscode.CancellationToken
 ): Promise<ICheckResult[]> {
+	const goRuntimePath = getBinPath('go');
 	let cmd: string;
 	if (toolName) {
 		cmd = getBinPath(toolName);
 	} else {
-		const goRuntimePath = getBinPath('go');
 		if (!goRuntimePath) {
 			return Promise.reject(new Error('Cannot find "go" binary. Update PATH or GOROOT appropriately'));
 		}
@@ -671,8 +673,10 @@ export function runTool(
 	}
 
 	let p: cp.ChildProcess;
+	let processTimeout: NodeJS.Timeout;
 	if (token) {
 		token.onCancellationRequested(() => {
+			clearTimeout(processTimeout);
 			if (p) {
 				killTree(p.pid);
 			}
@@ -681,6 +685,7 @@ export function runTool(
 	cwd = fixDriveCasingInWindows(cwd);
 	return new Promise((resolve, reject) => {
 		p = cp.execFile(cmd, args, { env, cwd }, (err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					// Since the tool is run on save which can be frequent
@@ -748,6 +753,10 @@ export function runTool(
 				reject(e);
 			}
 		});
+		processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error(`Timeout executing tool - ${toolName ? toolName : goRuntimePath}`));
+		}, timeout);
 	});
 }
 
@@ -1018,6 +1027,29 @@ export function runGodoc(
 			}
 		});
 	});
+}
+
+export const timeoutForLongRunningProcess = 120000;
+
+export function getTimeoutConfiguration(operationType?: string, goConfig?: vscode.WorkspaceConfiguration): number {
+	const defaultTimeout = 60000;
+	if (!operationType) {
+		return defaultTimeout;
+	}
+	if (!goConfig) {
+		goConfig = vscode.workspace.getConfiguration(
+			'go',
+			vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri : null
+		);
+	}
+	const execTimeout: { [key: string]: any } = goConfig.get('operationTimeout');
+	if (
+		execTimeout.hasOwnProperty(operationType) &&
+		typeof execTimeout[operationType] === 'number' && execTimeout[operationType] > 0
+	) {
+		return execTimeout[operationType];
+	}
+	return defaultTimeout;
 }
 
 /**

@@ -9,7 +9,7 @@ import cp = require('child_process');
 import { dirname, isAbsolute } from 'path';
 import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
-import { getBinPath, getToolsEnvVars } from './util';
+import { getBinPath, getTimeoutConfiguration, getToolsEnvVars, killTree } from './util';
 
 /**
  * Extracts function out of current selection and replaces the current selection with a call to the extracted function.
@@ -72,7 +72,7 @@ function runGoDoctor(
 			return resolve();
 		}
 
-		cp.execFile(
+		const p = cp.execFile(
 			godoctor,
 			[
 				'-w',
@@ -90,10 +90,17 @@ function runGoDoctor(
 				cwd: dirname(fileName)
 			},
 			(err, stdout, stderr) => {
+				clearTimeout(processTimeout);
 				if (err) {
 					vscode.window.showErrorMessage(stderr || err.message);
 				}
+				resolve();
 			}
 		);
+
+		const processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			vscode.window.showErrorMessage('Timeout executing tool - godoctor');
+		}, getTimeoutConfiguration('onCommand'));
 	});
 }

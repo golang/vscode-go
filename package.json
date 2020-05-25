@@ -876,6 +876,43 @@
           "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.",
           "scope": "resource"
         },
+        "go.operationTimeout": {
+          "type": "object",
+          "properties": {
+            "onSave": {
+              "type": "number",
+              "default": 60000,
+              "description": "Timeout in milliseconds for operations run on each file save like build, lint, vet, test and code coverage.",
+              "scope": "resource"
+            },
+            "onType": {
+              "type": "number",
+              "default": 5000,
+              "description": "Timeout in milliseconds for operations run on type (completion and live errors).",
+              "scope": "resource"
+            },
+            "onHover": {
+              "type": "number",
+              "default": 5000,
+              "description": "Timeout in milliseconds for operations run on hover",
+              "scope": "resource"
+            },
+            "onCommand": {
+              "type": "number",
+              "default": 60000,
+              "description": "Timeout in milliseconds for features that are run using commands",
+              "scope": "resource"
+            }
+          },
+          "default": {
+            "onSave": 60000,
+            "onType": 5000,
+            "onHover": 5000,
+            "onCommand": 60000
+          },
+          "scope": "resource",
+          "description": "Configure timeouts for various operations."
+        },
         "go.toolsGopath": {
           "type": "string",
           "default": "",

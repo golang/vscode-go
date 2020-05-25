@@ -19,12 +19,14 @@ import {
 	getCurrentGoPath,
 	getGoConfig,
 	getParametersAndReturnType,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	goBuiltinTypes,
 	goKeywords,
 	guessPackageNameFromFile,
 	isPositionInComment,
 	isPositionInString,
+	killTree,
 	parseFilePrelude,
 	runGodoc
 } from './util';
@@ -269,7 +271,10 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 		const gocodeName = this.isGoMod ? 'gocode-gomod' : 'gocode';
 		const gocode = getBinPath(gocodeName);
 		if (path.isAbsolute(gocode)) {
-			cp.spawn(gocode, ['close'], { env: getToolsEnvVars() });
+			const p = cp.spawn(gocode, ['close'], { env: getToolsEnvVars() });
+			setTimeout(() => {
+				killTree(p.pid);
+			}, getTimeoutConfiguration('onCommand'));
 		}
 	}
 
@@ -314,9 +319,20 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 
 			// Spawn `gocode` process
 			const p = cp.spawn(gocode, [...this.gocodeFlags, 'autocomplete', filename, '' + offset], { env });
-			p.stdout.on('data', (data) => (stdout += data));
-			p.stderr.on('data', (data) => (stderr += data));
+			const waitTimer = setTimeout(() => {
+				killTree(p.pid);
+				reject(new Error('Timeout executing tool - gocode'));
+			}, getTimeoutConfiguration('onType', config));
+			p.stdout.on('data', (data) => {
+				stdout += data;
+				clearTimeout(waitTimer);
+			});
+			p.stderr.on('data', (data) => {
+				stderr += data;
+				clearTimeout(waitTimer);
+			});
 			p.on('error', (err) => {
+				clearTimeout(waitTimer);
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool(gocodeName);
 					return reject();
@@ -324,6 +340,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 				return reject(err);
 			});
 			p.on('close', (code) => {
+				clearTimeout(waitTimer);
 				try {
 					if (code !== 0) {
 						if (stderr.indexOf(`rpc: can't find service Server.AutoComplete`) > -1 && !this.killMsgShown) {
@@ -487,6 +504,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 	private ensureGoCodeConfigured(fileuri: vscode.Uri, goConfig: vscode.WorkspaceConfiguration): Thenable<void> {
 		const currentFile = fileuri.fsPath;
 		let checkModSupport = Promise.resolve(this.isGoMod);
+
 		if (this.previousFile !== currentFile && this.previousFileDir !== path.dirname(currentFile)) {
 			this.previousFile = currentFile;
 			this.previousFileDir = path.dirname(currentFile);

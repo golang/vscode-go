@@ -12,7 +12,7 @@ import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { outputChannel } from './goStatus';
-import { getBinPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getGoConfig, getTimeoutConfiguration, getToolsEnvVars, killTree } from './util';
 
 const generatedWord = 'Generated ';
 
@@ -172,7 +172,8 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 			args = args.concat(['-all', conf.dir]);
 		}
 
-		cp.execFile(cmd, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+		const p = cp.execFile(cmd, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			outputChannel.appendLine('Generating Tests: ' + cmd + ' ' + args.join(' '));
 
 			try {
@@ -217,6 +218,10 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 				reject(e);
 			}
 		});
+		const processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - gotests'));
+		}, getTimeoutConfiguration('onCommand', goConfig));
 	});
 }
 

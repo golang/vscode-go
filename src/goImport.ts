@@ -11,7 +11,14 @@ import { promptForMissingTool } from './goInstallTools';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
 import { envPath } from './goPath';
-import { getBinPath, getImportPath, getToolsEnvVars, parseFilePrelude } from './util';
+import {
+	getBinPath,
+	getImportPath,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	killTree,
+	parseFilePrelude
+} from './util';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -95,7 +102,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 		return [vscode.TextEdit.insert(new vscode.Position(lastImportSection.start + 1, 0), '\t"' + arg + '"\n')];
 	} else if (minusCgo.length > 0) {
 		// There are some number of single line imports, which can just be collapsed into a block import.
-		const edits = [];
+		const edits: any[] = [];
 
 		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
 		minusCgo.forEach((element) => {
@@ -185,7 +192,8 @@ export function addImportToWorkspace() {
 	}
 	const env = getToolsEnvVars();
 
-	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout, stderr) => {
+	const p = cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout, stderr) => {
+		clearTimeout(processTimeout);
 		const dirs = (stdout || '').split('\n');
 		if (!dirs.length || !dirs[0].trim()) {
 			vscode.window.showErrorMessage(`Could not find package ${importPath}`);
@@ -206,4 +214,8 @@ export function addImportToWorkspace() {
 			{ uri: importPathUri }
 		);
 	});
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+		vscode.window.showErrorMessage('Timout executing - go list');
+	}, getTimeoutConfiguration('onCommand'));
 }

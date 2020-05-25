@@ -15,6 +15,7 @@ import {
 	canonicalizeGOPATHPrefix,
 	getBinPath,
 	getGoConfig,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	killTree
@@ -62,16 +63,29 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 			return;
 		}
 
+		let listProcess: cp.ChildProcess;
+		let guruProcess: cp.ChildProcess;
+		let listProcessTimeout: NodeJS.Timeout;
+		let guruProcessTimeout: NodeJS.Timeout;
+
 		return new Promise<vscode.Definition>((resolve, reject) => {
 			if (token.isCancellationRequested) {
 				return resolve(null);
 			}
+			token.onCancellationRequested(() => {
+				clearTimeout(listProcessTimeout);
+				clearTimeout(guruProcessTimeout);
+				killTree(listProcess.pid);
+				killTree(guruProcess.pid);
+			});
 			const env = getToolsEnvVars();
-			const listProcess = cp.execFile(
+			const totalTimeout = getTimeoutConfiguration('onCommand');
+			listProcess = cp.execFile(
 				goRuntimePath,
 				['list', '-e', '-json'],
 				{ cwd: root, env },
 				(err, stdout, stderr) => {
+					clearTimeout(listProcessTimeout);
 					if (err) {
 						return reject(err);
 					}
@@ -87,7 +101,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 					}
 					args.push('-json', 'implements', `${filename}:#${offset.toString()}`);
 
-					const guruProcess = cp.execFile(goGuru, args, { env }, (guruErr, guruStdOut, guruStdErr) => {
+					guruProcess = cp.execFile(goGuru, args, { env }, (guruErr, guruStdOut, guruStdErr) => {
 						if (guruErr && (<any>guruErr).code === 'ENOENT') {
 							promptForMissingTool('guru');
 							return resolve(null);
@@ -131,9 +145,17 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 						return resolve(results);
 					});
 					token.onCancellationRequested(() => killTree(guruProcess.pid));
+					guruProcessTimeout = setTimeout(() => {
+						killTree(guruProcess.pid);
+						reject('Timout executing tool - guru');
+					}, totalTimeout);
 				}
 			);
 			token.onCancellationRequested(() => killTree(listProcess.pid));
+			listProcessTimeout = setTimeout(() => {
+				killTree(listProcess.pid);
+				reject('Timout executing tool - list');
+			}, totalTimeout);
 		});
 	}
 }

@@ -10,7 +10,15 @@ import vscode = require('vscode');
 import { Edit, FilePatch, getEditsFromUnifiedDiffStr, isDiffToolAvailable } from './diffUtils';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig, getToolsEnvVars, killTree } from './util';
+import {
+	byteOffsetAt,
+	canonicalizeGOPATHPrefix,
+	getBinPath,
+	getGoConfig,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	killTree
+} from './util';
 
 export class GoRenameProvider implements vscode.RenameProvider {
 	public provideRenameEdits(
@@ -48,11 +56,16 @@ export class GoRenameProvider implements vscode.RenameProvider {
 			}
 
 			let p: cp.ChildProcess;
+			let processTimeout: NodeJS.Timeout;
 			if (token) {
-				token.onCancellationRequested(() => killTree(p.pid));
+				token.onCancellationRequested(() => {
+					clearTimeout(processTimeout);
+					killTree(p.pid);
+				});
 			}
 
 			p = cp.execFile(gorename, gorenameArgs, { env }, (err, stdout, stderr) => {
+				clearTimeout(processTimeout);
 				try {
 					if (err && (<any>err).code === 'ENOENT') {
 						promptForMissingTool('gorename');
@@ -83,6 +96,10 @@ export class GoRenameProvider implements vscode.RenameProvider {
 					reject(e);
 				}
 			});
+			processTimeout = setTimeout(() => {
+				killTree(p.pid);
+				reject(new Error('Timeout executing tool - gorename'));
+			}, getTimeoutConfiguration('onCommand'));
 		});
 	}
 }

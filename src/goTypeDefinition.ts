@@ -16,6 +16,7 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	goBuiltinTypes,
 	killTree
@@ -66,7 +67,9 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 			const args = buildTags ? ['-tags', buildTags] : [];
 			args.push('-json', '-modified', 'describe', `${filename}:#${offset.toString()}`);
 
-			const process = cp.execFile(goGuru, args, { env }, (guruErr, stdout, stderr) => {
+			const timeout = getTimeoutConfiguration('onCommand');
+			const p = cp.execFile(goGuru, args, { env }, (err, stdout, guruErr) => {
+				clearTimeout(processTimeout);
 				try {
 					if (guruErr && (<any>guruErr).code === 'ENOENT') {
 						promptForMissingTool('guru');
@@ -89,7 +92,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 						}
 
 						// Fall back to position of declaration
-						return definitionLocation(document, position, null, false, token).then(
+						return definitionLocation(document, position, null, false, timeout, token).then(
 							(definitionInfo) => {
 								if (definitionInfo == null || definitionInfo.file == null) {
 									return null;
@@ -98,12 +101,12 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 								const pos = new vscode.Position(definitionInfo.line, definitionInfo.column);
 								resolve(new vscode.Location(definitionResource, pos));
 							},
-							(err) => {
-								const miss = parseMissingError(err);
+							(dErr) => {
+								const miss = parseMissingError(dErr);
 								if (miss[0]) {
 									promptForMissingTool(miss[1]);
-								} else if (err) {
-									return Promise.reject(err);
+								} else if (dErr) {
+									return Promise.reject(dErr);
 								}
 								return Promise.resolve(null);
 							}
@@ -127,10 +130,17 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 					reject(e);
 				}
 			});
-			if (process.pid) {
-				process.stdin.end(getFileArchive(document));
+			if (p.pid) {
+				p.stdin.end(getFileArchive(document));
 			}
-			token.onCancellationRequested(() => killTree(process.pid));
+			const processTimeout = setTimeout(() => {
+				killTree(p.pid);
+				reject('Timeout executing tool - guru');
+			}, timeout);
+			token.onCancellationRequested(() => {
+				clearTimeout(processTimeout);
+				killTree(p.pid);
+			});
 		});
 	}
 }

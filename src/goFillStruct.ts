@@ -8,7 +8,15 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, getBinPath, getFileArchive, getToolsEnvVars, makeMemoizedByteOffsetConverter } from './util';
+import {
+	byteOffsetAt,
+	getBinPath,
+	getFileArchive,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	killTree,
+	makeMemoizedByteOffsetConverter
+} from './util';
 
 // Interface for the output from fillstruct
 interface GoFillStructOutput {
@@ -60,6 +68,7 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 
 	return new Promise<void>((resolve, reject) => {
 		const p = cp.execFile(fillstruct, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool('fillstruct');
@@ -99,5 +108,9 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 		if (p.pid) {
 			p.stdin.end(input);
 		}
+		const processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - fillstruct'));
+		}, getTimeoutConfiguration('onCommand'));
 	});
 }

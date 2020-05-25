@@ -16,6 +16,7 @@ import {
 	getGoConfig,
 	getModuleCache,
 	getTempFilePath,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
@@ -48,7 +49,7 @@ export function buildCode(buildWorkspace?: boolean) {
 	diagnosticsStatusBarItem.text = 'Building...';
 
 	isModSupported(documentUri).then((isMod) => {
-		goBuild(documentUri, isMod, goConfig, buildWorkspace)
+		goBuild(documentUri, isMod, goConfig, getTimeoutConfiguration('onCommand', goConfig), buildWorkspace)
 			.then((errors) => {
 				handleDiagnosticErrors(editor ? editor.document : null, errors, buildDiagnosticCollection);
 				diagnosticsStatusBarItem.hide();
@@ -66,12 +67,14 @@ export function buildCode(buildWorkspace?: boolean) {
  * @param fileUri Document uri.
  * @param isMod Boolean denoting if modules are being used.
  * @param goConfig Configuration for the Go extension.
+ * @param timeout Number of milliseconds to wait until declaring the operation as timed out
  * @param buildWorkspace If true builds code in all workspace.
  */
 export async function goBuild(
 	fileUri: vscode.Uri,
 	isMod: boolean,
 	goConfig: vscode.WorkspaceConfiguration,
+	timeout: number,
 	buildWorkspace?: boolean
 ): Promise<ICheckResult[]> {
 	epoch++;
@@ -125,7 +128,7 @@ export async function goBuild(
 
 	if (buildWorkspace && currentWorkspace && !isTestFile) {
 		outputChannel.appendLine(`Starting building the current workspace at ${currentWorkspace}`);
-		return getNonVendorPackages(currentWorkspace).then((pkgs) => {
+		return getNonVendorPackages(currentWorkspace, timeout).then((pkgs) => {
 			running = true;
 			return runTool(
 				buildArgs.concat(Array.from(pkgs.keys())),
@@ -135,6 +138,7 @@ export async function goBuild(
 				null,
 				buildEnv,
 				true,
+				timeout,
 				tokenSource.token
 			).then((v) => {
 				updateRunning();
@@ -165,6 +169,7 @@ export async function goBuild(
 		null,
 		buildEnv,
 		true,
+		timeout,
 		tokenSource.token
 	).then((v) => {
 		updateRunning();

@@ -8,7 +8,14 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath, getGoConfig, getToolsEnvVars, getWorkspaceFolderPath, killTree } from './util';
+import {
+	getBinPath,
+	getGoConfig,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	getWorkspaceFolderPath,
+	killTree
+} from './util';
 
 // Keep in sync with github.com/acroca/go-symbols'
 interface GoSymbolDeclaration {
@@ -112,15 +119,24 @@ export function getWorkspaceSymbols(
 
 function callGoSymbols(args: string[], token: vscode.CancellationToken): Promise<GoSymbolDeclaration[]> {
 	const gosyms = getBinPath('go-symbols');
-	const env = getToolsEnvVars();
 	let p: cp.ChildProcess;
-
+	let processTimeout: NodeJS.Timeout;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => {
+			clearTimeout(processTimeout);
+			killTree(p.pid);
+		});
 	}
 
+	// Set up execFile parameters
+	const options: { [key: string]: any } = {
+		env: getToolsEnvVars(),
+		maxBuffer: 1024 * 1024
+	};
+
 	return new Promise((resolve, reject) => {
-		p = cp.execFile(gosyms, args, { maxBuffer: 1024 * 1024, env }, (err, stdout, stderr) => {
+		p = cp.execFile(gosyms, args, options, (err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			if (err && stderr && stderr.startsWith('flag provided but not defined: -ignore')) {
 				return reject(new Error(stderr));
 			} else if (err) {
@@ -130,5 +146,9 @@ function callGoSymbols(args: string[], token: vscode.CancellationToken): Promise
 			const decls = <GoSymbolDeclaration[]>JSON.parse(result);
 			return resolve(decls);
 		});
+		processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - go-symbols'));
+		}, getTimeoutConfiguration('onCommand'));
 	});
 }

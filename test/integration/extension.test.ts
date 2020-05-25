@@ -457,8 +457,8 @@ It returns the number of bytes written and any write error encountered.
 		});
 
 		const results = await Promise.all([
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')), config),
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config)
+			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')), config, 60000),
+			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config, 60000)
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
 		assert.equal(util.killTree.callCount, 1, 'should have killed 1 lint job before launching the next');

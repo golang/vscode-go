@@ -16,6 +16,7 @@ import {
 	getFileArchive,
 	getGoConfig,
 	getModuleCache,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	goKeywords,
@@ -63,6 +64,7 @@ export function definitionLocation(
 	position: vscode.Position,
 	goConfig: vscode.WorkspaceConfiguration,
 	includeDocs: boolean,
+	timeout: number,
 	token: vscode.CancellationToken
 ): Promise<GoDefinitionInformation> {
 	const adjustedPos = adjustWordPosition(document, position);
@@ -89,11 +91,11 @@ export function definitionLocation(
 					: getWorkspaceFolderPath(document.uri) || path.dirname(document.fileName)
 		};
 		if (toolForDocs === 'godoc') {
-			return definitionLocation_godef(input, token);
+			return definitionLocation_godef(input, timeout, token);
 		} else if (toolForDocs === 'guru') {
-			return definitionLocation_guru(input, token);
+			return definitionLocation_guru(input, timeout, token);
 		}
-		return definitionLocation_gogetdoc(input, token, true);
+		return definitionLocation_gogetdoc(input, timeout, token, true);
 	});
 }
 
@@ -123,6 +125,7 @@ export function adjustWordPosition(
 const godefImportDefinitionRegex = /^import \(.* ".*"\)$/;
 function definitionLocation_godef(
 	input: GoDefinitionInput,
+	timeout: number,
 	token: vscode.CancellationToken,
 	useReceivers: boolean = true
 ): Promise<GoDefinitionInformation> {
@@ -134,8 +137,12 @@ function definitionLocation_godef(
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = getToolsEnvVars();
 	let p: cp.ChildProcess;
+	let processTimeout: NodeJS.Timeout;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => {
+			clearTimeout(processTimeout);
+			killTree(p.pid);
+		});
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -147,9 +154,11 @@ function definitionLocation_godef(
 		p = cp.execFile(godefPath, args, { env, cwd: input.cwd }, (err, stdout, stderr) => {
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
+					clearTimeout(processTimeout);
 					return reject(missingToolMsg + godefTool);
 				}
 				if (err) {
+					clearTimeout(processTimeout);
 					if (
 						input.isMod &&
 						!input.includeDocs &&
@@ -165,7 +174,7 @@ function definitionLocation_godef(
 					if (stderr.indexOf('flag provided but not defined: -r') !== -1) {
 						promptForUpdatingTool('godef');
 						p = null;
-						return definitionLocation_godef(input, token, false).then(resolve, reject);
+						return definitionLocation_godef(input, timeout, token, false).then(resolve, reject);
 					}
 					return reject(err.message || stderr);
 				}
@@ -189,32 +198,41 @@ function definitionLocation_godef(
 					name: null
 				};
 				if (!input.includeDocs || godefImportDefinitionRegex.test(definitionInformation.declarationlines[0])) {
+					clearTimeout(processTimeout);
 					return resolve(definitionInformation);
 				}
 				match = /^\w+ \(\*?(\w+)\)/.exec(lines[1]);
 				runGodoc(input.cwd, pkgPath, match ? match[1] : '', input.word, token)
 					.then((doc) => {
+						clearTimeout(processTimeout);
 						if (doc) {
 							definitionInformation.doc = doc;
 						}
 						resolve(definitionInformation);
 					})
 					.catch((runGoDocErr) => {
+						clearTimeout(processTimeout);
 						console.log(runGoDocErr);
 						resolve(definitionInformation);
 					});
 			} catch (e) {
+				clearTimeout(processTimeout);
 				reject(e);
 			}
 		});
 		if (p.pid) {
 			p.stdin.end(input.document.getText());
 		}
+		processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - godef'));
+		}, timeout);
 	});
 }
 
 function definitionLocation_gogetdoc(
 	input: GoDefinitionInput,
+	timeout: number,
 	token: vscode.CancellationToken,
 	useTags: boolean
 ): Promise<GoDefinitionInformation> {
@@ -225,8 +243,12 @@ function definitionLocation_gogetdoc(
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = getToolsEnvVars();
 	let p: cp.ChildProcess;
+	let processTimeout: NodeJS.Timeout;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => {
+			clearTimeout(processTimeout);
+			killTree(p.pid);
+		});
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -242,12 +264,13 @@ function definitionLocation_gogetdoc(
 			buildTags && useTags ? [...gogetdocFlagsWithoutTags, '-tags', buildTags] : gogetdocFlagsWithoutTags;
 		p = cp.execFile(gogetdoc, gogetdocFlags, { env, cwd: input.cwd }, (err, stdout, stderr) => {
 			try {
+				clearTimeout(processTimeout);
 				if (err && (<any>err).code === 'ENOENT') {
 					return reject(missingToolMsg + 'gogetdoc');
 				}
 				if (stderr && stderr.startsWith('flag provided but not defined: -tags')) {
 					p = null;
-					return definitionLocation_gogetdoc(input, token, false).then(resolve, reject);
+					return definitionLocation_gogetdoc(input, timeout, token, false).then(resolve, reject);
 				}
 				if (err) {
 					if (input.isMod && !input.includeDocs && stdout.startsWith(`gogetdoc: couldn't get package for`)) {
@@ -285,11 +308,16 @@ function definitionLocation_gogetdoc(
 		if (p.pid) {
 			p.stdin.end(getFileArchive(input.document));
 		}
+		processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - gogetdoc'));
+		}, timeout);
 	});
 }
 
 function definitionLocation_guru(
 	input: GoDefinitionInput,
+	timeout: number,
 	token: vscode.CancellationToken
 ): Promise<GoDefinitionInformation> {
 	const guru = getBinPath('guru');
@@ -299,8 +327,12 @@ function definitionLocation_guru(
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = getToolsEnvVars();
 	let p: cp.ChildProcess;
+	let processTimeout: NodeJS.Timeout;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => {
+			clearTimeout(processTimeout);
+			killTree(p.pid);
+		});
 	}
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
 		p = cp.execFile(
@@ -308,6 +340,7 @@ function definitionLocation_guru(
 			['-json', '-modified', 'definition', input.document.fileName + ':#' + offset.toString()],
 			{ env },
 			(err, stdout, stderr) => {
+				clearTimeout(processTimeout);
 				try {
 					if (err && (<any>err).code === 'ENOENT') {
 						return reject(missingToolMsg + 'guru');
@@ -342,6 +375,10 @@ function definitionLocation_guru(
 		if (p.pid) {
 			p.stdin.end(getFileArchive(input.document));
 		}
+		processTimeout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - guru'));
+		}, timeout);
 	});
 }
 
@@ -368,7 +405,8 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 		position: vscode.Position,
 		token: vscode.CancellationToken
 	): Thenable<vscode.Location> {
-		return definitionLocation(document, position, this.goConfig, false, token).then(
+		const timeout = getTimeoutConfiguration('onCommand', this.goConfig);
+		return definitionLocation(document, position, this.goConfig, false, timeout, token).then(
 			(definitionInfo) => {
 				if (definitionInfo == null || definitionInfo.file == null) {
 					return null;
