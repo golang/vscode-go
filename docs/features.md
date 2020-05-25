@@ -36,8 +36,8 @@ Please see the [Tools](tools.md) documentation for details on how to troubleshoo
   * [Vet on save](#vet-on-save)
   * [Lint on save](#lint-on-save)
 * [Testing](#testing)
-  * [Run tests and benchmarks from editor]()
-  * [Show coverage]()
+  * [Test and benchmark in the editor](#test-and-benchmark-in-the-editor)
+  * [Code coverage](#code-coverage)
 
 ## [IntelliSense](https://code.visualstudio.com/docs/editor/intellisense)
 
@@ -89,11 +89,11 @@ This feature is provided by the [`go-outline`](tools.md#go-outline) tool.
 
 ### Toggle between code and tests
 
-Quickly toggle between a file and its corresponding testf file by using the "Go: Toggle Test File" command.
+Quickly toggle between a file and its corresponding test file by using the "Go: Toggle Test File" command.
 
 ## Code Editing
 
-### Code [snippets](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
+### [Snippets](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
 
 Predefined snippets for quick coding. These snippets will pop up as completion suggestions as you type. Users can also define their own custom snippets (see [these instructions](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_create-your-own-snippets)).
 
@@ -123,26 +123,42 @@ This feature is not available if you are using Go modules without `gopls`, the G
 
 ### Add or remove tags on struct fields
 
-Use the `Go: Add Tags to Struct Fields` to automatically generate [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the 
+Use the `Go: Add Tags to Struct Fields` command to automatically generate [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
 
-### Generate method stubs for interfaces (`Go: Generate Interface Stubs`)
+### Generate method stubs for interfaces
 
-### Fill struct literals with default values (`Go: Fill struct`)
+Use the `Go: Generate Interface Stubs` command to automatically generate method stubs for a given interface. This feature is provided by the [`impl`](tools.md#impl) tool.
 
-Provided by: [`goreturns`](tools.md#goreturns), [`goimports`](tools.md#goimports), [`gofmt`](tools.md#gofmt), [`impl`](tools.md#impl), [`fillstruct`](tools.md#fillstruct)
+### Fill struct literals
+
+Use the `Go: Fill struct` command to automatically fill a struct literal with its default values. This command is provided by the [`fillstruct`](tools.md#fillstruct).
 
 ## Diagnostics
 
-### Build errors on save or as you type
+### Build errors
+
+Build errors can be shown as you type or on save. Configure this behavior through the [`"go.buildOnSave"`](commands.md#buildOnSave) setting.
+
+By default, code is compiled using the `go` command (`go build`), but build errors as you type are provided by the [`gotype-live`](tools.md#gotype-live) tool.
 
 ### Vet errors on save
 
+Vet errors can be shown on save. The vet-on-save behavior can also be configured through the [`"go.vetOnSave"`](commands.md#vetOnSave) setting.
+
+The vet tool used is the one provided by the `go` command: `go vet`.
+
 ### Lint errors on save
 
-Provided by: `go build`, `go test`, `golint`, `golangci-lint`, `revive`, `staticcheck`, `gotype-live`
+Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](commands.md#lintOnSave) setting.
+
+The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](tools.md#lintTool) setting.
 
 ## Testing
 
-* Run tests and benchmarks in the current file, current package, or entire workspace (using commands or [code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup))
+### Test and benchmark in the editor
+
+[Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests and benchmarks for a given function, file, package, or workspace. Alternatively, the same functionality is available through a set of commands: `"Go: Test Function At Cursor"`, `"Go: Test File"`, `"Go: Test Package"`, and `"Go: Test All Packages in Workspace"`.
 
 ### Code Coverage
+
+Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: `"Go: Apply Cover Profile"` and `"Go: Toggle Test Coverage in Current Package"`.

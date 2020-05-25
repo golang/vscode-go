@@ -1,6 +1,6 @@
 # Settings and Commands
 
-To view a complete list of the commands settings for this extension:
+To view a complete list of the commands and settings for this extension:
 
 1. Navigate to the Extensions view (Ctrl+Shift+X).
 2. Find the Go extension, click on it to open the Extension Editor.
@@ -13,3 +13,15 @@ To view a complete list of the commands settings for this extension:
 ## Settings
 
 You can configure your settings by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings). To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
+
+A list of popular and notable settings can be found here:
+
+### docsTool
+
+### formatTool
+
+### buildOnSave
+
+### vetOnSave
+
+### lintOnSave
