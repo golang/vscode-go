@@ -4,62 +4,145 @@ This document describes the features supported by this extension.
 
 If you are using the Go language server, `gopls`, please the [gopls documentation](gopls.md) instead. (You can check if you are using `gopls` by opening your VS Code settings and checking if `go.useLanguageServer` is set to `true`.)
 
+If you are using Go modules without the language server, some of the below features will not be available.
+
+Please see the [Tools](tools.md) documentation for details on how to troubleshoot and adjust your settings.
+
 ## Table of Contents
 
 * [IntelliSense](#intellisense)
+  * [Code completion](#code-completion)
+  * [Signature help](#signature-help)
+  * [Quick info on hover](#quick-info-on-hover)
 * [Code Navigation](#code-navigation)
+  * [Go to definition](#go-to-definition)
+  * [Go to symbol](#go-to-symbol)
+  * [Find references](#find-references)
+  * [Find interface implementations](#find-interface-implementations)
+  * [Document outline](#document-outline)
+  * [Toggle between code and tests](#toggle-between-code-and-tests)
 * [Code Editing](#code-editing)
+  * [Snippets](#snippets)
+  * [Format and organize imports](#format-and-organize-imports)
+    * [Add import](#add-import)
+  * [Rename symbol](#rename-symbol)
+* [Code Generation](#code-generation)
+  * [Add struct tags](#add-struct-tags)
+  * [Generate unit tests](#generate-unit-tests)
+  * [Generate interface implementation](#generate-interface-implementation)
+  * [Fill struct with default values](#fill-struct)
 * [Diagnostics](#diagnostics)
+  * [Build on save](#build-on-save)
+  * [Vet on save](#vet-on-save)
+  * [Lint on save](#lint-on-save)
 * [Testing](#testing)
+  * [Run tests and benchmarks from editor]()
+  * [Show coverage]()
 
 ## [IntelliSense](https://code.visualstudio.com/docs/editor/intellisense)
 
 This extension supports the following IntelliSense features:
 
-* Code completion of symbols as you type.
-* Signature help for functions.
-* Quick info for symbols on hover.
+### Code completion
 
-### Customizability
+Completion results appear for symbols as you type. You can trigger this manually with the Ctrl+Space shortcut. This feature is provided by the [`gocode`](tools.md#gocode) tool.
 
-* Code completion is provided by the [`gocode`](tools.md#gocode) tool. Different versions of `gocode` are used depending on your version of Go.
-  * Go 1.8 and below: [nsf/gocode](https://github.com/nsf/gocode)
-  * Go 1.9 and above: [mdempsky/gocode](https://github.com/mdempsky/gocode)
-  * Go 1.11 and above, with modules enabled: [stamblerre/gocode](https://github.com/stamblerre/gocode)
-    * If you find code completion slow with modules, consider using [gopls](gopls.md) instead.
-* Signature help and quick info are provided by the [`gogetdoc`](tools.md#gogetdoc) tool. If `gogetdoc` does not work for you, a combination of the [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) tools can be used.
-  * Configure this via the `"go.docsTool"` setting.
+Autocompletion is also supported for packages you have not imported into your program. This feature is provided by the [`gopkgs`](#tools.md#gopkgs) tool.
+
+### Signature help
+
+Information about the signature of a function pops up as you type in its parameters. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
+
+### Quick info on hover
+
+Documentation appears when you hover over a symbol. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
 
 ## [Code Navigation](https://code.visualstudio.com/docs/editor/editingevolved)
 
-* Go to Definition of symbols.
-* Find References of symbols and Implementations of interfaces (using `guru` or `gopls`)
-* Go to symbol in file or see the file outline (using `go-outline` or `gopls`)
-- Go to symbol in workspace (using `go-symbols` or `gopls`)
-- Toggle between a Go program and the corresponding test file.
+### Go to definition
 
-[Learn more about Code Navigation in VS Code].
+Jump to or peek a symbol's declaration. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
+
+### Find references
+
+Find or go to the references of a symbol. This feature is provided the [`guru`](tools.md#guru) tool.
+
+This feature is not available if you are using Go modules without `gopls`, the Go language server.
+
+### Find interface implementations
+
+Find the concrete types that implement a given interface. This feature is provided by the [`guru`](tools.md#guru) tool.
+
+This feature is not available if you are using Go modules without `gopls`, the Go language server.
+
+### [Go to symbol](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-symbol)
+
+Search for symbols in your file or workspace by opening the Command Palette (Ctrl+Shift+P) and typing `@` for symbols in the current file or `#` for symbols in the entire workspace.
+
+This feature is provided by the [`go-outline`](tools.md#go-outline) and [`go-symbols`](tools.md#go-symbols) tools.
+
+### Document outline
+
+See all the symbols in the current file in the VS Code's [Outline view](https://code.visualstudio.com/docs/getstarted/userinterface#_outline-view).
+
+This feature is provided by the [`go-outline`](tools.md#go-outline) tool.
+
+### Toggle between code and tests
+
+Quickly toggle between a file and its corresponding testf file by using the "Go: Toggle Test File" command.
 
 ## Code Editing
 
-- Code Snippets for quick coding
-- Format code on file save as well as format manually (using `goreturns` or `goimports` or `gofmt` or `gopls`)
-- Symbol Rename (using `gorename` or `gopls`. Note: If not using `gopls`, then for undo after rename to work in Windows you need to have `diff` tool in your path)
-- Add Imports to current file (using `gopkgs` or `gopls`)
-- Add/Remove Tags on struct fields (using `gomodifytags`)
-- Generate method stubs for interfaces (using `impl`)
-- Fill struct literals with default values (using `fillstruct`)
+### Code [snippets](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
+
+Predefined snippets for quick coding. These snippets will pop up as completion suggestions as you type. Users can also define their own custom snippets (see [these instructions](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_create-your-own-snippets)).
+
+### Format and organize imports
+
+Format code and organize imports, either manually or on save. The code is formatted by the [`gofmt`](tools.md#gofmt) tool, which is the standard for Go code. Imports are added automatically to your file via the [`goimports`](tools.md#goimports) tool, which is also an industry standard. By default, this extension also uses the [`goreturns`](tools.md#goreturns) tool, which automatically fills in default return values for functions.
+
+The behavior of the formatter can be configured via the [`"go.formatTool"`](#commands#format-tool) tool setting. Formatting can also be turned off by adding the following setting to your `settings.json` file:
+
+```json5
+"[go]": {
+    "editor.formatOnSave": false
+}
+```
+
+#### Add import to file (Go: Add Import)
+
+Manually add a new import to your file through the `Go: Add Import` command.
+
+### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
+
+Rename all occurrences of a symbol in your workspace. This feature is provided by the [`gorename`](tools.md#gorename) tool.
+
+This feature is not available if you are using Go modules without `gopls`, the Go language server.
+
+## Code Generation
+
+### Add or remove tags on struct fields
+
+Use the `Go: Add Tags to Struct Fields` to automatically generate [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the 
+
+### Generate method stubs for interfaces (`Go: Generate Interface Stubs`)
+
+### Fill struct literals with default values (`Go: Fill struct`)
+
+Provided by: [`goreturns`](tools.md#goreturns), [`goimports`](tools.md#goimports), [`gofmt`](tools.md#gofmt), [`impl`](tools.md#impl), [`fillstruct`](tools.md#fillstruct)
 
 ## Diagnostics
 
-- Build-on-save to compile code and show build errors. (using `go build` and `go test`)
-- Vet-on-save to run `go vet` and show errors as warnings (`gopls`)
-- Lint-on-save to show linting errors as warnings (using `golint`, `gometalinter`, `megacheck`, `golangci-lint` or `revive` or `gopls`)
-- Semantic/Syntactic error reporting as you type (using `gotype-live` or `gopls`)
+### Build errors on save or as you type
+
+### Vet errors on save
+
+### Lint errors on save
+
+Provided by: `go build`, `go test`, `golint`, `golangci-lint`, `revive`, `staticcheck`, `gotype-live`
 
 ## Testing
 
-- Run Tests under the cursor, in current file, in current package, in the whole workspace using either commands or codelens 
-- Run Benchmarks under the cursor using either commands or codelens
-- Show code coverage either on demand or after running tests in the package.
-- Generate unit tests skeleton (using `gotests`)
+* Run tests and benchmarks in the current file, current package, or entire workspace (using commands or [code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup))
+
+### Code Coverage
