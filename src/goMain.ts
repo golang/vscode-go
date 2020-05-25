@@ -25,7 +25,7 @@ import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
-	updateGoPathGoRootFromConfig
+	updateGoVarsFromConfig
 } from './goInstallTools';
 import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -63,7 +63,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 
-	updateGoPathGoRootFromConfig().then(async () => {
+	updateGoVarsFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
 		interface GoInfo {
 			goroot: string;
@@ -384,7 +384,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			updateGoPathGoRootFromConfig();
+			updateGoVarsFromConfig();
 
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {

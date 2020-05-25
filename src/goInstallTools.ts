@@ -372,7 +372,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	}
 }
 
-export function updateGoPathGoRootFromConfig(): Promise<void> {
+export function updateGoVarsFromConfig(): Promise<void> {
 	const goroot = getGoConfig()['goroot'];
 	if (goroot) {
 		process.env['GOROOT'] = resolvePath(goroot);
