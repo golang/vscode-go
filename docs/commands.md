@@ -18,7 +18,13 @@ A list of popular and notable settings can be found here:
 
 ### docsTool
 
+One of `"godoc"`, `"gogetdoc"`, or `"guru"`. This is the tool used by the [go to definition](features.md#go-to-definition), [signature help](features.md#signature-help), and [quick info on hover](features.md#quick-info-on-hover) features.
+
 ### formatTool
+
+One of `"gofmt"`, `"goimports"`, `"goreturns"`, and `"goformat"`.
+
+### lintTool
 
 ### buildOnSave
 

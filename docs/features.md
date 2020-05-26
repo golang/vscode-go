@@ -28,16 +28,20 @@ Please see the [Tools](tools.md) documentation for details on how to troubleshoo
   * [Rename symbol](#rename-symbol)
 * [Code Generation](#code-generation)
   * [Add struct tags](#add-struct-tags)
+  * [Generate interface implementation]
+  (#generate-interface-implementation)
   * [Generate unit tests](#generate-unit-tests)
-  * [Generate interface implementation](#generate-interface-implementation)
-  * [Fill struct with default values](#fill-struct)
+  * [Fill struct literals](#fill-struct-literals)
 * [Diagnostics](#diagnostics)
-  * [Build on save](#build-on-save)
-  * [Vet on save](#vet-on-save)
-  * [Lint on save](#lint-on-save)
+  * [Build errors](#build-errors)
+  * [Vet errors](#vet-errors)
+  * [Lint errors](#lint-errors)
 * [Testing](#testing)
   * [Test and benchmark in the editor](#test-and-benchmark-in-the-editor)
   * [Code coverage](#code-coverage)
+* [Debugging](#debugging)
+* [Other](#other)
+  * [Go Playground](#go-playground)
 
 ## [IntelliSense](https://code.visualstudio.com/docs/editor/intellisense)
 
@@ -109,7 +113,7 @@ The behavior of the formatter can be configured via the [`"go.formatTool"`](#com
 }
 ```
 
-#### Add import to file (Go: Add Import)
+#### Add import
 
 Manually add a new import to your file through the `Go: Add Import` command.
 
@@ -117,17 +121,23 @@ Manually add a new import to your file through the `Go: Add Import` command.
 
 Rename all occurrences of a symbol in your workspace. This feature is provided by the [`gorename`](tools.md#gorename) tool.
 
+**Note**: For undo after rename to work on Windows, you need to have `diff` tool on your `PATH`.
+
 This feature is not available if you are using Go modules without `gopls`, the Go language server.
 
 ## Code Generation
 
-### Add or remove tags on struct fields
+### Add struct tags
 
-Use the `Go: Add Tags to Struct Fields` command to automatically generate [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
+Use the `Go: Add Tags to Struct Fields` command to automatically generate or remove [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
 
-### Generate method stubs for interfaces
+### Generate interface implementation
 
 Use the `Go: Generate Interface Stubs` command to automatically generate method stubs for a given interface. This feature is provided by the [`impl`](tools.md#impl) tool.
+
+### Generate unit tests
+
+Easily generate unit tests for your project by running one of the `Go: Generate Unit Tests for ...` commands. This can be done at a function, file, or package level. This feature is provided by the [`gotests`](tools.md#gotests) tool.
 
 ### Fill struct literals
 
@@ -141,13 +151,13 @@ Build errors can be shown as you type or on save. Configure this behavior throug
 
 By default, code is compiled using the `go` command (`go build`), but build errors as you type are provided by the [`gotype-live`](tools.md#gotype-live) tool.
 
-### Vet errors on save
+### Vet errors
 
 Vet errors can be shown on save. The vet-on-save behavior can also be configured through the [`"go.vetOnSave"`](commands.md#vetOnSave) setting.
 
 The vet tool used is the one provided by the `go` command: `go vet`.
 
-### Lint errors on save
+### Lint errors
 
 Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](commands.md#lintOnSave) setting.
 
@@ -162,3 +172,13 @@ The default lint tool is the one provided by the `go` command: `go lint`. Howeve
 ### Code Coverage
 
 Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: `"Go: Apply Cover Profile"` and `"Go: Toggle Test Coverage in Current Package"`.
+
+## [Debugging](debugging.md)
+
+This extension offers debugging of Go programs. See the [debugging documentation](debugging.md) for more information.
+
+## Other
+
+### Go Playground
+
+Quickly export your current file to the [Go Playground](https://play.golang.org) via the `Go: Run On Go Playground` command. This is useful for quickly exporting code for an example.

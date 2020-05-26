@@ -1,1 +1,1 @@
- (using `gorename` or `gopls`. Note: If not using `gopls`, then for undo after rename to work in Windows you need to have `diff` tool in your path)
+# `gopls`, the Go language server
