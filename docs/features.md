@@ -28,8 +28,7 @@ Please see the [Tools](tools.md) documentation for details on how to troubleshoo
   * [Rename symbol](#rename-symbol)
 * [Code Generation](#code-generation)
   * [Add struct tags](#add-struct-tags)
-  * [Generate interface implementation]
-  (#generate-interface-implementation)
+  * [Generate interface implementation](#generate-interface-implementation)
   * [Generate unit tests](#generate-unit-tests)
   * [Fill struct literals](#fill-struct-literals)
 * [Diagnostics](#diagnostics)
@@ -93,7 +92,7 @@ This feature is provided by the [`go-outline`](tools.md#go-outline) tool.
 
 ### Toggle between code and tests
 
-Quickly toggle between a file and its corresponding test file by using the "Go: Toggle Test File" command.
+Quickly toggle between a file and its corresponding test file by using the `Go: Toggle Test File` command.
 
 ## Code Editing
 
@@ -167,11 +166,11 @@ The default lint tool is the one provided by the `go` command: `go lint`. Howeve
 
 ### Test and benchmark in the editor
 
-[Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests and benchmarks for a given function, file, package, or workspace. Alternatively, the same functionality is available through a set of commands: `"Go: Test Function At Cursor"`, `"Go: Test File"`, `"Go: Test Package"`, and `"Go: Test All Packages in Workspace"`.
+[Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests and benchmarks for a given function, file, package, or workspace. Alternatively, the same functionality is available through a set of commands: `Go: Test Function At Cursor`, `Go: Test File`, `Go: Test Package`, and `Go: Test All Packages in Workspace`.
 
 ### Code Coverage
 
-Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: `"Go: Apply Cover Profile"` and `"Go: Toggle Test Coverage in Current Package"`.
+Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: `Go: Apply Cover Profile` and `Go: Toggle Test Coverage in Current Package`.
 
 ## [Debugging](debugging.md)
 
