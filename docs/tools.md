@@ -2,9 +2,9 @@
 
 This document describes the tools used to create the VS Code Go extension. Each feature is provided by a command-line tool written in Go, so if you experience an issue, it may be due to the underlying tool. Some tools are required for the functionality of the extension, while others are provide optional features.
 
-Some of the features can be provided by multiple tools, and this can be configured through the extension's settings. For more details, see [Customizations](#customizations).
+Some of the features can be provided by multiple tools, and this can be configured through the extension's settings. For more details, see the [Documentation](#documentation), [Formatting](#formatting), and [Diagnostics](#diagnostics) sections below.
 
-**NOTE: If you are using the language server, [`gopls`](gopls.md), then most of the below tools are not needed. We strongly recommend using `gopls` if you are using Go modules, as it performs better.**
+**NOTE: If you are using the language server, [`gopls`], then most of the below tools are not needed. We strongly recommend using [`gopls`] if you are using Go modules, as it performs better.**
 
 ## Installation
 
@@ -28,20 +28,20 @@ VS Code Go will install the tools to your `GOPATH` by default, but the tools wil
 * [`gotests`](#gotests)
 * [`fillstruct`](#fillstruct)
 * [Documentation](#documentation)
-  * [`gogetdoc`]()
-  * [`godef`]()
-  * [`godoc`]()
+  * [`gogetdoc`]
+  * [`godef`]
+  * [`godoc`]
 * [Formatting](#formatting)
-  * [`goreturns`](#goreturns)
-  * [`goimports`](#goimports)
-  * [`gofmt`](#gofmt)
-  * [`goformat`](#goformat)
+  * [`goreturns`]
+  * p`goimports`]
+  * [`gofmt`]
+  * [`goformat`]
 * [Diagnostics](#diagnostics)
-  * [`gotype-live`](#gotype-live)
-  * [`golint`](#golint)
-  * [`staticcheck`](#staticcheck)
-  * [`golangci-lint`](#golangci-lint)
-  * [`revive`](#revive)
+  * [`gotype-live`]
+  * [`golint`]
+  * [`staticcheck`]
+  * [`golangci-lint`]
+  * [`revive`]
 
 ### Go toolchain
 
@@ -69,7 +69,7 @@ Different versions of `gocode` are used depending on your version of Go.
 * Go 1.8 and below: [nsf/gocode](https://github.com/nsf/gocode)
 * Go 1.9 and above: [mdempsky/gocode](https://github.com/mdempsky/gocode)
 * Go 1.11 and above, with modules enabled: [stamblerre/gocode](https://github.com/stamblerre/gocode)
-  * This version of `gocode` does not have any caching, so if you find it slow, consider using [gopls](gopls.md) instead.
+  * This version of `gocode` does not have any caching, so if you find it slow, consider using [gopls] instead.
 
 ### [`gopkgs`](https://pkg.go.dev/github.com/uudashr/gopkgs?tab=overview)
 
@@ -89,13 +89,13 @@ This tool provides the [find references](features.md#find-references) and [find 
 
 It can also be used to provide the [go to definition](features.md#go-to-definition) via the [`"go.docsTool"`](commands.md#docsTool) setting (see [Customization](#Customization)).
 
-`guru` does not have support for Go modules, so we recommend using [`gopls`](gopls.md) for those features instead.
+`guru` does not have support for Go modules, so we recommend using [`gopls`] for those features instead.
 
 ### [`gorename`](https://pkg.go.dev/golang.org/x/tools/cmd/gorename?tab=doc)
 
 This tool provides the [rename symbol](features.md#rename-symbol) feature.
 
-`gorename` does not have support for Go modules, so we recommend using [`gopls`](gopls.md) for this feature instead.
+`gorename` does not have support for Go modules, so we recommend using [`gopls`] for this feature instead.
 
 ### [`delve`](https://pkg.go.dev/github.com/go-delve/delve?tab=overview)
 
@@ -123,58 +123,50 @@ This tool provides support the [`Go: Fill struct`](features.md#fill-struct) comm
 
 ### Documentation
 
-The below tools are used for the [go-to-definition](features.md#go-to-definition), [signature help](features.md#signature-help), and [quick info on hover](features.md#quick-info-on-hover). [`gogetdoc`](https://pkg.go.dev/github.com/zmb3/gogetdoc?tab=overview) is used by default.
+Documentation tools are used for the [go to definition](features.md#go-to-definition), [signature help](features.md#signature-help), and [quick info on hover](features.md#quick-info-on-hover). [`gogetdoc`] is used by default.
 
-If `gogetdoc` does not work for you, a combination of the [`godef`](https://pkg.go.dev/github.com/rogpeppe/godef?tab=overview) and [`godoc`](https://pkg.go.dev/golang.org/x/tools/cmd/godoc?tab=doc) tools can be used. [`guru`](#guru) can also be used, but only for the [go to definition](features.md#go-to-definition) behavior.
+If `gogetdoc` does not work for you, a combination of the [`godef`] and [`godoc`] tools can be used. [`guru`](#guru) can also be used, but only for the [go to definition](features.md#go-to-definition) behavior.
 
 Configure this via the [`"go.docsTool"`](commands.md#docsTool) setting.
 
-### [`goreturns`](https://pkg.go.dev/github.com/sqs/goreturns?tab=overview)
+### Formatting
 
-This tool is the default tool used to [format](features.md#format-and-organize-imports) Go files. It applies the default [`gofmt`](#gofmt) style, organizes imports, and fills in default return values for functions.
+Formatting tools are used by the [formatting and import organization](features.md#format-and-organize-imports) features.
 
-Alternatively, [`goimports`](#goimports) and [`gofmt`](#gofmt) can be used for formatting instead (see [Customizations](#customizations)).
+[`goreturns`] is used by default. It formats the file according to the industry standard [`gofmt`] style, organizes imports, and fills in default return values for functions. Other tools can be used for formatting instead; this can be configured with the [`"go.formatTool"`](commands.md#formatTool) setting.
 
-`goreturns` does not have support for Go modules, so we recommend using [`goimports`](#goimports) or [`gopls`](gopls.md) instead.
+**NOTE: [`goreturns`] does not have support for Go modules, so we recommend using [`goimports`] or [`gopls`] instead.**
 
-### [`goimports`](https://pkg.go.dev/golang.org/x/tools/cmd/goimports)
+Other format tool options include:
 
-This is tool can be used for [formatting](features.md#format-and-organize-imports) instead of [`goreturns`](#goreturns). It applies the default [`gofmt`](#gofmt) style and organizes imports, without the behavior of filling in default return values.
+* [`goimports`], which applies the default `gofmt` style and organizes imports, but without the behavior of filling in default return values
+* [`gofmt`] only formats the file, without import organization or filling in return values
+* [`goformat`] is a configurable version of [`gofmt`]
 
-Alternatively, [`goreturns`](#goreturns) and [`gofmt`](#gofmt) can be used for formatting instead (see [Customizations](#customizations)).
+### Diagnostics
 
-### [`gofmt`](https://golang.org/cmd/gofmt/)
+Diagnostic tools are used to surface errors and warnings in your code when you save your file or as you type.
 
-This tool can be used for [formatting](features.md#format-and-organize-imports) instead of [`goreturns`](#goreturns) or [`goimports`](#goimports). It only formats the file, without import organization or filling in return values. `gofmt` ships with the Go distribution, and it is an industry standard for Go formatting.
+By default, [`gotype-live`], `go vet`, and [`golint`] are used to provide [build](#build-on-save), [vet](#vet-on-save), and [lint](#lint-on-save) errors. [`gotype-live`] provides build errors as you type, while `go build` can be used to show build errors only on save.
 
-Alternatively, [`goreturns`](#goimports) and [`goimports`](#goimports) can be used for formatting instead (see [Customizations](#customizations)).
+**NOTE: [`gotype-live`] does not work with modules, so if you are using modules, we recommend using [`gopls`] instead.**
 
-### [`gotype-live`](https://github.com/tylerb/gotype-live)
+Other lint tools can be used instead of [`golint`] by configuring the [`"go.lintTool"`](commands.md#lintTool) setting. Other options include:
 
-This tool provides [build errors](features.md#build-errors) as you type. It does not work with modules, so if you are using modules, we recommend using [`gopls`](gopls.md) instead.
+* [`staticcheck`]: This tool provides a great deal of useful checks that are not provided by `golint`. See the full list at [staticcheck.io/docs/checks](https://staticcheck.io/docs/checks). It is also officially supported by the [Go team at Google](https://staticcheck.io/sponsors).
+* [`golangci-lint`]: This tool combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
+* [`revive`]: This tool is an enhancement on top of [`golint`](#golint), and it provides additional checks.
 
-### [`golint`](https://pkg.go.dev/golang.org/x/lint/golint?tab=overview)
-
-This tool is used by default for the [lint-on-save](features.md#lint-on-save) feature.
-
-Alternatively, [staticcheck](#staticcheck), [`golangci-lint`](#golangci-lint), and [`revive`](#revive) can be used (see [Customizations](#Customizations)).
-
-### [`staticcheck`](https://pkg.go.dev/honnef.co/go/tools?tab=overview)
-
-This tool can be used for the [lint-on-save](#lint-on-save) feature (see [Customizations](#Customizations)). It provides a great deal of useful checks that are not provided by `golint`; see the full list at [staticcheck.io/docs/checks](https://staticcheck.io/docs/checks). It is also supported by the [Go team at Google](https://staticcheck.io/sponsors).
-
-### [`golangci-lint`](https://golangci-lint.run/)
-
-This tool can be used for the [lint-on-save](#lint-on-save) feature (see [Customizations](#Customizations)). This tool combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
-
-### [`revive`](https://pkg.go.dev/github.com/mgechev/revive?tab=overview)
-
-This tool can be used for the [lint-on-save](#lint-on-save) feature (see [Customizations](#Customizations)). It is also an enhancement on top of [`golint`](#golint), and it provides additional checks.
-
-## Customization
-
-
-* Formatting is provided by [`goreturns`](#goreturns) by default. If you do not wish to use this tool, or it does not work for you (it does not work with modules), you can use [`goimports`](#goimports) or [`gofmt`](#gofmt) instead.
-  * Configure this via the [`"go.formatTool"`](commands.md#formatTool) setting.
-* Linting is provided by [`golint`](#golint) by default. If you do not wish to use `golint`, you can instead use one of [`staticcheck`](#staticcheck), [`golangci-lint`](#golangci-lint), or [`revive`](#revive).
-  * Configure this via the [`"go.lintTool"`](commands.md#lintTool) setting.
+[`gogetdoc`]: https://pkg.go.dev/github.com/zmb3/gogetdoc?tab=overview
+[`godef`]: https://pkg.go.dev/github.com/rogpeppe/godef?tab=doc
+[`godoc`]: https://pkg.go.dev/golang.org/x/tools/godoc?tab=doc
+[`goreturns`]: https://pkg.go.dev/github.com/sqs/goreturns?tab=overview
+[`goimports`]: https://pkg.go.dev/golang.org/x/tools/cmd/goimports?tab=doc
+[`gofmt`]: https://golang.org/cmd/gofmt/
+[`goformat`]: https://pkg.go.dev/winterdrache.de/goformat?tab=overview
+[`gotype-live`]: https://pkg.go.dev/github.com/tylerb/gotype-live?tab=doc
+[`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
+[`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
+[`golangci-lint`]: https://golangci-lint.run/
+[`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
+[`gopls`]: gopls.md
