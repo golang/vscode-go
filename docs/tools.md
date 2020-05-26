@@ -33,7 +33,7 @@ VS Code Go will install the tools to your `GOPATH` by default, but the tools wil
   * [`godoc`]
 * [Formatting](#formatting)
   * [`goreturns`]
-  * p`goimports`]
+  * [`goimports`]
   * [`gofmt`]
   * [`goformat`]
 * [Diagnostics](#diagnostics)
