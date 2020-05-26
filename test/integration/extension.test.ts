@@ -33,7 +33,6 @@ import {
 	getBinPath,
 	getCurrentGoPath,
 	getGoConfig,
-	getGoVersion,
 	getImportPath,
 	getToolsGopath,
 	ICheckResult,

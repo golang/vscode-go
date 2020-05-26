@@ -179,7 +179,6 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 
 	// Install tools in a temporary directory, to avoid altering go.mod files.
 	const toolsTmpDir = fs.mkdtempSync(getTempFilePath('go-tools-'));
-
 	return missing
 		.reduce((res: Promise<string[]>, tool: ToolAtVersion) => {
 			return res.then(

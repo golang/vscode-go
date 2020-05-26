@@ -2,8 +2,10 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sinon from 'sinon';
-import { Delve, escapeGoModPath, GoDebugSession,
-	PackageBuildInfo, RemoteSourcesAndPackages } from '../../src/debugAdapter/goDebug';
+import {
+	Delve, escapeGoModPath, GoDebugSession,
+	PackageBuildInfo, RemoteSourcesAndPackages
+} from '../../src/debugAdapter/goDebug';
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -14,13 +16,20 @@ suite('Path Manipulation Tests', () => {
 suite('GoDebugSession Tests', () => {
 	const workspaceFolder = '/usr/workspacefolder';
 	const delve: Delve = {} as Delve;
-	const previousGoPath = process.env.GOPATH;
-	const previousGoRoot = process.env.GOROOT;
-
 	let goDebugSession: GoDebugSession;
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let fileSystem: typeof fs;
+
+	let previousGoPath: string;
+	// GOROOT may not be defined in a user's environment.
+	let previousGoRoot: string | undefined;
+
 	setup(() => {
+		previousGoPath = process.env.GOPATH;
+		if (process.env.GOROOT) {
+			previousGoRoot = process.env.GOROOT;
+		}
+
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
@@ -34,7 +43,9 @@ suite('GoDebugSession Tests', () => {
 
 	teardown(() => {
 		process.env.GOPATH = previousGoPath;
-		process.env.GOROOT = previousGoRoot;
+		if (previousGoRoot) {
+			process.env.GOROOT = previousGoRoot;
+		}
 		sinon.restore();
 	});
 
@@ -241,7 +252,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let delve: Delve;
 	setup(() => {
-		delve = {callPromise: () => ({}), isApiV1: false} as unknown as Delve;
+		delve = { callPromise: () => ({}), isApiV1: false } as unknown as Delve;
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
 	});
 
@@ -251,10 +262,10 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 	test('initializeRemotePackagesAndSources retrieves remote packages and sources', async () => {
 		const stub = sinon.stub(delve, 'callPromise');
-		stub.withArgs('ListPackagesBuildInfo', [{IncludeFiles: true}])
-			.returns(Promise.resolve({List: [helloPackage, testPackage]}));
+		stub.withArgs('ListPackagesBuildInfo', [{ IncludeFiles: true }])
+			.returns(Promise.resolve({ List: [helloPackage, testPackage] }));
 		stub.withArgs('ListSources', [{}])
-			.returns(Promise.resolve({Sources: sources}));
+			.returns(Promise.resolve({ Sources: sources }));
 
 		await remoteSourcesAndPackages.initializeRemotePackagesAndSources(delve);
 		assert.deepEqual(remoteSourcesAndPackages.remoteSourceFiles, sources);

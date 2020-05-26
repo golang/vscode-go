@@ -39,7 +39,7 @@ suite('Installation Tests', () => {
 					value: {
 						GOPROXY: `file://${proxyDir}`,
 						GOSUMDB: 'off',
-					}
+					},
 				},
 			});
 			const configStub = sandbox.stub(vscode.workspace, 'getConfiguration').returns(goConfig);
