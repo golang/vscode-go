@@ -10,21 +10,12 @@ import { CancellationToken, CodeLens, Command, TextDocument } from 'vscode';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
-import { getCurrentGoPath, getGoConfig } from './util';
+import { getGoConfig } from './util';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	private readonly benchmarkRegex = /^Benchmark.+/;
-	private readonly debugConfig: any = {
-		name: 'Launch',
-		type: 'go',
-		request: 'launch',
-		mode: 'test',
-		env: {
-			GOPATH: getCurrentGoPath() // Passing current GOPATH to Delve as it runs in another process
-		}
-	};
 
-	public provideCodeLenses(document: TextDocument, token: CancellationToken): CodeLens[] | Thenable<CodeLens[]> {
+	public async provideCodeLenses(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
 		if (!this.enabled) {
 			return [];
 		}
@@ -35,19 +26,11 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 			return [];
 		}
 
-		return Promise.all([
+		const codelenses = await Promise.all([
 			this.getCodeLensForPackage(document, token),
 			this.getCodeLensForFunctions(document, token)
-		]).then(([pkg, fns]) => {
-			let res: any[] = [];
-			if (pkg && Array.isArray(pkg)) {
-				res = res.concat(pkg);
-			}
-			if (fns && Array.isArray(fns)) {
-				res = res.concat(fns);
-			}
-			return res;
-		});
+		]);
+		return ([] as CodeLens[]).concat(...codelenses);
 	}
 
 	private async getCodeLensForPackage(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
