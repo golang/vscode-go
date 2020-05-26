@@ -28,12 +28,11 @@ import { goPlay } from '../../src/goPlayground';
 import { GoSignatureHelpProvider } from '../../src/goSignature';
 import { GoCompletionItemProvider } from '../../src/goSuggest';
 import { getWorkspaceSymbols } from '../../src/goSymbol';
-import { subTestAtCursor, testCurrentFile } from '../../src/goTest';
+import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,
 	getCurrentGoPath,
 	getGoConfig,
-	getGoVersion,
 	getImportPath,
 	getToolsGopath,
 	ICheckResult,
@@ -112,10 +111,6 @@ suite('Go Extension Tests', function () {
 		fs.copySync(
 			path.join(fixtureSourcePath, 'diffTestData', 'file2.go'),
 			path.join(fixturePath, 'diffTest2Data', 'file2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'subtests', 'subtests_test.go'),
-			path.join(fixturePath, 'subtests', 'subtests_test.go')
 		);
 	});
 
@@ -1541,77 +1536,5 @@ encountered.
 		editor.selection = selection;
 		await runFillStruct(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
-	});
-
-	test('Subtests - runs a test with cursor on t.Run line', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(7, 4, 7, 4);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, []);
-		assert.equal(result, true);
-	});
-
-	test('Subtests - runs a test with cursor within t.Run function', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(8, 4, 8, 4);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, []);
-		assert.equal(result, true);
-	});
-
-	test('Subtests - returns false for a failing test', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(11, 4, 11, 4);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, []);
-		assert.equal(result, false);
-	});
-
-	test('Subtests - does nothing for a dynamically defined subtest', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(17, 4, 17, 4);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, []);
-		assert.equal(result, undefined);
-	});
-
-	test('Subtests - does nothing when cursor outside of a test function', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(5, 0, 5, 0);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, []);
-		assert.equal(result, undefined);
-	});
-
-	test('Subtests - does nothing when no test function covers the cursor and a function name is passed in', async () => {
-		const config = vscode.workspace.getConfiguration('go');
-		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
-		const document = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(document);
-		const selection = new vscode.Selection(5, 0, 5, 0);
-		editor.selection = selection;
-
-		const result = await subTestAtCursor(config, {functionName: 'TestMyFunction'});
-		assert.equal(result, undefined);
 	});
 });
