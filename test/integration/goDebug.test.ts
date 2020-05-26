@@ -21,14 +21,11 @@ suite('GoDebugSession Tests', () => {
 	let fileSystem: typeof fs;
 
 	let previousGoPath: string;
-	// GOROOT may not be defined in a user's environment.
-	let previousGoRoot: string | undefined;
+	let previousGoRoot: string;
 
 	setup(() => {
 		previousGoPath = process.env.GOPATH;
-		if (process.env.GOROOT) {
-			previousGoRoot = process.env.GOROOT;
-		}
+		previousGoRoot = process.env.GOROOT;
 
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
