@@ -40,9 +40,7 @@ suite('GoDebugSession Tests', () => {
 
 	teardown(() => {
 		process.env.GOPATH = previousGoPath;
-		if (previousGoRoot) {
-			process.env.GOROOT = previousGoRoot;
-		}
+		process.env.GOROOT = previousGoRoot;
 		sinon.restore();
 	});
 
