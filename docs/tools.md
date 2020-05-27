@@ -4,6 +4,7 @@ This document describes the tools used to create the VS Code Go extension. Each 
 
 Some of the features can be provided by multiple tools, and this can be configured through the extension's settings. For more details, see the [Documentation](#documentation), [Formatting](#formatting), and [Diagnostics](#diagnostics) sections below.
 
+<!--TODO(rstambler): Clarify which tools are still needed with gopls.-->
 **NOTE: If you are using the language server, [`gopls`], then most of the below tools are not needed. We strongly recommend using [`gopls`] if you are using Go modules, as it performs better.**
 
 ## Installation

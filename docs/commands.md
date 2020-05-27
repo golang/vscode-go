@@ -14,7 +14,9 @@ To view a complete list of the commands and settings for this extension:
 
 You can configure your settings by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings). To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
 
-A list of popular and notable settings can be found here:
+**NOTE: Most of these settings don't apply if you are using [`gopls`](gopls.md). Learn more about `gopls`-specific settings in this [documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md).**
+
+A list of popular and notable settings can be found below.
 
 ### docsTool
 
