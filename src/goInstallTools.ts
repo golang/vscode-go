@@ -95,13 +95,6 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
  * @param goVersion version of Go that affects how to install the tool. (e.g. modules vs legacy GOPATH mode)
  */
 export async function installTools(missing: ToolAtVersion[], goVersion: GoVersion): Promise<void> {
-	const goRuntimePath = getBinPath('go');
-	if (!goRuntimePath) {
-		vscode.window.showErrorMessage(
-			`Failed to run "go get" to install the packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
-		);
-		return;
-	}
 	if (!missing) {
 		return;
 	}
@@ -182,7 +175,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		// Disable modules for tools which are installed with the "..." wildcard.
 		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
 
-		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool);
+		const reason = installTool(tool, goVersion, envForTools, !modulesOffForTool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
 
@@ -213,7 +206,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 }
 
 export async function installTool(
-	tool: ToolAtVersion, goRuntimePath: string, goVersion: GoVersion,
+	tool: ToolAtVersion, goVersion: GoVersion,
 	envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
@@ -264,19 +257,19 @@ export async function installTool(
 			cwd: toolsTmpDir,
 		};
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
+		const { stdout, stderr } = await execFile(goVersion.binaryPath, args, opts);
 		output = `${stdout} ${stderr}`;
 
 		// TODO(rstambler): Figure out why this happens and maybe delete it.
 		if (stderr.indexOf('unexpected directory layout:') > -1) {
-			await execFile(goRuntimePath, args, opts);
+			await execFile(goVersion.binaryPath, args, opts);
 		} else if (hasModSuffix(tool)) {
 			const gopath = env['GOPATH'];
 			if (!gopath) {
 				return `GOPATH not configured in environment`;
 			}
 			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
-			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
+			await execFile(goVersion.binaryPath, ['build', '-o', outputFile, importPath], opts);
 		}
 		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
 	} catch (e) {
@@ -299,6 +292,9 @@ export async function promptForMissingTool(toolName: string) {
 	}
 
 	const goVersion = await getGoVersion();
+	if (!goVersion) {
+		return;
+	}
 
 	// Show error messages for outdated tools or outdated Go versions.
 	if (tool.minimumGoVersion && goVersion.lt(tool.minimumGoVersion.format())) {

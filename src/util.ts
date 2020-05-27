@@ -9,6 +9,7 @@ import os = require('os');
 import path = require('path');
 import semver = require('semver');
 import kill = require('tree-kill');
+import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
@@ -77,19 +78,28 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 ]);
 
 export class GoVersion {
-	public sv: semver.SemVer;
-	public isDevel: boolean;
-	private commit: string;
+	public binaryPath: string;
+	public sv?: semver.SemVer;
+	public isDevel?: boolean;
+	private commit?: string;
 
-	constructor(version: string) {
+	constructor(binaryPath: string, version: string) {
+		this.binaryPath = binaryPath;
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
-			this.sv = semver.coerce(matchesRelease[0]);
+			const sv = semver.coerce(matchesRelease[0]);
+			if (sv) {
+				this.sv = sv;
+			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
 			this.commit = matchesDevel[0];
 		}
+	}
+
+	public isValid(): boolean {
+		return !!this.sv || !!this.isDevel;
 	}
 
 	public format(): string {
@@ -105,7 +115,11 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return false;
 		}
-		return semver.lt(this.sv, semver.coerce(version));
+		const v = semver.coerce(version);
+		if (!v) {
+			return false;
+		}
+		return semver.lt(this.sv, v);
 	}
 
 	public gt(version: string): boolean {
@@ -114,12 +128,16 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return true;
 		}
-		return semver.gt(this.sv, semver.coerce(version));
+		const v = semver.coerce(version);
+		if (!v) {
+			return false;
+		}
+		return semver.gt(this.sv, v);
 	}
 }
 
-let cachedGoVersion: GoVersion = null;
-let vendorSupport: boolean = null;
+let cachedGoVersion: GoVersion | undefined;
+let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
 export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
@@ -281,33 +299,29 @@ export function getUserNameHash() {
  * Gets version of Go based on the output of the command `go version`.
  * Returns null if go is being used from source/tip in which case `go version` will not return release tag like go1.6.3
  */
-export async function getGoVersion(): Promise<GoVersion> {
+export async function getGoVersion(): Promise<GoVersion | undefined> {
 	const goRuntimePath = getBinPath('go');
 
 	if (!goRuntimePath) {
-		console.warn(
-			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
-		);
-		return Promise.resolve(null);
+		console.warn(`"go" binary cannot be found in either GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
+		return;
 	}
-	if (cachedGoVersion && (cachedGoVersion.sv || cachedGoVersion.isDevel)) {
+	if (cachedGoVersion && cachedGoVersion.isValid()) {
 		return Promise.resolve(cachedGoVersion);
 	}
-	return new Promise<GoVersion>((resolve) => {
-		cp.execFile(goRuntimePath, ['version'], {}, (err, stdout, stderr) => {
-			cachedGoVersion = new GoVersion(stdout);
-			if (!cachedGoVersion.sv && !cachedGoVersion.isDevel) {
-				if (err || stderr) {
-					console.log(`Error when running the command "${goRuntimePath} version": `, err || stderr);
-				} else {
-					console.log(
-						`Not able to determine version from the output of the command "${goRuntimePath} version": ${stdout}`
-					);
-				}
-			}
-			return resolve(cachedGoVersion);
-		});
-	});
+	try {
+		const execFile = util.promisify(cp.execFile);
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version']);
+		if (stderr) {
+			console.log(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
+			return;
+		}
+		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
+	} catch (err) {
+		console.log(`failed to run "${goRuntimePath} version": ${err}`);
+		return;
+	}
+	return cachedGoVersion;
 }
 
 /**
