@@ -906,9 +906,8 @@ export function rmdirRecursive(dir: string) {
 				try {
 					fs.unlinkSync(relPath);
 				} catch (err) {
-					console.log(err);
+					console.log(`failed to remove ${relPath}: ${err}`);
 				}
-
 			}
 		});
 		fs.rmdirSync(dir);

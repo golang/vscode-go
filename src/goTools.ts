@@ -6,6 +6,7 @@
 'use strict';
 
 import cp = require('child_process');
+import fs = require('fs');
 import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
