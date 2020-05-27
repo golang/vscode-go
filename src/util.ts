@@ -79,13 +79,11 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 ]);
 
 export class GoVersion {
-	public binaryPath: string;
 	public sv?: semver.SemVer;
 	public isDevel?: boolean;
 	private commit?: string;
 
-	constructor(binaryPath: string, version: string) {
-		this.binaryPath = binaryPath;
+	constructor(public binaryPath: string, version: string) {
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
@@ -303,8 +301,14 @@ export function getUserNameHash() {
 export async function getGoVersion(): Promise<GoVersion | undefined> {
 	const goRuntimePath = getBinPath('go');
 
+	const warn = (msg: string) => {
+		outputChannel.clear();
+		outputChannel.appendLine(msg);
+		console.warn(msg);
+	};
+
 	if (!goRuntimePath) {
-		console.warn(`"go" binary cannot be found in either GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
+		warn(`unable to locate "go" binary in GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
 		return;
 	}
 	if (cachedGoVersion && cachedGoVersion.isValid()) {
@@ -314,12 +318,12 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version']);
 		if (stderr) {
-			console.log(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
+			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
-		console.log(`failed to run "${goRuntimePath} version": ${err}`);
+		warn(`failed to run "${goRuntimePath} version": ${err}`);
 		return;
 	}
 	return cachedGoVersion;
