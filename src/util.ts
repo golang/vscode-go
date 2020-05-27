@@ -852,22 +852,16 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 }
 
 export const killTree = (processId: number): void => {
-	kill(processId, (err) => {
-		if (err) {
-			console.log('Error killing process tree: ' + err);
-		}
-	});
-};
-
-export function killProcess(p: cp.ChildProcess) {
-	if (p) {
-		try {
-			p.kill();
-		} catch (e) {
-			console.log('Error killing process: ' + e);
-		}
+	try {
+		kill(processId, (err) => {
+			if (err) {
+				console.log(`Error killing process tree: ${err}`);
+			}
+		});
+	} catch (err) {
+		console.log(`Error killing process tree: ${err}`);
 	}
-}
+};
 
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
