@@ -182,7 +182,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		// Disable modules for tools which are installed with the "..." wildcard.
 		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
 
-		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool);
+		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool, outputChannel);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
 
@@ -213,8 +213,8 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 }
 
 export async function installTool(
-	tool: ToolAtVersion,
-	goRuntimePath: string, goVersion: GoVersion, envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
+	tool: ToolAtVersion, goRuntimePath: string, goVersion: GoVersion,
+	envForTools: NodeJS.Dict<string>, modulesOn: boolean, outputChannel: vscode.OutputChannel): Promise<string> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
 		const reason = await tool.close();
@@ -267,6 +267,7 @@ export async function installTool(
 		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
 		output = `${stdout} ${stderr}`;
 
+		// TODO(rstambler): Figure out why this happens and maybe delete it.
 		if (stderr.indexOf('unexpected directory layout:') > -1) {
 			await execFile(goRuntimePath, args, opts);
 		} else if (hasModSuffix(tool)) {
@@ -277,7 +278,9 @@ export async function installTool(
 			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
 			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
 		}
+		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
 	} catch (e) {
+		outputChannel.appendLine(`Installing ${importPath} FAILED`);
 		return `failed to install ${tool}: ${e} ${output} `;
 	}
 
