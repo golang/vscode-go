@@ -9,7 +9,6 @@ import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { envPath, fixDriveCasingInWindows, getCurrentGoWorkspaceFromGOPATH } from './goPath';
-import { sendTelemetryEventForGopkgs } from './telemetry';
 import { getBinPath, getCurrentGoPath, getGoVersion, isVendorSupported } from './util';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
@@ -102,7 +101,6 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 				});
 			});
 			const timeTaken = Date.now() - t0;
-			sendTelemetryEventForGopkgs(timeTaken);
 			cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
 			return resolve(pkgs);
 		});

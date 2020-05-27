@@ -22,7 +22,7 @@ import {
 	resolveHomeDir
 } from './goPath';
 import { outputChannel } from './goStatus';
-import { extensionId, sendTelemetryEventForGoVersion, sendTelemetryEventForKillingProcess } from './telemetry';
+import { extensionId } from './telemetry';
 
 let userNameHash: number = 0;
 
@@ -91,7 +91,6 @@ export class GoVersion {
 			this.isDevel = true;
 			this.commit = matchesDevel[0];
 		}
-		sendTelemetryEventForGoVersion(this.format());
 	}
 
 	public format(): string {
@@ -293,7 +292,6 @@ export async function getGoVersion(): Promise<GoVersion> {
 		return Promise.resolve(null);
 	}
 	if (cachedGoVersion && (cachedGoVersion.sv || cachedGoVersion.isDevel)) {
-		sendTelemetryEventForGoVersion(cachedGoVersion.format());
 		return Promise.resolve(cachedGoVersion);
 	}
 	return new Promise<GoVersion>((resolve) => {
@@ -837,11 +835,15 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 }
 
 export const killTree = (processId: number): void => {
-	kill(processId, (err) => {
-		if (err) {
-			console.log('Error killing process tree: ' + err);
-		}
-	});
+	try {
+		kill(processId, (err) => {
+			if (err) {
+				console.log(`Error killing process tree: ${err}`);
+			}
+		});
+	} catch (err) {
+		console.log(`Error killing process tree: ${err}`);
+	}
 };
 
 export function killProcess(p: cp.ChildProcess) {
@@ -850,12 +852,6 @@ export function killProcess(p: cp.ChildProcess) {
 			p.kill();
 		} catch (e) {
 			console.log('Error killing process: ' + e);
-			if (e && e.message && e.stack) {
-				const matches = e.stack.match(/(src.go[a-z,A-Z]+\.js)/g);
-				if (matches) {
-					sendTelemetryEventForKillingProcess(e.message, matches);
-				}
-			}
 		}
 	}
 }
@@ -893,9 +889,8 @@ export function rmdirRecursive(dir: string) {
 				try {
 					fs.unlinkSync(relPath);
 				} catch (err) {
-					console.log(err);
+					console.log(`failed to remove ${relPath}: ${err}`);
 				}
-
 			}
 		});
 		fs.rmdirSync(dir);

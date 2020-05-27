@@ -10,7 +10,6 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { sendTelemetryEventForFormatting } from './telemetry';
 import { getBinPath, getGoConfig, killTree } from './util';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
@@ -72,7 +71,6 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 				return reject();
 			}
 
-			const t0 = Date.now();
 			const env = toolExecutionEnvironment();
 			const cwd = path.dirname(document.fileName);
 			let stdout = '';
@@ -102,12 +100,6 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 				const textEdits: vscode.TextEdit[] = [
 					new vscode.TextEdit(new vscode.Range(fileStart, fileEnd), stdout)
 				];
-
-				const timeTaken = Date.now() - t0;
-				sendTelemetryEventForFormatting(formatTool, timeTaken);
-				if (timeTaken > 750) {
-					console.log(`Formatting took too long(${timeTaken}ms). Format On Save feature could be aborted.`);
-				}
 				return resolve(textEdits);
 			});
 			if (p.pid) {

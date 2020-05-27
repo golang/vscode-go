@@ -11,8 +11,12 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
+<<<<<<< HEAD
 import { sendTelemetryEventForDebugConfiguration } from './telemetry';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+=======
+import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+>>>>>>> 925ba7f243b087c12e2cbbb7f3a7ed462d2dc302
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	public provideDebugConfigurations(
@@ -37,10 +41,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
 	): vscode.DebugConfiguration {
-		if (debugConfiguration) {
-			sendTelemetryEventForDebugConfiguration(debugConfiguration);
-		}
-
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json

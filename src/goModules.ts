@@ -8,11 +8,9 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { installTools } from './goInstallTools';
-import { restartLanguageServer } from './goMain';
 import { envPath, fixDriveCasingInWindows } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { sendTelemetryEventForModulesUsage } from './telemetry';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';
 
 export let GO111MODULE: string;
@@ -101,7 +99,6 @@ function logModuleUsage() {
 		return;
 	}
 	moduleUsageLogged = true;
-	sendTelemetryEventForModulesUsage();
 }
 
 const promptedToolsForCurrentSession = new Set<string>();

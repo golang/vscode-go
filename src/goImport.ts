@@ -12,7 +12,6 @@ import { promptForMissingTool } from './goInstallTools';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
 import { envPath } from './goPath';
-import { sendTelemetryEventForAddImportCmd } from './telemetry';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
 
 const missingToolMsg = 'Missing tool: ';
@@ -133,7 +132,6 @@ export function addImport(arg: { importPath: string; from: string }) {
 		if (!imp) {
 			return;
 		}
-		sendTelemetryEventForAddImportCmd(arg);
 		const edits = getTextEditForAddImport(imp);
 		if (edits && edits.length > 0) {
 			const edit = new vscode.WorkspaceEdit();
