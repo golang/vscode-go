@@ -852,11 +852,15 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 }
 
 export const killTree = (processId: number): void => {
-	kill(processId, (err) => {
-		if (err) {
-			console.log('Error killing process tree: ' + err);
-		}
-	});
+	try {
+		kill(processId, (err) => {
+			if (err) {
+				console.log(`Error killing process tree: ${err}`);
+			}
+		});
+	} catch (err) {
+		console.log(`Error killing process tree: ${err}`);
+	}
 };
 
 export function killProcess(p: cp.ChildProcess) {
