@@ -10,7 +10,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { getAllPackages } from './goPackages';
 import { envPath } from './goPath';
-import { getBinPath, getCurrentGoPath, getImportPath } from './util';
+import { getBinPath, getCurrentGoPath, getImportPath, getTimeoutConfiguration, killTree } from './util';
 
 export function browsePackages() {
 	let workDir = '';
@@ -56,11 +56,12 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 		options['cwd'] = workDir;
 	}
 
-	cp.execFile(
+	const p = cp.execFile(
 		goRuntimePath,
 		['list', '-f', '{{.Dir}}:{{.GoFiles}}:{{.TestGoFiles}}:{{.XTestGoFiles}}', pkg],
 		options,
 		(err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			if (!stdout || stdout.indexOf(':') === -1) {
 				if (showAllPkgsIfPkgNotFound) {
 					return showPackageList(workDir);
@@ -91,6 +92,11 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 			}
 		}
 	);
+
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+		vscode.window.showErrorMessage('Timeout executing "go list" to fetch packages.');
+	}, getTimeoutConfiguration('onCommand'));
 }
 
 function showPackageList(workDir: string) {

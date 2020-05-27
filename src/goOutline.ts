@@ -12,8 +12,9 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
-	killProcess,
+	killTree,
 	makeMemoizedByteOffsetConverter
 } from './util';
 
@@ -87,12 +88,17 @@ export function runGoOutline(
 		}
 
 		let p: cp.ChildProcess;
+		let processTimout: NodeJS.Timer;
 		if (token) {
-			token.onCancellationRequested(() => killProcess(p));
+			token.onCancellationRequested(() => {
+				clearTimeout(processTimout);
+				killTree(p.pid);
+			});
 		}
 
 		// Spawn `go-outline` process
 		p = cp.execFile(gooutline, gooutlineFlags, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+			clearTimeout(processTimout);
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool('go-outline');
@@ -123,6 +129,10 @@ export function runGoOutline(
 		if (options.document && p.pid) {
 			p.stdin.end(getFileArchive(options.document));
 		}
+		processTimout = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - gooutline'));
+		}, getTimeoutConfiguration('onCommand'));
 	});
 }
 

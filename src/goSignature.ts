@@ -16,7 +16,13 @@ import {
 	WorkspaceConfiguration
 } from 'vscode';
 import { definitionLocation } from './goDeclaration';
-import { getGoConfig, getParametersAndReturnType, isPositionInComment, isPositionInString } from './util';
+import {
+	getGoConfig,
+	getParametersAndReturnType,
+	getTimeoutConfiguration,
+	isPositionInComment,
+	isPositionInString
+} from './util';
 
 export class GoSignatureHelpProvider implements SignatureHelpProvider {
 	constructor(private goConfig?: WorkspaceConfiguration) {}
@@ -27,6 +33,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 		token: CancellationToken
 	): Promise<SignatureHelp> {
 		let goConfig = this.goConfig || getGoConfig(document.uri);
+		const timeout = getTimeoutConfiguration('onType', this.goConfig);
 
 		const theCall = this.walkBackwardsToBeginningOfCall(document, position);
 		if (theCall == null) {
@@ -38,7 +45,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 			goConfig = Object.assign({}, goConfig, { docsTool: 'godoc' });
 		}
 		try {
-			const res = await definitionLocation(document, callerPos, goConfig, true, token);
+			const res = await definitionLocation(document, callerPos, goConfig, true, timeout, token);
 			if (!res) {
 				// The definition was not found
 				return null;

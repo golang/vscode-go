@@ -8,7 +8,16 @@ import path = require('path');
 import vscode = require('vscode');
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { envPath, fixDriveCasingInWindows, getCurrentGoWorkspaceFromGOPATH } from './goPath';
-import { getBinPath, getCurrentGoPath, getGoVersion, getToolsEnvVars, isVendorSupported } from './util';
+import {
+	getBinPath,
+	getCurrentGoPath,
+	getGoVersion,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	isVendorSupported,
+	killTree,
+	timeoutForLongRunningProcess
+} from './util';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
@@ -45,15 +54,31 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 			args.push('-workDir', workDir);
 		}
 
-		const cmd = cp.spawn(gopkgsBinPath, args, { env: getToolsEnvVars() });
+		const pkgs = new Map<string, PackageInfo>();
+		const p = cp.spawn(gopkgsBinPath, args, { env: getToolsEnvVars() });
 		const chunks: any[] = [];
 		const errchunks: any[] = [];
 		let err: any;
-		cmd.stdout.on('data', (d) => chunks.push(d));
-		cmd.stderr.on('data', (d) => errchunks.push(d));
-		cmd.on('error', (e) => (err = e));
-		cmd.on('close', () => {
-			const pkgs = new Map<string, PackageInfo>();
+		const waitTimer = setTimeout(() => {
+			killTree(p.pid);
+			console.log(`Running gopkgs failed due to timeout.`);
+			resolve(pkgs);
+		}, timeoutForLongRunningProcess);
+
+		p.stdout.on('data', (d) => {
+			chunks.push(d);
+			clearTimeout(waitTimer);
+		});
+		p.stderr.on('data', (d) => {
+			errchunks.push(d);
+			clearTimeout(waitTimer);
+		});
+		p.on('error', (e) => {
+			err = e;
+			clearTimeout(waitTimer);
+		});
+		p.on('close', () => {
+			clearTimeout(waitTimer);
 			if (err && err.code === 'ENOENT') {
 				return promptForMissingTool('gopkgs');
 			}
@@ -257,8 +282,12 @@ const pkgToFolderMappingRegex = /ImportPath: (.*) FolderPath: (.*)/;
 /**
  * Returns mapping between import paths and folder paths for all packages under given folder (vendor will be excluded)
  */
-export function getNonVendorPackages(currentFolderPath: string): Promise<Map<string, string>> {
+export function getNonVendorPackages(currentFolderPath: string, timeout?: number): Promise<Map<string, string>> {
 	const goRuntimePath = getBinPath('go');
+	if (!timeout) {
+		timeout = getTimeoutConfiguration('onCommand');
+	}
+
 	if (!goRuntimePath) {
 		console.warn(
 			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
@@ -272,11 +301,18 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 			{ cwd: currentFolderPath, env: getToolsEnvVars() }
 		);
 		const chunks: any[] = [];
+		const waitTimer = setTimeout(() => {
+			killTree(childProcess.pid);
+			reject(new Error('Timeout executing tool - go list'));
+		}, timeout);
+
 		childProcess.stdout.on('data', (stdout) => {
 			chunks.push(stdout);
+			clearTimeout(waitTimer);
 		});
 
 		childProcess.on('close', async (status) => {
+			clearTimeout(waitTimer);
 			const lines = chunks.join('').toString().split('\n');
 			const result = new Map<string, string>();
 

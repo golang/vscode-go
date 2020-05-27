@@ -8,7 +8,15 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig, getToolsEnvVars } from './util';
+import {
+	byteOffsetAt,
+	getBinPath,
+	getFileArchive,
+	getGoConfig,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	killTree
+} from './util';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {
@@ -145,6 +153,7 @@ function runGomodifytags(args: string[]) {
 	const editor = vscode.window.activeTextEditor;
 	const input = getFileArchive(editor.document);
 	const p = cp.execFile(gomodifytags, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+		clearTimeout(processTimeout);
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gomodifytags');
 			return;
@@ -161,4 +170,8 @@ function runGomodifytags(args: string[]) {
 	if (p.pid) {
 		p.stdin.end(input);
 	}
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+		vscode.window.showErrorMessage('Timout executing - gomodifytags');
+	}, getTimeoutConfiguration('onCommand'));
 }

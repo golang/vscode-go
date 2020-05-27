@@ -10,7 +10,7 @@ import vscode = require('vscode');
 import { buildCode } from './goBuild';
 import { envPath } from './goPath';
 import { outputChannel } from './goStatus';
-import { getBinPath, getCurrentGoPath, getImportPath } from './util';
+import { getBinPath, getCurrentGoPath, getImportPath, getTimeoutConfiguration, killTree } from './util';
 
 export function goGetPackage() {
 	const editor = vscode.window.activeTextEditor;
@@ -32,7 +32,8 @@ export function goGetPackage() {
 
 	const env = Object.assign({}, process.env, { GOPATH: getCurrentGoPath() });
 
-	cp.execFile(goRuntimePath, ['get', '-v', importPath], { env }, (err, stdout, stderr) => {
+	const p = cp.execFile(goRuntimePath, ['get', '-v', importPath], { env }, (err, stdout, stderr) => {
+		clearTimeout(processTimeout);
 		// go get -v uses stderr to write output regardless of success or failure
 		if (stderr !== '') {
 			outputChannel.show();
@@ -45,4 +46,8 @@ export function goGetPackage() {
 		// go get -v doesn't write anything when the package already exists
 		vscode.window.showInformationMessage(`Package already exists: ${importPath}`);
 	});
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+		vscode.window.showErrorMessage('Timeout executing "go get" to get the package');
+	}, getTimeoutConfiguration('onCommand'));
 }

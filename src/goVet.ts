@@ -10,6 +10,7 @@ import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
 	getGoConfig,
 	getGoVersion,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
@@ -41,7 +42,7 @@ export function vetCode(vetWorkspace?: boolean) {
 	diagnosticsStatusBarItem.show();
 	diagnosticsStatusBarItem.text = 'Vetting...';
 
-	goVet(documentUri, goConfig, vetWorkspace)
+	goVet(documentUri, goConfig, getTimeoutConfiguration('onCommand', goConfig), vetWorkspace)
 		.then((warnings) => {
 			handleDiagnosticErrors(editor ? editor.document : null, warnings, vetDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
@@ -57,11 +58,13 @@ export function vetCode(vetWorkspace?: boolean) {
  *
  * @param fileUri Document uri.
  * @param goConfig Configuration for the Go extension.
+ * @param timeout Number of milliseconds to wait until declaring the operation as timed out
  * @param vetWorkspace If true vets code in all workspace.
  */
 export async function goVet(
 	fileUri: vscode.Uri,
 	goConfig: vscode.WorkspaceConfiguration,
+	timeout: number,
 	vetWorkspace?: boolean
 ): Promise<ICheckResult[]> {
 	epoch++;
@@ -112,7 +115,17 @@ export async function goVet(
 	outputChannel.appendLine(`Starting "go vet" under the folder ${cwd}`);
 
 	running = true;
-	return runTool(vetArgs, cwd, 'warning', true, null, vetEnv, false, tokenSource.token).then((result) => {
+	return runTool(
+		vetArgs,
+		cwd,
+		'warning',
+		true,
+		null,
+		vetEnv,
+		false,
+		timeout,
+		tokenSource.token
+	).then((result) => {
 		if (closureEpoch === epoch) {
 			running = false;
 		}

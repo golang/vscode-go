@@ -3,6 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
+'use strict';
+
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
@@ -11,7 +13,15 @@ import { restartLanguageServer } from './goMain';
 import { envPath, fixDriveCasingInWindows } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoConfig, getGoVersion, getModuleCache, getToolsEnvVars } from './util';
+import {
+	getBinPath,
+	getGoConfig,
+	getGoVersion,
+	getModuleCache,
+	getTimeoutConfiguration,
+	getToolsEnvVars,
+	killTree
+} from './util';
 
 export let GO111MODULE: string;
 
@@ -168,14 +178,21 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 		);
 		return;
 	}
-	return new Promise<string>((resolve) => {
-		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: getToolsEnvVars() });
+	return new Promise<string>((resolve, reject) => {
+		const p = cp.spawn(goRuntimePath, ['list'], { cwd, env: getToolsEnvVars() });
 		const chunks: any[] = [];
-		childProcess.stdout.on('data', (stdout) => {
+		const waitTimer = setTimeout(() => {
+			killTree(p.pid);
+			reject(new Error('Timeout executing tool - go list'));
+		}, getTimeoutConfiguration('onCommand'));
+
+		p.stdout.on('data', (stdout) => {
 			chunks.push(stdout);
+			clearTimeout(waitTimer);
 		});
 
-		childProcess.on('close', () => {
+		p.on('close', () => {
+			clearTimeout(waitTimer);
 			// Ignore lines that are empty or those that have logs about updating the module cache
 			const pkgs = chunks
 				.join('')

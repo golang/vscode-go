@@ -9,7 +9,7 @@ import cp = require('child_process');
 import { dirname } from 'path';
 import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
-import { getBinPath, getToolsEnvVars } from './util';
+import { getBinPath, getTimeoutConfiguration, getToolsEnvVars, killTree } from './util';
 
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w./]+)$/;
@@ -51,6 +51,7 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 		args,
 		{ env: getToolsEnvVars(), cwd: dirname(editor.document.fileName) },
 		(err, stdout, stderr) => {
+			clearTimeout(processTimeout);
 			if (err && (<any>err).code === 'ENOENT') {
 				promptForMissingTool('impl');
 				return;
@@ -69,4 +70,8 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 	if (p.pid) {
 		p.stdin.end();
 	}
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+		vscode.window.showInformationMessage('Timeout executing tool - impl');
+	}, getTimeoutConfiguration('onCommand'));
 }

@@ -9,6 +9,7 @@ import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
 	getGoConfig,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	getToolsGopath,
 	getWorkspaceFolderPath,
@@ -17,6 +18,7 @@ import {
 	resolvePath,
 	runTool
 } from './util';
+
 /**
  * Runs linter on the current file, package or workspace.
  */
@@ -40,7 +42,7 @@ export function lintCode(scope?: string) {
 	diagnosticsStatusBarItem.show();
 	diagnosticsStatusBarItem.text = 'Linting...';
 
-	goLint(documentUri, goConfig, scope)
+	goLint(documentUri, goConfig, getTimeoutConfiguration('onCommand', goConfig), scope)
 		.then((warnings) => {
 			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
@@ -56,11 +58,13 @@ export function lintCode(scope?: string) {
  *
  * @param fileUri Document uri.
  * @param goConfig Configuration for the Go extension.
+ * @param timeout Number of milliseconds to wait until declaring the operation as timed out
  * @param scope Scope in which to run the linter.
  */
 export function goLint(
 	fileUri: vscode.Uri,
 	goConfig: vscode.WorkspaceConfiguration,
+	timeout: number,
 	scope?: string
 ): Promise<ICheckResult[]> {
 	epoch++;
@@ -138,7 +142,7 @@ export function goLint(
 	}
 
 	running = true;
-	const lintPromise = runTool(args, cwd, 'warning', false, lintTool, lintEnv, false, tokenSource.token).then(
+	const lintPromise = runTool(args, cwd, 'warning', false, lintTool, lintEnv, false, timeout, tokenSource.token).then(
 		(result) => {
 			if (closureEpoch === epoch) {
 				running = false;

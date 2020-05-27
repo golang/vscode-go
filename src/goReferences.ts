@@ -15,6 +15,7 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
+	getTimeoutConfiguration,
 	getToolsEnvVars,
 	killTree
 } from './util';
@@ -56,7 +57,10 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 			const args = buildTags ? ['-tags', buildTags] : [];
 			args.push('-modified', 'referrers', `${filename}:#${offset.toString()}`);
 
-			const process = cp.execFile(goGuru, args, { env }, (err, stdout, stderr) => {
+			let p: cp.ChildProcess;
+			let processTimeout: NodeJS.Timeout;
+			p = cp.execFile(goGuru, args, { env }, (err, stdout, stderr) => {
+				clearTimeout(processTimeout);
 				try {
 					if (err && (<any>err).code === 'ENOENT') {
 						promptForMissingTool('guru');
@@ -99,10 +103,17 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 					reject(e);
 				}
 			});
-			if (process.pid) {
-				process.stdin.end(getFileArchive(document));
+			if (p.pid) {
+				p.stdin.end(getFileArchive(document));
 			}
-			token.onCancellationRequested(() => killTree(process.pid));
+			processTimeout = setTimeout(() => {
+				killTree(p.pid);
+				reject('Timeout executing tool - guru');
+			}, getTimeoutConfiguration('onCommand'));
+			token.onCancellationRequested(() => {
+				clearTimeout(processTimeout);
+				killTree(p.pid);
+			});
 		});
 	}
 }

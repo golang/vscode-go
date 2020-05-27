@@ -11,7 +11,7 @@ import vscode = require('vscode');
 import { promptForMissingTool } from './goInstallTools';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
-import { getBinPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getGoConfig, getTimeoutConfiguration, getToolsEnvVars, killTree } from './util';
 
 // Interface for settings configuration for adding and removing tags
 interface GoLiveErrorsConfig {
@@ -79,6 +79,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 	const args = ['-e', '-a', '-lf=' + fileName, path.dirname(fileName)];
 	const env = getToolsEnvVars();
 	const p = cp.execFile(gotypeLive, args, { env }, (err, stdout, stderr) => {
+		clearTimeout(processTimeout);
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gotype-live');
 			return;
@@ -116,4 +117,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 	if (p.pid) {
 		p.stdin.end(fileContents);
 	}
+	const processTimeout = setTimeout(() => {
+		killTree(p.pid);
+	}, getTimeoutConfiguration('onType'));
 }
