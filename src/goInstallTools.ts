@@ -182,7 +182,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		// Disable modules for tools which are installed with the "..." wildcard.
 		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
 
-		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool, outputChannel);
+		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
 
@@ -214,7 +214,7 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 
 export async function installTool(
 	tool: ToolAtVersion, goRuntimePath: string, goVersion: GoVersion,
-	envForTools: NodeJS.Dict<string>, modulesOn: boolean, outputChannel: vscode.OutputChannel): Promise<string> {
+	envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
 		const reason = await tool.close();
