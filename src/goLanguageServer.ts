@@ -20,6 +20,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { GoDefinitionProvider } from './goDeclaration';
+import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -37,7 +38,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -346,7 +347,6 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 
 export function buildLanguageServerConfig(): LanguageServerConfig {
 	const goConfig = getGoConfig();
-	const toolsEnv = getToolsEnvVars();
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -359,8 +359,8 @@ export function buildLanguageServerConfig(): LanguageServerConfig {
 			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
 			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
-		env: toolsEnv,
-		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates'],
+		env: toolExecutionEnvironment(),
+		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
 	};
 	// Don't look for the path if the server is not enabled.
 	if (!cfg.enabled) {
@@ -582,11 +582,10 @@ export async function getLatestGoplsVersion(tool: Tool): Promise<semver.SemVer> 
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
 export async function getLocalGoplsVersion(goplsPath: string): Promise<string> {
-	const env = getToolsEnvVars();
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(goplsPath, ['version'], { env });
+		const { stdout } = await execFile(goplsPath, ['version'], { env: toolExecutionEnvironment() });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
@@ -827,7 +826,7 @@ async function suggestGoplsIssueReport(msg: string) {
 			// Wait for the command to finish before restarting the
 			// server, but don't bother handling errors.
 			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], { env: getToolsEnvVars() });
+			await execFile(latestConfig.path, ['bug'], { env: toolExecutionEnvironment() });
 			break;
 		case 'Next time':
 			break;

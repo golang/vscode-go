@@ -11,6 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
+import { toolInstallationEnvironment } from './goEnv';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
@@ -28,12 +29,9 @@ import {
 } from './goTools';
 import {
 	getBinPath,
-	getCurrentGoPath,
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
-	getToolsEnvVars,
-	getToolsGopath,
 	GoVersion,
 	resolvePath,
 	rmdirRecursive
@@ -106,54 +104,22 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		return;
 	}
 
-	// http.proxy setting takes precedence over environment variables
-	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
-	const envForTools = Object.assign({}, process.env, getToolsEnvVars());
-	if (httpProxy) {
-		envForTools['http_proxy'] = httpProxy;
-		envForTools['HTTP_PROXY'] = httpProxy;
-		envForTools['https_proxy'] = httpProxy;
-		envForTools['HTTPS_PROXY'] = httpProxy;
-	}
-
 	outputChannel.show();
 	outputChannel.clear();
 
-	// If the go.toolsGopath is set, use its value as the GOPATH for the "go get" child process.
-	// Else use the Current Gopath
-	let toolsGopath = getToolsGopath();
-	if (toolsGopath) {
-		// User has explicitly chosen to use toolsGopath, so ignore GOBIN
-		envForTools['GOBIN'] = '';
-		outputChannel.appendLine(`Using the value ${toolsGopath} from the go.toolsGopath setting.`);
-	} else {
-		toolsGopath = getCurrentGoPath();
-		outputChannel.appendLine(`go.toolsGopath setting is not set. Using GOPATH ${toolsGopath}`);
+	const envForTools = toolInstallationEnvironment();
+	const toolsGopath = envForTools['GOPATH'];
+	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
+	if (envForTools['GOBIN']) {
+		envMsg += `, GOBIN=${envForTools['GOBIN']}`;
 	}
-	if (toolsGopath) {
-		const paths = toolsGopath.split(path.delimiter);
-		toolsGopath = paths[0];
-		envForTools['GOPATH'] = toolsGopath;
-	} else {
-		const msg = 'Cannot install Go tools. Set either go.gopath or go.toolsGopath in settings.';
-		vscode.window.showInformationMessage(msg, 'Open User Settings', 'Open Workspace Settings').then((selected) => {
-			switch (selected) {
-				case 'Open User Settings':
-					vscode.commands.executeCommand('workbench.action.openGlobalSettings');
-					break;
-				case 'Open Workspace Settings':
-					vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
-					break;
-			}
-		});
-		return;
-	}
+	outputChannel.appendLine(envMsg);
 
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
 	if (envForTools['GOBIN']) {
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
-		installingMsg += toolsGopath + path.sep + 'bin';
+		installingMsg += `${toolsGopath}${path.sep}bin`;
 	}
 
 	// If the user is on Go >= 1.11, tools should be installed with modules enabled.
@@ -258,6 +224,7 @@ export async function installTool(
 	args.push(importPath);
 
 	let output: string;
+	let result: string = '';
 	try {
 		const opts = {
 			env,
@@ -281,13 +248,13 @@ export async function installTool(
 		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
 	} catch (e) {
 		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		return `failed to install ${tool}: ${e} ${output} `;
+		result = `failed to install ${tool}: ${e} ${output} `;
 	}
 
 	// Delete the temporary installation directory.
 	rmdirRecursive(toolsTmpDir);
 
-	return '';
+	return result;
 }
 
 export async function promptForMissingTool(toolName: string) {

@@ -8,6 +8,7 @@ import util = require('util');
 import vscode = require('vscode');
 
 import { applyCodeCoverageToAllEditors } from './goCover';
+import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
@@ -17,7 +18,6 @@ import {
 	getCurrentGoPath,
 	getGoVersion,
 	getTempFilePath,
-	getToolsEnvVars,
 	killTree,
 	LineBuffer,
 	resolvePath
@@ -80,7 +80,7 @@ export interface TestConfig {
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
-	const envVars = getToolsEnvVars();
+	const envVars = toolExecutionEnvironment();
 	const testEnvConfig = config['testEnvVars'] || {};
 
 	let fileEnv: { [key: string]: any } = {};
