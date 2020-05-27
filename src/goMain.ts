@@ -25,7 +25,7 @@ import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
-	updateGoPathGoRootFromConfig
+	updateGoVarsFromConfig
 } from './goInstallTools';
 import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -44,7 +44,6 @@ import {
 	getFromGlobalState, getFromWorkspaceState, setGlobalState, setWorkspaceState, updateGlobalState,
 	updateWorkspaceState
 } from './stateUtils';
-import { disposeTelemetryReporter, sendTelemetryEventForConfig } from './telemetry';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
 	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
@@ -64,7 +63,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 
-	updateGoPathGoRootFromConfig().then(async () => {
+	updateGoVarsFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
 		interface GoInfo {
 			goroot: string;
@@ -385,8 +384,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			sendTelemetryEventForConfig(updatedGoConfig);
-			updateGoPathGoRootFromConfig();
+			updateGoVarsFromConfig();
 
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
@@ -543,12 +541,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
-
-	sendTelemetryEventForConfig(getGoConfig());
 }
 
 export function deactivate() {
-	return Promise.all([disposeTelemetryReporter(), cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
+	return Promise.all([cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
 }
 
 function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {

@@ -118,4 +118,4 @@ features.
 
 **Q: How do I get the features/bug fixes that are implemented but not released yet? How do I get the beta version of the Go extension?**
 
-**A:** See [Install the beta version](beta.md).
+**A:** Install the [Go Nightly](nightly.md) extension.

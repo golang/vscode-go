@@ -369,13 +369,13 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	}
 }
 
-export function updateGoPathGoRootFromConfig(): Promise<void> {
+export function updateGoVarsFromConfig(): Promise<void> {
 	const goroot = getGoConfig()['goroot'];
 	if (goroot) {
 		process.env['GOROOT'] = resolvePath(goroot);
 	}
 
-	if (process.env['GOPATH'] && process.env['GOROOT'] && process.env['GOPROXY']) {
+	if (process.env['GOPATH'] && process.env['GOROOT'] && process.env['GOPROXY'] && process.env['GOBIN']) {
 		return Promise.resolve();
 	}
 
@@ -407,7 +407,7 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 	}
 
 	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY'], (err, stdout, stderr) => {
+		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN'], (err, stdout, stderr) => {
 			if (err) {
 				return reject();
 			}
@@ -420,6 +420,9 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 			}
 			if (!process.env['GOPROXY'] && envOutput[2] && envOutput[2].trim()) {
 				process.env['GOPROXY'] = envOutput[2].trim();
+			}
+			if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
+				process.env['GOBIN'] = envOutput[3].trim();
 			}
 			return resolve();
 		});
