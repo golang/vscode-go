@@ -42,7 +42,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	return env;
 }
 
-// toolInstallationEnvironment returns the environment in which tools should
+// toolExecutionEnvironment returns the environment in which tools should
 // be executed. It always returns a new object.
 export function toolExecutionEnvironment(): NodeJS.Dict<string> {
 	const env = newEnvironment();
@@ -50,19 +50,12 @@ export function toolExecutionEnvironment(): NodeJS.Dict<string> {
 	if (gopath) {
 		env['GOPATH'] = gopath;
 	}
-	const toolsEnvVars = getGoConfig()['toolsEnvVars'];
-	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
-		Object.keys(toolsEnvVars).forEach(
-			(key) =>
-				(env[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
-		);
-	}
 	return env;
 }
 
 function newEnvironment(): NodeJS.Dict<string> {
-	const env = Object.assign({}, process.env);
+	const toolsEnvVars = getGoConfig()['toolsEnvVars'];
+	const env = Object.assign({}, process.env, toolsEnvVars);
 
 	// The http.proxy setting takes precedence over environment variables.
 	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');

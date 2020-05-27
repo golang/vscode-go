@@ -147,7 +147,6 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		});
 		ctx.subscriptions.push(restartCommand);
 	}
-	ctx.subscriptions.push(restartCommand);
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.

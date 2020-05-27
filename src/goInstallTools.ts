@@ -224,6 +224,7 @@ export async function installTool(
 	args.push(importPath);
 
 	let output: string;
+	let result: string = '';
 	try {
 		const opts = {
 			env,
@@ -247,13 +248,13 @@ export async function installTool(
 		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
 	} catch (e) {
 		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		return `failed to install ${tool}: ${e} ${output} `;
+		result = `failed to install ${tool}: ${e} ${output} `;
 	}
 
 	// Delete the temporary installation directory.
 	rmdirRecursive(toolsTmpDir);
 
-	return '';
+	return result;
 }
 
 export async function promptForMissingTool(toolName: string) {
