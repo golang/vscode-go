@@ -20,7 +20,7 @@ import {
 	generateTestCurrentPackage
 } from '../../src/goGenerateTests';
 import { getTextEditForAddImport, listPackages } from '../../src/goImport';
-import { updateGoPathGoRootFromConfig } from '../../src/goInstallTools';
+import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { goLint } from '../../src/goLint';
 import { documentSymbols, GoDocumentSymbolProvider, GoOutlineImportsOptions } from '../../src/goOutline';
 import { getAllPackages } from '../../src/goPackages';
@@ -56,7 +56,7 @@ suite('Go Extension Tests', function () {
 	let toolsGopath: string;
 
 	suiteSetup(async () => {
-		await updateGoPathGoRootFromConfig();
+		await updateGoVarsFromConfig();
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
