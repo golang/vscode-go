@@ -166,6 +166,7 @@ export function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: Te
 
 			await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
 		} catch (err) {
+			vscode.window.showInformationMessage("Unable to run subtest: " + err.toString());
 			console.error(err);
 		}
 	});
