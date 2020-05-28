@@ -125,7 +125,7 @@ export function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: Te
 		return;
 	}
 	if (cmd !== 'test') {
-		vscode.window.showInformationMessage('Only the "test" is command supported for subtests');
+		vscode.window.showInformationMessage('Only the "test" is command supported for subtests.');
 		return;
 	}
 
@@ -158,7 +158,7 @@ export function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: Te
 			}
 
 			if (!match) {
-				vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor');
+				vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
 				return;
 			}
 
