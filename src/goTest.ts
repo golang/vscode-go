@@ -114,7 +114,7 @@ async function runTestAtCursor(
  * @param goConfig Configuration for the Go extension.
  * @param cmd Whether the command is test , benchmark or debug.
  */
-export function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
+export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -129,47 +129,44 @@ export function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: Te
 		return;
 	}
 
-	editor.document.save().then(async () => {
-		try {
-			const testFunctions = await getTestFunctions(editor.document, null);
-			// We use functionName if it was provided as argument
-			// Otherwise find any test function containing the cursor.
-			const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
-			const testFunctionName = args && args.functionName
-				? args.functionName
-				: currentTestFunctions
-					.map((el) => el.name)[0];
+	editor.document.save();
+	try {
+		const testFunctions = await getTestFunctions(editor.document, null);
+		// We use functionName if it was provided as argument
+		// Otherwise find any test function containing the cursor.
+		const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
+		const testFunctionName =
+			args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
 
-			if (!testFunctionName) {
-				vscode.window.showInformationMessage('No test function found at cursor.');
-				return;
-			}
-
-			const testFunction = currentTestFunctions[0];
-			const runRegex = /t.Run\("([^"]+)",/;
-			let lineText: string;
-			let match: RegExpMatchArray | null;
-			for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
-				lineText = editor.document.lineAt(i).text;
-				match = lineText.match(runRegex);
-				if (match) {
-					break;
-				}
-			}
-
-			if (!match) {
-				vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
-				return;
-			}
-
-			const subTestName = testFunctionName + '/' + match[1];
-
-			await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
-		} catch (err) {
-			vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
-			console.error(err);
+		if (!testFunctionName) {
+			vscode.window.showInformationMessage('No test function found at cursor.');
+			return;
 		}
-	});
+
+		const testFunction = currentTestFunctions[0];
+		const runRegex = /t.Run\("([^"]+)",/;
+		let lineText: string;
+		let match: RegExpMatchArray | null;
+		for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
+			lineText = editor.document.lineAt(i).text;
+			match = lineText.match(runRegex);
+			if (match) {
+				break;
+			}
+		}
+
+		if (!match) {
+			vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
+			return;
+		}
+
+		const subTestName = testFunctionName + '/' + match[1];
+
+		await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
+	} catch (err) {
+		vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
+		console.error(err);
+	}
 }
 
 /**
