@@ -302,7 +302,6 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 	const goRuntimePath = getBinPath('go');
 
 	const warn = (msg: string) => {
-		outputChannel.clear();
 		outputChannel.appendLine(msg);
 		console.warn(msg);
 	};
@@ -311,8 +310,11 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		warn(`unable to locate "go" binary in GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
 		return;
 	}
-	if (cachedGoVersion && cachedGoVersion.isValid()) {
-		return Promise.resolve(cachedGoVersion);
+	if (cachedGoVersion) {
+		if (cachedGoVersion.isValid()) {
+			return Promise.resolve(cachedGoVersion);
+		}
+		warn(`cached Go version (${cachedGoVersion}) is invalid, recomputing`);
 	}
 	try {
 		const execFile = util.promisify(cp.execFile);
