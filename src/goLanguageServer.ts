@@ -473,9 +473,9 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// If "gopls" is so old that it doesn't have the "gopls version" command,
-	// or its version doesn't match our expectations, usersVersion will be empty.
+	// or its version doesn't match our expectations, usersVersion will be empty or invalid.
 	// Suggest the latestVersion.
-	if (!usersVersion) {
+	if (!usersVersion || !semver.valid(usersVersion)) {
 		return latestVersion;
 	}
 
@@ -493,7 +493,8 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	return semver.lt(usersVersion, latestVersion) ? latestVersion : null;
+	const usersVersionSemver = semver.coerce(usersVersion, {includePrerelease: true, loose: true});
+	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 
 // Copied from src/cmd/go/internal/modfetch.go.
@@ -538,16 +539,16 @@ function parseTimestampFromPseudoversion(version: string): moment.Moment {
 	return moment.utc(timestamp, 'YYYYMMDDHHmmss');
 }
 
-export async function getTimestampForVersion(tool: Tool, version: semver.SemVer): Promise<moment.Moment> {
+export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer) => {
 	const data = await goProxyRequest(tool, `v${version.format()}.info`);
 	if (!data) {
 		return null;
 	}
 	const time = moment(data['Time']);
 	return time;
-}
+};
 
-export async function getLatestGoplsVersion(tool: Tool): Promise<semver.SemVer> {
+export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
 	// ask the proxy for the latest version, and if the user's version is older,
 	// prompt them to update.
@@ -576,12 +577,12 @@ export async function getLatestGoplsVersion(tool: Tool): Promise<semver.SemVer> 
 	}
 	// The first version in the sorted list without a prerelease tag.
 	return versions.find((version) => !version.prerelease || !version.prerelease.length);
-}
+};
 
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
-export async function getLocalGoplsVersion(goplsPath: string): Promise<string> {
+export const getLocalGoplsVersion = async (goplsPath: string) => {
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
@@ -616,7 +617,7 @@ export async function getLocalGoplsVersion(goplsPath: string): Promise<string> {
 	//
 	//    golang.org/x/tools/gopls@v0.1.3 h1:CB5ECiPysqZrwxcyRjN+exyZpY0gODTZvNiqQi3lpeo=
 	//
-	// TODO: We should use a regex to match this, but for now, we split on the @ symbol.
+	// TODO(stamblerre): We should use a regex to match this, but for now, we split on the @ symbol.
 	// The reasoning for this is that gopls still has a golang.org/x/tools/cmd/gopls binary,
 	// so users may have a developer version that looks like "golang.org/x/tools@(devel)".
 	const moduleVersion = lines[1].trim().split(' ')[0];
@@ -634,7 +635,7 @@ export async function getLocalGoplsVersion(goplsPath: string): Promise<string> {
 	//    v0.1.3
 	//
 	return split[1];
-}
+};
 
 async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	// Get the user's value of GOPROXY.
