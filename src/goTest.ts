@@ -144,25 +144,28 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, c
 		}
 
 		const testFunction = currentTestFunctions[0];
-		const runRegex = /t.Run\("([^"]+)",/;
+		const simpleRunRegex = /t.Run\("([^"]+)",/;
+		const runRegex = /t.Run\(/;
 		let lineText: string;
-		let match: RegExpMatchArray | null;
+		let runMatch: RegExpMatchArray | null;
+		let simpleMatch: RegExpMatchArray | null;
 		for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
 			lineText = editor.document.lineAt(i).text;
-			match = lineText.match(runRegex);
-			if (match) {
+			simpleMatch = lineText.match(simpleRunRegex);
+			runMatch = lineText.match(runRegex);
+			if (simpleMatch || (runMatch && !simpleMatch)) {
 				break;
 			}
 		}
 
-		if (!match) {
+		if (!simpleMatch) {
 			vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
 			return;
 		}
 
-		const subTestName = testFunctionName + '/' + match[1];
+		const subTestName = testFunctionName + '/' + simpleMatch[1];
 
-		await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
+		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
 	} catch (err) {
 		vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
 		console.error(err);
