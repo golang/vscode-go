@@ -1629,7 +1629,7 @@ encountered.
 		const selection = new vscode.Selection(7, 4, 7, 4);
 		editor.selection = selection;
 
-		const result = await subTestAtCursor(config, 'test', []);
+		const result = await subTestAtCursor(config, []);
 		assert.equal(result, true);
 	});
 
@@ -1641,7 +1641,7 @@ encountered.
 		const selection = new vscode.Selection(8, 4, 8, 4);
 		editor.selection = selection;
 
-		const result = await subTestAtCursor(config, 'test', []);
+		const result = await subTestAtCursor(config, []);
 		assert.equal(result, true);
 	});
 
@@ -1653,7 +1653,7 @@ encountered.
 		const selection = new vscode.Selection(11, 4, 11, 4);
 		editor.selection = selection;
 
-		const result = await subTestAtCursor(config, 'test', []);
+		const result = await subTestAtCursor(config, []);
 		assert.equal(result, false);
 	});
 
@@ -1665,7 +1665,7 @@ encountered.
 		const selection = new vscode.Selection(17, 4, 17, 4);
 		editor.selection = selection;
 
-		const result = await subTestAtCursor(config, 'test', []);
+		const result = await subTestAtCursor(config, []);
 		assert.equal(result, undefined);
 	});
 
@@ -1677,7 +1677,7 @@ encountered.
 		const selection = new vscode.Selection(5, 0, 5, 0);
 		editor.selection = selection;
 
-		const result = await subTestAtCursor(config, 'test', []);
+		const result = await subTestAtCursor(config, []);
 		assert.equal(result, undefined);
 	});
 });

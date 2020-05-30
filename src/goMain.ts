@@ -275,7 +275,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
 			const goConfig = getGoConfig();
-			subTestAtCursor(goConfig, 'test', args);
+			subTestAtCursor(goConfig, args);
 		})
 	);
 

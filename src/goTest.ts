@@ -112,9 +112,8 @@ async function runTestAtCursor(
  * is sent to the 'Go' channel.
  *
  * @param goConfig Configuration for the Go extension.
- * @param cmd Whether the command is test , benchmark or debug.
  */
-export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
+export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, args: any) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -122,10 +121,6 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, c
 	}
 	if (!editor.document.fileName.endsWith('_test.go')) {
 		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
-		return;
-	}
-	if (cmd !== 'test') {
-		vscode.window.showInformationMessage('Only the "test" is command supported for subtests.');
 		return;
 	}
 
@@ -165,7 +160,7 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, c
 
 		const subTestName = testFunctionName + '/' + simpleMatch[1];
 
-		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, cmd, args);
+		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
 	} catch (err) {
 		vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
 		console.error(err);
