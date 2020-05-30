@@ -21,8 +21,6 @@ const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignmen
 statusBarItem.command = 'go.test.showOutput';
 const neverAgain = { title: `Don't Show Again` };
 
-const filesLookupTbl: { [id: string ]: number; } = {};
-
 export function removeTestStatus(e: vscode.TextDocumentChangeEvent) {
 	if (e.document.isUntitled) {
 		return;
@@ -30,6 +28,19 @@ export function removeTestStatus(e: vscode.TextDocumentChangeEvent) {
 	statusBarItem.hide();
 	statusBarItem.text = '';
 }
+
+const filesLineLookupTbl: { [id: string ]: number; } = {};
+const filesAccessTimeTbl: { [id: string ]: number; } = {};
+const accessTimeoutInSec = 3 * 1000;
+
+const amnesia = setInterval(() => {
+	Object.entries(filesAccessTimeTbl).forEach((el) => {
+		if ( Date.now() - filesAccessTimeTbl[el[0]] <= accessTimeoutInSec ) {
+			return;
+		}
+		delete filesAccessTimeTbl[el[0]];
+	});
+}, 100);
 
 export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEvent) {
 	const ctx: any = this;
@@ -42,6 +53,12 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 		return;
 	}
 
+	if (filesAccessTimeTbl[e.document.fileName]) {
+		return;
+	}
+
+	filesAccessTimeTbl[e.document.fileName] = Date.now();
+
 	const doNotEditMessage = 'This file seems to be generated. DO NOT EDIT.';
 	const maybeSaveNeverAgain = (result: object) => {
 		if (result === neverAgain) {
@@ -53,19 +70,20 @@ export function notifyIfGeneratedFile(this: void, e: vscode.TextDocumentChangeEv
 		return !!text.match(/^\/\/ .*DO NOT EDIT\.?$/);
 	};
 
-	if ( filesLookupTbl[e.document.fileName] ) {
-		const previous = filesLookupTbl[e.document.fileName];
-		if ( previous <= e.document.lineCount && isGenerated( e.document.lineAt( previous ).text ) ) {
+	if ( filesLineLookupTbl[e.document.fileName] >= 0 ) {
+		const previous = filesLineLookupTbl[e.document.fileName];
+		if ( previous <= e.document.lineCount && isGenerated( e.document.lineAt( previous ).text) ) {
 			vscode.window.showWarningMessage(doNotEditMessage, neverAgain).then( maybeSaveNeverAgain );
 			return;
 		}
+		delete filesLineLookupTbl[e.document.fileName];
 	}
 
 	for ( let line = 0; line < e.document.lineCount; line++ ) {
 		if ( e.document.lineAt(line).text.match( '^\s*$' ) ) {
 			continue;
 		} else if ( e.document.lineAt(line).text.startsWith('//') && isGenerated(e.document.lineAt(line).text) ) {
-			filesLookupTbl[e.document.fileName] = line;
+			filesLineLookupTbl[e.document.fileName] = line;
 			vscode.window.showWarningMessage(doNotEditMessage, neverAgain).then(maybeSaveNeverAgain);
 			return;
 		}
