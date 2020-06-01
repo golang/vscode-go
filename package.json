@@ -47,6 +47,7 @@
   "dependencies": {
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
+    "glob": "^7.1.6",
     "json-rpc2": "^1.0.2",
     "moment": "^2.24.0",
     "semver": "^7.3.2",
@@ -57,7 +58,6 @@
     "web-request": "^1.0.7"
   },
   "devDependencies": {
-    "adm-zip": "^0.4.14",
     "@types/adm-zip": "^0.4.33",
     "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.1.0",
@@ -67,8 +67,8 @@
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
     "@types/vscode": "^1.41.0",
+    "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
-    "glob": "^7.1.6",
     "mocha": "^7.1.1",
     "prettier": "^2.0.4",
     "sinon": "^9.0.2",
