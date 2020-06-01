@@ -918,14 +918,10 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.delve.remotePath.length === 0) {
 			if (this.delve.isRemoteDebugging) {
 				// The user trusts us to infer the remote path mapping!
-				try {
-					await this.initializeRemotePackagesAndSources();
-					const matchedRemoteFile = this.inferRemotePathFromLocalPath(filePath);
-					if (matchedRemoteFile) {
-						return matchedRemoteFile;
-					}
-				} catch (error) {
-					log(`Failing to initialize remote sources: ${error}`);
+				await this.initializeRemotePackagesAndSources();
+				const matchedRemoteFile = this.inferRemotePathFromLocalPath(filePath);
+				if (matchedRemoteFile) {
+					return matchedRemoteFile;
 				}
 			}
 			return this.convertClientPathToDebugger(filePath);
@@ -1228,7 +1224,9 @@ export class GoDebugSession extends LoggingDebugSession {
 				const locations = this.delve.isApiV1 ? <DebugLocation[]>out : (<StacktraceOut>out).Locations;
 				log('locations', locations);
 
-				await this.initializeRemotePackagesAndSources();
+				if (this.delve.isRemoteDebugging) {
+					await this.initializeRemotePackagesAndSources();
+				}
 
 				let stackFrames = locations.map((location, frameId) => {
 					const uniqueStackFrameId = this.stackFrameHandles.create([goroutineId, frameId]);
@@ -1739,16 +1737,24 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		if (!this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
-			await this.remoteSourcesAndPackages.initializeRemotePackagesAndSources(this.delve);
+			try {
+				await this.remoteSourcesAndPackages.initializeRemotePackagesAndSources(this.delve);
+			} catch (error) {
+				log(`Failing to initialize remote sources: ${error}`);
+			}
 			return;
 		}
 
 		if (this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
-			await new Promise((resolve) => {
-				this.remoteSourcesAndPackages.on(RemoteSourcesAndPackages.INITIALIZED, () => {
-					resolve();
+			try {
+				await new Promise((resolve) => {
+					this.remoteSourcesAndPackages.on(RemoteSourcesAndPackages.INITIALIZED, () => {
+						resolve();
+					});
 				});
-			});
+			} catch (error) {
+				log(`Failing to initialize remote sources: ${error}`);
+			}
 		}
 	}
 
@@ -1871,7 +1877,9 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (!debugState.currentThread || !debugState.currentThread.file) {
 			return Promise.resolve(null);
 		}
-		await this.initializeRemotePackagesAndSources();
+		if (this.delve.isRemoteDebugging) {
+			await this.initializeRemotePackagesAndSources();
+		}
 		const dir = path.dirname(
 			this.delve.remotePath.length || this.delve.isRemoteDebugging
 				? this.toLocalPath(debugState.currentThread.file)
