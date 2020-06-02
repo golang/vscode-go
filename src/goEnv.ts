@@ -7,7 +7,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { getCurrentGoPath, getGoConfig, getToolsGopath, resolvePath } from './util';
+import { getCurrentGoPath, getGoConfig, getToolsGopath } from './util';
 
 // toolInstallationEnvironment returns the environment in which tools should
 // be installed. It always returns a new object.
