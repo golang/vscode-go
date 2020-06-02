@@ -6,6 +6,7 @@
 'use strict';
 
 import cp = require('child_process');
+import fs = require('fs');
 import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
@@ -327,10 +328,10 @@ const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: false,
 		description: 'Language Server from Google',
 		minimumGoVersion: semver.coerce('1.12'),
-		latestVersion: semver.coerce('0.4.0'),
-		latestVersionTimestamp: moment('2020-04-08', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.coerce('0.4.1-pre2'),
-		latestPrereleaseVersionTimestamp: moment('2020-05-11', 'YYYY-MM-DD'),
+		latestVersion: semver.coerce('0.4.1'),
+		latestVersionTimestamp: moment('2020-05-13', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.coerce('0.4.1'),
+		latestPrereleaseVersionTimestamp: moment('2020-05-13', 'YYYY-MM-DD'),
 	},
 	'dlv': {
 		name: 'dlv',

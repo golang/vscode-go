@@ -7,8 +7,9 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, getBinPath, getFileArchive, getToolsEnvVars, makeMemoizedByteOffsetConverter } from './util';
+import { byteOffsetAt, getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
 
 // Interface for the output from fillstruct
 interface GoFillStructOutput {
@@ -59,7 +60,7 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 	const tabsCount = getTabsCount(editor);
 
 	return new Promise<void>((resolve, reject) => {
-		const p = cp.execFile(fillstruct, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+		const p = cp.execFile(fillstruct, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool('fillstruct');

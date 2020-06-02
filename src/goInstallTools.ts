@@ -9,13 +9,14 @@ import cp = require('child_process');
 import fs = require('fs');
 import path = require('path');
 import { SemVer } from 'semver';
+import util = require('util');
 import vscode = require('vscode');
+import { toolInstallationEnvironment } from './goEnv';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getToolFromToolPath } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
-	containsString,
 	containsTool,
 	disableModulesForWildcard,
 	getConfiguredTools,
@@ -23,20 +24,17 @@ import {
 	getImportPathWithVersion,
 	getTool,
 	hasModSuffix,
-	isGocode,
 	Tool,
-	ToolAtVersion
+	ToolAtVersion,
 } from './goTools';
 import {
 	getBinPath,
-	getCurrentGoPath,
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
-	getToolsEnvVars,
-	getToolsGopath,
 	GoVersion,
-	resolvePath
+	resolvePath,
+	rmdirRecursive
 } from './util';
 
 // declinedUpdates tracks the tools that the user has declined to update.
@@ -106,54 +104,22 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 		return;
 	}
 
-	// http.proxy setting takes precedence over environment variables
-	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');
-	const envForTools = Object.assign({}, process.env, getToolsEnvVars());
-	if (httpProxy) {
-		envForTools['http_proxy'] = httpProxy;
-		envForTools['HTTP_PROXY'] = httpProxy;
-		envForTools['https_proxy'] = httpProxy;
-		envForTools['HTTPS_PROXY'] = httpProxy;
-	}
-
 	outputChannel.show();
 	outputChannel.clear();
 
-	// If the go.toolsGopath is set, use its value as the GOPATH for the "go get" child process.
-	// Else use the Current Gopath
-	let toolsGopath = getToolsGopath();
-	if (toolsGopath) {
-		// User has explicitly chosen to use toolsGopath, so ignore GOBIN
-		envForTools['GOBIN'] = '';
-		outputChannel.appendLine(`Using the value ${toolsGopath} from the go.toolsGopath setting.`);
-	} else {
-		toolsGopath = getCurrentGoPath();
-		outputChannel.appendLine(`go.toolsGopath setting is not set. Using GOPATH ${toolsGopath}`);
+	const envForTools = toolInstallationEnvironment();
+	const toolsGopath = envForTools['GOPATH'];
+	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
+	if (envForTools['GOBIN']) {
+		envMsg += `, GOBIN=${envForTools['GOBIN']}`;
 	}
-	if (toolsGopath) {
-		const paths = toolsGopath.split(path.delimiter);
-		toolsGopath = paths[0];
-		envForTools['GOPATH'] = toolsGopath;
-	} else {
-		const msg = 'Cannot install Go tools. Set either go.gopath or go.toolsGopath in settings.';
-		vscode.window.showInformationMessage(msg, 'Open User Settings', 'Open Workspace Settings').then((selected) => {
-			switch (selected) {
-				case 'Open User Settings':
-					vscode.commands.executeCommand('workbench.action.openGlobalSettings');
-					break;
-				case 'Open Workspace Settings':
-					vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
-					break;
-			}
-		});
-		return;
-	}
+	outputChannel.appendLine(envMsg);
 
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
 	if (envForTools['GOBIN']) {
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
-		installingMsg += toolsGopath + path.sep + 'bin';
+		installingMsg += `${toolsGopath}${path.sep}bin`;
 	}
 
 	// If the user is on Go >= 1.11, tools should be installed with modules enabled.
@@ -177,117 +143,118 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 
 	outputChannel.appendLine(''); // Blank line for spacing.
 
-	// Install tools in a temporary directory, to avoid altering go.mod files.
-	const toolsTmpDir = fs.mkdtempSync(getTempFilePath('go-tools-'));
+	const toInstall: Promise<{ tool: Tool, reason: string }>[] = [];
+	for (const tool of missing) {
+		// Disable modules for tools which are installed with the "..." wildcard.
+		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
 
-	return missing
-		.reduce((res: Promise<string[]>, tool: ToolAtVersion) => {
-			return res.then(
-				(sofar) =>
-					new Promise<string[]>(async (resolve, reject) => {
-						// Disable modules for tools which are installed with the "..." wildcard.
-						// TODO: ... will be supported in Go 1.13, so enable these tools to use modules then.
-						const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
-						let tmpGoModFile: string;
-						if (modulesOffForTool) {
-							envForTools['GO111MODULE'] = 'off';
-						} else {
-							envForTools['GO111MODULE'] = 'on';
-							// Write a temporary go.mod file to avoid version conflicts.
-							tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
-							fs.writeFileSync(tmpGoModFile, 'module tools');
-						}
-						let importPath: string;
-						if (modulesOffForTool) {
-							importPath = getImportPath(tool, goVersion);
-						} else {
-							importPath = getImportPathWithVersion(tool, tool.version, goVersion);
-						}
+		const reason = installTool(tool, goRuntimePath, goVersion, envForTools, !modulesOffForTool);
+		toInstall.push(Promise.resolve({ tool, reason: await reason }));
+	}
 
-						const callback = (err: Error, stdout: string, stderr: string) => {
-							// Make sure to delete the temporary go.mod file, if it exists.
-							if (tmpGoModFile && fs.existsSync(tmpGoModFile)) {
-								fs.unlinkSync(tmpGoModFile);
-							}
-							if (err) {
-								outputChannel.appendLine('Installing ' + importPath + ' FAILED');
-								const failureReason = tool.name + ';;' + err + stdout.toString() + stderr.toString();
-								resolve([...sofar, failureReason]);
-							} else {
-								outputChannel.appendLine('Installing ' + importPath + ' SUCCEEDED');
-								resolve([...sofar, null]);
-							}
-						};
+	const results = await Promise.all(toInstall);
 
-						// Perform any on-close actions before reinstalling the tool.
-						if (tool.close) {
-							const errMsg = await tool.close();
-							if (errMsg) {
-								outputChannel.appendLine(errMsg);
-								resolve([...sofar, null]);
-								return;
-							}
-						}
-						const args = ['get', '-v'];
-						// Only get tools at master if we are not using modules.
-						if (modulesOffForTool) {
-							args.push('-u');
-						}
-						// Tools with a "mod" suffix should not be installed,
-						// instead we run "go build -o" to rename them.
-						if (hasModSuffix(tool)) {
-							args.push('-d');
-						}
-						args.push(importPath);
-						const opts = {
-							env: envForTools,
-							cwd: toolsTmpDir
-						};
-						cp.execFile(goRuntimePath, args, opts, (err, stdout, stderr) => {
-							if (stderr.indexOf('unexpected directory layout:') > -1) {
-								outputChannel.appendLine(
-									`Installing ${importPath} failed with error "unexpected directory layout". Retrying...`
-								);
-								cp.execFile(goRuntimePath, args, opts, callback);
-							} else if (!err && hasModSuffix(tool)) {
-								const outputFile = path.join(
-									toolsGopath,
-									'bin',
-									process.platform === 'win32' ? `${tool.name}.exe` : tool.name
-								);
-								cp.execFile(
-									goRuntimePath,
-									['build', '-o', outputFile, getImportPath(tool, goVersion)],
-									opts,
-									callback
-								);
-							} else {
-								callback(err, stdout, stderr);
-							}
-						});
-					})
-			);
-		}, Promise.resolve([]))
-		.then((res) => {
-			outputChannel.appendLine(''); // Blank line for spacing
-			const failures = res.filter((x) => x != null);
-			if (failures.length === 0) {
-				outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
-
-				// Restart the language server since a new binary has been installed.
-				if (containsString(missing, 'gopls')) {
-					restartLanguageServer();
-				}
-				return;
+	const failures: { tool: ToolAtVersion, reason: string }[] = [];
+	for (const result of results) {
+		if (result.reason === '') {
+			// Restart the language server if a new binary has been installed.
+			if (result.tool.name === 'gopls') {
+				restartLanguageServer();
 			}
+		} else {
+			failures.push(result);
+		}
+	}
 
-			outputChannel.appendLine(failures.length + ' tools failed to install.\n');
-			failures.forEach((failure) => {
-				const reason = failure.split(';;');
-				outputChannel.appendLine(reason[0] + ':');
-				outputChannel.appendLine(reason[1]);
-			});
-		});
+	// Report detailed information about any failures.
+	outputChannel.appendLine(''); // blank line for spacing
+	if (failures.length === 0) {
+		outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+	} else {
+		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+		for (const failure of failures) {
+			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+		}
+	}
+}
+
+export async function installTool(
+	tool: ToolAtVersion, goRuntimePath: string, goVersion: GoVersion,
+	envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
+	// Some tools may have to be closed before we reinstall them.
+	if (tool.close) {
+		const reason = await tool.close();
+		if (reason) {
+			return reason;
+		}
+	}
+	// Install tools in a temporary directory, to avoid altering go.mod files.
+	const mkdtemp = util.promisify(fs.mkdtemp);
+	const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
+	const env = Object.assign({}, envForTools);
+	let tmpGoModFile: string;
+	if (modulesOn) {
+		env['GO111MODULE'] = 'on';
+
+		// Write a temporary go.mod file to avoid version conflicts.
+		tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
+		const writeFile = util.promisify(fs.writeFile);
+		await writeFile(tmpGoModFile, 'module tools');
+	} else {
+		envForTools['GO111MODULE'] = 'off';
+	}
+
+	// Build the arguments list for the tool installation.
+	const args = ['get', '-v'];
+	// Only get tools at master if we are not using modules.
+	if (!modulesOn) {
+		args.push('-u');
+	}
+	// Tools with a "mod" suffix should not be installed,
+	// instead we run "go build -o" to rename them.
+	if (hasModSuffix(tool)) {
+		args.push('-d');
+	}
+	let importPath: string;
+	if (!modulesOn) {
+		importPath = getImportPath(tool, goVersion);
+	} else {
+		importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+	}
+	args.push(importPath);
+
+	let output: string;
+	let result: string = '';
+	try {
+		const opts = {
+			env,
+			cwd: toolsTmpDir,
+		};
+		const execFile = util.promisify(cp.execFile);
+		const { stdout, stderr } = await execFile(goRuntimePath, args, opts);
+		output = `${stdout} ${stderr}`;
+
+		// TODO(rstambler): Figure out why this happens and maybe delete it.
+		if (stderr.indexOf('unexpected directory layout:') > -1) {
+			await execFile(goRuntimePath, args, opts);
+		} else if (hasModSuffix(tool)) {
+			const gopath = env['GOPATH'];
+			if (!gopath) {
+				return `GOPATH not configured in environment`;
+			}
+			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
+			await execFile(goRuntimePath, ['build', '-o', outputFile, importPath], opts);
+		}
+		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
+	} catch (e) {
+		outputChannel.appendLine(`Installing ${importPath} FAILED`);
+		result = `failed to install ${tool}: ${e} ${output} `;
+	}
+
+	// Delete the temporary installation directory.
+	rmdirRecursive(toolsTmpDir);
+
+	return result;
 }
 
 export async function promptForMissingTool(toolName: string) {
@@ -372,13 +339,13 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	}
 }
 
-export function updateGoPathGoRootFromConfig(): Promise<void> {
+export function updateGoVarsFromConfig(): Promise<void> {
 	const goroot = getGoConfig()['goroot'];
 	if (goroot) {
 		process.env['GOROOT'] = resolvePath(goroot);
 	}
 
-	if (process.env['GOPATH'] && process.env['GOROOT'] && process.env['GOPROXY']) {
+	if (process.env['GOPATH'] && process.env['GOROOT'] && process.env['GOPROXY'] && process.env['GOBIN']) {
 		return Promise.resolve();
 	}
 
@@ -410,7 +377,7 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 	}
 
 	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY'], (err, stdout, stderr) => {
+		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN'], (err, stdout, stderr) => {
 			if (err) {
 				return reject();
 			}
@@ -423,6 +390,9 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 			}
 			if (!process.env['GOPROXY'] && envOutput[2] && envOutput[2].trim()) {
 				process.env['GOPROXY'] = envOutput[2].trim();
+			}
+			if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
+				process.env['GOBIN'] = envOutput[3].trim();
 			}
 			return resolve();
 		});

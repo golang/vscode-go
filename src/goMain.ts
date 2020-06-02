@@ -17,6 +17,7 @@ import {
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
+import { toolExecutionEnvironment } from './goEnv';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -25,7 +26,7 @@ import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
-	updateGoPathGoRootFromConfig
+	updateGoVarsFromConfig
 } from './goInstallTools';
 import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -47,7 +48,7 @@ import {
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
 	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
-	getGoVersion, getToolsEnvVars, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
+	getGoVersion, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
@@ -63,7 +64,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 
-	updateGoPathGoRootFromConfig().then(async () => {
+	updateGoVarsFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
 		interface GoInfo {
 			goroot: string;
@@ -391,7 +392,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			updateGoPathGoRootFromConfig();
+			updateGoVarsFromConfig();
 
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
@@ -416,7 +417,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				updateCodeCoverageDecorators(updatedGoConfig['coverageDecorator']);
 			}
 			if (e.affectsConfiguration('go.toolsEnvVars')) {
-				const env = getToolsEnvVars();
+				const env = toolExecutionEnvironment();
 				if (GO111MODULE !== env['GO111MODULE']) {
 					const reloadMsg =
 						'Reload VS Code window so that the Go tools can respect the change to GO111MODULE';

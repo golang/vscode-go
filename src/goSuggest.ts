@@ -8,6 +8,7 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { getTextEditForAddImport } from './goImport';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { isModSupported } from './goModules';
@@ -19,7 +20,6 @@ import {
 	getCurrentGoPath,
 	getGoConfig,
 	getParametersAndReturnType,
-	getToolsEnvVars,
 	goBuiltinTypes,
 	goKeywords,
 	guessPackageNameFromFile,
@@ -269,7 +269,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 		const gocodeName = this.isGoMod ? 'gocode-gomod' : 'gocode';
 		const gocode = getBinPath(gocodeName);
 		if (path.isAbsolute(gocode)) {
-			cp.spawn(gocode, ['close'], { env: getToolsEnvVars() });
+			cp.spawn(gocode, ['close'], { env: toolExecutionEnvironment() });
 		}
 	}
 
@@ -293,7 +293,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 				return reject();
 			}
 
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			let stdout = '';
 			let stderr = '';
 
@@ -380,8 +380,8 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 									config['useCodeSnippetsOnFunctionSuggestWithoutType']) &&
 								((suggest.class === 'func' && lineText.substr(position.character, 2) !== '()') || // Avoids met() -> method()()
 									(suggest.class === 'var' &&
-									suggest.type.startsWith('func(') &&
-									lineText.substr(position.character, 1) !== ')' && // Avoids snippets when typing params in a func call
+										suggest.type.startsWith('func(') &&
+										lineText.substr(position.character, 1) !== ')' && // Avoids snippets when typing params in a func call
 										lineText.substr(position.character, 1) !== ',')) // Avoids snippets when typing params in a func call
 							) {
 								const { params, returnType } = getParametersAndReturnType(suggest.type.substring(4));
@@ -421,22 +421,22 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 										const arg = param.substr(0, param.indexOf(' '));
 										paramSnippets.push(
 											'${' +
-												(i + 1) +
-												':' +
-												arg +
-												'}' +
-												param.substr(param.indexOf(' '), param.length)
+											(i + 1) +
+											':' +
+											arg +
+											'}' +
+											param.substr(param.indexOf(' '), param.length)
 										);
 									}
 								}
 								item.insertText = new vscode.SnippetString(
 									suggest.name +
-										'(func(' +
-										paramSnippets.join(', ') +
-										') {\n	$' +
-										(params.length + 1) +
-										'\n})' +
-										returnType
+									'(func(' +
+									paramSnippets.join(', ') +
+									') {\n	$' +
+									(params.length + 1) +
+									'\n})' +
+									returnType
 								);
 							}
 
@@ -504,7 +504,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 
 		const setGocodeProps = new Promise<void>((resolve, reject) => {
 			const gocode = getBinPath('gocode');
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 
 			cp.execFile(gocode, ['set'], { env }, (err, stdout, stderr) => {
 				if (err && stdout.startsWith('gocode: unknown subcommand:')) {

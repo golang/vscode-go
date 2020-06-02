@@ -11,6 +11,7 @@ import semver = require('semver');
 import kill = require('tree-kill');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import {
@@ -426,24 +427,6 @@ export function getFileArchive(document: vscode.TextDocument): string {
 	return document.fileName + '\n' + Buffer.byteLength(fileContents, 'utf8') + '\n' + fileContents;
 }
 
-export function getToolsEnvVars(): any {
-	const config = getGoConfig();
-	const toolsEnvVars = config['toolsEnvVars'];
-
-	const gopath = getCurrentGoPath();
-	const envVars = Object.assign({}, process.env, gopath ? { GOPATH: gopath } : {});
-
-	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
-		Object.keys(toolsEnvVars).forEach(
-			(key) =>
-				(envVars[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
-		);
-	}
-
-	return envVars;
-}
-
 export function substituteEnv(input: string): string {
 	return input.replace(/\${env:([^}]+)}/g, (match, capture) => {
 		return process.env[capture.trim()] || '';
@@ -852,11 +835,15 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 }
 
 export const killTree = (processId: number): void => {
-	kill(processId, (err) => {
-		if (err) {
-			console.log('Error killing process tree: ' + err);
-		}
-	});
+	try {
+		kill(processId, (err) => {
+			if (err) {
+				console.log(`Error killing process tree: ${err}`);
+			}
+		});
+	} catch (err) {
+		console.log(`Error killing process tree: ${err}`);
+	}
 };
 
 export function killProcess(p: cp.ChildProcess) {
@@ -902,9 +889,8 @@ export function rmdirRecursive(dir: string) {
 				try {
 					fs.unlinkSync(relPath);
 				} catch (err) {
-					console.log(err);
+					console.log(`failed to remove ${relPath}: ${err}`);
 				}
-
 			}
 		});
 		fs.rmdirSync(dir);
@@ -972,7 +958,7 @@ export function runGodoc(
 				symbol = receiver + '.' + symbol;
 			}
 
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const args = ['doc', '-c', '-cmd', '-u', packageImportPath, symbol];
 			const p = cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
 				if (err) {

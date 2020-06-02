@@ -10,7 +10,7 @@ import lsp = require('../../src/goLanguageServer');
 import { getTool, Tool } from '../../src/goTools';
 
 suite('gopls update tests', () => {
-	test('prompt for update', () => {
+	test('prompt for update', async () => {
 		const tool = getTool('gopls');
 		const testCases: [string, string, boolean, semver.SemVer][] = [
 			['outdated, tagged', 'v0.3.1', false, tool.latestVersion],
@@ -67,7 +67,7 @@ suite('gopls update tests', () => {
 				true, tool.latestPrereleaseVersion,
 			],
 		];
-		testCases.map(async ([name, usersVersion, acceptPrerelease, want], i) => {
+		for (const [name, usersVersion, acceptPrerelease, want] of testCases) {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
 				return usersVersion;
 			});
@@ -86,8 +86,8 @@ suite('gopls update tests', () => {
 				}
 			});
 			const got = await lsp.shouldUpdateLanguageServer(tool, 'bad/path/to/gopls', true);
-			assert.equal(got, want, `${name}@${i} failed`);
+			assert.equal(got, want, `${name}: failed`);
 			sinon.restore();
-		});
+		}
 	});
 });

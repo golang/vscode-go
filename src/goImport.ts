@@ -7,11 +7,12 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
 import { envPath } from './goPath';
-import { getBinPath, getImportPath, getToolsEnvVars, parseFilePrelude } from './util';
+import { getBinPath, getImportPath, parseFilePrelude } from './util';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -183,7 +184,7 @@ export function addImportToWorkspace() {
 		);
 		return;
 	}
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 
 	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout, stderr) => {
 		const dirs = (stdout || '').split('\n');
