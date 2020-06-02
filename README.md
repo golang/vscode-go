@@ -2,251 +2,129 @@
 
 [![Slack](https://img.shields.io/badge/slack-gophers-green.svg?style=flat)](https://gophers.slack.com/messages/vscode/)
 
-This extension adds rich language support for the [Go language](https://golang.org/) to VS Code.
+<!--TODO: We should add a badge for the build status or link to the build dashboard.-->
 
-See the [Changelog](https://github.com/Microsoft/vscode-go/blob/master/CHANGELOG.md) to know what has changed over the last few versions of this extension.
+This extension provides rich language support for the [Go programming language](https://golang.org/) in VS Code.
 
-> This is the future home for the VS Code Go extension and migration is in progress. Read [the announcement in the old repo](https://github.com/microsoft/vscode-go/blob/master/README.md#we-are-moving---) section to learn about the transition and subscribe to [Microsoft/vscode-go#3247](https://github.com/microsoft/vscode-go/issues/3247) for updates.
+Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-## Table of Contents
+> This is the future home for the VS Code Go extension. We are currently migrating from the [original repository](https://github.com/Microsoft/vscode-go). Read [the announcement](https://github.com/microsoft/vscode-go/blob/master/README.md#we-are-moving---) to learn about the transition and subscribe to [Microsoft/vscode-go#3247](https://github.com/microsoft/vscode-go/issues/3247) for updates.
 
-- [Language Features](#language-features)
-	- [IntelliSense](#intellisense)
-	- [Code Navigation](#code-navigation)
-	- [Code Editing](#code-editing)
-	- [Diagnostics](#diagnostics)
-	- [Testing](#testing)
-	- [Debugging](#debugging)
-	- [Others](#others)
-- [How to use this extension?](#how-to-use-this-extension)
-	- [Go Language Server](#go-language-server)
-		- [Settings to control the use of the Go language server](#settings-to-control-the-use-of-the-go-language-server)
-		- [Provide feedback on gopls](#provide-feedback-on-gopls)
-	- [Linter](#linter)
-	- [Commands](#commands)
-	- [Optional: Debugging](#optional-debugging)
-		- [Remote Debugging](#remote-debugging)
-- [Install or update all dependencies](#install-or-update-all-dependencies)
-- [Building and Debugging the Extension](#building-and-debugging-the-extension)
-- [Tools this extension depends on](#tools-this-extension-depends-on)
-- [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
-- [Contributing](#contributing)
-- [Code of Conduct](#code-of-conduct)
-- [License](#license)
+## Overview
 
-## Language Features
+* [Getting started](#getting-started)
+* [Features](#features)
+  * [Debugging](#debugging)
+* [Customization](#customization)
+  * [Linter](#linter)
+  * [GOPATH](#gopath)
+* [Language Server](#language-server)
+* [Troubleshooting](docs/troubleshooting.md)
+* [Frequently Asked Questions (FAQ)](docs/faq.md)
+* [Resources](#resources)
+* [Contributing](#contributing)
+* [Code of Conduct](#code-of-conduct)
+* [License](#license)
 
-### IntelliSense
+## Getting started
 
-- Auto Completion of symbols as you type (using language server or `gocode`)
-- Signature Help for functions as you type (using language server or `gogetdoc` or `godef`+`go doc`)
-- Quick Info on the symbol as you hover over it (using language server or `gogetdoc` or `godef`+`go doc`)
+Welcome! Whether you are new to Go or an experienced Go developer, we hope this extension will fit your needs and enhance your development experience.
 
-### Code Navigation
+### Install Go
 
-- Go to or Peek Definition of symbols (using language server or `gogetdoc` or `godef`+`go doc`)
-- Find References of symbols and Implementations of interfaces (using language server or `guru`)
-- Go to symbol in file or see the file outline (using `go-outline`)
-- Go to symbol in workspace (using language server or `go-symbols`)
-- Toggle between a Go program and the corresponding test file.
+Before you start coding, make sure that you have already installed Go, as explained on the [Go installation guide](https://golang.org/doc/install). If you are unsure, open the Command Palette in VS Code (Ctrl+Shift+P) and run the `Go: Locate Configured Go Tools` command. If the `GOROOT` output is empty, you are missing a Go installation. For help installing Go, ask a question on the `#newbies` [Gophers Slack] channel.
 
-### Code Editing
+### Set up your environment
 
-- [Code Snippets](https://github.com/microsoft/vscode-go/blob/master/snippets/go.json) for quick coding
-- Format code on file save as well as format manually (using `goreturns` or `goimports` which also remove unused imports or `gofmt`). To disable the format on save feature, add `"[go]": {"editor.formatOnSave": false}` to your settings.
-- Symbol Rename (using `gorename`. Note: For Undo after rename to work in Windows you need to have `diff` tool in your path)
-- Add Imports to current file (using `gopkgs`)
-- Add/Remove Tags on struct fields (using `gomodifytags`)
-- Generate method stubs for interfaces (using `impl`)
-- Fill struct literals with default values (using `fillstruct`)
+Read about [Go code organization](https://golang.org/doc/code.html) to learn how to configure your environment. This extension works in both [GOPATH](docs/gopath.md) and [module](docs/modules.md) modes. We suggest using modules, as they are quickly becoming the new standard in the Go community.
 
-### Diagnostics
+Here are some additional resources for learning about how to set up your Go project:
 
-- Build-on-save to compile code and show build errors. (using `go build` and `go test`)
-- Vet-on-save to run `go vet` and show errors as warnings
-- Lint-on-save to show linting errors as warnings (using `golint`, `staticcheck`, `golangci-lint` or `revive`)
-- Semantic/Syntactic error reporting as you type (using `gotype-live`)
+* [Using Go modules](https://blog.golang.org/using-go-modules)
+* [Modules wiki](https://github.com/golang/go/wiki/Modules)
+* [GOPATH](https://golang.org/cmd/go/#hdr-GOPATH_environment_variable)
 
-### Testing
+**NOTE: If you are using modules, we recommend using the Go [language server](#language-server), which is explained below.**
 
-- Run Tests under the cursor, in current file, in current package, in the whole workspace using either commands or codelens
-- Run Benchmarks under the cursor using either commands or codelens
-- Show code coverage either on demand or after running tests in the package.
-- Generate unit tests skeleton (using `gotests`)
+### Install the extension
 
-### Debugging
+If you haven't already done so, install and open [Visual Studio Code](https://code.visualstudio.com). Navigate to the Extensions pane (Ctrl+Shift+X). Search for "Go" and install this extension (the publisher ID is "golang.Go").
 
-- Debug your code, binaries or tests (using `delve`)
+### Activate the Go extension
 
-### Others
+To activate the extension, open any directory or workspace containing Go code.
 
-- Install/Update all dependent Go tools
-- Upload to the Go Playground (using `goplay`)
+You should immediately see a prompt in the bottom-right corner of your screen titled `Analysis Tools Missing`. This extension relies on a suite of [command-line tools](docs/tools.md), which must be installed separately from the extension. Accept the prompt, or use the `Go: Install/Update Tools` command to pick which tools you would like to install. Note that you must have [`git`](https://git-scm.com/) installed.
 
-## How to use this extension?
+### Start coding
 
-This extension requires the `go` tools. See [Go's installation guide](https://golang.org/doc/install) for the download/installation instruction.
+You're ready to Go!
 
-Install and open [Visual Studio Code](https://code.visualstudio.com). Press `Ctrl+Shift+X` or `Cmd+Shift+X` to open the Extensions pane. Find and install the Go extension. You can also install the extension from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-vscode.Go). Open any `.go` file in VS Code. The extension is now activated.
+Be sure to learn more about the many [features](#features) of this extension, as well as how to [customize](#customization) them. See [Troubleshooting](docs/troubleshooting.md), [FAQ](docs/faq.md), and [Resources](#resources) for further guidance.
 
-This extension uses a set of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have these tools in a separate location, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](docs/tools.md).
+## [Features](docs/features.md)
 
-You will see `Analysis Tools Missing` in the bottom right, clicking this will offer to install all of the dependent Go tools. You can also run the [command](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) `Go: Install/Update tools` to install/update the same. You need to have git installed for these tool installations to work.
+This extension has a wide range of features, including [Intellisense](docs/features.md#intellisense), [code navigation](docs/features.md#code-navigation), and [code editing](docs/features.md#code-editing) support, as well as build, vet, and lint [diagnostics](docs/features.md#diagnostics) as you work. The VS Code Go extension also provides enhanced support for [testing](docs/features.md#testing) and [debugging](#debugging) your programs. For more detail, see the [full feature breakdown](docs/features.md).
 
-**Note 1**: Read [GOPATH in the VS Code Go extension](docs/gopath.md) to learn about the different ways you can get the extension to set GOPATH.
+In addition to integrated editing features, the extension also provides several commands for working with Go files. You can access any of these by opening the Command Palette (Ctrl+Shift+P) and typing in the name of the command. See the [full list of commands](docs/commands.md) provided by the extension.
 
-**Note 2**: The `Format on save` feature has a timeout of 750ms after which the formatting is aborted. You can change this timeout using the setting `editor.formatOnSaveTimeout`. This feature gets disabled when you have enabled the `Auto Save` feature in Visual Studio Code.
+The majority of the extension's features are provided by command-line tools written in Go. If you're having an issue with a specific feature, you may want to investigate the underlying tool. You can do this by taking a look at the [full list of the tools this extension depends on](docs/tools.md).
 
-**Note 3**:  Unless `go.useLanguageServer` is set to `true`, this extension uses `gocode` to provide completion lists as you type. If you have disabled the `go.buildOnSave` setting, then you may not get fresh results from not-yet-built dependencies. Therefore, ensure you have built your dependencies manually in such cases.
+### [Debugging](docs/debugging.md)
 
-### Customizing the Go extension features
+Debugging is a major feature offered by this extension. For information on how to debug your Go program, please see the [Debugging Guide](docs/debugging.md). It includes information about debugging on Windows Subsystem for Linux (WSL) and remote debugging.
 
-The Go extension is ready to use on the get go. If you want to customize the features, you can edit the settings in your User or Workspace settings. Read [All Settings & Commands in Visual Studio Code Go extension](docs/commands.md) for the full list of options and their descriptions.
+## Customization
 
-### Go Language Server
+This extension needs no configuration; it works out of the box. However, you may wish to modify your experience.
 
-The Go extension uses a host of [Go tools](docs/tools.md) to provide the various language features. An alternative is to use a single language server that provides the same features using the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). 
+Many of the features are configurable to your preference. The list of settings can be found in [Settings and Commands documentation](docs/commands.md).
 
-[`gopls`](https://golang.org/s/gopls/README.md) from Google is the official language server for
-the Go language and is currently in active development. You can choose to use this by setting
-`go.useLanguageServer` to `true` in your settings.
+### [Linter](tools.md#diagnostics)
 
-If you are working on a project that uses Go modules, you will be prompted to use the language server as it provides much better support for Go modules.
+A commonly customized feature is the linter, which is a tool used to provide coding style feedback and suggestions. By default, this extension uses the official [`golint`].
 
-> Note: The language server from Google supports Go version > 1.10 only
+<!--TODO(rstambler): Deprecate the golint setting.-->
 
-#### Install/Update the Go language server
+However, you are welcome to use more advanced options like [`staticcheck`], [`golangci-lint`], or [`revive`]. This can be configured via the [`"go.lintTool"`](commands.md#lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](tools.md#diagnostics).
 
-Ideally, you would see prompts to use/install/update the language server.
-Follow the prompts and the language server should get set up correctly.
-If you want to manually install/update the language server,
-- Ensure you have set `go.useLanguageServer` to `true` in your settings
-- Use the `Go: Install/Update Tools` command, select `gopls` from the list and press Ok.
+### [GOPATH](docs/gopath.md)
 
+Advanced users may want to set different `GOPATH`s for different projects or install the Go tools to a different `GOPATH`. This is possible and explained in the [`GOPATH documentation`](docs/gopath.md).
 
-#### Settings to control the use of the Go language server
+## [Language Server](docs/gopls.md)
 
-Below are the settings you can use to control the use of the language server. You need to reload the VS Code window for any changes in these settings to take effect.
+The Go extension uses a suite of [command-line tools](docs/tools.md) to provide language features. A new alternative is to use a [single language server](https://langserver.org/), which provides the same features using the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/).
 
-- Set `go.useLanguageServer` to `true` to enable the use of language server.
-- When using `gopls`, see the [recommended settings](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md).
-- Some of the features from the language server can be disabled if needed using the setting `go.languageServerExperimentalFeatures`. Below are the features you can thus control. By default, all are set to `true` i.e are enabled.
-```json
-  "go.languageServerExperimentalFeatures": {
-    "format": true,
-    "diagnostics": true,
-    "documentLink": true
-  }
-```
-- Set `"go.languageServerFlags": ["-logfile", "path to a text file that exists"]` to collect logs in a log file.
-- Set `"go.languageServerFlags": ["-rpc.trace"]` to see the complete rpc trace in the output panel (`View` -> `Output` -> `gopls`)
+The Go team at Google has developed [`gopls`](docs/gopls.md), which is the official Go language server. It is currently in an alpha state and under active development.
 
-#### Provide feedback on gopls
+[`gopls`](golang.org/s/gopls) is recommended for projects that use Go modules, as it provides much better support.
 
-If you find any problems using the `gopls` language server, please first check the [list of existing issues for gopls](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls) and update the relevant ones with your case before logging a new one at https://github.com/golang/go/issues
+To opt-in to the language server, set [`"go.useLanguageServer"`](docs/commands.md#useLanguageServer) to `true` in your settings. You should then be prompted to install [`gopls`]. If you are not prompted, you can install `gopls` manually by running the `Go: Install/Update Tools` command and selecting `gopls`.
 
+For more information, see the [`gopls` documentation](docs/gopls.md).
 
-#### Helpful links for gopls
+## Resources
 
-- [Wiki for gopls](https://github.com/golang/tools/blob/master/gopls/doc/user.md)
-- [Recommended settings for VSCode when using gopls](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md)
-- [Troubleshooting for gopls](https://github.com/golang/go/wiki/gopls#troubleshooting)
-- [Known bugs with gopls](https://github.com/golang/go/wiki/gopls#known-issues)
-- [Github issues for gopls](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls)
+If you're having issues with this extension, please reach out to us by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose) or asking a question on the [Gophers Slack]. We hang out in the `#vscode` channel!
 
-### Linter
+Take a look at [learn.go.dev](https://learn.go.dev) and [golang.org/help](https://golang.org/help) for additional guidance.
 
-A linter is a tool giving coding style feedback and suggestions.
-By default this extension uses the official [golint](https://github.com/golang/lint) as a linter.
+## [Contributing](docs/contributing.md)
 
-You can change the default linter and use the more advanced [golangci-lint](https://github.com/golangci/golangci-lint)
-by setting `go.lintTool` to "golangci-lint" in your settings. It shares some of the performance
-characteristics of megacheck, but supports a broader range of tools.
-You can configure golangci-lint with `go.lintFlags`, for example to show issues only in new code and to enable all linters:
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [Contribution guide](docs/contributing.md). It explains how to build and run the extension locally, as well as the process of sending a contribution.
 
-```javascript
-  "go.lintFlags": ["--enable-all", "--new"],
-```
+## [Code of Conduct](CODE_OF_CONDUCT.md)
 
-You can also use [staticcheck](https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck).
-
-Another alternative of golint is [revive](https://github.com/mgechev/revive). It is extensible, configurable, provides superset of the rules of golint, and has significantly better performance.
-
-To configure revive, use:
-
-```javascript
-  "go.lintFlags": ["-exclude=vendor/...", "-config=${workspaceFolder}/config.toml"]
-```
-
-Finally, the result of those linters will show right in the code (locations with suggestions will be underlined),
-as well as in the output pane.
-
-### Commands
-
-In addition to integrated editing features, the extension also provides several commands in the Command Palette for working with Go files:
-
-* `Go: Add Import` to add an import from the list of packages in your Go context
-* `Go: Current GOPATH` to see your currently configured GOPATH
-* `Go: Test at cursor` to run a test at the current cursor position in the active document
-* `Go: Test Package` to run all tests in the package containing the active document
-* `Go: Test File` to run all tests in the current active document
-* `Go: Test Previous` to run the previously run test command
-* `Go: Test All Packages in Workspace` to run all tests in the current workspace
-* `Go: Generate Unit Tests For Package` Generates unit tests for the current package
-* `Go: Generate Unit Tests For File` Generates unit tests for the current file
-* `Go: Generate Unit Tests For Function` Generates unit tests for the selected function in the current file
-* `Go: Install Tools` Installs/updates all the Go tools that the extension depends on
-* `Go: Add Tags` Adds configured tags to selected struct fields.
-* `Go: Remove Tags` Removes configured tags from selected struct fields.
-* `Go: Generate Interface Stubs` Generates method stubs for given interface
-* `Go: Fill Struct` Fills struct literal with default values
-* `Go: Run on Go Playground` Upload the current selection or file to the Go Playground
-
-You can access all of the above commands from the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`).
-
-A few of these are available in the editor context menu as an experimental feature as well. To control which of these commands show up in the editor context menu, update the setting `go.editorContextMenuCommands`.
-
-
-### _Optional_: Debugging
-
-To use the debugger, you must currently manually [install delve](https://github.com/derekparker/delve/tree/master/Documentation/installation). For more read [Debugging Go Code Using VS Code](docs/debugging.md).
-
-#### Debugging in WSL
-
-If using WSL on Windows, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements. 
-
-#### Remote Debugging
-
-To remote debug using VS Code, read [Remote Debugging](docs/debugging.md#remote-debugging).
-
-## Install or update all dependencies
-
-To quickly get all dependencies installed (or updated) see the [Go Tools wiki page](docs/tools.md).
-
-## Building and Debugging the Extension
-
-You can set up a development environment for debugging the extension during extension development.
-Read more at [Building, Debugging and Sideloading the extension in Visual Studio Code](docs/contributing.md).
-
-## Tools this extension depends on
-
-This extension uses a host of Go tools to provide the various rich features. These tools are installed in your GOPATH by default. If you wish to have the extension use a separate GOPATH for its tools, provide the desired location in the setting `go.toolsGopath`. Read more about this and the tools at [Go tools that the Go extension depends on](docs/tools.md).
-
-## Frequently Asked Questions (FAQ)
-
-Please see our wiki on [Frequently Asked Questions](docs/troubleshooting.md) to get answers to your questions or get started with troubleshooting.
-
-## Contributing
-
-This project welcomes contributions and suggestions. Please go through our [Contributing Guide](https://github.com/Microsoft/vscode-go/blob/master/CONTRIBUTING.md)
-to learn how you can contribute. It also includes details on the Contributor License Agreement.
-
-## Code of Conduct
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+This project follows the [Go Community Code of Conduct](https://golang.org/conduct). If you encounter an issue, please mail conduct@golang.org.
 
 ## License
 
 [MIT](LICENSE)
+
+[`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
+[`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
+[`golangci-lint`]: https://golangci-lint.run/
+[`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
+[Gophers Slack]: https://gophers.slack.com/
+[`gopls`]: https://golang.org/s/gopls

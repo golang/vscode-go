@@ -1,4 +1,4 @@
-## FAQ
+# Frequently Asked Questions
 
 **Q: I installed the plugin, but none of the features are working. Why?**
 
@@ -32,7 +32,7 @@ If you see an error of the form `command <command-name-here> not found`, it mean
 
 **A:** Because the formatting tools used by this extension either `goreturns`, `goimports` or `gofmt` or `gopls` all follow the default Go formatting rule of using tabs instead of spaces.
 
-**Q: Shoudln't the formatting tools be using a tab size of 8?**
+**Q: Shouldn't the formatting tools be using a tab size of 8?**
 
 **A:** The default tab size in VS Code is 4. To change this to 8 for Go files, add the below to your settings.
 ```json
@@ -119,3 +119,9 @@ features.
 **Q: How do I get the features/bug fixes that are implemented but not released yet? How do I get the beta version of the Go extension?**
 
 **A:** Install the [Go Nightly](nightly.md) extension.
+
+**Q: I am seeing out-of-date completion results.**
+
+If you are using the language server (`"go.useLanguageServer": true`), please file a [`gopls` issue](https://github.com/golang/go/issues/new).
+
+Otherwise, check the value of `"go.buildOnSave"`. If it is `"off"`, then you may not get fresh results from not-yet-built dependencies. Therefore, ensure you have built your dependencies manually in such cases.
