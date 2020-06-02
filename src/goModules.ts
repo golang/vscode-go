@@ -65,7 +65,6 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 		logModuleUsage();
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
-		let promptFormatTool = goConfig['formatTool'] === 'goreturns';
 
 		if (goConfig['inferGopath'] === true) {
 			goConfig.update('inferGopath', false, vscode.ConfigurationTarget.WorkspaceFolder);
@@ -73,20 +72,18 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 				'The "inferGopath" setting is disabled for this workspace because Go modules are being used.'
 			);
 		}
+
+		// TODO(rstambler): This will offer multiple prompts to the user, but
+		// it's still better than waiting for user input. Ideally, this should
+		// be combined into one prompt.
 		if (goConfig['useLanguageServer'] === false) {
 			const promptMsg =
 				'For better performance using Go modules, you can try the experimental Go language server, gopls.';
-			const choseToUpdateLS = await promptToUpdateToolForModules('gopls', promptMsg, goConfig);
-			promptFormatTool = promptFormatTool && !choseToUpdateLS;
-		} else if (promptFormatTool) {
-			const languageServerExperimentalFeatures: any = goConfig.get('languageServerExperimentalFeatures');
-			promptFormatTool = languageServerExperimentalFeatures['format'] === false;
+			promptToUpdateToolForModules('gopls', promptMsg, goConfig);
 		}
-
-		if (promptFormatTool) {
-			const promptMsgForFormatTool =
-				'`goreturns` doesnt support auto-importing missing imports when using Go modules yet. Please update the "formatTool" setting to `goimports`.';
-			await promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
+		if (goConfig['formatTool'] === 'goreturns') {
+			const promptMsgForFormatTool = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to goimports.`;
+			promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
 		}
 	}
 	packagePathToGoModPathMap[pkgPath] = goModEnvResult;

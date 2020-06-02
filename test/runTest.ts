@@ -46,7 +46,7 @@ async function main() {
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);
-		// failed = true; TODO(hyangah): reenable this after golang.org/cl/233517
+		failed = true;
 	}
 
 	if (failed) {

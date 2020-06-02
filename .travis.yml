@@ -3,7 +3,6 @@ language: go
 dist: bionic
 
 go:
-  - 1.12.x
   - 1.13.x
   - 1.14.x
   - tip
@@ -29,7 +28,7 @@ before_install:
     fi
 
 install:
-  - TRAVIS_NODE_VERSION="8";
+  - TRAVIS_NODE_VERSION="12";
   # Clear out whatever version of NVM Travis has as it is old.
   - rm -rf ~/.nvm;
     # Grab NVM.
@@ -40,7 +39,7 @@ install:
     # Install the desired version of Node
   - source ~/.nvm/nvm.sh;
   - nvm install $TRAVIS_NODE_VERSION;
-  - npm install
+  - npm ci
   - npm run vscode:prepublish
   - go get -u -v github.com/acroca/go-symbols
   - go get -u -v github.com/cweill/gotests/...

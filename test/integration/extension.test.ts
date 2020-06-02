@@ -74,19 +74,17 @@ suite('Go Extension Tests', function () {
 		toolsGopath = getToolsGopath() || gopath;
 
 		fs.removeSync(repoPath);
-		fs.copySync(path.join(fixtureSourcePath, 'baseTest', 'test.go'), path.join(fixturePath, 'baseTest', 'test.go'));
-		fs.copySync(
-			path.join(fixtureSourcePath, 'baseTest', 'sample_test.go'),
-			path.join(fixturePath, 'baseTest', 'sample_test.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'errorsTest', 'errors.go'),
-			path.join(fixturePath, 'errorsTest', 'errors.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'gogetdocTestData', 'test.go'),
-			path.join(fixturePath, 'gogetdocTestData', 'test.go')
-		);
+		fs.copySync(fixtureSourcePath, fixturePath, {
+			recursive: true,
+			// All of the tests run in GOPATH mode for now.
+			// TODO(rstambler): Run tests in GOPATH and module mode.
+			filter: (src: string): boolean => {
+				if (path.basename(src) === 'go.mod') {
+					return false;
+				}
+				return true;
+			},
+		});
 		fs.copySync(
 			path.join(fixtureSourcePath, 'generatetests', 'generatetests.go'),
 			path.join(generateTestsSourcePath, 'generatetests.go')
@@ -114,82 +112,6 @@ suite('Go Extension Tests', function () {
 		fs.copySync(
 			path.join(fixtureSourcePath, 'diffTestData', 'file2.go'),
 			path.join(fixturePath, 'diffTest2Data', 'file2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'linterTest', 'linter_1.go'),
-			path.join(fixturePath, 'linterTest', 'linter_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'linterTest', 'linter_2.go'),
-			path.join(fixturePath, 'linterTest', 'linter_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'buildTags', 'hello.go'),
-			path.join(fixturePath, 'buildTags', 'hello.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'testTags', 'hello_test.go'),
-			path.join(fixturePath, 'testTags', 'hello_test.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'unimportedPkgs.go'),
-			path.join(fixturePath, 'completions', 'unimportedPkgs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'unimportedMultiplePkgs.go'),
-			path.join(fixturePath, 'completions', 'unimportedMultiplePkgs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'snippets.go'),
-			path.join(fixturePath, 'completions', 'snippets.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'nosnippets.go'),
-			path.join(fixturePath, 'completions', 'nosnippets.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'exportedMemberDocs.go'),
-			path.join(fixturePath, 'completions', 'exportedMemberDocs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'noimports.go'),
-			path.join(fixturePath, 'importTest', 'noimports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'groupImports.go'),
-			path.join(fixturePath, 'importTest', 'groupImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'singleImports.go'),
-			path.join(fixturePath, 'importTest', 'singleImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'cgoImports.go'),
-			path.join(fixturePath, 'importTest', 'cgoImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_1.go'),
-			path.join(fixturePath, 'fillStruct', 'input_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'golden_1.go'),
-			path.join(fixturePath, 'fillStruct', 'golden_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_2.go'),
-			path.join(fixturePath, 'fillStruct', 'input_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'golden_2.go'),
-			path.join(fixturePath, 'fillStruct', 'golden_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_2.go'),
-			path.join(fixturePath, 'fillStruct', 'input_3.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'outlineTest', 'test.go'),
-			path.join(fixturePath, 'outlineTest', 'test.go')
 		);
 		fs.copySync(
 			path.join(fixtureSourcePath, 'subtests', 'subtests_test.go'),

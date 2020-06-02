@@ -9,10 +9,6 @@ on:
   repository_dispatch:
     types: [force-release]
 
-env:
-  GOPATH: /tmp/go
-  # Because some tests require explicit setting of GOPATH. TODO: FIX THEM.
-
 jobs:
   release:
     name: Release Nightly
@@ -21,7 +17,7 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Setup Node
         uses: actions/setup-node@v1
@@ -34,7 +30,13 @@ jobs:
          go-version: '1.14'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Prepare Release
+        run: build/all.bash prepare_nightly
+
+      - name: Compile
+        run: npm run vscode:prepublish
 
       - name: Install Go tools (Modules mode)
         run: |
@@ -47,7 +49,9 @@ jobs:
                github.com/uudashr/gopkgs/v2/cmd/gopkgs \
                github.com/zmb3/gogetdoc \
                golang.org/x/lint/golint \
-               golang.org/x/tools/cmd/gorename
+               golang.org/x/tools/cmd/gorename \
+               golang.org/x/tools/gopls
+
         env:
           GO111MODULE: on
 
@@ -61,8 +65,6 @@ jobs:
         env:
           GO111MODULE: off
 
-      - name: Prepare Release
-        run: build/all.bash prepare_nightly
 
       - name: Run unit tests
         run: npm run unit-test
