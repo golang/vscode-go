@@ -124,7 +124,7 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 		return;
 	}
 
-	editor.document.save();
+	await editor.document.save();
 	try {
 		const testFunctions = await getTestFunctions(editor.document, null);
 		// We use functionName if it was provided as argument
