@@ -1,5 +1,6 @@
 src/**/*
 test/
+third_party/
 typings/**/*
 .vscode/**/*
 tsconfig.json
