@@ -1,6 +1,8 @@
 # Go Nightly
 
-This master branch of this extension is built and published nightly through the [Go Nightly](https://marketplace.visualstudio.com/items?itemName=golang.go-nightly). If you're interested in testing new features and bug fixes, you may be interested in switching to the Go Nightly extension. Also, if you file an issue, we may suggest trying out the fix in Go Nightly.
+This master branch of this extension is built and published nightly through the [Go Nightly]. If you're interested in testing new features and bug fixes, you may be interested in switching to the Go Nightly extension. Also, if you file an issue, we may suggest trying out the fix in Go Nightly.
+
+The [Changelog](nightly/CHANGELOG.md) and [README](nightly/README.md) for [Go Nightly] can be found in the [docs/nightly](nightly/) directory.
 
 If you try out Go Nightly, please file issues when you notice bugs. You can also join the maintainers in the [#vscode-dev](https://gophers.slack.com/archives/CUWGEKH5Z) channel on the [Gophers Slack](https://invite.slack.golangbridge.org/).
 
@@ -19,3 +21,5 @@ Pre-releases of the Go extension will be made available on the [Releases page](h
 3) If prompted, reload VS Code.
 
 **Note**: If you install an extension from a VSIX file, you will stop receiving automatic prompts when updates are released.
+
+[Go Nightly]: https://marketplace.visualstudio.com/items?itemName=golang.go-nightly
