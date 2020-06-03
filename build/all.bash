@@ -77,9 +77,9 @@ prepare_nightly() {
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md.nightly + Release commit info.
-  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md.nightly > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
+  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - docs/nightly/CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
   # Replace the heading of README.md with the heading for Go Nightly.
-  sed '/^# Go for Visual Studio Code$/d' README.md | cat README.md.nightly - > /tmp/README.md.new && mv /tmp/README.md.new README.md
+  sed '/^# Go for Visual Studio Code$/d' README.md | cat docs/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
 }
 
 main() {
