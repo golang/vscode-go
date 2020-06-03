@@ -108,6 +108,66 @@ async function runTestAtCursor(
 }
 
 /**
+ * Executes the sub unit test at the primary cursor using `go test`. Output
+ * is sent to the 'Go' channel.
+ *
+ * @param goConfig Configuration for the Go extension.
+ */
+export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, args: any) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showInformationMessage('No editor is active.');
+		return;
+	}
+	if (!editor.document.fileName.endsWith('_test.go')) {
+		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
+		return;
+	}
+
+	await editor.document.save();
+	try {
+		const testFunctions = await getTestFunctions(editor.document, null);
+		// We use functionName if it was provided as argument
+		// Otherwise find any test function containing the cursor.
+		const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
+		const testFunctionName =
+			args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
+
+		if (!testFunctionName || currentTestFunctions.length === 0) {
+			vscode.window.showInformationMessage('No test function found at cursor.');
+			return;
+		}
+
+		const testFunction = currentTestFunctions[0];
+		const simpleRunRegex = /t.Run\("([^"]+)",/;
+		const runRegex = /t.Run\(/;
+		let lineText: string;
+		let runMatch: RegExpMatchArray | null;
+		let simpleMatch: RegExpMatchArray | null;
+		for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
+			lineText = editor.document.lineAt(i).text;
+			simpleMatch = lineText.match(simpleRunRegex);
+			runMatch = lineText.match(runRegex);
+			if (simpleMatch || (runMatch && !simpleMatch)) {
+				break;
+			}
+		}
+
+		if (!simpleMatch) {
+			vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
+			return;
+		}
+
+		const subTestName = testFunctionName + '/' + simpleMatch[1];
+
+		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
+	} catch (err) {
+		vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
+		console.error(err);
+	}
+}
+
+/**
  * Debugs the test at cursor.
  */
 async function debugTestAtCursor(
