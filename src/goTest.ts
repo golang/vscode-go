@@ -133,7 +133,7 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 		const testFunctionName =
 			args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
 
-		if (!testFunctionName) {
+		if (!testFunctionName || currentTestFunctions.length === 0) {
 			vscode.window.showInformationMessage('No test function found at cursor.');
 			return;
 		}

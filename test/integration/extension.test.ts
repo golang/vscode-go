@@ -1602,4 +1602,16 @@ encountered.
 		const result = await subTestAtCursor(config, []);
 		assert.equal(result, undefined);
 	});
+
+	test('Subtests - does nothing when no test function covers the cursor and a function name is passed in', async () => {
+		const config = vscode.workspace.getConfiguration('go');
+		const uri = vscode.Uri.file(path.join(fixturePath, 'subtests', 'subtests_test.go'));
+		const document = await vscode.workspace.openTextDocument(uri);
+		const editor = await vscode.window.showTextDocument(document);
+		const selection = new vscode.Selection(5, 0, 5, 0);
+		editor.selection = selection;
+
+		const result = await subTestAtCursor(config, {functionName: 'TestMyFunction'});
+		assert.equal(result, undefined);
+	});
 });
