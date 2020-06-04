@@ -1,3 +1,5 @@
+# `GOPATH`
+
 At any point in time, you can run the command `Go: Current GOPATH` to see the GOPATH being used by the extension.
 
 ### GOPATH from the environment variable

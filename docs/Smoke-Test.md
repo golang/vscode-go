@@ -1,38 +1,82 @@
-**Pre-requisites for testing Go extension if you don't already have Go installed and the extension set up**
+# Smoke Test
 
-1. Install [Go](https://golang.org/doc/install#install)
-2. Run `go get github.com/golang/example/hello`
-3. Sideload the Go extension and open the folder $HOME/go/src/gitHub.com/golang/example in VS Code
-4. Open any Go file. You will see "Analysis Tools Missing" in the status bar. Click on it to install the Go tools that the extension needs.
+Before releasing a new version of the extension, please run the following smoke test to make sure that all features are working.
 
-**Features to Smoke Test:**
+## Set up
 
-Try the below features for functions, structs and interfaces from current/std/third party packages
-- Goto and Peek Definition 
-- Find References 
-- Hover Info 
+First, clone the [golang.org/x/example](https://github.com/golang/example). At the time of writing (June 2020), this repository has not changed since 2017. If it has changed since, these steps may not be exactly reproducible and should be adjusted.
 
-Try the below for functions in built-in (fmt, strings, math etc) and custom packages (stringutil in the hello project)
-- Auto complete
-- Auto complete for unimported packages 
-- Set `go.useCodeSnippetsOnFunctionSuggest` to true and check if code snippets show up for functions 
-- Signature Help 
+<!--TODO(rstambler): Maintain our own smoke tests, or add a go.mod file to this repository.-->
+For now, we smoke test the extension only in `GOPATH` mode.
 
-Enable build, vet, lint and format On Save features, make a change in a go file and save. Try both values "package" and "workspace" for the settings.
-- The output channel for Go should show build, vet and linting results
-- If there were errors, red squiggle lines should show up in the editor
-- Remove comments on an exported member (anything whose name starts with a capital letter), and make sure linter asks you to add the comment
-- Add tabs and extra lines, remove an import: formatting should fix all of these
+If it does not already exist:
 
-Rename
-- Rename a local variable, rename should work, file should go to a dirty state
-- Rename an exported function (eg: Reverse in the hello project), rename should work across files, all affected files should open and be in dirty state
+```bash
+mkdir $GOPATH/src/github.com/golang
+```
 
-Add imports
-- The command "Go: Add import" should give a list of packages that can be imported.
-- Selecting one of these should add an import to the current go file
-- Already imported packages in the current file should not show up in the list
+Then,
 
-Other features:
-- File outline 
-- Debugging 
+```bash
+cd $GOPATH/src/github.com/golang
+git clone https://github.com/golang/example
+cd example
+```
+
+Next, [build and sideload the modified Go extension](contributing.md#sideload) and open the `example/hello` directory. Open `hello.go`.
+
+## Test code navigation
+
+1. Go to definition on `fmt.Println`.
+2. Go to definition on `stringutil.Reverse`.
+3. Find all references of `fmt.Println`.
+4. Find all references of `stringutil.Reverse`.
+5. Hover over `fmt.Println`.
+6. Hover over `stringutil.Reverse`.
+
+## Test autocompletion
+
+<!--TODO(rstambler): We should require the user install another package in their GOPATH and expect unimported completions from that package.-->
+
+1. Trigger autocompletion (Ctrl+Space) after `fmt.`.
+2. Trigger autocompletion (Ctrl+Space) after `stringutil.`.
+3. Enter a newline in the `main` function and type `fmt.`.
+4. Enter a newline in the `main` function and type `parser.`. Expect suggestions from the unimported standard library `go/parser` package.
+5. Enter a newline in the `main` function and type `fmt.`. Select the `fmt.Println` completion and observe the outcome. Toggle the `go.useCodeSnippetsOnFunctionSuggest` setting to ensure that placeholders are provided.
+6. Test signature help by manually triggering it (Ctrl+Shift+Space) while completing `fmt.Println`.
+7. Test signature help by manually triggering it (Ctrl+Shift+Space) while completing `stringutil.Reverse`.
+
+## Test diagnostics
+
+Enable `go.buildOnSave`, `go.vetOnSave`, and `go.lintOnSave`.
+
+1. Add `var x int` to the `main` function and expect a build diagnostic.
+2. Add `fmt.Printf("hi", 1)` and expect a vet diagnostic.
+3. Add the following function to the bottom of the file and expect a lint diagnostic.
+
+    ```go
+    // Hello is hi.
+    func Hi() {}
+    ```
+
+You can also try toggling the `"package"` and `"workspace"` configurations for these settings.
+
+## Test formatting and import organization
+
+1. Hit enter 3 times in the `main` function and save. Expect formatting to remove all but one line.
+2. Remove the `"fmt"` import. Save and expect it to return.
+3. Remove the `"github.com/golang/example/stringutil"` import. Save and expect it to return.
+4. Confirm that the `Go: Add Import` command works (add `"archive/tar"`).
+
+## Test renaming
+
+1. Add the following to the `main` function, then rename `x` to `y`.
+
+    ```go
+    var x int
+    fmt.Println(x)
+    ```
+
+2. Rename `stringutil.Reverse`. `reverse.go` and `reverse_test.go` should be dirtied.
+
+<!--TODO(rstambler): Other features should also be tested. Not sure if this whole smoke test process is worth it or will ever be followed.-->

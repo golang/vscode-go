@@ -1,3 +1,5 @@
+# Modules
+
 The Go language server [gopls](https://golang.org/s/gopls/README.md) provides support for [Go modules](https://blog.golang.org/modules2019).
 
 Add the below in your [settings](https://code.visualstudio.com/docs/getstarted/settings) to use Go modules.

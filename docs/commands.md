@@ -1,88 +1,149 @@
-# Settings and Commands
+# Commands
 
-To view a complete list of the commands and settings for this extension:
+In addition to the integrated editing features, this extension offers a number of commands, which can be executed manually through the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) (Ctrl+Shift+P).
+
+Some of these commands are also available in the VS Code context menu (right click). To control which of these commands show up in the editor context menu, update the [`"go.editorContextMenuCommands"`](settings.md#editorContextMenuCommands) setting.
+
+All commands provided by this extension have the prefix "`Go:` ".
+
+## Latest changes
+
+The commands described below are up-to-date as of June 2020. We do our best to keep documentation current, but if a command is missing, you can always consult the full list in the Extensions view.
+
+To view this list:
 
 1. Navigate to the Extensions view (Ctrl+Shift+X).
-2. Find the Go extension, click on it to open the Extension Editor.
+2. Find the Go extension and click on it to open the Extension Editor.
 3. Click on the `Feature Contributions` tab.
-4. Scroll away.
+4. Scroll through the list under `Commands`.
 
-<!--TODO(rstambler): This image needs to be updated.-->
-![ext](https://user-images.githubusercontent.com/16890566/30246497-9d6cc588-95b0-11e7-87dd-4bd1b18b139f.gif)
+Finally, you can also see a full list by using a meta command: `Go: Show All Commands...`.
 
-## Settings
+## Detailed list
 
-You can configure your settings by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings). To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
+Below is a detailed list of commands. They are categorized into [code editing and generation](#code-editing-and-generation), [testing and benchmarking](#testing-and-benchmarking), [build, lint, and vet](#build-lint-and-vet), [miscellaneous](#miscellaneous), and [troubleshooting](#troubleshooting). You will find the [troubleshooting](#troubleshooting) commands helpful when diagnosing an issue with the extension (learn more in the [Troubleshooting documentation](troubleshooting.md)).
 
-**NOTE: Most of these settings don't apply if you are using [`gopls`](gopls.md). Learn more about `gopls`-specific settings in this [documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md).**
+### Code editing and generation
 
-A list of popular and notable settings can be found below.
+<!--Note: Try to keep this list in roughly alphabetical/logical order.-->
 
-### docsTool
+#### [`Go: Add Import`](features.md#add-import)
 
-One of `"godoc"`, `"gogetdoc"`, or `"guru"` (`gogetdoc` is the default). This is the tool used by the [go to definition](features.md#go-to-definition), [signature help](features.md#signature-help), and [quick info on hover](features.md#quick-info-on-hover) features. See more information about each of these tools in the [Documentation](tools.md#Documentation) section.
+<!--TODO(rstambler): Confirm exactly how this works.-->
+Manually add an import to your file. See [Add import](features.md#add-import).
 
-### formatTool
+#### [`Go: Add Package to Workspace`]()
 
-One of `"gofmt"`, `"goimports"`, `"goreturns"`, and `"goformat"` (`goreturns` is the default). This is the tool used by the [formatting and import organization](features.md#formatting-and-import-organization) features. See more information about each of these tools in the [Formatting](tools.md#Formatting) section.
+#### [`Go: Add Tags to Struct Fields`](features.md#add-struct-tags)
 
-### lintTool
+Automatically generate [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. See [Add or remove struct tags](features.md#add-or-remove-struct-tags).
 
-One of `"golint"`, `"staticcheck"`, `"golangci-lint"`, and `"revive"` (`golint` is the default). This is the tool used by the [lint-on-save](features.md#lint-on-save) feature. See more information about each of these tools in the [Diagnostics](tools.md#Diagnostics) section.
+#### [`Go: Remove Tags From Struct Fields`](features.md#add-struct-tags)
 
-### lintFlags
+Removes [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) from the selected struct fields. See [Add or remove struct tags](features.md#add-or-remove-struct-tags).
 
-This setting can be used to pass additional flags to your lint tool of choice.
+#### [`Go: Fill struct`](features.md#fill-struct-literals)
 
-Most linters can be configured via special configuration files, but you may still need to pass command-line flags. The configuration documentation for each supported linter is listed here:
+Fill a struct literal with default values. See [Fill struct](features.md#fill-struct-literals).
 
-* [`staticcheck`](https://staticcheck.io/docs/#configuration)
-* [`golangci-lint`](https://golangci-lint.run/usage/configuration/)
-* [`revive`](https://github.com/mgechev/revive#command-line-flags)
+#### [`Go: Generate Interface Stubs`](features.md#generate-interface-implementation)
 
-#### Examples
+Generate method stubs for given interface. See [Generate interface implementation](features.md#generate-interface-implementation).
 
-Enable all [`golangci-lint`] linters and only show errors in new code:
+#### [`Go: Generate Unit Tests For Function`](features.md#generate-unit-tests)
 
-```json5
-"go.lintFlags": ["--enable-all", "--new"]
-```
+Generate unit tests for the selected function in the current file. See [Generate unit tests](features.md#generate-unit-tests).
 
-Configure `revive` to exclude `vendor` directories and apply extra configuration with a `config.toml` file:
+#### [`Go: Generate Unit Tests For File`](features.md#generate-unit-tests)
 
-```json5
-"go.lintFlags": [
-    "-exclude=vendor/...",
-    "-config=${workspaceFolder}/config.toml"
-]
-```
+Generate unit tests for the current file. See [Generate unit tests](features.md#generate-unit-tests).
 
-### Commands
+#### [`Go: Generate Unit Tests For Package`](features.md#generate-unit-tests)
 
-In addition to integrated editing features, the extension also provides several commands in the Command Palette for working with Go files:
+Generate unit tests for the current package. See [Generate unit tests](features.md#generate-unit-tests).
 
-* `Go: Add Import` to add an import from the list of packages in your Go context
-* `Go: Current GOPATH` to see your currently configured GOPATH
-* `Go: Test at cursor` to run a test at the current cursor position in the active document
-* `Go: Test Package` to run all tests in the package containing the active document
-* `Go: Test File` to run all tests in the current active document
-* `Go: Test Previous` to run the previously run test command
-* `Go: Test All Packages in Workspace` to run all tests in the current workspace
-* `Go: Generate Unit Tests For Package` Generates unit tests for the current package
-* `Go: Generate Unit Tests For File` Generates unit tests for the current file
-* `Go: Generate Unit Tests For Function` Generates unit tests for the selected function in the current file
-* `Go: Install Tools` Installs/updates all the Go tools that the extension depends on
-* `Go: Add Tags` Adds configured tags to selected struct fields.
-* `Go: Remove Tags` Removes configured tags from selected struct fields.
-* `Go: Generate Interface Stubs` Generates method stubs for given interface
-* `Go: Fill Struct` Fills struct literal with default values
-* `Go: Run on Go Playground` Upload the current selection or file to the Go Playground
+#### [`Go: Extract to function`]()
 
-You can access all of the above commands from the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`).
+#### [`Go: Extract to variable`]()
 
-A few of these are available in the editor context menu as an experimental feature as well. To control which of these commands show up in the editor context menu, update the setting `go.editorContextMenuCommands`.
+### Testing and benchmarking
+
+#### [`Go: Test Function at Cursor`](features.md#test-and-benchmark-in-the-editor)
+
+Run the test function at the current cursor position in the file.
+
+#### [`Go: Subtest at Cursor`]()
+
+#### [`Go: Benchmark Function At Cursor`]()
+
+#### [`Go: Debug Test At Cursor`]()
+
+#### [`Go: Test File`](features.md#test-and-benchmark-in-the-editor)
+
+Run all of the tests in the current file.
+
+#### [`Go: Benchmark File`]()
+
+#### [`Go: Test Package`](features.md#test-and-benchmark-in-the-editor)
+
+Run all of tests in the current package.
+
+#### [`Go: Benchmark Package`]()
+
+#### [`Go: Test Previous`](features.md#test-and-benchmark-in-the-editor)
+
+Re-run the most recently executed test command.
+
+#### [`Go: Test All Packages In Workspace`](features.md#test-and-benchmark-in-the-editor)
+
+Run all of the tests in the current workspace.
+
+#### [`Go: Cancel Running Tests]()
+
+#### [`Go: Toggle Test File`]()
+
+#### [`Go: Apply Cover Profile]()
+
+#### [`Go: Toggle Test Coverage In Current Package`]()
+
+### Build, lint, and vet
+
+#### [`Go: Build Current Package`]()
+
+#### [`Go: Lint Current Package`]()
+
+#### [`Go: Vet Current Package`]()
+
+#### [`Go: Build Workspace`]()
+
+#### [`Go: Lint Workspace`]()
+
+#### [`Go: Vet Workspace`]()
+
+#### [`Go: Install Current Package`]()
+
+### Miscellaneous
+
+#### [`Go: Restart Language Server`]()
+
+#### [`Go: Run on Go Playground`](features.md#go-playground)
+
+Upload the current selection or file to the Go Playground ([play.golang.org](https://play.golang.org)). See [Go Playground](features.md#go-playground).
+
+### Troubleshooting
+
+#### `Go: Current GOPATH`
+
+See the current value of GOPATH. This is not equivalent to `go env GOPATH`, as your VS Code settings may have altered the value of `GOPATH` used by the extension.
+
+#### [`Go: Install/Update Tools`](tools.md)
+
+Install or update the Go tools on which the extension depends. Tools can be installed or updated all at once, or individual tools can be selected.
+
+#### [`Go: Locate Configured Go Tools`]()
 
 [`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
 [`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
 [`golangci-lint`]: https://golangci-lint.run/
 [`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
+[`gomodifytags`]: tools.md#gomodifytags

@@ -92,5 +92,9 @@ The easiest way to start is by reading this [detailed guide for contributing to 
 
 Once you've sent out your change, a maintainer will take a look at your contribution within a few weeks. If you don't hear back in that time, feel free to ping the issue or send a message to the [#vscode-dev] channel of the [Gophers Slack].
 
+## [Continuous Integration](testing.md)
+
+The extension's test suite will run on your change once it has been mailed. If you have contributed via a GitHub pull request (PR), the test results will be provided via a [GitHub Action](testing.md#testing-via-github-actions) result on the PR. If you have mailed a Gerrit changelist (CL) directly, tests will run in [Google Cloud Build](testing.md#testing-via-gcb), and the results will be posted back on the CL. As of June 2020, the GCB and Gerrit integration is not yet ready, so the results of the CI run **will not** appear on the Gerrit changelist. Instead, if your change fails on GCB, your reviewer will notify you and provide you with the relevant logs.
+
 [#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
 [Gophers Slack]: https://invite.slack.golangbridge.org/

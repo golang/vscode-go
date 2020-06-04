@@ -1,6 +1,7 @@
 #! /bin/bash
 set -euo pipefail
 
+# TODO(rstambler): Remove this file, as syncing is no longer necessary.
 # In order to sync with upstream, run merge.bash
 
 # TODO(hyangah): commands for building docker container and running tests locally with docker run.
