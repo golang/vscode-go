@@ -2,16 +2,20 @@
 
 The Go debugger is [Delve]. The [Delve] repository has detailed instructions, so we recommend taking a look at the [Delve documentation](https://github.com/go-delve/delve/tree/master/Documentation).
 
-## Table of Contents
+## Overview
 
 * [Features](#features)
 * [Set up](#set-up)
   * [Installation](#installation)
   * [Configuration](#configuration)
-* [Launch Configuration](#launch-configuration)
-* [Debugging in WSL](#debugging-in-wsl)
+* [Launch Configurations](#launch-configurations)
+  * [Specifying build tags](#specifying-build-tags)
+  * [Using VS Code Variables](#using-vs-code-variables)
+  * [Snippets](#snippets)
+* [Debugging on Windows Subsystem for Linux (WSL)](#debugging-on-windows-subsystem-for-linux-wsl)
 * [Remote Debugging](#remote-debugging)
-* [Common Issues](#common-issues)
+* [Troubleshooting](#troubleshooting)
+  * [Common issues](#common-issues)
 
 ## Set up
 
@@ -26,267 +30,330 @@ You can also install it manually in one of two ways:
 
 ### Configuration
 
-The below settings are used by the debugger. You may not need to add/change any of them to have debugging working in simple cases, but do give them a read sometime
-- `go.gopath`. See [GOPATH in VS Code](gopath.md)
-- `go.inferGopath`. See [GOPATH in VS Code](gopath.md)
-- `go.delveConfig`
-     - `apiVersion`: Controls the version of delve apis to be used when launching the delve headless server. Default is 2.
-     - `dlvLoadConfig`: Not applicable when `apiVersion` is 1. The configuration passed to delve. Controls [various features of delve](https://github.com/Microsoft/vscode-go/blob/0.6.85/package.json#L431-L468) that affects the variables shown in the debug pane.
-         - `maxStringLen`:  maximum number of bytes read from a string
-         - `maxArrayValues`:  maximum number of elements read from an array, a slice or a map
-         - `maxStructFields`:  maximum number of fields read from a struct, -1 will read all fields
-         - `maxVariableRecurse`:  how far to recurse when evaluating nested types
-         - `followPointers`:  requests pointers to be automatically dereferenced         
-     
+You may not need to configure any settings to start debugging your programs, but you should be aware that the debugger looks at the following settings.
 
-Some common cases where you might want to tweak the configurations passed to delve
-- Change the default cap of 64 on string and array length when inspecting variables in the debug viewlet.
-- Evaluate variables that are nested when inspecting them in the debug viewlet.
+* Related to [`GOPATH`](gopath.md):
+  * [`go.gopath`](settings.md#gopath)
+  * [`go.inferGopath`](settings.md#inferGopath)
+* `go.delveConfig`
+  * `apiVersion`: Controls the version of the Delve API used when launching the Delve headless server (default: `2`).
+  * `dlvLoadConfig`: The configuration passed to Delve, which controls how variables are shown in the Debug pane. Not applicable when `apiVersion` is 1.
+    * `maxStringLen`: Maximum number of bytes read from a string (default: `64`).
+    * `maxArrayValues`: Maximum number of elements read from an array, slice, or map (default: `64`).
+    * `maxStructFields`: Maximum number of fields read from a struct. A setting of `-1` indicates that all fields should be read (default: `-1`).
+    * `maxVariableRecurse`: How far to recurse when evaluating nested types (default: `1`).
+    * `followPointers`: Automatically dereference pointers (default: `true`).
+  * `showGlobalVariables`: Show global variables in the Debug view (default: `true`).
 
-## Set up configurations in launch.json
+There are some common cases when you might want to tweak the Delve configurations.
 
-Once delve is installed, run the command `Debug: Open launch.json`. If you didnt already have a launch.json file, this will create one with the below default configuration which can be used to debug the current package.
+* To change the default cap of 64 on string and array length when inspecting variables in the Debug view, set `maxStringLen`. (See a related known issue: [golang/vscode-go#126](https://github.com/golang/vscode-go/issues/126)).
+* To evaluate nested variables in the Debug viewlet, set `maxVariableRecurse`.
 
-```json
+## Launch Configurations
+
+To get started debugging, run the command `Debug: Open launch.json`. If you did not already have a `launch.json` file for your project, this will create one for you. It will contain this default configuration, which can be used to debug the current package.
+
+```json5
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"name": "Launch",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"program": "${fileDirname}",
-			"env": {},
-			"args": []
-		}
-	]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${fileDirname}",
+            "env": {},
+            "args": []
+        }
+    ]
 }
 ```
 
+There are some more properties that you can adjust in the debug configuration. See the table below:
 
-Below is some more information on some common properties you can tweak in the debug configuration:
+Property   | Description
+--------   | -----------
+name       | The name for your configuration as it appears in the drop-down in the Debug view.
+type       | Always leave this set to `"go"`. VS Code uses this setting to determine which extension should be used for debugging your code.
+request    | One of `launch` or `attach`. Use `attach` when you want to attach to an already running process.
+mode       | For `launch` requests, one of `auto`, `debug`, `remote`, `test`, or `exec`. For `attach` requests, use `local` or `remote`.
+program    | In `test` or `debug` mode, this refers to the absolute path to the package or file to debug. In `exec` mode, this is the already built binary file to debug. Not applicable to `attach` requests.
+env        | Environment variables to use when debugging. Use the format: `{ "ENVNAME": "ENVVALUE" }`.
+envFile    | Absolute path to a file containing environment variable definitions. The environment variables passed in via the `env` property override the ones in this file.
+args       | Array of command-line arguments that will be passed in to the program being debugged.
+showLog    | If `true`, Delve logs will be printed in the Debug Console panel.
+logOutput  | Comma-separated list of Delve components (`debugger`, `gdbwire`, `lldbout`, `debuglineerr`, `rpc`) that should produce debug output when `showLog` is `true`.
+buildFlags | Build flags to be passed to the Go compiler.
+remotePath | If remote debugging (`mode`: `remote`), this should be the absolute path to the file being debugged on the remote machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
+processId  | This is the process ID of the executable you want to debug.Applicable only when using the `attach` request in `local` mode.
 
-Property | Description
-------- | ------
-name | Name for your configuration that appears in the drop down in the Debug viewlet
-type | Always set to "go". This is used by VS Code to figure out which extension should be used for debugging your code
-request | Either of `launch` or `attach`. Use `attach` when you want to attach to an already running process.
-mode | For launch requests, either of `auto`, `debug`, `remote`, `test`, `exec`. For attach requests, use either `local` or `remote`
-program | Absolute path to the package or file to debug when in `debug` & `test` mode, or to the pre-built binary file to debug in `exec` mode. Not applicable to attach requests.
-env | Environment variables to use when debugging. Example: `{ "ENVNAME": "ENVVALUE" }`
-envFile | Absolute path to a file containing environment variable definitions. The environment variables passed in the `env` property overrides the ones in this file.
-args | Array of command line arguments that will be passed to the program being debugged. 
-showLog | Boolean indicating if logs from delve should be printed in the debug console
-logOutput | Comma separated list of delve components (`debugger`, `gdbwire`, `lldbout`, `debuglineerr`, `rpc`) that should produce debug output when `showLog` is set to `true`.
-buildFlags | Build flags to be passed to the Go compiler
-remotePath | Absolute path to the file being debugged on the remote machine in case of remote debugging i.e when `mode` is set to `remote`. See the section on [Remote Debugging](#remote-debugging) for details
-processId | Applicable only when using the `attach` request with `local` mode. This is the id of the process that is running your executable which needs debugging.
+### Specifying [build tags](https://golang.org/pkg/go/build/#hdr-Build_Constraints)
 
+If your program contains [build tags](https://golang.org/pkg/go/build/#hdr-Build_Constraints), you can use the `buildFlags` property. For example, if you build your code with:
 
-### Using VS Code variables in debug configuration
+```bash
+go build -tags=whatever
+```
 
-Any property in the debug configuration that takes a folder/file path can use the below VS Code variables
+Then, set:
 
-* `${workspaceFolder}` to debug package at the root of the workspace that is opened in VS Code 
-* `${file}` to debug the current file.
-* `${fileDirname}` to debug the package to which the current file belongs to.
+```json5
+"buildFlags": "-tags=whatever"
+```
 
-### Using build tags
+in your launch configuration. This property supports multiple tags, which you can set by using single quotes. For example:
 
-If your build needs build tags (e.g. `go build -tags=whatever_tag`), then add the parameter `buildFlags` with the content `"-tags=whatever_tag"`.  Multiple tags are supported, by *enclosing them in single quotes within the double quotes* like so: `"-tags='first_tag second_tag third_tag'"`.
+```json5
+"buildFlags": "-tags='first,second,third'"
+```
 
+<!--TODO(rstambler): Confirm that the extension works with a comma (not space) separated list.-->
 
+### Using [VS Code variables]
 
+Any property in the launch configuration that requires a file path can be specified in terms of [VS Code variables]. Here are some useful ones to know:
 
-## Snippets for Debug Configurations
+* `${workspaceFolder}` refers to the root of the workspace opened in VS Code.
+* `${file}` refers to the currently opened file.
+* `${fileDirname}` refers to the directory containing the currently opened file. This is typically also the name of the Go package containing this file, and as such, can be used to debug the currently opened package.
 
-You can make use of snippets for the debug configuration while editing the launch.json file. 
-Type "Go" and you will get snippets for debugging current file/package, a test function etc.
+### Snippets
 
-### Sample configuration to debug the current file
+In addition to [VS Code variables], you can make use of [snippets] when editing the launch configuration in `launch.json`.
 
-```json
+When you type `go` in the `launch.json` file, you will see snippet suggestions for debugging a given test function or the current file or package.
+
+Below are the available sample configurations:
+
+#### Debug the current file (`Go: Launch file`)
+
+Recall that `${file}` refers to the currently opened file (see [Using VS Code Variables](#using-vs-code-variables)).
+
+```json5
 {
-	"name": "Launch file",
-	"type": "go",
-	"request": "launch",
-	"mode": "auto",
-	"program": "${file}"
+    "name": "Launch file",
+    "type": "go",
+    "request": "launch",
+    "mode": "auto",
+    "program": "${file}"
 }
 ```
 
-### Sample configuration to debug a single test
+#### Debug a single test function (`Go: Launch test function`)
 
-```json
+Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS Code Variables](#using-vs-code-variables)). You will need to manually specify the function name instead of `"MyTestFunction"`.
+
+```json5
 {
-	"name": "Launch test function",
-	"type": "go",
-	"request": "launch",
-	"mode": "test",
-	"program": "${workspaceFolder}",
-	"args": [
-		"-test.run",
-		"MyTestFunction"
-	]
+    "name": "Launch test function",
+    "type": "go",
+    "request": "launch",
+    "mode": "test",
+    "program": "${workspaceFolder}",
+    "args": [
+        "-test.run",
+        "MyTestFunction"
+    ]
 }
 ```
 
-### Sample configuration to debug all tests in the package
+#### Debug all tests in the given package (`Go: Launch test package`)
 
-```json
+Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS Code Variables](#using-vs-code-variables)).
+
+```json5
 {
-	"name": "Launch test package",
-	"type": "go",
-	"request": "launch",
-	"mode": "test",
-	"program": "${workspaceFolder}"
+    "name": "Launch test package",
+    "type": "go",
+    "request": "launch",
+    "mode": "test",
+    "program": "${workspaceFolder}"
 }
 ```
 
-### Sample configuration to debug a pre-built binary
+#### Attach to a running local process via its process ID (`Go: Attach to local process`)
 
-```json
+Substitute the `0` below for the process ID (pid) of the process.
+
+```json5
 {
-	"name": "Launch executable",
-	"type": "go",
-	"request": "launch",
-	"mode": "exec",
-	"program": "absolute-path-to-the-executable"
+    "name": "Attach to local process",
+    "type": "go",
+    "request": "attach",
+    "mode": "local",
+    "processId": 0
 }
 ```
 
-### Sample configuration to attach to an already running local process using processId
-Enter the id of the process running your executable in the below snippet
+#### Attach to a running server (`Go: Connect to Server`)
 
-```json
+```json5
 {
-	"name": "Attach to local process",
-	"type": "go",
-	"request": "attach",
-	"mode": "local",
-	"processId": 0
+    "name": "Connect to server",
+    "type": "go",
+    "request": "attach",
+    "mode": "remote",
+    "remotePath": "${workspaceFolder}",
+    "port": 2345,
+    "host": "127.0.0.1"
 }
 ```
 
-## Debugging in WSL
+#### Debug an existing binary
 
-If using WSL on Windows, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements. 
+There is no snippet suggestion for this configuration.
+
+```json
+{
+    "name": "Launch executable",
+    "type": "go",
+    "request": "launch",
+    "mode": "exec",
+    "program": "/absolute/path/to/executable"
+}
+```
+
+## Debugging on [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/)
+
+If you are using using WSL, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements.
 
 ## Remote Debugging
 
-To remote debug using VS Code, you must first run a headless Delve server on the target machine. The below examples assume
-that you are in the same folder as the package you want to debug. If not, please refer to the [usage doc on dlv debug](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_debug.md) command. 
+<!--TODO(quoctruong): We use "remote" and "target", as well as "local" here. We should define these terms more clearly and be consistent about which we use.-->
+
+To debug on a remote machine, you must first run a headless Delve server on the target machine. The examples below assume that you are in the same folder as the package you want to debug. If not, please refer to the [`dlv debug` documentation](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_debug.md).
+
+To start the headless Delve server:
 
 ```bash
-$ dlv debug --headless --listen=:2345 --log --api-version=2
+dlv debug --headless --listen=:2345 --log --api-version=2
 ```
 
-Any arguments that you want to pass to the program you are debugging must be passed to this Delve server that runs on the target machine. For example:
+Any arguments that you want to pass to the program you are debugging must also be passed to this Delve server. For example:
 
 ```bash
-$ dlv debug --headless --listen=:2345 --log -- -myArg=123
+dlv debug --headless --listen=:2345 --log -- -myArg=123
 ```
 
-Then, create a remote debug configuration in VS Code `launch.json`.
+Then, create a remote debug configuration in your `launch.json`.
 
-```json
+```json5
 {
-	"name": "Launch remote",
-	"type": "go",
-	"request": "launch",
-	"mode": "remote",
-	"remotePath": "absolute-path-to-the-file-being-debugged-on-the-remote-machine",
-	"port": 2345,
-	"host": "127.0.0.1",
-	"program": "absolute-path-to-the-file-on-the-local-machine",
-	"env": {}
+    "name": "Launch remote",
+    "type": "go",
+    "request": "launch",
+    "mode": "remote",
+    "remotePath": "/absolute/path/file/on/remote/machine",
+    "port": 2345,
+    "host": "127.0.0.1",
+    "program": "/absolute/path/file/on/local/machine",
+    "env": {}
 }
 ```
 
-- The above example runs both the headless `dlv` server and the VS Code debugger locally on the same machine. Update `port` and `host` as per your set up on the remote machine instead.
-- `remotePath` should point to the absolute path of the file (in your source code) being debugged in the remote machine
-- `program` should point to the absolute path of the file on your local machine that is the counterpart of the file in `remotePath`
+In the example, the VS Code debugger will run on the same machine as the headless `dlv` server. Make sure to update the `port` and `host` settings to point to your remote machine.
 
-When you launch the debugger with this new `Launch remote` target selected, VS Code will send debugging
-commands to the `dlv` server you started previously instead of launching it's own `dlv` instance against your app.
+`remotePath` should point to the absolute path of the file being debugged in the remote machine. See [golang/vscode-go#126](https://github.com/golang/vscode-go/issues/126) for updates regarding `remotePath`.
 
-See the example of debugging a process running in a docker host at https://github.com/lukehoban/webapp-go/tree/debugging.
+`program` should point to the absolute path of the file on your local machine. This should be the counterpart of the file in `remotePath`.
 
+When you run the `Launch remote` target, VS Code will send debugging commands to the `dlv` server you started, instead of launching it's own `dlv` instance against your app.
+
+For further examples, see [this launch configuration for a process running in a Docker host](https://github.com/lukehoban/webapp-go/tree/debugging).
 
 ## Troubleshooting
 
-If you have issues debugging your Go code, first try to update your version of delve to ensure that you are working with the latest delve and it has been compiled using your current Go version. To do this, run the command `Go: Install/Update Tools`, select `dlv`, press `Ok`.
+Debugging is one of the most complex features offered by this extension. The features are not complete, and a new implementation is currently being developed (see [golang/vscode-go#23](https://github.com/golang/vscode-go/issues/23)).
 
-### Enabling debug logs
+The suggestions below are intended to help you troubleshoot any problems you encounter. If you are unable to resolve the issue, please take a look at the [current known debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3Adebug) or [file a new issue](https://github.com/golang/vscode-go/issues/new/choose).
 
-- Set `showLog` attribute in your debug configuration to `true`. You will see logs in the debug console from delve.
+### Update Delve
 
-- Set `trace` attribute in your debug configuration to `log`. You will see logs in the debug console from the Go extension's debug adapter. These logs will be saved to a file whose path will be printed at the beginning in the debug console.
+A good first step is to make sure that you are working with the latest version of Delve. You can do this by running the `Go: Install/Update Tools` command and selecting `dlv`.
 
-- Set `logOutput` attribute in your debug configuration to `rpc`. You will see logs corresponding to the RPC messages going back and forth between VS Code and delve. Note that this first requires to set `showLog` to `true`. 
-   - The `logOutput` attribute corresponds to the `--log-output` flag used by delve and can be a comma separated list of components that should produce debug output. 
+### Read the Delve documentation
 
-### Debug the debugger using source code
+Take a quick glance at the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
 
-If you want to dig deeper and debug the debugger using source code of this extension, see [building-and-debugging-the-extension](contributing.md#building-and-debugging-the-extension)
+### Enable logging
+
+Next, check the logs produced by Delve. These will need to be manually enabled. Follow these steps:
+
+* Set `"showLog": true` in your launch configuration. This will show Delve logs in the Debug Console pane (Ctrl+Shift+Y).
+* Set `"trace": "log"` in your launch configuration. Again, you will see logs in the Debug Console pane (Ctrl+Shift+Y). These logs will also be saved to a file and the path to this file will be printed at the top of the Debug Console.
+* Set `"logOutput": "rpc"` in your launch configuration. You will see logs of the RPC messages going between VS Code and Delve. Note that for this to work, you must also have set `"showLog": true`.
+  * The `logOutput` attribute corresponds to the `--log-output` flag used by Delve. It is a comma-separated list of components that should produce debug output.
+
+See [common issues](#common-issues) below to decipher error messages you may find in your logs.
+
+With `"trace": "log"`, you will see the actual call being made to `dlv`. To aid in your investigation, you can copy that and run it in your terminal.
+
+### **Optional**: Debug the debugger
+
+This is not a required step, but if you want to continue digging deeper, you can, in fact, debug the debugger. The code for the debugger can be found in the [debug adapter module](../src/debugAdapter). See our [Contribution Guide](contributing.md) to learn how to [run](contributing.md#run) and [sideload](contributing.md#sideload) the Go extension.
+
+### Ask for help
+
+At this point, it's time to look at the [common issues](#common-issues) below or the [existing debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3Adebug) on the [issue tracker](https://github.com/golang/vscode-go/issues). If that still doesn't solve your problem, [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) or ask a question on the `#vscode` channel of the [Gophers Slack](https://gophers.slack.com).
 
 ### Common issues
 
-#### Unverified breakpoint or variables not loading when debugging a binary
+#### Unverified breakpoint or variables
 
-Ensure that the binary being debugged was built with no optimizations. Use the flags `-gcflags="all=-N -l"` when building the binary.
+Ensure that the binary being debugged was built **without optimizations**. Build the binary with the flags `-gcflags="all=-N -l"`.
 
-#### Cannot find package ".." in any of ... 
+#### Cannot find package ".." in any of ...
 
-The debugger is not using the right GOPATH. This shouldn't happen, if it does, log a bug. 
+The debugger is not using the right [`GOPATH`](gopath.md). [File an issue report](https://github.com/golang/vscode-go/issues/new/choose).
 
-**_Solution_**: Until the bug you logged is resolved, the work around is to add the GOPATH as an env var in the `env` property in the `launch.json` file.
+**As a work-around**, add the correct `GOPATH` as an environment variable in the `env` property in the `launch.json` file.
 
 #### Failed to continue: "Error: spawn EACCES"
 
-You have `dlv` running just fine from command line, but VS Code gives this access related error. 
-This can happen if the extension is trying to run the `dlv` binary from a wrong location.
-The Go extension first tries to find `dlv` in your $GOPATH/bin and then in your $PATH.  
+You have `dlv` running just fine from command line, but VS Code gives this access-related error.
 
-**_Solution_**: Run `which dlv` in the command line. If this doesn't match your `GOPATH/bin`, then delete the `dlv` file in 
-your `GOPATH/bin`
+This can happen if you have multiple versions of `dlv` installed; the extension may have found an old or incorrect version. The extension first searches for binaries in your `$GOPATH/bin` and then looks on your `$PATH`.
+
+**_Solution_**: Run `which dlv` in the command-line. If this does not resolve to the version of `dlv` in your `$GOPATH/bin`, simply delete the version of `dlv` in your `$GOPATH/bin`. (You can also copy this version of `dlv` to your `$GOPATH/bin`.)
 
 #### could not launch process: stat ***/debug.test: no such file or directory
 
-You may see this in the debug console, while trying to run in the `test` mode. This happens when the `program` attribute points to a folder with no test files.
+You may see this in the debug console while trying to run in the `test` mode. This happens when the `program` attribute points to a folder with no test files.
 
 **_Solution_**: Ensure that the `program` attribute points to the folder that contains the test files you want to run.
 
-#### delve/launch hangs with no messages when using WSL
-Try running ```delve debug ./main``` at the WSL command line and see if you get a prompt
+#### delve/launch hangs with no messages on WSL
 
-**_Solution_**: Ensure you are running the WSL 2 Kernel, which (as of 4/15/2020) requires an early release of the Windows 10 OS.  This is available to anyone via the Windows Insider program.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install)
+Try running ```delve debug ./main``` in the WSL command line and see if you get a prompt.
+
+**_Solution_**: Ensure you are running the WSL 2 Kernel, which (as of 4/15/2020) requires an early release of the Windows 10 OS. This is available to anyone via the Windows Insider program. See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install)
 
 #### could not launch process: could not fork/exec
 
-##### OSX 
+The solution this issue differs based on your OS.
 
-This usually happens in OSX due to signing issues. See the discussions in please see [#717](https://github.com/Microsoft/vscode-go/issues/717), [#269](https://github.com/Microsoft/vscode-go/issues/269) and [derekparker/delve/357](https://github.com/derekparker/delve/issues/357)
+##### OSX
 
-**_Solution_**: You may have to uninstall dlv and install it manually as per [instructions](https://github.com/derekparker/delve/blob/master/Documentation/installation/osx/install.md#manual-install)
+This usually happens on OSX due to signing issues. See the discussions in [Microsoft/vscode-go#717](https://github.com/Microsoft/vscode-go/issues/717), [Microsoft/vscode-go#269](https://github.com/Microsoft/vscode-go/issues/269) and [derekparker/delve#357](https://github.com/derekparker/delve/issues/357).
 
-##### Linux/Docker 
+**_Solution_**: You may have to uninstall dlv and install it manually as described in the [Delve instructions](https://github.com/derekparker/delve/blob/master/Documentation/installation/osx/install.md#manual-install).
 
-Docker has security settings preventing ptrace(2) operations by default within the container.
+##### Linux/Docker
 
-**_Solution_**: To run your container insecurely, pass `--security-opt=seccomp:unconfined` to docker run when starting. Reference: [derekparker/delve/515](https://github.com/derekparker/delve/issues/515)
+Docker has security settings preventing `ptrace(2)` operations by default within the container.
+
+**_Solution_**: To run your container insecurely, pass `--security-opt=seccomp:unconfined` to `docker run`. See [derekparker/delve#515](https://github.com/derekparker/delve/issues/515) for references.
 
 #### could not launch process: exec: "lldb-server": executable file not found in $PATH
 
-This error can show up for Mac users using delve of version 0.12.2 or above. Not sure why, but doing a `xcode-select --install` has solved the problem for users who have seen this issue.
+This error can show up for Mac users using Delve versions 0.12.2 and above. `xcode-select --install` has solved the problem for a number of users.
 
 #### Unverified breakpoints when remote debugging
 
-Check the version of delve api being used in the remote delve process i.e check the value for the flag `–api-version`. This needs to match the version used by the Go extension which uses version 2 by default. You can change the api version being used by the extension by editing the debug configuration in the launch.json file.
-
-#### Try using dlv from the terminal/command-line
-
-Add `"trace": "log"` to your debug configuration and debug in VS Code. This will send logs to the debug console where you can see the actual call being made to dlv. You can copy that and run it in your terminal
+Check the version of the Delve API used in the remote Delve process by checking the value of the `–api-version` flag. This needs to match the version used by the Go extension (`2`, by default). You can change the API version by editing the configuration in the `launch.json file.
 
 [Delve]: https://github.com/go-delve/delve
+[VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
+[snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets

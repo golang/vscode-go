@@ -4,9 +4,9 @@ This document describes the features supported by this extension.
 
 If you are using the Go language server, `gopls`, please the [gopls documentation](gopls.md) instead. (You can check if you are using `gopls` by opening your VS Code settings and checking if `go.useLanguageServer` is set to `true`.)
 
-If you are using Go modules without the language server, some of the below features will not be available.
+If you are using Go modules *without* the language server, some of the features listed below will not be available.
 
-Please see the [Tools](tools.md) documentation for details on how to troubleshoot and adjust your settings.
+Please see the [Tools documentation](tools.md) for details on how to troubleshoot and adjust your settings.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ Please see the [Tools](tools.md) documentation for details on how to troubleshoo
     * [Add import](#add-import)
   * [Rename symbol](#rename-symbol)
 * [Code Generation](#code-generation)
-  * [Add struct tags](#add-struct-tags)
+  * [Add or remove struct tags](#add-or-remove-struct-tags)
   * [Generate interface implementation](#generate-interface-implementation)
   * [Generate unit tests](#generate-unit-tests)
   * [Fill struct literals](#fill-struct-literals)
@@ -114,7 +114,7 @@ The behavior of the formatter can be configured via the [`"go.formatTool"`](#com
 
 #### Add import
 
-Manually add a new import to your file through the `Go: Add Import` command.
+Manually add a new import to your file through the `Go: Add Import` command. Available packages are offered from your `GOPATH` and module cache.
 
 ### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
 
@@ -126,7 +126,7 @@ This feature is not available if you are using Go modules without `gopls`, the G
 
 ## Code Generation
 
-### Add struct tags
+### Add or remove struct tags
 
 Use the `Go: Add Tags to Struct Fields` command to automatically generate or remove [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
 
