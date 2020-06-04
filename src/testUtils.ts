@@ -12,7 +12,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import { envPath, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -20,7 +20,7 @@ import {
 	getTempFilePath,
 	killTree,
 	LineBuffer,
-	resolvePath
+	resolvePath,
 } from './util';
 
 const outputChannel = vscode.window.createOutputChannel('Go Tests');
@@ -262,7 +262,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 
 		if (!goRuntimePath) {
 			vscode.window.showErrorMessage(
-				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 			);
 			return Promise.resolve();
 		}

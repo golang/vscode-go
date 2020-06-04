@@ -19,8 +19,9 @@ import {
 	envPath,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopath,
+	getCurrentGoRoot,
 	getInferredGopath,
-	resolveHomeDir
+	resolveHomeDir,
 } from './goPath';
 import { outputChannel } from './goStatus';
 import { extensionId } from './telemetry';
@@ -307,7 +308,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 	};
 
 	if (!goRuntimePath) {
-		warn(`unable to locate "go" binary in GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
+		warn(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
 		return;
 	}
 	if (cachedGoVersion) {
@@ -438,7 +439,7 @@ export function getBinPath(tool: string): string {
 	return getBinPathWithPreferredGopath(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
-		resolvePath(alternateToolPath)
+		resolvePath(alternateToolPath),
 	);
 }
 

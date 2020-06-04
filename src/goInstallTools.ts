@@ -14,7 +14,7 @@ import vscode = require('vscode');
 import { toolInstallationEnvironment } from './goEnv';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
-import { envPath, getToolFromToolPath } from './goPath';
+import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
 	containsTool,
@@ -33,8 +33,7 @@ import {
 	getGoVersion,
 	getTempFilePath,
 	GoVersion,
-	resolvePath,
-	rmdirRecursive
+	rmdirRecursive,
 } from './util';
 
 // declinedUpdates tracks the tools that the user has declined to update.
@@ -336,12 +335,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	const goroot = getGoConfig()['goroot'];
-	if (goroot) {
-		process.env['GOROOT'] = resolvePath(goroot);
-	}
-
-	if (process.env['GOPATH'] && process.env['GOROOT'] && process.env['GOPROXY'] && process.env['GOBIN']) {
+	if (getCurrentGoRoot() && process.env['GOPATH'] && process.env['GOPROXY'] && process.env['GOBIN']) {
 		return Promise.resolve();
 	}
 
@@ -349,7 +343,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go env" to find GOPATH as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go env" to find GOPATH as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 		return;
 	}
@@ -381,8 +375,8 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			if (!process.env['GOPATH'] && envOutput[0].trim()) {
 				process.env['GOPATH'] = envOutput[0].trim();
 			}
-			if (!process.env['GOROOT'] && envOutput[1] && envOutput[1].trim()) {
-				process.env['GOROOT'] = envOutput[1].trim();
+			if (!getCurrentGoRoot() && envOutput[1] && envOutput[1].trim()) {
+				setCurrentGoRoot(envOutput[1].trim());
 			}
 			if (!process.env['GOPROXY'] && envOutput[2] && envOutput[2].trim()) {
 				process.env['GOPROXY'] = envOutput[2].trim();

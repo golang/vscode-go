@@ -34,7 +34,7 @@ import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
-import { clearCacheForTools, fileExists } from './goPath';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './goPath';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
@@ -48,8 +48,16 @@ import {
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
-	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
-	getGoVersion, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
+	cleanupTempDir,
+	getBinPath,
+	getCurrentGoPath,
+	getExtensionCommands,
+	getGoConfig,
+	getGoVersion,
+	getToolsGopath,
+	getWorkspaceFolderPath,
+	handleDiagnosticErrors,
+	isGoPathSet,
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
@@ -64,6 +72,10 @@ export let restartLanguageServer = () => { return; };
 export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
+	const configGOROOT = getGoConfig()['goroot'];
+	if (!!configGOROOT) {
+		setCurrentGoRoot(configGOROOT);
+	}
 
 	updateGoVarsFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
@@ -77,7 +89,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			toolsGoInfo[toolsGopath] = { goroot: null, version: null };
 		}
 		const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-		const currentGoroot: string = process.env['GOROOT'] && process.env['GOROOT'].toLowerCase();
+		const currentGoroot: string = getCurrentGoRoot().toLowerCase();
 		if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
 			vscode.window
 				.showInformationMessage(
@@ -99,7 +111,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 					if (prevVersion) {
 						vscode.window
 							.showInformationMessage(
-								'Your Go version is different than before, few Go tools may need re-compiling',
+								'Your Go version is different than before, a few Go tools may need re-compiling',
 								updateToolsCmdText
 							)
 							.then((selected) => {
@@ -212,7 +224,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
 			outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
 			outputChannel.appendLine('gopath: ' + getCurrentGoPath());
-			outputChannel.appendLine('GOROOT: ' + process.env['GOROOT']);
+			outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
 			outputChannel.appendLine('PATH: ' + process.env['PATH']);
 			outputChannel.appendLine('');
 

@@ -31,7 +31,11 @@ export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appe
 	return null;
 }
 
-export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths: string[], alternateTool?: string) {
+export function getBinPathWithPreferredGopath(
+	toolName: string,
+	preferredGopaths: string[],
+	alternateTool?: string
+) {
 	if (binPathCache[toolName]) {
 		return binPathCache[toolName];
 	}
@@ -60,7 +64,7 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 	}
 
 	// Check GOROOT (go, gofmt, godoc would be found here)
-	const pathFromGoRoot = getBinPathFromEnvVar(binname, process.env['GOROOT'], true);
+	const pathFromGoRoot = getBinPathFromEnvVar(binname, getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
 		return pathFromGoRoot;
@@ -85,6 +89,18 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 
 	// Else return the binary name directly (this will likely always fail downstream)
 	return toolName;
+}
+
+/**
+ * Returns the goroot path if it exists, otherwise returns an empty string
+ */
+let currentGoRoot = '';
+export function getCurrentGoRoot(): string {
+	return currentGoRoot || process.env['GOROOT'] || '';
+}
+
+export function setCurrentGoRoot(goroot: string) {
+	currentGoRoot = goroot;
 }
 
 function correctBinname(toolName: string) {
