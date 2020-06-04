@@ -387,6 +387,7 @@ export class Delve {
 			};
 
 			if (mode === 'remote') {
+				log(`Start remote debugging: connecting ${launchArgs.host}:${launchArgs.port}`);
 				this.debugProcess = null;
 				this.isRemoteDebugging = true;
 				serverRunning = true; // assume server is running when in remote mode
@@ -445,6 +446,7 @@ export class Delve {
 				}
 				this.dlvEnv = env;
 				log(`Using GOPATH: ${env['GOPATH']}`);
+				log(`Using GOROOT: ${env['GOROOT']}`);
 
 				if (!!launchArgs.noDebug) {
 					if (mode === 'debug') {
@@ -463,7 +465,11 @@ export class Delve {
 							runArgs.push(...launchArgs.args);
 						}
 
-						this.debugProcess = spawn(getBinPathWithPreferredGopath('go', []), runArgs, runOptions);
+						const goExe = getBinPathWithPreferredGopath('go', []);
+						log(`Current working directory: ${dirname}`);
+						log(`Running: ${goExe} ${runArgs.join(' ')}`);
+
+						this.debugProcess = spawn(goExe, runArgs, runOptions);
 						this.debugProcess.stderr.on('data', (chunk) => {
 							const str = chunk.toString();
 							if (this.onstderr) {
