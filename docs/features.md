@@ -35,10 +35,11 @@ Please see the [Tools documentation](tools.md) for details on how to troubleshoo
   * [Build errors](#build-errors)
   * [Vet errors](#vet-errors)
   * [Lint errors](#lint-errors)
-* [Testing](#testing)
-  * [Test and benchmark in the editor](#test-and-benchmark-in-the-editor)
+* [Run and test in the editor](#run-and-test-in-the-editor)
+  * [Run your code](#run-your-code)
+  * [Test and benchmark](#test-and-benchmark)
   * [Code coverage](#code-coverage)
-* [Debugging](#debugging)
+* [Debug your code](#debug-your-code)
 * [Other](#other)
   * [Go Playground](#go-playground)
 
@@ -54,17 +55,17 @@ Autocompletion is also supported for packages you have not imported into your pr
 
 ### Signature help
 
-Information about the signature of a function pops up as you type in its parameters. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
+Information about the signature of a function pops up as you type in its parameters. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](settings.md#docsTool) setting).
 
 ### Quick info on hover
 
-Documentation appears when you hover over a symbol. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
+Documentation appears when you hover over a symbol. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](settings.md#docsTool) setting).
 
 ## [Code Navigation](https://code.visualstudio.com/docs/editor/editingevolved)
 
 ### Go to definition
 
-Jump to or peek a symbol's declaration. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](commands.md#docs-tool) setting).
+Jump to or peek a symbol's declaration. This feature is provided by the [`gogetdoc`](tools.md#gogetdoc) tool, but it can also be provided by a combination of [`godef`](tools.md#godef) and [`godoc`](tools.md#godoc) (configured via the [`"go.docsTool"`](settings.md#docsTool) setting).
 
 ### Find references
 
@@ -112,6 +113,8 @@ The behavior of the formatter can be configured via the [`"go.formatTool"`](#com
 }
 ```
 
+If you're having issues with the formatting provided by this extension, take a look at the [Troubleshooting Formatting](troubleshooting.md#investigating-formatting) documentation.
+
 #### Add import
 
 Manually add a new import to your file through the `Go: Add Import` command. Available packages are offered from your `GOPATH` and module cache.
@@ -144,27 +147,37 @@ Use the `Go: Fill struct` command to automatically fill a struct literal with it
 
 ## Diagnostics
 
+Learn more about [diagnostic errors](tools.md#diagnostics).
+
 ### Build errors
 
-Build errors can be shown as you type or on save. Configure this behavior through the [`"go.buildOnSave"`](commands.md#buildOnSave) setting.
+Build errors can be shown as you type or on save. Configure this behavior through the [`"go.buildOnSave"`](settings.md#buildOnSave) setting.
 
 By default, code is compiled using the `go` command (`go build`), but build errors as you type are provided by the [`gotype-live`](tools.md#gotype-live) tool.
 
 ### Vet errors
 
-Vet errors can be shown on save. The vet-on-save behavior can also be configured through the [`"go.vetOnSave"`](commands.md#vetOnSave) setting.
+Vet errors can be shown on save. The vet-on-save behavior can also be configured through the [`"go.vetOnSave"`](settings.md#vetOnSave) setting.
 
 The vet tool used is the one provided by the `go` command: `go vet`.
 
 ### Lint errors
 
-Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](commands.md#lintOnSave) setting.
+Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](settings.md#lintOnSave) setting.
 
-The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](commands.md#lintTool) setting. To learn more about the different options, see the [documentation for diagnostic tools](tools.md#diagnostics).
+The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](settings.md#lintTool) setting. To learn more about the different options, see the [documentation for diagnostic tools](tools.md#diagnostics).
 
-## Testing
+## Run and test in the editor
 
-### Test and benchmark in the editor
+### Run your code
+
+To run your code without debugging, use the keyboard shortcut `Ctrl+F5` or run the command `Debug: Start without Debugging`. To debug, see [Debugging](#debugging) below.
+
+This command requires you to have a [launch configuration](#launch-configuration) in a `launch.json` file. To open or create your `launch.json`, run the `Debug: Open launch.json` command. Use the default `Go: Launch file` configuration.
+
+Behind the scenes, the `Debug: Start without Debugging` command calls `go run`. `go run` usually requires the path to the file to run, so your `launch.json` should contain `"program": "${file}"`.
+
+### Test and benchmark
 
 [Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests and benchmarks for a given function, file, package, or workspace. Alternatively, the same functionality is available through a set of commands: `Go: Test Function At Cursor`, `Go: Test File`, `Go: Test Package`, and `Go: Test All Packages in Workspace`.
 
@@ -180,4 +193,4 @@ This extension offers debugging of Go programs. See the [debugging documentation
 
 ### Go Playground
 
-Quickly export your current file to the [Go Playground](https://play.golang.org) via the `Go: Run On Go Playground` command. This is useful for quickly exporting code for an example.
+Export your current file to the [Go Playground](https://play.golang.org) via the `Go: Run On Go Playground` command. This is useful for quickly exporting code for an example.

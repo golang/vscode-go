@@ -15,7 +15,15 @@ The Go debugger is [Delve]. The [Delve] repository has detailed instructions, so
 * [Debugging on Windows Subsystem for Linux (WSL)](#debugging-on-windows-subsystem-for-linux-wsl)
 * [Remote Debugging](#remote-debugging)
 * [Troubleshooting](#troubleshooting)
-  * [Common issues](#common-issues)
+  * [Read documentation and common issues](#read-documentation-and-common-issues)
+  * [Update Delve](#update-delve)
+  * [Check for multiple versions of Delve](#check-for-multiple-versions-of-delve)
+  * [Check your launch configuration](#check-your-launch-configuration)
+  * [Check your GOPATH](#check-your-gopath)
+  * [Enable logging](#enable-logging)
+  * [Optional: Debug the debugger](#optional-debug-the-debugger)
+  * [Ask for help](#ask-for-help)
+* [Common issues](#common-issues)
 
 ## Set up
 
@@ -269,13 +277,41 @@ Debugging is one of the most complex features offered by this extension. The fea
 
 The suggestions below are intended to help you troubleshoot any problems you encounter. If you are unable to resolve the issue, please take a look at the [current known debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3Adebug) or [file a new issue](https://github.com/golang/vscode-go/issues/new/choose).
 
+### Read documentation and [common issues](#common-issues)
+
+Start by taking a quick glance at the [common issues](#common-issues) described below. You can also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+
 ### Update Delve
 
-A good first step is to make sure that you are working with the latest version of Delve. You can do this by running the `Go: Install/Update Tools` command and selecting `dlv`.
+If the problem persists, it's time to start troubleshooting. A good first step is to make sure that you are working with the latest version of Delve. You can do this by running the `Go: Install/Update Tools` command and selecting `dlv`.
 
-### Read the Delve documentation
+### Check your [launch configuration](#launch-configurations)
 
-Take a quick glance at the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+Next, confirm that your [launch configuration](#launch-configurations) is correct.
+
+One common error is `could not launch process: stat ***/debug.test: no such file or directory`. You may see this while running in the `test` mode. This happens when the `program` attribute points to a folder with no test files, so ensure that the `program` attribute points to a directory containing the test files you wish to debug.
+
+Also, check the version of the Delve API used in your [launch configuration](#launch-configurations). This is handled by the `–api-version` flag, `2` is the default. If you are debugging on a remote machine, this is particularly important, as the versions on the local and remote machines much match. You can change the API version by editing the [configuration in the `launch.json` file](#launch-configurations).
+
+### Check for multiple versions of Delve
+
+You might have multiple different versions of `dlv` installed, and VS Code Go could be using a wrong or old version. Run the `Go: Locate Configured Go Tools` command and see where VS Code Go has found `dlv` on your machine. You can try running `which dlv` to see which version of `dlv` you are using on the [command-line](https://github.com/go-delve/delve/tree/master/Documentation/cli).
+
+To fix the issue, simply delete the version of `dlv` used by the Go extension. Note that the extension first searches for binaries in your `$GOPATH/bin` and then looks on your `$PATH`.
+
+<!--TODO(rstambler): It feels like we should just prefer whatever is on the PATH and fallback to GOPATH if it's not found?-->
+
+If you see the error message `Failed to continue: "Error: spawn EACCES"`, the issue is probably multiple versions of `dlv`.
+
+### Try building your binary **without** compiler optimizations
+
+If you notice `Unverified breakpoints` or missing variables, ensure that your binary was built **without** compiler optimizations. Try building the binary with the `-gcflags="all=-N -l"`.
+
+### Check your `GOPATH`
+
+Make sure that the debugger is using the right [`GOPATH`](gopath.md). This is probably the issue if you see `Cannot find package ".." in any of ... errors. Read more about configuring your [GOPATH](gopath.md) or [file an issue report](https://github.com/golang/vscode-go/issues/new/choose).
+
+**As a work-around**, add the correct `GOPATH` as an environment variable in the `env` property in the `launch.json` file.
 
 ### Enable logging
 
@@ -298,49 +334,25 @@ This is not a required step, but if you want to continue digging deeper, you can
 
 At this point, it's time to look at the [common issues](#common-issues) below or the [existing debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3Adebug) on the [issue tracker](https://github.com/golang/vscode-go/issues). If that still doesn't solve your problem, [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) or ask a question on the `#vscode` channel of the [Gophers Slack](https://gophers.slack.com).
 
-### Common issues
+## Common Issues
 
-#### Unverified breakpoint or variables
-
-Ensure that the binary being debugged was built **without optimizations**. Build the binary with the flags `-gcflags="all=-N -l"`.
-
-#### Cannot find package ".." in any of ...
-
-The debugger is not using the right [`GOPATH`](gopath.md). [File an issue report](https://github.com/golang/vscode-go/issues/new/choose).
-
-**As a work-around**, add the correct `GOPATH` as an environment variable in the `env` property in the `launch.json` file.
-
-#### Failed to continue: "Error: spawn EACCES"
-
-You have `dlv` running just fine from command line, but VS Code gives this access-related error.
-
-This can happen if you have multiple versions of `dlv` installed; the extension may have found an old or incorrect version. The extension first searches for binaries in your `$GOPATH/bin` and then looks on your `$PATH`.
-
-**_Solution_**: Run `which dlv` in the command-line. If this does not resolve to the version of `dlv` in your `$GOPATH/bin`, simply delete the version of `dlv` in your `$GOPATH/bin`. (You can also copy this version of `dlv` to your `$GOPATH/bin`.)
-
-#### could not launch process: stat ***/debug.test: no such file or directory
-
-You may see this in the debug console while trying to run in the `test` mode. This happens when the `program` attribute points to a folder with no test files.
-
-**_Solution_**: Ensure that the `program` attribute points to the folder that contains the test files you want to run.
-
-#### delve/launch hangs with no messages on WSL
+### delve/launch hangs with no messages on WSL
 
 Try running ```delve debug ./main``` in the WSL command line and see if you get a prompt.
 
-**_Solution_**: Ensure you are running the WSL 2 Kernel, which (as of 4/15/2020) requires an early release of the Windows 10 OS. This is available to anyone via the Windows Insider program. See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install)
+**_Solution_**: Ensure you are running the WSL 2 Kernel, which (as of 4/15/2020) requires an early release of the Windows 10 OS. This is available to anyone via the Windows Insider program. See [Debugging on WSL](#debugging-on-windows-subsystem-for-linux-wsl).
 
-#### could not launch process: could not fork/exec
+### could not launch process: could not fork/exec
 
 The solution this issue differs based on your OS.
 
-##### OSX
+#### OSX
 
 This usually happens on OSX due to signing issues. See the discussions in [Microsoft/vscode-go#717](https://github.com/Microsoft/vscode-go/issues/717), [Microsoft/vscode-go#269](https://github.com/Microsoft/vscode-go/issues/269) and [derekparker/delve#357](https://github.com/derekparker/delve/issues/357).
 
 **_Solution_**: You may have to uninstall dlv and install it manually as described in the [Delve instructions](https://github.com/derekparker/delve/blob/master/Documentation/installation/osx/install.md#manual-install).
 
-##### Linux/Docker
+#### Linux/Docker
 
 Docker has security settings preventing `ptrace(2)` operations by default within the container.
 
@@ -349,10 +361,6 @@ Docker has security settings preventing `ptrace(2)` operations by default within
 #### could not launch process: exec: "lldb-server": executable file not found in $PATH
 
 This error can show up for Mac users using Delve versions 0.12.2 and above. `xcode-select --install` has solved the problem for a number of users.
-
-#### Unverified breakpoints when remote debugging
-
-Check the version of the Delve API used in the remote Delve process by checking the value of the `–api-version` flag. This needs to match the version used by the Go extension (`2`, by default). You can change the API version by editing the configuration in the `launch.json file.
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference

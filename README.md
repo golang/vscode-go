@@ -13,18 +13,17 @@ Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 ## Overview
 
 * [Getting started](#getting-started)
+* [Support for Go modules](#support-for-go-modules)
 * [Features](#features)
   * [Debugging](#debugging)
 * [Customization](#customization)
   * [Linter](#linter)
   * [GOPATH](#gopath)
-* [Language Server](#language-server)
+* [Language server](#language-server)
 * [Troubleshooting](docs/troubleshooting.md)
-* [Frequently Asked Questions (FAQ)](docs/faq.md)
-* [Resources](#resources)
+* [Ask for help](#ask-for-help)
+* [Preview version](#preview-version)
 * [Contributing](#contributing)
-* [Code of Conduct](#code-of-conduct)
-* [License](#license)
 
 ## Getting started
 
@@ -46,6 +45,8 @@ Here are some additional resources for learning about how to set up your Go proj
 
 **NOTE: If you are using modules, we recommend using the Go [language server](#language-server), which is explained below.**
 
+More advanced users may be interested in using different `GOPATH`s or Go versions per-project. You can learn about the different `GOPATH` manipulation options in the [`GOPATH` documentation](gopath.md). Take a look at the other [customization](#customization) options as well.
+
 ### Install the extension
 
 If you haven't already done so, install and open [Visual Studio Code](https://code.visualstudio.com). Navigate to the Extensions pane (Ctrl+Shift+X). Search for "Go" and install this extension (the publisher ID is "golang.Go").
@@ -56,11 +57,19 @@ To activate the extension, open any directory or workspace containing Go code.
 
 You should immediately see a prompt in the bottom-right corner of your screen titled `Analysis Tools Missing`. This extension relies on a suite of [command-line tools](docs/tools.md), which must be installed separately from the extension. Accept the prompt, or use the `Go: Install/Update Tools` command to pick which tools you would like to install. Note that you must have [`git`](https://git-scm.com/) installed.
 
+If you see an error that looks like `command Go: Install/Update Tools not found`, it means that the extension has failed to activate and register its commands. Please uninstall and then reinstall the extension.
+
 ### Start coding
 
 You're ready to Go!
 
-Be sure to learn more about the many [features](#features) of this extension, as well as how to [customize](#customization) them. See [Troubleshooting](docs/troubleshooting.md), [FAQ](docs/faq.md), and [Resources](#resources) for further guidance.
+Be sure to learn more about the many [features](#features) of this extension, as well as how to [customize](#customization) them. Take a look at [Troubleshooting](docs/troubleshooting.md) and [Resources](#resources) for further guidance.
+
+## Support for Go modules
+
+[Go modules](https://blog.golang.org/using-go-modules) have added a lot of complexity to the way most tools and features are built for Go. This has also added a lot of latency to most of the features. Some, but not all, [features](features.md) of this extension have been updated to work with Go modules. Some features may be slower in module mode. The [features documentation](features.md) contains more specific details.
+
+**In general, we recommend using [gopls, the official Go language server](#language-server), if you are using modules.** Read more [below](#language-server) and in the [gopls](gopls.md) documentation.
 
 ## [Features](docs/features.md)
 
@@ -104,11 +113,15 @@ To opt-in to the language server, set [`"go.useLanguageServer"`](docs/commands.m
 
 For more information, see the [`gopls` documentation](docs/gopls.md).
 
-## Resources
+## Ask for help
 
 If you're having issues with this extension, please reach out to us by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose) or asking a question on the [Gophers Slack]. We hang out in the `#vscode` channel!
 
 Take a look at [learn.go.dev](https://learn.go.dev) and [golang.org/help](https://golang.org/help) for additional guidance.
+
+## [Preview version](nightly.md)
+
+If you'd like to get early access to new features and bug fixes, you can use the nightly build of this extension. Learn how to install it in by reading the [Go Nightly documentation](nightly.md).
 
 ## [Contributing](docs/contributing.md)
 
@@ -118,7 +131,7 @@ We welcome your contributions and thank you for working to improve the Go develo
 
 This project follows the [Go Community Code of Conduct](https://golang.org/conduct). If you encounter an issue, please mail conduct@golang.org.
 
-## License
+## [License](LICENSE)
 
 [MIT](LICENSE)
 

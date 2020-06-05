@@ -73,8 +73,3 @@ You can define a specific task to run only some tests:
 ```
 
 The above task would run all tests with `User` in their name.
-
-
-
-
-
