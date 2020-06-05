@@ -1,4 +1,16 @@
+## 0.14.4 - 8th June, 2020
+
+This is the first version published with `golang` publisher ID. This version is functionally identical to 0.14.3 except the following modifications.
+
+* [Rebecca Stambler (@stamblerre)](https://github.com/stamblerre)
+    * Update documentation to reflect repository migration.
+
+* [Hyang-Ah Hana Kim (@hyangah)](https://github.com/hyangah)
+    * Remove old telemetry code.
+
 ## 0.14.3 - 21st May, 2020
+
+This is the last version published with `ms-vscode` publisher ID.
 
 * [Hyang-Ah Hana Kim (@hyangah)](https://github.com/hyangah)
     * Fix the bug introduced in the previous update where the code coverage does not disappear when edits to the file are saved.
