@@ -6,11 +6,13 @@ This guide will explain the process of setting up your development environment t
 
 * [Before you start coding](#before-you-start-coding)
   * [Ask for help](#ask-for-help)
+  * [Debug Adapter](#debug-adapter)
 * [Developing](#developing)
   * [Setup](#setup)
   * [Run](#run)
   * [Test](#test)
   * [Sideload](#sideload)
+
 * [Mail your change for review](#mail-your-change-for-review)
 
 ## Before you start coding
@@ -23,12 +25,16 @@ If you wish to work on an existing issue, please add a comment saying so, as som
 
 The VS Code Go maintainers are reachable via the issue tracker and the [#vscode-dev] channel on the [Gophers Slack]. Please reach out on Slack with questions, suggestions, or ideas. If you have trouble getting started on an issue, we'd be happy to give pointers and advice.
 
+### Debug Adapter
+
+Please note that extra configuration is required to build and run the [Debug Adapter](debug-adapter.md), which controls the debugging features of this extension. Refer to [the documentation for the Debug Adapter](debug-adapter.md) to set that up.
+
 ## Developing
 
 ### Setup
 
 1) Install [node](https://nodejs.org/en/).
-2) Clone the repository, run `npm install` and open VS Code:
+2) Clone the repository, run `npm install`, and open VS Code:
 
     ```bash
     git clone https://github.com/golang/vscode-go
@@ -37,8 +43,8 @@ The VS Code Go maintainers are reachable via the issue tracker and the [#vscode-
     code .
     ```
 
-3) Make sure the `window.ope
-nFoldersInNewWindow` setting is not `"on"`. <!--TODO(rstambler): Confirm that this is still required.-->
+3) Make sure the `window.openFoldersInNewWindow` setting is not `"on"`.
+<!--TODO(rstambler): Confirm that this is still required.-->
 
 ### Run
 
@@ -49,8 +55,6 @@ This will open a new VS Code window with the title `[Extension Development Host]
 You can also set breakpoints, which will work as you run the extension.
 
 If you make further edits in the codebase, you can reload (`Ctrl+R`) the `[Extension Development Host]` instance of VS Code, which will load the new code. The debugging instance will automatically reattach.
-
-To debug the Go debugger, see the [debugAdapter README](../src/debugAdapter/README.md).
 
 ## Test
 

@@ -88,7 +88,7 @@
 				"${workspaceFolder}/out/test/unit"
 			],
 			"internalConsoleOptions": "openOnSessionStart"
-		}
+		},
 	],
 	"compounds": [
 		{
