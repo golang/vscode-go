@@ -1,10 +1,30 @@
-## Install delve
+# Debugging
 
-There are 2 ways to install delve
-- Run the command `Go: Install/Update Tools`, select `dlv`, press `Ok` to install/update delve
-- Or install it manually install delve as per the [Installation Instructions](https://github.com/go-delve/delve/tree/master/Documentation/installation).
+The Go debugger is [Delve]. The [Delve] repository has detailed instructions, so we recommend taking a look at the [Delve documentation](https://github.com/go-delve/delve/tree/master/Documentation).
 
-## Set up configurations in your settings
+## Table of Contents
+
+* [Features](#features)
+* [Set up](#set-up)
+  * [Installation](#installation)
+  * [Configuration](#configuration)
+* [Launch Configuration](#launch-configuration)
+* [Debugging in WSL](#debugging-in-wsl)
+* [Remote Debugging](#remote-debugging)
+* [Common Issues](#common-issues)
+
+## Set up
+
+[Delve] should be installed by default when you install this extension.
+
+### Installation
+
+You can also install it manually in one of two ways:
+
+1. Open the Command Palette (Ctrl+Shift+P), select `Go: Install/Update Tools`, and select `dlv`.
+2. Follow the [Delve installation instructions](https://github.com/go-delve/delve/tree/master/Documentation/installation).
+
+### Configuration
 
 The below settings are used by the debugger. You may not need to add/change any of them to have debugging working in simple cases, but do give them a read sometime
 - `go.gopath`. See [GOPATH in VS Code](gopath.md)
@@ -149,6 +169,10 @@ Enter the id of the process running your executable in the below snippet
 }
 ```
 
+## Debugging in WSL
+
+If using WSL on Windows, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements. 
+
 ## Remote Debugging
 
 To remote debug using VS Code, you must first run a headless Delve server on the target machine. The below examples assume
@@ -264,3 +288,5 @@ Check the version of delve api being used in the remote delve process i.e check 
 #### Try using dlv from the terminal/command-line
 
 Add `"trace": "log"` to your debug configuration and debug in VS Code. This will send logs to the debug console where you can see the actual call being made to dlv. You can copy that and run it in your terminal
+
+[Delve]: https://github.com/go-delve/delve

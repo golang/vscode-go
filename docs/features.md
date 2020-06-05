@@ -160,7 +160,7 @@ The vet tool used is the one provided by the `go` command: `go vet`.
 
 Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](commands.md#lintOnSave) setting.
 
-The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](tools.md#lintTool) setting.
+The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](commands.md#lintTool) setting. To learn more about the different options, see the [documentation for diagnostic tools](tools.md#diagnostics).
 
 ## Testing
 
