@@ -98,7 +98,7 @@ The Go extension uses a suite of [command-line tools](docs/tools.md) to provide 
 
 The Go team at Google has developed [`gopls`](docs/gopls.md), which is the official Go language server. It is currently in an alpha state and under active development.
 
-[`gopls`](golang.org/s/gopls) is recommended for projects that use Go modules, as it provides much better support.
+[`gopls`] is recommended for projects that use Go modules, as it provides much better support.
 
 To opt-in to the language server, set [`"go.useLanguageServer"`](docs/commands.md#useLanguageServer) to `true` in your settings. You should then be prompted to install [`gopls`]. If you are not prompted, you can install `gopls` manually by running the `Go: Install/Update Tools` command and selecting `gopls`.
 
