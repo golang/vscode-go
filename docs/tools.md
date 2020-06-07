@@ -22,6 +22,7 @@ VS Code Go will install the tools to your `GOPATH` by default, but the tools wil
 * [`go-symbols`](#go-symbols)
 * [`guru`](#guru)
 * [`gorename`](#gorename)
+* [`godoctor`](#godoctor)
 * [`delve`](#delve)
 * [`gomodifytags`](#gomodifytags)
 * [`goplay`](#goplay)
@@ -97,6 +98,12 @@ It can also be used to provide the [go to definition](features.md#go-to-definiti
 This tool provides the [rename symbol](features.md#rename-symbol) feature.
 
 `gorename` does not have support for Go modules, so we recommend using [`gopls`] for this feature instead.
+
+### [`godoctor`](https://github.com/godoctor/godoctor)
+
+This tool provides the [refactoring](features.md#refactor) features.
+
+It does not have support for Go modules, so we expect that [`gopls`] will provide this feature instead ([golang/go#37170](https://github.com/golang/go/issues/37170)).
 
 ### [`delve`](https://pkg.go.dev/github.com/go-delve/delve?tab=overview)
 

@@ -21,6 +21,8 @@ Finally, you can also see a full list by using a meta command: `Go: Show All Com
 
 ## Detailed list
 
+<!--TODO(rstambler): Automatically generate this list using the package.json.-->
+
 Below is a detailed list of commands. They are categorized into [code editing and generation](#code-editing-and-generation), [testing and benchmarking](#testing-and-benchmarking), [build, lint, and vet](#build-lint-and-vet), [miscellaneous](#miscellaneous), and [troubleshooting](#troubleshooting). You will find the [troubleshooting](#troubleshooting) commands helpful when diagnosing an issue with the extension (learn more in the [Troubleshooting documentation](troubleshooting.md)).
 
 ### Code editing and generation
@@ -32,7 +34,11 @@ Below is a detailed list of commands. They are categorized into [code editing an
 <!--TODO(rstambler): Confirm exactly how this works.-->
 Manually add an import to your file. See [Add import](features.md#add-import).
 
-#### [`Go: Add Package to Workspace`]()
+#### [`Go: Add Package to Workspace`]
+
+Add a package to the current workspace.
+
+<!--TODO(rstambler): Figure out how this command works, its use cases, and how it fits into modules.-->
 
 #### [`Go: Add Tags to Struct Fields`](features.md#add-struct-tags)
 
@@ -62,9 +68,13 @@ Generate unit tests for the current file. See [Generate unit tests](features.md#
 
 Generate unit tests for the current package. See [Generate unit tests](features.md#generate-unit-tests).
 
-#### [`Go: Extract to function`]()
+#### [`Go: Extract to function`](features.md#refactor)
 
-#### [`Go: Extract to variable`]()
+Extract the highlighted code to a function. Provided by the [`godoctor`](tools.md#godoctor) tool. Learn more about [refactoring](features.md#refactoring).
+
+#### [`Go: Extract to variable`](features.md#refactor)
+
+Extract the highlighted code to a local variable. Provided by the [`godoctor`](tools.md#godoctor) tool. Learn more about [refactoring](features.md#refactoring).
 
 ### Testing and benchmarking
 
@@ -72,23 +82,33 @@ Generate unit tests for the current package. See [Generate unit tests](features.
 
 Run the test function at the current cursor position in the file.
 
-#### [`Go: Subtest at Cursor`]()
+#### [`Go: Subtest at Cursor`](features.md#test-and-benchmark-in-the-editor)
 
-#### [`Go: Benchmark Function At Cursor`]()
+Run the subtest (`t.Run`) at the current cursor position in the file.
 
-#### [`Go: Debug Test At Cursor`]()
+#### [`Go: Benchmark Function At Cursor`](features.md#test-and-benchmark-in-the-editor)
+
+Run the benchmark at the current cursor position in the file.
+
+#### [`Go: Debug Test At Cursor`](features.md#debugging)
+
+Debug the test at the current cursor position.
 
 #### [`Go: Test File`](features.md#test-and-benchmark-in-the-editor)
 
 Run all of the tests in the current file.
 
-#### [`Go: Benchmark File`]()
+#### [`Go: Benchmark File`](features.md#test-and-benchmark-in-the-editor)
+
+Run all of the benchmarks in the current file.
 
 #### [`Go: Test Package`](features.md#test-and-benchmark-in-the-editor)
 
-Run all of tests in the current package.
+Run all of the tests in the current package.
 
-#### [`Go: Benchmark Package`]()
+#### [`Go: Benchmark Package`](features.md#test-and-benchmark-in-the-editor)
+
+Run all of the benchmarks in the current package.
 
 #### [`Go: Test Previous`](features.md#test-and-benchmark-in-the-editor)
 
@@ -98,33 +118,57 @@ Re-run the most recently executed test command.
 
 Run all of the tests in the current workspace.
 
-#### [`Go: Cancel Running Tests]()
+#### [`Go: Cancel Running Tests`](features.md#test-and-benchmark-in-the-editor)
 
-#### [`Go: Toggle Test File`]()
+Cancel currently running tests.
 
-#### [`Go: Apply Cover Profile]()
+#### [`Go: Toggle Test File`](features.md#toggle-between-code-and-tests)
 
-#### [`Go: Toggle Test Coverage In Current Package`]()
+Toggle between a file and its corresponding test file.
+
+#### [`Go: Apply Cover Profile`](features.md#code-coverage)
+
+Apply a given [cover profile](https://blog.golang.org/cover) to the current file.
+
+#### [`Go: Toggle Test Coverage In Current Package`](features.md#code-coverage)
+
+Show [code coverage](features.md#code-coverage) in the current file.
 
 ### Build, lint, and vet
 
-#### [`Go: Build Current Package`]()
+#### [`Go: Build Current Package`](features.md#build-errors)
 
-#### [`Go: Lint Current Package`]()
+Build the current package and show build errors.
 
-#### [`Go: Vet Current Package`]()
+#### [`Go: Vet Current Package`](features.md#vet-errors)
 
-#### [`Go: Build Workspace`]()
+Show vet errors for the current package.
 
-#### [`Go: Lint Workspace`]()
+#### [`Go: Lint Current Package`](features.md#lint-errors)
 
-#### [`Go: Vet Workspace`]()
+Show lint errors for the current package.
 
-#### [`Go: Install Current Package`]()
+#### [`Go: Build Workspace`](features.md#build-errors)
+
+Build all of the packages in the current workspace and show build errors.
+
+#### [`Go: Vet Workspace`](features.md#vet-errors)
+
+Show vet errors for all of the packages in the current workspace.
+
+#### [`Go: Lint Workspace`](features.md#lint-errors)
+
+Show lint errors for all of the packages in the current workspace.
+
+#### `Go: Install Current Package`
+
+Install the current package and its dependencies.
 
 ### Miscellaneous
 
-#### [`Go: Restart Language Server`]()
+#### [`Go: Restart Language Server`](gopls.md)
+
+Use this command to restart the [language server](gopls.md) without reloading the VS Code window. This can be helpful if something seems goes wrong with the language server (for example, if you see incorrect error messages).
 
 #### [`Go: Run on Go Playground`](features.md#go-playground)
 
@@ -134,13 +178,15 @@ Upload the current selection or file to the Go Playground ([play.golang.org](htt
 
 #### `Go: Current GOPATH`
 
-See the current value of GOPATH. This is not equivalent to `go env GOPATH`, as your VS Code settings may have altered the value of `GOPATH` used by the extension.
+See the current value of GOPATH. This is not equivalent to `go env GOPATH`, as your VS Code settings may have altered the value of `GOPATH` used by the extension. This command is helpful when [troubleshooting](troubleshooting.md) the extension.
 
 #### [`Go: Install/Update Tools`](tools.md)
 
 Install or update the Go tools on which the extension depends. Tools can be installed or updated all at once, or individual tools can be selected.
 
-#### [`Go: Locate Configured Go Tools`]()
+#### [`Go: Locate Configured Go Tools`](troubleshooting.md#check-your-set-up)
+
+This command is helpful when [troubleshooting](troubleshooting.md) the extension. It prints out the environment variables and paths to the tools used by the extension. See an example of the command's output in the [troubleshooting documentation](troubleshooting.md#check-your-set-up).
 
 [`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
 [`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview

@@ -26,6 +26,7 @@ Please see the [Tools documentation](tools.md) for details on how to troubleshoo
   * [Format and organize imports](#format-and-organize-imports)
     * [Add import](#add-import)
   * [Rename symbol](#rename-symbol)
+  * [Refactor](#refactor)
 * [Code Generation](#code-generation)
   * [Add or remove struct tags](#add-or-remove-struct-tags)
   * [Generate interface implementation](#generate-interface-implementation)
@@ -127,6 +128,10 @@ Rename all occurrences of a symbol in your workspace. This feature is provided b
 
 This feature is not available if you are using Go modules without `gopls`, the Go language server.
 
+### Refactor
+
+Extract a piece of code to a local variable or to its own function using the [`Go: Extract to variable`](commands.md#go-extract-to-variable) and [`Go: Extract to function`](commands.md#go-extract-to-function) commands. These features are provided by the [`godoctor`](tools.md#godoctor) tool. These features do not work with Go modules, but they will be supported by [`gopls`] in the future (see [golang/go#37170](https://github.com/golang/go/issues/37170)).
+
 ## Code Generation
 
 ### Add or remove struct tags
@@ -194,3 +199,5 @@ This extension offers debugging of Go programs. See the [debugging documentation
 ### Go Playground
 
 Export your current file to the [Go Playground](https://play.golang.org) via the `Go: Run On Go Playground` command. This is useful for quickly exporting code for an example.
+
+[`gopls`]: gopls.md

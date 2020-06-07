@@ -62,3 +62,5 @@ Configure `revive` to exclude `vendor` directories and apply extra configuration
     "-config=${workspaceFolder}/config.toml"
 ]
 ```
+
+<!--TODO(rstambler): Automatically generate this list using the package.json.-->
