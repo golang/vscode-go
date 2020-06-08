@@ -483,7 +483,11 @@ export class Delve {
 							}
 						});
 						this.debugProcess.on('close', (code) => {
-							logError('Process exiting with code: ' + code);
+							if (code) {
+								logError(`Process exiting with code: ${code} signal: ${this.debugProcess.killed}`);
+							} else {
+								log(`Process exiting normally ${this.debugProcess.killed}`);
+							}
 							if (this.onclose) {
 								this.onclose(code);
 							}
@@ -500,7 +504,7 @@ export class Delve {
 				if (!existsSync(launchArgs.dlvToolPath)) {
 					log(
 						`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
-							env['GOPATH'] ? ', ' + env['GOPATH'] : ''
+						env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 						} or ${envPath}`
 					);
 					return reject(
@@ -668,6 +672,8 @@ export class Delve {
 	/**
 	 * Closing a debugging session follows different approaches for launch vs attach debugging.
 	 *
+	 * For launch without debugging, we kill the process since the extension started the `go run` process.
+	 *
 	 * For launch debugging, since the extension starts the delve process, the extension should close it as well.
 	 * To gracefully clean up the assets created by delve, we send the Detach request with kill option set to true.
 	 *
@@ -679,18 +685,21 @@ export class Delve {
 	 * Since the Halt request might sometimes take too long to complete, we have a timer in place to forcefully kill
 	 * the debug process and clean up the assets in case of local debugging
 	 */
-	public close(): Thenable<void> {
+	public async close(): Promise<void> {
+		const forceCleanup = async () => {
+			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
+			await killProcessTree(this.debugProcess);
+			await removeFile(this.localDebugeePath);
+		};
+
 		if (this.noDebug) {
 			// delve isn't running so no need to halt
+			await forceCleanup();
 			return Promise.resolve();
 		}
 		log('HaltRequest');
-
 		const isLocalDebugging: boolean = this.request === 'launch' && !!this.debugProcess;
-		const forceCleanup = async () => {
-			kill(this.debugProcess.pid, (err) => console.log('Error killing debug process: ' + err));
-			await removeFile(this.localDebugeePath);
-		};
+
 		return new Promise(async (resolve) => {
 			// For remote debugging, closing the connection would terminate the
 			// program as well so we just want to disconnect.
@@ -768,9 +777,9 @@ export class GoDebugSession extends LoggingDebugSession {
 	private continueEpoch = 0;
 	private continueRequestRunning = false;
 	public constructor(
-			debuggerLinesStartAt1: boolean,
-			isServer: boolean = false,
-			readonly fileSystem = fs) {
+		debuggerLinesStartAt1: boolean,
+		isServer: boolean = false,
+		readonly fileSystem = fs) {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
 		this.skipStopEventOnce = false;
@@ -794,6 +803,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+		log('LaunchRequest');
 		if (!args.program) {
 			this.sendErrorResponse(
 				response,
@@ -806,6 +816,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected attachRequest(response: DebugProtocol.AttachResponse, args: AttachRequestArguments): void {
+		log('AttachRequest');
 		if (args.mode === 'local' && !args.processId) {
 			this.sendErrorResponse(
 				response,
@@ -872,7 +883,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * NOTE: This function assumes that potentialPaths array only contains
 	 * files with the same base names as filePath.
 	 */
-	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string|undefined {
+	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string | undefined {
 		if (!potentialPaths.length) {
 			return;
 		}
@@ -888,8 +899,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			const potentialPathSegments = potentialPath.split(/\/|\\/).reverse();
 			let i = 0;
 			for (; i < filePathSegments.length
-					&& i < potentialPathSegments.length
-					&& filePathSegments[i] === potentialPathSegments[i]; i++) {
+				&& i < potentialPathSegments.length
+				&& filePathSegments[i] === potentialPathSegments[i]; i++) {
 				if (i > bestSegmentsCount) {
 					bestSegmentsCount = i;
 					bestPathSoFar = potentialPath;
@@ -904,7 +915,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * using remote sources and remote packages info that we get from Delve.
 	 * The result would be cached in localToRemotePathMapping.
 	 */
-	protected inferRemotePathFromLocalPath(localPath: string): string|undefined {
+	protected inferRemotePathFromLocalPath(localPath: string): string | undefined {
 		if (this.localToRemotePathMapping.has(localPath)) {
 			return this.localToRemotePathMapping.get(localPath);
 		}
@@ -945,7 +956,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * We attempt to find the path in local Go packages as well as workspaceFolder.
 	 * Cache the result in remoteToLocalPathMapping.
 	 */
-	protected inferLocalPathFromRemotePath(remotePath: string): string|undefined {
+	protected inferLocalPathFromRemotePath(remotePath: string): string | undefined {
 		if (this.remoteToLocalPathMapping.has(remotePath)) {
 			return this.remoteToLocalPathMapping.get(remotePath);
 		}
@@ -958,8 +969,10 @@ export class GoDebugSession extends LoggingDebugSession {
 
 		// If we cannot find the path in packages, most likely it will be in the current directory.
 		const fileName = getBaseName(remotePath);
-		const globSync = glob.sync(fileName, {matchBase: true,
-			cwd: this.delve.program });
+		const globSync = glob.sync(fileName, {
+			matchBase: true,
+			cwd: this.delve.program
+		});
 		const bestMatchingLocalPath = this.findPathWithBestMatchingSuffix(remotePath, globSync);
 		if (bestMatchingLocalPath) {
 			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
@@ -973,7 +986,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * if it is in any remote packages. If so, then we attempt to find the matching
 	 * local package and find the local path from there.
 	 */
-	protected inferLocalPathFromRemoteGoPackage(remotePath: string): string|undefined {
+	protected inferLocalPathFromRemoteGoPackage(remotePath: string): string | undefined {
 		const remotePackage = this.remoteSourcesAndPackages.remotePackagesBuildInfo.find(
 			(buildInfo) => remotePath.startsWith(buildInfo.DirectoryPath));
 		// Since we know pathToConvert exists in a remote package, we can try to find
@@ -1032,7 +1045,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * We are assuming that remotePath is of the form <prefix>/src/<suffix>.
 	 */
 	protected inferLocalPathInGoRootFromRemoteGoPackage(
-			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		remotePathWithLocalSeparator: string, relativeRemotePath: string): string | undefined {
 		const srcIndex = remotePathWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
 		const goroot = process.env['GOROOT'] || '';
 		const localGoRootImportPath = path.join(
@@ -1054,7 +1067,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * from the import path of the module.
 	 */
 	protected inferLocalPathInGoPathFromRemoteGoPackage(
-			remotePathWithLocalSeparator: string, relativeRemotePath: string): string|undefined {
+		remotePathWithLocalSeparator: string, relativeRemotePath: string): string | undefined {
 		// Scenario 1: The package is inside $GOPATH/pkg/mod.
 		const gopath = (process.env['GOPATH'] || '').split(path.delimiter)[0];
 
@@ -1072,8 +1085,8 @@ export class GoDebugSession extends LoggingDebugSession {
 
 		// Scenario 2: The file is in a package in $GOPATH/src.
 		const localGoPathSrcPath = path.join(
-				gopath, 'src',
-				relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator));
+			gopath, 'src',
+			relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator));
 		if (this.fileSystem.existsSync(localGoPathSrcPath)) {
 			return localGoPathSrcPath;
 		}
@@ -1627,8 +1640,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			args.trace === 'verbose'
 				? Logger.LogLevel.Verbose
 				: args.trace === 'log'
-				? Logger.LogLevel.Log
-				: Logger.LogLevel.Error;
+					? Logger.LogLevel.Log
+					: Logger.LogLevel.Error;
 		const logPath =
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-go-debug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);
@@ -2224,7 +2237,7 @@ export class RemoteSourcesAndPackages extends EventEmitter {
 			// ListPackagesBuildInfo is not available on V1.
 			if (!delve.isApiV1 && this.remotePackagesBuildInfo.length === 0) {
 				const packagesBuildInfoResponse: ListPackagesBuildInfoOut = await delve.callPromise(
-					'ListPackagesBuildInfo', [{IncludeFiles: true}]
+					'ListPackagesBuildInfo', [{ IncludeFiles: true }]
 				);
 				if (packagesBuildInfoResponse && packagesBuildInfoResponse.List) {
 					this.remotePackagesBuildInfo = packagesBuildInfoResponse.List;
@@ -2274,6 +2287,23 @@ async function removeFile(filePath: string): Promise<void> {
 	} catch (e) {
 		logError(`Potentially failed remove file: ${filePath} - ${e.toString() || ''}`);
 	}
+}
+
+function killProcessTree(p: ChildProcess): Promise<void> {
+	if (!p || !p.pid) {
+		log(`no process to kill`);
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		kill(p.pid, (err) => {
+			if (err) {
+				logError(`Error killing process ${p.pid}: ${err}`);
+			} else {
+				log(`killed process ${p.pid}`);
+			}
+			resolve();
+		});
+	});
 }
 
 DebugSession.run(GoDebugSession);
