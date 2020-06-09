@@ -7,6 +7,8 @@ We currently use two separate continuous integration (CI) systems to test all ch
 
 This is a temporary setup; once GCB fully supports our desired workflow, we plan to use only the GCB-based setup for CI.
 
+The [release of the Go Nightly](#nightly-release) extension is automated using GitHub Actions.
+
 ## Testing via GCB
 
 This workflow is triggered for Gerrit CLs and for all  commits merged into the master branch. Note that our main repository is [go.googlesource.com/vscode-go](https://go.googlesource.com/vscode-go), and
@@ -24,7 +26,7 @@ GCB project members can manually trigger a build and test their local changes. F
 gcloud builds submit --config=build/cloudbuild.yaml
 ```
 
-In order to modify and rebuild the Docker container image, run:
+To modify and rebuild the Docker container image, run:
 
 ```bash
 gcloud builds submit --config=build/cloudbuild.container.yaml

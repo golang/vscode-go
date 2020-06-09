@@ -10,8 +10,6 @@ This will create a `tasks.json` file in your workspace's `.vscode` folder.
 
 Replace the contents of this file with the following and adjust the tasks as needed.
 
-<!--TODO(rstambler): Can the extension just provide these default tasks?-->
-
 ```json5
 {
     "version": "2.0.0",
@@ -40,12 +38,12 @@ Replace the contents of this file with the following and adjust the tasks as nee
 
 You can run these tasks via the `Tasks: Run Task` command or by using the Ctrl+Shift+B shortcut.
 
-You can also define additional tasks to run other commands, like `go generate`. Here's an example of a task to run only a specific test (`TestBlogUser`, in this case):
+You can also define additional tasks to run other commands, like `go generate`. Here's an example of a task to run only a specific test (`MyTestFunction`, in this case):
 
 ```json5
 {
-    "label": "Blog User test suite",
-    "args": [ "test", "./...", "-test.run", "TestBlogUser"]
+    "label": "MyTestFunction",
+    "args": [ "test", "./...", "-test.run", "MyTestFunction"]
 }
 ```
 

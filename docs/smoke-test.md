@@ -4,10 +4,9 @@ Before releasing a new version of the extension, please run the following smoke 
 
 ## Set up
 
-First, clone the [golang.org/x/example](https://github.com/golang/example). At the time of writing (June 2020), this repository has not changed since 2017. If it has changed since, these steps may not be exactly reproducible and should be adjusted.
+First, clone [golang.org/x/example](https://github.com/golang/example). At the time of writing (June 2020), this repository has not changed since 2017. If it has changed since, these steps may not be exactly reproducible and should be adjusted.
 
-<!--TODO(rstambler): Maintain our own smoke tests, or add a go.mod file to this repository.-->
-For now, we smoke test the extension only in `GOPATH` mode.
+For now, we smoke test the extension only in [`GOPATH`](gopath.md) mode.
 
 If it does not already exist:
 
@@ -36,7 +35,7 @@ Next, [build and sideload the modified Go extension](contributing.md#sideload) a
 
 ## Test autocompletion
 
-<!--TODO(rstambler): We should require the user install another package in their GOPATH and expect unimported completions from that package.-->
+<!--TODO(rstambler): We should require the user to install another package in their GOPATH and expect unimported completions from that package.-->
 
 1. Trigger autocompletion (Ctrl+Space) after `fmt.`.
 2. Trigger autocompletion (Ctrl+Space) after `stringutil.`.
@@ -78,5 +77,3 @@ You can also try toggling the `"package"` and `"workspace"` configurations for t
     ```
 
 2. Rename `stringutil.Reverse`. `reverse.go` and `reverse_test.go` should be dirtied.
-
-<!--TODO(rstambler): Other features should also be tested. Not sure if this whole smoke test process is worth it or will ever be followed.-->

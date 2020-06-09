@@ -8,7 +8,7 @@ This extension provides rich language support for the [Go programming language](
 
 Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-> This is the future home for the VS Code Go extension. We are currently migrating from the [original repository](https://github.com/Microsoft/vscode-go). Read [the announcement](https://github.com/microsoft/vscode-go/blob/master/README.md#we-are-moving---) to learn about the transition and subscribe to [Microsoft/vscode-go#3247](https://github.com/microsoft/vscode-go/issues/3247) for updates.
+> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more our move on the [Go blog](https://golang.blog/the-vs-code-go-extension-joins-the-go-project).
 
 ## Overview
 
@@ -31,7 +31,9 @@ Welcome! Whether you are new to Go or an experienced Go developer, we hope this 
 
 ### Install Go
 
-Before you start coding, make sure that you have already installed Go, as explained on the [Go installation guide](https://golang.org/doc/install). If you are unsure, open the Command Palette in VS Code (Ctrl+Shift+P) and run the `Go: Locate Configured Go Tools` command. If the `GOROOT` output is empty, you are missing a Go installation. For help installing Go, ask a question on the `#newbies` [Gophers Slack] channel.
+Before you start coding, make sure that you have already installed Go, as explained in the [Go installation guide](https://golang.org/doc/install).
+
+If you are unsure whether you have installed Go, open the Command Palette in VS Code (Ctrl+Shift+P) and run the [`Go: Locate Configured Go Tools`](docs/commands.md#go-locate-configured-go-tools) command. If the `GOROOT` output is empty, you are missing a Go installation. For help installing Go, ask a question on the `#newbies` [Gophers Slack] channel.
 
 ### Set up your environment
 
@@ -45,17 +47,17 @@ Here are some additional resources for learning about how to set up your Go proj
 
 **NOTE: If you are using modules, we recommend using the Go [language server](#language-server), which is explained below.**
 
-More advanced users may be interested in using different `GOPATH`s or Go versions per-project. You can learn about the different `GOPATH` manipulation options in the [`GOPATH` documentation](gopath.md). Take a look at the other [customization](#customization) options as well.
+More advanced users may be interested in using different `GOPATH`s or Go versions per-project. You can learn about the different `GOPATH` manipulation options in the [`GOPATH` documentation](docs/gopath.md). Take a look at the other [customization](#customization) options as well.
 
 ### Install the extension
 
-If you haven't already done so, install and open [Visual Studio Code](https://code.visualstudio.com). Navigate to the Extensions pane (Ctrl+Shift+X). Search for "Go" and install this extension (the publisher ID is "golang.Go").
+If you haven't already done so, install and open [Visual Studio Code](https://code.visualstudio.com). Navigate to the Extensions pane (Ctrl+Shift+X). Search for "Go" and install this extension (the publisher ID is `golang.Go`).
 
 ### Activate the Go extension
 
 To activate the extension, open any directory or workspace containing Go code.
 
-You should immediately see a prompt in the bottom-right corner of your screen titled `Analysis Tools Missing`. This extension relies on a suite of [command-line tools](docs/tools.md), which must be installed separately from the extension. Accept the prompt, or use the `Go: Install/Update Tools` command to pick which tools you would like to install. Note that you must have [`git`](https://git-scm.com/) installed.
+You should immediately see a prompt in the bottom-right corner of your screen titled `Analysis Tools Missing`. This extension relies on a suite of [command-line tools](docs/tools.md), which must be installed separately. Accept the prompt, or use the [`Go: Install/Update Tools`](docs/commands.md#go-installupdate-tools) command to pick which tools you would like to install.
 
 If you see an error that looks like `command Go: Install/Update Tools not found`, it means that the extension has failed to activate and register its commands. Please uninstall and then reinstall the extension.
 
@@ -63,39 +65,37 @@ If you see an error that looks like `command Go: Install/Update Tools not found`
 
 You're ready to Go!
 
-Be sure to learn more about the many [features](#features) of this extension, as well as how to [customize](#customization) them. Take a look at [Troubleshooting](docs/troubleshooting.md) and [Resources](#resources) for further guidance.
+Be sure to learn more about the many [features](#features) of this extension, as well as how to [customize](#customization) them. Take a look at [Troubleshooting](docs/troubleshooting.md) and [Help](#ask-for-help) for further guidance.
 
 ## Support for Go modules
 
-[Go modules](https://blog.golang.org/using-go-modules) have added a lot of complexity to the way most tools and features are built for Go. This has also added a lot of latency to most of the features. Some, but not all, [features](features.md) of this extension have been updated to work with Go modules. Some features may be slower in module mode. The [features documentation](features.md) contains more specific details.
+[Go modules](https://blog.golang.org/using-go-modules) have added a lot of complexity to the way that most tools and features are built for Go. Some, but not all, [features](docs/features.md) of this extension have been updated to work with Go modules. Some features may also be slower in module mode. The [features documentation](docs/features.md) contains more specific details.
 
-**In general, we recommend using [gopls, the official Go language server](#language-server), if you are using modules.** Read more [below](#language-server) and in the [gopls](gopls.md) documentation.
+**In general, we recommend using [`gopls`, the official Go language server](https://golang.org/s/gopls), if you are using modules.** Read more [below](#language-server) and in the [`gopls` documentation](docs/gopls.md).
 
 ## [Features](docs/features.md)
 
-This extension has a wide range of features, including [Intellisense](docs/features.md#intellisense), [code navigation](docs/features.md#code-navigation), and [code editing](docs/features.md#code-editing) support, as well as build, vet, and lint [diagnostics](docs/features.md#diagnostics) as you work. The VS Code Go extension also provides enhanced support for [testing](docs/features.md#testing) and [debugging](#debugging) your programs. For more detail, see the [full feature breakdown](docs/features.md).
+This extension has a wide range of features, including [Intellisense](docs/features.md#intellisense), [code navigation](docs/features.md#code-navigation), and [code editing](docs/features.md#code-editing) support. It also shows build, vet, and lint [diagnostics](docs/features.md#diagnostics) as you work and provides enhanced support for [testing](docs/features.md##run-and-test-in-the-editor) and [debugging](#debugging) your programs. For more detail, see the [full feature breakdown](docs/features.md).
 
-In addition to integrated editing features, the extension also provides several commands for working with Go files. You can access any of these by opening the Command Palette (Ctrl+Shift+P) and typing in the name of the command. See the [full list of commands](docs/commands.md) provided by the extension.
+In addition to integrated editing features, the extension also provides several commands for working with Go files. You can access any of these by opening the Command Palette (Ctrl+Shift+P) and typing in the name of the command. See the [full list of commands](docs/commands.md#detailed-list) provided by the extension.
 
-The majority of the extension's features are provided by command-line tools written in Go. If you're having an issue with a specific feature, you may want to investigate the underlying tool. You can do this by taking a look at the [full list of the tools this extension depends on](docs/tools.md).
+The majority of the extension's functionality comes from command-line tools. If you're experiencing an issue with a specific feature, you may want to investigate the underlying tool. You can do this by taking a look at the [full list of tools used by this extension](docs/tools.md).
 
 ### [Debugging](docs/debugging.md)
 
-Debugging is a major feature offered by this extension. For information on how to debug your Go program, please see the [Debugging Guide](docs/debugging.md). It includes information about debugging on Windows Subsystem for Linux (WSL) and remote debugging.
+Debugging is a major feature offered by this extension. For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](docs/debugging.md).
 
 ## Customization
 
-This extension needs no configuration; it works out of the box. However, you may wish to modify your experience.
+This extension needs no configuration; it works out of the box. However, you may wish to modify settings to adjust your experience.
 
-Many of the features are configurable to your preference. The list of settings can be found in [Settings and Commands documentation](docs/commands.md).
+Many of the features are configurable to your preference. A few common modifications are mentioned below, but take a look at the [full list of settings](docs/settings.md) for an overview.
 
-### [Linter](tools.md#diagnostics)
+### [Linter](docs/tools.md#diagnostics)
 
 A commonly customized feature is the linter, which is a tool used to provide coding style feedback and suggestions. By default, this extension uses the official [`golint`].
 
-<!--TODO(rstambler): Deprecate the golint setting.-->
-
-However, you are welcome to use more advanced options like [`staticcheck`](https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview), [`golangci-lint`](https://golangci-lint.run/), or [`revive`](https://golangci-lint.run/). This can be configured via the [`"go.lintTool"`](docs/commands.md#lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](docs/tools.md#diagnostics).
+However, you are welcome to use more advanced options like [`staticcheck`](https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview), [`golangci-lint`](https://golangci-lint.run/), or [`revive`](https://pkg.go.dev/github.com/mgechev/revive?tab=overview). This can be configured via the [`"go.lintTool"`](docs/settings.md#go.lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](docs/tools.md#diagnostics).
 
 ### [GOPATH](docs/gopath.md)
 
@@ -103,13 +103,13 @@ Advanced users may want to set different `GOPATH`s for different projects or ins
 
 ## [Language Server](docs/gopls.md)
 
-The Go extension uses a suite of [command-line tools](docs/tools.md) to provide language features. A new alternative is to use a [single language server](https://langserver.org/), which provides the same features using the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/).
+In the default mode, the Go extension relies upon a suite of [command-line tools](docs/tools.md). A new alternative is to use a [single language server](https://langserver.org/), which provides language features through the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/).
 
 The Go team at Google has developed [`gopls`](docs/gopls.md), which is the official Go language server. It is currently in an alpha state and under active development.
 
-[`gopls`] is recommended for projects that use Go modules, as it provides much better support.
+[`gopls`] is recommended for projects that use Go modules.
 
-To opt-in to the language server, set [`"go.useLanguageServer"`](docs/commands.md#useLanguageServer) to `true` in your settings. You should then be prompted to install [`gopls`]. If you are not prompted, you can install `gopls` manually by running the `Go: Install/Update Tools` command and selecting `gopls`.
+To opt-in to the language server, set [`"go.useLanguageServer"`](docs/settings.md#go.useLanguageServer) to `true` in your settings. You should then be prompted to install [`gopls`]. If you are not prompted, you can install `gopls` manually by running the [`Go: Install/Update Tools`](docs/commands.md#go-installupdate-tools) command and selecting `gopls`.
 
 For more information, see the [`gopls` documentation](docs/gopls.md).
 
@@ -119,13 +119,13 @@ If you're having issues with this extension, please reach out to us by [filing a
 
 Take a look at [learn.go.dev](https://learn.go.dev) and [golang.org/help](https://golang.org/help) for additional guidance.
 
-## [Preview version](nightly.md)
+## [Preview version](docs/nightly.md)
 
-If you'd like to get early access to new features and bug fixes, you can use the nightly build of this extension. Learn how to install it in by reading the [Go Nightly documentation](nightly.md).
+If you'd like to get early access to new features and bug fixes, you can use the nightly build of this extension. Learn how to install it in by reading the [Go Nightly documentation](docs/nightly.md).
 
 ## [Contributing](docs/contributing.md)
 
-We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [Contribution guide](docs/contributing.md). It explains how to build and run the extension locally, as well as the process of sending a contribution.
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution cuide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
 
 ## [Code of Conduct](CODE_OF_CONDUCT.md)
 
