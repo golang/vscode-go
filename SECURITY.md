@@ -2,4 +2,4 @@
 
 ## Reporting a Vulnerability
 
-See https://golang.org/security for how to report a vulnerability.
+See [golang.org/security](https://golang.org/security) to report a vulnerability.
