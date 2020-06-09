@@ -35,6 +35,21 @@
 			"preLaunchTask": "npm"
 		},
 		{
+			"name": "Launch as server DlvDap",
+			"type": "node",
+			"protocol": "inspector",
+			"request": "launch",
+			"program": "${workspaceFolder}/out/src/debugAdapterDlvDap/goDlvDapDebugMain.js",
+			"args": [
+				"--server=4722"
+			],
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "npm"
+		},
+		{
 			"name": "Launch Extension Tests",
 			"type": "extensionHost",
 			"request": "launch",

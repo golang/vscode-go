@@ -59,6 +59,7 @@ import {
 	handleDiagnosticErrors,
 	isGoPathSet
 } from './util';
+import { GoDlvDapDebugSession } from './debugAdapterDlvDap/goDlvDapDebug';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -173,6 +174,15 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
+	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
+
+	// Use an InlineDebugAdapterFactory to create a new debug adapter for
+	// the 'godlvdap' command in inline mode, without launching a subprocess.
+	let factory = new InlineDebugAdapterFactory();
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
@@ -643,5 +653,11 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 function checkToolExists(tool: string) {
 	if (tool === getBinPath(tool)) {
 		promptForMissingTool(tool);
+	}
+}
+
+class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+	createDebugAdapterDescriptor(_session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
 }
