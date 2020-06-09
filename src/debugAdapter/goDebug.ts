@@ -1592,9 +1592,9 @@ export class GoDebugSession extends LoggingDebugSession {
 				// are continiously reevaluated in the Watch panel, which
 				// already displays errors.
 				if (args.context === 'watch') {
-					dest = null
+					dest = null;
 				} else {
-					dest = ErrorDestination.User
+					dest = ErrorDestination.User;
 				}
 				this.sendErrorResponse(response, 2009, 'Unable to eval expression: "{e}"', {
 					e: err.toString()
