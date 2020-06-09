@@ -24,11 +24,6 @@ GCB project members can manually trigger a build and test their local changes. F
 
 ```bash
 gcloud config set project vscode-go
-```
-
-This sets the project that commands will be run against. Next, run:
-
-```bash
 gcloud builds submit --config=build/cloudbuild.yaml
 ```
 
