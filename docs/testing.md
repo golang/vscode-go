@@ -23,6 +23,12 @@ The Docker container used for testing is defined in [`build/cloudbuild.container
 GCB project members can manually trigger a build and test their local changes. Follow the [GCB instructions](https://cloud.google.com/cloud-build/docs/running-builds/start-build-manually) to set up the environment and tools, and then run:
 
 ```bash
+gcloud config set project vscode-go
+```
+
+This sets the project that commands will be run against. Next, run:
+
+```bash
 gcloud builds submit --config=build/cloudbuild.yaml
 ```
 
