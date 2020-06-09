@@ -8,7 +8,7 @@ This extension provides rich language support for the [Go programming language](
 
 Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more our move on the [Go blog](https://golang.blog/the-vs-code-go-extension-joins-the-go-project).
+> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more our move on the [Go blog](https://blog.golang.org/vscode-go).
 
 ## Overview
 
