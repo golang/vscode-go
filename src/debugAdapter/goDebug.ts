@@ -15,6 +15,7 @@ import kill = require('tree-kill');
 import * as util from 'util';
 import {
 	DebugSession,
+	ErrorDestination,
 	Handles,
 	InitializedEvent,
 	logger,
@@ -26,8 +27,7 @@ import {
 	StackFrame,
 	StoppedEvent,
 	TerminatedEvent,
-	Thread,
-	ErrorDestination
+	Thread
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import {
