@@ -95,7 +95,7 @@ A commonly customized feature is the linter, which is a tool used to provide cod
 
 <!--TODO(rstambler): Deprecate the golint setting.-->
 
-However, you are welcome to use more advanced options like [`staticcheck`], [`golangci-lint`], or [`revive`]. This can be configured via the [`"go.lintTool"`](commands.md#lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](tools.md#diagnostics).
+However, you are welcome to use more advanced options like [`staticcheck`](https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview), [`golangci-lint`](https://golangci-lint.run/), or [`revive`](https://golangci-lint.run/). This can be configured via the [`"go.lintTool"`](docs/commands.md#lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](docs/tools.md#diagnostics).
 
 ### [GOPATH](docs/gopath.md)
 
@@ -136,8 +136,5 @@ This project follows the [Go Community Code of Conduct](https://golang.org/condu
 [MIT](LICENSE)
 
 [`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
-[`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
-[`golangci-lint`]: https://golangci-lint.run/
-[`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
 [Gophers Slack]: https://gophers.slack.com/
 [`gopls`]: https://golang.org/s/gopls
