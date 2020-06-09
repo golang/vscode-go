@@ -15,6 +15,7 @@ import kill = require('tree-kill');
 import * as util from 'util';
 import {
 	DebugSession,
+	ErrorDestination,
 	Handles,
 	InitializedEvent,
 	logger,
@@ -1599,9 +1600,18 @@ export class GoDebugSession extends LoggingDebugSession {
 				log('EvaluateResponse');
 			},
 			(err) => {
+				let dest: ErrorDestination;
+				// No need to repeatedly show the error pop-up when expressions
+				// are continiously reevaluated in the Watch panel, which
+				// already displays errors.
+				if (args.context === 'watch') {
+					dest = null;
+				} else {
+					dest = ErrorDestination.User;
+				}
 				this.sendErrorResponse(response, 2009, 'Unable to eval expression: "{e}"', {
 					e: err.toString()
-				});
+				}, dest);
 			}
 		);
 	}
