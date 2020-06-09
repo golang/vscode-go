@@ -1,10 +1,10 @@
 # Commands
 
-In addition to the integrated editing features, this extension offers a number of commands, which can be executed manually through the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) (Ctrl+Shift+P).
+In addition to integrated editing features, this extension offers a number of commands, which can be executed manually through the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) (Ctrl+Shift+P).
 
-Some of these commands are also available in the VS Code context menu (right click). To control which of these commands show up in the editor context menu, update the [`"go.editorContextMenuCommands"`](settings.md#editorContextMenuCommands) setting.
+Some of these commands are also available in the VS Code context menu (right-click). To control which of these commands show up in the editor context menu, update the [`"go.editorContextMenuCommands"`](settings.md#go.editorContextMenuCommands) setting.
 
-All commands provided by this extension have the prefix "`Go:` ".
+All commands provided by this extension have the prefix `Go:`.
 
 ## Latest changes
 

@@ -1,8 +1,10 @@
 # Settings
 
-This extension is highly configurable, and as such, offers a number of settings. These can be configured by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings). To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
+This extension is highly configurable, and as such, offers a number of settings. These can be configured by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings).
 
-**NOTE: Many of these settings don't apply if you are using [`gopls`](gopls.md). Learn more about `gopls`-specific settings in this [documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md).**
+To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
+
+**NOTE: Many of these settings don't apply if you are using [`gopls`](gopls.md). Learn more about [`gopls`-specific settings](gopls.md#ignored-settings).**
 
 ## Latest changes
 
@@ -39,28 +41,3 @@ One of `"golint"`, `"staticcheck"`, `"golangci-lint"`, and `"revive"` (`golint` 
 ### lintFlags
 
 This setting can be used to pass additional flags to your lint tool of choice.
-
-Most linters can be configured via special configuration files, but you may still need to pass command-line flags. The configuration documentation for each supported linter is listed here:
-
-* [`staticcheck`](https://staticcheck.io/docs/#configuration)
-* [`golangci-lint`](https://golangci-lint.run/usage/configuration/)
-* [`revive`](https://github.com/mgechev/revive#command-line-flags)
-
-#### Examples
-
-Enable all [`golangci-lint`] linters and only show errors in new code:
-
-```json5
-"go.lintFlags": ["--enable-all", "--new"]
-```
-
-Configure `revive` to exclude `vendor` directories and apply extra configuration with a `config.toml` file:
-
-```json5
-"go.lintFlags": [
-    "-exclude=vendor/...",
-    "-config=${workspaceFolder}/config.toml"
-]
-```
-
-<!--TODO(rstambler): Automatically generate this list using the package.json.-->

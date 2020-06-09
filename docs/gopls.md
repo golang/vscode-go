@@ -3,7 +3,6 @@
 [`gopls`] is the official Go [language server](https://langserver.org/) developed by the Go team. It was developed in response to the release of [Go modules], and it is the recommended approach when working with [Go modules] in VS Code.
 
 [`gopls`] is currently in an alpha state, so it is not enabled by default. Please note that [`gopls`] only supports Go versions above 1.12.
-<!--TODO(rstambler): Change this once we support 1.11 and 1.12 again.-->
 
 [`gopls`] has its own [documentation pages](https://github.com/golang/tools/tree/master/gopls/doc), and they should be treated as the source of truth for how to use [`gopls` in VS Code](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md).
 
@@ -18,64 +17,47 @@
 * [Troubleshooting](https://github.com/golang/tools/blob/master/gopls/doc/troubleshooting.md)
 * [Additional resources](#additional-resources)
 
-<!--TODO(rstambler): Write a gopls troubleshooting section here or in the gopls VS Code docs.-->
-
 ## Background
 
 This extension functions by shelling out to a number of command-line tools. This introduces complexity, as each feature is provided by a different tool. Language servers enable all editors to support all programming languages without these individualized tools. They also provide speed improvements, as they can cache and reuse results.
 
-[`gopls`] is the official Go language server. Using `gopls` will enable the VS Code Go extension to provide high-quality Go support as the language evolves.
+[`gopls`] is the official Go language server. Using [`gopls`] will enable the VS Code Go extension to provide high-quality Go support as the language evolves.
 
 To learn more about the context behind [`gopls`], you can watch the [Go pls, stop breaking my editor](https://www.youtube.com/watch?v=EFJfdWzBHwE) talk at GopherCon 2019.
 
 ## Enable the language server
 
-To start using the language server, set [`"go.useLanguageServer": true`](settings.md#useLanguageServer) in your VS Code Go settings.
+To start using the language server, set [`"go.useLanguageServer": true`](settings.md#go.useLanguageServer) in your VS Code Go settings.
 
-You should see a prompt to install `gopls`. If you do not see a prompt, please run the `Go: Install/Update Tools` command and select `gopls`.
+You should see a prompt to install `gopls`. If you do not see a prompt, please run the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command and select `gopls`.
 
 ### Automatic updates
 
 The `gopls` team releases new versions of `gopls` approximately once a month ([release notes](https://github.com/golang/go/issues/33030)). The Go extension will automatically detect that a new version has been released, and a pop-up will appear prompting you to update.
 
-If you would like to opt-out of these updates, set [`"go.useGoProxyToCheckForToolUpdates"`](settings.md#useGoProxyToCheckForToolUpdates) to `false`.
+If you would like to opt-out of these updates, set [`"go.useGoProxyToCheckForToolUpdates"`](settings.md#go.useGoProxyToCheckForToolUpdates) to `false`.
 
 ## Configuration
 
-There are a number of VS Code Go settings for controlling the language server. These include:
+There are a number of VS Code Go settings for controlling the language server.
 
-* [`"go.languageServerExperimentalFeatures"`](settings.md#languageServerExperimentalFeatures) allows you to disable certain features.
-  * `"diagnostics": false` disables diagnostic warnings from `gopls`. You may want to disable these if you don't like the diagnostics changing as you type.
+* [`"go.languageServerExperimentalFeatures"`](settings.md#go.languageServerExperimentalFeatures) allows you to disable certain features.
+  * `"diagnostics": false` disables diagnostic warnings from `gopls`. You might want to disable these if you don't like the diagnostics changing as you type.
   * `"documentLink": false` disables document links. The reason to disable these is explained in [golang/go#39065](https://github.com/golang/go/issues/39065): the Ctrl+Click shortcut for clicking on a link collides with the Ctrl+Click shortcut for go-to-definition.
-
-  ```json5
-  "go.languageServerExperimentalFeatures": {
-      "diagnostics": false,
-      "documentLink": false
-  }
-  ```
-
-* [`"go.languageServerFlags"`](settings.md#languageServerFlags) allows you to pass flags to the `gopls` process.
+* [`"go.languageServerFlags"`](settings.md#go.languageServerFlags) allows you to pass flags to the `gopls` process.
   * The `-rpc.trace` flag enables verbose debug logging.
-
-  ```json5
-  "go.languageServerFlags": [
-      "-rpc.trace"
-  ]
-  ```
 
 ### Ignored settings
 
 A number of the extension's settings are not passed in to `gopls`. We are working on unifying all of the settings, but some may still be ignored. These include:
 
-* [`"go.buildFlags"`](settings.md#buildFlags)
-<!--TODO(rstambler): Complete this list.-->
+* [`"go.buildFlags"`](settings.md#go.buildFlags)
 
 These configurations can be passed to `gopls` via your environment or the `gopls.env` setting. Learn more in the [`gopls` VS Code documentation](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md#build-tags).
 
 ### `gopls` settings block
 
-[`gopls`] exposes a lot more [additional configuration](https://github.com/golang/tools/blob/master/gopls/doc/settings.md). However, because [`gopls`] is in a state of rapid development and change, these settings change frequently. Therefore, we have not yet built these settings into the Go extension.
+`gopls` exposes much more [configuration](https://github.com/golang/tools/blob/master/gopls/doc/settings.md). However, because [`gopls`] is in a state of rapid development and change, these settings change frequently. Therefore, we have not yet built these settings into the Go extension.
 
 As shown in the [`gopls` VS Code user guide](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md), you can still configure these settings through VS Code by adding a `"gopls"` block to your `settings.json` file (Command Palette -> Preferences: Open Settings (JSON)). **You will see an `Unknown Configuration Setting` warning, but the settings will still work.** Add any settings there, and `gopls` will warn you if they are incorrect, unknown, or deprecated.
 
