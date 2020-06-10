@@ -125,7 +125,7 @@ If you'd like to get early access to new features and bug fixes, you can use the
 
 ## [Contributing](docs/contributing.md)
 
-We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution cuide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution guide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
 
 ## [Code of Conduct](CODE_OF_CONDUCT.md)
 
