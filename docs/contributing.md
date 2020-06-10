@@ -4,6 +4,8 @@ We welcome your contributions and thank you for working to improve the Go develo
 
 This guide will explain the process of setting up your development environment to work on the VS Code Go extension, as well as the process of sending out your change for review. If you're interested in testing the master branch or pre-releases of the extension, please see the [Go Nightly documentation](nightly.md).
 
+Our canonical Git repository is located at https://go.googlesource.com/vscode-go and https://github.com/golang/vscode-go is a mirror.
+
 * [Before you start coding](#before-you-start-coding)
   * [Ask for help](#ask-for-help)
   * [Debug Adapter](#debug-adapter)
@@ -36,7 +38,7 @@ Please note that extra configuration is required to build and run the [Debug Ada
 2) Clone the repository, run `npm install`, and open VS Code:
 
     ```bash
-    git clone https://github.com/golang/vscode-go
+    git clone https://go.googlesource.com/vscode-go
     cd vscode-go
     npm install
     code .
