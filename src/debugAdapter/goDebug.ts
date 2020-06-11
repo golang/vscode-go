@@ -600,6 +600,7 @@ export class Delve {
 						}
 						return resolve(conn);
 					});
+					client.on('error', reject);
 				}, 200);
 			}
 
