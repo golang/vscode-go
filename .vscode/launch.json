@@ -9,7 +9,8 @@
 			// path to VSCode executable
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--disable-extensions"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
