@@ -18,7 +18,7 @@ const statusBarItemModule = vscode.window.createStatusBarItem(vscode.StatusBarAl
 statusBarItemModule.text = '$(megaphone) Go Modules';
 statusBarItemModule.tooltip =
 	'Modules is enabled for this project. Click to learn more about Modules support in VS Code.';
-statusBarItemModule.command = 'go.open.modulewiki';
+statusBarItemModule.command = 'go.open.modulesdoc';
 
 export function showHideStatus(editor: vscode.TextEditor) {
 	if (statusBarEntry) {

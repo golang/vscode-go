@@ -148,10 +148,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	initCoverageDecorators(ctx);
 
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.open.modulewiki', async () => {
+		vscode.commands.registerCommand('go.open.modulesdoc', async () => {
 			vscode.commands.executeCommand(
 				'vscode.open',
-				vscode.Uri.parse('https://github.com/microsoft/vscode-go/wiki/Go-modules-support-in-Visual-Studio-Code')
+				vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/modules.md')
 			);
 		})
 	);
