@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import { ChildProcess, execFile, execSync, spawn, spawnSync } from 'child_process';
+import { ChildProcess, execFile, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { existsSync, lstatSync } from 'fs';
@@ -357,6 +357,7 @@ export class Delve {
 	public dlvEnv: any;
 	public stackTraceDepth: number;
 	public isRemoteDebugging: boolean;
+	public goroot: string;
 	private localDebugeePath: string | undefined;
 	private debugProcess: ChildProcess;
 	private request: 'attach' | 'launch';
@@ -370,7 +371,7 @@ export class Delve {
 			this.isApiV1 = launchArgs.apiVersion === 1;
 		}
 		this.stackTraceDepth = typeof launchArgs.stackTraceDepth === 'number' ? launchArgs.stackTraceDepth : 50;
-		this.connection = new Promise((resolve, reject) => {
+		this.connection = new Promise(async (resolve, reject) => {
 			const mode = launchArgs.mode;
 			let dlvCwd = path.dirname(program);
 			let serverRunning = false;
@@ -391,6 +392,7 @@ export class Delve {
 				log(`Start remote debugging: connecting ${launchArgs.host}:${launchArgs.port}`);
 				this.debugProcess = null;
 				this.isRemoteDebugging = true;
+				this.goroot = await queryGOROOT(dlvCwd, process.env);
 				serverRunning = true; // assume server is running when in remote mode
 				connectClient(launchArgs.port, launchArgs.host);
 				return;
@@ -446,8 +448,11 @@ export class Delve {
 					env['GOPATH'] = getInferredGopath(dirname) || env['GOPATH'];
 				}
 				this.dlvEnv = env;
+				this.goroot = await queryGOROOT(dlvCwd, env);
+
 				log(`Using GOPATH: ${env['GOPATH']}`);
-				log(`Using GOROOT: ${env['GOROOT']}`);
+				log(`Using GOROOT: ${this.goroot}`);
+				log(`Using PATH: ${env['PATH']}`);
 
 				if (!!launchArgs.noDebug) {
 					if (mode === 'debug') {
@@ -1049,7 +1054,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	protected inferLocalPathInGoRootFromRemoteGoPackage(
 		remotePathWithLocalSeparator: string, relativeRemotePath: string): string | undefined {
 		const srcIndex = remotePathWithLocalSeparator.indexOf(`${this.localPathSeparator}src${this.localPathSeparator}`);
-		const goroot = process.env['GOROOT'] || '';
+		const goroot = this.getGOROOT();
 		const localGoRootImportPath = path.join(
 			goroot,
 			srcIndex >= 0
@@ -1114,7 +1119,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (!pathToConvert.startsWith(this.delve.remotePath)) {
 			// Fix for https://github.com/Microsoft/vscode-go/issues/1178
 			const index = pathToConvert.indexOf(`${this.remotePathSeparator}src${this.remotePathSeparator}`);
-			const goroot = process.env['GOROOT'];
+			const goroot = this.getGOROOT();
 			if (goroot && index > 0) {
 				return path.join(goroot, pathToConvert.substr(index));
 			}
@@ -1640,6 +1645,15 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.sendResponse(response);
 			log('SetVariableResponse');
 		});
+	}
+
+	private getGOROOT(): string {
+		if (this.delve && this.delve.goroot) {
+			return this.delve.goroot;
+		}
+		return process.env['GOROOT'] || '';
+		// this is a workaround to keep the tests in integration/goDebug.test.ts running.
+		// The tests synthesize a bogus Delve instance.
 	}
 
 	// contains common code for launch and attach debugging initialization
@@ -2314,6 +2328,22 @@ function killProcessTree(p: ChildProcess): Promise<void> {
 			}
 			resolve();
 		});
+	});
+}
+
+// queryGOROOT returns `go env GOROOT`.
+function queryGOROOT(cwd: any, env: any): Promise<string> {
+	return new Promise<string>((resolve) => {
+		execFile(
+			getBinPathWithPreferredGopath('go', []),
+			['env', 'GOROOT'],
+			{ cwd, env },
+			(err, stdout, stderr) => {
+				if (err) {
+					return resolve('');
+				}
+				return resolve(stdout.trim());
+			});
 	});
 }
 
