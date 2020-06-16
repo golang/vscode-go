@@ -39,7 +39,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getGoVersion } from './util';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -84,22 +84,43 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (activation && cfg.enabled && cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
-			if (versionToUpdate) {
-				promptForUpdatingTool(tool.name, versionToUpdate);
-			} else if (goplsSurveyOn) {
-				// Only prompt users to fill out the gopls survey if we are not
-				// also prompting them to update (both would be too much).
-				const timeout = 1000 * 60 * 60; // 1 hour
-				setTimeout(async () => {
-					const surveyCfg = await maybePromptForGoplsSurvey();
-					flushSurveyConfig(surveyCfg);
-				}, timeout);
+			// Skip the update prompt - the user should have a special generics
+			// version of gopls.
+			if (false) {
+				const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
+				if (versionToUpdate) {
+					promptForUpdatingTool(tool.name, versionToUpdate);
+				} else if (goplsSurveyOn) {
+					// Only prompt users to fill out the gopls survey if we are not
+					// also prompting them to update (both would be too much).
+					const timeout = 1000 * 60 * 60; // 1 hour
+					setTimeout(async () => {
+						const surveyCfg = await maybePromptForGoplsSurvey();
+						flushSurveyConfig(surveyCfg);
+					}, timeout);
+				}
 			}
 		}
 	}
 
-	const started = await startLanguageServer(ctx, cfg);
+	// Run `go tool go2go help` to check if the user is working with a version
+	// of Go that supports the generics prototype. This will error either way,
+	// but we can check the error message to see if the command was recognized.
+	let usingGo2Go: boolean = false;
+	const goRuntimePath = getBinPath('go');
+	if (goRuntimePath) {
+		const execFile = util.promisify(cp.execFile);
+		try {
+			await execFile(goRuntimePath, ['tool', 'go2go', 'help'], { env: cfg.env });
+		} catch (err) {
+			const errStr = `${err}`;
+			if (errStr.indexOf('Usage: go2go <command> [arguments]') !== -1) {
+				usingGo2Go = true;
+			}
+		}
+	}
+
+	const started = await startLanguageServer(ctx, cfg, usingGo2Go);
 
 	// If the server has been disabled, or failed to start,
 	// fall back to the default providers, while making sure not to
@@ -109,7 +130,8 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	}
 }
 
-async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
+async function startLanguageServer(
+	ctx: vscode.ExtensionContext, config: LanguageServerConfig, usingGo2Go: boolean): Promise<boolean> {
 	// If the client has already been started, make sure to clear existing
 	// diagnostics and stop it.
 	if (languageClient) {
@@ -128,7 +150,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = await buildLanguageClient(config);
+		languageClient = await buildLanguageClient(config, usingGo2Go);
 	}
 
 	// If the user has not enabled the language server, return early.
@@ -158,7 +180,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-async function buildLanguageClient(config: LanguageServerConfig): Promise<LanguageClient> {
+async function buildLanguageClient(config: LanguageServerConfig, usingGo2Go: boolean): Promise<LanguageClient> {
 	// Reuse the same output channel for each instance of the server.
 	if (config.enabled && !serverOutputChannel) {
 		serverOutputChannel = vscode.window.createOutputChannel(config.serverName);
@@ -173,12 +195,39 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 		},
 		{
 			initializationOptions: {},
-			documentSelector: ['go', 'go.mod', 'go.sum'],
+			documentSelector: ['go', 'go2', 'go.mod', 'go.sum'],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
-				code2Protocol: (uri: vscode.Uri): string =>
-					(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
-				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
+				code2Protocol: (uri: vscode.Uri): string => {
+					if (usingGo2Go) {
+						uri = (uri.scheme ? uri : uri.with({ scheme: 'file' }));
+						// If the file has a *.go2 suffix, try stripping it.
+						const uriPath = uri.path.replace('.go2', '.go');
+						uri = uri.with({ path: uriPath });
+						return uri.toString();
+					}
+					return (uri.scheme ? uri : uri.with({ scheme: 'file' })).toString();
+				},
+				protocol2Code: (uri: string) => {
+					if (usingGo2Go) {
+						const parsed = vscode.Uri.parse(uri);
+						try {
+							fs.statSync(parsed.fsPath);
+							return parsed;
+						} catch (err) {
+							// Try adding a 'go2' suffix to a Go file and see if it exists.
+							const uriPath = parsed.fsPath.replace('.go', '.go2');
+							try {
+								fs.statSync(uriPath);
+								return parsed.with({ path: parsed.path.replace('.go', '.go2') });
+							} catch (err) {
+								// do nothing?
+							}
+						}
+						return parsed;
+					}
+					return vscode.Uri.parse(uri);
+				},
 			},
 			outputChannel: serverOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
@@ -494,7 +543,7 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.coerce(usersVersion, {includePrerelease: true, loose: true});
+	const usersVersionSemver = semver.coerce(usersVersion, { includePrerelease: true, loose: true });
 	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 

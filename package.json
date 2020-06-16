@@ -92,7 +92,8 @@
       {
         "id": "go",
         "extensions": [
-          ".go"
+          ".go",
+          "go2"
         ],
         "aliases": [
           "Go"
