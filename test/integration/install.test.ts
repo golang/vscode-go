@@ -16,7 +16,9 @@ import { installTools } from '../../src/goInstallTools';
 import { getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, rmdirRecursive } from '../../src/util';
 
-suite('Installation Tests', () => {
+suite('Installation Tests', function () {
+	this.timeout(10000);
+
 	test('install tools', async () => {
 		const goVersion = await getGoVersion();
 		const testCases: string[][] = [
@@ -33,6 +35,7 @@ suite('Installation Tests', () => {
 
 			const sandbox = sinon.createSandbox();
 			const utils = require('../../src/util');
+
 			const toolsGopathStub = sandbox.stub(utils, 'getToolsGopath').returns(tmpToolsGopath);
 			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
 				toolsEnvVars: {
