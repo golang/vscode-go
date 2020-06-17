@@ -64,6 +64,7 @@ let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 let serverOutputChannel: vscode.OutputChannel;
 let serverTraceChannel: vscode.OutputChannel;
+let crashCount = 0;
 
 // defaultLanguageProviders is the list of providers currently registered.
 let defaultLanguageProviders: vscode.Disposable[] = [];
@@ -131,6 +132,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// and rebuild the language client.
 		latestConfig = config;
 		languageClient = await buildLanguageClient(config);
+		crashCount = 0;
 	}
 
 	// If the user has not enabled the language server, return early.
@@ -203,13 +205,18 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					vscode.window.showErrorMessage(
 						`Error communicating with the language server: ${error}: ${message}.`
 					);
-					// Stick with the default number of 5 crashes before shutdown.
-					if (count >= 5) {
-						return ErrorAction.Shutdown;
+					// Allow 5 crashes before shutdown.
+					if (count < 5) {
+						return ErrorAction.Continue;
 					}
-					return ErrorAction.Continue;
+					return ErrorAction.Shutdown;
 				},
 				closed: (): CloseAction => {
+					// Allow 5 crashes before shutdown.
+					crashCount++;
+					if (crashCount < 5) {
+						return CloseAction.Restart;
+					}
 					serverOutputChannel.show();
 					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed.`);
 					return CloseAction.DoNotRestart;
@@ -348,7 +355,8 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 	if (
 		e.affectsConfiguration('go.useLanguageServer') ||
 		e.affectsConfiguration('go.languageServerFlags') ||
-		e.affectsConfiguration('go.languageServerExperimentalFeatures')
+		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
+		e.affectsConfiguration('go.alternateTools')
 	) {
 		restartLanguageServer();
 	}
@@ -812,14 +820,14 @@ async function suggestGoplsIssueReport(msg: string) {
 	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
 	let saved: any;
 	try {
-		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, false));
 	} catch (err) {
 		console.log(`Failed to parse as JSON ${getFromGlobalState(promptForIssueOnGoplsRestartKey, true)}: ${err}`);
 		return;
 	}
 	// If the user has already seen this prompt, they may have opted-out for
 	// the future. Only prompt again if it's been more than a year since.
-	if (saved['date'] && saved['prompt']) {
+	if (saved) {
 		const dateSaved = new Date(saved['date']);
 		const prompt = <boolean>saved['prompt'];
 		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {

@@ -36,13 +36,13 @@ export function getBinPathWithPreferredGopath(
 	preferredGopaths: string[],
 	alternateTool?: string
 ) {
-	if (binPathCache[toolName]) {
-		return binPathCache[toolName];
-	}
-
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return alternateTool;
+	}
+
+	if (binPathCache[toolName]) {
+		return binPathCache[toolName];
 	}
 
 	const binname = alternateTool && !path.isAbsolute(alternateTool) ? alternateTool : toolName;
