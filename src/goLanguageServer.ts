@@ -63,6 +63,7 @@ let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 let serverOutputChannel: vscode.OutputChannel;
+let serverTraceChannel: vscode.OutputChannel;
 
 // defaultLanguageProviders is the list of providers currently registered.
 let defaultLanguageProviders: vscode.Disposable[] = [];
@@ -161,8 +162,13 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 
 async function buildLanguageClient(config: LanguageServerConfig): Promise<LanguageClient> {
 	// Reuse the same output channel for each instance of the server.
-	if (config.enabled && !serverOutputChannel) {
-		serverOutputChannel = vscode.window.createOutputChannel(config.serverName);
+	if (config.enabled) {
+		if (!serverOutputChannel) {
+			serverOutputChannel = vscode.window.createOutputChannel(config.serverName + ' (server)');
+		}
+		if (!serverTraceChannel) {
+			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
+		}
 	}
 	const c = new LanguageClient(
 		'go',  // id
@@ -182,6 +188,7 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 			},
 			outputChannel: serverOutputChannel,
+			traceOutputChannel: serverTraceChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
@@ -494,7 +501,7 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.coerce(usersVersion, {includePrerelease: true, loose: true});
+	const usersVersionSemver = semver.coerce(usersVersion, { includePrerelease: true, loose: true });
 	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 
