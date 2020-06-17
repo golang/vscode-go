@@ -20,6 +20,7 @@ import {
 	RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
+import { extensionId } from './const';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
@@ -446,7 +447,6 @@ function allFoldersHaveSameGopath(): boolean {
 	return vscode.workspace.workspaceFolders.find((x) => tempGopath !== getCurrentGoPath(x.uri)) ? false : true;
 }
 
-const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
 export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
@@ -548,6 +548,8 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	const time = moment(data['Time']);
 	return time;
 };
+
+const acceptGoplsPrerelease = (extensionId === 'golang.go-nightly');
 
 export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
