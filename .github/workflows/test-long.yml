@@ -1,9 +1,10 @@
 name: Long Tests
 
-on: [push]
-  branches-ignore:
-    - 'latest'
-    - 'upstream'
+on:
+  push:
+    branches-ignore:
+      - 'latest'
+      - 'upstream'
 
 jobs:
   build:
