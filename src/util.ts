@@ -12,6 +12,7 @@ import kill = require('tree-kill');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
@@ -24,7 +25,6 @@ import {
 	resolveHomeDir,
 } from './goPath';
 import { outputChannel } from './goStatus';
-import { extensionId } from './telemetry';
 
 let userNameHash: number = 0;
 

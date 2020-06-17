@@ -77,10 +77,12 @@ prepare_nightly() {
 .bugs.url="https://github.com/golang/vscode-go/issues"
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
-  # Replace CHANGELOG.md with CHANGELOG.md.nightly + Release commit info.
-  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - docs/nightly/CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
+  # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
+  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
   # Replace the heading of README.md with the heading for Go Nightly.
-  sed '/^# Go for Visual Studio Code$/d' README.md | cat docs/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
+  sed '/^# Go for Visual Studio Code$/d' README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
+  # Replace src/const.ts with build/nightly/const.ts.
+  cp build/nightly/const.ts src/const.ts
 }
 
 main() {
