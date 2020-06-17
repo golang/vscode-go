@@ -1,6 +1,7 @@
 'use strict';
 
 var childProcess = require('child_process');
+const { existsSync } = require('fs');
 var spawn = childProcess.spawn;
 var exec = childProcess.exec;
 
@@ -30,7 +31,7 @@ module.exports = function (pid, signal, callback) {
         break;
     case 'darwin':
         buildProcessTree(pid, tree, pidsToProcess, function (parentPid) {
-          return spawn('pgrep', ['-P', parentPid]);
+            return spawn(pathToPgrep(), ['-P', parentPid]);
         }, function () {
             killAll(tree, signal, callback);
         });
@@ -115,4 +116,21 @@ function buildProcessTree (parentPid, tree, pidsToProcess, spawnChildProcessesLi
     };
 
     ps.on('close', onClose);
+}
+
+var pgrep = '';
+function pathToPgrep () {
+    if (pgrep) {
+        return pgrep;
+    }
+    // Use the default pgrep, available since os x mountain lion.
+    // proctools' pgrep does not implement `-P` correctly and returns
+    // unrelated processes.
+    // https://github.com/golang/vscode-go/issues/90#issuecomment-634430428
+    try {
+        pgrep = existsSync('/usr/bin/pgrep') ? '/usr/bin/pgrep' : 'pgrep';
+    } catch (e) {
+        pgrep = 'pgrep';
+    }
+    return pgrep;
 }
