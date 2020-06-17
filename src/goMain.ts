@@ -79,16 +79,18 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		const prevGoroot = toolsGoInfo[toolsGopath].goroot;
 		const currentGoroot: string = process.env['GOROOT'] && process.env['GOROOT'].toLowerCase();
 		if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
-			vscode.window
-				.showInformationMessage(
+			// Don't suggest recompiling tools for the go2go version.
+			if (false) {
+				vscode.window.showInformationMessage(
 					`Your current goroot (${currentGoroot}) is different than before (${prevGoroot}), a few Go tools may need recompiling`,
 					updateToolsCmdText
 				)
-				.then((selected) => {
-					if (selected === updateToolsCmdText) {
-						installAllTools(true);
-					}
-				});
+					.then((selected) => {
+						if (selected === updateToolsCmdText) {
+							installAllTools(true);
+						}
+					});
+			}
 		} else {
 			const currentVersion = await getGoVersion();
 			if (currentVersion) {

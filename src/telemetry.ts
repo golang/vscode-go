@@ -5,4 +5,4 @@
 
 // TODO(hyangah): move this somewhere else (where easily modifiable during release process)
 
-export const extensionId: string = 'golang.go-nightly';
+export const extensionId: string = 'golang.go2go';
