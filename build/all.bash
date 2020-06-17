@@ -45,9 +45,9 @@ run_test() {
   echo "**** Run test ****"
   npm ci
   npm run compile
-  npm run lint
   npm run unit-test
   npm test --silent
+  npm run lint
 }
 
 run_test_in_docker() {
