@@ -5,13 +5,15 @@
 
 'use strict';
 
+import cp = require('child_process');
 import fs = require('fs');
 import path = require('path');
-import rl = require('readline');
+import util = require('util');
 import vscode = require('vscode');
 import { isModSupported } from './goModules';
+import { envPath } from './goPath';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
-import { getGoConfig } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
 
 let gutterSvgs: { [key: string]: string };
 let decorators: {
@@ -93,6 +95,8 @@ export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 	// These defaults are chosen to be distinguishable in nearly any color scheme (even Red)
 	// as well as by people who have difficulties with color perception.
+	// (how do these relate the defaults in package.json?)
+	// and where do the defaults actually come from? (raised as issue #256)
 	decoratorConfig = {
 		type: 'highlight',
 		coveredHighlightColor: 'rgba(64,128,128,0.5)',
@@ -152,6 +156,8 @@ interface CoverageData {
 }
 
 let coverageFiles: { [key: string]: CoverageData } = {};
+let coveragePath = new Map<string, CoverageData>();
+let pathsToDirs = new Map<string, string>();
 let isCoverageApplied: boolean = false;
 
 /**
@@ -159,6 +165,8 @@ let isCoverageApplied: boolean = false;
  */
 function clearCoverage() {
 	coverageFiles = {};
+	coveragePath = new Map<string, CoverageData>();
+	pathsToDirs = new Map<string, string>();
 	disposeDecorators();
 	isCoverageApplied = false;
 }
@@ -167,48 +175,49 @@ function clearCoverage() {
  * Extract the coverage data from the given cover profile & apply them on the files in the open editors.
  * @param coverProfilePath Path to the file that has the cover profile data
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
+ * @param testDir Directory to execute go list in, when there is no workspace, for some tests
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, packageDirPath: string): Promise<void> {
-	return new Promise((resolve, reject) => {
+export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?: string): Promise<void> {
+	const v = new Promise<void>((resolve, reject) => {
 		try {
 			// Clear existing coverage files
 			clearCoverage();
 
-			const lines = rl.createInterface({
-				input: fs.createReadStream(coverProfilePath),
-				output: undefined
-			});
-
-			lines.on('line', (data: string) => {
-				// go test coverageprofile generates output:
-				//    filename:StartLine.StartColumn,EndLine.EndColumn Hits CoverCount
-				// The first line will be "mode: set" which will be ignored
-				const fileRange = data.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
-				if (!fileRange) {
-					return;
+			// collect the packages named in the coverage file
+			const seenPaths = new Set<string>();
+			// for now read synchronously and hope for no errors
+			const contents = fs.readFileSync(coverProfilePath).toString();
+			contents.split('\n').forEach((line) => {
+				const parse = line.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
+				if (!parse) { return; }
+				const lastSlash = parse[1].lastIndexOf('/'); // ok for windows?
+				if (lastSlash !== -1) {
+					seenPaths.add(parse[1].slice(0, lastSlash));
 				}
 
-				const filePath = path.join(packageDirPath, path.basename(fileRange[1]));
-				const coverage = getCoverageData(filePath);
+				// and fill in coveragePath
+				const coverage = getPathData(parse[1]);
 				const range = new vscode.Range(
 					// Start Line converted to zero based
-					parseInt(fileRange[2], 10) - 1,
+					parseInt(parse[2], 10) - 1,
 					// Start Column converted to zero based
-					parseInt(fileRange[3], 10) - 1,
+					parseInt(parse[3], 10) - 1,
 					// End Line converted to zero based
-					parseInt(fileRange[4], 10) - 1,
+					parseInt(parse[4], 10) - 1,
 					// End Column converted to zero based
-					parseInt(fileRange[5], 10) - 1
+					parseInt(parse[5], 10) - 1
 				);
 				// If is Covered (CoverCount > 0)
-				if (parseInt(fileRange[7], 10) > 0) {
+				if (parseInt(parse[7], 10) > 0) {
 					coverage.coveredRange.push(range);
 				} else {
 					coverage.uncoveredRange.push(range);
 				}
-				setCoverageData(filePath, coverage);
+				setPathData(parse[1], coverage);
 			});
-			lines.on('close', () => {
+			const pathPromise = getPathsToDirs(seenPaths, pathsToDirs, testDir);
+			pathPromise.then(() => {
+				createCoverageData();
 				setDecorators();
 				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
 				resolve();
@@ -218,6 +227,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, packageD
 			reject(e);
 		}
 	});
+	return v;
 }
 
 /**
@@ -235,6 +245,33 @@ function getCoverageData(filePath: string): CoverageData {
 		}
 	}
 	return coverageFiles[filePath] || { coveredRange: [], uncoveredRange: [] };
+}
+
+/**
+ * Get the CoverageData for an import path.
+ * @param importPath
+ */
+function getPathData(importPath: string): CoverageData {
+	return coveragePath.get(importPath) || { coveredRange: [], uncoveredRange: [] };
+}
+
+/**
+ * Set the CoverageData for an import path.
+ * @param importPath
+ * @param data
+ */
+function setPathData(importPath: string, data: CoverageData) {
+	coveragePath.set(importPath, data);
+}
+
+function createCoverageData() {
+	coveragePath.forEach((cd, ip) => {
+		const lastSlash = ip.lastIndexOf('/');
+		const importPath = ip.slice(0, lastSlash);
+		const fileDir = pathsToDirs.get(importPath);
+		const file = fileDir + ip.slice(lastSlash); // what about Windows?
+		setCoverageData(file, cd);
+	});
 }
 
 /**
@@ -334,6 +371,41 @@ export function trackCodeCoverageRemovalOnFileChange(e: vscode.TextDocumentChang
 }
 
 /**
+ * Fill the map of directory paths corresponding to input package paths
+ * @param set Set<string> of import package paths
+ */
+async function getPathsToDirs(set: Set<string>, res: Map<string, string>, testDir?: string) {
+	const goRuntimePath = getBinPath('go');
+	if (!goRuntimePath) {
+		vscode.window.showErrorMessage(
+			`Failed to run, as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+		);
+	}
+	const args: string[] = ['list', '-f', '{{.ImportPath}}:{{.Dir}}'];
+	set.forEach((s) => args.push(s));
+
+	const options: { [key: string]: any } = {
+		env: Object.assign({}, process.env, { GOPATH: getCurrentGoPath() })
+	};
+	const workDir = getWorkspaceFolderPath();
+	// If there is a workDir then probably it is what we want
+	// Otherwise maybe a test suggested a directory.
+	if (workDir) {
+		options['cwd'] = workDir;
+	} else if (testDir) {
+		options['cwd'] = testDir;
+	}
+
+	const execFile = util.promisify(cp.execFile);
+	const { stdout } = await execFile(goRuntimePath, args, options);
+	stdout.split('\n').forEach((line) => {
+		const flds = line.split(':');
+		if (flds.length !== 2) { return; }
+		res.set(flds[0], flds[1]);
+	});
+}
+
+/**
  * If current editor has Code coverage applied, then remove it.
  * Else run tests to get the coverage and apply.
  */
@@ -382,4 +454,28 @@ export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 		const idx = text.search('//');
 		return idx > -1 && idx <= change.range.start.character;
 	});
+}
+
+// These routines enable testing without starting an editing session.
+
+export function coverageFilesForTest():  { [key: string]: CoverageData; } {
+	return coverageFiles;
+}
+
+export function initForTest() {
+	if (!decoratorConfig) {
+		// this code is unnecessary except for testing, where there may be no workspace
+		// nor the normal flow of initializations
+		const x = 'rgba(0,0,0,0)';
+		if (!gutterSvgs) {
+			gutterSvgs = { x };
+		}
+		decoratorConfig = {
+			type: 'highlight',
+			coveredHighlightColor: x,
+			uncoveredHighlightColor: x,
+			coveredGutterStyle: x,
+			uncoveredGutterStyle: x
+		};
+	}
 }

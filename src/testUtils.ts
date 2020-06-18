@@ -20,7 +20,7 @@ import {
 	getTempFilePath,
 	killTree,
 	LineBuffer,
-	resolvePath,
+	resolvePath
 } from './util';
 
 const outputChannel = vscode.window.createOutputChannel('Go Tests');
@@ -402,7 +402,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		);
 	});
 	if (testconfig.applyCodeCoverage) {
-		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
+		await applyCodeCoverageToAllEditors(tmpCoverPath);
 	}
 	return testResult;
 }

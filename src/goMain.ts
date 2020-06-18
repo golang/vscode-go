@@ -57,7 +57,7 @@ import {
 	getToolsGopath,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
-	isGoPathSet,
+	isGoPathSet
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
@@ -554,8 +554,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 						updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 					}
 					applyCodeCoverageToAllEditors(
-						coverProfilePath,
-						path.dirname(vscode.window.activeTextEditor.document.fileName)
+						coverProfilePath
 					);
 				});
 		})
