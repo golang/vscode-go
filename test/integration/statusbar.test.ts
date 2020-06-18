@@ -5,15 +5,23 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import cp = require('child_process');
-import fs = require('fs');
+import * as cp from 'child_process';
+import * as fs from 'fs-extra';
 import { describe, it } from 'mocha';
-import os = require('os');
-import path = require('path');
-import sinon = require('sinon');
-import util = require('util');
+import * as os from 'os';
+import * as path from 'path';
+import * as sinon from 'sinon';
+import * as util from 'util';
 import { WorkspaceConfiguration } from 'vscode';
-import { disposeGoStatusBar, formatGoVersion, getGoEnvironmentStatusbarItem } from '../../src/goEnvironmentStatus';
+
+import {
+	disposeGoStatusBar,
+	formatGoVersion,
+	getGoEnvironmentStatusbarItem,
+	getSelectedGo,
+	GoEnvironmentOption,
+	setSelectedGo,
+} from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { getCurrentGoRoot } from '../../src/goPath';
 import ourutil = require('../../src/util');
@@ -39,6 +47,46 @@ describe('#initGoStatusBar()', function () {
 			versionLabel,
 			'goroot version does not match status bar item text'
 		);
+	});
+});
+
+describe('#setSelectedGo()', function () {
+	this.timeout(20000);
+	let goOption: GoEnvironmentOption;
+
+	this.beforeEach(async () => {
+		goOption = await getSelectedGo();
+	});
+	this.afterEach(async () => {
+		await setSelectedGo(goOption);
+	});
+
+	it('should update the selected Go in workspace context', async () => {
+		const testOption = new GoEnvironmentOption('testpath', 'testlabel');
+		await setSelectedGo(testOption);
+		const setOption = await getSelectedGo();
+		assert.ok(setOption.label === 'testlabel' && setOption.binpath === 'testpath', 'Selected go was not set properly');
+	});
+
+	it('should download an uninstalled version of Go', async () => {
+		if (!!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
+			return;
+		}
+
+		// setup tmp home directory for sdk installation
+		const envCache = Object.assign({}, process.env);
+		process.env.HOME = os.tmpdir();
+
+		// set selected go as a version to download
+		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
+		await setSelectedGo(option);
+
+		// the temp sdk directory should now contain go1.13.12
+		const subdirs = await fs.readdir(path.join(os.tmpdir(), 'sdk'));
+		assert.ok(subdirs.includes('go1.13.12'), 'Go 1.13.12 was not installed');
+
+		// cleanup
+		process.env = envCache;
 	});
 });
 
