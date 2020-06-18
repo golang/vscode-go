@@ -493,3 +493,13 @@ function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 		return res.filter((x) => x != null);
 	});
 }
+
+export async function getActiveGoRoot(): Promise<string | undefined> {
+	// look for current current go binary
+	let goroot = getCurrentGoRoot();
+	if (!goroot) {
+		await updateGoVarsFromConfig();
+		goroot = getCurrentGoRoot();
+	}
+	return goroot || undefined;
+}

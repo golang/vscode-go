@@ -12,7 +12,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as util from 'util';
-import { WorkspaceConfiguration } from 'vscode';
+import * as vscode from 'vscode';
 
 import {
 	disposeGoStatusBar,
@@ -52,20 +52,51 @@ describe('#initGoStatusBar()', function () {
 
 describe('#setSelectedGo()', function () {
 	this.timeout(20000);
+	let sandbox: sinon.SinonSandbox | undefined;
 	let goOption: GoEnvironmentOption;
+	let defaultGoConfig: vscode.WorkspaceConfiguration;
+
+	this.beforeAll(async () => {
+		defaultGoConfig = ourutil.getGoConfig();
+	});
 
 	this.beforeEach(async () => {
 		goOption = await getSelectedGo();
+		sandbox = sinon.createSandbox();
 	});
 	this.afterEach(async () => {
-		await setSelectedGo(goOption);
+		await setSelectedGo(goOption, vscode.ConfigurationTarget.Workspace);
+		sandbox.restore();
 	});
 
-	it('should update the selected Go in workspace context', async () => {
-		const testOption = new GoEnvironmentOption('testpath', 'testlabel');
-		await setSelectedGo(testOption);
-		const setOption = await getSelectedGo();
-		assert.ok(setOption.label === 'testlabel' && setOption.binpath === 'testpath', 'Selected go was not set properly');
+	it('should update the workspace settings.json', async () => {
+		let tmpAltToolsWorkspace: any = {};
+		let tmpAltToolsGlobal: any = {};
+		const getGoConfigStub = sandbox.stub(ourutil, 'getGoConfig').returns({
+			get: (s: string) => {
+				if (s === 'alternateTools') { return tmpAltToolsWorkspace || tmpAltToolsGlobal; }
+				return defaultGoConfig.get(s);
+			},
+			update: (key: string, value: any, scope: vscode.ConfigurationTarget) => {
+				if (key === 'alternateTools') {
+					if (scope === vscode.ConfigurationTarget.Global) {
+						tmpAltToolsGlobal = value;
+					} else {
+						tmpAltToolsWorkspace = value;
+					}
+				}
+			},
+		} as vscode.WorkspaceConfiguration);
+
+		// set workspace setting
+		const workspaceTestOption = new GoEnvironmentOption('workspacetestpath', 'testlabel');
+		await setSelectedGo(workspaceTestOption, vscode.ConfigurationTarget.Workspace);
+
+		// check that the stub was called
+		sandbox.assert.calledWith(getGoConfigStub);
+
+		// check that the new config is set
+		assert.equal(tmpAltToolsWorkspace['go'], 'workspacetestpath');
 	});
 
 	it('should download an uninstalled version of Go', async () => {
@@ -73,13 +104,32 @@ describe('#setSelectedGo()', function () {
 			return;
 		}
 
+		let tmpAltToolsWorkspace = {};
+		let tmpAltToolsGlobal = {};
+		const getGoConfigStub = sandbox.stub(ourutil, 'getGoConfig').returns({
+			get: (s: string) => {
+				if (s === 'alternateTools') { return tmpAltToolsWorkspace || tmpAltToolsGlobal; }
+				return defaultGoConfig.get(s);
+			},
+			update: (key: string, value: any, scope: vscode.ConfigurationTarget) => {
+				if (key === 'alternateTools') {
+					if (scope === vscode.ConfigurationTarget.Global) {
+						tmpAltToolsGlobal = value;
+					} else {
+						tmpAltToolsWorkspace = value;
+					}
+				}
+			},
+		} as vscode.WorkspaceConfiguration);
+
 		// setup tmp home directory for sdk installation
 		const envCache = Object.assign({}, process.env);
 		process.env.HOME = os.tmpdir();
 
 		// set selected go as a version to download
 		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
-		await setSelectedGo(option);
+		await setSelectedGo(option, vscode.ConfigurationTarget.Workspace);
+		sandbox.assert.calledWith(getGoConfigStub);
 
 		// the temp sdk directory should now contain go1.13.12
 		const subdirs = await fs.readdir(path.join(os.tmpdir(), 'sdk'));
@@ -93,7 +143,7 @@ describe('#setSelectedGo()', function () {
 describe('#updateGoVarsFromConfig()', function () {
 	this.timeout(10000);
 
-	let defaultGoConfig: WorkspaceConfiguration | undefined;
+	let defaultGoConfig: vscode.WorkspaceConfiguration | undefined;
 	let tmpRoot: string | undefined;
 	let tmpRootBin: string | undefined;
 	let sandbox: sinon.SinonSandbox | undefined;
@@ -155,7 +205,7 @@ describe('#updateGoVarsFromConfig()', function () {
 				if (s === 'goroot') { return tmpRoot; }
 				return defaultGoConfig.get(s);
 			},
-		} as WorkspaceConfiguration);
+		} as vscode.WorkspaceConfiguration);
 
 		// adjust the fake go binary's behavior.
 		process.env['FAKEGOROOT'] = tmpRoot;
@@ -181,7 +231,7 @@ describe('#updateGoVarsFromConfig()', function () {
 				}
 				return defaultGoConfig.get(s);
 			},
-		} as WorkspaceConfiguration);
+		} as vscode.WorkspaceConfiguration);
 
 		process.env['FAKEGOROOT'] = tmpRoot;
 		process.env['FAKEGOVERSION'] = 'go version go3.0.0 darwin/amd64';

@@ -14,11 +14,9 @@ import vscode = require('vscode');
 import WebRequest = require('web-request');
 
 import { toolInstallationEnvironment } from './goEnv';
-import { updateGoVarsFromConfig } from './goInstallTools';
-import { getCurrentGoRoot } from './goPath';
+import { getActiveGoRoot } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
-import { getBinPath, getGoVersion } from './util';
+import { getBinPath, getGoConfig, getGoVersion } from './util';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -48,7 +46,6 @@ export async function initGoStatusBar() {
 	// set Go version and command
 	const version = await getGoVersion();
 	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
-	await setSelectedGo(goOption);
 
 	hideGoStatusBar();
 	goEnvStatusbarItem.text = goOption.label;
@@ -91,7 +88,7 @@ export async function chooseGoEnvironment() {
 		return;
 	}
 
-	// fetch default go and uninstalled gos
+	// fetch default go and uninstalled go versions
 	let defaultOption: GoEnvironmentOption;
 	let uninstalledOptions: GoEnvironmentOption[];
 	let goSDKOptions: GoEnvironmentOption[];
@@ -127,7 +124,7 @@ export async function chooseGoEnvironment() {
 
 	// update currently selected go
 	try {
-		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
+		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection), vscode.ConfigurationTarget.Workspace);
 		vscode.window.showInformationMessage(`Switched to ${selection.label}`);
 	} catch (e) {
 		vscode.window.showErrorMessage(e.message);
@@ -137,8 +134,11 @@ export async function chooseGoEnvironment() {
 /**
  * update the selected go path and label in the workspace state
  */
-export async function setSelectedGo(selectedGo: GoEnvironmentOption) {
+export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vscode.ConfigurationTarget) {
 	const execFile = promisify(cp.execFile);
+
+	const goConfig = getGoConfig();
+	const alternateTools: any = goConfig.get('alternateTools') || {};
 	// if the selected go version is not installed, install it
 	if (selectedGo.binpath.startsWith('go get')) {
 		// start a loading indicator
@@ -187,32 +187,36 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption) {
 			const subdirs = await fs.readdir(sdkPath);
 			const dir = subdirs.find((subdir) => subdir === newExecutableName);
 			if (!dir) {
-				outputChannel.appendLine(`Could not install Go to directory: ${dir}`);
+				outputChannel.appendLine('Could not find newly downloaded Go');
 				throw new Error('Could not install Go version.');
 			}
 
-			outputChannel.appendLine('Updating selected Go version.');
-			await updateWorkspaceState('selected-go', new GoEnvironmentOption(
-				path.join(sdkPath, dir, 'bin', 'go'),
-				selectedGo.label
-			));
+			const binpath = path.join(sdkPath, dir, 'bin', 'go');
+			const newAlternateTools = {
+				...alternateTools,
+				go: binpath,
+			};
+			await goConfig.update('alternateTools', newAlternateTools, scope);
 			goEnvStatusbarItem.text = selectedGo.label;
 			outputChannel.appendLine('Success!');
 		});
 	} else {
-		await updateWorkspaceState('selected-go', selectedGo);
+		const newAlternateTools = {
+			...alternateTools,
+			go: selectedGo.binpath,
+		};
+		await goConfig.update('alternateTools', newAlternateTools, scope);
 		goEnvStatusbarItem.text = selectedGo.label;
 	}
-
-	// TODO: restart language server when the Go binary is switched
-	// TODO: determine if changes to settings.json need to be made
+	// TODO: restart language server if needed
 }
 
 /**
  * retreive the current selected Go from the workspace state
  */
 export async function getSelectedGo(): Promise<GoEnvironmentOption> {
-	return await getFromWorkspaceState('selected-go');
+	const goVersion = await getGoVersion();
+	return new GoEnvironmentOption(goVersion.binaryPath, formatGoVersion(goVersion.format()));
 }
 
 /**
@@ -220,16 +224,6 @@ export async function getSelectedGo(): Promise<GoEnvironmentOption> {
  */
 export function getGoEnvironmentStatusbarItem(): vscode.StatusBarItem {
 	return goEnvStatusbarItem;
-}
-
-export async function getActiveGoRoot(): Promise<string | undefined> {
-	// look for current current go binary
-	let goroot = getCurrentGoRoot();
-	if (!goroot) {
-		await updateGoVarsFromConfig();
-		goroot = getCurrentGoRoot();
-	}
-	return goroot || undefined;
 }
 
 export function formatGoVersion(version: string): string {
