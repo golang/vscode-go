@@ -19,6 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
+import { chooseGoEnvironment, initGoStatusBar } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -168,6 +169,9 @@ export function activate(ctx: vscode.ExtensionContext): void {
 		})
 	);
 	showHideStatus(vscode.window.activeTextEditor);
+
+	// show the go environment status bar item
+	initGoStatusBar();
 
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
 	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
@@ -556,6 +560,13 @@ export function activate(ctx: vscode.ExtensionContext): void {
 						path.dirname(vscode.window.activeTextEditor.document.fileName)
 					);
 				});
+		})
+	);
+
+	// Go Enviornment switching commands
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.environment.choose', () => {
+			chooseGoEnvironment();
 		})
 	);
 
