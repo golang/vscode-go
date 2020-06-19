@@ -12,3 +12,7 @@ build/**/*
 docs/
 *.md.nightly
 .github/**/*
+.prettierrc.json
+out/test/**
+.vscode-test/**
+SECURITY.md
