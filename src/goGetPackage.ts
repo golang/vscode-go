@@ -8,7 +8,7 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { buildCode } from './goBuild';
-import { envPath } from './goPath';
+import { envPath, getCurrentGoRoot } from './goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
 
@@ -26,7 +26,7 @@ export function goGetPackage() {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 	}
 

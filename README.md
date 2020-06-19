@@ -8,7 +8,7 @@ This extension provides rich language support for the [Go programming language](
 
 Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more our move on the [Go blog](https://golang.blog/the-vs-code-go-extension-joins-the-go-project).
+> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more about our move on the [Go blog](https://blog.golang.org/vscode-go).
 
 ## Overview
 
@@ -125,7 +125,11 @@ If you'd like to get early access to new features and bug fixes, you can use the
 
 ## [Contributing](docs/contributing.md)
 
+<<<<<<< HEAD
 We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution cuide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
+=======
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution guide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
+>>>>>>> master
 
 ## [Code of Conduct](CODE_OF_CONDUCT.md)
 

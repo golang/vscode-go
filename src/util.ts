@@ -9,19 +9,22 @@ import os = require('os');
 import path = require('path');
 import semver = require('semver');
 import kill = require('tree-kill');
+import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { extensionId } from './const';
+import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import {
 	envPath,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopath,
+	getCurrentGoRoot,
 	getInferredGopath,
-	resolveHomeDir
+	resolveHomeDir,
 } from './goPath';
 import { outputChannel } from './goStatus';
-import { extensionId } from './telemetry';
 
 let userNameHash: number = 0;
 
@@ -77,19 +80,26 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 ]);
 
 export class GoVersion {
-	public sv: semver.SemVer;
-	public isDevel: boolean;
-	private commit: string;
+	public sv?: semver.SemVer;
+	public isDevel?: boolean;
+	private commit?: string;
 
-	constructor(version: string) {
+	constructor(public binaryPath: string, version: string) {
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
-			this.sv = semver.coerce(matchesRelease[0]);
+			const sv = semver.coerce(matchesRelease[0]);
+			if (sv) {
+				this.sv = sv;
+			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
 			this.commit = matchesDevel[0];
 		}
+	}
+
+	public isValid(): boolean {
+		return !!this.sv || !!this.isDevel;
 	}
 
 	public format(): string {
@@ -105,7 +115,11 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return false;
 		}
-		return semver.lt(this.sv, semver.coerce(version));
+		const v = semver.coerce(version);
+		if (!v) {
+			return false;
+		}
+		return semver.lt(this.sv, v);
 	}
 
 	public gt(version: string): boolean {
@@ -114,12 +128,16 @@ export class GoVersion {
 		if (this.isDevel || !this.sv) {
 			return true;
 		}
-		return semver.gt(this.sv, semver.coerce(version));
+		const v = semver.coerce(version);
+		if (!v) {
+			return false;
+		}
+		return semver.gt(this.sv, v);
 	}
 }
 
-let cachedGoVersion: GoVersion = null;
-let vendorSupport: boolean = null;
+let cachedGoVersion: GoVersion | undefined;
+let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
 export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
@@ -281,33 +299,37 @@ export function getUserNameHash() {
  * Gets version of Go based on the output of the command `go version`.
  * Returns null if go is being used from source/tip in which case `go version` will not return release tag like go1.6.3
  */
-export async function getGoVersion(): Promise<GoVersion> {
+export async function getGoVersion(): Promise<GoVersion | undefined> {
 	const goRuntimePath = getBinPath('go');
 
+	const warn = (msg: string) => {
+		outputChannel.appendLine(msg);
+		console.warn(msg);
+	};
+
 	if (!goRuntimePath) {
-		console.warn(
-			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
-		);
-		return Promise.resolve(null);
+		warn(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
+		return;
 	}
-	if (cachedGoVersion && (cachedGoVersion.sv || cachedGoVersion.isDevel)) {
-		return Promise.resolve(cachedGoVersion);
+	if (cachedGoVersion) {
+		if (cachedGoVersion.isValid()) {
+			return Promise.resolve(cachedGoVersion);
+		}
+		warn(`cached Go version (${cachedGoVersion}) is invalid, recomputing`);
 	}
-	return new Promise<GoVersion>((resolve) => {
-		cp.execFile(goRuntimePath, ['version'], {}, (err, stdout, stderr) => {
-			cachedGoVersion = new GoVersion(stdout);
-			if (!cachedGoVersion.sv && !cachedGoVersion.isDevel) {
-				if (err || stderr) {
-					console.log(`Error when running the command "${goRuntimePath} version": `, err || stderr);
-				} else {
-					console.log(
-						`Not able to determine version from the output of the command "${goRuntimePath} version": ${stdout}`
-					);
-				}
-			}
-			return resolve(cachedGoVersion);
-		});
-	});
+	try {
+		const execFile = util.promisify(cp.execFile);
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version']);
+		if (stderr) {
+			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
+			return;
+		}
+		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
+	} catch (err) {
+		warn(`failed to run "${goRuntimePath} version": ${err}`);
+		return;
+	}
+	return cachedGoVersion;
 }
 
 /**
@@ -328,7 +350,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		case 1:
 			vendorSupport =
 				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
+					((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
 					? true
 					: false;
 			break;
@@ -417,31 +439,13 @@ export function getBinPath(tool: string): string {
 	return getBinPathWithPreferredGopath(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
-		resolvePath(alternateToolPath)
+		resolvePath(alternateToolPath),
 	);
 }
 
 export function getFileArchive(document: vscode.TextDocument): string {
 	const fileContents = document.getText();
 	return document.fileName + '\n' + Buffer.byteLength(fileContents, 'utf8') + '\n' + fileContents;
-}
-
-export function getToolsEnvVars(): any {
-	const config = getGoConfig();
-	const toolsEnvVars = config['toolsEnvVars'];
-
-	const gopath = getCurrentGoPath();
-	const envVars = Object.assign({}, process.env, gopath ? { GOPATH: gopath } : {});
-
-	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
-		Object.keys(toolsEnvVars).forEach(
-			(key) =>
-				(envVars[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
-		);
-	}
-
-	return envVars;
 }
 
 export function substituteEnv(input: string): string {
@@ -852,11 +856,15 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 }
 
 export const killTree = (processId: number): void => {
-	kill(processId, (err) => {
-		if (err) {
-			console.log('Error killing process tree: ' + err);
-		}
-	});
+	try {
+		kill(processId, (err) => {
+			if (err) {
+				console.log(`Error killing process tree: ${err}`);
+			}
+		});
+	} catch (err) {
+		console.log(`Error killing process tree: ${err}`);
+	}
 };
 
 export function killProcess(p: cp.ChildProcess) {
@@ -897,9 +905,13 @@ export function rmdirRecursive(dir: string) {
 		fs.readdirSync(dir).forEach((file) => {
 			const relPath = path.join(dir, file);
 			if (fs.lstatSync(relPath).isDirectory()) {
-				rmdirRecursive(dir);
+				rmdirRecursive(relPath);
 			} else {
-				fs.unlinkSync(relPath);
+				try {
+					fs.unlinkSync(relPath);
+				} catch (err) {
+					console.log(`failed to remove ${relPath}: ${err}`);
+				}
 			}
 		});
 		fs.rmdirSync(dir);
@@ -967,7 +979,7 @@ export function runGodoc(
 				symbol = receiver + '.' + symbol;
 			}
 
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const args = ['doc', '-c', '-cmd', '-u', packageImportPath, symbol];
 			const p = cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
 				if (err) {

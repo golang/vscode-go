@@ -7,9 +7,7 @@ import cp = require('child_process');
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { updateGoPathGoRootFromConfig } from '../../src/goInstallTools';
-import { extensionId } from '../../src/telemetry';
-import { getCurrentGoPath } from '../../src/util';
+import { extensionId } from '../../src/const';
 
 // Env is a collection of test related variables
 // that define the test environment such as vscode workspace.
@@ -46,11 +44,6 @@ class Env {
 	}
 
 	public async setup() {
-		const wscfg = vscode.workspace.getConfiguration('go');
-		if (!wscfg.get('useLanguageServer')) {
-			wscfg.update('useLanguageServer', true, vscode.ConfigurationTarget.Workspace);
-		}
-
 		await this.reset();
 		await this.extension.activate();
 		await sleep(2000);  // allow extension host + gopls to start.
@@ -62,10 +55,10 @@ class Env {
 			// needed to keep the empty directory in vcs.
 			await fs.readdir(this.workspaceDir).then((files) => {
 				return Promise.all(
-					files.filter((filename) => filename !== '.gitignore').map((file) => {
+					files.filter((filename) => filename !== '.gitignore' && filename !== '.vscode').map((file) => {
 						fs.remove(path.resolve(this.workspaceDir, file));
 					}));
-				});
+			});
 
 			if (!fixtureDirName) {
 				return;
@@ -92,7 +85,7 @@ async function sleep(ms: number) {
 }
 
 suite('Go Extension Tests With Gopls', function () {
-	this.timeout(1000000);
+	this.timeout(300000);
 	const projectDir = path.join(__dirname, '..', '..', '..');
 	const env = new Env(projectDir);
 
@@ -135,5 +128,35 @@ suite('Go Extension Tests With Gopls', function () {
 				`check hovers over ${name} failed: got ${gotMessage}`);
 		});
 		return Promise.all(promises);
+	});
+
+	test('Completion middleware', async () => {
+		await env.reset('gogetdocTestData');
+		const { uri } = await env.openDoc('test.go');
+		const testCases: [string, vscode.Position, string][] = [
+			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
+		];
+		for (const [name, position, wantFilterText] of testCases) {
+			const list = await vscode.commands.executeCommand(
+				'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
+
+			// Confirm that the hardcoded filter text hack has been applied.
+			if (!list.isIncomplete) {
+				assert.fail(`gopls should provide an incomplete list by default`);
+			}
+			// TODO(rstambler): For some reason, the filter text gets deleted
+			// from the first item. I can't reproduce this outside of the test
+			// suite.
+			for (let i = 1; i < list.items.length; i++) {
+				const item = list.items[i];
+				assert.equal(item.filterText, wantFilterText, `${uri}:${name} failed, unexpected filter text (got ${item.filterText}, want ${wantFilterText})`);
+			}
+			for (const item of list.items) {
+				if (item.kind === vscode.CompletionItemKind.Method || item.kind === vscode.CompletionItemKind.Function) {
+					assert.ok(item.command, `${uri}:${name}: expected command associated with ${item.label}, found none`);
+				}
+			}
+		}
+
 	});
 });

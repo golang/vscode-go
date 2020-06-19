@@ -1,0 +1,82 @@
+{
+  "_args": [
+    [
+      "tree-kill@1.2.2",
+      "/Users/hakim/projects/google/vscode-go"
+    ]
+  ],
+  "_from": "tree-kill@1.2.2",
+  "_id": "tree-kill@1.2.2",
+  "_inBundle": false,
+  "_integrity": "sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==",
+  "_location": "/tree-kill",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "tree-kill@1.2.2",
+    "name": "tree-kill",
+    "escapedName": "tree-kill",
+    "rawSpec": "1.2.2",
+    "saveSpec": null,
+    "fetchSpec": "1.2.2"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz",
+  "_spec": "1.2.2",
+  "_where": "/Users/hakim/projects/google/vscode-go",
+  "author": {
+    "name": "Peteris Krumins",
+    "email": "peteris.krumins@gmail.com",
+    "url": "http://www.catonmat.net"
+  },
+  "bin": {
+    "tree-kill": "cli.js"
+  },
+  "bugs": {
+    "url": "https://github.com/pkrumins/node-tree-kill/issues"
+  },
+  "contributors": [
+    {
+      "name": "Todd Wolfson",
+      "email": "todd@twolfson.com",
+      "url": "http://twolfson.com/"
+    },
+    {
+      "name": "William Hilton",
+      "email": "wmhilton@gmail.com",
+      "url": "http://wmhilton.com/"
+    },
+    {
+      "name": "Fabrício Matté",
+      "url": "http://ultcombo.js.org/"
+    }
+  ],
+  "description": "kill trees of processes",
+  "devDependencies": {
+    "mocha": "^2.2.5"
+  },
+  "homepage": "https://github.com/pkrumins/node-tree-kill",
+  "keywords": [
+    "tree",
+    "trees",
+    "process",
+    "processes",
+    "kill",
+    "signal"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "name": "tree-kill",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pkrumins/node-tree-kill.git"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "types": "index.d.ts",
+  "version": "1.2.2"
+}

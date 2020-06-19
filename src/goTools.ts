@@ -5,15 +5,46 @@
 
 'use strict';
 
-import { SemVer } from 'semver';
+import cp = require('child_process');
+import fs = require('fs');
+import moment = require('moment');
+import path = require('path');
+import semver = require('semver');
+import util = require('util');
 import { goLiveErrorsEnabled } from './goLiveErrors';
-import { getGoConfig, GoVersion } from './util';
+import { getBinPath, getGoConfig, GoVersion } from './util';
 
 export interface Tool {
 	name: string;
 	importPath: string;
 	isImportant: boolean;
 	description: string;
+
+	// latestVersion and latestVersionTimestamp are hardcoded default values
+	// for the last known version of the given tool. We also hardcode values
+	// for the latest known pre-release of the tool for the Nightly extension.
+	latestVersion?: semver.SemVer;
+	latestVersionTimestamp?: moment.Moment;
+	latestPrereleaseVersion?: semver.SemVer;
+	latestPrereleaseVersionTimestamp?: moment.Moment;
+
+	// minimumGoVersion and maximumGoVersion set the range for the versions of
+	// Go with which this tool can be used.
+	minimumGoVersion?: semver.SemVer;
+	maximumGoVersion?: semver.SemVer;
+
+	// close performs any shutdown tasks that a tool must execute before a new
+	// version is installed. It returns a string containing an error message on
+	// failure.
+	close?: () => Promise<string>;
+}
+
+/**
+ * ToolAtVersion is a Tool at a specific version.
+ * Lack of version implies the latest version.
+ */
+export interface ToolAtVersion extends Tool {
+	version?: semver.SemVer;
 }
 
 /**
@@ -29,7 +60,7 @@ export function getImportPath(tool: Tool, goVersion: GoVersion): string {
 	return tool.importPath;
 }
 
-export function getImportPathWithVersion(tool: Tool, version: SemVer, goVersion: GoVersion): string {
+export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goVersion: GoVersion): string {
 	const importPath = getImportPath(tool, goVersion);
 	if (version) {
 		return importPath + '@v' + version;
@@ -60,6 +91,10 @@ export function containsString(tools: Tool[], toolName: string): boolean {
 
 export function getTool(name: string): Tool {
 	return allToolsInformation[name];
+}
+
+export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtVersion {
+	return { ...allToolsInformation[name], version };
 }
 
 // hasModSuffix returns true if the given tool has a different, module-specific
@@ -141,18 +176,35 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	return tools;
 }
 
-const allToolsInformation: { [key: string]: Tool } = {
+export const allToolsInformation: { [key: string]: Tool } = {
 	'gocode': {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
-		description: 'Auto-completion, does not work with modules'
+		description: 'Auto-completion, does not work with modules',
+		close: async (): Promise<string> => {
+			const toolBinPath = getBinPath('gocode');
+			if (!path.isAbsolute(toolBinPath)) {
+				return '';
+			}
+			try {
+				const execFile = util.promisify(cp.execFile);
+				const { stderr } = await execFile(toolBinPath, ['close']);
+				if (stderr.indexOf(`rpc: can't find service Server.`) > -1) {
+					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
+				}
+			} catch (err) {
+				return `Failed to close gocode process: ${err}.`;
+			}
+			return '';
+		},
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
 		importPath: 'github.com/stamblerre/gocode',
 		isImportant: true,
-		description: 'Auto-completion, works with modules'
+		description: 'Auto-completion, works with modules',
+		minimumGoVersion: semver.coerce('1.11'),
 	},
 	'gopkgs': {
 		name: 'gopkgs',
@@ -242,13 +294,15 @@ const allToolsInformation: { [key: string]: Tool } = {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
 		isImportant: true,
-		description: 'Linter'
+		description: 'Linter',
+		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'gotests': {
 		name: 'gotests',
 		importPath: 'github.com/cweill/gotests/...',
 		isImportant: false,
-		description: 'Generate unit tests'
+		description: 'Generate unit tests',
+		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'staticcheck': {
 		name: 'staticcheck',
@@ -272,7 +326,12 @@ const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gopls',
 		importPath: 'golang.org/x/tools/gopls',
 		isImportant: false,
-		description: 'Language Server from Google'
+		description: 'Language Server from Google',
+		minimumGoVersion: semver.coerce('1.12'),
+		latestVersion: semver.coerce('0.4.1'),
+		latestVersionTimestamp: moment('2020-05-13', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.coerce('0.4.1'),
+		latestPrereleaseVersionTimestamp: moment('2020-05-13', 'YYYY-MM-DD'),
 	},
 	'dlv': {
 		name: 'dlv',

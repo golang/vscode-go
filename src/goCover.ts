@@ -11,7 +11,7 @@ import rl = require('readline');
 import vscode = require('vscode');
 import { isModSupported } from './goModules';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
-import { getGoConfig, getTempFilePath } from './util';
+import { getGoConfig } from './util';
 
 let gutterSvgs: { [key: string]: string };
 let decorators: {
