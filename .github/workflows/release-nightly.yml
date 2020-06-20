@@ -1,4 +1,4 @@
-name: release
+name: Release (golang.go-nightly)
 
 # Daily release on 15:00 UTC, monday-thursday.
 # Or, force to release by triggering repository_dispatch events by using
@@ -11,6 +11,8 @@ on:
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/master' && github.repository == 'golang/vscode-go'
+
     name: Release Nightly
     runs-on: ubuntu-latest
     timeout-minutes: 20
