@@ -11,7 +11,6 @@ import vscode = require('vscode');
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
-import { GoCodeActionProvider } from './goCodeAction';
 import {
 	applyCodeCoverage, applyCodeCoverageToAllEditors, initCoverageDecorators, removeCodeCoverageOnFileSave,
 	toggleCoverageCurrentPackage, trackCodeCoverageRemovalOnFileChange, updateCodeCoverageDecorators
@@ -176,7 +175,6 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
 	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
 
-	ctx.subscriptions.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
