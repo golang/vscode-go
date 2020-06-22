@@ -21,6 +21,7 @@ import {
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { extensionId } from './const';
+import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
@@ -334,6 +335,7 @@ function registerDefaultProviders(ctx: vscode.ExtensionContext) {
 	);
 	defaultLanguageProviders.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
 	defaultLanguageProviders.push(vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions));
+	defaultLanguageProviders.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
 
 	for (const provider of defaultLanguageProviders) {
 		ctx.subscriptions.push(provider);
