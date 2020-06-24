@@ -12,6 +12,7 @@ import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
 import { toolInstallationEnvironment } from './goEnv';
+import { initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './goPath';
@@ -335,35 +336,21 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	if (getCurrentGoRoot() && process.env['GOPATH'] && process.env['GOPROXY'] && process.env['GOBIN']) {
+	// FIXIT: when user changes the environment variable settings or go.gopath, the following
+	// condition prevents from updating the process.env accordingly, so the extension will lie.
+	// Needs to clean up.
+	if (process.env['GOPATH'] && process.env['GOPROXY'] && process.env['GOBIN']) {
 		return Promise.resolve();
 	}
 
-	// If GOPATH is still not set, then use the one from `go env`
-	const goRuntimePath = getBinPath('go');
+	// FIXIT: if updateGoVarsFromConfig is called again after addGoRuntimeBaseToPATH sets PATH,
+	// the go chosen by getBinPath based on PATH will not change.
+	const goRuntimePath = getBinPath('go', false);
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
 			`Failed to run "go env" to find GOPATH as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 		return;
-	}
-	const goRuntimeBasePath = path.dirname(goRuntimePath);
-
-	// cgo and a few other Go tools expect Go binary to be in the path
-	let pathEnvVar: string;
-	if (process.env.hasOwnProperty('PATH')) {
-		pathEnvVar = 'PATH';
-	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
-		pathEnvVar = 'Path';
-	}
-	if (
-		goRuntimeBasePath &&
-		pathEnvVar &&
-		process.env[pathEnvVar] &&
-		(<string>process.env[pathEnvVar]).split(path.delimiter).indexOf(goRuntimeBasePath) === -1
-	) {
-		// Place the goRuntimeBasePath to the front so tools use the same version of go.
-		process.env[pathEnvVar] = goRuntimeBasePath + path.delimiter + process.env[pathEnvVar];
 	}
 
 	return new Promise<void>((resolve, reject) => {
@@ -375,7 +362,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			if (!process.env['GOPATH'] && envOutput[0].trim()) {
 				process.env['GOPATH'] = envOutput[0].trim();
 			}
-			if (!getCurrentGoRoot() && envOutput[1] && envOutput[1].trim()) {
+			if (envOutput[1] && envOutput[1].trim()) {
 				setCurrentGoRoot(envOutput[1].trim());
 			}
 			if (!process.env['GOPROXY'] && envOutput[2] && envOutput[2].trim()) {
@@ -384,9 +371,46 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
 				process.env['GOBIN'] = envOutput[3].trim();
 			}
+
+			// cgo, gopls, and other underlying tools will inherit the environment and attempt
+			// to locate 'go' from the PATH env var.
+			addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
+			initGoStatusBar();
+			// TODO: restart language server or synchronize with language server update.
+
 			return resolve();
 		});
 	});
+}
+
+// PATH value cached before addGoRuntimeBaseToPath modified.
+let defaultPathEnv = '';
+
+// addGoRuntimeBaseToPATH adds the given path to the front of the PATH environment variable.
+// It removes duplicates.
+// TODO: can we avoid changing PATH but utilize toolExecutionEnv?
+function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
+	if (!newGoRuntimeBase) {
+		return;
+	}
+
+	let pathEnvVar: string;
+	if (process.env.hasOwnProperty('PATH')) {
+		pathEnvVar = 'PATH';
+	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
+		pathEnvVar = 'Path';
+	} else {
+		return;
+	}
+
+	if (!defaultPathEnv) {  // cache the default value
+		defaultPathEnv = <string>process.env[pathEnvVar];
+	}
+
+	let pathVars = defaultPathEnv.split(path.delimiter);
+	pathVars = pathVars.filter((p) => p !== newGoRuntimeBase);
+	pathVars.unshift(newGoRuntimeBase);
+	process.env[pathEnvVar] = pathVars.join(path.delimiter);
 }
 
 let alreadyOfferedToInstallTools = false;
