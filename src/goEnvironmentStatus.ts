@@ -18,20 +18,15 @@ let goEnvStatusbarItem: vscode.StatusBarItem;
  * Initialize the status bar item with current Go binary
  */
 export async function initGoStatusBar() {
-	goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-
-	// make goroot default to go.goroot and fallback on $PATH
-	const goroot = await getActiveGoRoot();
-	if (!goroot) {
-		// TODO: prompt user to install Go
-		vscode.window.showErrorMessage('No Go command could be found.');
+	if (!goEnvStatusbarItem) {
+		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 	}
-
 	// set Go version and command
 	const version = await getGoVersion();
+
+	hideGoStatusBar();
 	goEnvStatusbarItem.text = formatGoVersion(version.format());
 	goEnvStatusbarItem.command = 'go.environment.choose';
-
 	showGoStatusBar();
 }
 

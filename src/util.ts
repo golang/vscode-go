@@ -136,11 +136,13 @@ export class GoVersion {
 	}
 }
 
+let cachedGoBinPath: string | undefined;
 let cachedGoVersion: GoVersion | undefined;
 let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
-export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+// getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
+export const getGoConfig = (uri?: vscode.Uri) => {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;
@@ -149,7 +151,7 @@ export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		}
 	}
 	return vscode.workspace.getConfiguration('go', uri);
-}
+};
 
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
@@ -311,7 +313,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		warn(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
 		return;
 	}
-	if (cachedGoVersion) {
+	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
@@ -324,6 +326,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
+		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
@@ -432,7 +435,7 @@ function resolveToolsGopath(): string {
 	}
 }
 
-export function getBinPath(tool: string): string {
+export function getBinPath(tool: string, useCache = true): string {
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
@@ -440,6 +443,7 @@ export function getBinPath(tool: string): string {
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		resolvePath(alternateToolPath),
+		useCache
 	);
 }
 
