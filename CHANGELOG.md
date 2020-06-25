@@ -1,3 +1,45 @@
+## v0.15.0 - 29 June, 2020
+
+### New Features
+
+- The new command `Go: Subtest At Cursor` runs an individual subtest if the subtest's name is a simple string ([cl/235447](https://golang.org/cl/235447)).
+- The new setting `go.trace.server` controls tracing between VS Code and the language server ([cl/232458](https://golang.org/cl/232458)). Unlike tracing using `gopls` [flags](https://github.com/golang/tools/blob/master/gopls/doc/troubleshooting.md#vs-code), this controls client-side tracing, and does not require to restart the server to change the value. This client-side trace is presented in the `gopls` output channel. The server-side trace has been moved to the new `gopls (server)` output channel ([cl/233598](https://golang.org/cl/233598)).
+- There is now a new Go version status bar item. Clicking it currently only pops up the current `GOROOT`. We plan to add Go version switch, and other features using this status bar item.
+
+### Enhancement
+
+- `Go: Add Tags To Struct Fields` prompts transform parameter input if the setting `go.addTags.promptForTags` is true ([Issue 2546](https://github.com/microsoft/vscode-go/issues/2546)).
+- `Go: Locate Go Tools` command output includes the `GOBIN` value. ([cl/235197](https://golang.org/cl/235197)).
+- Improved debugging experience
+    - The debug adapter automatically infers the mapping between remote and local paths for easy remote debugging ([cl/234020](https://golang.org/cl/234020), [Issue 45](https://github.com/golang/vscode-go/issue/45)).
+    - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issue/215)).
+    - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issue/143)).
+- Better language server integration
+    - Restart the language server automatically when changes in its configuration or the language server version are detected ([cl/232598](https://golang.org/cl/232598) [cl/233159](https://golang.org/cl/233159)).
+    - Prompts user to file an issue if `gopls` crashes ([cl/233325](https://golang.org/cl/23325)).
+- `go.gopath`, `go.goroot`, `go.toolsGopath` are now [machine-overridable](https://code.visualstudio.com/api/references/contribution-points#Configuration-property-schema) ([cl/236539](https://golang.org/cl/236539), [Issue 2981](https://github.com/microsoft/vscode-go/issues/2981)).
+- The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issue/146)).
+- A redundant code action provider was removed when using the language server ([cl/239284](https://golang.org/cl/239284)).
+
+### Fixed
+
+- Fixed `gopls` version detection and upgrade logic when pre-release versions are involved ([cl/235524](https://golang.org/cl/235524)).
+- Processes started with `Run > Run Without Debugging (^F5)` are now cleaned up when the run sessions end ([cl/236879](https://golang.org/cl/236879)).
+- When `go.alternateTools.go` is set, the path to `$(go env GOROOT)/bin` is passed to underlying tools to ensure they use the same `go` version ([cl/239697](https://golang.org/cl/239697)).
+- Now the extension avoids invoking buggy `pgrep` on mac OS ([cl/236538](https://golang.org/cl/236538), [Issue 90](https://github.com/golang/vscode-go/issues/90)).
+
+### Code Health
+
+- More test coverage
+    - Added new tests for gopls update logic ([cl/233158](https://golang.org/cl/233158)), tools installation behavior ([cl/233557](https://golang.org/cl/233557)).
+    - Fixed Build Tags checking tests ([cl/233517](https://golang.org/cl/233517)).
+- Upgraded dependencies including websocket-extensions from 0.1.3 to 0.1.4 ([cl/228617](https://golang.org/cl/228617), [cl/236839](https://golang.org/cl/236839), [pr/3261](https://github.com/microsoft/vscode-go/pull/3261)).
+
+### Thanks
+
+Thank you for your contribution, Brayden Cloud, Bulent Rahim Kazanci, Eli Bendersky, Hana Kim, Polina Sokolova, Quoc Truong, Rebecca Stambler, Rohan Talip, Ryan Koski, Sean Caffery, Ted Silbernagel, Vincent Jo, and codekid!
+
+
 ## 0.14.3 - 21st May, 2020
 
 * [Hyang-Ah Hana Kim (@hyangah)](https://github.com/hyangah)
