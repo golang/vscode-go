@@ -47,6 +47,7 @@
   "dependencies": {
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
+    "fs-extra": "^9.0.0",
     "glob": "^7.1.6",
     "json-rpc2": "^1.0.2",
     "moment": "^2.24.0",
@@ -68,7 +69,6 @@
     "@types/sinon": "^9.0.0",
     "@types/vscode": "^1.41.0",
     "adm-zip": "^0.4.14",
-    "fs-extra": "^9.0.0",
     "mocha": "^7.1.1",
     "prettier": "^2.0.4",
     "sinon": "^9.0.2",
