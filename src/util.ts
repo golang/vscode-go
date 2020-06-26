@@ -19,7 +19,7 @@ import { getCurrentPackage } from './goModules';
 import {
 	envPath,
 	fixDriveCasingInWindows,
-	getBinPathWithPreferredGopath,
+	getBinPathWithPreferredGopathGoroot,
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
@@ -436,12 +436,14 @@ function resolveToolsGopath(): string {
 }
 
 export function getBinPath(tool: string, useCache = true): string {
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	const cfg = getGoConfig();
+	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
-	return getBinPathWithPreferredGopath(
+	return getBinPathWithPreferredGopathGoroot(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
+		tool === 'go' && cfg.get('goroot') ? cfg.get('goroot') : undefined,
 		resolvePath(alternateToolPath),
 		useCache
 	);
