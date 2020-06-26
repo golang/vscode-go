@@ -33,7 +33,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import {
 	envPath,
 	fixDriveCasingInWindows,
-	getBinPathWithPreferredGopath,
+	getBinPathWithPreferredGopathGoroot,
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
 	parseEnvFile
@@ -471,7 +471,7 @@ export class Delve {
 							runArgs.push(...launchArgs.args);
 						}
 
-						const goExe = getBinPathWithPreferredGopath('go', []);
+						const goExe = getBinPathWithPreferredGopathGoroot('go', []);
 						log(`Current working directory: ${dirname}`);
 						log(`Running: ${goExe} ${runArgs.join(' ')}`);
 
@@ -1934,7 +1934,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 		return new Promise((resolve) => {
 			execFile(
-				getBinPathWithPreferredGopath('go', []),
+				getBinPathWithPreferredGopathGoroot('go', []),
 				['list', '-f', '{{.Name}} {{.ImportPath}}'],
 				{ cwd: dir, env: this.delve.dlvEnv },
 				(err, stdout, stderr) => {
@@ -2335,7 +2335,7 @@ function killProcessTree(p: ChildProcess): Promise<void> {
 function queryGOROOT(cwd: any, env: any): Promise<string> {
 	return new Promise<string>((resolve) => {
 		execFile(
-			getBinPathWithPreferredGopath('go', []),
+			getBinPathWithPreferredGopathGoroot('go', []),
 			['env', 'GOROOT'],
 			{ cwd, env },
 			(err, stdout, stderr) => {

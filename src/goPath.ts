@@ -12,7 +12,6 @@
 import fs = require('fs');
 import os = require('os');
 import path = require('path');
-import { getGoConfig } from './util';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -32,9 +31,10 @@ export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appe
 	return null;
 }
 
-export function getBinPathWithPreferredGopath(
+export function getBinPathWithPreferredGopathGoroot(
 	toolName: string,
 	preferredGopaths: string[],
+	preferredGoroot?: string,
 	alternateTool?: string,
 	useCache = true,
 ) {
@@ -67,7 +67,7 @@ export function getBinPathWithPreferredGopath(
 	}
 
 	// Check GOROOT (go, gofmt, godoc would be found here)
-	const pathFromGoRoot = getBinPathFromEnvVar(binname, getGoConfig().get('goroot') || getCurrentGoRoot(), true);
+	const pathFromGoRoot = getBinPathFromEnvVar(binname, preferredGoroot || getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
 		return pathFromGoRoot;
