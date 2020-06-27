@@ -354,7 +354,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	}
 
 	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN'], (err, stdout, stderr) => {
+		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'], (err, stdout, stderr) => {
 			if (err) {
 				return reject();
 			}
@@ -370,6 +370,9 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			}
 			if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
 				process.env['GOBIN'] = envOutput[3].trim();
+			}
+			if (!process.env['GOMODCACHE']) {
+				process.env['GOMODCACHE'] = envOutput[4].trim();
 			}
 
 			// cgo, gopls, and other underlying tools will inherit the environment and attempt

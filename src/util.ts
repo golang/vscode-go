@@ -492,6 +492,9 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 }
 
 export function getModuleCache(): string {
+	if (process.env['GOMODCACHE']) {
+		return process.env['GOMODCACHE'];
+	}
 	if (currentGopath) {
 		return path.join(currentGopath.split(path.delimiter)[0], 'pkg', 'mod');
 	}
