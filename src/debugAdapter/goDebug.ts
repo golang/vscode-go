@@ -2135,15 +2135,15 @@ export class GoDebugSession extends LoggingDebugSession {
 		};
 		const evalSymbolArgs = this.delve.isApiV1
 			? {
-					symbol: args.expression,
-					scope
-			  }
+				symbol: args.expression,
+				scope
+			}
 			: {
-					Expr: args.expression,
-					Scope: scope,
-					Cfg: this.delve.loadConfig,
-					Unsafe: true
-			  };
+				Expr: args.expression,
+				Scope: scope,
+				Cfg: this.delve.loadConfig,
+				Unsafe: true
+			};
 		const returnValue = this.delve
 			.callPromise<DebuggerState | CommandOut>('Command', [
 				{
