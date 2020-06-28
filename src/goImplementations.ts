@@ -8,16 +8,16 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { envPath } from './goPath';
+import { envPath, getCurrentGoRoot } from './goPath';
 import {
 	byteOffsetAt,
 	canonicalizeGOPATHPrefix,
 	getBinPath,
 	getGoConfig,
-	getToolsEnvVars,
 	getWorkspaceFolderPath,
-	killTree
+	killTree,
 } from './util';
 
 interface GoListOutput {
@@ -57,7 +57,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 		const goRuntimePath = getBinPath('go');
 		if (!goRuntimePath) {
 			vscode.window.showErrorMessage(
-				`Failed to run "go list" to get the scope to find implementations as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+				`Failed to run "go list" to get the scope to find implementations as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 			);
 			return;
 		}
@@ -66,7 +66,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 			if (token.isCancellationRequested) {
 				return resolve(null);
 			}
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const listProcess = cp.execFile(
 				goRuntimePath,
 				['list', '-e', '-json'],

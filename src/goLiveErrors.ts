@@ -8,10 +8,11 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
-import { getBinPath, getGoConfig, getToolsEnvVars } from './util';
+import { getBinPath, getGoConfig } from './util';
 
 // Interface for settings configuration for adding and removing tags
 interface GoLiveErrorsConfig {
@@ -77,7 +78,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 	const fileContents = e.document.getText();
 	const fileName = e.document.fileName;
 	const args = ['-e', '-a', '-lf=' + fileName, path.dirname(fileName)];
-	const env = getToolsEnvVars();
+	const env = toolExecutionEnvironment();
 	const p = cp.execFile(gotypeLive, args, { env }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gotype-live');

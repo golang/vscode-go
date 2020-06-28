@@ -8,8 +8,9 @@
 import cp = require('child_process');
 import { dirname, isAbsolute } from 'path';
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { getBinPath, getToolsEnvVars } from './util';
+import { getBinPath } from './util';
 
 /**
  * Extracts function out of current selection and replaces the current selection with a call to the extracted function.
@@ -78,7 +79,7 @@ function runGoDoctor(
 				'-w',
 				'-pos',
 				`${selection.start.line + 1},${selection.start.character + 1}:${selection.end.line + 1},${
-					selection.end.character
+				selection.end.character
 				}`,
 				'-file',
 				fileName,
@@ -86,7 +87,7 @@ function runGoDoctor(
 				newName
 			],
 			{
-				env: getToolsEnvVars(),
+				env: toolExecutionEnvironment(),
 				cwd: dirname(fileName)
 			},
 			(err, stdout, stderr) => {

@@ -1,7 +1,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { runTests } from 'vscode-test';
-import { extensionId } from '../src/telemetry';
+import { extensionId } from '../src/const';
 
 async function main() {
 		// The folder containing the Extension Manifest package.json
@@ -46,7 +46,7 @@ async function main() {
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);
-		// failed = true; TODO(hyangah): reenable this after golang.org/cl/233517
+		failed = true;
 	}
 
 	if (failed) {

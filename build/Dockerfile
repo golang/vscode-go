@@ -1,3 +1,5 @@
+# This Docker container is used for testing on GCB.
+
 FROM golang:1.14 AS gobuilder
 
 ENV GO111MODULE on

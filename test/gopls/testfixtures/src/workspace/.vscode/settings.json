@@ -1,4 +1,5 @@
 {
 	"go.useLanguageServer": true,
-	"go.languageServerFlags": ["-rpc.trace", "serve"]
+	"go.languageServerFlags": ["-rpc.trace", "serve"],
+	"go.useGoProxyToCheckForToolUpdates": false,
 }

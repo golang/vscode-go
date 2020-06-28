@@ -6,10 +6,11 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
-import { envPath, getCurrentGoWorkspaceFromGOPATH } from './goPath';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './goPath';
 import { outputChannel } from './goStatus';
-import { getBinPath, getCurrentGoPath, getGoConfig, getModuleCache, getToolsEnvVars } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getModuleCache } from './util';
 
 export async function installCurrentPackage(): Promise<void> {
 	const editor = vscode.window.activeTextEditor;
@@ -27,12 +28,12 @@ export async function installCurrentPackage(): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 		return;
 	}
 
-	const env = Object.assign({}, getToolsEnvVars());
+	const env = toolExecutionEnvironment();
 	const cwd = path.dirname(editor.document.uri.fsPath);
 	const isMod = await isModSupported(editor.document.uri);
 

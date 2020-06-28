@@ -1,45 +1,34 @@
-The Go language server [gopls](https://golang.org/s/gopls/README.md) provides support for [Go modules](https://blog.golang.org/modules2019).
+# Modules
 
-Add the below in your [settings](https://code.visualstudio.com/docs/getstarted/settings) to use Go modules.
+This extension mostly supports [Go modules]. However, certain features have not been ported to work with modules. The reason for this is that the Go team is developing a language server, [`gopls`](gopls.md). This provides a comprehensive solution for [Go modules] support in all editors.
 
-```json
-"go.useLanguageServer": true
-```
+However, as described in the [language server documentation](gopls.md), `gopls` is still in an alpha state, so it is **not yet** the default in VS Code Go. We understand that many users will not want to use alpha software, so this document describes how this extension works with [Go modules], **without the language server**.
 
-> **Note**: You will be prompted to install the latest stable version of `gopls` as and when the Go tools team tag a new version as stable.
+To learn how to use the language server with modules in VS Code, read our [`gopls` documentation](gopls.md).
 
-Extra settings to fine tune `gopls` are available. Please see the [gopls documentation](https://golang.org/s/gopls/doc/vscode.md) for more information and recommended settings.
+## Overview
 
-* [Known issues](https://golang.org/s/gopls/doc/status.md#known-issues) in VS Code when using `gopls`
+* [Missing features](#missing-features)
+  * [Formatting](#formatting)
+  * [References and rename](#references-and-rename)
+* [Performance](#performance)
 
-* [Troubleshooting and reporting issues](https://golang.org/s/gopls/doc/troubleshooting.md)
+## Missing features
 
-In addition to the Go language server, VS Code extension may use additional [Go tools](tools.md) to provide features like code navigation, code completion, build, lint etc. Some tools may not have a good support for Go modules yet. Please report [an issue](https://github.com/microsoft/vscode-go/issues/new) if you encounter problems.
+As mentioned above, not all Go tools have been ported to work with modules. **Many tools will never be ported, as they are being replaced by [`gopls`](gopls.md).** [golang/go#24661](https://golang.org/issues/24661) contains up-to-date information about modules support in various Go tools.
 
+### Formatting
 
-If you don't want to use the language server for any reason, then please know that not all the [Go tools](tools.md) that this extension depends on supports Go modules. https://golang.org/issues/24661 is the issue used by the Go tools team to track the update of Go modules support in various Go tools.
+The default [formatting](features.md#format-and-organize-imports) tool, [`goreturns`](tools.md#formatting), has not been ported to work with modules. As a result, you will need to change your [`"go.formatTool"`](settings.md#go.formatTool) setting for [formatting and import organization support](features.md#format-and-organize-imports). We recommend changing the value to `"goimports"` instead. Other options are also available, and you can read about them in the [format tools documentation](tools.md#formatting).
 
-## FAQ
+### [References](features.md#find-references) and [rename](features.md#rename-symbol)
 
-### Can I use the language server when using Go modules?
+The tools that provide these two features, [`guru`](tools.md#guru) and [`gorename`](tools.md#gorename), have not been updated for Go modules. Instead, they will be replaced by [`gopls`](gopls.md).
 
-Yes, you can and this is the path forward for module support in VS Code. Please be aware that the language server itself is in alpha mode with active development in progress. See the section right above this question for details.
+## Performance
 
-### Why is code navigation and code completion slow when using Go modules?
+[Go modules] introduced additional complexity to Go tooling. As a result, the performance of a number of tools is worse with modules enabled. Hopefully, you will not notice this too frequently.
 
-Code navigation and code completion definitely works better when using `gopls`. So, please give that a try.
+One case in which you may notice this is autocompletion. The best solution to this is to switch to [`gopls`](gopls.md), which makes use of an in-memory cache to provide results quickly.
 
-If you are not using the language server, then this is mostly due to the limitation of the tools that power these features which are `godef` and `gocode` respectively. The Go tools team at Google are working on a [language server](https://golang.org/s/gopls/README.md) which will be the long term solution for all language features.
-
-Please try out the language server as described in the first section of this page.
-
-If you don't want to use the language server then,
-- For slowness in code completion, log an issue in the [gocode repo](https://github.com/stamblerre/gocode).
-- For slowness in code navigation, log an issue in the [godef repo](https://github.com/rogpeppe/godef) or if you chosen to `gogetdoc` in your settings, then log an issue in the [gogetdoc repo](https://github.com/zmb3/gogetdoc)
-
-### Auto import no longer happens on file save. Why?
-
-If you are not using the language server, this extension uses [goreturns](https://github.com/sqs/goreturns) tool by default to format your files and auto import missing packages. Since this tool doesn't support modules, the auto import feature on file save no longer works.
-
-Add the setting `"go.formatTool": "goimports"` and then use `Go: Install/Update Tools` to install/update `goimports` as it has recently added support for modules.
-
+[Go modules]: https://blog.golang.org/using-go-modules

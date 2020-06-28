@@ -1,80 +1,84 @@
-## How do I use VS Code's "Tasks" with Go?
+# Using [VS Code Tasks] with Go
 
-Invoke `Tasks: Configure Task Runner` from the command palette.
+From the [VS Code Tasks] documentation:
 
-This will create a `tasks.json` file in your workspace's `.vscode` folder.  Replace the contents of this file with:
+> Tasks in VS Code can be configured to run scripts and start processes so that . . . existing tools can be used from within VS Code without having to enter a command line or write new code. Workspace or folder specific tasks are configured from the tasks.json file in the .vscode folder for a workspace.
 
-```json
+To begin configuring tasks, run the `Tasks: Configure Task` command from the Command Palette (Ctrl+Shift+P).
+
+This will create a `tasks.json` file in your workspace's `.vscode` folder.
+
+Replace the contents of this file with the following and adjust the tasks as needed.
+
+```json5
 {
-	"version": "0.1.0",
-	"command": "go",
-	"isShellCommand": true,
-	"showOutput": "silent",
-	"tasks": [
-		{
-			"taskName": "install",
-			"args": [ "-v", "./..."],
-			"isBuildCommand": true
-		},
-		{
-			"taskName": "test",
-			"args": [ "-v", "./..."],
-			"isTestCommand": true
-		}
-	]
-}
-```
-```json
-{
-	"version": "2.0.0",	
-	"type": "shell",	
-	"echoCommand": true,
-	"cwd": "${workspaceFolder}",
-	"tasks": [
-		{
-			"label": "rungo",
-			"command": "go run ${file}",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},		
-	]
-}
-
-```
-
-You can now invoke <kbd>ctrl/cmd</kbd>+<kbd>shift</kbd>+<kbd>b</kbd> to run `go install -v ./...` and report results in the output window, or <kbd>ctrl/cmd</kbd>+<kbd>shift</kbd>+<kbd>t</kbd> to run `go test -v ./...`.
-
-You can use this same technique to invoke other build and test tools. For example, to invoke makefile targets if your build is defined in a makefile, or to invoke tools like `go generate`.
-
-More on configuring tasks in VS Code can be found at https://code.visualstudio.com/docs/editor/tasks.
-
-You can define a specific task to run only some tests:
-
-```
-{
-    "version": "0.1.0",
+    "version": "2.0.0",
+    "type": "shell",
     "command": "go",
-    "isShellCommand": true,
-    "showOutput": "silent",
-    "suppressTaskName": true,
+    "cwd": "${workspaceFolder}",
     "tasks": [
         {
-            "taskName": "Full test suite",
-            "args": [ "test", "v", "./..."]
+            "label": "install",
+            "args": ["install", "-v", "./..."],
+            "group": "build",
         },
         {
-            "taskName": "Blog User test suite",
-            "args": [ "test", "./...", "-test.v", "-test.run", "User"]
-        }
-    ]
+            "label": "run",
+            "args": ["run", "${file}"],
+            "group": "build",
+        },
+        {
+            "label": "test",
+            "args": ["test", "-v", "./..."],
+            "group": "test",
+        },
+    ],
 }
 ```
 
-The above task would run all tests with `User` in their name.
+You can run these tasks via the `Tasks: Run Task` command or by using the Ctrl+Shift+B shortcut.
 
+You can also define additional tasks to run other commands, like `go generate`. Here's an example of a task to run only a specific test (`MyTestFunction`, in this case):
 
+```json5
+{
+    "label": "MyTestFunction",
+    "args": [ "test", "./...", "-test.run", "MyTestFunction"]
+}
+```
 
+If you want to invoke tools other than `go`, you will have to move the `"command": "go"` setting into the task objects. For example:
 
+```json5
+{
+    "version": "2.0.0",
+    "cwd": "${workspaceFolder}",
+    "tasks": [
+        {
+            "label": "install",
+            "command": "go",
+            "args": ["install", "-v", "./..."],
+            "group": "build",
+            "type": "shell",
+        },
+        {
+            "label": "run",
+            "command": "go",
+            "args": ["run", "${file}"],
+            "group": "build"
+            "type": "shell",
+        },
+        {
+            "label": "test",
+            "command": "go",
+            "args": ["test", "-v", "./..."],
+            "group": "test",
+            "type": "shell",
+        },
+    ],
+}
+```
 
+Learn more by reading the [VS Code Tasks] documentation.
+
+[VS Code Tasks]: https://code.visualstudio.com/docs/editor/tasks

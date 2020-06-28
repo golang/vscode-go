@@ -7,8 +7,9 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig, getToolsEnvVars } from './util';
+import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig } from './util';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {
@@ -144,7 +145,7 @@ function runGomodifytags(args: string[]) {
 	const gomodifytags = getBinPath('gomodifytags');
 	const editor = vscode.window.activeTextEditor;
 	const input = getFileArchive(editor.document);
-	const p = cp.execFile(gomodifytags, args, { env: getToolsEnvVars() }, (err, stdout, stderr) => {
+	const p = cp.execFile(gomodifytags, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gomodifytags');
 			return;

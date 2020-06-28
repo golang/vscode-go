@@ -6,9 +6,10 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { envPath, fixDriveCasingInWindows, getCurrentGoWorkspaceFromGOPATH } from './goPath';
-import { getBinPath, getCurrentGoPath, getGoVersion, getToolsEnvVars, isVendorSupported } from './util';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './goPath';
+import { getBinPath, getCurrentGoPath, getGoVersion, isVendorSupported } from './util';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
@@ -45,7 +46,7 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 			args.push('-workDir', workDir);
 		}
 
-		const cmd = cp.spawn(gopkgsBinPath, args, { env: getToolsEnvVars() });
+		const cmd = cp.spawn(gopkgsBinPath, args, { env: toolExecutionEnvironment() });
 		const chunks: any[] = [];
 		const errchunks: any[] = [];
 		let err: any;
@@ -71,7 +72,7 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 				);
 				return resolve(pkgs);
 			}
-			const goroot = process.env['GOROOT'];
+			const goroot = getCurrentGoRoot();
 			const output = chunks.join('');
 			if (output.indexOf(';') === -1) {
 				// User might be using the old gopkgs tool, prompt to update
@@ -261,7 +262,7 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
-			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) PATH(${envPath})`
 		);
 		return;
 	}
@@ -269,7 +270,7 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 		const childProcess = cp.spawn(
 			goRuntimePath,
 			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', './...'],
-			{ cwd: currentFolderPath, env: getToolsEnvVars() }
+			{ cwd: currentFolderPath, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];
 		childProcess.stdout.on('data', (stdout) => {

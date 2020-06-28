@@ -3,8 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import {
-	Delve, escapeGoModPath, GoDebugSession,
-	PackageBuildInfo, RemoteSourcesAndPackages
+	Delve,
+	escapeGoModPath,
+	GoDebugSession,
+	PackageBuildInfo,
+	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
 
 suite('Path Manipulation Tests', () => {
@@ -13,19 +16,17 @@ suite('Path Manipulation Tests', () => {
 	});
 });
 
-suite('GoDebugSession Tests', () => {
+suite('GoDebugSession Tests', async () => {
 	const workspaceFolder = '/usr/workspacefolder';
 	const delve: Delve = {} as Delve;
 	let goDebugSession: GoDebugSession;
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let fileSystem: typeof fs;
 
-	let previousGoPath: string;
-	let previousGoRoot: string;
+	let previousEnv: any;
 
 	setup(() => {
-		previousGoPath = process.env.GOPATH;
-		previousGoRoot = process.env.GOROOT;
+		previousEnv = Object.assign({}, process.env);
 
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
@@ -39,8 +40,7 @@ suite('GoDebugSession Tests', () => {
 	});
 
 	teardown(() => {
-		process.env.GOPATH = previousGoPath;
-		process.env.GOROOT = previousGoRoot;
+		process.env = previousEnv;
 		sinon.restore();
 	});
 
