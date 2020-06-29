@@ -1081,6 +1081,7 @@
                   "gdbwire",
                   "lldbout",
                   "debuglineerr",
+                  "dap",
                   "rpc"
                 ],
                 "description": "Comma separated list of components that should produce debug output.",
