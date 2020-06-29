@@ -8,6 +8,7 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
+import { GoDlvDapDebugSession } from './debugAdapterDlvDap/goDlvDapDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -59,7 +60,6 @@ import {
 	handleDiagnosticErrors,
 	isGoPathSet
 } from './util';
-import { GoDlvDapDebugSession } from './debugAdapterDlvDap/goDlvDapDebug';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -174,11 +174,12 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
-	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
+	ctx.subscriptions.push(
+		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
 
 	// Use an InlineDebugAdapterFactory to create a new debug adapter for
 	// the 'godlvdap' command in inline mode, without launching a subprocess.
-	let factory = new InlineDebugAdapterFactory();
+	const factory = new InlineDebugAdapterFactory();
 	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
@@ -418,7 +419,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				e.affectsConfiguration('go.gopath') ||
 				e.affectsConfiguration('go.toolsEnvVars') ||
 				e.affectsConfiguration('go.testEnvFile')) {
-					updateGoVarsFromConfig();
+				updateGoVarsFromConfig();
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
@@ -657,7 +658,8 @@ function checkToolExists(tool: string) {
 }
 
 class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
-	createDebugAdapterDescriptor(_session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+	public createDebugAdapterDescriptor(session: vscode.DebugSession
+	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
 		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
 }

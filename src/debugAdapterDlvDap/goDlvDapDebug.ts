@@ -2,9 +2,9 @@
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-import net = require('net');
 import { ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
+import net = require('net');
 import * as os from 'os';
 import * as path from 'path';
 
@@ -137,14 +137,18 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		// Invoke logger.init here because we want logging to work in 'inline'
 		// DA mode. It's typically called in the start() method of our parent
 		// class, but this method isn't called in 'inline' mode.
-		logger.init(e => this.sendEvent(e));
+		logger.init((e) => this.sendEvent(e));
 
 		// this debugger uses zero-based lines and columns
 		this.setDebuggerLinesStartAt1(false);
 		this.setDebuggerColumnsStartAt1(false);
 	}
 
-	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments, request?: DebugProtocol.Request): void {
+	protected initializeRequest(
+		response: DebugProtocol.InitializeResponse,
+		args: DebugProtocol.InitializeRequestArguments,
+		request?: DebugProtocol.Request
+	): void {
 		log('InitializeRequest');
 		response.body.supportsConfigurationDoneRequest = true;
 		response.body.supportsSetVariable = true;
@@ -152,7 +156,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		// We respond to InitializeRequest here, because Delve hasn't been
 		// launched yet. Delve will start responding to DAP requests after
 		// LaunchRequest is received, which tell us how to start it.
-		
+
 		// TODO: we could send an InitializeRequest to Delve when
 		// it launches, wait for its response and sanity check the capabilities
 		// it reports. Once DAP support in Delve is complete, this can be part
@@ -162,7 +166,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		log('InitializeResponse');
 	}
 
-	protected launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments, request: DebugProtocol.Request) {
+	protected launchRequest(
+		response: DebugProtocol.LaunchResponse,
+		args: LaunchRequestArguments,
+		request: DebugProtocol.Request
+	): void {
 		// Setup logger now that we have the 'trace' level passed in from
 		// LaunchRequestArguments.
 		this.logLevel =
@@ -175,7 +183,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-godlvdapdebug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);
 
-		log("launchRequest");
+		log('launchRequest');
 
 		if (!args.port) {
 			args.port = this.DEFAULT_DELVE_PORT;
@@ -190,11 +198,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		this.dlvClient = new DelveClient(args);
 
 		this.dlvClient.on('stdout', (str) => {
-			log("dlv stdout:", str);
+			log('dlv stdout:', str);
 		});
 
 		this.dlvClient.on('stderr', (str) => {
-			log("dlv stderr:", str);
+			log('dlv stderr:', str);
 		});
 
 		this.dlvClient.on('connected', () => {
@@ -219,152 +227,295 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			this.sendEvent(event);
 		});
 
-		this.dlvClient.on('response', (response) => {
-			this.sendResponse(response);
+		this.dlvClient.on('response', (resp) => {
+			this.sendResponse(resp);
 		});
 	}
 
-	protected terminateRequest(response: DebugProtocol.TerminateResponse, args: DebugProtocol.TerminateArguments, request?: DebugProtocol.Request): void {
+	protected terminateRequest(
+		response: DebugProtocol.TerminateResponse,
+		args: DebugProtocol.TerminateArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected restartRequest(response: DebugProtocol.RestartResponse, args: DebugProtocol.RestartArguments, request?: DebugProtocol.Request): void {
+	protected restartRequest(
+		response: DebugProtocol.RestartResponse,
+		args: DebugProtocol.RestartArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request): void {
+	protected setBreakPointsRequest(
+		response: DebugProtocol.SetBreakpointsResponse,
+		args: DebugProtocol.SetBreakpointsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setFunctionBreakPointsRequest(response: DebugProtocol.SetFunctionBreakpointsResponse, args: DebugProtocol.SetFunctionBreakpointsArguments, request?: DebugProtocol.Request): void {
+	protected setFunctionBreakPointsRequest(
+		response: DebugProtocol.SetFunctionBreakpointsResponse,
+		args: DebugProtocol.SetFunctionBreakpointsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setExceptionBreakPointsRequest(response: DebugProtocol.SetExceptionBreakpointsResponse, args: DebugProtocol.SetExceptionBreakpointsArguments, request?: DebugProtocol.Request): void {
+	protected setExceptionBreakPointsRequest(
+		response: DebugProtocol.SetExceptionBreakpointsResponse,
+		args: DebugProtocol.SetExceptionBreakpointsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments, request?: DebugProtocol.Request): void {
+	protected configurationDoneRequest(
+		response: DebugProtocol.ConfigurationDoneResponse,
+		args: DebugProtocol.ConfigurationDoneArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments, request?: DebugProtocol.Request): void {
+	protected continueRequest(
+		response: DebugProtocol.ContinueResponse,
+		args: DebugProtocol.ContinueArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments, request?: DebugProtocol.Request): void {
+	protected nextRequest(
+		response: DebugProtocol.NextResponse,
+		args: DebugProtocol.NextArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments, request?: DebugProtocol.Request): void {
+	protected stepInRequest(
+		response: DebugProtocol.StepInResponse,
+		args: DebugProtocol.StepInArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments, request?: DebugProtocol.Request): void {
+	protected stepOutRequest(
+		response: DebugProtocol.StepOutResponse,
+		args: DebugProtocol.StepOutArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments, request?: DebugProtocol.Request): void {
+	protected stepBackRequest(
+		response: DebugProtocol.StepBackResponse,
+		args: DebugProtocol.StepBackArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments, request?: DebugProtocol.Request): void {
+	protected reverseContinueRequest(
+		response: DebugProtocol.ReverseContinueResponse,
+		args: DebugProtocol.ReverseContinueArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected restartFrameRequest(response: DebugProtocol.RestartFrameResponse, args: DebugProtocol.RestartFrameArguments, request?: DebugProtocol.Request): void {
+	protected restartFrameRequest(
+		response: DebugProtocol.RestartFrameResponse,
+		args: DebugProtocol.RestartFrameArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected gotoRequest(response: DebugProtocol.GotoResponse, args: DebugProtocol.GotoArguments, request?: DebugProtocol.Request): void {
+	protected gotoRequest(
+		response: DebugProtocol.GotoResponse,
+		args: DebugProtocol.GotoArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments, request?: DebugProtocol.Request): void {
+	protected pauseRequest(
+		response: DebugProtocol.PauseResponse,
+		args: DebugProtocol.PauseArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments, request?: DebugProtocol.Request): void {
+	protected sourceRequest(
+		response: DebugProtocol.SourceResponse,
+		args: DebugProtocol.SourceArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected threadsRequest(response: DebugProtocol.ThreadsResponse, request?: DebugProtocol.Request): void {
+	protected threadsRequest(
+		response: DebugProtocol.ThreadsResponse,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected terminateThreadsRequest(response: DebugProtocol.TerminateThreadsResponse, args: DebugProtocol.TerminateThreadsArguments, request?: DebugProtocol.Request): void {
+	protected terminateThreadsRequest(
+		response: DebugProtocol.TerminateThreadsResponse,
+		args: DebugProtocol.TerminateThreadsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments, request?: DebugProtocol.Request): void {
+	protected stackTraceRequest(
+		response: DebugProtocol.StackTraceResponse,
+		args: DebugProtocol.StackTraceArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments, request?: DebugProtocol.Request): void {
+	protected scopesRequest(
+		response: DebugProtocol.ScopesResponse,
+		args: DebugProtocol.ScopesArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request): void {
+	protected variablesRequest(
+		response: DebugProtocol.VariablesResponse,
+		args: DebugProtocol.VariablesArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request): void {
+	protected setVariableRequest(
+		response: DebugProtocol.SetVariableResponse,
+		args: DebugProtocol.SetVariableArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setExpressionRequest(response: DebugProtocol.SetExpressionResponse, args: DebugProtocol.SetExpressionArguments, request?: DebugProtocol.Request): void {
+	protected setExpressionRequest(
+		response: DebugProtocol.SetExpressionResponse,
+		args: DebugProtocol.SetExpressionArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request): void {
+	protected evaluateRequest(
+		response: DebugProtocol.EvaluateResponse,
+		args: DebugProtocol.EvaluateArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected stepInTargetsRequest(response: DebugProtocol.StepInTargetsResponse, args: DebugProtocol.StepInTargetsArguments, request?: DebugProtocol.Request): void {
+	protected stepInTargetsRequest(
+		response: DebugProtocol.StepInTargetsResponse,
+		args: DebugProtocol.StepInTargetsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected gotoTargetsRequest(response: DebugProtocol.GotoTargetsResponse, args: DebugProtocol.GotoTargetsArguments, request?: DebugProtocol.Request): void {
+	protected gotoTargetsRequest(
+		response: DebugProtocol.GotoTargetsResponse,
+		args: DebugProtocol.GotoTargetsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected completionsRequest(response: DebugProtocol.CompletionsResponse, args: DebugProtocol.CompletionsArguments, request?: DebugProtocol.Request): void {
+	protected completionsRequest(
+		response: DebugProtocol.CompletionsResponse,
+		args: DebugProtocol.CompletionsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments, request?: DebugProtocol.Request): void {
+	protected exceptionInfoRequest(
+		response: DebugProtocol.ExceptionInfoResponse,
+		args: DebugProtocol.ExceptionInfoArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected loadedSourcesRequest(response: DebugProtocol.LoadedSourcesResponse, args: DebugProtocol.LoadedSourcesArguments, request?: DebugProtocol.Request): void {
+	protected loadedSourcesRequest(
+		response: DebugProtocol.LoadedSourcesResponse,
+		args: DebugProtocol.LoadedSourcesArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected dataBreakpointInfoRequest(response: DebugProtocol.DataBreakpointInfoResponse, args: DebugProtocol.DataBreakpointInfoArguments, request?: DebugProtocol.Request): void {
+	protected dataBreakpointInfoRequest(
+		response: DebugProtocol.DataBreakpointInfoResponse,
+		args: DebugProtocol.DataBreakpointInfoArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setDataBreakpointsRequest(response: DebugProtocol.SetDataBreakpointsResponse, args: DebugProtocol.SetDataBreakpointsArguments, request?: DebugProtocol.Request): void {
+	protected setDataBreakpointsRequest(
+		response: DebugProtocol.SetDataBreakpointsResponse,
+		args: DebugProtocol.SetDataBreakpointsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected readMemoryRequest(response: DebugProtocol.ReadMemoryResponse, args: DebugProtocol.ReadMemoryArguments, request?: DebugProtocol.Request): void {
+	protected readMemoryRequest(
+		response: DebugProtocol.ReadMemoryResponse,
+		args: DebugProtocol.ReadMemoryArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected disassembleRequest(response: DebugProtocol.DisassembleResponse, args: DebugProtocol.DisassembleArguments, request?: DebugProtocol.Request): void {
+	protected disassembleRequest(
+		response: DebugProtocol.DisassembleResponse,
+		args: DebugProtocol.DisassembleArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected cancelRequest(response: DebugProtocol.CancelResponse, args: DebugProtocol.CancelArguments, request?: DebugProtocol.Request): void {
+	protected cancelRequest(
+		response: DebugProtocol.CancelResponse,
+		args: DebugProtocol.CancelArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): void {
+	protected breakpointLocationsRequest(
+		response: DebugProtocol.BreakpointLocationsResponse,
+		args: DebugProtocol.BreakpointLocationsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 
-	protected setInstructionBreakpointsRequest(response: DebugProtocol.SetInstructionBreakpointsResponse, args: DebugProtocol.SetInstructionBreakpointsArguments, request?: DebugProtocol.Request): void {
+	protected setInstructionBreakpointsRequest(
+		response: DebugProtocol.SetInstructionBreakpointsResponse,
+		args: DebugProtocol.SetInstructionBreakpointsArguments,
+		request?: DebugProtocol.Request
+	): void {
 		this.dlvClient.send(request);
 	}
 }
@@ -387,7 +538,7 @@ class DelveClient extends DapClient {
 		super();
 
 		const launchArgsEnv = launchArgs.env || {};
-		let env = Object.assign({}, process.env, launchArgsEnv);
+		const env = Object.assign({}, process.env, launchArgsEnv);
 
 		// Let users override direct path to delve by setting it in the env
 		// map in launch.json; if unspecified, fall back to dlvToolPath.
@@ -451,7 +602,7 @@ class DelveClient extends DapClient {
 		// TODO: if this turns out to be flaky, we could wait for Delve to emit
 		// its first text to stdout before doing this.
 		setTimeout(() => {
-			let socket = net.createConnection(
+			const socket = net.createConnection(
 				launchArgs.port,
 				launchArgs.host,
 				() => {

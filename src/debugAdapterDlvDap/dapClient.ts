@@ -28,17 +28,17 @@ export class DapClient extends EventEmitter {
 		super();
 	}
 
+	public send(req: any): void {
+		const json = JSON.stringify(req);
+		this.outputStream.write(`Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`, 'utf8');
+	}
+
 	protected connect(readable: stream.Readable, writable: stream.Writable): void {
 		this.outputStream = writable;
 
 		readable.on('data', (data: Buffer) => {
 			this.handleData(data);
 		});
-	}
-
-	public send(req: any): void {
-		const json = JSON.stringify(req);
-		this.outputStream.write(`Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`, 'utf8');
 	}
 
 	// Implements parsing of the DAP protocol. We cannot use ProtocolClient
@@ -64,8 +64,8 @@ export class DapClient extends EventEmitter {
 				if (idx !== -1) {
 					const header = this.rawData.toString('utf8', 0, idx);
 					const lines = header.split('\r\n');
-					for (let i = 0; i < lines.length; i++) {
-						const pair = lines[i].split(/: +/);
+					for (const line of lines) {
+						const pair = line.split(/: +/);
 						if (pair[0] === 'Content-Length') {
 							this.contentLength = +pair[1];
 						}
@@ -81,13 +81,13 @@ export class DapClient extends EventEmitter {
 	private dispatch(body: string): void {
 		const rawData = JSON.parse(body);
 
-		if (rawData.type == 'event') {
+		if (rawData.type === 'event') {
 			const event = <DebugProtocol.Event>rawData;
 			this.emit('event', event);
-		} else if (rawData.type == 'response') {
+		} else if (rawData.type === 'response') {
 			const response = <DebugProtocol.Response>rawData;
 			this.emit('response', response);
-		} else if (rawData.type == 'request') {
+		} else if (rawData.type === 'request') {
 			const request = <DebugProtocol.Request>rawData;
 			this.emit('request', request);
 		} else {

@@ -5,6 +5,6 @@
 
 // This file is for running the godlvdap debug adapter as a standalone program
 // in a separate process (e.g. when working in --server mode).
- import {GoDlvDapDebugSession} from './goDlvDapDebug';
+import { GoDlvDapDebugSession } from './goDlvDapDebug';
 
 GoDlvDapDebugSession.run(GoDlvDapDebugSession);
