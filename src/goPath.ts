@@ -1,5 +1,6 @@
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
+ * Modification copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
@@ -30,14 +31,21 @@ export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appe
 	return null;
 }
 
-export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths: string[], alternateTool?: string) {
-	if (binPathCache[toolName]) {
-		return binPathCache[toolName];
-	}
-
+export function getBinPathWithPreferredGopathGoroot(
+	toolName: string,
+	preferredGopaths: string[],
+	preferredGoroot?: string,
+	alternateTool?: string,
+	useCache = true,
+) {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return alternateTool;
+	}
+
+	// FIXIT: this cache needs to be invalidated when go.goroot or go.alternateTool is changed.
+	if (useCache && binPathCache[toolName]) {
+		return binPathCache[toolName];
 	}
 
 	const binname = alternateTool && !path.isAbsolute(alternateTool) ? alternateTool : toolName;
@@ -59,7 +67,7 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 	}
 
 	// Check GOROOT (go, gofmt, godoc would be found here)
-	const pathFromGoRoot = getBinPathFromEnvVar(binname, process.env['GOROOT'], true);
+	const pathFromGoRoot = getBinPathFromEnvVar(binname, preferredGoroot || getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
 		return pathFromGoRoot;
@@ -84,6 +92,18 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 
 	// Else return the binary name directly (this will likely always fail downstream)
 	return toolName;
+}
+
+/**
+ * Returns the goroot path if it exists, otherwise returns an empty string
+ */
+let currentGoRoot = '';
+export function getCurrentGoRoot(): string {
+	return currentGoRoot || process.env['GOROOT'] || '';
+}
+
+export function setCurrentGoRoot(goroot: string) {
+	currentGoRoot = goroot;
 }
 
 function correctBinname(toolName: string) {

@@ -1,0 +1,79 @@
+name: Smoke Tests
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.os }} ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    
+    # Not containing 'SKIP CI' in the commit message AND
+    # (Either non-Windows OR triggered on 'push' (if triggered by 'pull_request', github.base_ref is not empty)
+    if: "!contains(github.event.head_commit.message, 'SKIP CI')"
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        version: ['stable']
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '10.x'
+
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+         go-version: '1.14'
+
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Compile
+        run: npm run vscode:prepublish
+
+      - name: Install Go tools (Modules mode)
+        run: |
+            go version
+            go get github.com/acroca/go-symbols
+            go get github.com/davidrjenni/reftools/cmd/fillstruct
+            go get github.com/haya14busa/goplay/cmd/goplay
+            go get github.com/mdempsky/gocode
+            go get github.com/sqs/goreturns
+            go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
+            go get github.com/zmb3/gogetdoc
+            go get golang.org/x/lint/golint
+            go get golang.org/x/tools/cmd/gorename
+            go get golang.org/x/tools/gopls
+        env:
+          GO111MODULE: on   
+          
+      - name: Install Go tools (GOPATH mode)
+        run: |
+          go version
+          go get github.com/cweill/gotests/...
+          go get github.com/rogpeppe/godef
+          go get github.com/ramya-rao-a/go-outline
+            # Because some tests depend on the source code checked in GOPATH. TODO: FIX THEM.
+        env:
+          GO111MODULE: off
+      
+      - name: Run unit tests
+        run: npm run unit-test
+        continue-on-error: true
+        
+      - name: Run tests
+        uses: GabrielBB/xvfb-action@v1.0
+        with:
+          run: npm run test
+        env:
+          CODE_VERSION: ${{ matrix.version }}
+
+      - name: Lint check
+        run: npm run lint
+        if: ${{ matrix.os }} == 'ubuntu-latest'

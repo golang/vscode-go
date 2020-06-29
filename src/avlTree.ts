@@ -32,16 +32,16 @@
  * Represents a node in the binary tree, which has a key and a value, as well as left and right subtrees
  */
 export class Node<K, V> {
-	public left: Node<K, V> = null;
-	public right: Node<K, V> = null;
-	public height: number = null;
+	public left: Node<K, V> | null = null;
+	public right: Node<K, V> | null = null;
+	public height: number = 0;
 
 	/**
 	 * Creates a new AVL Tree node.
 	 * @param key The key of the new node.
 	 * @param value The value of the new node.
 	 */
-	constructor(public key: K, public value: V) {}
+	constructor(public key: K, public value: V | undefined) {}
 
 	/**
 	 * Convenience function to get the height of the left child of the node,
@@ -77,7 +77,7 @@ export class Node<K, V> {
 		//   a   e -> b.rotateRight() -> c   b
 		//  / \                             / \
 		// c   d                           d   e
-		const other = this.left;
+		const other = <Node<K, V>>this.left;
 		this.left = other.right;
 		other.right = this;
 		this.height = Math.max(this.leftHeight, this.rightHeight) + 1;
@@ -95,7 +95,7 @@ export class Node<K, V> {
 		// c   b   -> a.rotateLeft() ->   a   e
 		//    / \                        / \
 		//   d   e                      c   d
-		const other = this.right;
+		const other = <Node<K, V>>this.right;
 		this.right = other.left;
 		other.left = this;
 		this.height = Math.max(this.leftHeight, this.rightHeight) + 1;
@@ -127,7 +127,7 @@ export class NearestNeighborDict<K, V> {
 	public static NUMERIC_DISTANCE_FUNCTION = (a: number, b: number) => (a > b ? a - b : b - a);
 	public static DEFAULT_COMPARE_FUNCTION = (a: any, b: any) => (a > b ? 1 : a < b ? -1 : 0);
 
-	protected root: Node<K, V> = null;
+	protected root: Node<K, V>|null = null;
 
 	/**
 	 * Creates a new AVL Tree.
@@ -141,7 +141,7 @@ export class NearestNeighborDict<K, V> {
 	}
 
 	public height() {
-		return this.root.height;
+		return this.root ? this.root.height : 0;
 	}
 
 	/**
@@ -159,7 +159,7 @@ export class NearestNeighborDict<K, V> {
 	 * @return The (key, value) pair of the node with key nearest the given key in value.
 	 */
 	public getNearest(key: K): Node<K, V> {
-		return this._getNearest(key, this.root, this.root);
+		return this._getNearest(key, this.root!, this.root!);
 	}
 
 	/**
@@ -168,7 +168,7 @@ export class NearestNeighborDict<K, V> {
 	 * @param root The root of the tree to insert in.
 	 * @return The new tree root.
 	 */
-	private _insert(key: K, value: V, root: Node<K, V>): Node<K, V> {
+	private _insert(key: K, value: V | undefined, root: Node<K, V> | null): Node<K, V> {
 		// Perform regular BST insertion
 		if (root === null) {
 			return new Node(key, value);
@@ -187,23 +187,23 @@ export class NearestNeighborDict<K, V> {
 		const balanceState = this._getBalanceState(root);
 
 		if (balanceState === BalanceState.UNBALANCED_LEFT) {
-			if (this.compare(key, root.left.key) < 0) {
+			if (this.compare(key, root.left!.key) < 0) {
 				// Left left case
 				root = root.rotateRight();
 			} else {
 				// Left right case
-				root.left = root.left.rotateLeft();
+				root.left = root.left!.rotateLeft();
 				return root.rotateRight();
 			}
 		}
 
 		if (balanceState === BalanceState.UNBALANCED_RIGHT) {
-			if (this.compare(key, root.right.key) > 0) {
+			if (this.compare(key, root.right!.key) > 0) {
 				// Right right case
 				root = root.rotateLeft();
 			} else {
 				// Right left case
-				root.right = root.right.rotateRight();
+				root.right = root.right!.rotateRight();
 				return root.rotateLeft();
 			}
 		}
@@ -259,9 +259,7 @@ export class NearestNeighborDict<K, V> {
 				if (heightDifference > 0) {
 					return BalanceState.UNBALANCED_LEFT;
 				}
-				if (heightDifference < 0) {
-					return BalanceState.UNBALANCED_RIGHT;
-				}
+				return BalanceState.UNBALANCED_RIGHT;  // heightDifference can't be 0
 			}
 		}
 	}

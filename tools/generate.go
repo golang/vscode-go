@@ -8,12 +8,18 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+)
+
+var (
+	writeFlag = flag.Bool("w", true, "Write new file contents to disk.")
 )
 
 type PackageJSON struct {
@@ -40,13 +46,12 @@ type Property struct {
 }
 
 func main() {
+	flag.Parse()
+
 	// Assume this is running from the vscode-go directory.
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
-	}
-	if filepath.Base(dir) != "vscode-go" {
-		log.Fatalf("run this script from the vscode-go root directory")
 	}
 	// Find the package.json file.
 	data, err := ioutil.ReadFile(filepath.Join(dir, "package.json"))
@@ -58,24 +63,39 @@ func main() {
 		log.Fatal(err)
 	}
 	rewrite := func(filename string, toAdd []byte) {
-		content, err := ioutil.ReadFile(filename)
+		oldContent, err := ioutil.ReadFile(filename)
 		if err != nil {
 			log.Fatal(err)
 		}
 		gen := []byte(`<!-- Everything below this line is generated. DO NOT EDIT. -->`)
-		split := bytes.Split(content, gen)
+		split := bytes.Split(oldContent, gen)
 		if len(split) == 1 {
-			log.Fatalf("expected to find %q in %s, not found", filename, gen)
+			log.Fatalf("expected to find %q in %s, not found", gen, filename)
 		}
 		s := bytes.Join([][]byte{
 			bytes.TrimSpace(split[0]),
 			gen,
 			toAdd,
 		}, []byte("\n\n"))
-		if err := ioutil.WriteFile(filename, append(s, '\n'), 0644); err != nil {
-			log.Fatal(err)
+		newContent := append(s, '\n')
+
+		// Return early if the contents are unchanged.
+		if bytes.Equal(oldContent, newContent) {
+			return
 		}
-		fmt.Printf("regenerated %s\n", filename)
+
+		// Either write out new contents or report an error (if in CI).
+		if *writeFlag {
+			if err := ioutil.WriteFile(filename, newContent, 0644); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("updated %s\n", filename)
+		} else {
+			base := filepath.Join("docs", filepath.Base(filename))
+			fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
+`, strings.TrimSuffix(base, ".md"), base)
+			os.Exit(1)
+		}
 	}
 	var b bytes.Buffer
 	for i, c := range pkgJSON.Contributes.Commands {

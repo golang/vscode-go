@@ -20,7 +20,7 @@ import {
 	generateTestCurrentPackage
 } from '../../src/goGenerateTests';
 import { getTextEditForAddImport, listPackages } from '../../src/goImport';
-import { updateGoPathGoRootFromConfig } from '../../src/goInstallTools';
+import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { goLint } from '../../src/goLint';
 import { documentSymbols, GoDocumentSymbolProvider, GoOutlineImportsOptions } from '../../src/goOutline';
 import { getAllPackages } from '../../src/goPackages';
@@ -32,7 +32,7 @@ import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,
 	getCurrentGoPath,
-	getGoVersion,
+	getGoConfig,
 	getImportPath,
 	getToolsGopath,
 	ICheckResult,
@@ -55,7 +55,7 @@ suite('Go Extension Tests', function () {
 	let toolsGopath: string;
 
 	suiteSetup(async () => {
-		await updateGoPathGoRootFromConfig();
+		await updateGoVarsFromConfig();
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
@@ -73,19 +73,17 @@ suite('Go Extension Tests', function () {
 		toolsGopath = getToolsGopath() || gopath;
 
 		fs.removeSync(repoPath);
-		fs.copySync(path.join(fixtureSourcePath, 'baseTest', 'test.go'), path.join(fixturePath, 'baseTest', 'test.go'));
-		fs.copySync(
-			path.join(fixtureSourcePath, 'baseTest', 'sample_test.go'),
-			path.join(fixturePath, 'baseTest', 'sample_test.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'errorsTest', 'errors.go'),
-			path.join(fixturePath, 'errorsTest', 'errors.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'gogetdocTestData', 'test.go'),
-			path.join(fixturePath, 'gogetdocTestData', 'test.go')
-		);
+		fs.copySync(fixtureSourcePath, fixturePath, {
+			recursive: true,
+			// All of the tests run in GOPATH mode for now.
+			// TODO(rstambler): Run tests in GOPATH and module mode.
+			filter: (src: string): boolean => {
+				if (path.basename(src) === 'go.mod') {
+					return false;
+				}
+				return true;
+			},
+		});
 		fs.copySync(
 			path.join(fixtureSourcePath, 'generatetests', 'generatetests.go'),
 			path.join(generateTestsSourcePath, 'generatetests.go')
@@ -113,82 +111,6 @@ suite('Go Extension Tests', function () {
 		fs.copySync(
 			path.join(fixtureSourcePath, 'diffTestData', 'file2.go'),
 			path.join(fixturePath, 'diffTest2Data', 'file2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'linterTest', 'linter_1.go'),
-			path.join(fixturePath, 'linterTest', 'linter_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'linterTest', 'linter_2.go'),
-			path.join(fixturePath, 'linterTest', 'linter_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'buildTags', 'hello.go'),
-			path.join(fixturePath, 'buildTags', 'hello.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'testTags', 'hello_test.go'),
-			path.join(fixturePath, 'testTags', 'hello_test.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'unimportedPkgs.go'),
-			path.join(fixturePath, 'completions', 'unimportedPkgs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'unimportedMultiplePkgs.go'),
-			path.join(fixturePath, 'completions', 'unimportedMultiplePkgs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'snippets.go'),
-			path.join(fixturePath, 'completions', 'snippets.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'nosnippets.go'),
-			path.join(fixturePath, 'completions', 'nosnippets.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'completions', 'exportedMemberDocs.go'),
-			path.join(fixturePath, 'completions', 'exportedMemberDocs.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'noimports.go'),
-			path.join(fixturePath, 'importTest', 'noimports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'groupImports.go'),
-			path.join(fixturePath, 'importTest', 'groupImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'singleImports.go'),
-			path.join(fixturePath, 'importTest', 'singleImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'importTest', 'cgoImports.go'),
-			path.join(fixturePath, 'importTest', 'cgoImports.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_1.go'),
-			path.join(fixturePath, 'fillStruct', 'input_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'golden_1.go'),
-			path.join(fixturePath, 'fillStruct', 'golden_1.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_2.go'),
-			path.join(fixturePath, 'fillStruct', 'input_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'golden_2.go'),
-			path.join(fixturePath, 'fillStruct', 'golden_2.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'fillStruct', 'input_2.go'),
-			path.join(fixturePath, 'fillStruct', 'input_3.go')
-		);
-		fs.copySync(
-			path.join(fixtureSourcePath, 'outlineTest', 'test.go'),
-			path.join(fixturePath, 'outlineTest', 'test.go')
 		);
 	});
 
@@ -1310,7 +1232,7 @@ encountered.
 					expected.length,
 					labels.length,
 					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${
-						position.line + 1
+					position.line + 1
 					},${position.character + 1}) ${labels}`
 				);
 				expected.forEach((entry, index) => {
@@ -1435,67 +1357,44 @@ encountered.
 	});
 
 	test('Build Tags checking', async () => {
-		const config1 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: 'randomtag' }
-		});
+		// Note: The following checks can't be parallelized because the underlying go build command
+		// runner (goBuild) will cancel any outstanding go build commands.
 
-		const checkWithTags = check(vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')), config1).then(
-			(diagnostics) => {
-				assert.equal(1, diagnostics.length, 'check with buildtag failed. Unexpected errors found');
-				assert.equal(1, diagnostics[0].errors.length, 'check with buildtag failed. Unexpected errors found');
-				assert.equal(diagnostics[0].errors[0].msg, 'undefined: fmt.Prinln');
-			}
+		const checkWithTags = async (tags: string) => {
+			const fileUri = vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go'));
+			const defaultGoCfg = getGoConfig(fileUri);
+			const cfg = Object.create(defaultGoCfg, {
+				vetOnSave: { value: 'off' },
+				lintOnSave: { value: 'off' },
+				buildOnSave: { value: 'package' },
+				buildTags: { value: tags }
+			}) as vscode.WorkspaceConfiguration;
+
+			const diagnostics = await check(fileUri, cfg);
+			return ([] as string[]).concat(...diagnostics.map<string[]>((d) => {
+				return d.errors.map((e) => e.msg) as string[];
+			}));
+		};
+
+		const errors1 = await checkWithTags('randomtag');
+		assert.deepEqual(errors1, ['undefined: fmt.Prinln'], 'check with buildtag "randomtag" failed. Unexpected errors found.');
+
+		// TODO(hyangah): after go1.13, -tags expects a comma-separated tag list.
+		// For backwards compatibility, space-separated tag lists are still recognized,
+		// but change to a space-separated list once we stop testing with go1.12.
+		const errors2 = await checkWithTags('randomtag other');
+		assert.deepEqual(errors2, ['undefined: fmt.Prinln'],
+			'check with multiple buildtags "randomtag,other" failed. Unexpected errors found.');
+
+		const errors3 = await checkWithTags('');
+		assert.equal(errors3.length, 1,
+			'check without buildtag failed. Unexpected number of errors found' + JSON.stringify(errors3));
+		const errMsg = errors3[0];
+		assert.ok(
+			errMsg.includes(`can't load package: package test/testfixture/buildTags`) ||
+			errMsg.includes(`build constraints exclude all Go files`),
+			`check without buildtags failed. Go files not excluded. ${errMsg}`
 		);
-
-		const config2 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: 'randomtag othertag' }
-		});
-
-		const checkWithMultipleTags = check(
-			vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')),
-			config2
-		).then((diagnostics) => {
-			assert.equal(1, diagnostics.length, 'check with multiple buildtags failed. Unexpected errors found');
-			assert.equal(
-				1,
-				diagnostics[0].errors.length,
-				'check with multiple buildtags failed. Unexpected errors found'
-			);
-			assert.equal(diagnostics[0].errors[0].msg, 'undefined: fmt.Prinln');
-		});
-
-		const config3 = Object.create(vscode.workspace.getConfiguration('go'), {
-			vetOnSave: { value: 'off' },
-			lintOnSave: { value: 'off' },
-			buildOnSave: { value: 'package' },
-			buildTags: { value: '' }
-		});
-
-		const checkWithoutTags = check(vscode.Uri.file(path.join(fixturePath, 'buildTags', 'hello.go')), config3).then(
-			(diagnostics) => {
-				assert.equal(1, diagnostics.length, 'check without buildtags failed. Unexpected errors found');
-				assert.equal(
-					1,
-					diagnostics[0].errors.length,
-					'check without buildtags failed. Unexpected errors found'
-				);
-				const errMsg = diagnostics[0].errors[0].msg;
-				assert.equal(
-					errMsg.includes(`can't load package: package test/testfixture/buildTags`) ||
-						errMsg.includes(`build constraints exclude all Go files`),
-					true,
-					`check without buildtags failed. Go files not excluded. ${diagnostics[0].errors[0].msg}`
-				);
-			}
-		);
-
-		return Promise.all([checkWithTags, checkWithMultipleTags, checkWithoutTags]);
 	});
 
 	test('Test Tags checking', async () => {

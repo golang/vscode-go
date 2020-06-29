@@ -23,7 +23,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
------
 
 THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES FOR THIRD PARTY SOFTWARE THAT MAY BE CONTAINED IN PORTIONS OF THE GO PRODUCT.
 
@@ -215,6 +214,32 @@ SOFTWARE.
 
 -----
 
+The following software may be included in this product: balanced-match. A copy of the source code may be downloaded from git://github.com/juliangruber/balanced-match.git. This software contains the following license and notice below:
+
+(MIT)
+
+Copyright (c) 2013 Julian Gruber &lt;julian@juliangruber.com&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-----
+
 The following software may be included in this product: bcrypt-pbkdf. A copy of the source code may be downloaded from git://github.com/joyent/node-bcrypt-pbkdf.git. This software contains the following license and notice below:
 
 The Blowfish portions are under the following license:
@@ -286,6 +311,32 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 -----
 
+The following software may be included in this product: brace-expansion, isarray. A copy of the source code may be downloaded from git://github.com/juliangruber/brace-expansion.git (brace-expansion), git://github.com/juliangruber/isarray.git (isarray). This software contains the following license and notice below:
+
+MIT License
+
+Copyright (c) 2013 Julian Gruber <julian@juliangruber.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-----
+
 The following software may be included in this product: caseless. A copy of the source code may be downloaded from https://github.com/mikeal/caseless. This software contains the following license and notice below:
 
 Apache License
@@ -340,6 +391,29 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+-----
+
+The following software may be included in this product: concat-map, is-typedarray, minimist. A copy of the source code may be downloaded from git://github.com/substack/node-concat-map.git (concat-map), git://github.com/hughsk/is-typedarray.git (is-typedarray), git://github.com/substack/minimist.git (minimist). This software contains the following license and notice below:
+
+This software is released under the MIT license:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -----
 
@@ -558,7 +632,7 @@ SOFTWARE.
 
 -----
 
-The following software may be included in this product: es-to-primitive, is-boolean-object, is-callable, is-date-object, is-number-object, is-string, is-symbol, is-typed-array, string.prototype.trimleft, string.prototype.trimright, which-typed-array. A copy of the source code may be downloaded from git://github.com/ljharb/es-to-primitive.git (es-to-primitive), git://github.com/ljharb/is-boolean-object.git (is-boolean-object), git://github.com/ljharb/is-callable.git (is-callable), git://github.com/ljharb/is-date-object.git (is-date-object), git://github.com/inspect-js/is-number-object.git (is-number-object), git://github.com/ljharb/is-string.git (is-string), git://github.com/inspect-js/is-symbol.git (is-symbol), git://github.com/ljharb/is-typed-array.git (is-typed-array), git://github.com/es-shims/String.prototype.trimLeft.git (string.prototype.trimleft), git://github.com/es-shims/String.prototype.trimRight.git (string.prototype.trimright), git://github.com/inspect-js/which-typed-array.git (which-typed-array). This software contains the following license and notice below:
+The following software may be included in this product: es-to-primitive, is-boolean-object, is-callable, is-date-object, is-number-object, is-string, is-symbol, is-typed-array, which-typed-array. A copy of the source code may be downloaded from git://github.com/ljharb/es-to-primitive.git (es-to-primitive), git://github.com/ljharb/is-boolean-object.git (is-boolean-object), git://github.com/ljharb/is-callable.git (is-callable), git://github.com/ljharb/is-date-object.git (is-date-object), git://github.com/inspect-js/is-number-object.git (is-number-object), git://github.com/ljharb/is-string.git (is-string), git://github.com/inspect-js/is-symbol.git (is-symbol), git://github.com/ljharb/is-typed-array.git (is-typed-array), git://github.com/inspect-js/which-typed-array.git (which-typed-array). This software contains the following license and notice below:
 
 The MIT License (MIT)
 
@@ -740,7 +814,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -----
 
-The following software may be included in this product: faye-websocket, websocket-driver. A copy of the source code may be downloaded from git://github.com/faye/faye-websocket-node.git (faye-websocket), git://github.com/faye/websocket-driver-node.git (websocket-driver). This software contains the following license and notice below:
+The following software may be included in this product: faye-websocket. A copy of the source code may be downloaded from git://github.com/faye/faye-websocket-node.git. This software contains the following license and notice below:
 
 Copyright 2010-2019 James Coglan
 
@@ -810,6 +884,54 @@ Copyright (c) 2012 Felix Geisendörfer (felix@debuggable.com) and contributors
 
 -----
 
+The following software may be included in this product: fs.realpath. A copy of the source code may be downloaded from git+https://github.com/isaacs/fs.realpath.git. This software contains the following license and notice below:
+
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+----
+
+This library bundles a version of the `fs.realpath` and `fs.realpathSync`
+methods from Node.js v0.10 under the terms of the Node.js MIT license.
+
+Node's license follows, also included at the header of `old.js` which contains
+the licensed code:
+
+  Copyright Joyent, Inc. and other Node contributors.
+
+  Permission is hereby granted, free of charge, to any person obtaining a
+  copy of this software and associated documentation files (the "Software"),
+  to deal in the Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.
+
+-----
+
 The following software may be included in this product: function-bind. A copy of the source code may be downloaded from git://github.com/Raynos/function-bind.git. This software contains the following license and notice below:
 
 Copyright (c) 2013 Raynos.
@@ -854,6 +976,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
+
+-----
+
+The following software may be included in this product: glob. A copy of the source code may be downloaded from git://github.com/isaacs/node-glob.git. This software contains the following license and notice below:
+
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+## Glob Logo
+
+Glob's logo created by Tanya Brassie <http://tanyabrassie.com/>, licensed
+under a Creative Commons Attribution-ShareAlike 4.0 International License
+https://creativecommons.org/licenses/by-sa/4.0/
 
 -----
 
@@ -1029,6 +1177,46 @@ of nodejs/io.js:
 
 -----
 
+The following software may be included in this product: inflight. A copy of the source code may be downloaded from https://github.com/npm/inflight.git. This software contains the following license and notice below:
+
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+-----
+
+The following software may be included in this product: inherits. A copy of the source code may be downloaded from git://github.com/isaacs/inherits. This software contains the following license and notice below:
+
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+-----
+
 The following software may be included in this product: is-arguments, is-regex, object-is. A copy of the source code may be downloaded from git://github.com/ljharb/is-arguments.git (is-arguments), git://github.com/ljharb/is-regex.git (is-regex), git://github.com/es-shims/object-is.git (object-is). This software contains the following license and notice below:
 
 The MIT License (MIT)
@@ -1085,55 +1273,6 @@ The following software may be included in this product: is-map, is-set, is-weakm
 MIT License
 
 Copyright (c) 2019 Inspect JS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
------
-
-The following software may be included in this product: is-typedarray, minimist. A copy of the source code may be downloaded from git://github.com/hughsk/is-typedarray.git (is-typedarray), git://github.com/substack/minimist.git (minimist). This software contains the following license and notice below:
-
-This software is released under the MIT license:
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
------
-
-The following software may be included in this product: isarray. A copy of the source code may be downloaded from git://github.com/juliangruber/isarray.git. This software contains the following license and notice below:
-
-MIT License
-
-Copyright (c) 2013 Julian Gruber <julian@juliangruber.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1243,7 +1382,7 @@ SOFTWARE.
 
 -----
 
-The following software may be included in this product: json-stringify-safe, semver. A copy of the source code may be downloaded from git://github.com/isaacs/json-stringify-safe (json-stringify-safe), https://github.com/npm/node-semver (semver). This software contains the following license and notice below:
+The following software may be included in this product: json-stringify-safe, minimatch, once, semver, wrappy. A copy of the source code may be downloaded from git://github.com/isaacs/json-stringify-safe (json-stringify-safe), git://github.com/isaacs/minimatch.git (minimatch), git://github.com/isaacs/once (once), https://github.com/npm/node-semver (semver), https://github.com/npm/wrappy (wrappy). This software contains the following license and notice below:
 
 The ISC License
 
@@ -1452,7 +1591,7 @@ SOFTWARE.
 
 -----
 
-The following software may be included in this product: object-assign. A copy of the source code may be downloaded from https://github.com/sindresorhus/object-assign.git. This software contains the following license and notice below:
+The following software may be included in this product: object-assign, path-is-absolute. A copy of the source code may be downloaded from https://github.com/sindresorhus/object-assign.git (object-assign), https://github.com/sindresorhus/path-is-absolute.git (path-is-absolute). This software contains the following license and notice below:
 
 The MIT License (MIT)
 
@@ -1478,7 +1617,7 @@ THE SOFTWARE.
 
 -----
 
-The following software may be included in this product: object-inspect. A copy of the source code may be downloaded from git://github.com/substack/object-inspect.git. This software contains the following license and notice below:
+The following software may be included in this product: object-inspect. A copy of the source code may be downloaded from git://github.com/inspect-js/object-inspect.git. This software contains the following license and notice below:
 
 MIT License
 
@@ -1899,26 +2038,35 @@ SOFTWARE.
 
 -----
 
+The following software may be included in this product: websocket-driver. A copy of the source code may be downloaded from git://github.com/faye/websocket-driver-node.git. This software contains the following license and notice below:
+
+Copyright 2010-2020 James Coglan
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+-----
+
 The following software may be included in this product: websocket-extensions. A copy of the source code may be downloaded from git://github.com/faye/websocket-extensions-node.git. This software contains the following license and notice below:
 
-# The MIT License
+Copyright 2014-2020 James Coglan
 
-Copyright (c) 2014-2017 James Coglan
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the 'Software'), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
+    http://www.apache.org/licenses/LICENSE-2.0
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
 

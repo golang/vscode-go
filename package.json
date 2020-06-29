@@ -1,12 +1,13 @@
 {
-  "name": "Go",
+  "name": "go",
   "displayName": "Go",
-  "version": "0.14.4",
+  "version": "0.15.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
     "name": "Go Team at Google"
   },
+  "preview": true,
   "license": "MIT",
   "icon": "images/go-logo-blue.png",
   "categories": [
@@ -44,18 +45,21 @@
   },
   "extensionDependencies": [],
   "dependencies": {
+    "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
+    "glob": "^7.1.6",
     "json-rpc2": "^1.0.2",
     "moment": "^2.24.0",
     "semver": "^7.3.2",
-    "tree-kill": "^1.2.2",
+    "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "^1.40.0",
     "vscode-debugprotocol": "^1.40.0",
     "vscode-languageclient": "6.1.0",
-    "web-request": "^1.0.7",
-    "deep-equal": "^2.0.2"
+    "web-request": "^1.0.7"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.4.33",
+    "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.1.0",
     "@types/glob": "^7.1.1",
     "@types/mocha": "^7.0.2",
@@ -63,15 +67,15 @@
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
     "@types/vscode": "^1.41.0",
+    "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
-    "glob": "^7.1.6",
     "mocha": "^7.1.1",
     "prettier": "^2.0.4",
     "sinon": "^9.0.2",
     "tslint": "^6.1.1",
     "typescript": "^3.8.3",
     "vscode-test": "^1.3.0",
-    "@types/deep-equal": "^1.0.1"
+    "yarn": "^1.22.4"
   },
   "engines": {
     "vscode": "^1.41.0"
@@ -157,6 +161,11 @@
         "command": "go.test.cursor",
         "title": "Go: Test Function At Cursor",
         "description": "Runs a unit test at the cursor."
+      },
+      {
+        "command": "go.subtest.cursor",
+        "title": "Go: Subtest At Cursor",
+        "description": "Runs a sub test at the cursor."
       },
       {
         "command": "go.benchmark.cursor",
@@ -337,6 +346,11 @@
         "command": "go.languageserver.restart",
         "title": "Go: Restart Language Server",
         "description": "Restart the running instance of the language server"
+      },
+      {
+        "command": "go.environment.choose",
+        "title": "Go: Choose Go Environment",
+        "description": "Choose a different Go version or binary for this project. (WIP)"
       }
     ],
     "breakpoints": [
@@ -871,13 +885,13 @@
           ],
           "default": null,
           "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.",
-          "scope": "resource"
+          "scope": "machine-overridable"
         },
         "go.toolsGopath": {
           "type": "string",
           "default": "",
           "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.",
-          "scope": "resource"
+          "scope": "machine-overridable"
         },
         "go.goroot": {
           "type": [
@@ -886,7 +900,7 @@
           ],
           "default": null,
           "description": "Specifies the GOROOT to use when no environment variable is set.",
-          "scope": "resource"
+          "scope": "machine-overridable"
         },
         "go.testOnSave": {
           "type": "boolean",
@@ -1129,6 +1143,16 @@
             "documentLink": true
           },
           "description": "Use this setting to enable/disable experimental features from the language server."
+        },
+        "go.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the Go language server."
         },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",

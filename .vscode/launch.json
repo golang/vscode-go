@@ -9,7 +9,8 @@
 			// path to VSCode executable
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--disable-extensions"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
@@ -63,7 +64,6 @@
 				"--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/out/test/gopls/index",
-				"--user-data-dir", "${workspaceFolder}/test/gopls/testfixtures/src/workspace",
 				"--timeout", "999999",
 				"${workspaceFolder}/test/gopls/testfixtures/src/workspace"  // gopls requires a workspace to work with.
 			],

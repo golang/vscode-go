@@ -8,6 +8,7 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import {
 	byteOffsetAt,
@@ -15,7 +16,6 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
-	getToolsEnvVars,
 	killTree
 } from './util';
 
@@ -51,7 +51,7 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 			const filename = canonicalizeGOPATHPrefix(document.fileName);
 			const cwd = path.dirname(filename);
 			const offset = byteOffsetAt(document, wordRange.start);
-			const env = getToolsEnvVars();
+			const env = toolExecutionEnvironment();
 			const buildTags = getGoConfig(document.uri)['buildTags'];
 			const args = buildTags ? ['-tags', buildTags] : [];
 			args.push('-modified', 'referrers', `${filename}:#${offset.toString()}`);

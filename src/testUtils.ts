@@ -8,19 +8,19 @@ import util = require('util');
 import vscode = require('vscode');
 
 import { applyCodeCoverageToAllEditors } from './goCover';
+import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import { envPath, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
 import {
 	getBinPath,
 	getCurrentGoPath,
 	getGoVersion,
 	getTempFilePath,
-	getToolsEnvVars,
 	killTree,
 	LineBuffer,
-	resolvePath
+	resolvePath,
 } from './util';
 
 const outputChannel = vscode.window.createOutputChannel('Go Tests');
@@ -80,7 +80,7 @@ export interface TestConfig {
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
-	const envVars = getToolsEnvVars();
+	const envVars = toolExecutionEnvironment();
 	const testEnvConfig = config['testEnvVars'] || {};
 
 	let fileEnv: { [key: string]: any } = {};
@@ -122,24 +122,28 @@ export function getTestTags(goConfig: vscode.WorkspaceConfiguration): string {
  * @param the URI of a Go source file.
  * @return test function symbols for the source file.
  */
-export function getTestFunctions(
+export async function getTestFunctions(
 	doc: vscode.TextDocument,
 	token: vscode.CancellationToken
-): Thenable<vscode.DocumentSymbol[]> {
+): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider(true);
-	return documentSymbolProvider
-		.provideDocumentSymbols(doc, token)
-		.then((symbols) => symbols[0].children)
-		.then((symbols) => {
-			const testify = symbols.some(
-				(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
-			);
-			return symbols.filter(
-				(sym) =>
-					sym.kind === vscode.SymbolKind.Function &&
-					(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
-			);
-		});
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	if (!symbols || symbols.length === 0) {
+		return;
+	}
+	const symbol = symbols[0];
+	if (!symbol) {
+		return;
+	}
+	const children = symbol.children;
+	const testify = children.some(
+		(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
+	);
+	return children.filter(
+		(sym) =>
+			sym.kind === vscode.SymbolKind.Function &&
+			(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+	);
 }
 
 /**
@@ -202,17 +206,21 @@ export function findAllTestSuiteRuns(
  * @param the URI of a Go source file.
  * @return benchmark function symbols for the source file.
  */
-export function getBenchmarkFunctions(
+export async function getBenchmarkFunctions(
 	doc: vscode.TextDocument,
 	token: vscode.CancellationToken
-): Thenable<vscode.DocumentSymbol[]> {
+): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
-	return documentSymbolProvider
-		.provideDocumentSymbols(doc, token)
-		.then((symbols) => symbols[0].children)
-		.then((symbols) =>
-			symbols.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name))
-		);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	if (!symbols || symbols.length === 0) {
+		return;
+	}
+	const symbol = symbols[0];
+	if (!symbol) {
+		return;
+	}
+	const children = symbol.children;
+	return children.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name));
 }
 
 /**
@@ -254,7 +262,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 
 		if (!goRuntimePath) {
 			vscode.window.showErrorMessage(
-				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 			);
 			return Promise.resolve();
 		}
@@ -455,7 +463,11 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			// in running all the test methods, but one of them should call testify's `suite.Run(...)`
 			// which will result in the correct thing to happen
 			if (testFunctions.length > 0) {
-				params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
+				if (testFunctions.length === 1) {
+					params = params.concat(['-run', util.format('^%s$', testFunctions.pop())]);
+				} else {
+					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
+				}
 			}
 			if (testifyMethods.length > 0) {
 				params = params.concat(['-testify.m', util.format('^(%s)$', testifyMethods.join('|'))]);

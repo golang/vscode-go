@@ -1,12 +1,14 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { runTests } from 'vscode-test';
-import { extensionId } from '../src/telemetry';
+import { extensionId } from '../src/const';
 
 async function main() {
 		// The folder containing the Extension Manifest package.json
 		// Passed to `--extensionDevelopmentPath`
 	const extensionDevelopmentPath = path.resolve(__dirname, '../../');
+
+	let failed = false;
 
 	try {
 		// The path to the extension test script
@@ -14,10 +16,14 @@ async function main() {
 		const extensionTestsPath = path.resolve(__dirname, './integration/index');
 
 		// Download VS Code, unzip it and run the integration test
-		await runTests({ extensionDevelopmentPath, extensionTestsPath });
+		await runTests({
+			extensionDevelopmentPath,
+			extensionTestsPath,
+			launchArgs: ['--disable-extensions'],  // disable all other extensions
+		});
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
-		process.exit(1);
+		failed = true;
 	}
 
 	// Integration tests using gopls.
@@ -40,6 +46,11 @@ async function main() {
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);
+		failed = true;
+	}
+
+	if (failed) {
+		process.exit(1);
 	}
 }
 

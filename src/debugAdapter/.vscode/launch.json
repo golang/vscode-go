@@ -2,7 +2,7 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "debug-debugger",
+			"name": "Launch as server",
 			"type": "node",
 			"request": "launch",
 			"program": "${workspaceFolder}/../../out/src/debugAdapter/goDebug.js",

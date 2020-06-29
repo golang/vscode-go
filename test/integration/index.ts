@@ -6,9 +6,8 @@ import * as glob from 'glob';
 import * as Mocha from 'mocha';
 import * as path from 'path';
 export function run(): Promise<void> {
-	// Create the mocha test
 	const mocha = new Mocha({
-		ui: 'tdd'
+		ui: 'tdd',
 	});
 	mocha.useColors(true);
 
