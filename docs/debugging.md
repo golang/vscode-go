@@ -345,15 +345,15 @@ The solution this issue differs based on your OS.
 
 #### OSX
 
-This usually happens on OSX due to signing issues. See the discussions in [Microsoft/vscode-go#717](https://github.com/Microsoft/vscode-go/issues/717), [Microsoft/vscode-go#269](https://github.com/Microsoft/vscode-go/issues/269) and [derekparker/delve#357](https://github.com/derekparker/delve/issues/357).
+This usually happens on OSX due to signing issues. See the discussions in [Microsoft/vscode-go#717](https://github.com/Microsoft/vscode-go/issues/717), [Microsoft/vscode-go#269](https://github.com/Microsoft/vscode-go/issues/269) and [go-delve/delve#357](https://github.com/go-delve/delve/issues/357).
 
-**_Solution_**: You may have to uninstall dlv and install it manually as described in the [Delve instructions](https://github.com/derekparker/delve/blob/master/Documentation/installation/osx/install.md#manual-install).
+**_Solution_**: You may have to uninstall dlv and install it manually as described in the [Delve instructions](https://github.com/go-delve/delve/blob/master/Documentation/installation/osx/install.md#manual-install).
 
 #### Linux/Docker
 
 Docker has security settings preventing `ptrace(2)` operations by default within the container.
 
-**_Solution_**: To run your container insecurely, pass `--security-opt=seccomp:unconfined` to `docker run`. See [derekparker/delve#515](https://github.com/derekparker/delve/issues/515) for references.
+**_Solution_**: To run your container insecurely, pass `--security-opt=seccomp:unconfined` to `docker run`. See [go-delve/delve#515](https://github.com/go-delve/delve/issues/515) for references.
 
 #### could not launch process: exec: "lldb-server": executable file not found in $PATH
 
