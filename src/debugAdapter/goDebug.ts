@@ -514,7 +514,7 @@ export class Delve {
 						} or ${envPath}`
 					);
 					return reject(
-						`Cannot find Delve debugger. Install from https://github.com/derekparker/delve & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
+						`Cannot find Delve debugger. Install from https://github.com/go-delve/delve & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
 					);
 				}
 
