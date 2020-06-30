@@ -1,13 +1,12 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
     "name": "Go Team at Google"
   },
-  "preview": true,
   "license": "MIT",
   "icon": "images/go-logo-blue.png",
   "categories": [
