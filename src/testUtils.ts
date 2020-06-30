@@ -464,7 +464,7 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			// which will result in the correct thing to happen
 			if (testFunctions.length > 0) {
 				if (testFunctions.length === 1) {
-					params = params.concat(['-run', util.format('^%s$', testFunctions.pop())]);
+					params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
 				} else {
 					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
 				}
