@@ -151,7 +151,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 	): void {
 		log('InitializeRequest');
 		response.body.supportsConfigurationDoneRequest = true;
-		response.body.supportsSetVariable = true;
 
 		// We respond to InitializeRequest here, because Delve hasn't been
 		// launched yet. Delve will start responding to DAP requests after

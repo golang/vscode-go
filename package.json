@@ -686,7 +686,6 @@
                   "gdbwire",
                   "lldbout",
                   "debuglineerr",
-                  "dap",
                   "rpc"
                 ],
                 "description": "Comma separated list of components that should produce debug output.",
@@ -755,7 +754,7 @@
       },
       {
         "type": "godlvdap",
-        "label": "Go Dlv Dap",
+        "label": "Go Dlv Dap (Experimental)",
         "program": "./out/src/debugAdapterDlvDap/goDlvDapDebugMain.js",
         "runtime": "node",
         "languages": [
