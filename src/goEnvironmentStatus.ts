@@ -15,6 +15,7 @@ import WebRequest = require('web-request');
 
 import { toolInstallationEnvironment } from './goEnv';
 import { getActiveGoRoot } from './goInstallTools';
+import { getCurrentGoRoot } from './goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion } from './util';
 
@@ -35,6 +36,7 @@ export class GoEnvironmentOption {
 
 // statusbar item for switching the Go environment
 let goEnvStatusbarItem: vscode.StatusBarItem;
+let terminalCreationListener: vscode.Disposable;
 
 /**
  * Initialize the status bar item with current Go binary
@@ -46,6 +48,12 @@ export async function initGoStatusBar() {
 	// set Go version and command
 	const version = await getGoVersion();
 	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
+
+	// ensure terminals use the correct Go version
+	if (!terminalCreationListener) {
+		updateIntegratedTerminal(vscode.window.activeTerminal);
+		terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
+	}
 
 	hideGoStatusBar();
 	goEnvStatusbarItem.text = goOption.label;
@@ -59,6 +67,9 @@ export async function initGoStatusBar() {
 export function disposeGoStatusBar() {
 	if (!!goEnvStatusbarItem) {
 		goEnvStatusbarItem.dispose();
+	}
+	if (!!terminalCreationListener) {
+		terminalCreationListener.dispose();
 	}
 }
 
@@ -209,6 +220,21 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vsco
 		goEnvStatusbarItem.text = selectedGo.label;
 	}
 	// TODO: restart language server if needed
+}
+
+/**
+ * update the PATH variable in the given terminal to default to the currently selected Go
+ */
+export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
+	const goroot = path.join(getCurrentGoRoot(), 'bin');
+
+	// TODO: add support for more terminal names
+	// this assumes all non-windows shells are bash-like.
+	if (terminal.name.toLowerCase() === 'powershell' || terminal.name.toLowerCase() === 'cmd') {
+		terminal.sendText(`set PATH=${goroot};%PATH%`, true);
+	} else {
+		terminal.sendText(`export PATH=${goroot}:$PATH`, true);
+	}
 }
 
 /**
