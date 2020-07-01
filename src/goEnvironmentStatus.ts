@@ -6,7 +6,7 @@
 'use strict';
 
 import cp = require('child_process');
-import fs = require('fs-extra');
+import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
@@ -14,7 +14,7 @@ import vscode = require('vscode');
 import WebRequest = require('web-request');
 
 import { toolInstallationEnvironment } from './goEnv';
-import { getCurrentGoRoot } from './goPath';
+import { getCurrentGoRoot, pathExists } from './goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion } from './util';
 
@@ -190,11 +190,13 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vsco
 
 			outputChannel.appendLine('Finding newly downloaded Go');
 			const sdkPath = path.join(process.env.HOME, 'sdk');
-			if (!await fs.pathExists(sdkPath)) {
+			if (!await pathExists(sdkPath)) {
 				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
 			}
-			const subdirs = await fs.readdir(sdkPath);
+
+			const readdir = promisify(fs.readdir);
+			const subdirs = await readdir(sdkPath);
 			const dir = subdirs.find((subdir) => subdir === newExecutableName);
 			if (!dir) {
 				outputChannel.appendLine('Could not find newly downloaded Go');
@@ -268,10 +270,12 @@ export function formatGoVersion(version: string): string {
 async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	// get list of Go versions
 	const sdkPath = path.join(os.homedir(), 'sdk');
-	if (!await fs.pathExists(sdkPath)) {
+
+	if (!await pathExists(sdkPath)) {
 		return [];
 	}
-	const subdirs = await fs.readdir(sdkPath);
+	const readdir = promisify(fs.readdir);
+	const subdirs = await readdir(sdkPath);
 	// the dir happens to be the version, which will be used as the label
 	// the path is assembled and used as the description
 	return subdirs.map((dir: string) =>

@@ -12,6 +12,7 @@
 import fs = require('fs');
 import os = require('os');
 import path = require('path');
+import { promisify } from 'util';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -129,6 +130,15 @@ function executableFileExists(filePath: string): boolean {
 export function fileExists(filePath: string): boolean {
 	try {
 		return fs.statSync(filePath).isFile();
+	} catch (e) {
+		return false;
+	}
+}
+
+export async function pathExists(p: string): Promise<boolean> {
+	try {
+		const stat = promisify(fs.stat);
+		return (await stat(p)).isDirectory();
 	} catch (e) {
 		return false;
 	}
