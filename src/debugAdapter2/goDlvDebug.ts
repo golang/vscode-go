@@ -2,6 +2,9 @@
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
+
+// NOTE: This debug adapter is experimental, in-development code.
+
 import { ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import net = require('net');
@@ -229,6 +232,14 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		this.dlvClient.on('response', (resp) => {
 			this.sendResponse(resp);
 		});
+	}
+
+	protected attachRequest(
+		response: DebugProtocol.AttachResponse, 
+		args: AttachRequestArguments,
+		request?: DebugProtocol.Request
+	): void {
+		this.dlvClient.send(request);
 	}
 
 	protected terminateRequest(
