@@ -236,7 +236,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 	}
 
 	protected attachRequest(
-		response: DebugProtocol.AttachResponse, 
+		response: DebugProtocol.AttachResponse,
 		args: AttachRequestArguments,
 		request?: DebugProtocol.Request
 	): void {
