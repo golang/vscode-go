@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-// NOTE: This debug adapter is experimental, in-development code.
+// NOTE: This debug adapter is experimental, in-development code. If you
+// actually need to debug Go code, please use the default adapter.
 
 import { ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
@@ -20,7 +21,7 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { envPath } from '../goPath';
-import { DapClient } from './dapClient';
+import { DAPClient } from './dapClient';
 
 interface LoadConfig {
 	// FollowPointers requests pointers to be automatically dereferenced.
@@ -124,7 +125,7 @@ function logError(...args: any[]) {
 //
 //      Editor                GoDlvDapDebugSession                 Delve
 //  +------------+        +--------------+-----------+         +------------+
-//  | DAP Client | <====> | DebugSession | DapClient |  <====> | DAP Server |
+//  | DAP Client | <====> | DebugSession | DAPClient |  <====> | DAP Server |
 //  +------------+        +--------------+-----------+         +------------+
 export class GoDlvDapDebugSession extends LoggingDebugSession {
 	private readonly DEFAULT_DELVE_HOST = '127.0.0.1';
@@ -541,7 +542,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 //    'stdout' (str):         delve emitted str to stdout
 //    'stderr' (str):         delve emitted str to stderr
 //    'close' (rc):           delve exited with return code rc
-class DelveClient extends DapClient {
+class DelveClient extends DAPClient {
 	private debugProcess: ChildProcess;
 
 	constructor(launchArgs: LaunchRequestArguments) {

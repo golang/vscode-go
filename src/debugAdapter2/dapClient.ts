@@ -16,7 +16,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 //  - For receiving messages, subscibe to events this class emits.
 //      - 'event', 'respones', 'request' - each carrying an appropriate
 //        DebugProtocol type as an argument.
-export class DapClient extends EventEmitter {
+export class DAPClient extends EventEmitter {
 	private static readonly TWO_CRLF = '\r\n\r\n';
 
 	private outputStream: stream.Writable;
@@ -60,7 +60,7 @@ export class DapClient extends EventEmitter {
 					continue;	// there may be more complete messages to process
 				}
 			} else {
-				const idx = this.rawData.indexOf(DapClient.TWO_CRLF);
+				const idx = this.rawData.indexOf(DAPClient.TWO_CRLF);
 				if (idx !== -1) {
 					const header = this.rawData.toString('utf8', 0, idx);
 					const lines = header.split('\r\n');
@@ -70,7 +70,7 @@ export class DapClient extends EventEmitter {
 							this.contentLength = +pair[1];
 						}
 					}
-					this.rawData = this.rawData.slice(idx + DapClient.TWO_CRLF.length);
+					this.rawData = this.rawData.slice(idx + DAPClient.TWO_CRLF.length);
 					continue;
 				}
 			}
