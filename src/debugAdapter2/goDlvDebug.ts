@@ -598,8 +598,7 @@ class DelveClient extends DapClient {
 		});
 
 		// Give the Delve DAP server some time to start up before connecting.
-		// TODO: if this turns out to be flaky, we could wait for Delve to emit
-		// its first text to stdout before doing this.
+		// TODO: do this in a more robust way.
 		setTimeout(() => {
 			const socket = net.createConnection(
 				launchArgs.port,

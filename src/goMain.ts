@@ -8,7 +8,7 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
-import { GoDlvDapDebugSession } from './debugAdapterDlvDap/goDlvDapDebug';
+import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
