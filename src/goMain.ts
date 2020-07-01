@@ -8,6 +8,7 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
+import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -173,6 +174,16 @@ export function activate(ctx: vscode.ExtensionContext): void {
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
+	ctx.subscriptions.push(
+		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
+
+	// Use an InlineDebugAdapterFactory to create a new debug adapter for
+	// the 'godlvdap' command in inline mode, without launching a subprocess.
+	const factory = new InlineDebugAdapterFactory();
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
@@ -408,7 +419,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				e.affectsConfiguration('go.gopath') ||
 				e.affectsConfiguration('go.toolsEnvVars') ||
 				e.affectsConfiguration('go.testEnvFile')) {
-					updateGoVarsFromConfig();
+				updateGoVarsFromConfig();
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
@@ -643,5 +654,12 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 function checkToolExists(tool: string) {
 	if (tool === getBinPath(tool)) {
 		promptForMissingTool(tool);
+	}
+}
+
+class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+	public createDebugAdapterDescriptor(session: vscode.DebugSession
+	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
 }

@@ -750,6 +750,401 @@
             }
           }
         }
+      },
+      {
+        "type": "godlvdap",
+        "label": "Go Dlv Dap (Experimental)",
+        "program": "./out/src/debugAdapter2/goDlvDebugMain.js",
+        "runtime": "node",
+        "languages": [
+          "go"
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Go: Launch package",
+            "description": "Debug the package in the program attribute",
+            "body": {
+              "name": "${2:Launch Package}",
+              "type": "godlvdap",
+              "request": "launch",
+              "mode": "debug",
+              "program": "^\"\\${workspaceFolder}${1:}\""
+            }
+          },
+          {
+            "label": "Go: Launch file",
+            "description": "Debug the file in the program attribute",
+            "body": {
+              "name": "${2:Launch file}",
+              "type": "godlvdap",
+              "request": "launch",
+              "mode": "debug",
+              "program": "^\"${1:\\${file\\}}\""
+            }
+          },
+          {
+            "label": "Go: Launch test package",
+            "description": "Debug the test package in the program attribute",
+            "body": {
+              "name": "${2:Launch test package}",
+              "type": "godlvdap",
+              "request": "launch",
+              "mode": "test",
+              "program": "^\"\\${workspaceFolder}${1:}\""
+            }
+          },
+          {
+            "label": "Go: Launch test function",
+            "description": "Debug the test function in the args, ensure program attributes points to right package",
+            "body": {
+              "name": "${3:Launch test function}",
+              "type": "godlvdap",
+              "request": "launch",
+              "mode": "test",
+              "program": "^\"\\${workspaceFolder}${1:}\"",
+              "args": [
+                "-test.run",
+                "${2:MyTestFunction}"
+              ]
+            }
+          },
+          {
+            "label": "Go: Attach to local process",
+            "description": "Attach to an existing process by process ID",
+            "body": {
+              "name": "${1:Attach to Process}",
+              "type": "godlvdap",
+              "request": "attach",
+              "mode": "local",
+              "processId": 0
+            }
+          },
+          {
+            "label": "Go: Connect to server",
+            "description": "Connect to a remote headless debug server",
+            "body": {
+              "name": "${1:Connect to server}",
+              "type": "godlvdap",
+              "request": "attach",
+              "mode": "remote",
+              "remotePath": "^\"\\${workspaceFolder}\"",
+              "port": 2345,
+              "host": "127.0.0.1"
+            }
+          }
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to the program folder (or any file within that folder) when in 'debug' or 'test' mode, and to the pre-built binary file to debug in 'exec' mode.",
+                "default": "${workspaceFolder}"
+              },
+              "mode": {
+                "enum": [
+                  "auto",
+                  "debug",
+                  "remote",
+                  "test",
+                  "exec"
+                ],
+                "description": "One of 'auto', 'debug', 'remote', 'test', 'exec'.",
+                "default": "auto"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after launch.",
+                "default": false
+              },
+              "args": {
+                "type": "array",
+                "description": "Command line arguments passed to the program.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "showLog": {
+                "type": "boolean",
+                "description": "Show log output from the delve debugger.",
+                "default": false
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.",
+                "default": "."
+              },
+              "env": {
+                "type": "object",
+                "description": "Environment variables passed to the program.",
+                "default": {}
+              },
+              "buildFlags": {
+                "type": "string",
+                "description": "Build flags, to be passed to the Go compiler.",
+                "default": ""
+              },
+              "init": {
+                "type": "string",
+                "description": "Init file, executed by the terminal client.",
+                "default": ""
+              },
+              "remotePath": {
+                "type": "string",
+                "description": "Absolute path to the file being debugged on the remote machine in case of remote debugging.",
+                "default": ""
+              },
+              "port": {
+                "type": "number",
+                "description": "The port that the delve debugger will be listening on.",
+                "default": 2345
+              },
+              "host": {
+                "type": "string",
+                "description": "The host name of the machine the delve debugger will be listening on.",
+                "default": "127.0.0.1"
+              },
+              "trace": {
+                "type": "string",
+                "enum": [
+                  "log",
+                  "verbose",
+                  "error"
+                ],
+                "default": "error",
+                "description": "Various levels of logging shown in the debug console. When set to 'log' or 'verbose', the logs will also be written to a file."
+              },
+              "envFile": {
+                "type": [
+                  "string",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "description": "Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths",
+                "default": "${workspaceFolder}/.env"
+              },
+              "backend": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "native",
+                  "lldb"
+                ],
+                "description": "Backend used by delve. Only available in delve version 0.12.2 and above."
+              },
+              "output": {
+                "type": "string",
+                "description": "Output path for the binary of delve",
+                "default": "debug"
+              },
+              "logOutput": {
+                "type": "string",
+                "enum": [
+                  "debugger",
+                  "gdbwire",
+                  "lldbout",
+                  "debuglineerr",
+                  "dap",
+                  "rpc"
+                ],
+                "description": "Comma separated list of components that should produce debug output.",
+                "default": "debugger"
+              },
+              "dlvLoadConfig": {
+                "type": "object",
+                "properties": {
+                  "followPointers": {
+                    "type": "boolean",
+                    "description": "FollowPointers requests pointers to be automatically dereferenced",
+                    "default": true
+                  },
+                  "maxVariableRecurse": {
+                    "type": "number",
+                    "description": "MaxVariableRecurse is how far to recurse when evaluating nested types",
+                    "default": 1
+                  },
+                  "maxStringLen": {
+                    "type": "number",
+                    "description": "MaxStringLen is the maximum number of bytes read from a string",
+                    "default": 64
+                  },
+                  "maxArrayValues": {
+                    "type": "number",
+                    "description": "MaxArrayValues is the maximum number of elements read from an array, a slice or a map",
+                    "default": 64
+                  },
+                  "maxStructFields": {
+                    "type": "number",
+                    "description": "MaxStructFields is the maximum number of fields read from a struct, -1 will read all fields",
+                    "default": -1
+                  }
+                },
+                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "default": {
+                  "followPointers": true,
+                  "maxVariableRecurse": 1,
+                  "maxStringLen": 64,
+                  "maxArrayValues": 64,
+                  "maxStructFields": -1
+                }
+              },
+              "apiVersion": {
+                "type": "number",
+                "enum": [
+                  1,
+                  2
+                ],
+                "description": "Delve Api Version to use. Default value is 2.",
+                "default": 2
+              },
+              "stackTraceDepth": {
+                "type": "number",
+                "description": "Maximum depth of stack trace collected from Delve",
+                "default": 50
+              },
+              "showGlobalVariables": {
+                "type": "boolean",
+                "default": true,
+                "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              }
+            }
+          },
+          "attach": {
+            "required": [],
+            "properties": {
+              "processId": {
+                "type": "number",
+                "description": "The ID of the process to be debugged."
+              },
+              "mode": {
+                "enum": [
+                  "local",
+                  "remote"
+                ],
+                "description": "Indicates local or remote debugging.  Local maps to the dlv 'attach' command, remote maps to 'connect'.",
+                "default": "local"
+              },
+              "showLog": {
+                "type": "boolean",
+                "description": "Show log output from the delve debugger.",
+                "default": false
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.",
+                "default": "${workspaceFolder}"
+              },
+              "remotePath": {
+                "type": "string",
+                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine.",
+                "default": ""
+              },
+              "port": {
+                "type": "number",
+                "description": "The port that the delve debugger will be listening on.",
+                "default": 2345
+              },
+              "host": {
+                "type": "string",
+                "description": "The host name of the machine the delve debugger will be listening on.",
+                "default": "127.0.0.1"
+              },
+              "trace": {
+                "type": "string",
+                "enum": [
+                  "log",
+                  "verbose",
+                  "error"
+                ],
+                "default": "error",
+                "description": "Various levels of logging shown in the debug console. When set to 'log' or 'verbose', the logs will also be written to a file."
+              },
+              "backend": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "native",
+                  "lldb"
+                ],
+                "description": "Backend used by delve. Only available in delve version 0.12.2 and above."
+              },
+              "logOutput": {
+                "type": "string",
+                "enum": [
+                  "debugger",
+                  "gdbwire",
+                  "lldbout",
+                  "debuglineerr",
+                  "dap",
+                  "rpc"
+                ],
+                "description": "Comma separated list of components that should produce debug output.",
+                "default": "debugger"
+              },
+              "dlvLoadConfig": {
+                "type": "object",
+                "properties": {
+                  "followPointers": {
+                    "type": "boolean",
+                    "description": "FollowPointers requests pointers to be automatically dereferenced",
+                    "default": true
+                  },
+                  "maxVariableRecurse": {
+                    "type": "number",
+                    "description": "MaxVariableRecurse is how far to recurse when evaluating nested types",
+                    "default": 1
+                  },
+                  "maxStringLen": {
+                    "type": "number",
+                    "description": "MaxStringLen is the maximum number of bytes read from a string",
+                    "default": 64
+                  },
+                  "maxArrayValues": {
+                    "type": "number",
+                    "description": "MaxArrayValues is the maximum number of elements read from an array, a slice or a map",
+                    "default": 64
+                  },
+                  "maxStructFields": {
+                    "type": "number",
+                    "description": "MaxStructFields is the maximum number of fields read from a struct, -1 will read all fields",
+                    "default": -1
+                  }
+                },
+                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "default": {
+                  "followPointers": true,
+                  "maxVariableRecurse": 1,
+                  "maxStringLen": 64,
+                  "maxArrayValues": 64,
+                  "maxStructFields": -1
+                }
+              },
+              "apiVersion": {
+                "type": "number",
+                "enum": [
+                  1,
+                  2
+                ],
+                "description": "Delve Api Version to use. Default value is 2.",
+                "default": 2
+              },
+              "stackTraceDepth": {
+                "type": "number",
+                "description": "Maximum depth of stack trace collected from Delve",
+                "default": 50
+              },
+              "showGlobalVariables": {
+                "type": "boolean",
+                "default": true,
+                "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              }
+            }
+          }
+        }
       }
     ],
     "configuration": {
