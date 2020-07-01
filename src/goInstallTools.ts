@@ -326,7 +326,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 		case 'Release Notes':
 			vscode.commands.executeCommand(
 				'vscode.open',
-				vscode.Uri.parse('https://github.com/golang/go/issues/33030#issuecomment-510151934')
+				vscode.Uri.parse(`https://github.com/golang/tools/releases/tag/${tool.name}/v${newVersion}`)
 			);
 			break;
 		default:
