@@ -14,7 +14,6 @@ import vscode = require('vscode');
 import WebRequest = require('web-request');
 
 import { toolInstallationEnvironment } from './goEnv';
-import { getActiveGoRoot } from './goInstallTools';
 import { getCurrentGoRoot } from './goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion } from './util';
@@ -285,7 +284,7 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 
 export async function getDefaultGoOption(): Promise<GoEnvironmentOption> {
 	// make goroot default to go.goroot
-	const goroot = await getActiveGoRoot();
+	const goroot = getCurrentGoRoot();
 	if (!goroot) {
 		throw new Error('No Go command could be found.');
 	}
