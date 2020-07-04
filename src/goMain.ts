@@ -8,6 +8,7 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
+import { debug } from 'vscode';
 import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
@@ -303,6 +304,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
+			if (debug.activeDebugSession) {
+				vscode.window.showErrorMessage('Debug session has already been started.');
+				return;
+			}
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'debug', args);
 		})
