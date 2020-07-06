@@ -28,17 +28,20 @@ export class DAPClient extends EventEmitter {
 		super();
 	}
 
-	public send(req: any): void {
-		const json = JSON.stringify(req);
-		this.outputStream.write(`Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`, 'utf8');
-	}
-
+	// Connect this client to a server, which is represented by read and write
+	// streams. Before this method is called, send() won't work and not messages
+	// from the server will be delivered.
 	protected connect(readable: stream.Readable, writable: stream.Writable): void {
 		this.outputStream = writable;
 
 		readable.on('data', (data: Buffer) => {
 			this.handleData(data);
 		});
+	}
+
+	public send(req: any): void {
+		const json = JSON.stringify(req);
+		this.outputStream.write(`Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`, 'utf8');
 	}
 
 	// Implements parsing of the DAP protocol. We cannot use ProtocolClient
