@@ -854,7 +854,8 @@ async function suggestGoplsIssueReport(msg: string, reason: errorKind) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue on GitHub?
+You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
 			// Prefill an issue title and report.
