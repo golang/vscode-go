@@ -10,13 +10,12 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
+import vscode = require('vscode');
+import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { getCurrentGoRoot, pathExists } from './goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion } from './util';
-import vscode = require('vscode');
-import WebRequest = require('web-request');
-
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -227,7 +226,7 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vsco
  * update the PATH variable in the given terminal to default to the currently selected Go
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
-	if (!terminal) return;
+	if (!terminal) { return; }
 	const goroot = path.join(getCurrentGoRoot(), 'bin');
 
 	// TODO: add support for more terminal names
