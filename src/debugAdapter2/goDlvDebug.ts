@@ -544,6 +544,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 //    'close' (rc):           delve exited with return code rc
 class DelveClient extends DAPClient {
 	private debugProcess: ChildProcess;
+	private serverStarted: boolean = false;
 
 	constructor(launchArgs: LaunchRequestArguments) {
 		super();
@@ -594,6 +595,11 @@ class DelveClient extends DAPClient {
 		this.debugProcess.stdout.on('data', (chunk) => {
 			const str = chunk.toString();
 			this.emit('stdout', str);
+
+			if (!this.serverStarted) {
+				this.serverStarted = true;
+				this.connectSocketToServer(launchArgs.port, launchArgs.host);
+			}
 		});
 
 		this.debugProcess.on('close', (rc) => {
@@ -608,13 +614,16 @@ class DelveClient extends DAPClient {
 		this.debugProcess.on('error', (err) => {
 			throw err;
 		});
+	}
 
-		// Give the Delve DAP server some time to start up before connecting.
-		// TODO: do this in a more robust way.
+	// Connect this client to the server. The server is expected to be listening
+	// on host:port.
+	private connectSocketToServer(port: number, host: string) {
+		// Add a slight delay to ensure that Delve started up the server.
 		setTimeout(() => {
 			const socket = net.createConnection(
-				launchArgs.port,
-				launchArgs.host,
+				port,
+				host,
 				() => {
 					this.connect(socket, socket);
 					this.emit('connected');
@@ -623,6 +632,6 @@ class DelveClient extends DAPClient {
 			socket.on('error', (err) => {
 				throw err;
 			});
-		}, 100);
+		}, 200);
 	}
 }

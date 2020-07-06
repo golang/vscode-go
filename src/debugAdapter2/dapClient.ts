@@ -33,6 +33,9 @@ export class DAPClient extends EventEmitter {
 		this.outputStream.write(`Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`, 'utf8');
 	}
 
+	// Connect this client to a server, which is represented by read and write
+	// streams. Before this method is called, send() won't work and no messages
+	// from the server will be delivered.
 	protected connect(readable: stream.Readable, writable: stream.Writable): void {
 		this.outputStream = writable;
 
