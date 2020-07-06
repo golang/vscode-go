@@ -618,7 +618,7 @@ class DelveClient extends DAPClient {
 
 	// Connect this client to the server. The server is expected to be listening
 	// on host:port.
-	private connectSocketToServer(port: number, host:string) {
+	private connectSocketToServer(port: number, host: string) {
 		// Add a slight delay to ensure that Delve started up the server.
 		setTimeout(() => {
 			const socket = net.createConnection(
