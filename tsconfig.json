@@ -1,12 +1,10 @@
 {
 	"compilerOptions": {
+		"target": "es2019",
 		"module": "commonjs",
-		"outDir": "out",
+		"lib": ["ES2019"],
 		"sourceMap": true,
-		"target": "es6",
-		"lib": [
-			"es2015"
-		],
+		"outDir": "out",
 		//"strict": true,
 		"noImplicitAny": true,
 		"noImplicitThis": true,
