@@ -243,6 +243,14 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		this.dlvClient.send(request);
 	}
 
+	protected disconnectRequest(
+		response: DebugProtocol.DisconnectResponse,
+		args: DebugProtocol.DisconnectArguments,
+		request?: DebugProtocol.Request
+	): void {
+		this.dlvClient.send(request);
+	}
+
 	protected terminateRequest(
 		response: DebugProtocol.TerminateResponse,
 		args: DebugProtocol.TerminateArguments,
