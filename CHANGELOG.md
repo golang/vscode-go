@@ -1,4 +1,14 @@
-## v0.15.0 - 29 June, 2020
+## v0.15.1 - 7th July, 2020
+
+### Enhancement
+
+- Improved `gopls` error report suggestion and changed to send reports to the vscode-go issue tracker instead of the go issue tracker ([cl/240506](https://golang.org/cl/240506)). 
+
+### Fixed
+
+- Removed the `preview` note in the published extension ([Issue 273](https://github.com/golang/vscode-go/issues/273)).
+
+## v0.15.0 - 29th June, 2020
 
 ### New Features
 
@@ -15,8 +25,8 @@
     - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issue/215)).
     - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issue/143)).
 - Better language server integration
-    - Restart the language server automatically when changes in its configuration or the language server version are detected ([cl/232598](https://golang.org/cl/232598) [cl/233159](https://golang.org/cl/233159)).
-    - Prompts user to file an issue if `gopls` crashes ([cl/233325](https://golang.org/cl/23325)).
+    - Restart the language server automatically when changes in its configuration or the language server version are detected ([cl/232598](https://golang.org/cl/232598), [cl/233159](https://golang.org/cl/233159)).
+    - Prompts user to file an issue if `gopls` crashes ([cl/233325](https://golang.org/cl/233325)).
 - `go.gopath`, `go.goroot`, `go.toolsGopath` are now [machine-overridable](https://code.visualstudio.com/api/references/contribution-points#Configuration-property-schema) ([cl/236539](https://golang.org/cl/236539), [Issue 2981](https://github.com/microsoft/vscode-go/issues/2981)).
 - The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issue/146)).
 - A redundant code action provider was removed when using the language server ([cl/239284](https://golang.org/cl/239284)).
