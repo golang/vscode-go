@@ -69,7 +69,6 @@ jobs:
       
       - name: Run unit tests
         run: npm run unit-test
-        continue-on-error: true
         
       - name: Run tests
         uses: GabrielBB/xvfb-action@v1.0
