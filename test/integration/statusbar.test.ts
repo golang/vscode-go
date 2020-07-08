@@ -50,7 +50,8 @@ describe('#initGoStatusBar()', function () {
 	});
 });
 
-describe('#setSelectedGo()', function () {
+describe.skip('#setSelectedGo()', function () {
+	// Disabled due to https://github.com/golang/vscode-go/issues/303.
 	this.timeout(20000);
 	let sandbox: sinon.SinonSandbox | undefined;
 	let goOption: GoEnvironmentOption;
