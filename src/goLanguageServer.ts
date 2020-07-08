@@ -145,10 +145,9 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	// language server.
 	if (!restartCommand) {
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
-			// TODO(rstambler): Enable this behavior when gopls reaches v1.0.
-			if (false) {
-				await suggestGoplsIssueReport(`Looks like you're about to manually restart the language server.`);
-			}
+			await suggestGoplsIssueReport(
+				`Looks like you're about to manually restart the language server.`,
+				errorKind.manualRestart);
 			restartLanguageServer();
 		});
 		ctx.subscriptions.push(restartCommand);
@@ -197,8 +196,7 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
 				);
-				serverOutputChannel.show();
-				suggestGoplsIssueReport(`The gopls server failed to initialize.`);
+				suggestGoplsIssueReport(`The gopls server failed to initialize.`, errorKind.initializationFailure);
 				return false;
 			},
 			errorHandler: {
@@ -218,8 +216,9 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 					if (crashCount < 5) {
 						return CloseAction.Restart;
 					}
-					serverOutputChannel.show();
-					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed.`);
+					suggestGoplsIssueReport(
+						`The connection to gopls has been closed. The gopls server may have crashed.`,
+						errorKind.crash);
 					return CloseAction.DoNotRestart;
 				},
 			},
@@ -814,8 +813,23 @@ function flushSurveyConfig(cfg: SurveyConfig) {
 	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
 }
 
+// errorKind refers to the different possible kinds of gopls errors.
+enum errorKind {
+	initializationFailure,
+	crash,
+	manualRestart,
+}
+
 // suggestGoplsIssueReport prompts users to file an issue with gopls.
-async function suggestGoplsIssueReport(msg: string) {
+async function suggestGoplsIssueReport(msg: string, reason: errorKind) {
+	// Don't prompt users who manually restart to file issues until gopls/v1.0.
+	if (reason === errorKind.manualRestart) {
+		return;
+	}
+
+	// Show the user the output channel content to alert them to the issue.
+	serverOutputChannel.show();
+
 	if (latestConfig.serverName !== 'gopls') {
 		return;
 	}
@@ -836,18 +850,42 @@ async function suggestGoplsIssueReport(msg: string) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue on GitHub?
+You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
-			// Run the `gopls bug` command directly for now. When
-			// https://github.com/golang/go/issues/38942 is
-			// resolved, we'll be able to do this through the
-			// language client.
+			// Prefill an issue title and report.
+			let errKind: string;
+			switch (reason) {
+				case errorKind.crash:
+					errKind = 'crash';
+					break;
+				case errorKind.initializationFailure:
+					errKind = 'initialization';
+					break;
+			}
+			const title = `gopls: automated issue report (${errKind})`;
+			const body = `ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
-			// Wait for the command to finish before restarting the
-			// server, but don't bother handling errors.
-			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], { env: toolExecutionEnvironment() });
+Describe what you observed.
+
+<ANSWER HERE>
+
+Please attach the stack trace from the crash.
+A window with the error message should have popped up in the lower half of your screen.
+Please copy the stack trace from that window and paste it in this issue.
+
+<PASTE STACK TRACE HERE>
+
+OPTIONAL: If you would like to share more information, you can attach your complete gopls logs.
+
+NOTE: THESE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR CODEBASE.
+DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
+
+<OPTIONAL: ATTACH LOGS HERE>
+`;
+			const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
+			await vscode.env.openExternal(vscode.Uri.parse(url));
 			break;
 		case 'Next time':
 			break;
