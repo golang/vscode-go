@@ -198,18 +198,20 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		logger.setup(this.logLevel, logPath);
 		log('launchRequest');
 
+		// In noDebug mode, we don't launch Delve.
 		if (args.noDebug && args.mode === 'debug') {
 			try {
 				this.launchNoDebug(args);
-				return;
 			} catch (e) {
 				logError(`launchNoDebug failed: "${e}"`);
+				// TODO: define error constants
+				// https://github.com/golang/vscode-go/issues/305
 				this.sendErrorResponse(
 					response,
 					3000,
 					`Failed to launch "${e}"`);
-				return;
 			}
+			return;
 		}
 
 		if (!args.port) {
@@ -235,6 +237,8 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 		this.dlvClient.on('close', (rc) => {
 			if (rc !== 0) {
+				// TODO: define error constants
+				// https://github.com/golang/vscode-go/issues/305
 				this.sendErrorResponse(
 					response,
 					3000,
@@ -260,10 +264,10 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 	// This implements the `Run > Run Without Debugger` functionality in vscode.
 	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
 		let program = launchArgs.program;
-		let programIsDirectory = false;
 		if (!program) {
 			throw new Error('The program attribute is missing in the debug configuration in launch.json');
 		}
+		let programIsDirectory = false;
 		try {
 			programIsDirectory = fs.lstatSync(program).isDirectory();
 		} catch (e) {
@@ -349,6 +353,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		if (this.debugProcess !== null) {
 			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
 			killTree(this.debugProcess.pid);
+			// TODO: place this in the callback of killTree?
 			super.disconnectRequest(response, args);
 			log('DisconnectResponse');
 		} else if (this.dlvClient !== null) {
