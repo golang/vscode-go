@@ -16,12 +16,19 @@ import {
 	logger,
 	Logger,
 	LoggingDebugSession,
-	TerminatedEvent
+	TerminatedEvent,
+	OutputEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-import { envPath } from '../goPath';
+import {
+	envPath,
+	parseEnvFile,
+	getBinPathWithPreferredGopathGoroot
+} from '../goPath';
 import { DAPClient } from './dapClient';
+import { killTree } from '../util';
+
 
 interface LoadConfig {
 	// FollowPointers requests pointers to be automatically dereferenced.
@@ -133,7 +140,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 	private logLevel: Logger.LogLevel = Logger.LogLevel.Error;
 
-	private dlvClient: DelveClient;
+	private dlvClient: DelveClient = null;
+
+	// Child process used to track debugee launched without debugging (noDebug
+	// mode). Either debugProcess or dlvClient are null.
+	private debugProcess: ChildProcess = null;
 
 	public constructor() {
 		super();
@@ -185,8 +196,21 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		const logPath =
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-godlvdapdebug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);
-
 		log('launchRequest');
+
+		if (args.noDebug && args.mode === 'debug') {
+			try {
+				this.launchNoDebug(args);
+				return;
+			} catch (e) {
+				logError(`launchNoDebug failed: "${e}"`);
+				this.sendErrorResponse(
+					response,
+					3000,
+					`Failed to launch "${e}"`);
+				return;
+			}
+		}
 
 		if (!args.port) {
 			args.port = this.DEFAULT_DELVE_PORT;
@@ -194,9 +218,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		if (!args.host) {
 			args.host = this.DEFAULT_DELVE_HOST;
 		}
-
-		// TODO: if this is a noDebug launch request, don't launch Delve;
-		// instead, run the program directly.
 
 		this.dlvClient = new DelveClient(args);
 
@@ -235,6 +256,75 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		});
 	}
 
+	// Launch the debugee process without starting a debugger.
+	// This implements the `Run > Run Without Debugger` functionality in vscode.
+	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
+		let program = launchArgs.program;
+		let programIsDirectory = false;
+		if (!program) {
+			throw new Error('The program attribute is missing in the debug configuration in launch.json');
+		}
+		try {
+			programIsDirectory = fs.lstatSync(program).isDirectory();
+		} catch (e) {
+			throw new Error('The program attribute must point to valid directory, .go file or executable.');
+		}
+		if (programIsDirectory && launchArgs.mode === 'exec') {
+			throw new Error('The program attribute must be an executable in exec mode');
+		}
+		if (!programIsDirectory && launchArgs.mode !== 'exec' && path.extname(program) !== '.go') {
+			throw new Error('The program attribute must be a directory or .go file in debug mode');
+		}
+
+		let goRunArgs = ['run'];
+		if (launchArgs.buildFlags) {
+			goRunArgs.push(launchArgs.buildFlags);
+		}
+
+		if (programIsDirectory) {
+			goRunArgs.push('.');
+		} else {
+			goRunArgs.push(program);
+		}
+
+		if (launchArgs.args) {
+			goRunArgs.push(...launchArgs.args);
+		}
+
+		// Read env from disk and merge into env variables.
+		const fileEnvs = [];
+		if (typeof launchArgs.envFile === 'string') {
+			fileEnvs.push(parseEnvFile(launchArgs.envFile));
+		}
+		if (Array.isArray(launchArgs.envFile)) {
+			launchArgs.envFile.forEach((envFile) => {
+				fileEnvs.push(parseEnvFile(envFile));
+			});
+		}
+
+		const launchArgsEnv = launchArgs.env || {};
+		let programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
+
+		const dirname = programIsDirectory ? program : path.dirname(program);
+		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
+		log(`Current working directory: ${dirname}`);
+		log(`Running: ${goExe} ${goRunArgs.join(' ')}`);
+		
+		this.debugProcess = spawn(goExe, goRunArgs, {
+			cwd: dirname,
+			env: programEnv
+		});
+		this.debugProcess.stderr.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stderr'));
+		});
+		this.debugProcess.stdout.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stdout'));
+		});
+		this.debugProcess.on('close', (rc) => {
+			this.sendEvent(new TerminatedEvent());
+		});
+	}
+
 	protected attachRequest(
 		response: DebugProtocol.AttachResponse,
 		args: AttachRequestArguments,
@@ -248,7 +338,30 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.DisconnectArguments,
 		request?: DebugProtocol.Request
 	): void {
-		this.dlvClient.send(request);
+		log('DisconnectRequest');
+		// How we handle DisconnectRequest depends on whether Delve was launched
+		// at all.
+		// * In noDebug node, the Go program was spawned directly without
+		//   debugging: this.debugProcess will be non-null, and this.dlvClient
+		//   will be null.
+		// * Otherwise, Delve was spawned: this.debugProcess will be null, and
+		//   this.dlvClient will be non-null.
+		if (this.debugProcess !== null) {
+			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
+			killTree(this.debugProcess.pid);
+			super.disconnectRequest(response, args);
+			log('DisconnectResponse');
+		} else if (this.dlvClient !== null) {
+			this.dlvClient.send(request);
+		} else {
+			logError(`both debug process and dlv client are null`);
+			// TODO: define all error codes as constants
+			// https://github.com/golang/vscode-go/issues/305
+			this.sendErrorResponse(
+				response,
+				3000,
+				'Failed to disconnect: Check the debug console for details.');
+		}
 	}
 
 	protected terminateRequest(
