@@ -8,7 +8,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { installTools } from './goInstallTools';
-import { envPath, fixDriveCasingInWindows } from './goPath';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';
@@ -19,7 +19,7 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 	const goExecutable = getBinPath('go');
 	if (!goExecutable) {
 		console.warn(
-			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 		return;
 	}
@@ -80,10 +80,11 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 			const promptMsg =
 				'For better performance using Go modules, you can try the experimental Go language server, gopls.';
 			promptToUpdateToolForModules('gopls', promptMsg, goConfig);
-		}
-		if (goConfig['formatTool'] === 'goreturns') {
-			const promptMsgForFormatTool = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to goimports.`;
-			promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
+
+			if (goConfig['formatTool'] === 'goreturns') {
+				const promptMsgForFormatTool = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to goimports.`;
+				promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
+			}
 		}
 	}
 	packagePathToGoModPathMap[pkgPath] = goModEnvResult;
@@ -161,7 +162,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
-			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 		return;
 	}

@@ -12,7 +12,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import { envPath, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -262,7 +262,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 
 		if (!goRuntimePath) {
 			vscode.window.showErrorMessage(
-				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 			);
 			return Promise.resolve();
 		}
@@ -402,7 +402,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		);
 	});
 	if (testconfig.applyCodeCoverage) {
-		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
+		await applyCodeCoverageToAllEditors(tmpCoverPath);
 	}
 	return testResult;
 }
@@ -464,7 +464,7 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			// which will result in the correct thing to happen
 			if (testFunctions.length > 0) {
 				if (testFunctions.length === 1) {
-					params = params.concat(['-run', util.format('^%s$', testFunctions.pop())]);
+					params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
 				} else {
 					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
 				}

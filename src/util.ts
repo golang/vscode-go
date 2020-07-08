@@ -12,18 +12,19 @@ import kill = require('tree-kill');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import {
 	envPath,
 	fixDriveCasingInWindows,
-	getBinPathWithPreferredGopath,
+	getBinPathWithPreferredGopathGoroot,
+	getCurrentGoRoot,
 	getInferredGopath,
-	resolveHomeDir
+	resolveHomeDir,
 } from './goPath';
 import { outputChannel } from './goStatus';
-import { extensionId } from './telemetry';
 
 let userNameHash: number = 0;
 
@@ -135,11 +136,13 @@ export class GoVersion {
 	}
 }
 
+let cachedGoBinPath: string | undefined;
 let cachedGoVersion: GoVersion | undefined;
 let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
-export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+// getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
+export const getGoConfig = (uri?: vscode.Uri) => {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;
@@ -148,7 +151,7 @@ export function getGoConfig(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		}
 	}
 	return vscode.workspace.getConfiguration('go', uri);
-}
+};
 
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
@@ -307,10 +310,10 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 	};
 
 	if (!goRuntimePath) {
-		warn(`unable to locate "go" binary in GOROOT (${process.env['GOROOT']}) or PATH (${envPath})`);
+		warn(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
 		return;
 	}
-	if (cachedGoVersion) {
+	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
@@ -323,6 +326,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
+		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
@@ -431,14 +435,17 @@ function resolveToolsGopath(): string {
 	}
 }
 
-export function getBinPath(tool: string): string {
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+export function getBinPath(tool: string, useCache = true): string {
+	const cfg = getGoConfig();
+	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
-	return getBinPathWithPreferredGopath(
+	return getBinPathWithPreferredGopathGoroot(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
-		resolvePath(alternateToolPath)
+		tool === 'go' && cfg.get('goroot') ? cfg.get('goroot') : undefined,
+		resolvePath(alternateToolPath),
+		useCache
 	);
 }
 
@@ -485,6 +492,9 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 }
 
 export function getModuleCache(): string {
+	if (process.env['GOMODCACHE']) {
+		return process.env['GOMODCACHE'];
+	}
 	if (currentGopath) {
 		return path.join(currentGopath.split(path.delimiter)[0], 'pkg', 'mod');
 	}

@@ -9,7 +9,7 @@ import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
 import { getAllPackages } from './goPackages';
-import { envPath } from './goPath';
+import { envPath, getCurrentGoRoot } from './goPath';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
 
 export function browsePackages() {
@@ -40,7 +40,7 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
+			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
 	}
 

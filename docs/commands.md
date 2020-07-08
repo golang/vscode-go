@@ -182,3 +182,7 @@ Extract to variable using godoctor.
 ### `Go: Restart Language Server`
 
 Restart the running instance of the language server
+
+### `Go: Choose Go Environment`
+
+Choose a different Go version or binary for this project. (WIP)

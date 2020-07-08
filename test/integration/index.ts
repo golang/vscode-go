@@ -6,11 +6,12 @@ import * as glob from 'glob';
 import * as Mocha from 'mocha';
 import * as path from 'path';
 export function run(): Promise<void> {
-	// Create the mocha test
 	const mocha = new Mocha({
 		ui: 'tdd',
 	});
-	mocha.useColors(true);
+
+	// @types/mocha is outdated
+	(mocha as any).color(true);
 
 	const testsRoot = path.resolve(__dirname, '..');
 

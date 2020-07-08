@@ -1,7 +1,6 @@
 {
 	"version": "0.2.0",
 	"configurations": [
-		
 		{
 			"name": "Launch Extension",
 			"type": "extensionHost",
@@ -25,6 +24,21 @@
 			"protocol": "inspector",
 			"request": "launch",
 			"program": "${workspaceFolder}/out/src/debugAdapter/goDebug.js",
+			"args": [
+				"--server=4711"
+			],
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "npm"
+		},
+		{
+			"name": "Launch as server (dlv dap)",
+			"type": "node",
+			"protocol": "inspector",
+			"request": "launch",
+			"program": "${workspaceFolder}/out/src/debugAdapter2/goDlvDebugMain.js",
 			"args": [
 				"--server=4711"
 			],
