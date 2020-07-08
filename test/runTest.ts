@@ -1,7 +1,5 @@
-import * as fs from 'fs-extra';
 import * as path from 'path';
 import { runTests } from 'vscode-test';
-import { extensionId } from '../src/telemetry';
 
 async function main() {
 		// The folder containing the Extension Manifest package.json

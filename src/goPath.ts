@@ -12,6 +12,7 @@
 import fs = require('fs');
 import os = require('os');
 import path = require('path');
+import { promisify } from 'util';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -31,14 +32,21 @@ export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appe
 	return null;
 }
 
-export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths: string[], alternateTool?: string) {
-	if (binPathCache[toolName]) {
-		return binPathCache[toolName];
-	}
-
+export function getBinPathWithPreferredGopathGoroot(
+	toolName: string,
+	preferredGopaths: string[],
+	preferredGoroot?: string,
+	alternateTool?: string,
+	useCache = true,
+) {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return alternateTool;
+	}
+
+	// FIXIT: this cache needs to be invalidated when go.goroot or go.alternateTool is changed.
+	if (useCache && binPathCache[toolName]) {
+		return binPathCache[toolName];
 	}
 
 	const binname = alternateTool && !path.isAbsolute(alternateTool) ? alternateTool : toolName;
@@ -60,7 +68,7 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 	}
 
 	// Check GOROOT (go, gofmt, godoc would be found here)
-	const pathFromGoRoot = getBinPathFromEnvVar(binname, process.env['GOROOT'], true);
+	const pathFromGoRoot = getBinPathFromEnvVar(binname, preferredGoroot || getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
 		return pathFromGoRoot;
@@ -87,6 +95,18 @@ export function getBinPathWithPreferredGopath(toolName: string, preferredGopaths
 	return toolName;
 }
 
+/**
+ * Returns the goroot path if it exists, otherwise returns an empty string
+ */
+let currentGoRoot = '';
+export function getCurrentGoRoot(): string {
+	return currentGoRoot || process.env['GOROOT'] || '';
+}
+
+export function setCurrentGoRoot(goroot: string) {
+	currentGoRoot = goroot;
+}
+
 function correctBinname(toolName: string) {
 	if (process.platform === 'win32') {
 		return toolName + '.exe';
@@ -110,6 +130,15 @@ function executableFileExists(filePath: string): boolean {
 export function fileExists(filePath: string): boolean {
 	try {
 		return fs.statSync(filePath).isFile();
+	} catch (e) {
+		return false;
+	}
+}
+
+export async function pathExists(p: string): Promise<boolean> {
+	try {
+		const stat = promisify(fs.stat);
+		return (await stat(p)).isDirectory();
 	} catch (e) {
 		return false;
 	}

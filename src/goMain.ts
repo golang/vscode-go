@@ -8,10 +8,10 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
+import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
-import { GoCodeActionProvider } from './goCodeAction';
 import {
 	applyCodeCoverage, applyCodeCoverageToAllEditors, initCoverageDecorators, removeCodeCoverageOnFileSave,
 	toggleCoverageCurrentPackage, trackCodeCoverageRemovalOnFileChange, updateCodeCoverageDecorators
@@ -19,6 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
+import { chooseGoEnvironment } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -34,7 +35,7 @@ import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
-import { clearCacheForTools, fileExists } from './goPath';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './goPath';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
@@ -48,8 +49,16 @@ import {
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
-	cleanupTempDir, getBinPath, getCurrentGoPath, getExtensionCommands, getGoConfig,
-	getGoVersion, getToolsGopath, getWorkspaceFolderPath, handleDiagnosticErrors, isGoPathSet
+	cleanupTempDir,
+	getBinPath,
+	getCurrentGoPath,
+	getExtensionCommands,
+	getGoConfig,
+	getGoVersion,
+	getToolsGopath,
+	getWorkspaceFolderPath,
+	handleDiagnosticErrors,
+	isGoPathSet
 } from './util';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
@@ -64,6 +73,10 @@ export let restartLanguageServer = () => { return; };
 export function activate(ctx: vscode.ExtensionContext): void {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
+	const configGOROOT = getGoConfig()['goroot'];
+	if (!!configGOROOT) {
+		setCurrentGoRoot(configGOROOT);
+	}
 
 	updateGoVarsFromConfig().then(async () => {
 		const updateToolsCmdText = 'Update tools';
@@ -77,7 +90,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			toolsGoInfo[toolsGopath] = { goroot: null, version: null };
 		}
 		const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-		const currentGoroot: string = process.env['GOROOT'] && process.env['GOROOT'].toLowerCase();
+		const currentGoroot: string = getCurrentGoRoot().toLowerCase();
 		if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
 			// Don't suggest recompiling tools for the go2go version.
 			if (false) {
@@ -101,7 +114,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 					if (prevVersion) {
 						vscode.window
 							.showInformationMessage(
-								'Your Go version is different than before, few Go tools may need re-compiling',
+								'Your Go version is different than before, a few Go tools may need re-compiling',
 								updateToolsCmdText
 							)
 							.then((selected) => {
@@ -157,15 +170,22 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			);
 		})
 	);
-	showHideStatus(vscode.window.activeTextEditor);
-
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
 	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
 
-	ctx.subscriptions.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
+	ctx.subscriptions.push(
+		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
+
+	// Use an InlineDebugAdapterFactory to create a new debug adapter for
+	// the 'godlvdap' command in inline mode, without launching a subprocess.
+	const factory = new InlineDebugAdapterFactory();
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
@@ -214,7 +234,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 			outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
 			outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
 			outputChannel.appendLine('gopath: ' + getCurrentGoPath());
-			outputChannel.appendLine('GOROOT: ' + process.env['GOROOT']);
+			outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
 			outputChannel.appendLine('PATH: ' + process.env['PATH']);
 			outputChannel.appendLine('');
 
@@ -285,6 +305,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
+			if (vscode.debug.activeDebugSession) {
+				vscode.window.showErrorMessage('Debug session has already been started.');
+				return;
+			}
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'debug', args);
 		})
@@ -395,8 +419,14 @@ export function activate(ctx: vscode.ExtensionContext): void {
 				return;
 			}
 			const updatedGoConfig = getGoConfig();
-			updateGoVarsFromConfig();
 
+			if (e.affectsConfiguration('go.goroot') ||
+				e.affectsConfiguration('go.alternateTools') ||
+				e.affectsConfiguration('go.gopath') ||
+				e.affectsConfiguration('go.toolsEnvVars') ||
+				e.affectsConfiguration('go.testEnvFile')) {
+				updateGoVarsFromConfig();
+			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
 				clearCacheForTools();
@@ -542,10 +572,16 @@ export function activate(ctx: vscode.ExtensionContext): void {
 						updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 					}
 					applyCodeCoverageToAllEditors(
-						coverProfilePath,
-						path.dirname(vscode.window.activeTextEditor.document.fileName)
+						coverProfilePath
 					);
 				});
+		})
+	);
+
+	// Go Enviornment switching commands
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.environment.choose', () => {
+			chooseGoEnvironment();
 		})
 	);
 
@@ -624,5 +660,12 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 function checkToolExists(tool: string) {
 	if (tool === getBinPath(tool)) {
 		promptForMissingTool(tool);
+	}
+}
+
+class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+	public createDebugAdapterDescriptor(session: vscode.DebugSession
+	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
 }

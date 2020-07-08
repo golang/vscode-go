@@ -1,4 +1,5 @@
-out
-node_modules
-.vscode-test
+out/
+dist/
+node_modules/
+.vscode-test/
 .DS_Store

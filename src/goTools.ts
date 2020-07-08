@@ -176,7 +176,7 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	return tools;
 }
 
-const allToolsInformation: { [key: string]: Tool } = {
+export const allToolsInformation: { [key: string]: Tool } = {
 	'gocode': {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',

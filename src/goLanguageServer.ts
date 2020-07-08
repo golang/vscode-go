@@ -17,15 +17,16 @@ import vscode = require('vscode');
 import {
 	CloseAction, CompletionItemKind, ErrorAction, HandleDiagnosticsSignature, InitializeError,
 	LanguageClient, Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature,
-	RevealOutputChannelOn,
+	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import WebRequest = require('web-request');
+import { extensionId } from './const';
+import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
+import { promptForMissingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import { restartLanguageServer } from './goMain';
 import { GO_MODE } from './goMode';
@@ -39,7 +40,8 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getGoVersion } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import WebRequest = require('web-request');
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -62,6 +64,8 @@ let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 let serverOutputChannel: vscode.OutputChannel;
+let serverTraceChannel: vscode.OutputChannel;
+let crashCount = 0;
 
 // defaultLanguageProviders is the list of providers currently registered.
 let defaultLanguageProviders: vscode.Disposable[] = [];
@@ -84,22 +88,6 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (activation && cfg.enabled && cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			// Skip the update prompt - the user should have a special generics
-			// version of gopls.
-			if (false) {
-				const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
-				if (versionToUpdate) {
-					promptForUpdatingTool(tool.name, versionToUpdate);
-				} else if (goplsSurveyOn) {
-					// Only prompt users to fill out the gopls survey if we are not
-					// also prompting them to update (both would be too much).
-					const timeout = 1000 * 60 * 60; // 1 hour
-					setTimeout(async () => {
-						const surveyCfg = await maybePromptForGoplsSurvey();
-						flushSurveyConfig(surveyCfg);
-					}, timeout);
-				}
-			}
 		}
 	}
 
@@ -151,6 +139,7 @@ async function startLanguageServer(
 		// and rebuild the language client.
 		latestConfig = config;
 		languageClient = await buildLanguageClient(config, usingGo2Go);
+		crashCount = 0;
 	}
 
 	// If the user has not enabled the language server, return early.
@@ -162,10 +151,9 @@ async function startLanguageServer(
 	// language server.
 	if (!restartCommand) {
 		restartCommand = vscode.commands.registerCommand('go.languageserver.restart', async () => {
-			// TODO(rstambler): Enable this behavior when gopls reaches v1.0.
-			if (false) {
-				await suggestGoplsIssueReport(`Looks like you're about to manually restart the language server.`);
-			}
+			await suggestGoplsIssueReport(
+				`Looks like you're about to manually restart the language server.`,
+				errorKind.manualRestart);
 			restartLanguageServer();
 		});
 		ctx.subscriptions.push(restartCommand);
@@ -182,8 +170,13 @@ async function startLanguageServer(
 
 async function buildLanguageClient(config: LanguageServerConfig, usingGo2Go: boolean): Promise<LanguageClient> {
 	// Reuse the same output channel for each instance of the server.
-	if (config.enabled && !serverOutputChannel) {
-		serverOutputChannel = vscode.window.createOutputChannel(config.serverName);
+	if (config.enabled) {
+		if (!serverOutputChannel) {
+			serverOutputChannel = vscode.window.createOutputChannel(config.serverName + ' (server)');
+		}
+		if (!serverTraceChannel) {
+			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
+		}
 	}
 	const c = new LanguageClient(
 		'go',  // id
@@ -230,13 +223,13 @@ async function buildLanguageClient(config: LanguageServerConfig, usingGo2Go: boo
 				},
 			},
 			outputChannel: serverOutputChannel,
+			traceOutputChannel: serverTraceChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
 				);
-				serverOutputChannel.show();
-				suggestGoplsIssueReport(`The gopls server failed to initialize.`);
+				suggestGoplsIssueReport(`The gopls server failed to initialize.`, errorKind.initializationFailure);
 				return false;
 			},
 			errorHandler: {
@@ -244,15 +237,21 @@ async function buildLanguageClient(config: LanguageServerConfig, usingGo2Go: boo
 					vscode.window.showErrorMessage(
 						`Error communicating with the language server: ${error}: ${message}.`
 					);
-					// Stick with the default number of 5 crashes before shutdown.
-					if (count >= 5) {
-						return ErrorAction.Shutdown;
+					// Allow 5 crashes before shutdown.
+					if (count < 5) {
+						return ErrorAction.Continue;
 					}
-					return ErrorAction.Continue;
+					return ErrorAction.Shutdown;
 				},
 				closed: (): CloseAction => {
-					serverOutputChannel.show();
-					suggestGoplsIssueReport(`The connection to gopls has been closed. The gopls server may have crashed.`);
+					// Allow 5 crashes before shutdown.
+					crashCount++;
+					if (crashCount < 5) {
+						return CloseAction.Restart;
+					}
+					suggestGoplsIssueReport(
+						`The connection to gopls has been closed. The gopls server may have crashed.`,
+						errorKind.crash);
 					return CloseAction.DoNotRestart;
 				},
 			},
@@ -368,6 +367,7 @@ function registerDefaultProviders(ctx: vscode.ExtensionContext) {
 	);
 	defaultLanguageProviders.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
 	defaultLanguageProviders.push(vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions));
+	defaultLanguageProviders.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
 
 	for (const provider of defaultLanguageProviders) {
 		ctx.subscriptions.push(provider);
@@ -389,7 +389,8 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 	if (
 		e.affectsConfiguration('go.useLanguageServer') ||
 		e.affectsConfiguration('go.languageServerFlags') ||
-		e.affectsConfiguration('go.languageServerExperimentalFeatures')
+		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
+		e.affectsConfiguration('go.alternateTools')
 	) {
 		restartLanguageServer();
 	}
@@ -495,7 +496,6 @@ function allFoldersHaveSameGopath(): boolean {
 	return vscode.workspace.workspaceFolders.find((x) => tempGopath !== getCurrentGoPath(x.uri)) ? false : true;
 }
 
-const acceptGoplsPrerelease = true;  // For nightly, we accept the prerelease version.
 export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	languageServerToolPath: string,
@@ -543,7 +543,10 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.coerce(usersVersion, { includePrerelease: true, loose: true });
+	const usersVersionSemver = semver.parse(usersVersion, {
+		includePrerelease: true,
+		loose: true,
+	});
 	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 
@@ -597,6 +600,8 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	const time = moment(data['Time']);
 	return time;
 };
+
+const acceptGoplsPrerelease = (extensionId === 'golang.go-nightly');
 
 export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
@@ -696,7 +701,7 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	}
 	// Try each URL set in the user's GOPROXY environment variable.
 	// If none is set, don't make the request.
-	const proxies = output.trim().split(',|');
+	const proxies = output.trim().split(/,|\|/);
 	for (const proxy of proxies) {
 		if (proxy === 'direct') {
 			continue;
@@ -708,6 +713,7 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 				throwResponseError: true
 			});
 		} catch (e) {
+			console.log(`Error sending request to ${proxy}: ${e}`);
 			return null;
 		}
 		return data;
@@ -844,40 +850,79 @@ function flushSurveyConfig(cfg: SurveyConfig) {
 	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
 }
 
+// errorKind refers to the different possible kinds of gopls errors.
+enum errorKind {
+	initializationFailure,
+	crash,
+	manualRestart,
+}
+
 // suggestGoplsIssueReport prompts users to file an issue with gopls.
-async function suggestGoplsIssueReport(msg: string) {
+async function suggestGoplsIssueReport(msg: string, reason: errorKind) {
+	// Don't prompt users who manually restart to file issues until gopls/v1.0.
+	if (reason === errorKind.manualRestart) {
+		return;
+	}
+
+	// Show the user the output channel content to alert them to the issue.
+	serverOutputChannel.show();
+
 	if (latestConfig.serverName !== 'gopls') {
 		return;
 	}
 	const promptForIssueOnGoplsRestartKey = `promptForIssueOnGoplsRestart`;
 	let saved: any;
 	try {
-		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, true));
+		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, false));
 	} catch (err) {
 		console.log(`Failed to parse as JSON ${getFromGlobalState(promptForIssueOnGoplsRestartKey, true)}: ${err}`);
 		return;
 	}
 	// If the user has already seen this prompt, they may have opted-out for
 	// the future. Only prompt again if it's been more than a year since.
-	if (saved['date'] && saved['prompt']) {
+	if (saved) {
 		const dateSaved = new Date(saved['date']);
 		const prompt = <boolean>saved['prompt'];
 		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue ? `, 'Yes', 'Next time', 'Never');
+	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue on GitHub?
+You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
-			// Run the `gopls bug` command directly for now. When
-			// https://github.com/golang/go/issues/38942 is
-			// resolved, we'll be able to do this through the
-			// language client.
+			// Prefill an issue title and report.
+			let errKind: string;
+			switch (reason) {
+				case errorKind.crash:
+					errKind = 'crash';
+					break;
+				case errorKind.initializationFailure:
+					errKind = 'initialization';
+					break;
+			}
+			const title = `gopls: automated issue report (${errKind})`;
+			const body = `ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
-			// Wait for the command to finish before restarting the
-			// server, but don't bother handling errors.
-			const execFile = util.promisify(cp.execFile);
-			await execFile(latestConfig.path, ['bug'], { env: toolExecutionEnvironment() });
+Describe what you observed.
+
+<ANSWER HERE>
+
+Please attach the stack trace from the crash.
+A window with the error message should have popped up in the lower half of your screen.
+Please copy the stack trace from that window and paste it in this issue.
+
+<PASTE STACK TRACE HERE>
+
+OPTIONAL: If you would like to share more information, you can attach your complete gopls logs.
+
+NOTE: THESE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR CODEBASE.
+DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
+
+<OPTIONAL: ATTACH LOGS HERE>
+`;
+			const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
+			await vscode.env.openExternal(vscode.Uri.parse(url));
 			break;
 		case 'Next time':
 			break;

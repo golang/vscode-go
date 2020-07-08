@@ -7,7 +7,7 @@ import cp = require('child_process');
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { extensionId } from '../../src/telemetry';
+import { extensionId } from '../../src/const';
 
 // Env is a collection of test related variables
 // that define the test environment such as vscode workspace.
