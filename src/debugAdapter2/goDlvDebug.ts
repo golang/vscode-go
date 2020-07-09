@@ -17,18 +17,17 @@ import {
 	logger,
 	Logger,
 	LoggingDebugSession,
-	TerminatedEvent,
-	OutputEvent
+	OutputEvent,
+	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import {
 	envPath,
-	parseEnvFile,
-	getBinPathWithPreferredGopathGoroot
+	getBinPathWithPreferredGopathGoroot,
+	parseEnvFile
 } from '../goPath';
 import { DAPClient } from './dapClient';
-
 
 interface LoadConfig {
 	// FollowPointers requests pointers to be automatically dereferenced.
@@ -264,73 +263,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		});
 	}
 
-	// Launch the debugee process without starting a debugger.
-	// This implements the `Run > Run Without Debugger` functionality in vscode.
-	// Note: this method currently assumes launchArgs.mode === 'debug'.
-	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
-		let program = launchArgs.program;
-		if (!program) {
-			throw new Error('The program attribute is missing in the debug configuration in launch.json');
-		}
-		let programIsDirectory = false;
-		try {
-			programIsDirectory = fs.lstatSync(program).isDirectory();
-		} catch (e) {
-			throw new Error('The program attribute must point to valid directory, .go file or executable.');
-		}
-		if (!programIsDirectory && path.extname(program) !== '.go') {
-			throw new Error('The program attribute must be a directory or .go file in debug mode');
-		}
-
-		let goRunArgs = ['run'];
-		if (launchArgs.buildFlags) {
-			goRunArgs.push(launchArgs.buildFlags);
-		}
-
-		if (programIsDirectory) {
-			goRunArgs.push('.');
-		} else {
-			goRunArgs.push(program);
-		}
-
-		if (launchArgs.args) {
-			goRunArgs.push(...launchArgs.args);
-		}
-
-		// Read env from disk and merge into env variables.
-		const fileEnvs = [];
-		if (typeof launchArgs.envFile === 'string') {
-			fileEnvs.push(parseEnvFile(launchArgs.envFile));
-		}
-		if (Array.isArray(launchArgs.envFile)) {
-			launchArgs.envFile.forEach((envFile) => {
-				fileEnvs.push(parseEnvFile(envFile));
-			});
-		}
-
-		const launchArgsEnv = launchArgs.env || {};
-		let programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
-
-		const dirname = programIsDirectory ? program : path.dirname(program);
-		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
-		log(`Current working directory: ${dirname}`);
-		log(`Running: ${goExe} ${goRunArgs.join(' ')}`);
-		
-		this.debugProcess = spawn(goExe, goRunArgs, {
-			cwd: dirname,
-			env: programEnv
-		});
-		this.debugProcess.stderr.on('data', (str) => {
-			this.sendEvent(new OutputEvent(str.toString(), 'stderr'));
-		});
-		this.debugProcess.stdout.on('data', (str) => {
-			this.sendEvent(new OutputEvent(str.toString(), 'stdout'));
-		});
-		this.debugProcess.on('close', (rc) => {
-			this.sendEvent(new TerminatedEvent());
-		});
-	}
-
 	protected attachRequest(
 		response: DebugProtocol.AttachResponse,
 		args: AttachRequestArguments,
@@ -355,14 +287,14 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		if (this.debugProcess !== null) {
 			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
 
-			// Kill the debuggee and notify the client when the killing is
+			// Kill the debugee and notify the client when the killing is
 			// completed, to ensure a clean shutdown sequence.
 			killProcessTree(this.debugProcess).then(() => {
 				super.disconnectRequest(response, args);
 				log('DisconnectResponse');
-			})
+			});
 		} else if (this.dlvClient !== null) {
-			// Forward this DisconnectRequest to Delve. 
+			// Forward this DisconnectRequest to Delve.
 			this.dlvClient.send(request);
 		} else {
 			logError(`both debug process and dlv client are null`);
@@ -660,6 +592,73 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		request?: DebugProtocol.Request
 	): void {
 		this.dlvClient.send(request);
+	}
+
+	// Launch the debugee process without starting a debugger.
+	// This implements the `Run > Run Without Debugger` functionality in vscode.
+	// Note: this method currently assumes launchArgs.mode === 'debug'.
+	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
+		const program = launchArgs.program;
+		if (!program) {
+			throw new Error('The program attribute is missing in the debug configuration in launch.json');
+		}
+		let programIsDirectory = false;
+		try {
+			programIsDirectory = fs.lstatSync(program).isDirectory();
+		} catch (e) {
+			throw new Error('The program attribute must point to valid directory, .go file or executable.');
+		}
+		if (!programIsDirectory && path.extname(program) !== '.go') {
+			throw new Error('The program attribute must be a directory or .go file in debug mode');
+		}
+
+		const goRunArgs = ['run'];
+		if (launchArgs.buildFlags) {
+			goRunArgs.push(launchArgs.buildFlags);
+		}
+
+		if (programIsDirectory) {
+			goRunArgs.push('.');
+		} else {
+			goRunArgs.push(program);
+		}
+
+		if (launchArgs.args) {
+			goRunArgs.push(...launchArgs.args);
+		}
+
+		// Read env from disk and merge into env variables.
+		const fileEnvs = [];
+		if (typeof launchArgs.envFile === 'string') {
+			fileEnvs.push(parseEnvFile(launchArgs.envFile));
+		}
+		if (Array.isArray(launchArgs.envFile)) {
+			launchArgs.envFile.forEach((envFile) => {
+				fileEnvs.push(parseEnvFile(envFile));
+			});
+		}
+
+		const launchArgsEnv = launchArgs.env || {};
+		const programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
+
+		const dirname = programIsDirectory ? program : path.dirname(program);
+		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
+		log(`Current working directory: ${dirname}`);
+		log(`Running: ${goExe} ${goRunArgs.join(' ')}`);
+
+		this.debugProcess = spawn(goExe, goRunArgs, {
+			cwd: dirname,
+			env: programEnv
+		});
+		this.debugProcess.stderr.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stderr'));
+		});
+		this.debugProcess.stdout.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stdout'));
+		});
+		this.debugProcess.on('close', (rc) => {
+			this.sendEvent(new TerminatedEvent());
+		});
 	}
 }
 
