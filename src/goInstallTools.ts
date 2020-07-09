@@ -377,8 +377,14 @@ export function updateGoVarsFromConfig(): Promise<void> {
 
 			// cgo, gopls, and other underlying tools will inherit the environment and attempt
 			// to locate 'go' from the PATH env var.
+			let cachePath = '';
+			if (process.env.hasOwnProperty('PATH')) {
+				cachePath = process.env.PATH;
+			} else {
+				cachePath = process.env.Path;
+			}
 			addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
-			initGoStatusBar();
+			initGoStatusBar(cachePath);
 			// TODO: restart language server or synchronize with language server update.
 
 			return resolve();

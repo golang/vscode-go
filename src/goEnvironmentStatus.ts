@@ -15,7 +15,7 @@ import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, rmdirRecursive } from './util';
-import { getCurrentGoRoot, pathExists } from './utils/goPath';
+import { getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -35,14 +35,21 @@ export class GoEnvironmentOption {
 // statusbar item for switching the Go environment
 let goEnvStatusbarItem: vscode.StatusBarItem;
 let terminalCreationListener: vscode.Disposable;
+let terminalPATH: string;
 
 /**
  * Initialize the status bar item with current Go binary
  */
-export async function initGoStatusBar() {
+export async function initGoStatusBar(cachePath: string) {
 	if (!goEnvStatusbarItem) {
 		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 	}
+	// cache the PATH on first initialization
+	// this will be the path that new integrated terminals have
+	if (!terminalPATH) {
+		terminalPATH = cachePath;
+	}
+
 	// set Go version and command
 	const version = await getGoVersion();
 	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
@@ -94,6 +101,12 @@ export function hideGoStatusBar() {
  */
 export async function chooseGoEnvironment() {
 	if (!goEnvStatusbarItem) {
+		return;
+	}
+
+	// if there is no workspace, show GOROOT with message
+	if (!vscode.workspace.name) {
+		vscode.window.showInformationMessage(`GOROOT: ${getCurrentGoRoot()}. Switching Go version is not yet supported in single-file mode.`);
 		return;
 	}
 
@@ -231,15 +244,18 @@ export async function setSelectedGo(
 			await goConfig.update('alternateTools', newAlternateTools, scope);
 			goEnvStatusbarItem.text = selectedGo.label;
 
-			outputChannel.appendLine('Updating integrated terminals');
-			vscode.window.terminals.forEach(updateIntegratedTerminal);
-
 			// remove tmp directories
 			outputChannel.appendLine('Cleaning up...');
 			rmdirRecursive(toolsTmpDir);
 			outputChannel.appendLine('Success!');
 		});
 	} else {
+		// check that the given binary is not already at the beginning of the PATH
+		const go = await getGoVersion();
+		if (go.binaryPath === selectedGo.binpath) {
+			return;
+		}
+
 		const newAlternateTools = {
 			...alternateTools,
 			go: selectedGo.binpath,
@@ -263,14 +279,22 @@ export async function setSelectedGo(
 export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
 	if (!terminal) { return; }
 	const goroot = path.join(getCurrentGoRoot(), 'bin');
-	const isWindows = terminal.name.toLowerCase() === 'powershell' || terminal.name.toLowerCase() === 'cmd';
+	if (goroot === getBinPathFromEnvVar('go', terminalPATH, false)) {
+		return;
+	}
 
 	// append the goroot to the beginning of the PATH so it takes precedence
 	// TODO: add support for more terminal names
 	// this assumes all non-windows shells are bash-like.
-	if (isWindows) {
+	if (terminal.name.toLowerCase() === 'cmd') {
 		terminal.sendText(`set PATH=${goroot};%Path%`, true);
 		terminal.sendText('cls');
+	} else if (terminal.name.toLowerCase() === 'powershell') {
+		terminal.sendText(`$env:Path="${goroot};$env:Path"`, true);
+		terminal.sendText('clear');
+	} else if (terminal.name.toLowerCase() === 'fish') {
+		terminal.sendText(`set -gx PATH ${goroot} $PATH`);
+		terminal.sendText('clear');
 	} else {
 		terminal.sendText(`export PATH=${goroot}:$PATH`, true);
 		terminal.sendText('clear');
