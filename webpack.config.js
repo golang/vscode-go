@@ -4,7 +4,7 @@
 
 const path = require('path');
 
-/**@type {import('webpack').WebpackOptions}*/
+/**@type {import('webpack').Configuration}*/
 const config = {
 	target: 'node',
 	entry: {
@@ -16,9 +16,10 @@ const config = {
 		path: path.resolve(__dirname, 'dist'),
 		filename: '[name].js',
 		libraryTarget: 'commonjs2',
-		devtoolModuleFilenameTemplate: '../[resource-path]'
+		devtoolModuleFilenameTemplate: '../[resource-path]',
+		sourceMapFilename: '[name].js.map'
 	},
-	devtool: 'none',
+	devtool: 'source-map',
 	externals: {
 		// the vscode-module is created on-the-fly and must be excluded.
 		vscode: 'commonjs vscode'
