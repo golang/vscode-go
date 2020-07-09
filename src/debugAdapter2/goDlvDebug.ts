@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import net = require('net');
 import * as os from 'os';
 import * as path from 'path';
+import kill = require('tree-kill');
 
 import {
 	logger,
@@ -27,7 +28,6 @@ import {
 	getBinPathWithPreferredGopathGoroot
 } from '../goPath';
 import { DAPClient } from './dapClient';
-import { killTree } from '../util';
 
 
 interface LoadConfig {
@@ -199,6 +199,10 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		log('launchRequest');
 
 		// In noDebug mode, we don't launch Delve.
+		// TODO: this logic is currently organized for compatibility with the
+		// existing DA. It's not clear what we should do in case noDebug is
+		// set and mode isn't 'debug'. Sending an error response could be
+		// a safe option.
 		if (args.noDebug && args.mode === 'debug') {
 			try {
 				this.launchNoDebug(args);
@@ -262,6 +266,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 	// Launch the debugee process without starting a debugger.
 	// This implements the `Run > Run Without Debugger` functionality in vscode.
+	// Note: this method currently assumes launchArgs.mode === 'debug'.
 	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
 		let program = launchArgs.program;
 		if (!program) {
@@ -273,10 +278,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		} catch (e) {
 			throw new Error('The program attribute must point to valid directory, .go file or executable.');
 		}
-		if (programIsDirectory && launchArgs.mode === 'exec') {
-			throw new Error('The program attribute must be an executable in exec mode');
-		}
-		if (!programIsDirectory && launchArgs.mode !== 'exec' && path.extname(program) !== '.go') {
+		if (!programIsDirectory && path.extname(program) !== '.go') {
 			throw new Error('The program attribute must be a directory or .go file in debug mode');
 		}
 
@@ -352,11 +354,15 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		//   this.dlvClient will be non-null.
 		if (this.debugProcess !== null) {
 			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
-			killTree(this.debugProcess.pid);
-			// TODO: place this in the callback of killTree?
-			super.disconnectRequest(response, args);
-			log('DisconnectResponse');
+
+			// Kill the debuggee and notify the client when the killing is
+			// completed, to ensure a clean shutdown sequence.
+			killProcessTree(this.debugProcess).then(() => {
+				super.disconnectRequest(response, args);
+				log('DisconnectResponse');
+			})
 		} else if (this.dlvClient !== null) {
+			// Forward this DisconnectRequest to Delve. 
 			this.dlvClient.send(request);
 		} else {
 			logError(`both debug process and dlv client are null`);
@@ -760,4 +766,24 @@ class DelveClient extends DAPClient {
 			});
 		}, 200);
 	}
+}
+
+// TODO: refactor this function into util.ts so it could be reused with
+// the existing DA. Problem: it currently uses log() and logError() which makes
+// this more difficult.
+function killProcessTree(p: ChildProcess): Promise<void> {
+	if (!p || !p.pid) {
+		log(`no process to kill`);
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		kill(p.pid, (err) => {
+			if (err) {
+				logError(`Error killing process ${p.pid}: ${err}`);
+			} else {
+				log(`killed process ${p.pid}`);
+			}
+			resolve();
+		});
+	});
 }
