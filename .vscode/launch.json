@@ -11,42 +11,45 @@
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--disable-extensions"
 			],
+			"outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
 			"stopOnEntry": false,
 			"sourceMaps": true,
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			],
-			"preLaunchTask": "npm: watch"
+			"smartStep": true,
+			"preLaunchTask": "npm: webpack",
 		},
 		{
 			"name": "Launch as server",
 			"type": "node",
 			"protocol": "inspector",
 			"request": "launch",
-			"program": "${workspaceFolder}/out/src/debugAdapter/goDebug.js",
+			"program": "${workspaceFolder}/dist/debugAdapter.js",
 			"args": [
 				"--server=4711"
 			],
-			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "npm"
+			"sourceMaps": true,
+			"smartStep": true,
+			"preLaunchTask": "npm: webpack"
 		},
 		{
 			"name": "Launch as server (dlv dap)",
 			"type": "node",
 			"protocol": "inspector",
 			"request": "launch",
-			"program": "${workspaceFolder}/out/src/debugAdapter2/goDlvDebugMain.js",
+			"program": "${workspaceFolder}/dist/debugAdapter2.js",
 			"args": [
 				"--server=4711"
 			],
 			"sourceMaps": true,
+			"smartStep": true,
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "npm"
+			"preLaunchTask": "npm: webpack"
 		},
 		{
 			"name": "Launch Extension Tests",
@@ -63,6 +66,7 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
+			"smartStep": true,
 			"outFiles": [
 				"${workspaceFolder}/out/test/**/*.js"
 			],
@@ -101,7 +105,8 @@
 				"--colors",
 				"${workspaceFolder}/out/test/unit"
 			],
-			"internalConsoleOptions": "openOnSessionStart"
+			"internalConsoleOptions": "openOnSessionStart",
+			"preLaunchTask": "npm: watch",
 		},
 	],
 	"compounds": [
