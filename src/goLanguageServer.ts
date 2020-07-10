@@ -82,24 +82,12 @@ const goplsSurveyOn: boolean = false;
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
 	const cfg = buildLanguageServerConfig();
 
-	// If the language server is gopls, we can check if the user needs to
-	// update their gopls version. We do this only once per VS Code
-	// activation to avoid inundating the user.
-	if (activation && cfg.enabled && cfg.serverName === 'gopls') {
+	// If the language server is gopls, we enable a few additional features.
+	// These include prompting for updates and surveys.
+	if (activation && cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
-			if (versionToUpdate) {
-				promptForUpdatingTool(tool.name, versionToUpdate);
-			} else if (goplsSurveyOn) {
-				// Only prompt users to fill out the gopls survey if we are not
-				// also prompting them to update (both would be too much).
-				const timeout = 1000 * 60 * 60; // 1 hour
-				setTimeout(async () => {
-					const surveyCfg = await maybePromptForGoplsSurvey();
-					flushSurveyConfig(surveyCfg);
-				}, timeout);
-			}
+			scheduleGoplsSuggestions(tool);
 		}
 	}
 
@@ -111,6 +99,44 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (!started && defaultLanguageProviders.length === 0) {
 		registerDefaultProviders(ctx);
 	}
+}
+
+// scheduleGoplsSuggestions sets timeouts for the various gopls-specific
+// suggestions. We check user's gopls versions once per day to prompt users to
+// update to the latest version. We also check if we should prompt users to
+// fill out the survey.
+function scheduleGoplsSuggestions(tool: Tool) {
+	const minute = 1000 * 60;
+	const hour = minute * 60;
+	const day = hour * 24;
+
+	const update = async () => {
+		setTimeout(update, day);
+
+		const cfg = buildLanguageServerConfig();
+		if (!cfg.enabled) {
+			return;
+		}
+		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
+		if (versionToUpdate) {
+			promptForUpdatingTool(tool.name, versionToUpdate);
+		}
+	};
+	const survey = async () => {
+		setTimeout(survey, day);
+
+		const cfg = buildLanguageServerConfig();
+		if (!goplsSurveyOn || !cfg.enabled) {
+			return;
+		}
+		const surveyCfg = await maybePromptForGoplsSurvey();
+		if (surveyCfg) {
+			flushSurveyConfig(surveyCfg);
+		}
+	};
+
+	setTimeout(update, 10 * minute);
+	setTimeout(survey, hour);
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -465,8 +491,7 @@ function allFoldersHaveSameGopath(): boolean {
 
 export async function shouldUpdateLanguageServer(
 	tool: Tool,
-	languageServerToolPath: string,
-	makeProxyCall: boolean
+	cfg: LanguageServerConfig,
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
 	if (tool.name !== 'gopls') {
@@ -474,7 +499,9 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// First, run the "gopls version" command and parse its results.
-	const usersVersion = await getLocalGoplsVersion(languageServerToolPath);
+	// TODO(rstambler): Confirm that the gopls binary's modtime matches the
+	// modtime in the config. Update it if needed.
+	const usersVersion = await getLocalGoplsVersion(cfg);
 
 	// We might have a developer version. Don't make the user update.
 	if (usersVersion === '(devel)') {
@@ -482,7 +509,7 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = makeProxyCall ? await getLatestGoplsVersion(tool) : tool.latestVersion;
+	let latestVersion = cfg.checkForUpdates ? await getLatestGoplsVersion(tool) : tool.latestVersion;
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -501,7 +528,8 @@ export async function shouldUpdateLanguageServer(
 	const usersTime = parseTimestampFromPseudoversion(usersVersion);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
-		let latestTime = makeProxyCall ? await getTimestampForVersion(tool, latestVersion) : tool.latestVersionTimestamp;
+		let latestTime = cfg.checkForUpdates ?
+			await getTimestampForVersion(tool, latestVersion) : tool.latestVersionTimestamp;
 		if (!latestTime) {
 			latestTime = tool.latestVersionTimestamp;
 		}
@@ -604,11 +632,11 @@ export const getLatestGoplsVersion = async (tool: Tool) => {
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
-export const getLocalGoplsVersion = async (goplsPath: string) => {
+export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(goplsPath, ['version'], { env: toolExecutionEnvironment() });
+		const { stdout } = await execFile(cfg.path, ['version'], { env: toolExecutionEnvironment() });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
@@ -730,8 +758,19 @@ Would you be willing to fill out a quick survey about your experience with gopls
 			cfg.lastDateAccepted = now;
 			cfg.prompt = true;
 
-			// Open the link to the survey.
-			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+			// Open the link to the survey in a webview.
+			const panel = vscode.window.createWebviewPanel('goplsSurvey', 'gopls survey', {
+				viewColumn: null,
+				preserveFocus: false,
+			}, {});
+
+			// TODO(rstambler): Not sure how to set the correct height here.
+			panel.webview.html = `<!DOCTYPE html>
+<html>
+<body>
+<iframe width="100%" height="500px" src="https://golang.org"></iframe>
+</body>
+</html>`;
 			break;
 		case 'Not now':
 			cfg.prompt = true;

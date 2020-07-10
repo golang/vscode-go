@@ -12,11 +12,10 @@ import path = require('path');
 import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
-
 import { toolInstallationEnvironment } from './goEnv';
 import { getCurrentGoRoot, pathExists } from './goPath';
 import { outputChannel } from './goStatus';
-import { getBinPath, getGoConfig, getGoVersion } from './util';
+import { getBinPath, getGoConfig, getGoVersion, timeout } from './util';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -144,7 +143,9 @@ export async function chooseGoEnvironment() {
 /**
  * update the selected go path and label in the workspace state
  */
-export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vscode.ConfigurationTarget) {
+export async function setSelectedGo(
+	selectedGo: GoEnvironmentOption, scope: vscode.ConfigurationTarget, promptReload = true
+) {
 	const execFile = promisify(cp.execFile);
 
 	const goConfig = getGoConfig();
@@ -210,6 +211,9 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vsco
 			};
 			await goConfig.update('alternateTools', newAlternateTools, scope);
 			goEnvStatusbarItem.text = selectedGo.label;
+
+			outputChannel.appendLine('Updating integrated terminals');
+			vscode.window.terminals.forEach(updateIntegratedTerminal);
 			outputChannel.appendLine('Success!');
 		});
 	} else {
@@ -220,21 +224,33 @@ export async function setSelectedGo(selectedGo: GoEnvironmentOption, scope: vsco
 		await goConfig.update('alternateTools', newAlternateTools, scope);
 		goEnvStatusbarItem.text = selectedGo.label;
 	}
-	// TODO: restart language server if needed
+	// prompt the user to reload the window
+	// promptReload defaults to true and should only be false for tests
+	if (promptReload) {
+		const choice = await vscode.window.showInformationMessage('Please reload the window to finish applying changes.', 'Reload Window');
+		if (choice === 'Reload Window') {
+			await vscode.commands.executeCommand('workbench.action.reloadWindow');
+		}
+	}
 }
 
 /**
  * update the PATH variable in the given terminal to default to the currently selected Go
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
+	if (!terminal) { return; }
 	const goroot = path.join(getCurrentGoRoot(), 'bin');
+	const isWindows = terminal.name.toLowerCase() === 'powershell' || terminal.name.toLowerCase() === 'cmd';
 
+	// append the goroot to the beginning of the PATH so it takes precedence
 	// TODO: add support for more terminal names
 	// this assumes all non-windows shells are bash-like.
-	if (terminal.name.toLowerCase() === 'powershell' || terminal.name.toLowerCase() === 'cmd') {
-		terminal.sendText(`set PATH=${goroot};%PATH%`, true);
+	if (isWindows) {
+		terminal.sendText(`set PATH=${goroot};%Path%`, true);
+		terminal.sendText('cls');
 	} else {
 		terminal.sendText(`export PATH=${goroot}:$PATH`, true);
+		terminal.sendText('clear');
 	}
 }
 

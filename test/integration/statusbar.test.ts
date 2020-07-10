@@ -50,7 +50,8 @@ describe('#initGoStatusBar()', function () {
 	});
 });
 
-describe('#setSelectedGo()', function () {
+describe.skip('#setSelectedGo()', function () {
+	// Disabled due to https://github.com/golang/vscode-go/issues/303.
 	this.timeout(20000);
 	let sandbox: sinon.SinonSandbox | undefined;
 	let goOption: GoEnvironmentOption;
@@ -65,7 +66,7 @@ describe('#setSelectedGo()', function () {
 		sandbox = sinon.createSandbox();
 	});
 	this.afterEach(async () => {
-		await setSelectedGo(goOption, vscode.ConfigurationTarget.Workspace);
+		await setSelectedGo(goOption, vscode.ConfigurationTarget.Workspace, false);
 		sandbox.restore();
 	});
 
@@ -90,7 +91,7 @@ describe('#setSelectedGo()', function () {
 
 		// set workspace setting
 		const workspaceTestOption = new GoEnvironmentOption('workspacetestpath', 'testlabel');
-		await setSelectedGo(workspaceTestOption, vscode.ConfigurationTarget.Workspace);
+		await setSelectedGo(workspaceTestOption, vscode.ConfigurationTarget.Workspace, false);
 
 		// check that the stub was called
 		sandbox.assert.calledWith(getGoConfigStub);
@@ -128,7 +129,7 @@ describe('#setSelectedGo()', function () {
 
 		// set selected go as a version to download
 		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
-		await setSelectedGo(option, vscode.ConfigurationTarget.Workspace);
+		await setSelectedGo(option, vscode.ConfigurationTarget.Workspace, false);
 		sandbox.assert.calledWith(getGoConfigStub);
 
 		// the temp sdk directory should now contain go1.13.12

@@ -101,7 +101,19 @@ suite('gopls update tests', () => {
 					return latestPrereleaseVersionTimestamp;
 				}
 			});
-			const got = await lsp.shouldUpdateLanguageServer(tool, 'bad/path/to/gopls', true);
+			const got = await lsp.shouldUpdateLanguageServer(tool, {
+				enabled: true,
+				path: 'bad/path/to/gopls',
+				checkForUpdates: true,
+				env: {},
+				features: {
+					diagnostics: true,
+					documentLink: true,
+				},
+				flags: [],
+				modtime: new Date(),
+				serverName: 'gopls',
+			});
 			assert.deepEqual(got, want, `${name}: failed (got: '${got}' ${typeof got} want: '${want}' ${typeof want})`);
 			sinon.restore();
 		}

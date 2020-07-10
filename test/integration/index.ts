@@ -9,7 +9,9 @@ export function run(): Promise<void> {
 	const mocha = new Mocha({
 		ui: 'tdd',
 	});
-	mocha.useColors(true);
+
+	// @types/mocha is outdated
+	(mocha as any).color(true);
 
 	const testsRoot = path.resolve(__dirname, '..');
 
