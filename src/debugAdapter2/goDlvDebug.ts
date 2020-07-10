@@ -770,6 +770,8 @@ class DelveClient extends DAPClient {
 // TODO: refactor this function into util.ts so it could be reused with
 // the existing DA. Problem: it currently uses log() and logError() which makes
 // this more difficult.
+// We'll want a separate util.ts for the DA, because the current utils.ts pulls
+// in vscode as a dependency, which shouldn't be done in a DA.
 function killProcessTree(p: ChildProcess): Promise<void> {
 	if (!p || !p.pid) {
 		log(`no process to kill`);
