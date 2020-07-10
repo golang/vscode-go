@@ -11,16 +11,22 @@ import * as fs from 'fs';
 import net = require('net');
 import * as os from 'os';
 import * as path from 'path';
+import kill = require('tree-kill');
 
 import {
 	logger,
 	Logger,
 	LoggingDebugSession,
+	OutputEvent,
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-import { envPath } from '../goPath';
+import {
+	envPath,
+	getBinPathWithPreferredGopathGoroot,
+	parseEnvFile
+} from '../goPath';
 import { DAPClient } from './dapClient';
 
 interface LoadConfig {
@@ -133,7 +139,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 	private logLevel: Logger.LogLevel = Logger.LogLevel.Error;
 
-	private dlvClient: DelveClient;
+	private dlvClient: DelveClient = null;
+
+	// Child process used to track debugee launched without debugging (noDebug
+	// mode). Either debugProcess or dlvClient are null.
+	private debugProcess: ChildProcess = null;
 
 	public constructor() {
 		super();
@@ -185,8 +195,27 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		const logPath =
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-godlvdapdebug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);
-
 		log('launchRequest');
+
+		// In noDebug mode, we don't launch Delve.
+		// TODO: this logic is currently organized for compatibility with the
+		// existing DA. It's not clear what we should do in case noDebug is
+		// set and mode isn't 'debug'. Sending an error response could be
+		// a safe option.
+		if (args.noDebug && args.mode === 'debug') {
+			try {
+				this.launchNoDebug(args);
+			} catch (e) {
+				logError(`launchNoDebug failed: "${e}"`);
+				// TODO: define error constants
+				// https://github.com/golang/vscode-go/issues/305
+				this.sendErrorResponse(
+					response,
+					3000,
+					`Failed to launch "${e}"`);
+			}
+			return;
+		}
 
 		if (!args.port) {
 			args.port = this.DEFAULT_DELVE_PORT;
@@ -194,9 +223,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		if (!args.host) {
 			args.host = this.DEFAULT_DELVE_HOST;
 		}
-
-		// TODO: if this is a noDebug launch request, don't launch Delve;
-		// instead, run the program directly.
 
 		this.dlvClient = new DelveClient(args);
 
@@ -214,6 +240,8 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 		this.dlvClient.on('close', (rc) => {
 			if (rc !== 0) {
+				// TODO: define error constants
+				// https://github.com/golang/vscode-go/issues/305
 				this.sendErrorResponse(
 					response,
 					3000,
@@ -248,7 +276,35 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.DisconnectArguments,
 		request?: DebugProtocol.Request
 	): void {
-		this.dlvClient.send(request);
+		log('DisconnectRequest');
+		// How we handle DisconnectRequest depends on whether Delve was launched
+		// at all.
+		// * In noDebug node, the Go program was spawned directly without
+		//   debugging: this.debugProcess will be non-null, and this.dlvClient
+		//   will be null.
+		// * Otherwise, Delve was spawned: this.debugProcess will be null, and
+		//   this.dlvClient will be non-null.
+		if (this.debugProcess !== null) {
+			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
+
+			// Kill the debugee and notify the client when the killing is
+			// completed, to ensure a clean shutdown sequence.
+			killProcessTree(this.debugProcess).then(() => {
+				super.disconnectRequest(response, args);
+				log('DisconnectResponse');
+			});
+		} else if (this.dlvClient !== null) {
+			// Forward this DisconnectRequest to Delve.
+			this.dlvClient.send(request);
+		} else {
+			logError(`both debug process and dlv client are null`);
+			// TODO: define all error codes as constants
+			// https://github.com/golang/vscode-go/issues/305
+			this.sendErrorResponse(
+				response,
+				3000,
+				'Failed to disconnect: Check the debug console for details.');
+		}
 	}
 
 	protected terminateRequest(
@@ -537,6 +593,73 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 	): void {
 		this.dlvClient.send(request);
 	}
+
+	// Launch the debugee process without starting a debugger.
+	// This implements the `Run > Run Without Debugger` functionality in vscode.
+	// Note: this method currently assumes launchArgs.mode === 'debug'.
+	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
+		const program = launchArgs.program;
+		if (!program) {
+			throw new Error('The program attribute is missing in the debug configuration in launch.json');
+		}
+		let programIsDirectory = false;
+		try {
+			programIsDirectory = fs.lstatSync(program).isDirectory();
+		} catch (e) {
+			throw new Error('The program attribute must point to valid directory, .go file or executable.');
+		}
+		if (!programIsDirectory && path.extname(program) !== '.go') {
+			throw new Error('The program attribute must be a directory or .go file in debug mode');
+		}
+
+		const goRunArgs = ['run'];
+		if (launchArgs.buildFlags) {
+			goRunArgs.push(launchArgs.buildFlags);
+		}
+
+		if (programIsDirectory) {
+			goRunArgs.push('.');
+		} else {
+			goRunArgs.push(program);
+		}
+
+		if (launchArgs.args) {
+			goRunArgs.push(...launchArgs.args);
+		}
+
+		// Read env from disk and merge into env variables.
+		const fileEnvs = [];
+		if (typeof launchArgs.envFile === 'string') {
+			fileEnvs.push(parseEnvFile(launchArgs.envFile));
+		}
+		if (Array.isArray(launchArgs.envFile)) {
+			launchArgs.envFile.forEach((envFile) => {
+				fileEnvs.push(parseEnvFile(envFile));
+			});
+		}
+
+		const launchArgsEnv = launchArgs.env || {};
+		const programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
+
+		const dirname = programIsDirectory ? program : path.dirname(program);
+		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
+		log(`Current working directory: ${dirname}`);
+		log(`Running: ${goExe} ${goRunArgs.join(' ')}`);
+
+		this.debugProcess = spawn(goExe, goRunArgs, {
+			cwd: dirname,
+			env: programEnv
+		});
+		this.debugProcess.stderr.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stderr'));
+		});
+		this.debugProcess.stdout.on('data', (str) => {
+			this.sendEvent(new OutputEvent(str.toString(), 'stdout'));
+		});
+		this.debugProcess.on('close', (rc) => {
+			this.sendEvent(new TerminatedEvent());
+		});
+	}
 }
 
 // DelveClient provides a DAP client to talk to a DAP server in Delve.
@@ -642,4 +765,26 @@ class DelveClient extends DAPClient {
 			});
 		}, 200);
 	}
+}
+
+// TODO: refactor this function into util.ts so it could be reused with
+// the existing DA. Problem: it currently uses log() and logError() which makes
+// this more difficult.
+// We'll want a separate util.ts for the DA, because the current utils.ts pulls
+// in vscode as a dependency, which shouldn't be done in a DA.
+function killProcessTree(p: ChildProcess): Promise<void> {
+	if (!p || !p.pid) {
+		log(`no process to kill`);
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		kill(p.pid, (err) => {
+			if (err) {
+				logError(`Error killing process ${p.pid}: ${err}`);
+			} else {
+				log(`killed process ${p.pid}`);
+			}
+			resolve();
+		});
+	});
 }
