@@ -11,7 +11,6 @@ import * as fs from 'fs';
 import net = require('net');
 import * as os from 'os';
 import * as path from 'path';
-import kill = require('tree-kill');
 
 import {
 	logger,
@@ -27,6 +26,9 @@ import {
 	getBinPathWithPreferredGopathGoroot,
 	parseEnvFile
 } from '../goPath';
+
+import {killProcessTree} from '../processUtils';
+
 import { DAPClient } from './dapClient';
 
 interface LoadConfig {
@@ -289,7 +291,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 
 			// Kill the debugee and notify the client when the killing is
 			// completed, to ensure a clean shutdown sequence.
-			killProcessTree(this.debugProcess).then(() => {
+			killProcessTree(this.debugProcess, log).then(() => {
 				super.disconnectRequest(response, args);
 				log('DisconnectResponse');
 			});
@@ -765,26 +767,4 @@ class DelveClient extends DAPClient {
 			});
 		}, 200);
 	}
-}
-
-// TODO: refactor this function into util.ts so it could be reused with
-// the existing DA. Problem: it currently uses log() and logError() which makes
-// this more difficult.
-// We'll want a separate util.ts for the DA, because the current utils.ts pulls
-// in vscode as a dependency, which shouldn't be done in a DA.
-function killProcessTree(p: ChildProcess): Promise<void> {
-	if (!p || !p.pid) {
-		log(`no process to kill`);
-		return Promise.resolve();
-	}
-	return new Promise((resolve) => {
-		kill(p.pid, (err) => {
-			if (err) {
-				logError(`Error killing process ${p.pid}: ${err}`);
-			} else {
-				log(`killed process ${p.pid}`);
-			}
-			resolve();
-		});
-	});
 }
