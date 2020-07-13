@@ -199,11 +199,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		logger.setup(this.logLevel, logPath);
 		log('launchRequest');
 
-		// In noDebug mode, we don't launch Delve.
-		// TODO: this logic is currently organized for compatibility with the
-		// existing DA. It's not clear what we should do in case noDebug is
-		// set and mode isn't 'debug'. Sending an error response could be
-		// a safe option.
+		// In noDebug mode with the 'debug' launch mode, we don't launch Delve
+		// but run the debugee directly.
+		// For other launch modes we currently still defer to Delve, for
+		// compatibility with the old debugAdapter.
+		// See https://github.com/golang/vscode-go/issues/336
 		if (args.noDebug && args.mode === 'debug') {
 			try {
 				this.launchNoDebug(args);
@@ -237,6 +237,8 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		});
 
 		this.dlvClient.on('connected', () => {
+			// Once the client is connected to Delve, forward it the launch
+			// request to begin the actual debugging session.
 			this.dlvClient.send(request);
 		});
 
@@ -600,6 +602,9 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 	// This implements the `Run > Run Without Debugger` functionality in vscode.
 	// Note: this method currently assumes launchArgs.mode === 'debug'.
 	private launchNoDebug(launchArgs: LaunchRequestArguments): void {
+		if (launchArgs.mode !== 'debug') {
+			throw new Error('launchNoDebug requires "debug" mode');
+		}
 		const program = launchArgs.program;
 		if (!program) {
 			throw new Error('The program attribute is missing in the debug configuration in launch.json');
@@ -668,7 +673,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 //
 // After creation, it emits the following events:
 //
-//    'connected':            delve is connected to delve
+//    'connected':            client is connected to delve
 //    'request (request)':    delve sent request
 //    'response (response)':  delve sent response
 //    'event (event)':        delve sent event
