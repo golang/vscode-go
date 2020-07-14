@@ -13,7 +13,7 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
-import { getCurrentGoRoot, pathExists } from './goPath';
+import { getCurrentGoRoot, pathExists } from './utils/goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion, timeout } from './util';
 

@@ -13,9 +13,9 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
-	killProcess,
 	makeMemoizedByteOffsetConverter
 } from './util';
+import {killProcessTree} from './utils/processUtils';
 
 // Keep in sync with https://github.com/ramya-rao-a/go-outline
 export interface GoOutlineRange {
@@ -88,7 +88,7 @@ export function runGoOutline(
 
 		let p: cp.ChildProcess;
 		if (token) {
-			token.onCancellationRequested(() => killProcess(p));
+			token.onCancellationRequested(() => killProcessTree(p));
 		}
 
 		// Spawn `go-outline` process

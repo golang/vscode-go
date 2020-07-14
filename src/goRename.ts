@@ -11,7 +11,8 @@ import { Edit, FilePatch, getEditsFromUnifiedDiffStr, isDiffToolAvailable } from
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig, killTree } from './util';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig } from './util';
+import {killProcessTree} from './utils/processUtils';
 
 export class GoRenameProvider implements vscode.RenameProvider {
 	public provideRenameEdits(
@@ -50,7 +51,7 @@ export class GoRenameProvider implements vscode.RenameProvider {
 
 			let p: cp.ChildProcess;
 			if (token) {
-				token.onCancellationRequested(() => killTree(p.pid));
+				token.onCancellationRequested(() => killProcessTree(p));
 			}
 
 			p = cp.execFile(gorename, gorenameArgs, { env }, (err, stdout, stderr) => {

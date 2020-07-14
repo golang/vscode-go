@@ -8,7 +8,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './goPath';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getGoConfig, getModuleCache } from './util';
 

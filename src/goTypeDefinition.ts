@@ -17,9 +17,9 @@ import {
 	getBinPath,
 	getFileArchive,
 	getGoConfig,
-	goBuiltinTypes,
-	killTree
+	goBuiltinTypes
 } from './util';
+import {killProcessTree} from './utils/processUtils';
 
 interface GuruDescribeOutput {
 	desc: string;
@@ -130,7 +130,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 			if (process.pid) {
 				process.stdin.end(getFileArchive(document));
 			}
-			token.onCancellationRequested(() => killTree(process.pid));
+			token.onCancellationRequested(() => killProcessTree(process));
 		});
 	}
 }

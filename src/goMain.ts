@@ -35,7 +35,7 @@ import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
-import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './goPath';
+import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/goPath';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';

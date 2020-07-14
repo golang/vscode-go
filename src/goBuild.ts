@@ -9,7 +9,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { getNonVendorPackages } from './goPackages';
-import { getCurrentGoWorkspaceFromGOPATH } from './goPath';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { getTestFlags } from './testUtils';
 import {

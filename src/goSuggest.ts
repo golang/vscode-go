@@ -13,7 +13,7 @@ import { getTextEditForAddImport } from './goImport';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { isModSupported } from './goModules';
 import { getImportablePackages, PackageInfo } from './goPackages';
-import { getCurrentGoWorkspaceFromGOPATH } from './goPath';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import {
 	byteOffsetAt,
 	getBinPath,

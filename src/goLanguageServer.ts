@@ -32,7 +32,7 @@ import { parseLiveFile } from './goLiveErrors';
 import { restartLanguageServer } from './goMain';
 import { GO_MODE } from './goMode';
 import { GoDocumentSymbolProvider } from './goOutline';
-import { getToolFromToolPath } from './goPath';
+import { getToolFromToolPath } from './utils/goPath';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';

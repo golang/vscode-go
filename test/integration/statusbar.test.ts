@@ -23,7 +23,7 @@ import {
 	setSelectedGo,
 } from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { getCurrentGoRoot } from '../../src/goPath';
+import { getCurrentGoRoot } from '../../src/utils/goPath';
 import ourutil = require('../../src/util');
 
 describe('#initGoStatusBar()', function () {

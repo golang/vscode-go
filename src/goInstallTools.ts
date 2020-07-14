@@ -15,7 +15,7 @@ import { toolInstallationEnvironment } from './goEnv';
 import { initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
-import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './goPath';
+import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/goPath';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
 	containsTool,

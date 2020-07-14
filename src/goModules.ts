@@ -8,7 +8,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { installTools } from './goInstallTools';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './goPath';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';

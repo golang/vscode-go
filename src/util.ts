@@ -23,7 +23,8 @@ import {
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
-} from './goPath';
+} from './utils/goPath';
+import {killProcessTree} from './utils/processUtils';
 import { outputChannel } from './goStatus';
 
 let userNameHash: number = 0;
@@ -687,7 +688,7 @@ export function runTool(
 	if (token) {
 		token.onCancellationRequested(() => {
 			if (p) {
-				killTree(p.pid);
+				killProcessTree(p);
 			}
 		});
 	}
@@ -864,27 +865,17 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	}
 }
 
-export const killTree = (processId: number): void => {
-	try {
-		kill(processId, (err) => {
-			if (err) {
-				console.log(`Error killing process tree: ${err}`);
-			}
-		});
-	} catch (err) {
-		console.log(`Error killing process tree: ${err}`);
-	}
-};
-
-export function killProcess(p: cp.ChildProcess) {
-	if (p) {
-		try {
-			p.kill();
-		} catch (e) {
-			console.log('Error killing process: ' + e);
-		}
-	}
-}
+// export const killTree = (processId: number): void => {
+// 	try {
+// 		kill(processId, (err) => {
+// 			if (err) {
+// 				console.log(`Error killing process tree: ${err}`);
+// 			}
+// 		});
+// 	} catch (err) {
+// 		console.log(`Error killing process tree: ${err}`);
+// 	}
+// };
 
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
@@ -1029,7 +1020,7 @@ export function runGodoc(
 
 			if (token) {
 				token.onCancellationRequested(() => {
-					killTree(p.pid);
+					killProcessTree(p);
 				});
 			}
 		});

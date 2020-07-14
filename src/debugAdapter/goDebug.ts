@@ -36,8 +36,8 @@ import {
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
 	parseEnvFile
-} from '../goPath';
-import {killProcessTree} from '../processUtils';
+} from '../utils/goPath';
+import {killProcessTree} from '../utils/processUtils';
 
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);

@@ -11,7 +11,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
-import { envPath, getCurrentGoRoot } from './goPath';
+import { envPath, getCurrentGoRoot } from './utils/goPath';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
 
 const missingToolMsg = 'Missing tool: ';

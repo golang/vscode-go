@@ -10,15 +10,15 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { envPath, getCurrentGoRoot } from './goPath';
+import { envPath, getCurrentGoRoot } from './utils/goPath';
 import {
 	byteOffsetAt,
 	canonicalizeGOPATHPrefix,
 	getBinPath,
 	getGoConfig,
-	getWorkspaceFolderPath,
-	killTree,
+	getWorkspaceFolderPath
 } from './util';
+import {killProcessTree} from './utils/processUtils';
 
 interface GoListOutput {
 	Dir: string;
@@ -130,10 +130,10 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 
 						return resolve(results);
 					});
-					token.onCancellationRequested(() => killTree(guruProcess.pid));
+					token.onCancellationRequested(() => killProcessTree(guruProcess));
 				}
 			);
-			token.onCancellationRequested(() => killTree(listProcess.pid));
+			token.onCancellationRequested(() => killProcessTree(listProcess));
 		});
 	}
 }
