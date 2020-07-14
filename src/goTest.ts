@@ -241,11 +241,13 @@ export function testWorkspace(goConfig: vscode.WorkspaceConfiguration, args: any
 		vscode.window.showInformationMessage('No workspace is open to run tests.');
 		return;
 	}
+	let workspaceUriIsDir = true;
 	let workspaceUri = vscode.workspace.workspaceFolders[0].uri;
 	if (
 		vscode.window.activeTextEditor &&
 		vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)
 	) {
+		workspaceUriIsDir = false;
 		workspaceUri = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri).uri;
 	}
 
@@ -258,7 +260,7 @@ export function testWorkspace(goConfig: vscode.WorkspaceConfiguration, args: any
 	// Remember this config as the last executed test.
 	lastTestConfig = testConfig;
 
-	isModSupported(workspaceUri).then((isMod) => {
+	isModSupported(workspaceUri, workspaceUriIsDir).then((isMod) => {
 		testConfig.isMod = isMod;
 		goTest(testConfig).then(null, (err) => {
 			console.error(err);
