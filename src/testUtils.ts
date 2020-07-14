@@ -23,7 +23,7 @@ import {
 import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
 import {killProcessTree} from './utils/processUtils';
 
-const outputChannel = vscode.window.createOutputChannel('Go Tests');
+const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
 const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 statusBarItem.command = 'go.test.cancel';
 statusBarItem.text = '$(x) Cancel Running Tests';
@@ -77,6 +77,10 @@ export interface TestConfig {
 	 * Whether code coverage should be generated and applied.
 	 */
 	applyCodeCoverage?: boolean;
+	/**
+	 * Output channel for test output.
+	 */
+	outputChannel?: vscode.OutputChannel;
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
@@ -229,6 +233,10 @@ export async function getBenchmarkFunctions(
  * @param goConfig Configuration for the Go extension.
  */
 export async function goTest(testconfig: TestConfig): Promise<boolean> {
+	let outputChannel = testOutputChannel;
+	if (testconfig.outputChannel) {
+		outputChannel = testconfig.outputChannel;
+	}
 	const tmpCoverPath = getTempFilePath('go-code-cover');
 	const testResult = await new Promise<boolean>(async (resolve, reject) => {
 		// We do not want to clear it if tests are already running, as that could
@@ -267,23 +275,21 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			return Promise.resolve();
 		}
 
-		const currentGoWorkspace = testconfig.isMod
-			? ''
-			: getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
-		let targets = targetArgs(testconfig);
+		let targets = testconfig.includeSubDirectories ? ['./...'] : targetArgs(testconfig);
+
+		let currentGoWorkspace = '';
 		let getCurrentPackagePromise = Promise.resolve('');
-		if (testconfig.isMod) {
-			getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
-		} else if (currentGoWorkspace) {
-			getCurrentPackagePromise = Promise.resolve(testconfig.dir.substr(currentGoWorkspace.length + 1));
-		}
 		let pkgMapPromise: Promise<Map<string, string> | null> = Promise.resolve(null);
-		if (testconfig.includeSubDirectories) {
-			if (testconfig.isMod) {
-				targets = ['./...'];
-				// We need the mapping to get absolute paths for the files in the test output
-				pkgMapPromise = getNonVendorPackages(testconfig.dir);
-			} else {
+
+		if (testconfig.isMod) {
+			// We need the mapping to get absolute paths for the files in the test output.
+			pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
+		} else {  // GOPATH mode
+			currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
+			if (currentGoWorkspace) {
+				getCurrentPackagePromise = Promise.resolve(testconfig.dir.substr(currentGoWorkspace.length + 1));
+			}
+			if (testconfig.includeSubDirectories) {
 				pkgMapPromise = getGoVersion().then((goVersion) => {
 					if (goVersion.gt('1.8')) {
 						targets = ['./...'];
@@ -332,7 +338,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				const errBuf = new LineBuffer();
 
 				// 1=ok/FAIL, 2=package, 3=time/(cached)
-				const packageResultLineRE = /^(ok|FAIL)[ \t]+(.+?)[ \t]+([0-9\.]+s|\(cached\))/;
+				const packageResultLineRE = /^(ok|FAIL)\s+(\S+)\s+([0-9\.]+s|\(cached\))/;
 				const lineWithErrorRE = /^(\t|\s\s\s\s)\S/;
 				const testResultLines: string[] = [];
 
@@ -411,7 +417,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
  * Reveals the output channel in the UI.
  */
 export function showTestOutput() {
-	outputChannel.show(true);
+	testOutputChannel.show(true);
 }
 
 /**

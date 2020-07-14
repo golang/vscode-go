@@ -168,8 +168,9 @@ describe('#updateGoVarsFromConfig()', function () {
 		}
 	});
 
-	this.afterAll(() => {
+	this.afterAll(async () => {
 		ourutil.rmdirRecursive(tmpRoot);
+		await updateGoVarsFromConfig();
 	});
 
 	this.beforeEach(() => {
