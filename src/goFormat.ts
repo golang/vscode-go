@@ -11,7 +11,7 @@ import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { getBinPath, getGoConfig } from './util';
-import {killProcessTree} from './utils/processUtils';
+import { killProcessTree } from './utils/processUtils';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
 	public provideDocumentFormattingEdits(
