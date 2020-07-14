@@ -302,14 +302,8 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			}
 			if (testconfig.includeSubDirectories) {
 				pkgMapPromise = getGoVersion().then((goVersion) => {
-					if (goVersion.gt('1.8')) {
-						targets = ['./...'];
-						return null; // We dont need mapping, as we can derive the absolute paths from package path
-					}
-					return getNonVendorPackages(testconfig.dir).then((pkgMap) => {
-						targets = Array.from(pkgMap.keys());
-						return pkgMap; // We need the individual package paths to pass to `go test`
-					});
+					targets = ['./...'];
+					return null; // We dont need mapping, as we can derive the absolute paths from package path
 				});
 			}
 		}
