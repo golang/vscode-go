@@ -50,7 +50,7 @@ suite('Test Go Test', function () {
 	}
 
 	async function runTest(
-		input: { isMod: boolean, includeSubDirectories: boolean },
+		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[] },
 		wantFiles: string[]) {
 
 		fs.copySync(sourcePath, repoPath, { recursive: true });
@@ -62,7 +62,7 @@ suite('Test Go Test', function () {
 			goConfig: config,
 			outputChannel,
 			dir: repoPath,
-			flags: getTestFlags(config),
+			flags: input.testFlags ? input.testFlags : getTestFlags(config),
 			isMod: input.isMod,
 			includeSubDirectories: input.includeSubDirectories,
 		};
@@ -87,6 +87,12 @@ suite('Test Go Test', function () {
 		await runTest(
 			{ isMod: true, includeSubDirectories: false },
 			[path.join(repoPath, 'a_test.go')]);
+		await runTest(
+			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
+			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
+		await runTest(
+			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
+			[path.join(repoPath, 'a_test.go')]);
 	});
 
 	test('resolves file names in logs (GOPATH)', async () => {
@@ -96,6 +102,12 @@ suite('Test Go Test', function () {
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
 			{ isMod: true, includeSubDirectories: false },
+			[path.join(repoPath, 'a_test.go')]);
+		await runTest(
+			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
+			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
+		await runTest(
+			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go')]);
 	});
 });

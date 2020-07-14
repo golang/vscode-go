@@ -228,6 +228,17 @@ export async function getBenchmarkFunctions(
 }
 
 /**
+ * go test -json output format.
+ * which is a subset of https://golang.org/cmd/test2json/#hdr-Output_Format
+ * and includes only the fields that we are using.
+ */
+interface GoTestOutput {
+	Action: string;
+	Output?: string;
+	Package?: string;
+}
+
+/**
  * Runs go test and presents the output in the 'Go' channel.
  *
  * @param goConfig Configuration for the Go extension.
@@ -309,6 +320,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 					pkgMap = new Map<string, string>();
 				}
 				// Use the package name to be in the args to enable running tests in symlinked directories
+				// TODO(hyangah): check why modules mode didn't set currentPackage.
 				if (!testconfig.includeSubDirectories && currentPackage) {
 					targets.splice(0, 0, currentPackage);
 				}
@@ -321,6 +333,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				}
 
 				args.push(...targets);
+				args.push('-json');
 
 				// ensure that user provided flags are appended last (allow use of -args ...)
 				// ignore user provided -run flag if we are already using it
@@ -337,30 +350,29 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				const outBuf = new LineBuffer();
 				const errBuf = new LineBuffer();
 
-				// 1=ok/FAIL, 2=package, 3=time/(cached)
-				const packageResultLineRE = /^(ok|FAIL)\s+(\S+)\s+([0-9\.]+s|\(cached\))/;
-				const lineWithErrorRE = /^(\t|\s\s\s\s)\S/;
 				const testResultLines: string[] = [];
-
 				const processTestResultLine = (line: string) => {
-					testResultLines.push(line);
-					const result = line.match(packageResultLineRE);
-					if (result && (pkgMap.has(result[2]) || currentGoWorkspace)) {
-						const hasTestFailed = line.startsWith('FAIL');
-						const packageNameArr = result[2].split('/');
-						const baseDir = pkgMap.get(result[2]) || path.join(currentGoWorkspace, ...packageNameArr);
-						testResultLines.forEach((testResultLine) => {
-							if (hasTestFailed && lineWithErrorRE.test(testResultLine)) {
-								outputChannel.appendLine(expandFilePathInOutput(testResultLine, baseDir));
-							} else {
-								outputChannel.appendLine(testResultLine);
-							}
-						});
-						testResultLines.splice(0);
+					try {
+						const m = <GoTestOutput>(JSON.parse(line));
+						if (m.Action !== 'output' || !m.Output) {
+							return;
+						}
+						const out = m.Output;
+						const pkg = m.Package;
+						if (pkg && (pkgMap.has(pkg) || currentGoWorkspace)) {
+							const pkgNameArr = pkg.split('/');
+							const baseDir = pkgMap.get(pkg) || path.join(currentGoWorkspace, ...pkgNameArr);
+							// go test emits test results on stdout, which contain file names relative to the package under test
+							outputChannel.appendLine(expandFilePathInOutput(out, baseDir).trimRight());
+						} else {
+							outputChannel.appendLine(out.trimRight());
+						}
+					} catch (e) {
+						console.log(`failed to parse JSON: ${e}`);
+						outputChannel.appendLine(line);
 					}
 				};
 
-				// go test emits test results on stdout, which contain file names relative to the package under test
 				outBuf.onLine((line) => processTestResultLine(line));
 				outBuf.onDone((last) => {
 					if (last) {
@@ -437,7 +449,7 @@ export function cancelRunningTests(): Thenable<boolean> {
 function expandFilePathInOutput(output: string, cwd: string): string {
 	const lines = output.split('\n');
 	for (let i = 0; i < lines.length; i++) {
-		const matches = lines[i].match(/^\s*(.+.go):(\d+):/);
+		const matches = lines[i].match(/\s+(\S+.go):(\d+):\s+/);
 		if (matches && matches[1] && !path.isAbsolute(matches[1])) {
 			lines[i] = lines[i].replace(matches[1], path.join(cwd, matches[1]));
 		}
