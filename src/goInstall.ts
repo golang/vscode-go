@@ -8,9 +8,9 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getGoConfig, getModuleCache } from './util';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 
 export async function installCurrentPackage(): Promise<void> {
 	const editor = vscode.window.activeTextEditor;

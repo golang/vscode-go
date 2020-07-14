@@ -13,7 +13,6 @@ import { getTextEditForAddImport } from './goImport';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { isModSupported } from './goModules';
 import { getImportablePackages, PackageInfo } from './goPackages';
-import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import {
 	byteOffsetAt,
 	getBinPath,
@@ -28,6 +27,7 @@ import {
 	parseFilePrelude,
 	runGodoc
 } from './util';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 
 function vscodeKindFromGoCodeClass(kind: string, type: string): vscode.CompletionItemKind {
 	switch (kind) {

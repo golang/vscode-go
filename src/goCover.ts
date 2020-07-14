@@ -11,9 +11,9 @@ import path = require('path');
 import util = require('util');
 import vscode = require('vscode');
 import { isModSupported } from './goModules';
-import { envPath } from './utils/goPath';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
+import { envPath } from './utils/goPath';
 
 let gutterSvgs: { [key: string]: string };
 let decorators: {

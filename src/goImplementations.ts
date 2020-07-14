@@ -10,7 +10,6 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { envPath, getCurrentGoRoot } from './utils/goPath';
 import {
 	byteOffsetAt,
 	canonicalizeGOPATHPrefix,
@@ -18,6 +17,7 @@ import {
 	getGoConfig,
 	getWorkspaceFolderPath
 } from './util';
+import { envPath, getCurrentGoRoot } from './utils/goPath';
 import {killProcessTree} from './utils/processUtils';
 
 interface GoListOutput {

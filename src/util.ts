@@ -15,6 +15,7 @@ import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
+import { outputChannel } from './goStatus';
 import {
 	envPath,
 	fixDriveCasingInWindows,
@@ -23,8 +24,7 @@ import {
 	getInferredGopath,
 	resolveHomeDir,
 } from './utils/goPath';
-import {killProcessTree} from './utils/processUtils';
-import { outputChannel } from './goStatus';
+import { killProcessTree } from './utils/processUtils';
 
 let userNameHash: number = 0;
 

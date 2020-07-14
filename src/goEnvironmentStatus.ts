@@ -13,9 +13,9 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
-import { getCurrentGoRoot, pathExists } from './utils/goPath';
 import { outputChannel } from './goStatus';
 import { getBinPath, getGoConfig, getGoVersion, timeout } from './util';
+import { getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {

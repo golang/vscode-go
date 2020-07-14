@@ -9,8 +9,8 @@ import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
 import { getAllPackages } from './goPackages';
-import { envPath, getCurrentGoRoot } from './utils/goPath';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
+import { envPath, getCurrentGoRoot } from './utils/goPath';
 
 export function browsePackages() {
 	let workDir = '';

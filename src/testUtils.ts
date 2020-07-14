@@ -12,7 +12,6 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -21,6 +20,7 @@ import {
 	LineBuffer,
 	resolvePath
 } from './util';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
 import {killProcessTree} from './utils/processUtils';
 
 const outputChannel = vscode.window.createOutputChannel('Go Tests');
