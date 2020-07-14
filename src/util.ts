@@ -8,7 +8,6 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import semver = require('semver');
-import kill = require('tree-kill');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
@@ -864,18 +863,6 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 		return fixDriveCasingInWindows(folders[0].uri.fsPath);
 	}
 }
-
-// export const killTree = (processId: number): void => {
-// 	try {
-// 		kill(processId, (err) => {
-// 			if (err) {
-// 				console.log(`Error killing process tree: ${err}`);
-// 			}
-// 		});
-// 	} catch (err) {
-// 		console.log(`Error killing process tree: ${err}`);
-// 	}
-// };
 
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
