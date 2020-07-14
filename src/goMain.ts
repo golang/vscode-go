@@ -73,7 +73,8 @@ export let restartLanguageServer = () => { return; };
 export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
 	if (!getBinPath('go', false)) {
 		const choice = await vscode.window.showInformationMessage(
-			`Go could not be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}. Install Go and reload the window.`,
+			`Go could not be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}. ` +
+			`Install Go and reload the window.`,
 			'Go to Download Page'
 		);
 		if (choice === 'Go to Download Page') {
