@@ -1380,6 +1380,7 @@
               "description": "Gutter style to indicate covered code."
             }
           },
+          "additionalProperties": false,
           "default": {
             "type": "highlight",
             "coveredHighlightColor": "rgba(64,128,128,0.5)",
@@ -1518,6 +1519,7 @@
               "description": "If true, the language server will provide clickable Godoc links for import statements."
             }
           },
+          "additionalProperties": false,
           "default": {
             "diagnostics": true,
             "documentLink": true
@@ -1565,6 +1567,7 @@
               "description": "If true, enables code lens for running and debugging tests"
             }
           },
+          "additionalProperties": false,
           "default": {
             "references": false,
             "runtest": true
@@ -1600,6 +1603,7 @@
               "description": "Transformation rule used by Go: Add Tags command to add tags"
             }
           },
+          "additionalProperties": false,
           "default": {
             "tags": "json",
             "options": "json=omitempty",
@@ -1623,6 +1627,7 @@
               "description": "The number of milliseconds to delay before execution. Resets with each keystroke."
             }
           },
+          "additionalProperties": false,
           "default": {
             "enabled": false,
             "delay": 500
@@ -1649,6 +1654,7 @@
               "description": "Comma separated tag=options pairs to be used by Go: Remove Tags command"
             }
           },
+          "additionalProperties": false,
           "default": {
             "tags": "",
             "options": "",
@@ -1677,6 +1683,7 @@
             },
             "description": "The flags configured here will be passed through to command `goplay`"
           },
+          "additionalProperties": false,
           "default": {
             "openbrowser": true,
             "share": true,
@@ -1757,6 +1764,7 @@
               "description": "If true, adds command to debug the test under the cursor to the editor context menu"
             }
           },
+          "additionalProperties": false,
           "default": {
             "toggleTestFile": true,
             "addTags": true,
@@ -1890,7 +1898,8 @@
               "default": "guru",
               "description": "Alternate tool to use instead of the guru binary or alternate path to use for the guru binary."
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },
