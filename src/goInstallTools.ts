@@ -378,6 +378,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			} else {
 				cachePath = process.env.Path;
 			}
+
 			addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
 			initGoStatusBar(cachePath);
 			// TODO: restart language server or synchronize with language server update.

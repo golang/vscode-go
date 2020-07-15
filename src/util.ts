@@ -16,6 +16,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
+import { getFromWorkspaceState } from './stateUtils';
 import {
 	envPath,
 	fixDriveCasingInWindows,
@@ -456,11 +457,16 @@ export function getBinPath(tool: string, useCache = true): string {
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
+	let selectedGoPath: string | undefined;
+	if (tool === 'go') {
+		selectedGoPath = getFromWorkspaceState('selectedGo')?.binpath;
+	}
+
 	return getBinPathWithPreferredGopathGoroot(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		tool === 'go' && cfg.get('goroot') ? cfg.get('goroot') : undefined,
-		resolvePath(alternateToolPath),
+		selectedGoPath ?? resolvePath(alternateToolPath),
 		useCache
 	);
 }

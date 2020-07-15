@@ -38,7 +38,7 @@ export function getBinPathWithPreferredGopathGoroot(
 	preferredGoroot?: string,
 	alternateTool?: string,
 	useCache = true,
-) {
+): string {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return alternateTool;
@@ -107,7 +107,7 @@ export function setCurrentGoRoot(goroot: string) {
 	currentGoRoot = goroot;
 }
 
-function correctBinname(toolName: string) {
+export function correctBinname(toolName: string) {
 	if (process.platform === 'win32') {
 		return toolName + '.exe';
 	}

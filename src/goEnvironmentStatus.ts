@@ -14,8 +14,9 @@ import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
-import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, rmdirRecursive } from './util';
-import { getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
+import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
+import { getBinPath, getGoVersion, getTempFilePath, rmdirRecursive } from './util';
+import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -131,12 +132,14 @@ export async function chooseGoEnvironment() {
 	const goSDKQuickPicks = goSDKOptions.map((op) => op.toQuickPickItem());
 
 	// dedup options by eliminating duplicate paths (description)
-	const options = [defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks].reduce((opts, nextOption) => {
-		if (opts.find((op) => op.description === nextOption.description || op.label === nextOption.label)) {
-			return opts;
-		}
-		return [...opts, nextOption];
-	}, [] as vscode.QuickPickItem[]);
+	const clearOption: vscode.QuickPickItem = { label: 'Clear selection' };
+	const options = [clearOption, defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks]
+		.reduce((opts, nextOption) => {
+			if (opts.find((op) => op.description === nextOption.description || op.label === nextOption.label)) {
+				return opts;
+			}
+			return [...opts, nextOption];
+		}, [] as vscode.QuickPickItem[]);
 
 	// get user's selection, return if none was made
 	const selection = await vscode.window.showQuickPick<vscode.QuickPickItem>(options);
@@ -146,7 +149,7 @@ export async function chooseGoEnvironment() {
 
 	// update currently selected go
 	try {
-		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection), vscode.ConfigurationTarget.Workspace);
+		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
 		vscode.window.showInformationMessage(`Switched to ${selection.label}`);
 	} catch (e) {
 		vscode.window.showErrorMessage(e.message);
@@ -156,18 +159,13 @@ export async function chooseGoEnvironment() {
 /**
  * update the selected go path and label in the workspace state
  */
-export async function setSelectedGo(
-	selectedGo: GoEnvironmentOption, scope: vscode.ConfigurationTarget, promptReload = true
-) {
+export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload = true) {
 	const execFile = promisify(cp.execFile);
-
-	const goConfig = getGoConfig();
-	const alternateTools: any = goConfig.get('alternateTools') || {};
 	// if the selected go version is not installed, install it
-	if (selectedGo.binpath.startsWith('go get')) {
+	if (goOption.binpath?.startsWith('go get')) {
 		// start a loading indicator
 		await vscode.window.withProgress({
-			title: `Downloading ${selectedGo.label}`,
+			title: `Downloading ${goOption.label}`,
 			location: vscode.ProgressLocation.Notification,
 		}, async () => {
 			outputChannel.show();
@@ -198,7 +196,7 @@ export async function setSelectedGo(
 				...toolInstallationEnvironment(),
 				GO111MODULE: 'on',
 			};
-			const [, ...args] = selectedGo.binpath.split(' ');
+			const [, ...args] = goOption.binpath.split(' ');
 			outputChannel.appendLine(`Running ${goExecutable} ${args.join(' ')}`);
 			try {
 				await execFile(goExecutable, args, {
@@ -236,32 +234,28 @@ export async function setSelectedGo(
 				throw new Error('Could not install Go version.');
 			}
 
-			const binpath = path.join(sdkPath, dir, 'bin', 'go');
-			const newAlternateTools = {
-				...alternateTools,
-				go: binpath,
-			};
-			await goConfig.update('alternateTools', newAlternateTools, scope);
-			goEnvStatusbarItem.text = selectedGo.label;
+			const binpath = path.join(sdkPath, dir, 'bin', correctBinname('go'));
+			const newOption = new GoEnvironmentOption(binpath, goOption.label);
+			await updateWorkspaceState('selectedGo', newOption);
+			goEnvStatusbarItem.text = goOption.label;
 
 			// remove tmp directories
 			outputChannel.appendLine('Cleaning up...');
 			rmdirRecursive(toolsTmpDir);
 			outputChannel.appendLine('Success!');
 		});
+	} else if (goOption.label === 'Clear selection') {
+		updateWorkspaceState('selectedGo', undefined);
 	} else {
 		// check that the given binary is not already at the beginning of the PATH
 		const go = await getGoVersion();
-		if (go.binaryPath === selectedGo.binpath) {
+		if (go.binaryPath === goOption.binpath) {
 			return;
 		}
 
-		const newAlternateTools = {
-			...alternateTools,
-			go: selectedGo.binpath,
-		};
-		await goConfig.update('alternateTools', newAlternateTools, scope);
-		goEnvStatusbarItem.text = selectedGo.label;
+		console.log('updating selectedGo: ', goOption);
+		await updateWorkspaceState('selectedGo', goOption);
+		goEnvStatusbarItem.text = goOption.label;
 	}
 	// prompt the user to reload the window
 	// promptReload defaults to true and should only be false for tests
@@ -305,9 +299,8 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
 /**
  * retreive the current selected Go from the workspace state
  */
-export async function getSelectedGo(): Promise<GoEnvironmentOption> {
-	const goVersion = await getGoVersion();
-	return new GoEnvironmentOption(goVersion.binaryPath, formatGoVersion(goVersion.format()));
+export function getSelectedGo(): GoEnvironmentOption {
+	return getFromWorkspaceState('selectedGo');
 }
 
 /**

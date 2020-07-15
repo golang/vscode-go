@@ -65,7 +65,7 @@ describe.skip('#setSelectedGo()', function () {
 		sandbox = sinon.createSandbox();
 	});
 	this.afterEach(async () => {
-		await setSelectedGo(goOption, vscode.ConfigurationTarget.Workspace, false);
+		await setSelectedGo(goOption, false);
 		sandbox.restore();
 	});
 
@@ -90,7 +90,7 @@ describe.skip('#setSelectedGo()', function () {
 
 		// set workspace setting
 		const workspaceTestOption = new GoEnvironmentOption('workspacetestpath', 'testlabel');
-		await setSelectedGo(workspaceTestOption, vscode.ConfigurationTarget.Workspace, false);
+		await setSelectedGo(workspaceTestOption, false);
 
 		// check that the stub was called
 		sandbox.assert.calledWith(getGoConfigStub);
@@ -128,7 +128,7 @@ describe.skip('#setSelectedGo()', function () {
 
 		// set selected go as a version to download
 		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
-		await setSelectedGo(option, vscode.ConfigurationTarget.Workspace, false);
+		await setSelectedGo(option, false);
 		sandbox.assert.calledWith(getGoConfigStub);
 
 		// the temp sdk directory should now contain go1.13.12
