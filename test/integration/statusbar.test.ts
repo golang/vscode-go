@@ -50,8 +50,8 @@ describe('#initGoStatusBar()', function () {
 	});
 });
 
-describe('#setSelectedGo()', function () {
-	// Disabled due to https://github.com/golang/vscode-go/issues/303.
+describe.skip('#setSelectedGo()', function () {
+	// TODO: reenable this once the problem is fixed https://github.com/golang/vscode-go/issues/357
 	this.timeout(40000);
 	let sandbox: sinon.SinonSandbox | undefined;
 	let goOption: GoEnvironmentOption;
@@ -60,7 +60,6 @@ describe('#setSelectedGo()', function () {
 	this.beforeAll(async () => {
 		defaultGoConfig = ourutil.getGoConfig();
 	});
-
 	this.beforeEach(async () => {
 		goOption = await getSelectedGo();
 		sandbox = sinon.createSandbox();
@@ -141,7 +140,8 @@ describe('#setSelectedGo()', function () {
 	});
 });
 
-describe('#updateGoVarsFromConfig()', function () {
+describe.skip('#updateGoVarsFromConfig()', function () {
+	// TODO: reenable this once the problem is fixed: https://github.com/golang/vscode-go/issues/357
 	this.timeout(10000);
 
 	let defaultGoConfig: vscode.WorkspaceConfiguration | undefined;

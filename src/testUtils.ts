@@ -362,7 +362,9 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 							outputChannel.appendLine(out.trimRight());
 						}
 					} catch (e) {
+						// TODO: disable this log if it becomes too spammy.
 						console.log(`failed to parse JSON: ${e}: ${line}`);
+						// Build failures or other messages come in non-JSON format. So, output as they are.
 						outputChannel.appendLine(line);
 					}
 				};
