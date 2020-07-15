@@ -12,16 +12,16 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './goPath';
 import {
 	getBinPath,
 	getCurrentGoPath,
 	getGoVersion,
 	getTempFilePath,
-	killTree,
 	LineBuffer,
 	resolvePath
 } from './util';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
+import {killProcessTree} from './utils/processUtils';
 
 const outputChannel = vscode.window.createOutputChannel('Go Tests');
 const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -420,7 +420,7 @@ export function showTestOutput() {
 export function cancelRunningTests(): Thenable<boolean> {
 	return new Promise<boolean>((resolve, reject) => {
 		runningTestProcesses.forEach((tp) => {
-			killTree(tp.pid);
+			killProcessTree(tp);
 		});
 		// All processes are now dead. Empty the array to prepare for the next run.
 		runningTestProcesses.splice(0, runningTestProcesses.length);

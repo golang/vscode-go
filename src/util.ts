@@ -8,7 +8,6 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import semver = require('semver');
-import kill = require('tree-kill');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
@@ -16,6 +15,7 @@ import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
+import { outputChannel } from './goStatus';
 import {
 	envPath,
 	fixDriveCasingInWindows,
@@ -23,8 +23,8 @@ import {
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
-} from './goPath';
-import { outputChannel } from './goStatus';
+} from './utils/goPath';
+import { killProcessTree } from './utils/processUtils';
 
 let userNameHash: number = 0;
 
@@ -687,7 +687,7 @@ export function runTool(
 	if (token) {
 		token.onCancellationRequested(() => {
 			if (p) {
-				killTree(p.pid);
+				killProcessTree(p);
 			}
 		});
 	}
@@ -864,28 +864,6 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	}
 }
 
-export const killTree = (processId: number): void => {
-	try {
-		kill(processId, (err) => {
-			if (err) {
-				console.log(`Error killing process tree: ${err}`);
-			}
-		});
-	} catch (err) {
-		console.log(`Error killing process tree: ${err}`);
-	}
-};
-
-export function killProcess(p: cp.ChildProcess) {
-	if (p) {
-		try {
-			p.kill();
-		} catch (e) {
-			console.log('Error killing process: ' + e);
-		}
-	}
-}
-
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
 	const memo = new NearestNeighborDict(defaultValue, NearestNeighborDict.NUMERIC_DISTANCE_FUNCTION);
@@ -1029,7 +1007,7 @@ export function runGodoc(
 
 			if (token) {
 				token.onCancellationRequested(() => {
-					killTree(p.pid);
+					killProcessTree(p);
 				});
 			}
 		});

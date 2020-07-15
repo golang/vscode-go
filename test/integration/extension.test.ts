@@ -364,8 +364,9 @@ It returns the number of bytes written and any write error encountered.
 
 	test('Linting - concurrent process cancelation', async () => {
 		const util = require('../../src/util');
+		const processutil = require('../../src/utils/processUtils');
 		sinon.spy(util, 'runTool');
-		sinon.spy(util, 'killTree');
+		sinon.spy(processutil, 'killProcessTree');
 
 		const config = Object.create(vscode.workspace.getConfiguration('go'), {
 			vetOnSave: { value: 'package' },
@@ -382,7 +383,7 @@ It returns the number of bytes written and any write error encountered.
 			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config)
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
-		assert.equal(util.killTree.callCount, 1, 'should have killed 1 lint job before launching the next');
+		assert.equal(processutil.killProcessTree.callCount, 1, 'should have killed 1 lint job before launching the next');
 	});
 
 	test('Error checking', async () => {

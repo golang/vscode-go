@@ -8,8 +8,8 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './goPath';
 import { getBinPath, getCurrentGoPath, getGoVersion, isVendorSupported } from './util';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {

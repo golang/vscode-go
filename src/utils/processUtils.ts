@@ -28,3 +28,22 @@ export function killProcessTree(
 		});
 	});
 }
+
+// Kill a process.
+//
+// READ THIS BEFORE USING THE FUNCTION:
+//
+// TODO: This function is kept for historical reasons and should be removed once
+// its user (go-outline) is replaced. Outlining uses this function and not
+// killProcessTree because of performance issues that were observed in the past.
+// See https://go-review.googlesource.com/c/vscode-go/+/242518/ for more
+// details and background.
+export function killProcess(p: ChildProcess) {
+	if (p) {
+		try {
+			p.kill();
+		} catch (e) {
+			console.log('Error killing process: ' + e);
+		}
+	}
+}

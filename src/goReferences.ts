@@ -15,9 +15,9 @@ import {
 	canonicalizeGOPATHPrefix,
 	getBinPath,
 	getFileArchive,
-	getGoConfig,
-	killTree
+	getGoConfig
 } from './util';
+import {killProcessTree} from './utils/processUtils';
 
 export class GoReferenceProvider implements vscode.ReferenceProvider {
 	public provideReferences(
@@ -102,7 +102,7 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 			if (process.pid) {
 				process.stdin.end(getFileArchive(document));
 			}
-			token.onCancellationRequested(() => killTree(process.pid));
+			token.onCancellationRequested(() => killProcessTree(process));
 		});
 	}
 }

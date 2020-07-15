@@ -9,7 +9,6 @@ import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { getNonVendorPackages } from './goPackages';
-import { getCurrentGoWorkspaceFromGOPATH } from './goPath';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { getTestFlags } from './testUtils';
 import {
@@ -22,6 +21,8 @@ import {
 	ICheckResult,
 	runTool
 } from './util';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
+
 /**
  * Builds current package or workspace.
  */

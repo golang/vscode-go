@@ -25,9 +25,9 @@ import {
 	envPath,
 	getBinPathWithPreferredGopathGoroot,
 	parseEnvFile
-} from '../goPath';
+} from '../utils/goPath';
 
-import {killProcessTree} from '../processUtils';
+import {killProcessTree} from '../utils/processUtils';
 
 import { DAPClient } from './dapClient';
 
