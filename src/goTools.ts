@@ -194,7 +194,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
 				}
 			} catch (err) {
-				return `Failed to close gocode process: ${err}.`;
+				// This may fail if gocode isn't already running.
 			}
 			return '';
 		},
