@@ -14,7 +14,7 @@ import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
-import { getBinPath, getGoConfig, getGoVersion, timeout } from './util';
+import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, rmdirRecursive } from './util';
 import { getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
@@ -167,12 +167,31 @@ export async function setSelectedGo(
 				throw new Error('Could not find Go tool.');
 			}
 
+			// TODO(bcloud) dedup repeated logic below which comes from
+			// https://github.com/golang/vscode-go/blob/bc23fa854192d04200c8e4f74dca18d2c3021b46/src/goInstallTools.ts#L184
+
+			// Install tools in a temporary directory, to avoid altering go.mod files.
+			const mkdtemp = promisify(fs.mkdtemp);
+			const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
+			let tmpGoModFile: string;
+
+			// Write a temporary go.mod file to avoid version conflicts.
+			tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
+			const writeFile = promisify(fs.writeFile);
+			await writeFile(tmpGoModFile, 'module tools');
+
 			// use the current go executable to download the new version
-			const env = toolInstallationEnvironment();
+			const env = {
+				...toolInstallationEnvironment(),
+				GO111MODULE: 'on',
+			};
 			const [, ...args] = selectedGo.binpath.split(' ');
 			outputChannel.appendLine(`Running ${goExecutable} ${args.join(' ')}`);
 			try {
-				await execFile(goExecutable, args, { env });
+				await execFile(goExecutable, args, {
+					env,
+					cwd: toolsTmpDir,
+				});
 			} catch (getErr) {
 				outputChannel.appendLine(`Error finding Go: ${getErr}`);
 				throw new Error('Could not find Go version.');
@@ -214,6 +233,10 @@ export async function setSelectedGo(
 
 			outputChannel.appendLine('Updating integrated terminals');
 			vscode.window.terminals.forEach(updateIntegratedTerminal);
+
+			// remove tmp directories
+			outputChannel.appendLine('Cleaning up...');
+			rmdirRecursive(toolsTmpDir);
 			outputChannel.appendLine('Success!');
 		});
 	} else {
