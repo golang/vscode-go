@@ -362,7 +362,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 							outputChannel.appendLine(out.trimRight());
 						}
 					} catch (e) {
-						console.log(`failed to parse JSON: ${e}`);
+						console.log(`failed to parse JSON: ${e}: ${line}`);
 						outputChannel.appendLine(line);
 					}
 				};

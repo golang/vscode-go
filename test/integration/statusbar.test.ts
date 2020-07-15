@@ -101,7 +101,7 @@ describe('#setSelectedGo()', function () {
 	});
 
 	it('should download an uninstalled version of Go', async () => {
-		if (!!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
+		if (!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
 			return;
 		}
 
