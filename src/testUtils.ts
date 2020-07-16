@@ -416,7 +416,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		);
 	});
 	if (testconfig.applyCodeCoverage) {
-		await applyCodeCoverageToAllEditors(tmpCoverPath);
+		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
 	}
 	return testResult;
 }

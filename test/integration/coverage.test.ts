@@ -36,14 +36,9 @@ suite('Coverage for tests', function () {
 		initForTest();
 		const x = vscode.workspace.openTextDocument(coverFilePath);
 		await applyCodeCoverageToAllEditors(coverFilePath, fixtureSourcePath);
-		let aDotGo: boolean;
-		let bDotGo: boolean;
-		for (const fn in coverageFilesForTest()) {
-			if (true) { // TSLint insists the body for for..in.. be an if-statement
-				if (fn === `${fixtureSourcePath}/a/a.go`) { aDotGo = true; }
-				if (fn === `${fixtureSourcePath}/b/b.go`) { bDotGo = true; }
-		}
-	}
-		assert.equal(aDotGo && bDotGo, true);
+		const files = Object.keys(coverageFilesForTest());
+		const aDotGo = files.includes(path.join(fixtureSourcePath, 'a', 'a.go'));
+		const bDotGo = files.includes(path.join(fixtureSourcePath, 'b', 'b.go'));
+		assert.equal(aDotGo && bDotGo, true, `seen a.go:${aDotGo}, seen b.go:${bDotGo}\n${files}\n`);
 	});
 });

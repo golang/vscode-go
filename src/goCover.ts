@@ -5,15 +5,13 @@
 
 'use strict';
 
-import cp = require('child_process');
 import fs = require('fs');
 import path = require('path');
-import util = require('util');
 import vscode = require('vscode');
 import { isModSupported } from './goModules';
+import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
-import { envPath } from './utils/goPath';
+import { getGoConfig } from './util';
 
 let gutterSvgs: { [key: string]: string };
 let decorators: {
@@ -31,6 +29,7 @@ let decoratorConfig: {
 	coveredGutterStyle: string;
 	uncoveredGutterStyle: string;
 };
+
 // a list of modified, unsaved go files with actual code edits (rather than comment edits)
 let modifiedFiles: {
 	[key: string]: boolean;
@@ -155,18 +154,14 @@ interface CoverageData {
 	coveredRange: vscode.Range[];
 }
 
-let coverageFiles: { [key: string]: CoverageData } = {};
-let coveragePath = new Map<string, CoverageData>();
-let pathsToDirs = new Map<string, string>();
+let coverageData: { [key: string]: CoverageData } = {};  // actual file path to the coverage data.
 let isCoverageApplied: boolean = false;
 
 /**
  * Clear the coverage on all files
  */
 function clearCoverage() {
-	coverageFiles = {};
-	coveragePath = new Map<string, CoverageData>();
-	pathsToDirs = new Map<string, string>();
+	coverageData = {};
 	disposeDecorators();
 	isCoverageApplied = false;
 }
@@ -180,6 +175,8 @@ function clearCoverage() {
 export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?: string): Promise<void> {
 	const v = new Promise<void>((resolve, reject) => {
 		try {
+			const coveragePath = new Map<string, CoverageData>();  // <filename> from the cover profile to the coverage data.
+
 			// Clear existing coverage files
 			clearCoverage();
 
@@ -188,15 +185,22 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?
 			// for now read synchronously and hope for no errors
 			const contents = fs.readFileSync(coverProfilePath).toString();
 			contents.split('\n').forEach((line) => {
+				// go test coverageprofile generates output:
+				//    filename:StartLine.StartColumn,EndLine.EndColumn Hits CoverCount
+				// where the filename is either the import path + '/' + base file name, or
+				// the actual file path (either absolute or starting with .)
+				// See https://golang.org/issues/40251.
+				//
+				// The first line will be like "mode: set" which we will ignore.
 				const parse = line.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
 				if (!parse) { return; }
-				const lastSlash = parse[1].lastIndexOf('/'); // ok for windows?
+				const lastSlash = parse[1].lastIndexOf('/');
 				if (lastSlash !== -1) {
 					seenPaths.add(parse[1].slice(0, lastSlash));
 				}
 
 				// and fill in coveragePath
-				const coverage = getPathData(parse[1]);
+				const coverage = coveragePath.get(parse[1]) || { coveredRange: [], uncoveredRange: [] };
 				const range = new vscode.Range(
 					// Start Line converted to zero based
 					parseInt(parse[2], 10) - 1,
@@ -213,11 +217,12 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?
 				} else {
 					coverage.uncoveredRange.push(range);
 				}
-				setPathData(parse[1], coverage);
+				coveragePath.set(parse[1], coverage);
 			});
-			const pathPromise = getPathsToDirs(seenPaths, pathsToDirs, testDir);
-			pathPromise.then(() => {
-				createCoverageData();
+
+			getImportPathToFolder([...seenPaths], testDir)
+				.then((pathsToDirs) => {
+				createCoverageData(pathsToDirs, coveragePath);
 				setDecorators();
 				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
 				resolve();
@@ -230,47 +235,29 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?
 	return v;
 }
 
-/**
- * Get the object that holds the coverage data for given file path.
- * @param filePath
- */
-function getCoverageData(filePath: string): CoverageData {
-	if (filePath.startsWith('_')) {
-		filePath = filePath.substr(1);
-	}
-	if (process.platform === 'win32') {
-		const parts = filePath.split('/');
-		if (parts.length) {
-			filePath = parts.join(path.sep);
-		}
-	}
-	return coverageFiles[filePath] || { coveredRange: [], uncoveredRange: [] };
-}
+function createCoverageData(
+	pathsToDirs: Map<string, string>,
+	coveragePath: Map<string, CoverageData>) {
 
-/**
- * Get the CoverageData for an import path.
- * @param importPath
- */
-function getPathData(importPath: string): CoverageData {
-	return coveragePath.get(importPath) || { coveredRange: [], uncoveredRange: [] };
-}
-
-/**
- * Set the CoverageData for an import path.
- * @param importPath
- * @param data
- */
-function setPathData(importPath: string, data: CoverageData) {
-	coveragePath.set(importPath, data);
-}
-
-function createCoverageData() {
 	coveragePath.forEach((cd, ip) => {
 		const lastSlash = ip.lastIndexOf('/');
+		if (lastSlash === -1) {  // malformed
+			console.log(`invalid entry: ${ip}`);
+			return;
+		}
 		const importPath = ip.slice(0, lastSlash);
-		const fileDir = pathsToDirs.get(importPath);
-		const file = fileDir + ip.slice(lastSlash); // what about Windows?
-		setCoverageData(file, cd);
+		let fileDir = importPath;
+		if (path.isAbsolute(importPath)) {
+			// This is the true file path.
+		} else if (importPath.startsWith('.')) {
+			fileDir = path.resolve(fileDir);
+		} else {
+			// This is the package import path.
+			// we need to look up `go list` output stored in pathsToDir.
+			fileDir = pathsToDirs.get(importPath) || importPath;
+		}
+		const file = fileDir + path.sep + ip.slice(lastSlash + 1);
+		setCoverageDataByFilePath(file, cd);
 	});
 }
 
@@ -279,7 +266,7 @@ function createCoverageData() {
  * @param filePath
  * @param data
  */
-function setCoverageData(filePath: string, data: CoverageData) {
+function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
 	if (filePath.startsWith('_')) {
 		filePath = filePath.substr(1);
 	}
@@ -289,7 +276,7 @@ function setCoverageData(filePath: string, data: CoverageData) {
 			filePath = parts.join(path.sep);
 		}
 	}
-	coverageFiles[filePath] = data;
+	coverageData[filePath] = data;
 }
 
 /**
@@ -303,16 +290,16 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 
 	const cfg = getGoConfig(editor.document.uri);
 	const coverageOptions = cfg['coverageOptions'];
-	for (const filename in coverageFiles) {
+	for (const filename in coverageData) {
 		if (editor.document.uri.fsPath.endsWith(filename)) {
 			isCoverageApplied = true;
-			const coverageData = coverageFiles[filename];
+			const cd = coverageData[filename];
 			if (coverageOptions === 'showCoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
 				editor.setDecorations(
 					decorators.type === 'gutter'
 						? decorators.coveredGutterDecorator
 						: decorators.coveredHighlightDecorator,
-					coverageData.coveredRange
+					cd.coveredRange
 				);
 			}
 
@@ -321,7 +308,7 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 					decorators.type === 'gutter'
 						? decorators.uncoveredGutterDecorator
 						: decorators.uncoveredHighlightDecorator,
-					coverageData.uncoveredRange
+					cd.uncoveredRange
 				);
 			}
 		}
@@ -368,41 +355,6 @@ export function trackCodeCoverageRemovalOnFileChange(e: vscode.TextDocumentChang
 	}
 
 	modifiedFiles[e.document.fileName] = true;
-}
-
-/**
- * Fill the map of directory paths corresponding to input package paths
- * @param set Set<string> of import package paths
- */
-async function getPathsToDirs(set: Set<string>, res: Map<string, string>, testDir?: string) {
-	const goRuntimePath = getBinPath('go');
-	if (!goRuntimePath) {
-		vscode.window.showErrorMessage(
-			`Failed to run, as the "go" binary cannot be found in either GOROOT(${process.env['GOROOT']}) or PATH(${envPath})`
-		);
-	}
-	const args: string[] = ['list', '-f', '{{.ImportPath}}:{{.Dir}}'];
-	set.forEach((s) => args.push(s));
-
-	const options: { [key: string]: any } = {
-		env: Object.assign({}, process.env, { GOPATH: getCurrentGoPath() })
-	};
-	const workDir = getWorkspaceFolderPath();
-	// If there is a workDir then probably it is what we want
-	// Otherwise maybe a test suggested a directory.
-	if (workDir) {
-		options['cwd'] = workDir;
-	} else if (testDir) {
-		options['cwd'] = testDir;
-	}
-
-	const execFile = util.promisify(cp.execFile);
-	const { stdout } = await execFile(goRuntimePath, args, options);
-	stdout.split('\n').forEach((line) => {
-		const flds = line.split(':');
-		if (flds.length !== 2) { return; }
-		res.set(flds[0], flds[1]);
-	});
 }
 
 /**
@@ -459,7 +411,7 @@ export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 // These routines enable testing without starting an editing session.
 
 export function coverageFilesForTest():  { [key: string]: CoverageData; } {
-	return coverageFiles;
+	return coverageData;
 }
 
 export function initForTest() {

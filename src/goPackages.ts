@@ -260,6 +260,12 @@ const pkgToFolderMappingRegex = /ImportPath: (.*) FolderPath: (.*)/;
  */
 export function getNonVendorPackages(
 	currentFolderPath: string, recursive: boolean = true): Promise<Map<string, string>> {
+
+	const target = recursive ? './...' : '.';  // go list ./... excludes vendor dirs since 1.9
+	return getImportPathToFolder([target], currentFolderPath);
+}
+
+export function getImportPathToFolder(targets: string[], cwd?: string): Promise<Map<string, string>> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
@@ -267,12 +273,12 @@ export function getNonVendorPackages(
 		);
 		return;
 	}
+
 	return new Promise<Map<string, string>>((resolve, reject) => {
-		const target = recursive ? './...' : '.';
 		const childProcess = cp.spawn(
 			goRuntimePath,
-			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', target],
-			{ cwd: currentFolderPath, env: toolExecutionEnvironment() }
+			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', ...targets],
+			{ cwd, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];
 		childProcess.stdout.on('data', (stdout) => {
@@ -283,16 +289,13 @@ export function getNonVendorPackages(
 			const lines = chunks.join('').toString().split('\n');
 			const result = new Map<string, string>();
 
-			const version = await getGoVersion();
-			const vendorAlreadyExcluded = version.gt('1.8');
-
 			lines.forEach((line) => {
 				const matches = line.match(pkgToFolderMappingRegex);
 				if (!matches || matches.length !== 3) {
 					return;
 				}
 				const [_, pkgPath, folderPath] = matches;
-				if (!pkgPath || (!vendorAlreadyExcluded && pkgPath.includes('/vendor/'))) {
+				if (!pkgPath) {
 					return;
 				}
 				result.set(pkgPath, folderPath);
