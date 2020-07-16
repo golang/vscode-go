@@ -606,10 +606,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			throw new Error('launchNoDebug requires "debug" mode');
 		}
 		const {program, dirname, programIsDirectory} = parseProgramArgSync(launchArgs);
-		if (!programIsDirectory && path.extname(program) !== '.go') {
-			throw new Error('The program attribute must be a directory or .go file in debug mode');
-		}
-
 		const goRunArgs = ['run'];
 		if (launchArgs.buildFlags) {
 			goRunArgs.push(launchArgs.buildFlags);
@@ -786,5 +782,8 @@ function parseProgramArgSync(launchArgs: LaunchRequestArguments
 		throw new Error('The program attribute must point to valid directory, .go file or executable.');
 	}
 	const dirname = programIsDirectory ? program : path.dirname(program);
+	if (!programIsDirectory && path.extname(program) !== '.go') {
+		throw new Error('The program attribute must be a directory or .go file in debug mode');
+	}
 	return {program, dirname, programIsDirectory};
 }
