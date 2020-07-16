@@ -606,9 +606,6 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			throw new Error('launchNoDebug requires "debug" mode');
 		}
 		const {program, dirname, programIsDirectory} = parseProgramArgSync(launchArgs);
-		if (!program) {
-			throw new Error('The program attribute is missing in the debug configuration in launch.json');
-		}
 		if (!programIsDirectory && path.extname(program) !== '.go') {
 			throw new Error('The program attribute must be a directory or .go file in debug mode');
 		}
@@ -779,12 +776,15 @@ class DelveClient extends DAPClient {
 function parseProgramArgSync(launchArgs: LaunchRequestArguments
 ): { program: string, dirname: string, programIsDirectory: boolean } {
 	const program = launchArgs.program;
+	if (!program) {
+		throw new Error('The program attribute is missing in the debug configuration in launch.json');
+	}
 	let programIsDirectory = false;
 	try {
-		programIsDirectory = fs.lstatSync(launchArgs.program).isDirectory();
+		programIsDirectory = fs.lstatSync(program).isDirectory();
 	} catch (e) {
 		throw new Error('The program attribute must point to valid directory, .go file or executable.');
 	}
-	const dirname = programIsDirectory ? launchArgs.program : path.dirname(launchArgs.program);
+	const dirname = programIsDirectory ? program : path.dirname(program);
 	return {program, dirname, programIsDirectory};
 }
