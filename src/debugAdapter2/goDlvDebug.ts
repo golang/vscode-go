@@ -781,9 +781,9 @@ function parseProgramArgSync(launchArgs: LaunchRequestArguments
 	} catch (e) {
 		throw new Error('The program attribute must point to valid directory, .go file or executable.');
 	}
-	const dirname = programIsDirectory ? program : path.dirname(program);
 	if (!programIsDirectory && path.extname(program) !== '.go') {
 		throw new Error('The program attribute must be a directory or .go file in debug mode');
 	}
+	const dirname = programIsDirectory ? program : path.dirname(program);
 	return {program, dirname, programIsDirectory};
 }
