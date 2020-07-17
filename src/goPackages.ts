@@ -258,7 +258,8 @@ const pkgToFolderMappingRegex = /ImportPath: (.*) FolderPath: (.*)/;
 /**
  * Returns mapping between import paths and folder paths for all packages under given folder (vendor will be excluded)
  */
-export function getNonVendorPackages(currentFolderPath: string): Promise<Map<string, string>> {
+export function getNonVendorPackages(
+	currentFolderPath: string, recursive: boolean = true): Promise<Map<string, string>> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
@@ -267,9 +268,10 @@ export function getNonVendorPackages(currentFolderPath: string): Promise<Map<str
 		return;
 	}
 	return new Promise<Map<string, string>>((resolve, reject) => {
+		const target = recursive ? './...' : '.';
 		const childProcess = cp.spawn(
 			goRuntimePath,
-			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', './...'],
+			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', target],
 			{ cwd: currentFolderPath, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];

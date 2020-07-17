@@ -51,8 +51,8 @@ describe('#initGoStatusBar()', function () {
 });
 
 describe.skip('#setSelectedGo()', function () {
-	// Disabled due to https://github.com/golang/vscode-go/issues/303.
-	this.timeout(20000);
+	// TODO: reenable this once the problem is fixed https://github.com/golang/vscode-go/issues/357
+	this.timeout(40000);
 	let sandbox: sinon.SinonSandbox | undefined;
 	let goOption: GoEnvironmentOption;
 	let defaultGoConfig: vscode.WorkspaceConfiguration;
@@ -60,7 +60,6 @@ describe.skip('#setSelectedGo()', function () {
 	this.beforeAll(async () => {
 		defaultGoConfig = ourutil.getGoConfig();
 	});
-
 	this.beforeEach(async () => {
 		goOption = await getSelectedGo();
 		sandbox = sinon.createSandbox();
@@ -101,7 +100,7 @@ describe.skip('#setSelectedGo()', function () {
 	});
 
 	it('should download an uninstalled version of Go', async () => {
-		if (!!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
+		if (!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
 			return;
 		}
 
@@ -141,7 +140,8 @@ describe.skip('#setSelectedGo()', function () {
 	});
 });
 
-describe('#updateGoVarsFromConfig()', function () {
+describe.skip('#updateGoVarsFromConfig()', function () {
+	// TODO: reenable this once the problem is fixed: https://github.com/golang/vscode-go/issues/357
 	this.timeout(10000);
 
 	let defaultGoConfig: vscode.WorkspaceConfiguration | undefined;
@@ -168,8 +168,9 @@ describe('#updateGoVarsFromConfig()', function () {
 		}
 	});
 
-	this.afterAll(() => {
+	this.afterAll(async () => {
 		ourutil.rmdirRecursive(tmpRoot);
+		await updateGoVarsFromConfig();
 	});
 
 	this.beforeEach(() => {

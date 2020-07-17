@@ -37,14 +37,14 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 	});
 }
 
-export function isModSupported(fileuri: vscode.Uri): Promise<boolean> {
-	return getModFolderPath(fileuri).then((modPath) => !!modPath);
+export function isModSupported(fileuri: vscode.Uri, isDir?: boolean): Promise<boolean> {
+	return getModFolderPath(fileuri, isDir).then((modPath) => !!modPath);
 }
 
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
-export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
-	const pkgPath = path.dirname(fileuri.fsPath);
+export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Promise<string> {
+	const pkgPath = isDir ? fileuri.fsPath : path.dirname(fileuri.fsPath);
 	if (packagePathToGoModPathMap[pkgPath]) {
 		return packagePathToGoModPathMap[pkgPath];
 	}

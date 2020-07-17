@@ -23,7 +23,7 @@ import {
 import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
 import {killProcessTree} from './utils/processUtils';
 
-const outputChannel = vscode.window.createOutputChannel('Go Tests');
+const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
 const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 statusBarItem.command = 'go.test.cancel';
 statusBarItem.text = '$(x) Cancel Running Tests';
@@ -77,6 +77,10 @@ export interface TestConfig {
 	 * Whether code coverage should be generated and applied.
 	 */
 	applyCodeCoverage?: boolean;
+	/**
+	 * Output channel for test output.
+	 */
+	outputChannel?: vscode.OutputChannel;
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
@@ -224,11 +228,26 @@ export async function getBenchmarkFunctions(
 }
 
 /**
+ * go test -json output format.
+ * which is a subset of https://golang.org/cmd/test2json/#hdr-Output_Format
+ * and includes only the fields that we are using.
+ */
+interface GoTestOutput {
+	Action: string;
+	Output?: string;
+	Package?: string;
+}
+
+/**
  * Runs go test and presents the output in the 'Go' channel.
  *
  * @param goConfig Configuration for the Go extension.
  */
 export async function goTest(testconfig: TestConfig): Promise<boolean> {
+	let outputChannel = testOutputChannel;
+	if (testconfig.outputChannel) {
+		outputChannel = testconfig.outputChannel;
+	}
 	const tmpCoverPath = getTempFilePath('go-code-cover');
 	const testResult = await new Promise<boolean>(async (resolve, reject) => {
 		// We do not want to clear it if tests are already running, as that could
@@ -267,32 +286,24 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			return Promise.resolve();
 		}
 
-		const currentGoWorkspace = testconfig.isMod
-			? ''
-			: getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
-		let targets = targetArgs(testconfig);
+		let targets = testconfig.includeSubDirectories ? ['./...'] : targetArgs(testconfig);
+
+		let currentGoWorkspace = '';
 		let getCurrentPackagePromise = Promise.resolve('');
-		if (testconfig.isMod) {
-			getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
-		} else if (currentGoWorkspace) {
-			getCurrentPackagePromise = Promise.resolve(testconfig.dir.substr(currentGoWorkspace.length + 1));
-		}
 		let pkgMapPromise: Promise<Map<string, string> | null> = Promise.resolve(null);
-		if (testconfig.includeSubDirectories) {
-			if (testconfig.isMod) {
-				targets = ['./...'];
-				// We need the mapping to get absolute paths for the files in the test output
-				pkgMapPromise = getNonVendorPackages(testconfig.dir);
-			} else {
+
+		if (testconfig.isMod) {
+			// We need the mapping to get absolute paths for the files in the test output.
+			pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
+		} else {  // GOPATH mode
+			currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
+			if (currentGoWorkspace) {
+				getCurrentPackagePromise = Promise.resolve(testconfig.dir.substr(currentGoWorkspace.length + 1));
+			}
+			if (testconfig.includeSubDirectories) {
 				pkgMapPromise = getGoVersion().then((goVersion) => {
-					if (goVersion.gt('1.8')) {
-						targets = ['./...'];
-						return null; // We dont need mapping, as we can derive the absolute paths from package path
-					}
-					return getNonVendorPackages(testconfig.dir).then((pkgMap) => {
-						targets = Array.from(pkgMap.keys());
-						return pkgMap; // We need the individual package paths to pass to `go test`
-					});
+					targets = ['./...'];
+					return null; // We dont need mapping, as we can derive the absolute paths from package path
 				});
 			}
 		}
@@ -303,6 +314,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 					pkgMap = new Map<string, string>();
 				}
 				// Use the package name to be in the args to enable running tests in symlinked directories
+				// TODO(hyangah): check why modules mode didn't set currentPackage.
 				if (!testconfig.includeSubDirectories && currentPackage) {
 					targets.splice(0, 0, currentPackage);
 				}
@@ -315,6 +327,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				}
 
 				args.push(...targets);
+				args.push('-json');
 
 				// ensure that user provided flags are appended last (allow use of -args ...)
 				// ignore user provided -run flag if we are already using it
@@ -331,30 +344,31 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				const outBuf = new LineBuffer();
 				const errBuf = new LineBuffer();
 
-				// 1=ok/FAIL, 2=package, 3=time/(cached)
-				const packageResultLineRE = /^(ok|FAIL)[ \t]+(.+?)[ \t]+([0-9\.]+s|\(cached\))/;
-				const lineWithErrorRE = /^(\t|\s\s\s\s)\S/;
 				const testResultLines: string[] = [];
-
 				const processTestResultLine = (line: string) => {
-					testResultLines.push(line);
-					const result = line.match(packageResultLineRE);
-					if (result && (pkgMap.has(result[2]) || currentGoWorkspace)) {
-						const hasTestFailed = line.startsWith('FAIL');
-						const packageNameArr = result[2].split('/');
-						const baseDir = pkgMap.get(result[2]) || path.join(currentGoWorkspace, ...packageNameArr);
-						testResultLines.forEach((testResultLine) => {
-							if (hasTestFailed && lineWithErrorRE.test(testResultLine)) {
-								outputChannel.appendLine(expandFilePathInOutput(testResultLine, baseDir));
-							} else {
-								outputChannel.appendLine(testResultLine);
-							}
-						});
-						testResultLines.splice(0);
+					try {
+						const m = <GoTestOutput>(JSON.parse(line));
+						if (m.Action !== 'output' || !m.Output) {
+							return;
+						}
+						const out = m.Output;
+						const pkg = m.Package;
+						if (pkg && (pkgMap.has(pkg) || currentGoWorkspace)) {
+							const pkgNameArr = pkg.split('/');
+							const baseDir = pkgMap.get(pkg) || path.join(currentGoWorkspace, ...pkgNameArr);
+							// go test emits test results on stdout, which contain file names relative to the package under test
+							outputChannel.appendLine(expandFilePathInOutput(out, baseDir).trimRight());
+						} else {
+							outputChannel.appendLine(out.trimRight());
+						}
+					} catch (e) {
+						// TODO: disable this log if it becomes too spammy.
+						console.log(`failed to parse JSON: ${e}: ${line}`);
+						// Build failures or other messages come in non-JSON format. So, output as they are.
+						outputChannel.appendLine(line);
 					}
 				};
 
-				// go test emits test results on stdout, which contain file names relative to the package under test
 				outBuf.onLine((line) => processTestResultLine(line));
 				outBuf.onDone((last) => {
 					if (last) {
@@ -411,7 +425,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
  * Reveals the output channel in the UI.
  */
 export function showTestOutput() {
-	outputChannel.show(true);
+	testOutputChannel.show(true);
 }
 
 /**
@@ -431,7 +445,7 @@ export function cancelRunningTests(): Thenable<boolean> {
 function expandFilePathInOutput(output: string, cwd: string): string {
 	const lines = output.split('\n');
 	for (let i = 0; i < lines.length; i++) {
-		const matches = lines[i].match(/^\s*(.+.go):(\d+):/);
+		const matches = lines[i].match(/\s+(\S+.go):(\d+):\s+/);
 		if (matches && matches[1] && !path.isAbsolute(matches[1])) {
 			lines[i] = lines[i].replace(matches[1], path.join(cwd, matches[1]));
 		}

@@ -1445,12 +1445,19 @@ encountered.
 		assert.equal(result4, false);
 	});
 
+	function fixEOL(eol: vscode.EndOfLine, strWithLF: string): string {
+		if (eol === vscode.EndOfLine.LF) {
+			return strWithLF;
+		}
+		return strWithLF.split('\n').join('\r\n');  // replaceAll.
+	}
+
 	test('Add imports when no imports', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'noimports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 
-		const expectedText = document.getText() + '\n' + 'import (\n\t"bytes"\n)\n';
+		const expectedText = document.getText() + fixEOL(document.eol, '\n' + 'import (\n\t"bytes"\n)\n');
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1467,8 +1474,11 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'groupImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
-		const expectedText = document.getText().replace('\t"fmt"\n\t"math"', '\t"bytes"\n\t"fmt"\n\t"math"');
+		const expectedText = document.getText().replace(
+			fixEOL(eol, '\t"fmt"\n\t"math"'),
+			fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1480,12 +1490,13 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'singleImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
 		const expectedText = document
 			.getText()
 			.replace(
-				'import "fmt"\nimport . "math" // comment',
-				'import (\n\t"bytes"\n\t"fmt"\n\t. "math" // comment\n)'
+				fixEOL(eol, 'import "fmt"\nimport . "math" // comment'),
+				fixEOL(eol, 'import (\n\t"bytes"\n\t"fmt"\n\t. "math" // comment\n)')
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
@@ -1498,12 +1509,13 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'cgoImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
 		const expectedText = document
 			.getText()
 			.replace(
-				'import "math"',
-				'import (\n\t"bytes"\n\t"math"\n)'
+				fixEOL(eol, 'import "math"'),
+				fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)')
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
