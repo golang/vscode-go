@@ -158,7 +158,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = await buildLanguageClient(config);
+		languageClient = buildLanguageClient(config);
 		crashCount = 0;
 	}
 
@@ -188,7 +188,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-async function buildLanguageClient(config: LanguageServerConfig): Promise<LanguageClient> {
+function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 	// Reuse the same output channel for each instance of the server.
 	if (config.enabled) {
 		if (!serverOutputChannel) {
