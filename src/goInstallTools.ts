@@ -339,20 +339,11 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	// FIXIT: when user changes the environment variable settings or go.gopath, the following
-	// condition prevents from updating the process.env accordingly, so the extension will lie.
-	// Needs to clean up.
-	if (process.env['GOPATH'] && process.env['GOPROXY'] && process.env['GOBIN']) {
-		return Promise.resolve();
-	}
-
 	// FIXIT: if updateGoVarsFromConfig is called again after addGoRuntimeBaseToPATH sets PATH,
 	// the go chosen by getBinPath based on PATH will not change.
 	const goRuntimePath = getBinPath('go', false);
 	if (!goRuntimePath) {
-		vscode.window.showErrorMessage(
-			`Failed to run "go env" to find GOPATH as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
-		);
+		suggestDownloadGo();
 		return;
 	}
 
@@ -504,4 +495,25 @@ function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 	).then((res) => {
 		return res.filter((x) => x != null);
 	});
+}
+
+let suggestedDownloadGo = false;
+
+async function suggestDownloadGo() {
+	if (suggestedDownloadGo) {
+		vscode.window.showErrorMessage(
+			`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).`
+		);
+		return;
+	}
+
+	const choice = await vscode.window.showErrorMessage(
+		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}. ` +
+		`Check PATH, or Install Go and reload the window.`,
+		'Go to Download Page'
+	);
+	if (choice === 'Go to Download Page') {
+		vscode.env.openExternal(vscode.Uri.parse('https://golang.org/dl/'));
+	}
+	suggestedDownloadGo = true;
 }

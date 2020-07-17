@@ -70,19 +70,7 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // the configuration of the server.
 export let restartLanguageServer = () => { return; };
 
-export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
-	if (!getBinPath('go', false)) {
-		const choice = await vscode.window.showInformationMessage(
-			`Go could not be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}. ` +
-			`Install Go and reload the window.`,
-			'Go to Download Page'
-		);
-		if (choice === 'Go to Download Page') {
-			vscode.env.openExternal(vscode.Uri.parse('https://golang.org/dl/'));
-		}
-		return;
-	}
-
+export function activate(ctx: vscode.ExtensionContext) {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	const configGOROOT = getGoConfig()['goroot'];
