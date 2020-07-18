@@ -26,18 +26,22 @@ suite('Installation Tests', function () {
 	this.timeout(timeout);
 
 	let tmpToolsGopath: string;
+	let tmpToolsGopath2: string;
 	let sandbox: sinon.SinonSandbox;
 	let toolsGopathStub: sinon.SinonStub;
 
 	setup(() => {
 		// Create a temporary directory in which to install tools.
 		tmpToolsGopath = fs.mkdtempSync(path.join(os.tmpdir(), 'install-test'));
-		fs.mkdirSync(path.join(tmpToolsGopath, 'bin'));
-		fs.mkdirSync(path.join(tmpToolsGopath, 'src'));
+
+		// a temporary directory to be used as the second GOPATH element.
+		tmpToolsGopath2 = fs.mkdtempSync(path.join(os.tmpdir(), 'install-test2'));
+
+		const toolsGopath = tmpToolsGopath + path.delimiter + tmpToolsGopath2;
 
 		sandbox = sinon.createSandbox();
 		const utils = require('../../src/util');
-		toolsGopathStub = sandbox.stub(utils, 'getToolsGopath').returns(tmpToolsGopath);
+		toolsGopathStub = sandbox.stub(utils, 'getToolsGopath').returns(toolsGopath);
 	});
 
 	teardown(async () => {
@@ -46,12 +50,15 @@ suite('Installation Tests', function () {
 		// Clean up the temporary GOPATH. To delete the module cache, run `go clean -modcache`.
 		const goRuntimePath = getBinPath('go');
 		const envForTest = Object.assign({}, process.env);
-		envForTest['GOPATH'] = tmpToolsGopath;
-		const execFile = util.promisify(cp.execFile);
-		await execFile(goRuntimePath, ['clean', '-modcache'], {
-			env: envForTest,
-		});
-		rmdirRecursive(tmpToolsGopath);
+
+		for (const p of [tmpToolsGopath, tmpToolsGopath2]) {
+			envForTest['GOPATH'] = p;
+			const execFile = util.promisify(cp.execFile);
+			await execFile(goRuntimePath, ['clean', '-modcache'], {
+				env: envForTest,
+			});
+			rmdirRecursive(p);
+		}
 	});
 
 	// runTest actually executes the logic of the test.

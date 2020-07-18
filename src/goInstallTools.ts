@@ -236,7 +236,8 @@ export async function installTool(
 			if (!gopath) {
 				return `GOPATH not configured in environment`;
 			}
-			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
+			const destDir = gopath.split(path.delimiter)[0];
+			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
 			await execFile(goVersion.binaryPath, ['build', '-o', outputFile, importPath], opts);
 		}
 		const toolImportPath = tool.version ? importPath + '@' + tool.version : importPath;
