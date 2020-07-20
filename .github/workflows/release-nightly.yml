@@ -40,33 +40,33 @@ jobs:
       - name: Compile
         run: npm run vscode:prepublish
 
+      # TODO: use prerelease versions of tools (how? or master?)
+
       - name: Install Go tools (Modules mode)
         run: |
             go version
-            go get github.com/acroca/go-symbols \
-               github.com/davidrjenni/reftools/cmd/fillstruct \
-               github.com/haya14busa/goplay/cmd/goplay \
-               github.com/mdempsky/gocode \
-               github.com/sqs/goreturns \
-               github.com/uudashr/gopkgs/v2/cmd/gopkgs \
-               github.com/zmb3/gogetdoc \
-               golang.org/x/lint/golint \
-               golang.org/x/tools/cmd/gorename \
-               golang.org/x/tools/gopls
-
+            go get github.com/acroca/go-symbols
+            go get github.com/davidrjenni/reftools/cmd/fillstruct
+            go get github.com/haya14busa/goplay/cmd/goplay
+            go get github.com/mdempsky/gocode
+            go get github.com/sqs/goreturns
+            go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
+            go get github.com/zmb3/gogetdoc
+            go get golang.org/x/lint/golint
+            go get golang.org/x/tools/cmd/gorename
+            go get golang.org/x/tools/gopls
         env:
-          GO111MODULE: on
-
+          GO111MODULE: on   
+          
       - name: Install Go tools (GOPATH mode)
         run: |
           go version
-          go get github.com/cweill/gotests/... \
-            github.com/rogpeppe/godef \
-            github.com/ramya-rao-a/go-outline
+          go get github.com/cweill/gotests/...
+          go get github.com/rogpeppe/godef
+          go get github.com/ramya-rao-a/go-outline
             # Because some tests depend on the source code checked in GOPATH. TODO: FIX THEM.
         env:
           GO111MODULE: off
-
 
       - name: Run unit tests
         run: npm run unit-test
