@@ -177,7 +177,7 @@ export async function installTool(
 	envForTools: NodeJS.Dict<string>, modulesOn: boolean): Promise<string> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
-		const reason = await tool.close();
+		const reason = await tool.close(envForTools);
 		if (reason) {
 			return reason;
 		}
@@ -239,7 +239,9 @@ export async function installTool(
 			const outputFile = path.join(gopath, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
 			await execFile(goVersion.binaryPath, ['build', '-o', outputFile, importPath], opts);
 		}
-		outputChannel.appendLine(`Installing ${importPath} SUCCEEDED`);
+		const toolImportPath = tool.version ? importPath + '@' + tool.version : importPath;
+		const toolInstallPath = getBinPath(tool.name);
+		outputChannel.appendLine(`Installing ${toolImportPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
 		outputChannel.appendLine(`Installing ${importPath} FAILED`);
 		result = `failed to install ${tool}: ${e} ${output} `;
