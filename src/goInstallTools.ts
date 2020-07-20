@@ -112,7 +112,8 @@ export async function installTools(missing: ToolAtVersion[], goVersion: GoVersio
 	if (envForTools['GOBIN']) {
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
-		installingMsg += `${toolsGopath}${path.sep}bin`;
+		const p = toolsGopath.split(path.delimiter).map((e) => path.join(e, 'bin')).join(path.delimiter);
+		installingMsg += `${p}`;
 	}
 
 	// If the user is on Go >= 1.11, tools should be installed with modules enabled.
