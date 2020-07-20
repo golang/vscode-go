@@ -278,8 +278,9 @@ export async function setSelectedGo(
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
 	if (!terminal) { return; }
-	const goroot = path.join(getCurrentGoRoot(), 'bin');
-	if (goroot === getBinPathFromEnvVar('go', terminalPATH, false)) {
+	const gorootBin = path.join(getCurrentGoRoot(), 'bin');
+	const defaultGoRuntimeBin = path.dirname(getBinPathFromEnvVar('go', terminalPATH, false));
+	if (gorootBin === defaultGoRuntimeBin) {
 		return;
 	}
 
@@ -287,16 +288,16 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
 	// TODO: add support for more terminal names
 	// this assumes all non-windows shells are bash-like.
 	if (terminal.name.toLowerCase() === 'cmd') {
-		terminal.sendText(`set PATH=${goroot};%Path%`, true);
+		terminal.sendText(`set PATH=${gorootBin};%Path%`, true);
 		terminal.sendText('cls');
 	} else if (terminal.name.toLowerCase() === 'powershell') {
-		terminal.sendText(`$env:Path="${goroot};$env:Path"`, true);
+		terminal.sendText(`$env:Path="${gorootBin};$env:Path"`, true);
 		terminal.sendText('clear');
 	} else if (terminal.name.toLowerCase() === 'fish') {
-		terminal.sendText(`set -gx PATH ${goroot} $PATH`);
+		terminal.sendText(`set -gx PATH ${gorootBin} $PATH`);
 		terminal.sendText('clear');
 	} else {
-		terminal.sendText(`export PATH=${goroot}:$PATH`, true);
+		terminal.sendText(`export PATH=${gorootBin}:$PATH`, true);
 		terminal.sendText('clear');
 	}
 }

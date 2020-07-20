@@ -19,7 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment } from './goEnvironmentStatus';
+import { chooseGoEnvironment, disposeGoStatusBar } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -601,7 +601,10 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
 }
 
 export function deactivate() {
-	return Promise.all([cancelRunningTests(), Promise.resolve(cleanupTempDir())]);
+	return Promise.all([
+		cancelRunningTests(),
+		Promise.resolve(cleanupTempDir()),
+		Promise.resolve(disposeGoStatusBar())]);
 }
 
 function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {
