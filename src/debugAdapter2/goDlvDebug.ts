@@ -767,6 +767,11 @@ class DelveClient extends DAPClient {
 //             it's already a directory),
 //    programIsDirectory: is the program a directory?
 // }
+//
+// The program argument is taken as-is from launchArgs. If the program path
+// is relative, dirname will also be relative. If the program path is absolute,
+// dirname will also be absolute.
+//
 // Throws an exception in case args.program is not a valid file or directory.
 // This function can block because it calls a blocking fs function.
 function parseProgramArgSync(launchArgs: LaunchRequestArguments
