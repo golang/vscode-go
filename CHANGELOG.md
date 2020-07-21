@@ -1,3 +1,9 @@
+## v0.15.2 - 21st July, 2020
+
+### Fixed
+
+- Do not fail tools installation when gocode is not already running ([Issue 355](https://github.com/golang/vscode-go/issues/355)).
+
 ## v0.15.1 - 7th July, 2020
 
 ### Enhancement
