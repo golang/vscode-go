@@ -53,6 +53,7 @@ import {
 	getCurrentGoPath,
 	getExtensionCommands,
 	getGoConfig,
+	getGoEnv,
 	getGoVersion,
 	getToolsGopath,
 	getWorkspaceFolderPath,
@@ -686,4 +687,25 @@ async function getConfiguredGoToolsCommand() {
 		}
 		outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
 	});
+
+	let folders = vscode.workspace.workspaceFolders?.map((folder) => {
+		return { name: folder.name, path: folder.uri.path };
+	});
+	if (!folders) {
+		folders = [{ name: 'no folder', path: undefined }];
+	}
+
+	outputChannel.appendLine('');
+	outputChannel.appendLine('go env');
+	for (const folder of folders) {
+		outputChannel.appendLine(`Workspace Folder (${folder.name}): ${folder.path}`);
+		try {
+			const out = await getGoEnv(folder.path);
+			// Append '\t' to the beginning of every line (^) of 'out'.
+			// 'g' = 'global matching', and 'm' = 'multi-line matching'
+			outputChannel.appendLine(out.replace(/^/gm, '\t'));
+		} catch (e) {
+			outputChannel.appendLine(`failed to run 'go env': ${e}`);
+		}
+	}
 }

@@ -336,6 +336,21 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 }
 
 /**
+ * Returns the output of `go env` from the specified directory.
+ * Throws an error if the command fails.
+ */
+export async function getGoEnv(cwd?: string): Promise<string> {
+	const goRuntime = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	const opts = {cwd, env: toolExecutionEnvironment()};
+	const { stdout, stderr } = await execFile(goRuntime, ['env'], opts);
+	if (stderr) {
+		throw new Error(`failed to run 'go env': ${stderr}`);
+	}
+	return stdout;
+}
+
+/**
  * Returns boolean denoting if current version of Go supports vendoring
  */
 export async function isVendorSupported(): Promise<boolean> {
@@ -370,6 +385,7 @@ export async function isVendorSupported(): Promise<boolean> {
  */
 export function isGoPathSet(): boolean {
 	if (!getCurrentGoPath()) {
+		// TODO(hyangah): is it still possible after go1.8? (https://golang.org/doc/go1.8#gopath)
 		vscode.window
 			.showInformationMessage(
 				'Set GOPATH environment variable and restart VS Code or set GOPATH in Workspace settings',
