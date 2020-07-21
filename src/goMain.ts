@@ -79,72 +79,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 	}
 
 	updateGoVarsFromConfig().then(async () => {
-		const updateToolsCmdText = 'Update tools';
-		interface GoInfo {
-			goroot: string;
-			version: string;
-		}
-		const toolsGoInfo: { [id: string]: GoInfo } = ctx.globalState.get('toolsGoInfo') || {};
-		const toolsGopath = getToolsGopath() || getCurrentGoPath();
-		if (!toolsGoInfo[toolsGopath]) {
-			toolsGoInfo[toolsGopath] = { goroot: null, version: null };
-		}
-		const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-		const currentGoroot: string = getCurrentGoRoot().toLowerCase();
-		if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
-			vscode.window
-				.showInformationMessage(
-					`Your current goroot (${currentGoroot}) is different than before (${prevGoroot}), a few Go tools may need recompiling`,
-					updateToolsCmdText
-				)
-				.then((selected) => {
-					if (selected === updateToolsCmdText) {
-						installAllTools(true);
-					}
-				});
-		} else {
-			const currentVersion = await getGoVersion();
-			if (currentVersion) {
-				const prevVersion = toolsGoInfo[toolsGopath].version;
-				const currVersionString = currentVersion.format();
-
-				if (prevVersion !== currVersionString) {
-					if (prevVersion) {
-						vscode.window
-							.showInformationMessage(
-								'Your Go version is different than before, a few Go tools may need re-compiling',
-								updateToolsCmdText
-							)
-							.then((selected) => {
-								if (selected === updateToolsCmdText) {
-									installAllTools(true);
-								}
-							});
-					}
-					toolsGoInfo[toolsGopath].version = currVersionString;
-				}
-			}
-		}
-		toolsGoInfo[toolsGopath].goroot = currentGoroot;
-		ctx.globalState.update('toolsGoInfo', toolsGoInfo);
-
+		suggestUpdates(ctx);
 		offerToInstallTools();
-
-		// Subscribe to notifications for changes to the configuration
-		// of the language server, even if it's not currently in use.
-		ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration(
-			(e) => watchLanguageServerConfiguration(e)
-		));
-
-		// Set the function that is used to restart the language server.
-		// This is necessary, even if the language server is not currently
-		// in use.
-		restartLanguageServer = async () => {
-			startLanguageServerWithFallback(ctx, false);
-		};
-
-		// Start the language server, or fallback to the default language providers.
-		startLanguageServerWithFallback(ctx, true);
+		configureLanguageServer(ctx);
 
 		if (
 			vscode.window.activeTextEditor &&
@@ -152,6 +89,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 			isGoPathSet()
 		) {
 			// Check mod status so that cache is updated and then run build/lint/vet
+			// TODO(hyangah): skip if the language server is used (it will run build too)
 			isModSupported(vscode.window.activeTextEditor.document.uri).then(() => {
 				runBuilds(vscode.window.activeTextEditor.document, getGoConfig());
 			});
@@ -173,7 +111,10 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
-	ctx.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
+
+	// debug
+	ctx.subscriptions.push(
+		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
 	ctx.subscriptions.push(
 		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
 
@@ -198,60 +139,13 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.gopath', () => {
-			const gopath = getCurrentGoPath();
-			let msg = `${gopath} is the current GOPATH.`;
-			const wasInfered = getGoConfig()['inferGopath'];
-			const root = getWorkspaceFolderPath(
-				vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri
-			);
-
-			// not only if it was configured, but if it was successful.
-			if (wasInfered && root && root.indexOf(gopath) === 0) {
-				const inferredFrom = vscode.window.activeTextEditor ? 'current folder' : 'workspace root';
-				msg += ` It is inferred from ${inferredFrom}`;
-			}
-
-			vscode.window.showInformationMessage(msg);
-			return gopath;
-		})
-	);
+			getCurrentGoPathCommand();
+		}));
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.locate.tools', async () => {
-			outputChannel.show();
-			outputChannel.clear();
-			outputChannel.appendLine('Checking configured tools....');
-			// Tool's path search is done by getBinPathWithPreferredGopath
-			// which searches places in the following order
-			// 1) absolute path for the alternateTool
-			// 2) GOBIN
-			// 3) toolsGopath
-			// 4) gopath
-			// 5) GOROOT
-			// 6) PATH
-			outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
-			outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
-			outputChannel.appendLine('gopath: ' + getCurrentGoPath());
-			outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
-			outputChannel.appendLine('PATH: ' + process.env['PATH']);
-			outputChannel.appendLine('');
-
-			const goVersion = await getGoVersion();
-			const allTools = getConfiguredTools(goVersion);
-
-			allTools.forEach((tool) => {
-				const toolPath = getBinPath(tool.name);
-				// TODO(hyangah): print alternate tool info if set.
-				let msg = 'not installed';
-				if (path.isAbsolute(toolPath)) {
-					// getBinPath returns the absolute path is the tool exists.
-					// (See getBinPathWithPreferredGopath which is called underneath)
-					msg = 'installed';
-				}
-				outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
-			});
-		})
-	);
+			getConfiguredGoToolsCommand();
+		}));
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.add.tags', (args) => {
@@ -669,4 +563,127 @@ class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory 
 	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
 		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
+}
+
+async function suggestUpdates(ctx: vscode.ExtensionContext) {
+	const updateToolsCmdText = 'Update tools';
+	interface GoInfo {
+		goroot: string;
+		version: string;
+	}
+	const toolsGoInfo: { [id: string]: GoInfo } = ctx.globalState.get('toolsGoInfo') || {};
+	const toolsGopath = getToolsGopath() || getCurrentGoPath();
+	if (!toolsGoInfo[toolsGopath]) {
+		toolsGoInfo[toolsGopath] = { goroot: null, version: null };
+	}
+	const prevGoroot = toolsGoInfo[toolsGopath].goroot;
+	const currentGoroot: string = getCurrentGoRoot().toLowerCase();
+	if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
+		vscode.window
+			.showInformationMessage(
+				`Your current goroot (${currentGoroot}) is different than before (${prevGoroot}), a few Go tools may need recompiling`,
+				updateToolsCmdText
+			)
+			.then((selected) => {
+				if (selected === updateToolsCmdText) {
+					installAllTools(true);
+				}
+			});
+	} else {
+		const currentVersion = await getGoVersion();
+		if (currentVersion) {
+			const prevVersion = toolsGoInfo[toolsGopath].version;
+			const currVersionString = currentVersion.format();
+
+			if (prevVersion !== currVersionString) {
+				if (prevVersion) {
+					vscode.window
+						.showInformationMessage(
+							'Your Go version is different than before, a few Go tools may need re-compiling',
+							updateToolsCmdText
+						)
+						.then((selected) => {
+							if (selected === updateToolsCmdText) {
+								installAllTools(true);
+							}
+						});
+				}
+				toolsGoInfo[toolsGopath].version = currVersionString;
+			}
+		}
+	}
+	toolsGoInfo[toolsGopath].goroot = currentGoroot;
+	ctx.globalState.update('toolsGoInfo', toolsGoInfo);
+}
+
+function configureLanguageServer(ctx: vscode.ExtensionContext) {
+	// Subscribe to notifications for changes to the configuration
+	// of the language server, even if it's not currently in use.
+	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration(
+		(e) => watchLanguageServerConfiguration(e)
+	));
+
+	// Set the function that is used to restart the language server.
+	// This is necessary, even if the language server is not currently
+	// in use.
+	restartLanguageServer = async () => {
+		startLanguageServerWithFallback(ctx, false);
+	};
+
+	// Start the language server, or fallback to the default language providers.
+	startLanguageServerWithFallback(ctx, true);
+
+}
+
+function getCurrentGoPathCommand() {
+	const gopath = getCurrentGoPath();
+	let msg = `${gopath} is the current GOPATH.`;
+	const wasInfered = getGoConfig()['inferGopath'];
+	const root = getWorkspaceFolderPath(
+		vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri
+	);
+
+	// not only if it was configured, but if it was successful.
+	if (wasInfered && root && root.indexOf(gopath) === 0) {
+		const inferredFrom = vscode.window.activeTextEditor ? 'current folder' : 'workspace root';
+		msg += ` It is inferred from ${inferredFrom}`;
+	}
+
+	vscode.window.showInformationMessage(msg);
+	return gopath;
+}
+
+async function getConfiguredGoToolsCommand() {
+	outputChannel.show();
+	outputChannel.clear();
+	outputChannel.appendLine('Checking configured tools....');
+	// Tool's path search is done by getBinPathWithPreferredGopath
+	// which searches places in the following order
+	// 1) absolute path for the alternateTool
+	// 2) GOBIN
+	// 3) toolsGopath
+	// 4) gopath
+	// 5) GOROOT
+	// 6) PATH
+	outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
+	outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
+	outputChannel.appendLine('gopath: ' + getCurrentGoPath());
+	outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
+	outputChannel.appendLine('PATH: ' + process.env['PATH']);
+	outputChannel.appendLine('');
+
+	const goVersion = await getGoVersion();
+	const allTools = getConfiguredTools(goVersion);
+
+	allTools.forEach((tool) => {
+		const toolPath = getBinPath(tool.name);
+		// TODO(hyangah): print alternate tool info if set.
+		let msg = 'not installed';
+		if (path.isAbsolute(toolPath)) {
+			// getBinPath returns the absolute path is the tool exists.
+			// (See getBinPathWithPreferredGopath which is called underneath)
+			msg = 'installed';
+		}
+		outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
+	});
 }
