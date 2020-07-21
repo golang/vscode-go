@@ -27,7 +27,7 @@ import {
 	parseEnvFile
 } from '../utils/goPath';
 
-import {killProcessTree} from '../utils/processUtils';
+import { killProcessTree } from '../utils/processUtils';
 
 import { DAPClient } from './dapClient';
 
@@ -605,20 +605,7 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		if (launchArgs.mode !== 'debug') {
 			throw new Error('launchNoDebug requires "debug" mode');
 		}
-		const program = launchArgs.program;
-		if (!program) {
-			throw new Error('The program attribute is missing in the debug configuration in launch.json');
-		}
-		let programIsDirectory = false;
-		try {
-			programIsDirectory = fs.lstatSync(program).isDirectory();
-		} catch (e) {
-			throw new Error('The program attribute must point to valid directory, .go file or executable.');
-		}
-		if (!programIsDirectory && path.extname(program) !== '.go') {
-			throw new Error('The program attribute must be a directory or .go file in debug mode');
-		}
-
+		const {program, dirname, programIsDirectory} = parseProgramArgSync(launchArgs);
 		const goRunArgs = ['run'];
 		if (launchArgs.buildFlags) {
 			goRunArgs.push(launchArgs.buildFlags);
@@ -648,9 +635,8 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		const launchArgsEnv = launchArgs.env || {};
 		const programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
 
-		const dirname = programIsDirectory ? program : path.dirname(program);
-		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
 		log(`Current working directory: ${dirname}`);
+		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
 		log(`Running: ${goExe} ${goRunArgs.join(' ')}`);
 
 		this.debugProcess = spawn(goExe, goRunArgs, {
@@ -721,7 +707,7 @@ class DelveClient extends DAPClient {
 		log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
 		this.debugProcess = spawn(dlvPath, dlvArgs, {
-			cwd: path.dirname(launchArgs.program),
+			cwd: parseProgramArgSync(launchArgs).dirname,
 			env
 		});
 
@@ -772,4 +758,37 @@ class DelveClient extends DAPClient {
 			});
 		}, 200);
 	}
+}
+
+// Helper function to parse a program from LaunchRequestArguments. Returns:
+// {
+//    program: the program arg,
+//    dirname: the directory containing the program (or 'program' itself if
+//             it's already a directory),
+//    programIsDirectory: is the program a directory?
+// }
+//
+// The program argument is taken as-is from launchArgs. If the program path
+// is relative, dirname will also be relative. If the program path is absolute,
+// dirname will also be absolute.
+//
+// Throws an exception in case args.program is not a valid file or directory.
+// This function can block because it calls a blocking fs function.
+function parseProgramArgSync(launchArgs: LaunchRequestArguments
+): { program: string, dirname: string, programIsDirectory: boolean } {
+	const program = launchArgs.program;
+	if (!program) {
+		throw new Error('The program attribute is missing in the debug configuration in launch.json');
+	}
+	let programIsDirectory = false;
+	try {
+		programIsDirectory = fs.lstatSync(program).isDirectory();
+	} catch (e) {
+		throw new Error('The program attribute must point to valid directory, .go file or executable.');
+	}
+	if (!programIsDirectory && path.extname(program) !== '.go') {
+		throw new Error('The program attribute must be a directory or .go file in debug mode');
+	}
+	const dirname = programIsDirectory ? program : path.dirname(program);
+	return {program, dirname, programIsDirectory};
 }
