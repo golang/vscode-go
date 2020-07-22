@@ -20,26 +20,26 @@ suite('gopls survey tests', () => {
 			[
 				{
 					lastDateAccepted: new Date('2020-04-02'),
-					promptThisMonthTimestamp: new Date('2020-04-10'),
+					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: true,
 					promptThisMonth: false,
 				},
-				false,
+				undefined,
 			],
 			// User who has declined survey prompting.
 			[
 				{
-					promptThisMonthTimestamp: new Date('2020-04-10'),
+					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: false,
 				},
-				false,
+				undefined,
 			],
 			// User who hasn't activated the extension in a while, but has opted in to prompting.
 			[
 				{
-					promptThisMonthTimestamp: new Date('2019-04-10'),
+					dateComputedPromptThisMonth: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
 				},
@@ -48,7 +48,7 @@ suite('gopls survey tests', () => {
 			// User who hasn't activated the extension in a while, and has never been prompted.
 			[
 				{
-					promptThisMonthTimestamp: new Date('2019-04-10'),
+					dateComputedPromptThisMonth: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 				},
 				true,
@@ -57,7 +57,7 @@ suite('gopls survey tests', () => {
 			[
 				{
 					lastDateAccepted: undefined,
-					promptThisMonthTimestamp: new Date('2020-04-10'),
+					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
 					promptThisMonth: true,
@@ -69,12 +69,15 @@ suite('gopls survey tests', () => {
 			// Replace Math.Random so that it always returns 1. This means
 			// that we will always choose to prompt, in the event that the
 			// user can be prompted that month.
-			sinon.replace(Math, 'random', () => 1);
+			sinon.replace(Math, 'random', () => 0);
 
 			const now = new Date('2020-04-29');
 			const gotPrompt = shouldPromptForGoplsSurvey(now, testConfig);
-			assert.equal(wantPrompt, gotPrompt, `prompt determination failed for ${i}`);
-
+			if (wantPrompt) {
+				assert.ok(gotPrompt, `prompt determination failed for ${i}`);
+			} else {
+				assert.equal(gotPrompt, wantPrompt, `prompt determination failed for ${i}`);
+			}
 			sinon.restore();
 		});
 	});

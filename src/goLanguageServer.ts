@@ -83,7 +83,12 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 let restartCommand: vscode.Disposable;
 
 // When enabled, users may be prompted to fill out the gopls survey.
-const goplsSurveyOn: boolean = false;
+// For now, we turn it on in the Nightly extension to test it.
+const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
+
+// lastUserAction is the time of the last user-triggered change.
+// A user-triggered change is a didOpen, didChange, didSave, or didClose event.
+let lastUserAction: Date = new Date();
 
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
@@ -114,12 +119,8 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
 function scheduleGoplsSuggestions(tool: Tool) {
-	const minute = 1000 * 60;
-	const hour = minute * 60;
-	const day = hour * 24;
-
 	const update = async () => {
-		setTimeout(update, day);
+		setTimeout(update, timeDay);
 
 		const cfg = buildLanguageServerConfig();
 		if (!cfg.enabled) {
@@ -131,7 +132,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		}
 	};
 	const survey = async () => {
-		setTimeout(survey, day);
+		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig();
 		if (!goplsSurveyOn || !cfg.enabled) {
@@ -143,8 +144,8 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		}
 	};
 
-	setTimeout(update, 10 * minute);
-	setTimeout(survey, hour);
+	setTimeout(update, 10 * timeMinute);
+	setTimeout(survey, 30 * timeMinute);
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -361,7 +362,21 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 						}
 					}
 					return list;
-				}
+				},
+				// Keep track of the last file change in order to not prompt
+				// user if they are actively working.
+				didOpen: () => {
+					lastUserAction = new Date();
+				},
+				didChange: () => {
+					lastUserAction = new Date();
+				},
+				didClose: () => {
+					lastUserAction = new Date();
+				},
+				didSave: () => {
+					lastUserAction = new Date();
+				},
 			}
 		}
 	);
@@ -762,9 +777,13 @@ export interface SurveyConfig {
 	// It is undefined if we have not yet made the determination.
 	promptThisMonth?: boolean;
 
-	// promptThisMonthTimestamp is the date on which we determined if the user
-	// should be prompted this month.
-	promptThisMonthTimestamp?: Date;
+	// dateToPromptThisMonth is the date on which we should prompt the user
+	// this month.
+	dateToPromptThisMonth?: Date;
+
+	// dateComputedPromptThisMonth is the date on which the values of
+	// promptThisMonth and dateToPromptThisMonth were set.
+	dateComputedPromptThisMonth?: Date;
 
 	// lastDatePrompted is the most recent date that the user has been prompted.
 	lastDatePrompted?: Date;
@@ -777,11 +796,84 @@ export interface SurveyConfig {
 async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
 	const now = new Date();
 	const cfg = getSurveyConfig();
-	const prompt = shouldPromptForGoplsSurvey(now, cfg);
-	if (!prompt) {
+	const dateToPrompt = shouldPromptForGoplsSurvey(now, cfg);
+	if (!dateToPrompt) {
 		return cfg;
 	}
-	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
+	const callback = () => {
+		const currentTime = new Date();
+
+		// Make sure the user has been idle for at least a minute.
+		if (minutesBetween(lastUserAction, currentTime) < 1) {
+			setTimeout(callback, 5 * timeMinute);
+			return;
+		}
+		promptForSurvey(cfg, now);
+	};
+	const ms = msBetween(now, dateToPrompt);
+	setTimeout(callback, ms);
+	return cfg;
+}
+
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
+	// If the prompt value is not set, assume we haven't prompted the user
+	// and should do so.
+	if (cfg.prompt === undefined) {
+		cfg.prompt = true;
+	}
+	if (!cfg.prompt) {
+		return;
+	}
+
+	// Check if the user has taken the survey in the last year.
+	// Don't prompt them if they have been.
+	if (cfg.lastDateAccepted) {
+		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+			return;
+		}
+	}
+
+	// Check if the user has been prompted for the survey in the last 90 days.
+	// Don't prompt them if they have been.
+	if (cfg.lastDatePrompted) {
+		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+			return;
+		}
+	}
+
+	// Check if the extension has been activated this month.
+	if (cfg.dateComputedPromptThisMonth) {
+		// The extension has been activated this month, so we should have already
+		// decided if the user should be prompted.
+		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
+			if (cfg.dateToPromptThisMonth) {
+				return cfg.dateToPromptThisMonth;
+			}
+		}
+	}
+	// This is the first activation this month (or ever), so decide if we
+	// should prompt the user. This is done by generating a random number in
+	// the range [0, 1) and checking if it is < 0.05, for a 5% probability.
+	// We then randomly pick a day in the rest of the month on which to prompt
+	// the user.
+	cfg.promptThisMonth = Math.random() < 0.05;
+	if (cfg.promptThisMonth) {
+		// end is the last day of the month, day is the random day of the
+		// month on which to prompt.
+		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+		const day = randomIntInRange(now.getUTCDate(), end.getUTCDate());
+		cfg.dateToPromptThisMonth = new Date(now.getFullYear(), now.getMonth(), day);
+	} else {
+		cfg.dateToPromptThisMonth = undefined;
+	}
+	cfg.dateComputedPromptThisMonth = now;
+	return cfg.dateToPromptThisMonth;
+}
+
+async function promptForSurvey(cfg: SurveyConfig, now: Date) {
+	const selected = await vscode.window.showInformationMessage(`**TEST**: THE GOPLS SURVEY IS NOT YET AVAILABLE.
+
+Looks like you're using gopls, the Go language server.
 Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
 	// Update the time last asked.
@@ -816,52 +908,13 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
 			break;
-	}
-	return cfg;
-}
+		default:
+			// If the user closes the prompt without making a selection, treat it
+			// like a "Not now" response.
+			cfg.prompt = true;
 
-export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
-	// If the prompt value is not set, assume we haven't prompted the user
-	// and should do so.
-	if (cfg.prompt === undefined) {
-		cfg.prompt = true;
+			break;
 	}
-	if (!cfg.prompt) {
-		return false;
-	}
-
-	// Check if the user has taken the survey in the last year.
-	// Don't prompt them if they have been.
-	if (cfg.lastDateAccepted) {
-		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
-			return false;
-		}
-	}
-
-	// Check if the user has been prompted for the survey in the last 90 days.
-	// Don't prompt them if they have been.
-	if (cfg.lastDatePrompted) {
-		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
-			return false;
-		}
-	}
-
-	// Check if the extension has been activated this month.
-	if (cfg.promptThisMonthTimestamp) {
-		// The extension has been activated this month, so we should have already
-		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.promptThisMonthTimestamp) < 30) {
-			return cfg.promptThisMonth;
-		}
-	}
-	// This is the first activation this month (or ever), so decide if we
-	// should prompt the user. This is done by generating a random number
-	// and % 20 to get a 5% chance.
-	const r = Math.floor(Math.random() * 20);
-	cfg.promptThisMonth = (r % 20 === 0);
-	cfg.promptThisMonthTimestamp = now;
-
-	return cfg.promptThisMonth;
 }
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
@@ -874,7 +927,7 @@ function getSurveyConfig(): SurveyConfig {
 	try {
 		const cfg = JSON.parse(saved, (key: string, value: any) => {
 			// Make sure values that should be dates are correctly converted.
-			if (key.includes('Date')) {
+			if (key.toLowerCase().includes('date') || key.toLowerCase().includes('timestamp')) {
 				return new Date(value);
 			}
 			return value;
@@ -975,9 +1028,27 @@ DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
 	}
 }
 
-// daysBetween returns the number of days between a and b,
-// assuming that a occurs after b.
-function daysBetween(a: Date, b: Date) {
-	const ms = a.getTime() - b.getTime();
-	return ms / (1000 * 60 * 60 * 24);
+// randomIntInRange returns a random integer between min and max, inclusive.
+function randomIntInRange(min: number, max: number): number {
+	const low = Math.ceil(min);
+	const high = Math.floor(max);
+	return Math.floor(Math.random() * (high - low + 1)) + low;
+}
+
+const timeMinute = 1000 * 60;
+const timeHour = timeMinute * 60;
+const timeDay = timeHour * 24;
+
+// daysBetween returns the number of days between a and b.
+function daysBetween(a: Date, b: Date): number {
+	return msBetween(a, b) / timeDay;
+}
+
+// minutesBetween returns the number of days between a and b.
+function minutesBetween(a: Date, b: Date): number {
+	return msBetween(a, b) / timeMinute;
+}
+
+function msBetween(a: Date, b: Date): number {
+	return Math.abs(a.getTime() - b.getTime());
 }
