@@ -43,3 +43,7 @@ export function updateWorkspaceState(key: string, value: any) {
 export function setWorkspaceState(state: vscode.Memento) {
 	workspaceState = state;
 }
+
+export function getWorkspaceState(): vscode.Memento {
+	return workspaceState;
+}

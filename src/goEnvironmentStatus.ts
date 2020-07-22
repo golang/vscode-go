@@ -160,6 +160,9 @@ export async function chooseGoEnvironment() {
  * update the selected go path and label in the workspace state
  */
 export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload = true) {
+	if (!goOption) {
+		return;
+	}
 	const execFile = promisify(cp.execFile);
 	// if the selected go version is not installed, install it
 	if (goOption.binpath?.startsWith('go get')) {
@@ -253,7 +256,6 @@ export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload 
 			return;
 		}
 
-		console.log('updating selectedGo: ', goOption);
 		await updateWorkspaceState('selectedGo', goOption);
 		goEnvStatusbarItem.text = goOption.label;
 	}
