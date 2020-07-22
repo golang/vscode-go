@@ -286,13 +286,13 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
 	if (terminal.name.toLowerCase() === 'cmd') {
 		terminal.sendText(`set PATH=${gorootBin};%Path%`, true);
 		terminal.sendText('cls');
-	} else if (terminal.name.toLowerCase() === 'powershell') {
+	} else if (['powershell', 'pwsh'].includes(terminal.name.toLowerCase())) {
 		terminal.sendText(`$env:Path="${gorootBin};$env:Path"`, true);
 		terminal.sendText('clear');
 	} else if (terminal.name.toLowerCase() === 'fish') {
 		terminal.sendText(`set -gx PATH ${gorootBin} $PATH`);
 		terminal.sendText('clear');
-	} else {
+	} else if (['bash', 'sh', 'zsh', 'ksh'].includes(terminal.name.toLowerCase())) {
 		terminal.sendText(`export PATH=${gorootBin}:$PATH`, true);
 		terminal.sendText('clear');
 	}
