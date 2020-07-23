@@ -62,7 +62,6 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 
 	let goModEnvResult = await runGoModEnv(pkgPath);
 	if (goModEnvResult) {
-		logModuleUsage();
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
 
@@ -73,30 +72,21 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 			);
 		}
 
-		// TODO(rstambler): This will offer multiple prompts to the user, but
-		// it's still better than waiting for user input. Ideally, this should
-		// be combined into one prompt.
 		if (goConfig['useLanguageServer'] === false) {
 			const promptMsg =
 				'For better performance using Go modules, you can try the experimental Go language server, gopls.';
-			promptToUpdateToolForModules('gopls', promptMsg, goConfig);
-
-			if (goConfig['formatTool'] === 'goreturns') {
-				const promptMsgForFormatTool = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to goimports.`;
-				promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
-			}
+			promptToUpdateToolForModules('gopls', promptMsg, goConfig)
+			.then((choseToUpdate) => {
+				if (choseToUpdate || goConfig['formatTool'] !== 'goreturns') {
+					return;
+				}
+				const promptFormatToolMsg = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".`;
+				promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
+			});
 		}
 	}
 	packagePathToGoModPathMap[pkgPath] = goModEnvResult;
 	return goModEnvResult;
-}
-
-let moduleUsageLogged = false;
-function logModuleUsage() {
-	if (moduleUsageLogged) {
-		return;
-	}
-	moduleUsageLogged = true;
 }
 
 const promptedToolsForCurrentSession = new Set<string>();
