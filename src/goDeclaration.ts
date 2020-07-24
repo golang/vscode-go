@@ -22,7 +22,8 @@ import {
 	isPositionInString,
 	runGodoc
 } from './util';
-import {killProcessTree} from './utils/processUtils';
+import { getCurrentGoRoot } from './utils/goPath';
+import { killProcessTree } from './utils/processUtils';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -133,6 +134,7 @@ function definitionLocation_godef(
 	}
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = toolExecutionEnvironment();
+	env['GOROOT'] = getCurrentGoRoot();
 	let p: cp.ChildProcess;
 	if (token) {
 		token.onCancellationRequested(() => killProcessTree(p));
