@@ -634,21 +634,13 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Replace vendor packages with relative path', async () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
 		const vendorSupport = await isVendorSupported();
-		const filePath = path.join(toolsGopath, 'src', 'github.com', 'rogpeppe', 'godef', 'go', 'ast', 'ast.go');
+		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
 		const vendorPkgsFullPath = [
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/acme',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9/client'
+			'test/testfixture/vendoring/vendor/example.com/vendorpls',
 		];
-		const vendorPkgsRelativePath = ['9fans.net/go/acme', '9fans.net/go/plan9', '9fans.net/go/plan9/client'];
+		const vendorPkgsRelativePath = ['example.com/vendorpls'];
 
 		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
 			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
@@ -702,18 +694,10 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Vendor pkgs from other projects should not be allowed to import', async () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
 		const vendorSupport = await isVendorSupported();
-		const filePath = path.join(toolsGopath, 'src', 'github.com', 'ramya-rao-a', 'go-outline', 'main.go');
+		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = [
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/acme',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9/client'
+			'test/testfixture/vendoring/vendor/example.com/vendorpls',
 		];
 
 		const gopkgsPromise = new Promise<void>((resolve, reject) => {
@@ -757,13 +741,7 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Workspace Symbols', () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
-		const workspacePath = path.join(toolsGopath, 'src', 'github.com', 'rogpeppe', 'godef');
+		const workspacePath = path.join(fixturePath, 'vendoring');
 		const configWithoutIgnoringFolders = Object.create(vscode.workspace.getConfiguration('go'), {
 			gotoSymbol: {
 				value: {
@@ -795,16 +773,16 @@ It returns the number of bytes written and any write error encountered.
 
 		const withoutIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,
-			'WinInfo',
+			'SomethingStr',
 			dummyCancellationSource.token,
 			configWithoutIgnoringFolders
 		).then((results) => {
-			assert.equal(results[0].name, 'WinInfo');
-			assert.equal(results[0].path, path.join(workspacePath, 'vendor/9fans.net/go/acme/acme.go'));
+			assert.equal(results[0].name, 'SomethingStrange');
+			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example.com/vendorpls/lib.go'));
 		});
 		const withIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,
-			'WinInfo',
+			'SomethingStr',
 			dummyCancellationSource.token,
 			configWithIgnoringFolders
 		).then((results) => {
