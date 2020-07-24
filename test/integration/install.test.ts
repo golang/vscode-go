@@ -10,12 +10,14 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
+import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
 import { toolInstallationEnvironment } from '../../src/goEnv';
 import { installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, rmdirRecursive } from '../../src/util';
+import { correctBinname } from '../../src/utils/goPath';
 
 suite('Installation Tests', function () {
 	// Disable timeout when we are running slow tests.
@@ -71,7 +73,7 @@ suite('Installation Tests', function () {
 			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
 				toolsEnvVars: {
 					value: {
-						GOPROXY: `file://${proxyDir}`,
+						GOPROXY: url.pathToFileURL(proxyDir),
 						GOSUMDB: 'off',
 					}
 				},
@@ -93,7 +95,7 @@ suite('Installation Tests', function () {
 		for (const tool of testCases) {
 			checks.push(new Promise<void>(async (resolve) => {
 				// Check that the expect tool has been installed to $GOPATH/bin.
-				const ok = await exists(path.join(tmpToolsGopath, 'bin', tool));
+				const ok = await exists(path.join(tmpToolsGopath, 'bin', correctBinname(tool)));
 				if (!ok) {
 					assert.fail(`expected ${tmpToolsGopath}/bin/${tool}, not found`);
 				}
@@ -152,7 +154,7 @@ function buildFakeProxy(tools: string[]) {
 		// Write the zip file.
 		const zip = new AdmZip();
 		const content = `package main; func main() {};`;
-		zip.addFile(path.join(`${module}@${version}`, 'main.go'), Buffer.alloc(content.length, content));
+		zip.addFile(`${module}@${version}/main.go`, Buffer.alloc(content.length, content));
 		zip.writeZip(path.join(dir, `${version}.zip`));
 	}
 	return proxyDir;

@@ -374,8 +374,8 @@ It returns the number of bytes written and any write error encountered.
 			buildOnSave: { value: 'package' },
 			lintOnSave: { value: 'package' },
 			// simulate a long running lint process by sleeping for a couple seconds
-			lintTool: { value: 'sleep' },
-			lintFlags: { value: ['2'] }
+			lintTool: { value: process.platform !== 'win32' ? 'sleep' : 'timeout' },
+			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', 2] }
 		});
 
 		const results = await Promise.all([
@@ -473,7 +473,12 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test diffUtils.getEditsFromUnifiedDiffStr', async () => {
+	test('Test diffUtils.getEditsFromUnifiedDiffStr', async function () {
+		if (process.platform === 'win32') {
+			// This test requires diff tool that's not available on windows
+			this.skip();
+		}
+
 		const file1path = path.join(fixturePath, 'diffTest1Data', 'file1.go');
 		const file2path = path.join(fixturePath, 'diffTest1Data', 'file2.go');
 		const file1uri = vscode.Uri.file(file1path);
