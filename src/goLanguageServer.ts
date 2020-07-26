@@ -15,8 +15,16 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
-	CloseAction, CompletionItemKind, ErrorAction, HandleDiagnosticsSignature, InitializeError,
-	LanguageClient, Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature,
+	CloseAction,
+	CompletionItemKind,
+	ErrorAction,
+	ExecuteCommandSignature,
+	HandleDiagnosticsSignature,
+	InitializeError,
+	LanguageClient,
+	Message,
+	ProvideCompletionItemsSignature,
+	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
@@ -249,6 +257,32 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 				},
 			},
 			middleware: {
+				provideCodeLenses: async (doc, token, next): Promise<vscode.CodeLens[]> => {
+					const codeLens = await next(doc, token);
+					return codeLens.map((lens: vscode.CodeLens) => {
+						switch (lens.command.title) {
+							case 'run test': {
+								const args = lens.command.arguments;
+								return new vscode.CodeLens(lens.range, {
+									...lens.command,
+									command: 'go.test.cursor',
+									arguments: [{ functionName: args[args.indexOf('run') + 1] }],
+								});
+							}
+							case 'run benchmark': {
+								const args = lens.command.arguments;
+								return new vscode.CodeLens(lens.range, {
+									...lens.command,
+									command: 'go.benchmark.cursor',
+									arguments: [{ functionName: args[args.indexOf('bench') + 1] }],
+								});
+							}
+							default: {
+								return lens;
+							}
+						}
+					});
+				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
 					diagnostics: vscode.Diagnostic[],
