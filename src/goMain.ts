@@ -19,7 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, disposeGoStatusBar } from './goEnvironmentStatus';
+import { chooseGoEnvironment, disposeGoStatusBar, setEnvironmentVariableCollection } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -74,6 +74,8 @@ export let restartLanguageServer = () => { return; };
 export function activate(ctx: vscode.ExtensionContext) {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
+	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
+
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
 		setCurrentGoRoot(configGOROOT);

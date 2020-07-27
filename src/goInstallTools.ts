@@ -12,7 +12,7 @@ import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
 import { toolInstallationEnvironment } from './goEnv';
-import { initGoStatusBar } from './goEnvironmentStatus';
+import { addGoRuntimeBaseToPATH, initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
@@ -372,50 +372,13 @@ export function updateGoVarsFromConfig(): Promise<void> {
 
 			// cgo, gopls, and other underlying tools will inherit the environment and attempt
 			// to locate 'go' from the PATH env var.
-			let cachePath = '';
-			if (process.env.hasOwnProperty('PATH')) {
-				cachePath = process.env.PATH;
-			} else {
-				cachePath = process.env.Path;
-			}
-
 			addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
-			initGoStatusBar(cachePath);
+			initGoStatusBar();
 			// TODO: restart language server or synchronize with language server update.
 
 			return resolve();
 		});
 	});
-}
-
-// PATH value cached before addGoRuntimeBaseToPath modified.
-let defaultPathEnv = '';
-
-// addGoRuntimeBaseToPATH adds the given path to the front of the PATH environment variable.
-// It removes duplicates.
-// TODO: can we avoid changing PATH but utilize toolExecutionEnv?
-function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
-	if (!newGoRuntimeBase) {
-		return;
-	}
-
-	let pathEnvVar: string;
-	if (process.env.hasOwnProperty('PATH')) {
-		pathEnvVar = 'PATH';
-	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
-		pathEnvVar = 'Path';
-	} else {
-		return;
-	}
-
-	if (!defaultPathEnv) {  // cache the default value
-		defaultPathEnv = <string>process.env[pathEnvVar];
-	}
-
-	let pathVars = defaultPathEnv.split(path.delimiter);
-	pathVars = pathVars.filter((p) => p !== newGoRuntimeBase);
-	pathVars.unshift(newGoRuntimeBase);
-	process.env[pathEnvVar] = pathVars.join(path.delimiter);
 }
 
 let alreadyOfferedToInstallTools = false;

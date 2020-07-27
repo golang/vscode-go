@@ -36,30 +36,17 @@ export class GoEnvironmentOption {
 // statusbar item for switching the Go environment
 let goEnvStatusbarItem: vscode.StatusBarItem;
 let terminalCreationListener: vscode.Disposable;
-let terminalPATH: string;
 
 /**
  * Initialize the status bar item with current Go binary
  */
-export async function initGoStatusBar(cachePath: string) {
+export async function initGoStatusBar() {
 	if (!goEnvStatusbarItem) {
 		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 	}
-	// cache the PATH on first initialization
-	// this will be the path that new integrated terminals have
-	if (!terminalPATH) {
-		terminalPATH = cachePath;
-	}
-
 	// set Go version and command
 	const version = await getGoVersion();
 	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
-
-	// ensure terminals use the correct Go version
-	if (!terminalCreationListener) {
-		updateIntegratedTerminal(vscode.window.activeTerminal);
-		terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
-	}
 
 	hideGoStatusBar();
 	goEnvStatusbarItem.text = goOption.label;
@@ -95,6 +82,11 @@ export function hideGoStatusBar() {
 	if (!!goEnvStatusbarItem) {
 		goEnvStatusbarItem.hide();
 	}
+}
+
+let environmentVariableCollection: vscode.EnvironmentVariableCollection;
+export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariableCollection) {
+	environmentVariableCollection = env;
 }
 
 /**
@@ -149,8 +141,10 @@ export async function chooseGoEnvironment() {
 
 	// update currently selected go
 	try {
-		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
-		vscode.window.showInformationMessage(`Switched to ${selection.label}`);
+		const changed = await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
+		if (changed) {
+			vscode.window.showInformationMessage(`Switched to ${selection.label}`);
+		}
 	} catch (e) {
 		vscode.window.showErrorMessage(e.message);
 	}
@@ -159,123 +153,183 @@ export async function chooseGoEnvironment() {
 /**
  * update the selected go path and label in the workspace state
  */
-export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload = true) {
+export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload = true): Promise<boolean> {
 	if (!goOption) {
-		return;
+		return false;
 	}
-	const execFile = promisify(cp.execFile);
+
 	// if the selected go version is not installed, install it
 	if (goOption.binpath?.startsWith('go get')) {
 		// start a loading indicator
-		await vscode.window.withProgress({
-			title: `Downloading ${goOption.label}`,
-			location: vscode.ProgressLocation.Notification,
-		}, async () => {
-			outputChannel.show();
-			outputChannel.clear();
-
-			outputChannel.appendLine('Finding Go executable for downloading');
-			const goExecutable = getBinPath('go');
-			if (!goExecutable) {
-				outputChannel.appendLine('Could not find Go executable.');
-				throw new Error('Could not find Go tool.');
-			}
-
-			// TODO(bcloud) dedup repeated logic below which comes from
-			// https://github.com/golang/vscode-go/blob/bc23fa854192d04200c8e4f74dca18d2c3021b46/src/goInstallTools.ts#L184
-
-			// Install tools in a temporary directory, to avoid altering go.mod files.
-			const mkdtemp = promisify(fs.mkdtemp);
-			const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
-			let tmpGoModFile: string;
-
-			// Write a temporary go.mod file to avoid version conflicts.
-			tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
-			const writeFile = promisify(fs.writeFile);
-			await writeFile(tmpGoModFile, 'module tools');
-
-			// use the current go executable to download the new version
-			const env = {
-				...toolInstallationEnvironment(),
-				GO111MODULE: 'on',
-			};
-			const [, ...args] = goOption.binpath.split(' ');
-			outputChannel.appendLine(`Running ${goExecutable} ${args.join(' ')}`);
-			try {
-				await execFile(goExecutable, args, {
-					env,
-					cwd: toolsTmpDir,
-				});
-			} catch (getErr) {
-				outputChannel.appendLine(`Error finding Go: ${getErr}`);
-				throw new Error('Could not find Go version.');
-			}
-
-			// run `goX.X download`
-			const newExecutableName = args[1].split('/')[2];
-			const goXExecutable = getBinPath(newExecutableName);
-			outputChannel.appendLine(`Running: ${goXExecutable} download`);
-			try {
-				await execFile(goXExecutable, ['download'], { env });
-			} catch (downloadErr) {
-				outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
-				throw new Error('Could not download Go version.');
-			}
-
-			outputChannel.appendLine('Finding newly downloaded Go');
-			const sdkPath = path.join(os.homedir(), 'sdk');
-			if (!await pathExists(sdkPath)) {
-				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
-				throw new Error(`SDK path does not exist: ${sdkPath}`);
-			}
-
-			const readdir = promisify(fs.readdir);
-			const subdirs = await readdir(sdkPath);
-			const dir = subdirs.find((subdir) => subdir === newExecutableName);
-			if (!dir) {
-				outputChannel.appendLine('Could not find newly downloaded Go');
-				throw new Error('Could not install Go version.');
-			}
-
-			const binpath = path.join(sdkPath, dir, 'bin', correctBinname('go'));
-			const newOption = new GoEnvironmentOption(binpath, goOption.label);
-			await updateWorkspaceState('selectedGo', newOption);
-			goEnvStatusbarItem.text = goOption.label;
-
-			// remove tmp directories
-			outputChannel.appendLine('Cleaning up...');
-			rmdirRecursive(toolsTmpDir);
-			outputChannel.appendLine('Success!');
-		});
+		await downloadGo(goOption);
 	} else if (goOption.label === 'Clear selection') {
-		updateWorkspaceState('selectedGo', undefined);
+		if (!getSelectedGo()) {
+			return false;  // do nothing.
+		}
+		await updateWorkspaceState('selectedGo', undefined);
+		// TODO: goEnvStatusbarItem?
 	} else {
 		// check that the given binary is not already at the beginning of the PATH
 		const go = await getGoVersion();
-		if (go.binaryPath === goOption.binpath) {
-			return;
+		if (!!go && (go.binaryPath === goOption.binpath || 'Go ' + go.format() === goOption.label)) {
+			return false;
 		}
-
 		await updateWorkspaceState('selectedGo', goOption);
-		goEnvStatusbarItem.text = goOption.label;
 	}
-	// prompt the user to reload the window
-	// promptReload defaults to true and should only be false for tests
+	// prompt the user to reload the window.
+	// promptReload defaults to true and should only be false for tests.
 	if (promptReload) {
-		const choice = await vscode.window.showInformationMessage('Please reload the window to finish applying changes.', 'Reload Window');
+		const choice = await vscode.window.showInformationMessage('Please reload the window to finish applying Go version changes.', 'Reload Window');
 		if (choice === 'Reload Window') {
 			await vscode.commands.executeCommand('workbench.action.reloadWindow');
 		}
 	}
+	goEnvStatusbarItem.text = 'Go: reload required';
+	goEnvStatusbarItem.command = 'workbench.action.reloadWindow';
+
+	return true;
+}
+
+// downloadGo downloads the specified go version available in dl.golang.org.
+async function downloadGo(goOption: GoEnvironmentOption) {
+	const execFile = promisify(cp.execFile);
+	await vscode.window.withProgress({
+		title: `Downloading ${goOption.label}`,
+		location: vscode.ProgressLocation.Notification,
+	}, async () => {
+		outputChannel.show();
+		outputChannel.clear();
+
+		outputChannel.appendLine('Finding Go executable for downloading');
+		const goExecutable = getBinPath('go');
+		if (!goExecutable) {
+			outputChannel.appendLine('Could not find Go executable.');
+			throw new Error('Could not find Go tool.');
+		}
+
+		// TODO(bcloud) dedup repeated logic below which comes from
+		// https://github.com/golang/vscode-go/blob/bc23fa854192d04200c8e4f74dca18d2c3021b46/src/goInstallTools.ts#L184
+		// Install tools in a temporary directory, to avoid altering go.mod files.
+		const mkdtemp = promisify(fs.mkdtemp);
+		const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
+		let tmpGoModFile: string;
+
+		// Write a temporary go.mod file to avoid version conflicts.
+		tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
+		const writeFile = promisify(fs.writeFile);
+		await writeFile(tmpGoModFile, 'module tools');
+
+		// use the current go executable to download the new version
+		const env = {
+			...toolInstallationEnvironment(),
+			GO111MODULE: 'on',
+		};
+		const [, ...args] = goOption.binpath.split(' ');
+		outputChannel.appendLine(`Running ${goExecutable} ${args.join(' ')}`);
+		try {
+			await execFile(goExecutable, args, {
+				env,
+				cwd: toolsTmpDir,
+			});
+		} catch (getErr) {
+			outputChannel.appendLine(`Error finding Go: ${getErr}`);
+			throw new Error('Could not find Go version.');
+		}
+
+		// run `goX.X download`
+		const newExecutableName = args[1].split('/')[2];
+		const goXExecutable = getBinPath(newExecutableName);
+		outputChannel.appendLine(`Running: ${goXExecutable} download`);
+		try {
+			await execFile(goXExecutable, ['download'], { env });
+		} catch (downloadErr) {
+			outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
+			throw new Error('Could not download Go version.');
+		}
+
+		outputChannel.appendLine('Finding newly downloaded Go');
+		const sdkPath = path.join(os.homedir(), 'sdk');
+		if (!await pathExists(sdkPath)) {
+			outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
+			throw new Error(`SDK path does not exist: ${sdkPath}`);
+		}
+
+		const readdir = promisify(fs.readdir);
+		const subdirs = await readdir(sdkPath);
+		const dir = subdirs.find((subdir) => subdir === newExecutableName);
+		if (!dir) {
+			outputChannel.appendLine('Could not find newly downloaded Go');
+			throw new Error('Could not install Go version.');
+		}
+
+		const binpath = path.join(sdkPath, dir, 'bin', correctBinname('go'));
+		const newOption = new GoEnvironmentOption(binpath, goOption.label);
+		await updateWorkspaceState('selectedGo', newOption);
+
+		// remove tmp directories
+		outputChannel.appendLine('Cleaning up...');
+		rmdirRecursive(toolsTmpDir);
+		outputChannel.appendLine('Success!');
+	});
+}
+
+// PATH value cached before addGoRuntimeBaseToPath modified.
+let defaultPathEnv = '';
+
+// addGoRuntimeBaseToPATH adds the given path to the front of the PATH environment variable.
+// It removes duplicates.
+// TODO: can we avoid changing PATH but utilize toolExecutionEnv?
+export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
+	if (!newGoRuntimeBase) {
+		return;
+	}
+
+	let pathEnvVar: string;
+	if (process.env.hasOwnProperty('PATH')) {
+		pathEnvVar = 'PATH';
+	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
+		pathEnvVar = 'Path';
+	} else {
+		return;
+	}
+
+	if (!defaultPathEnv) {  // cache the default value
+		defaultPathEnv = <string>process.env[pathEnvVar];
+	}
+
+	// calling this multiple times will override the previous value.
+	// environmentVariableCollection.clear();
+	if (process.platform !== 'darwin') {
+		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+	} else if (!terminalCreationListener) {
+		// We don't use EnvironmentVariableCollection on mac
+		// because this gets confusing for users. Instead we send the
+		// shell command to change the PATH env var,
+		// following the suggestion to workaround described in
+		// https://github.com/microsoft/vscode/issues/99878#issuecomment-642808852
+		const terminalShellArgs = <string[]>(vscode.workspace.getConfiguration('terminal.integrated').get('shellArgs') || []);
+		// User explicitly chose to run the login shell. So, don't mess with their config.
+		if (!terminalShellArgs.includes('-l') && !terminalShellArgs.includes('--login')) {
+			for (const term of vscode.window.terminals) {
+				updateIntegratedTerminal(term);
+			}
+			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
+		}
+	}
+
+	let pathVars = defaultPathEnv.split(path.delimiter);
+	pathVars = pathVars.filter((p) => p !== newGoRuntimeBase);
+	pathVars.unshift(newGoRuntimeBase);
+	process.env[pathEnvVar] = pathVars.join(path.delimiter);
 }
 
 /**
  * update the PATH variable in the given terminal to default to the currently selected Go
  */
-export async function updateIntegratedTerminal(terminal: vscode.Terminal) {
+export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promise<void> {
 	if (!terminal) { return; }
 	const gorootBin = path.join(getCurrentGoRoot(), 'bin');
-	const defaultGoRuntimeBin = path.dirname(getBinPathFromEnvVar('go', terminalPATH, false));
+	const defaultGoRuntimeBin = path.dirname(getBinPathFromEnvVar('go', defaultPathEnv, false));
 	if (gorootBin === defaultGoRuntimeBin) {
 		return;
 	}
