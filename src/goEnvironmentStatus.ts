@@ -223,7 +223,7 @@ export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload 
 			}
 
 			outputChannel.appendLine('Finding newly downloaded Go');
-			const sdkPath = path.join(process.env.HOME, 'sdk');
+			const sdkPath = path.join(os.homedir(), 'sdk');
 			if (!await pathExists(sdkPath)) {
 				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
