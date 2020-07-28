@@ -689,7 +689,7 @@ async function getConfiguredGoToolsCommand() {
 	});
 
 	let folders = vscode.workspace.workspaceFolders?.map((folder) => {
-		return { name: folder.name, path: folder.uri.path };
+		return { name: folder.name, path: folder.uri.fsPath };
 	});
 	if (!folders) {
 		folders = [{ name: 'no folder', path: undefined }];
