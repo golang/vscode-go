@@ -393,7 +393,7 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	// the path is assembled and used as the description
 	return subdirs.map((dir: string) =>
 		new GoEnvironmentOption(
-			path.join(sdkPath, dir, 'bin', 'go'),
+			path.join(sdkPath, dir, 'bin', correctBinname('go')),
 			dir.replace('go', 'Go '),
 		)
 	);
@@ -409,7 +409,7 @@ export async function getDefaultGoOption(): Promise<GoEnvironmentOption> {
 	// set Go version and command
 	const version = await getGoVersion();
 	return new GoEnvironmentOption(
-		path.join(goroot, 'bin', 'go'),
+		path.join(goroot, 'bin', correctBinname('go')),
 		formatGoVersion(version.format()),
 	);
 }
