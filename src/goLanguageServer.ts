@@ -871,9 +871,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 }
 
 async function promptForSurvey(cfg: SurveyConfig, now: Date) {
-	const selected = await vscode.window.showInformationMessage(`**TEST**: THE GOPLS SURVEY IS NOT YET AVAILABLE.
-
-Looks like you're using gopls, the Go language server.
+	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
 Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
 	// Update the time last asked.
@@ -884,19 +882,7 @@ Would you be willing to fill out a quick survey about your experience with gopls
 			cfg.lastDateAccepted = now;
 			cfg.prompt = true;
 
-			// Open the link to the survey in a webview.
-			const panel = vscode.window.createWebviewPanel('goplsSurvey', 'gopls survey', {
-				viewColumn: null,
-				preserveFocus: false,
-			}, {});
-
-			// TODO(rstambler): Not sure how to set the correct height here.
-			panel.webview.html = `<!DOCTYPE html>
-<html>
-<body>
-<iframe width="100%" height="500px" src="https://golang.org"></iframe>
-</body>
-</html>`;
+			await vscode.env.openExternal(vscode.Uri.parse(`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX`));
 			break;
 		case 'Not now':
 			cfg.prompt = true;
