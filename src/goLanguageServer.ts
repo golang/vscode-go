@@ -23,6 +23,7 @@ import {
 	InitializeError,
 	LanguageClient,
 	Message,
+	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn,
@@ -258,34 +259,54 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 				},
 			},
 			middleware: {
-				provideCodeLenses: async (doc, token, next): Promise<vscode.CodeLens[]> => {
+				provideCodeLenses: async (
+					doc: vscode.TextDocument,
+					token: vscode.CancellationToken,
+					next: ProvideCodeLensesSignature
+				): Promise<vscode.CodeLens[]> => {
 					const codeLens = await next(doc, token);
 					if (!codeLens || codeLens.length === 0) {
 						return codeLens;
 					}
-					return codeLens.map((lens: vscode.CodeLens) => {
+					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
 								const args = lens.command.arguments;
-								return new vscode.CodeLens(lens.range, {
-									...lens.command,
-									command: 'go.test.cursor',
-									arguments: [{ functionName: args[args.indexOf('run') + 1] }],
-								});
+								return [
+									...lenses,
+									new vscode.CodeLens(lens.range, {
+										...lens.command,
+										command: 'go.test.cursor',
+										arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+									}),
+									new vscode.CodeLens(lens.range, {
+										title: 'debug test',
+										command: 'go.debug.cursor',
+										arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+									}),
+								];
 							}
 							case 'run benchmark': {
 								const args = lens.command.arguments;
-								return new vscode.CodeLens(lens.range, {
-									...lens.command,
-									command: 'go.benchmark.cursor',
-									arguments: [{ functionName: args[args.indexOf('bench') + 1] }],
-								});
+								return [
+									...lenses,
+									new vscode.CodeLens(lens.range, {
+										...lens.command,
+										command: 'go.benchmark.cursor',
+										arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+									}),
+									new vscode.CodeLens(lens.range, {
+										title: 'debug benchmark',
+										command: 'go.debug.cursor',
+										arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+									}),
+								];
 							}
 							default: {
-								return lens;
+								return [...lenses, lens];
 							}
 						}
-					});
+					}, []);
 				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
