@@ -375,7 +375,7 @@ It returns the number of bytes written and any write error encountered.
 			lintOnSave: { value: 'package' },
 			// simulate a long running lint process by sleeping for a couple seconds
 			lintTool: { value: process.platform !== 'win32' ? 'sleep' : 'timeout' },
-			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', 2] }
+			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', '2'] }
 		});
 
 		const results = await Promise.all([
