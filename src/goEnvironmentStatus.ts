@@ -301,13 +301,14 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
 		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
-	} else if (!terminalCreationListener) {
+	} else if (!terminalCreationListener) {  // process.platform === 'darwin'
 		// We don't use EnvironmentVariableCollection on mac
 		// because this gets confusing for users. Instead we send the
 		// shell command to change the PATH env var,
 		// following the suggestion to workaround described in
 		// https://github.com/microsoft/vscode/issues/99878#issuecomment-642808852
-		const terminalShellArgs = <string[]>(vscode.workspace.getConfiguration('terminal.integrated').get('shellArgs') || []);
+		const terminalShellArgs = <string[]>(
+			vscode.workspace.getConfiguration('terminal.integrated.shellArgs').get('osx') || []);
 		// User explicitly chose to run the login shell. So, don't mess with their config.
 		if (!terminalShellArgs.includes('-l') && !terminalShellArgs.includes('--login')) {
 			for (const term of vscode.window.terminals) {
