@@ -89,13 +89,13 @@ export class GoVersion {
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
-			const sv = semver.coerce(matchesRelease[0]);
+			const sv = semver.coerce(matchesRelease[1]);
 			if (sv) {
 				this.sv = sv;
 			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
-			this.commit = matchesDevel[0];
+			this.commit = matchesDevel[1];
 		}
 	}
 
@@ -318,7 +318,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
-		warn(`cached Go version (${cachedGoVersion}) is invalid, recomputing`);
+		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	try {
 		const execFile = util.promisify(cp.execFile);
