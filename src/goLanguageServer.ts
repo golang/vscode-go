@@ -260,6 +260,9 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 			middleware: {
 				provideCodeLenses: async (doc, token, next): Promise<vscode.CodeLens[]> => {
 					const codeLens = await next(doc, token);
+					if (!codeLens || codeLens.length === 0) {
+						return codeLens;
+					}
 					return codeLens.map((lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
@@ -365,17 +368,21 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 				},
 				// Keep track of the last file change in order to not prompt
 				// user if they are actively working.
-				didOpen: () => {
+				didOpen: (e, next) => {
 					lastUserAction = new Date();
+					next(e);
 				},
-				didChange: () => {
+				didChange: (e, next) => {
 					lastUserAction = new Date();
+					next(e);
 				},
-				didClose: () => {
+				didClose: (e, next) => {
 					lastUserAction = new Date();
+					next(e);
 				},
-				didSave: () => {
+				didSave: (e, next) => {
 					lastUserAction = new Date();
+					next(e);
 				},
 			}
 		}
