@@ -55,7 +55,7 @@
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "^1.40.0",
     "vscode-debugprotocol": "^1.40.0",
-    "vscode-languageclient": "6.1.0",
+    "vscode-languageclient": "^6.1.3",
     "web-request": "^1.0.7"
   },
   "devDependencies": {
@@ -83,7 +83,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.41.0"
+    "vscode": "^1.46.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
