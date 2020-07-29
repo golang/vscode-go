@@ -433,11 +433,16 @@ interface GoVersionWebResult {
 }
 async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 	// fetch information about what Go versions are available to install
-	const webResults = await WebRequest.json<GoVersionWebResult[]>('https://golang.org/dl/?mode=json');
-	if (!webResults) {
+	let webResults;
+	try {
+		webResults = await WebRequest.json<GoVersionWebResult[]>('https://golang.org/dl/?mode=json');
+	} catch (error) {
 		return [];
 	}
 
+	if (!webResults) {
+		return [];
+	}
 	// turn the web result into GoEnvironmentOption model
 	return webResults.reduce((opts, result: GoVersionWebResult) => {
 		// TODO: allow downloading from different sites
