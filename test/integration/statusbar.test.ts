@@ -43,7 +43,7 @@ describe('#initGoStatusBar()', function () {
 
 	it('should create a status bar item with a label matching go.goroot version', async () => {
 		const version = await ourutil.getGoVersion();
-		const versionLabel = formatGoVersion(version.format());
+		const versionLabel = formatGoVersion(version);
 		assert.equal(
 			getGoEnvironmentStatusbarItem().text,
 			versionLabel,
@@ -58,7 +58,7 @@ describe('#setSelectedGo()', async function () {
 	let goOption: GoEnvironmentOption;
 	let defaultMemento: vscode.Memento;
 	const version = await ourutil.getGoVersion();
-	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
+	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version));
 
 	this.beforeAll(async () => {
 		defaultMemento = getWorkspaceState();
@@ -116,7 +116,7 @@ describe('#updateGoVarsFromConfig()', async function () {
 	let tmpRootBin: string | undefined;
 	let sandbox: sinon.SinonSandbox | undefined;
 	const version = await ourutil.getGoVersion();
-	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
+	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version));
 
 	this.beforeAll(async () => {
 		defaultMemento = getWorkspaceState();
