@@ -82,16 +82,24 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 
 export class GoVersion {
 	public sv?: semver.SemVer;
+	// Go version tags are not following the strict semver format
+	// so semver drops the prerelease tags used in Go version.
+	// If sv is valid, let's keep the original version string 
+	// including the prerelease tag parts.
+	public svString?: string;
+	
 	public isDevel?: boolean;
 	private commit?: string;
-
-	constructor(public binaryPath: string, version: string) {
-		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
+	
+	constructor(public binaryPath: string, public version: string) {
+		const matchesRelease = /^go version go(\d\.\d+\S*)\s+/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
+			// note: semver.parse does not work with Go version string like go1.14.
 			const sv = semver.coerce(matchesRelease[1]);
 			if (sv) {
 				this.sv = sv;
+				this.svString = matchesRelease[1];
 			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
@@ -103,11 +111,17 @@ export class GoVersion {
 		return !!this.sv || !!this.isDevel;
 	}
 
-	public format(): string {
+	public format(includePrerelease?: boolean): string {
 		if (this.sv) {
+			if (includePrerelease && this.svString) {
+				return this.svString;
+			}
 			return this.sv.format();
 		}
-		return `devel +${this.commit}`;
+		if (this.isDevel) {
+			return `devel +${this.commit}`;
+		}
+		return `unknown`;
 	}
 
 	public lt(version: string): boolean {
@@ -300,9 +314,14 @@ export function getUserNameHash() {
 
 /**
  * Gets version of Go based on the output of the command `go version`.
- * Returns null if go is being used from source/tip in which case `go version` will not return release tag like go1.6.3
+ * Returns undefined if go version can't be determined because
+ * go is not available or `go version` fails.
  */
 export async function getGoVersion(): Promise<GoVersion | undefined> {
+	// TODO(hyangah): limit the number of concurrent getGoVersion call.
+	// When the extension starts, at least 4 concurrent calls race
+	// and end up calling `go version`.
+
 	const goRuntimePath = getBinPath('go');
 
 	const warn = (msg: string) => {

@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { guessPackageNameFromFile, substituteEnv } from '../../src/util';
+import { GoVersion, guessPackageNameFromFile, substituteEnv } from '../../src/util';
 
 suite('utils Tests', () => {
 	test('substituteEnv: default', () => {
@@ -20,6 +20,79 @@ suite('utils Tests', () => {
 
 		// test completed
 		process.env = env;
+	});
+
+	test('build GoVersion', () => {
+		// [input, wantFormat, wantFormatIncludePrerelease, wantIsValid]
+		const testCases: [string|undefined, string, string, boolean][] = [
+			[
+				'go version devel +a295d59d Fri Jun 26 19:00:25 2020 +0000 darwin/amd64',
+				'devel +a295d59d',
+				'devel +a295d59d',
+				true,
+			],
+			[
+				'go version go1.14 darwin/amd64',
+				'1.14.0',
+				'1.14',
+				true,
+			],
+			[
+				'go version go1.14.1 linux/amd64',
+				'1.14.1',
+				'1.14.1',
+				true,
+			],
+			[
+				'go version go1.15rc1 darwin/amd64',
+				'1.15.0',
+				'1.15rc1',
+				true,
+			],
+			[
+				'go version go1.15.1rc2 windows/amd64',
+				'1.15.1',
+				'1.15.1rc2',
+				true,
+			],
+			[
+				'go version go1.15.3-beta.1 darwin/amd64',
+				'1.15.3',
+				'1.15.3-beta.1',
+				true,
+			],
+			[
+				'go version go1.15.3-beta.1.2.3 foobar/amd64',
+				'1.15.3',
+				'1.15.3-beta.1.2.3',
+				true,
+			],
+			[
+				'go version go10.0.1 js/amd64',
+				'unknown',
+				'unknown',
+				false,
+			],
+			[
+				undefined,
+				'unknown',
+				'unknown',
+				false,
+			],
+			[
+				'something wrong',
+				'unknown',
+				'unknown',
+				false,
+			]
+		];
+		for (const [input, wantFormat, wantFormatIncludePrerelease, wantIsValid] of testCases) {
+			const go = new GoVersion('/path/to/go', input);
+
+			assert.equal(go.isValid(), wantIsValid, `GoVersion(${input}) = ${JSON.stringify(go)}`);
+			assert.equal(go.format(), wantFormat, `GoVersion(${input}) = ${JSON.stringify(go)}`);
+			assert.equal(go.format(true), wantFormatIncludePrerelease, `GoVersion(${input}) = ${JSON.stringify(go)}`);
+		}
 	});
 });
 
