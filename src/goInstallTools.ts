@@ -366,7 +366,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
 				process.env['GOBIN'] = envOutput[3].trim();
 			}
-			if (!process.env['GOMODCACHE']) {
+			if (!process.env['GOMODCACHE'] && envOutput[4] && envOutput[4].trim()) {
 				process.env['GOMODCACHE'] = envOutput[4].trim();
 			}
 
