@@ -8,10 +8,10 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { installTools } from './goInstallTools';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './goPath';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/goPath';
 
 export let GO111MODULE: string;
 
@@ -37,14 +37,14 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 	});
 }
 
-export function isModSupported(fileuri: vscode.Uri): Promise<boolean> {
-	return getModFolderPath(fileuri).then((modPath) => !!modPath);
+export function isModSupported(fileuri: vscode.Uri, isDir?: boolean): Promise<boolean> {
+	return getModFolderPath(fileuri, isDir).then((modPath) => !!modPath);
 }
 
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
-export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
-	const pkgPath = path.dirname(fileuri.fsPath);
+export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Promise<string> {
+	const pkgPath = isDir ? fileuri.fsPath : path.dirname(fileuri.fsPath);
 	if (packagePathToGoModPathMap[pkgPath]) {
 		return packagePathToGoModPathMap[pkgPath];
 	}
@@ -62,7 +62,6 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 
 	let goModEnvResult = await runGoModEnv(pkgPath);
 	if (goModEnvResult) {
-		logModuleUsage();
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
 
@@ -73,30 +72,21 @@ export async function getModFolderPath(fileuri: vscode.Uri): Promise<string> {
 			);
 		}
 
-		// TODO(rstambler): This will offer multiple prompts to the user, but
-		// it's still better than waiting for user input. Ideally, this should
-		// be combined into one prompt.
 		if (goConfig['useLanguageServer'] === false) {
 			const promptMsg =
 				'For better performance using Go modules, you can try the experimental Go language server, gopls.';
-			promptToUpdateToolForModules('gopls', promptMsg, goConfig);
-
-			if (goConfig['formatTool'] === 'goreturns') {
-				const promptMsgForFormatTool = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to goimports.`;
-				promptToUpdateToolForModules('switchFormatToolToGoimports', promptMsgForFormatTool, goConfig);
-			}
+			promptToUpdateToolForModules('gopls', promptMsg, goConfig)
+			.then((choseToUpdate) => {
+				if (choseToUpdate || goConfig['formatTool'] !== 'goreturns') {
+					return;
+				}
+				const promptFormatToolMsg = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".`;
+				promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
+			});
 		}
 	}
 	packagePathToGoModPathMap[pkgPath] = goModEnvResult;
 	return goModEnvResult;
-}
-
-let moduleUsageLogged = false;
-function logModuleUsage() {
-	if (moduleUsageLogged) {
-		return;
-	}
-	moduleUsageLogged = true;
 }
 
 const promptedToolsForCurrentSession = new Set<string>();

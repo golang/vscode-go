@@ -56,7 +56,6 @@ Code completion is provided by `gocode`. It is the only tool that runs as a serv
 
 Different versions of `gocode` are used depending on your version of Go.
 
-* Go 1.8 and below: [nsf/gocode](https://github.com/nsf/gocode)
 * Go 1.9 and above: [mdempsky/gocode](https://github.com/mdempsky/gocode)
 * Go 1.11 and above, with modules enabled: [stamblerre/gocode](https://github.com/stamblerre/gocode)
   * This version of `gocode` does not have any caching, so if you find it slow, consider using [gopls] instead.

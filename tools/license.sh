@@ -40,6 +40,9 @@ NG=$(echo "${ALL_LICENSES}" | jq '
   "Unlicense": 1,
   "0BSD": 1,
   "(Unlicense OR Apache-2.0)": 1,
+  "(MIT OR Apache-2.0)": 1,
+  "(MIT AND Zlib)": 1,
+  "(MIT AND BSD-3-Clause)": 1,
 } as $allowed_licenses |
 {
   "json-schema@0.2.3": 1,

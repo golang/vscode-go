@@ -125,6 +125,11 @@ export function goLint(
 			// Explicit override in case .golangci.yml calls for a format we don't understand
 			args.push('--out-format=colored-line-number');
 		}
+		if (args.indexOf('--issues-exit-code=') === -1) {
+			// adds an explicit no-error-code return argument, to avoid npm error
+			// message detection logic. See golang/vscode-go/issues/411
+			args.push('--issues-exit-code=0');
+		}
 	}
 
 	if (scope === 'workspace' && currentWorkspace) {

@@ -7,9 +7,9 @@
 
 import fs = require('fs');
 import path = require('path');
-import rl = require('readline');
 import vscode = require('vscode');
 import { isModSupported } from './goModules';
+import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { getGoConfig } from './util';
 
@@ -29,6 +29,7 @@ let decoratorConfig: {
 	coveredGutterStyle: string;
 	uncoveredGutterStyle: string;
 };
+
 // a list of modified, unsaved go files with actual code edits (rather than comment edits)
 let modifiedFiles: {
 	[key: string]: boolean;
@@ -93,6 +94,8 @@ export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 	// These defaults are chosen to be distinguishable in nearly any color scheme (even Red)
 	// as well as by people who have difficulties with color perception.
+	// (how do these relate the defaults in package.json?)
+	// and where do the defaults actually come from? (raised as issue #256)
 	decoratorConfig = {
 		type: 'highlight',
 		coveredHighlightColor: 'rgba(64,128,128,0.5)',
@@ -151,14 +154,14 @@ interface CoverageData {
 	coveredRange: vscode.Range[];
 }
 
-let coverageFiles: { [key: string]: CoverageData } = {};
+let coverageData: { [key: string]: CoverageData } = {};  // actual file path to the coverage data.
 let isCoverageApplied: boolean = false;
 
 /**
  * Clear the coverage on all files
  */
 function clearCoverage() {
-	coverageFiles = {};
+	coverageData = {};
 	disposeDecorators();
 	isCoverageApplied = false;
 }
@@ -167,48 +170,59 @@ function clearCoverage() {
  * Extract the coverage data from the given cover profile & apply them on the files in the open editors.
  * @param coverProfilePath Path to the file that has the cover profile data
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
+ * @param testDir Directory to execute go list in, when there is no workspace, for some tests
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, packageDirPath: string): Promise<void> {
-	return new Promise((resolve, reject) => {
+export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?: string): Promise<void> {
+	const v = new Promise<void>((resolve, reject) => {
 		try {
+			const coveragePath = new Map<string, CoverageData>();  // <filename> from the cover profile to the coverage data.
+
 			// Clear existing coverage files
 			clearCoverage();
 
-			const lines = rl.createInterface({
-				input: fs.createReadStream(coverProfilePath),
-				output: undefined
-			});
-
-			lines.on('line', (data: string) => {
+			// collect the packages named in the coverage file
+			const seenPaths = new Set<string>();
+			// for now read synchronously and hope for no errors
+			const contents = fs.readFileSync(coverProfilePath).toString();
+			contents.split('\n').forEach((line) => {
 				// go test coverageprofile generates output:
 				//    filename:StartLine.StartColumn,EndLine.EndColumn Hits CoverCount
-				// The first line will be "mode: set" which will be ignored
-				const fileRange = data.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
-				if (!fileRange) {
-					return;
+				// where the filename is either the import path + '/' + base file name, or
+				// the actual file path (either absolute or starting with .)
+				// See https://golang.org/issues/40251.
+				//
+				// The first line will be like "mode: set" which we will ignore.
+				const parse = line.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
+				if (!parse) { return; }
+				const lastSlash = parse[1].lastIndexOf('/');
+				if (lastSlash !== -1) {
+					seenPaths.add(parse[1].slice(0, lastSlash));
 				}
 
-				const filePath = path.join(packageDirPath, path.basename(fileRange[1]));
-				const coverage = getCoverageData(filePath);
+				// and fill in coveragePath
+				const coverage = coveragePath.get(parse[1]) || { coveredRange: [], uncoveredRange: [] };
 				const range = new vscode.Range(
 					// Start Line converted to zero based
-					parseInt(fileRange[2], 10) - 1,
+					parseInt(parse[2], 10) - 1,
 					// Start Column converted to zero based
-					parseInt(fileRange[3], 10) - 1,
+					parseInt(parse[3], 10) - 1,
 					// End Line converted to zero based
-					parseInt(fileRange[4], 10) - 1,
+					parseInt(parse[4], 10) - 1,
 					// End Column converted to zero based
-					parseInt(fileRange[5], 10) - 1
+					parseInt(parse[5], 10) - 1
 				);
 				// If is Covered (CoverCount > 0)
-				if (parseInt(fileRange[7], 10) > 0) {
+				if (parseInt(parse[7], 10) > 0) {
 					coverage.coveredRange.push(range);
 				} else {
 					coverage.uncoveredRange.push(range);
 				}
-				setCoverageData(filePath, coverage);
+				coveragePath.set(parse[1], coverage);
 			});
-			lines.on('close', () => {
+
+			getImportPathToFolder([...seenPaths], testDir)
+				.then((pathsToDirs) => {
+				createCoverageData(pathsToDirs, coveragePath);
 				setDecorators();
 				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
 				resolve();
@@ -218,23 +232,33 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, packageD
 			reject(e);
 		}
 	});
+	return v;
 }
 
-/**
- * Get the object that holds the coverage data for given file path.
- * @param filePath
- */
-function getCoverageData(filePath: string): CoverageData {
-	if (filePath.startsWith('_')) {
-		filePath = filePath.substr(1);
-	}
-	if (process.platform === 'win32') {
-		const parts = filePath.split('/');
-		if (parts.length) {
-			filePath = parts.join(path.sep);
+function createCoverageData(
+	pathsToDirs: Map<string, string>,
+	coveragePath: Map<string, CoverageData>) {
+
+	coveragePath.forEach((cd, ip) => {
+		const lastSlash = ip.lastIndexOf('/');
+		if (lastSlash === -1) {  // malformed
+			console.log(`invalid entry: ${ip}`);
+			return;
 		}
-	}
-	return coverageFiles[filePath] || { coveredRange: [], uncoveredRange: [] };
+		const importPath = ip.slice(0, lastSlash);
+		let fileDir = importPath;
+		if (path.isAbsolute(importPath)) {
+			// This is the true file path.
+		} else if (importPath.startsWith('.')) {
+			fileDir = path.resolve(fileDir);
+		} else {
+			// This is the package import path.
+			// we need to look up `go list` output stored in pathsToDir.
+			fileDir = pathsToDirs.get(importPath) || importPath;
+		}
+		const file = fileDir + path.sep + ip.slice(lastSlash + 1);
+		setCoverageDataByFilePath(file, cd);
+	});
 }
 
 /**
@@ -242,7 +266,7 @@ function getCoverageData(filePath: string): CoverageData {
  * @param filePath
  * @param data
  */
-function setCoverageData(filePath: string, data: CoverageData) {
+function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
 	if (filePath.startsWith('_')) {
 		filePath = filePath.substr(1);
 	}
@@ -252,7 +276,7 @@ function setCoverageData(filePath: string, data: CoverageData) {
 			filePath = parts.join(path.sep);
 		}
 	}
-	coverageFiles[filePath] = data;
+	coverageData[filePath] = data;
 }
 
 /**
@@ -266,16 +290,16 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 
 	const cfg = getGoConfig(editor.document.uri);
 	const coverageOptions = cfg['coverageOptions'];
-	for (const filename in coverageFiles) {
+	for (const filename in coverageData) {
 		if (editor.document.uri.fsPath.endsWith(filename)) {
 			isCoverageApplied = true;
-			const coverageData = coverageFiles[filename];
+			const cd = coverageData[filename];
 			if (coverageOptions === 'showCoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
 				editor.setDecorations(
 					decorators.type === 'gutter'
 						? decorators.coveredGutterDecorator
 						: decorators.coveredHighlightDecorator,
-					coverageData.coveredRange
+					cd.coveredRange
 				);
 			}
 
@@ -284,7 +308,7 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 					decorators.type === 'gutter'
 						? decorators.uncoveredGutterDecorator
 						: decorators.uncoveredHighlightDecorator,
-					coverageData.uncoveredRange
+					cd.uncoveredRange
 				);
 			}
 		}
@@ -382,4 +406,28 @@ export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 		const idx = text.search('//');
 		return idx > -1 && idx <= change.range.start.character;
 	});
+}
+
+// These routines enable testing without starting an editing session.
+
+export function coverageFilesForTest():  { [key: string]: CoverageData; } {
+	return coverageData;
+}
+
+export function initForTest() {
+	if (!decoratorConfig) {
+		// this code is unnecessary except for testing, where there may be no workspace
+		// nor the normal flow of initializations
+		const x = 'rgba(0,0,0,0)';
+		if (!gutterSvgs) {
+			gutterSvgs = { x };
+		}
+		decoratorConfig = {
+			type: 'highlight',
+			coveredHighlightColor: x,
+			uncoveredHighlightColor: x,
+			coveredGutterStyle: x,
+			uncoveredGutterStyle: x
+		};
+	}
 }

@@ -5,18 +5,28 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import cp = require('child_process');
-import fs = require('fs');
+import * as cp from 'child_process';
+import * as fs from 'fs-extra';
 import { describe, it } from 'mocha';
-import os = require('os');
-import path = require('path');
-import sinon = require('sinon');
-import util = require('util');
-import { WorkspaceConfiguration } from 'vscode';
-import { disposeGoStatusBar, formatGoVersion, getGoEnvironmentStatusbarItem } from '../../src/goEnvironmentStatus';
+import * as os from 'os';
+import * as path from 'path';
+import * as sinon from 'sinon';
+import * as util from 'util';
+import * as vscode from 'vscode';
+
+import {
+	disposeGoStatusBar,
+	formatGoVersion,
+	getGoEnvironmentStatusbarItem,
+	getSelectedGo,
+	GoEnvironmentOption,
+	setSelectedGo,
+} from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { getCurrentGoRoot } from '../../src/goPath';
+import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import ourutil = require('../../src/util');
+import { getCurrentGoRoot } from '../../src/utils/goPath';
+import { MockMemento } from '../mocks/MockMemento';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
@@ -42,16 +52,76 @@ describe('#initGoStatusBar()', function () {
 	});
 });
 
-describe('#updateGoVarsFromConfig()', function () {
+describe('#setSelectedGo()', async function () {
+	this.timeout(40000);
+	let sandbox: sinon.SinonSandbox | undefined;
+	let goOption: GoEnvironmentOption;
+	let defaultMemento: vscode.Memento;
+	const version = await ourutil.getGoVersion();
+	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
+
+	this.beforeAll(async () => {
+		defaultMemento = getWorkspaceState();
+		setWorkspaceState(new MockMemento());
+		await setSelectedGo(defaultGoOption);
+	});
+	this.afterAll(async () => {
+		setWorkspaceState(defaultMemento);
+	});
+	this.beforeEach(async () => {
+		goOption = await getSelectedGo();
+		sandbox = sinon.createSandbox();
+	});
+	this.afterEach(async () => {
+		await setSelectedGo(goOption, false);
+		sandbox.restore();
+	});
+
+	it('should update the workspace memento storage', async () => {
+		// set workspace setting
+		const workspaceTestOption = new GoEnvironmentOption('workspacetestpath', 'testlabel');
+		await setSelectedGo(workspaceTestOption, false);
+
+		// check that the new config is set
+		assert.equal(getSelectedGo()?.binpath, 'workspacetestpath');
+	});
+
+	it('should download an uninstalled version of Go', async () => {
+		if (!process.env['VSCODEGO_BEFORE_RELEASE_TESTS']) {
+			return;
+		}
+
+		// setup tmp home directory for sdk installation
+		const envCache = Object.assign({}, process.env);
+		process.env.HOME = os.tmpdir();
+
+		// set selected go as a version to download
+		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
+		await setSelectedGo(option, false);
+
+		// the temp sdk directory should now contain go1.13.12
+		const subdirs = await fs.readdir(path.join(os.tmpdir(), 'sdk'));
+		assert.ok(subdirs.includes('go1.13.12'), 'Go 1.13.12 was not installed');
+
+		// cleanup
+		process.env = envCache;
+	});
+});
+
+describe('#updateGoVarsFromConfig()', async function () {
 	this.timeout(10000);
 
-	let defaultGoConfig: WorkspaceConfiguration | undefined;
+	let defaultMemento: vscode.Memento;
 	let tmpRoot: string | undefined;
 	let tmpRootBin: string | undefined;
 	let sandbox: sinon.SinonSandbox | undefined;
+	const version = await ourutil.getGoVersion();
+	const defaultGoOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
 
 	this.beforeAll(async () => {
-		defaultGoConfig = ourutil.getGoConfig();
+		defaultMemento = getWorkspaceState();
+		setWorkspaceState(new MockMemento());
+		await setSelectedGo(defaultGoOption);
 
 		tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rootchangetest'));
 		tmpRootBin = path.join(tmpRoot, 'bin');
@@ -62,15 +132,17 @@ describe('#updateGoVarsFromConfig()', function () {
 		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'testhelpers');
 		const execFile = util.promisify(cp.execFile);
 		const goRuntimePath = ourutil.getBinPath('go');
-		const { stdout, stderr } = await execFile(
+		const { stderr } = await execFile(
 			goRuntimePath, ['build', '-o', path.join(tmpRootBin, 'go'), path.join(fixtureSourcePath, 'fakego.go')]);
 		if (stderr) {
 			assert.fail(`failed to build the fake go binary required for testing: ${stderr}`);
 		}
 	});
 
-	this.afterAll(() => {
+	this.afterAll(async () => {
+		setWorkspaceState(defaultMemento);
 		ourutil.rmdirRecursive(tmpRoot);
+		await updateGoVarsFromConfig();
 	});
 
 	this.beforeEach(() => {
@@ -101,21 +173,12 @@ describe('#updateGoVarsFromConfig()', function () {
 	});
 
 	it('should recognize the adjusted goroot using go.goroot', async () => {
-		// stub geteGoConfig to return "go.goroot": tmpRoot.
-		const getGoConfigStub = sandbox.stub(ourutil, 'getGoConfig').returns({
-			get: (s: string) => {
-				if (s === 'goroot') { return tmpRoot; }
-				return defaultGoConfig.get(s);
-			},
-		} as WorkspaceConfiguration);
-
 		// adjust the fake go binary's behavior.
 		process.env['FAKEGOROOT'] = tmpRoot;
 		process.env['FAKEGOVERSION'] = 'go version go2.0.0 darwin/amd64';
 
 		await updateGoVarsFromConfig();
 
-		sandbox.assert.calledWith(getGoConfigStub);
 		assert.equal((await ourutil.getGoVersion()).format(), '2.0.0');
 		assert.equal(getGoEnvironmentStatusbarItem().text, 'Go 2.0.0');
 		assert.equal(pathEnvVar()[0], [path.join(getCurrentGoRoot(), 'bin')],
@@ -126,21 +189,11 @@ describe('#updateGoVarsFromConfig()', function () {
 		// "go.alternateTools" : {"go": "go3"}
 		fs.copyFileSync(path.join(tmpRootBin, 'go'), path.join(tmpRootBin, 'go3'));
 
-		const getGoConfigStub = sandbox.stub(ourutil, 'getGoConfig').returns({
-			get: (s: string) => {
-				if (s === 'alternateTools') {
-					return { go: path.join(tmpRootBin, 'go3') };
-				}
-				return defaultGoConfig.get(s);
-			},
-		} as WorkspaceConfiguration);
-
 		process.env['FAKEGOROOT'] = tmpRoot;
 		process.env['FAKEGOVERSION'] = 'go version go3.0.0 darwin/amd64';
 
 		await updateGoVarsFromConfig();
 
-		sandbox.assert.calledWith(getGoConfigStub);
 		assert.equal((await ourutil.getGoVersion()).format(), '3.0.0');
 		assert.equal(getGoEnvironmentStatusbarItem().text, 'Go 3.0.0');
 		assert.equal(pathEnvVar()[0], [path.join(getCurrentGoRoot(), 'bin')],

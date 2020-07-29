@@ -10,7 +10,8 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath, getGoConfig, killTree } from './util';
+import { getBinPath, getGoConfig } from './util';
+import { killProcessTree } from './utils/processUtils';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
 	public provideDocumentFormattingEdits(
@@ -78,7 +79,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 
 			// Use spawn instead of exec to avoid maxBufferExceeded error
 			const p = cp.spawn(formatCommandBinPath, formatFlags, { env, cwd });
-			token.onCancellationRequested(() => !p.killed && killTree(p.pid));
+			token.onCancellationRequested(() => !p.killed && killProcessTree(p));
 			p.stdout.setEncoding('utf8');
 			p.stdout.on('data', (data) => (stdout += data));
 			p.stderr.on('data', (data) => (stderr += data));

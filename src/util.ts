@@ -8,7 +8,6 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import semver = require('semver');
-import kill = require('tree-kill');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
@@ -16,6 +15,8 @@ import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
+import { outputChannel } from './goStatus';
+import { getFromWorkspaceState } from './stateUtils';
 import {
 	envPath,
 	fixDriveCasingInWindows,
@@ -23,8 +24,8 @@ import {
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
-} from './goPath';
-import { outputChannel } from './goStatus';
+} from './utils/goPath';
+import { killProcessTree } from './utils/processUtils';
 
 let userNameHash: number = 0;
 
@@ -88,13 +89,13 @@ export class GoVersion {
 		const matchesRelease = /go version go(\d.\d+).*/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
 		if (matchesRelease) {
-			const sv = semver.coerce(matchesRelease[0]);
+			const sv = semver.coerce(matchesRelease[1]);
 			if (sv) {
 				this.sv = sv;
 			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
-			this.commit = matchesDevel[0];
+			this.commit = matchesDevel[1];
 		}
 	}
 
@@ -317,7 +318,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
-		warn(`cached Go version (${cachedGoVersion}) is invalid, recomputing`);
+		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	try {
 		const execFile = util.promisify(cp.execFile);
@@ -333,6 +334,21 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		return;
 	}
 	return cachedGoVersion;
+}
+
+/**
+ * Returns the output of `go env` from the specified directory.
+ * Throws an error if the command fails.
+ */
+export async function getGoEnv(cwd?: string): Promise<string> {
+	const goRuntime = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	const opts = {cwd, env: toolExecutionEnvironment()};
+	const { stdout, stderr } = await execFile(goRuntime, ['env'], opts);
+	if (stderr) {
+		throw new Error(`failed to run 'go env': ${stderr}`);
+	}
+	return stdout;
 }
 
 /**
@@ -370,6 +386,7 @@ export async function isVendorSupported(): Promise<boolean> {
  */
 export function isGoPathSet(): boolean {
 	if (!getCurrentGoPath()) {
+		// TODO(hyangah): is it still possible after go1.8? (https://golang.org/doc/go1.8#gopath)
 		vscode.window
 			.showInformationMessage(
 				'Set GOPATH environment variable and restart VS Code or set GOPATH in Workspace settings',
@@ -440,11 +457,16 @@ export function getBinPath(tool: string, useCache = true): string {
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
+	let selectedGoPath: string | undefined;
+	if (tool === 'go') {
+		selectedGoPath = getFromWorkspaceState('selectedGo')?.binpath;
+	}
+
 	return getBinPathWithPreferredGopathGoroot(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		tool === 'go' && cfg.get('goroot') ? cfg.get('goroot') : undefined,
-		resolvePath(alternateToolPath),
+		selectedGoPath ?? resolvePath(alternateToolPath),
 		useCache
 	);
 }
@@ -492,6 +514,9 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 }
 
 export function getModuleCache(): string {
+	if (process.env['GOMODCACHE']) {
+		return process.env['GOMODCACHE'];
+	}
 	if (currentGopath) {
 		return path.join(currentGopath.split(path.delimiter)[0], 'pkg', 'mod');
 	}
@@ -684,7 +709,7 @@ export function runTool(
 	if (token) {
 		token.onCancellationRequested(() => {
 			if (p) {
-				killTree(p.pid);
+				killProcessTree(p);
 			}
 		});
 	}
@@ -861,28 +886,6 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	}
 }
 
-export const killTree = (processId: number): void => {
-	try {
-		kill(processId, (err) => {
-			if (err) {
-				console.log(`Error killing process tree: ${err}`);
-			}
-		});
-	} catch (err) {
-		console.log(`Error killing process tree: ${err}`);
-	}
-};
-
-export function killProcess(p: cp.ChildProcess) {
-	if (p) {
-		try {
-			p.kill();
-		} catch (e) {
-			console.log('Error killing process: ' + e);
-		}
-	}
-}
-
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
 	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
 	const memo = new NearestNeighborDict(defaultValue, NearestNeighborDict.NUMERIC_DISTANCE_FUNCTION);
@@ -1026,7 +1029,7 @@ export function runGodoc(
 
 			if (token) {
 				token.onCancellationRequested(() => {
-					killTree(p.pid);
+					killProcessTree(p);
 				});
 			}
 		});
