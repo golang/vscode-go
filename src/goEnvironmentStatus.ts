@@ -15,7 +15,7 @@ import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
-import { getBinPath, getGoVersion, getTempFilePath, rmdirRecursive, GoVersion } from './util';
+import { getBinPath, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
 import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
