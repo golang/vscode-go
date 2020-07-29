@@ -84,13 +84,13 @@ export class GoVersion {
 	public sv?: semver.SemVer;
 	// Go version tags are not following the strict semver format
 	// so semver drops the prerelease tags used in Go version.
-	// If sv is valid, let's keep the original version string 
+	// If sv is valid, let's keep the original version string
 	// including the prerelease tag parts.
 	public svString?: string;
-	
+
 	public isDevel?: boolean;
 	private commit?: string;
-	
+
 	constructor(public binaryPath: string, public version: string) {
 		const matchesRelease = /^go version go(\d\.\d+\S*)\s+/.exec(version);
 		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
