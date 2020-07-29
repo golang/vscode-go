@@ -15,7 +15,7 @@ import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
-import { getBinPath, getGoVersion, getTempFilePath, rmdirRecursive } from './util';
+import { getBinPath, getGoVersion, getTempFilePath, rmdirRecursive, GoVersion } from './util';
 import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
@@ -46,7 +46,7 @@ export async function initGoStatusBar() {
 	}
 	// set Go version and command
 	const version = await getGoVersion();
-	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version.format()));
+	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version));
 
 	hideGoStatusBar();
 	goEnvStatusbarItem.text = goOption.label;
@@ -367,16 +367,16 @@ export function getGoEnvironmentStatusbarItem(): vscode.StatusBarItem {
 	return goEnvStatusbarItem;
 }
 
-export function formatGoVersion(version: string): string {
-	const versionWords = version.split(' ');
-	if (versionWords[0] === 'devel') {
+export function formatGoVersion(version?: GoVersion): string {
+	if (!version || !version.isValid()) {
+		return `Go (unknown)`;
+	}
+	const versionStr = version.format(true);
+	const versionWords = versionStr.split(' ');
+	if (versionWords.length > 1 && versionWords[0] === 'devel') {
 		// Go devel +hash
-		return `Go ${versionWords[0]} ${versionWords[4]}`;
-	} else if (versionWords.length > 0) {
-		// some other version format
-		return `Go ${version.substr(0, 8)}`;
+		return `Go ${versionWords[1]}`;
 	} else {
-		// default semantic version format
 		return `Go ${versionWords[0]}`;
 	}
 }
@@ -411,7 +411,7 @@ export async function getDefaultGoOption(): Promise<GoEnvironmentOption> {
 	const version = await getGoVersion();
 	return new GoEnvironmentOption(
 		path.join(goroot, 'bin', correctBinname('go')),
-		formatGoVersion(version.format()),
+		formatGoVersion(version),
 	);
 }
 
