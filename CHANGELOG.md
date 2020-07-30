@@ -1,3 +1,81 @@
+## v0.16.0 - 3rd Aug, 2020
+
+This version requires VS Code 1.46+.
+
+Older versions of VS Code will not receive updates any more.
+
+### New Features
+
+- Users can select/install a different version of Go with `Go: Choose Go Environment` command.
+When clicking the `Go` status bar that displays the currently active Go version, users will be
+prompted with the list of Go versions installed locally or available for download.
+This feature was built based on the [`golang.org/dl`](https://pkg.go.dev/golang.org/dl?tab=overview)
+tools.
+The selected Go version applies to the workspace, takes precedence over the
+system default or the `"go.goroot"` and `"go.alternateTools"` settings, and persists
+across sessions. You can clear the choice by selecting the `Clear Selection` item.
+([Issue 253](https://github.com/golang/vscode-go/issues/253))
+- When the Go version changes, the extension prepends `$GOROOT/bin` to the `PATH` or `Path`
+environment variable which then applies the change to the integrated terminal windows.
+- This version includes an experimental version of the new Debug Adapter that uses Delve's
+native DAP implementation. It currently supports `launch` type requests in `debug` or `test`
+mode. This is still in the early stages and requires
+[`dlv`](https://github.com/go-delve/delve) built from its unreleased, master
+branch. Subscribe to
+[golang/vscode-go#23](https://github.com/golang/vscode-go/issues/23) for updates.
+
+### Enhancement
+
+- Bundles the extension using webpack, which reduced the extension size
+(4.7MB -> 1MB) and the extension loading overhead (3.4K files -> 3 files)
+([Issue 53](https://github.com/golang/vscode-go/issues/53)).
+- `Go: Apply Cover Profile` applies code coverage for multiple packages
+([CL 238697](https://go-review.googlesource.com/c/vscode-go/+/238697)).
+We fixed bugs in processing coverage profiles on Windows.
+- Suggests the official Go download page when no `go` tool is found.
+- Utilizes the `GOMODCACHE` environment variable, introduced in
+[Go 1.15](https://tip.golang.org/doc/go1.15#go-command).
+- Prevents multiple debug sessions from launching
+([Issue 109](https://github.com/golang/vscode-go/issues/109)).
+- Streams test output when tests run with the `-v` option.
+This feature requires 1.14 or newer versions of Go
+([Issue 316](https://github.com/golang/vscode-go/issues/316)).
+- Sets `additionalProperties` to `false` for the settings that don't expect
+more properties. This allows VS Code to handle these settings better in
+its new settings GUI ([Issue 284](https://github.com/golang/vscode-go/pull/284)).
+- `Go: Locate Configured Go Tools` includes `go env` results
+([Issue 195](https://github.com/golang/vscode-go/issues/195)).
+- Avoids prompting users to switch the default format tool in modules mode
+if users enable the language server.
+
+### Fixed
+
+- Fixed the `PATH` environment variable adjustment when users use a wrapper as an alternate
+tool for `go` ([CL 239697](https://go-review.googlesource.com/c/vscode-go/+/239697)).
+- Fixed a bug in test output processing, which prevented VS code from linking test log messages with locations in the source file.
+- Fixed a `gocode-gomod` installation bug when `GOPATH` includes multiple directories
+([Issue 368](https://github.com/golang/vscode-go/issues/368)).
+- Avoids attempting to kill already terminated processes ([Issue 334](https://github.com/golang/vscode-go/issues/334)).
+- Fixed `godef` to locate standard packages correctly by passing the `GOROOT` environment variable.
+- Fixed a `golangci-lint` integration bug that prevented displaying the lint results correctly when
+linters like `nolintlint` are enabled ([Issue 411](https://github.com/golang/vscode-go/issues/411)).
+- Fixed lost test function name arguments when running `Go: Test Previous`
+([Issue 269](https://github.com/golang/vscode-go/issues/269)).
+
+### Code Health
+
+- Many enhancements to improve test reliability and test coverage were made during this dev cycle.
+- TryBot is enabled, and the test results are posted to Gerrit CL. Currently, only the internal team members
+can see the details of the test results, but we will continue working to make them public.
+- Windows tests are now fixed and enabled in GitHub Action-based CI.
+- Refactored code shared by the extension and the debug adapters to prevent accidental debug adapter breakages.
+- Updated `json-rpc2` and `lodash` to address vulnerability reports from `npm audit`.
+
+### Thanks
+
+Thank you for your contribution, fujimoto kyosuke, OneOfOne, Aditya Thakral, Oleg Butuzov, Rebecca Stambler, Peter Weinberger, Brayden Cloud, Eli Bendersky, Robert Findley, Hana Kim!
+
+
 ## v0.15.2 - 21st July, 2020
 
 ### Fixed
