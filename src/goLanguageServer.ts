@@ -351,7 +351,16 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					if (!Array.isArray(list) && list.isIncomplete && list.items.length > 1) {
 						let hardcodedFilterText = items[0].filterText;
 						if (!hardcodedFilterText) {
-							hardcodedFilterText = '';
+							// tslint:disable:max-line-length
+							// According to LSP spec,
+							// https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion
+							// if filterText is falsy, the `label` should be used.
+							// But we observed that's not the case.
+							// Even if vscode picked the label value, that would
+							// cause to reorder candiates, which is not ideal.
+							// Force to use non-empty `label`.
+							// https://github.com/golang/vscode-go/issues/441
+							hardcodedFilterText = items[0].label;
 						}
 						for (const item of items) {
 							item.filterText = hardcodedFilterText;
