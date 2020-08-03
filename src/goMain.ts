@@ -58,7 +58,8 @@ import {
 	getToolsGopath,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
-	isGoPathSet
+	isGoPathSet,
+	resolvePath,
 } from './util';
 import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/goPath';
 
@@ -78,7 +79,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
-		setCurrentGoRoot(configGOROOT);
+		setCurrentGoRoot(resolvePath(configGOROOT));
 	}
 
 	updateGoVarsFromConfig().then(async () => {
