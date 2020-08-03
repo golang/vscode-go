@@ -20,13 +20,15 @@ import {
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
-	LanguageClient,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
+import {
+	LanguageClient
+} from 'vscode-languageclient/node';
 import WebRequest = require('web-request');
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
