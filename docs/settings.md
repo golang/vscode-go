@@ -161,6 +161,10 @@ Specifies Lint tool name.
 
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay.
 
+### `go.overwriteGoplsMiddleware`
+
+This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present.
+
 ### `go.playground`
 
 

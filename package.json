@@ -1575,6 +1575,34 @@
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"
         },
+        "go.overwriteGoplsMiddleware": {
+          "type": "object",
+          "properties": {
+            "codelens": {
+              "type": "object",
+              "properties": {
+                "test": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "'test' codelens will be handled by gopls if true"
+                },
+                "bench": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "'benchmark' codelens will be handled by gopls if true"
+                }
+              }
+            },
+            "default": {
+              "codelens": {
+                "test": false,
+                "bench": false
+              }
+            }
+          },
+          "scope": "resource",
+          "description": "This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present."
+        },
         "go.addTags": {
           "type": "object",
           "properties": {

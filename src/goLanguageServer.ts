@@ -18,7 +18,6 @@ import {
 	CloseAction,
 	CompletionItemKind,
 	ErrorAction,
-	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	LanguageClient,
@@ -268,39 +267,20 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					if (!codeLens || codeLens.length === 0) {
 						return codeLens;
 					}
+					const goplsEnabledLens = (getGoConfig().get('overwriteGoplsMiddleware') as any)?.codelens ?? {};
 					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
-								const args = lens.command.arguments;
-								return [
-									...lenses,
-									new vscode.CodeLens(lens.range, {
-										...lens.command,
-										command: 'go.test.cursor',
-										arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
-									}),
-									new vscode.CodeLens(lens.range, {
-										title: 'debug test',
-										command: 'go.debug.cursor',
-										arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
-									}),
-								];
+								if (goplsEnabledLens.test) {
+									return [...lenses, lens];
+								}
+								return [...lenses, ...createTestCodeLens(lens)];
 							}
 							case 'run benchmark': {
-								const args = lens.command.arguments;
-								return [
-									...lenses,
-									new vscode.CodeLens(lens.range, {
-										...lens.command,
-										command: 'go.benchmark.cursor',
-										arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
-									}),
-									new vscode.CodeLens(lens.range, {
-										title: 'debug benchmark',
-										command: 'go.debug.cursor',
-										arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
-									}),
-								];
+								if (goplsEnabledLens.bench) {
+									return [...lenses, lens];
+								}
+								return [...lenses, ...createBenchmarkCodeLens(lens)];
 							}
 							default: {
 								return [...lenses, lens];
@@ -418,6 +398,39 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 		}
 	);
 	return c;
+}
+
+// createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
+function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
+	const args = lens.command.arguments;
+	return [
+		new vscode.CodeLens(lens.range, {
+			...lens.command,
+			command: 'go.test.cursor',
+			arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+		}),
+		new vscode.CodeLens(lens.range, {
+			title: 'debug test',
+			command: 'go.debug.cursor',
+			arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+		}),
+	];
+}
+
+function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
+	const args = lens.command.arguments;
+	return [
+		new vscode.CodeLens(lens.range, {
+			...lens.command,
+			command: 'go.benchmark.cursor',
+			arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+		}),
+		new vscode.CodeLens(lens.range, {
+			title: 'debug benchmark',
+			command: 'go.debug.cursor',
+			arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+		}),
+	];
 }
 
 // registerUsualProviders registers the language feature providers if the language server is not enabled.
