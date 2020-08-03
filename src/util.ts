@@ -484,7 +484,7 @@ export function getBinPath(tool: string, useCache = true): string {
 	return getBinPathWithPreferredGopathGoroot(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
-		tool === 'go' && cfg.get('goroot') ? cfg.get('goroot') : undefined,
+		tool === 'go' && cfg.get('goroot') ? resolvePath(cfg.get('goroot')) : undefined,
 		selectedGoPath ?? resolvePath(alternateToolPath),
 		useCache
 	);
