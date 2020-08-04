@@ -890,10 +890,10 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < 0.05, for a 5% probability.
+	// the range [0, 1) and checking if it is < 0.0275, for a 2.75% probability.
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
-	cfg.promptThisMonth = Math.random() < 0.05;
+	cfg.promptThisMonth = Math.random() < 0.0275;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
 		// month on which to prompt.
