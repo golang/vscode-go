@@ -1,4 +1,12 @@
-## v0.16.0 - XXX Aug, 2020
+## v0.16.1 - 5th Aug, 2020
+
+### Fixed
+
+- Fixed the bug that made test output verbose by default ([Issue 471](https://github.com/golang/vscode-go/issues/469)).
+- Fixed the extension host crash bug due to a process-wide uncaught exception handler accidentally installed along with the inlined debug adapter. This crash bug also caused connection drops when used with the VS Code Remote extension ([Issue 467](https://github.com/golang/vscode-go/issues/467), [469](https://github.com/golang/vscode-go/issues/469)).
+- Readded the predefined variable resolution support for `go.goroot` and `go.toolsEnvVars` ([Issue 464](https://github.com/golang/vscode-go/issues/464), [413](https://github.com/golang/vscode-go/issues/413)).
+
+## v0.16.0 - 3rd Aug, 2020
 
 This version requires VS Code 1.46+.
 
