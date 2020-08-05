@@ -21,7 +21,7 @@ import {
 	resolvePath
 } from './util';
 import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
-import {killProcessTree} from './utils/processUtils';
+import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
 const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -326,8 +326,11 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 					outTargets.push(...targets);
 				}
 
+				if (args.includes('-v') && !args.includes('-json')) {
+					args.push('-json');
+				}
+
 				args.push(...targets);
-				args.push('-json');
 
 				// ensure that user provided flags are appended last (allow use of -args ...)
 				// ignore user provided -run flag if we are already using it
@@ -345,29 +348,9 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				const errBuf = new LineBuffer();
 
 				const testResultLines: string[] = [];
-				const processTestResultLine = (line: string) => {
-					try {
-						const m = <GoTestOutput>(JSON.parse(line));
-						if (m.Action !== 'output' || !m.Output) {
-							return;
-						}
-						const out = m.Output;
-						const pkg = m.Package;
-						if (pkg && (pkgMap.has(pkg) || currentGoWorkspace)) {
-							const pkgNameArr = pkg.split('/');
-							const baseDir = pkgMap.get(pkg) || path.join(currentGoWorkspace, ...pkgNameArr);
-							// go test emits test results on stdout, which contain file names relative to the package under test
-							outputChannel.appendLine(expandFilePathInOutput(out, baseDir).trimRight());
-						} else {
-							outputChannel.appendLine(out.trimRight());
-						}
-					} catch (e) {
-						// TODO: disable this log if it becomes too spammy.
-						console.log(`failed to parse JSON: ${e}: ${line}`);
-						// Build failures or other messages come in non-JSON format. So, output as they are.
-						outputChannel.appendLine(line);
-					}
-				};
+				const processTestResultLine = args.includes('-json') ?
+					processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel) :
+					processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 				outBuf.onLine((line) => processTestResultLine(line));
 				outBuf.onDone((last) => {
@@ -419,6 +402,63 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
 	}
 	return testResult;
+}
+
+function processTestResultLineInJSONMode(
+	pkgMap: Map<string, string>,
+	currentGoWorkspace: string,
+	outputChannel: vscode.OutputChannel) {
+	return (line: string) => {
+		try {
+			const m = <GoTestOutput>(JSON.parse(line));
+			if (m.Action !== 'output' || !m.Output) {
+				return;
+			}
+			const out = m.Output;
+			const pkg = m.Package;
+			if (pkg && (pkgMap.has(pkg) || currentGoWorkspace)) {
+				const pkgNameArr = pkg.split('/');
+				const baseDir = pkgMap.get(pkg) || path.join(currentGoWorkspace, ...pkgNameArr);
+				// go test emits test results on stdout, which contain file names relative to the package under test
+				outputChannel.appendLine(expandFilePathInOutput(out, baseDir).trimRight());
+			} else {
+				outputChannel.appendLine(out.trimRight());
+			}
+		} catch (e) {
+			// TODO: disable this log if it becomes too spammy.
+			console.log(`failed to parse JSON: ${e}: ${line}`);
+			// Build failures or other messages come in non-JSON format. So, output as they are.
+			outputChannel.appendLine(line);
+		}
+	};
+}
+
+function processTestResultLineInStandardMode(
+	pkgMap: Map<string, string>,
+	currentGoWorkspace: string,
+	testResultLines: string[],
+	outputChannel: vscode.OutputChannel) {
+	// 1=ok/FAIL, 2=package, 3=time/(cached)
+	const packageResultLineRE = /^(ok|FAIL)\s+(\S+)\s+([0-9\.]+s|\(cached\))/;
+	const lineWithErrorRE = /^(\t|\s\s\s\s)\S/;
+
+	return (line: string) => {
+		testResultLines.push(line);
+		const result = line.match(packageResultLineRE);
+		if (result && (pkgMap.has(result[2]) || currentGoWorkspace)) {
+			const hasTestFailed = line.startsWith('FAIL');
+			const packageNameArr = result[2].split('/');
+			const baseDir = pkgMap.get(result[2]) || path.join(currentGoWorkspace, ...packageNameArr);
+			testResultLines.forEach((testResultLine) => {
+				if (hasTestFailed && lineWithErrorRE.test(testResultLine)) {
+					outputChannel.appendLine(expandFilePathInOutput(testResultLine, baseDir));
+				} else {
+					outputChannel.appendLine(testResultLine);
+				}
+			});
+			testResultLines.splice(0);
+		}
+	};
 }
 
 /**
