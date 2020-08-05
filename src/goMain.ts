@@ -118,17 +118,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	// debug
 	ctx.subscriptions.push(
-		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider()));
+		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go')));
 	ctx.subscriptions.push(
-		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider()));
-
-	// Use an InlineDebugAdapterFactory to create a new debug adapter for
-	// the 'godlvdap' command in inline mode, without launching a subprocess.
-	const factory = new InlineDebugAdapterFactory();
-	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
-	if ('dispose' in factory) {
-		ctx.subscriptions.push(factory);
-	}
+		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider('godlvdap')));
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
@@ -559,13 +551,6 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 function checkToolExists(tool: string) {
 	if (tool === getBinPath(tool)) {
 		promptForMissingTool(tool);
-	}
-}
-
-class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
-	public createDebugAdapterDescriptor(session: vscode.DebugSession
-	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterInlineImplementation(new GoDlvDapDebugSession());
 	}
 }
 

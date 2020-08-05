@@ -14,6 +14,8 @@ import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+	constructor(private defaultDebugAdapterType: string = 'go') { }
+
 	public provideDebugConfigurations(
 		folder: vscode.WorkspaceFolder | undefined,
 		token?: vscode.CancellationToken
@@ -21,7 +23,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		return [
 			{
 				name: 'Launch',
-				type: 'go',
+				type: this.defaultDebugAdapterType,
 				request: 'launch',
 				mode: 'auto',
 				program: '${fileDirname}',
@@ -45,11 +47,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 			debugConfiguration = Object.assign(debugConfiguration || {}, {
 				name: 'Launch',
-				type: 'go',
+				type: this.defaultDebugAdapterType,
 				request: 'launch',
 				mode: 'auto',
 				program: path.dirname(activeEditor.document.fileName) // matches ${fileDirname}
 			});
+		}
+
+		if (!debugConfiguration.type) {
+			debugConfiguration['type'] = this.defaultDebugAdapterType;
 		}
 
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
