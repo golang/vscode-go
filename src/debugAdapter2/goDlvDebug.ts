@@ -102,12 +102,6 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	showGlobalVariables?: boolean;
 }
 
-process.on('uncaughtException', (err: any) => {
-	const errMessage = err && (err.stack || err.message);
-	logger.error(`Unhandled error in debug adapter: ${errMessage}`);
-	throw err;
-});
-
 function logArgsToString(args: any[]): string {
 	return args
 		.map((arg) => {
