@@ -36,7 +36,7 @@ export interface Tool {
 	// close performs any shutdown tasks that a tool must execute before a new
 	// version is installed. It returns a string containing an error message on
 	// failure.
-	close?: () => Promise<string>;
+	close?: (env: NodeJS.Dict<string>) => Promise<string>;
 }
 
 /**
@@ -182,19 +182,20 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
 		description: 'Auto-completion, does not work with modules',
-		close: async (): Promise<string> => {
+		close: async (env: NodeJS.Dict<string>): Promise<string> => {
 			const toolBinPath = getBinPath('gocode');
 			if (!path.isAbsolute(toolBinPath)) {
 				return '';
 			}
 			try {
 				const execFile = util.promisify(cp.execFile);
-				const { stderr } = await execFile(toolBinPath, ['close']);
+				const { stderr } = await execFile(toolBinPath, ['close'], {env, timeout: 10000});  // give 10sec.
 				if (stderr.indexOf(`rpc: can't find service Server.`) > -1) {
 					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
 				}
 			} catch (err) {
 				// This may fail if gocode isn't already running.
+				console.log(`gocode close failed: ${err}`);
 			}
 			return '';
 		},

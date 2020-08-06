@@ -20,9 +20,10 @@ import {
 	getWorkspaceFolderPath,
 	goKeywords,
 	isPositionInString,
-	killTree,
 	runGodoc
 } from './util';
+import { getCurrentGoRoot } from './utils/goPath';
+import { killProcessTree } from './utils/processUtils';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -133,9 +134,10 @@ function definitionLocation_godef(
 	}
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = toolExecutionEnvironment();
+	env['GOROOT'] = getCurrentGoRoot();
 	let p: cp.ChildProcess;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => killProcessTree(p));
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -226,7 +228,7 @@ function definitionLocation_gogetdoc(
 	const env = toolExecutionEnvironment();
 	let p: cp.ChildProcess;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => killProcessTree(p));
 	}
 
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
@@ -300,7 +302,7 @@ function definitionLocation_guru(
 	const env = toolExecutionEnvironment();
 	let p: cp.ChildProcess;
 	if (token) {
-		token.onCancellationRequested(() => killTree(p.pid));
+		token.onCancellationRequested(() => killProcessTree(p));
 	}
 	return new Promise<GoDefinitionInformation>((resolve, reject) => {
 		p = cp.execFile(

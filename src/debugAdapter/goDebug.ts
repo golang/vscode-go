@@ -11,7 +11,6 @@ import * as glob from 'glob';
 import { Client, RPCConnection } from 'json-rpc2';
 import * as os from 'os';
 import * as path from 'path';
-import kill = require('tree-kill');
 import * as util from 'util';
 import {
 	DebugSession,
@@ -37,7 +36,8 @@ import {
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
 	parseEnvFile
-} from '../goPath';
+} from '../utils/goPath';
+import {killProcessTree} from '../utils/processUtils';
 
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);
@@ -514,7 +514,7 @@ export class Delve {
 						} or ${envPath}`
 					);
 					return reject(
-						`Cannot find Delve debugger. Install from https://github.com/derekparker/delve & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
+						`Cannot find Delve debugger. Install from https://github.com/go-delve/delve & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
 					);
 				}
 
@@ -695,7 +695,7 @@ export class Delve {
 	public async close(): Promise<void> {
 		const forceCleanup = async () => {
 			log(`killing debugee (pid: ${this.debugProcess.pid})...`);
-			await killProcessTree(this.debugProcess);
+			await killProcessTree(this.debugProcess, log);
 			await removeFile(this.localDebugeePath);
 		};
 
@@ -2312,23 +2312,6 @@ async function removeFile(filePath: string): Promise<void> {
 	} catch (e) {
 		logError(`Potentially failed remove file: ${filePath} - ${e.toString() || ''}`);
 	}
-}
-
-function killProcessTree(p: ChildProcess): Promise<void> {
-	if (!p || !p.pid) {
-		log(`no process to kill`);
-		return Promise.resolve();
-	}
-	return new Promise((resolve) => {
-		kill(p.pid, (err) => {
-			if (err) {
-				logError(`Error killing process ${p.pid}: ${err}`);
-			} else {
-				log(`killed process ${p.pid}`);
-			}
-			resolve();
-		});
-	});
 }
 
 // queryGOROOT returns `go env GOROOT`.

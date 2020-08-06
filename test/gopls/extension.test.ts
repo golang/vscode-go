@@ -46,7 +46,10 @@ class Env {
 	public async setup() {
 		await this.reset();
 		await this.extension.activate();
-		await sleep(2000);  // allow extension host + gopls to start.
+		await sleep(2000);  // allow the language server to start.
+		// TODO(hyangah): find a better way to check the language server's status.
+		// I thought I'd check the languageClient.onReady(),
+		// but couldn't make it working yet.
 	}
 
 	public async reset(fixtureDirName?: string) {  // name of the fixtures subdirectory to use.
@@ -89,7 +92,9 @@ suite('Go Extension Tests With Gopls', function () {
 	const projectDir = path.join(__dirname, '..', '..', '..');
 	const env = new Env(projectDir);
 
-	suiteSetup(async () => { await env.setup(); });
+	suiteSetup(async () => {
+		await env.setup();
+	});
 	suiteTeardown(async () => { await env.reset(); });
 
 	test('HoverProvider', async () => {
@@ -137,9 +142,23 @@ suite('Go Extension Tests With Gopls', function () {
 			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
 		];
 		for (const [name, position, wantFilterText] of testCases) {
-			const list = await vscode.commands.executeCommand(
-				'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
-
+			let list: vscode.CompletionList<vscode.CompletionItem>;
+			// Query completion items. We expect the hard coded filter text hack
+			// has been applied and gopls returns an incomplete list by default
+			// to avoid reordering by vscode. But, if the query is made before
+			// gopls is ready, we observed that gopls returns an empty result
+			// as a complete result, and vscode returns a general completion list instead.
+			// Retry a couple of times if we see a complete result as a workaround.
+			// (github.com/golang/vscode-go/issues/363)
+			for (let i = 0; i < 3; i++) {
+				list = await vscode.commands.executeCommand(
+					'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
+				if (list.isIncomplete) {
+					break;
+				}
+				await sleep(100);
+				console.log(`${new Date()}: retrying...`);
+			}
 			// Confirm that the hardcoded filter text hack has been applied.
 			if (!list.isIncomplete) {
 				assert.fail(`gopls should provide an incomplete list by default`);
@@ -157,6 +176,5 @@ suite('Go Extension Tests With Gopls', function () {
 				}
 			}
 		}
-
 	});
 });

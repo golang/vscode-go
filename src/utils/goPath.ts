@@ -12,6 +12,7 @@
 import fs = require('fs');
 import os = require('os');
 import path = require('path');
+import { promisify } from 'util';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -37,7 +38,7 @@ export function getBinPathWithPreferredGopathGoroot(
 	preferredGoroot?: string,
 	alternateTool?: string,
 	useCache = true,
-) {
+): string {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return alternateTool;
@@ -106,7 +107,7 @@ export function setCurrentGoRoot(goroot: string) {
 	currentGoRoot = goroot;
 }
 
-function correctBinname(toolName: string) {
+export function correctBinname(toolName: string) {
 	if (process.platform === 'win32') {
 		return toolName + '.exe';
 	}
@@ -129,6 +130,15 @@ function executableFileExists(filePath: string): boolean {
 export function fileExists(filePath: string): boolean {
 	try {
 		return fs.statSync(filePath).isFile();
+	} catch (e) {
+		return false;
+	}
+}
+
+export async function pathExists(p: string): Promise<boolean> {
+	try {
+		const stat = promisify(fs.stat);
+		return (await stat(p)).isDirectory();
 	} catch (e) {
 		return false;
 	}

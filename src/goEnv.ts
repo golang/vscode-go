@@ -7,7 +7,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { getCurrentGoPath, getGoConfig, getToolsGopath } from './util';
+import { getCurrentGoPath, getGoConfig, getToolsGopath, resolvePath } from './util';
 
 // toolInstallationEnvironment returns the environment in which tools should
 // be installed. It always returns a new object.
@@ -56,6 +56,13 @@ export function toolExecutionEnvironment(): NodeJS.Dict<string> {
 function newEnvironment(): NodeJS.Dict<string> {
 	const toolsEnvVars = getGoConfig()['toolsEnvVars'];
 	const env = Object.assign({}, process.env, toolsEnvVars);
+	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
+		Object.keys(toolsEnvVars).forEach(
+			(key) =>
+				(env[key] =
+					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
+		);
+	}
 
 	// The http.proxy setting takes precedence over environment variables.
 	const httpProxy = vscode.workspace.getConfiguration('http', null).get('proxy');

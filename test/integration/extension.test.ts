@@ -364,8 +364,9 @@ It returns the number of bytes written and any write error encountered.
 
 	test('Linting - concurrent process cancelation', async () => {
 		const util = require('../../src/util');
+		const processutil = require('../../src/utils/processUtils');
 		sinon.spy(util, 'runTool');
-		sinon.spy(util, 'killTree');
+		sinon.spy(processutil, 'killProcessTree');
 
 		const config = Object.create(vscode.workspace.getConfiguration('go'), {
 			vetOnSave: { value: 'package' },
@@ -373,8 +374,8 @@ It returns the number of bytes written and any write error encountered.
 			buildOnSave: { value: 'package' },
 			lintOnSave: { value: 'package' },
 			// simulate a long running lint process by sleeping for a couple seconds
-			lintTool: { value: 'sleep' },
-			lintFlags: { value: ['2'] }
+			lintTool: { value: process.platform !== 'win32' ? 'sleep' : 'timeout' },
+			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', '2'] }
 		});
 
 		const results = await Promise.all([
@@ -382,7 +383,7 @@ It returns the number of bytes written and any write error encountered.
 			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config)
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
-		assert.equal(util.killTree.callCount, 1, 'should have killed 1 lint job before launching the next');
+		assert.equal(processutil.killProcessTree.callCount, 1, 'should have killed 1 lint job before launching the next');
 	});
 
 	test('Error checking', async () => {
@@ -472,7 +473,12 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test diffUtils.getEditsFromUnifiedDiffStr', async () => {
+	test('Test diffUtils.getEditsFromUnifiedDiffStr', async function () {
+		if (process.platform === 'win32') {
+			// This test requires diff tool that's not available on windows
+			this.skip();
+		}
+
 		const file1path = path.join(fixturePath, 'diffTest1Data', 'file1.go');
 		const file2path = path.join(fixturePath, 'diffTest1Data', 'file2.go');
 		const file1uri = vscode.Uri.file(file1path);
@@ -628,21 +634,13 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Replace vendor packages with relative path', async () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
 		const vendorSupport = await isVendorSupported();
-		const filePath = path.join(toolsGopath, 'src', 'github.com', 'rogpeppe', 'godef', 'go', 'ast', 'ast.go');
+		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
 		const vendorPkgsFullPath = [
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/acme',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9/client'
+			'test/testfixture/vendoring/vendor/example.com/vendorpls',
 		];
-		const vendorPkgsRelativePath = ['9fans.net/go/acme', '9fans.net/go/plan9', '9fans.net/go/plan9/client'];
+		const vendorPkgsRelativePath = ['example.com/vendorpls'];
 
 		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
 			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
@@ -696,18 +694,10 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Vendor pkgs from other projects should not be allowed to import', async () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
 		const vendorSupport = await isVendorSupported();
-		const filePath = path.join(toolsGopath, 'src', 'github.com', 'ramya-rao-a', 'go-outline', 'main.go');
+		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = [
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/acme',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9',
-			'github.com/rogpeppe/godef/vendor/9fans.net/go/plan9/client'
+			'test/testfixture/vendoring/vendor/example.com/vendorpls',
 		];
 
 		const gopkgsPromise = new Promise<void>((resolve, reject) => {
@@ -751,13 +741,7 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Workspace Symbols', () => {
-		// This test needs a go project that has vendor folder and vendor packages
-		// Since the Go extension takes a dependency on the godef tool at github.com/rogpeppe/godef
-		// which has vendor packages, we are using it here to test the "replace vendor packages with relative path" feature.
-		// If the extension ever stops depending on godef tool or if godef ever stops having vendor packages, then this test
-		// will fail and will have to be replaced with any other go project with vendor packages
-
-		const workspacePath = path.join(toolsGopath, 'src', 'github.com', 'rogpeppe', 'godef');
+		const workspacePath = path.join(fixturePath, 'vendoring');
 		const configWithoutIgnoringFolders = Object.create(vscode.workspace.getConfiguration('go'), {
 			gotoSymbol: {
 				value: {
@@ -789,16 +773,16 @@ It returns the number of bytes written and any write error encountered.
 
 		const withoutIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,
-			'WinInfo',
+			'SomethingStr',
 			dummyCancellationSource.token,
 			configWithoutIgnoringFolders
 		).then((results) => {
-			assert.equal(results[0].name, 'WinInfo');
-			assert.equal(results[0].path, path.join(workspacePath, 'vendor/9fans.net/go/acme/acme.go'));
+			assert.equal(results[0].name, 'SomethingStrange');
+			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example.com/vendorpls/lib.go'));
 		});
 		const withIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,
-			'WinInfo',
+			'SomethingStr',
 			dummyCancellationSource.token,
 			configWithIgnoringFolders
 		).then((results) => {
@@ -1444,12 +1428,19 @@ encountered.
 		assert.equal(result4, false);
 	});
 
+	function fixEOL(eol: vscode.EndOfLine, strWithLF: string): string {
+		if (eol === vscode.EndOfLine.LF) {
+			return strWithLF;
+		}
+		return strWithLF.split('\n').join('\r\n');  // replaceAll.
+	}
+
 	test('Add imports when no imports', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'noimports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 
-		const expectedText = document.getText() + '\n' + 'import (\n\t"bytes"\n)\n';
+		const expectedText = document.getText() + fixEOL(document.eol, '\n' + 'import (\n\t"bytes"\n)\n');
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1466,8 +1457,11 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'groupImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
-		const expectedText = document.getText().replace('\t"fmt"\n\t"math"', '\t"bytes"\n\t"fmt"\n\t"math"');
+		const expectedText = document.getText().replace(
+			fixEOL(eol, '\t"fmt"\n\t"math"'),
+			fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1479,12 +1473,13 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'singleImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
 		const expectedText = document
 			.getText()
 			.replace(
-				'import "fmt"\nimport . "math" // comment',
-				'import (\n\t"bytes"\n\t"fmt"\n\t. "math" // comment\n)'
+				fixEOL(eol, 'import "fmt"\nimport . "math" // comment'),
+				fixEOL(eol, 'import (\n\t"bytes"\n\t"fmt"\n\t. "math" // comment\n)')
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
@@ -1497,12 +1492,13 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'importTest', 'cgoImports.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const eol = document.eol;
 
 		const expectedText = document
 			.getText()
 			.replace(
-				'import "math"',
-				'import (\n\t"bytes"\n\t"math"\n)'
+				fixEOL(eol, 'import "math"'),
+				fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)')
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();

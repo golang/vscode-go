@@ -15,8 +15,16 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
-	CloseAction, CompletionItemKind, ErrorAction, HandleDiagnosticsSignature, InitializeError,
-	LanguageClient, Message, ProvideCompletionItemsSignature, ProvideDocumentLinksSignature,
+	CloseAction,
+	CompletionItemKind,
+	ErrorAction,
+	ExecuteCommandSignature,
+	HandleDiagnosticsSignature,
+	InitializeError,
+	LanguageClient,
+	Message,
+	ProvideCompletionItemsSignature,
+	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn,
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
@@ -32,7 +40,6 @@ import { parseLiveFile } from './goLiveErrors';
 import { restartLanguageServer } from './goMain';
 import { GO_MODE } from './goMode';
 import { GoDocumentSymbolProvider } from './goOutline';
-import { getToolFromToolPath } from './goPath';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
@@ -42,6 +49,7 @@ import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import { getToolFromToolPath } from './utils/goPath';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -75,31 +83,24 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 let restartCommand: vscode.Disposable;
 
 // When enabled, users may be prompted to fill out the gopls survey.
-const goplsSurveyOn: boolean = false;
+// For now, we turn it on in the Nightly extension to test it.
+const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
+
+// lastUserAction is the time of the last user-triggered change.
+// A user-triggered change is a didOpen, didChange, didSave, or didClose event.
+let lastUserAction: Date = new Date();
 
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
 	const cfg = buildLanguageServerConfig();
 
-	// If the language server is gopls, we can check if the user needs to
-	// update their gopls version. We do this only once per VS Code
-	// activation to avoid inundating the user.
-	if (activation && cfg.enabled && cfg.serverName === 'gopls') {
+	// If the language server is gopls, we enable a few additional features.
+	// These include prompting for updates and surveys.
+	if (activation && cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg.path, cfg.checkForUpdates);
-			if (versionToUpdate) {
-				promptForUpdatingTool(tool.name, versionToUpdate);
-			} else if (goplsSurveyOn) {
-				// Only prompt users to fill out the gopls survey if we are not
-				// also prompting them to update (both would be too much).
-				const timeout = 1000 * 60 * 60; // 1 hour
-				setTimeout(async () => {
-					const surveyCfg = await maybePromptForGoplsSurvey();
-					flushSurveyConfig(surveyCfg);
-				}, timeout);
-			}
+			scheduleGoplsSuggestions(tool);
 		}
 	}
 
@@ -111,6 +112,40 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (!started && defaultLanguageProviders.length === 0) {
 		registerDefaultProviders(ctx);
 	}
+}
+
+// scheduleGoplsSuggestions sets timeouts for the various gopls-specific
+// suggestions. We check user's gopls versions once per day to prompt users to
+// update to the latest version. We also check if we should prompt users to
+// fill out the survey.
+function scheduleGoplsSuggestions(tool: Tool) {
+	const update = async () => {
+		setTimeout(update, timeDay);
+
+		const cfg = buildLanguageServerConfig();
+		if (!cfg.enabled) {
+			return;
+		}
+		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
+		if (versionToUpdate) {
+			promptForUpdatingTool(tool.name, versionToUpdate);
+		}
+	};
+	const survey = async () => {
+		setTimeout(survey, timeDay);
+
+		const cfg = buildLanguageServerConfig();
+		if (!goplsSurveyOn || !cfg.enabled) {
+			return;
+		}
+		const surveyCfg = await maybePromptForGoplsSurvey();
+		if (surveyCfg) {
+			flushSurveyConfig(surveyCfg);
+		}
+	};
+
+	setTimeout(update, 10 * timeMinute);
+	setTimeout(survey, 30 * timeMinute);
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -132,7 +167,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = await buildLanguageClient(config);
+		languageClient = buildLanguageClient(config);
 		crashCount = 0;
 	}
 
@@ -162,7 +197,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-async function buildLanguageClient(config: LanguageServerConfig): Promise<LanguageClient> {
+function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 	// Reuse the same output channel for each instance of the server.
 	if (config.enabled) {
 		if (!serverOutputChannel) {
@@ -223,6 +258,35 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 				},
 			},
 			middleware: {
+				provideCodeLenses: async (doc, token, next): Promise<vscode.CodeLens[]> => {
+					const codeLens = await next(doc, token);
+					if (!codeLens || codeLens.length === 0) {
+						return codeLens;
+					}
+					return codeLens.map((lens: vscode.CodeLens) => {
+						switch (lens.command.title) {
+							case 'run test': {
+								const args = lens.command.arguments;
+								return new vscode.CodeLens(lens.range, {
+									...lens.command,
+									command: 'go.test.cursor',
+									arguments: [{ functionName: args[args.indexOf('run') + 1] }],
+								});
+							}
+							case 'run benchmark': {
+								const args = lens.command.arguments;
+								return new vscode.CodeLens(lens.range, {
+									...lens.command,
+									command: 'go.benchmark.cursor',
+									arguments: [{ functionName: args[args.indexOf('bench') + 1] }],
+								});
+							}
+							default: {
+								return lens;
+							}
+						}
+					});
+				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
 					diagnostics: vscode.Diagnostic[],
@@ -301,7 +365,25 @@ async function buildLanguageClient(config: LanguageServerConfig): Promise<Langua
 						}
 					}
 					return list;
-				}
+				},
+				// Keep track of the last file change in order to not prompt
+				// user if they are actively working.
+				didOpen: (e, next) => {
+					lastUserAction = new Date();
+					next(e);
+				},
+				didChange: (e, next) => {
+					lastUserAction = new Date();
+					next(e);
+				},
+				didClose: (e, next) => {
+					lastUserAction = new Date();
+					next(e);
+				},
+				didSave: (e, next) => {
+					lastUserAction = new Date();
+					next(e);
+				},
 			}
 		}
 	);
@@ -465,8 +547,7 @@ function allFoldersHaveSameGopath(): boolean {
 
 export async function shouldUpdateLanguageServer(
 	tool: Tool,
-	languageServerToolPath: string,
-	makeProxyCall: boolean
+	cfg: LanguageServerConfig,
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
 	if (tool.name !== 'gopls') {
@@ -474,7 +555,9 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// First, run the "gopls version" command and parse its results.
-	const usersVersion = await getLocalGoplsVersion(languageServerToolPath);
+	// TODO(rstambler): Confirm that the gopls binary's modtime matches the
+	// modtime in the config. Update it if needed.
+	const usersVersion = await getLocalGoplsVersion(cfg);
 
 	// We might have a developer version. Don't make the user update.
 	if (usersVersion === '(devel)') {
@@ -482,7 +565,7 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = makeProxyCall ? await getLatestGoplsVersion(tool) : tool.latestVersion;
+	let latestVersion = cfg.checkForUpdates ? await getLatestGoplsVersion(tool) : tool.latestVersion;
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -501,7 +584,8 @@ export async function shouldUpdateLanguageServer(
 	const usersTime = parseTimestampFromPseudoversion(usersVersion);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
-		let latestTime = makeProxyCall ? await getTimestampForVersion(tool, latestVersion) : tool.latestVersionTimestamp;
+		let latestTime = cfg.checkForUpdates ?
+			await getTimestampForVersion(tool, latestVersion) : tool.latestVersionTimestamp;
 		if (!latestTime) {
 			latestTime = tool.latestVersionTimestamp;
 		}
@@ -510,7 +594,10 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.coerce(usersVersion, { includePrerelease: true, loose: true });
+	const usersVersionSemver = semver.parse(usersVersion, {
+		includePrerelease: true,
+		loose: true,
+	});
 	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 
@@ -601,11 +688,11 @@ export const getLatestGoplsVersion = async (tool: Tool) => {
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
-export const getLocalGoplsVersion = async (goplsPath: string) => {
+export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(goplsPath, ['version'], { env: toolExecutionEnvironment() });
+		const { stdout } = await execFile(cfg.path, ['version'], { env: toolExecutionEnvironment() });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
@@ -677,6 +764,7 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 				throwResponseError: true
 			});
 		} catch (e) {
+			console.log(`Error sending request to ${proxy}: ${e}`);
 			return null;
 		}
 		return data;
@@ -696,9 +784,13 @@ export interface SurveyConfig {
 	// It is undefined if we have not yet made the determination.
 	promptThisMonth?: boolean;
 
-	// promptThisMonthTimestamp is the date on which we determined if the user
-	// should be prompted this month.
-	promptThisMonthTimestamp?: Date;
+	// dateToPromptThisMonth is the date on which we should prompt the user
+	// this month.
+	dateToPromptThisMonth?: Date;
+
+	// dateComputedPromptThisMonth is the date on which the values of
+	// promptThisMonth and dateToPromptThisMonth were set.
+	dateComputedPromptThisMonth?: Date;
 
 	// lastDatePrompted is the most recent date that the user has been prompted.
 	lastDatePrompted?: Date;
@@ -711,10 +803,81 @@ export interface SurveyConfig {
 async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
 	const now = new Date();
 	const cfg = getSurveyConfig();
-	const prompt = shouldPromptForGoplsSurvey(now, cfg);
-	if (!prompt) {
+	const dateToPrompt = shouldPromptForGoplsSurvey(now, cfg);
+	if (!dateToPrompt) {
 		return cfg;
 	}
+	const callback = () => {
+		const currentTime = new Date();
+
+		// Make sure the user has been idle for at least a minute.
+		if (minutesBetween(lastUserAction, currentTime) < 1) {
+			setTimeout(callback, 5 * timeMinute);
+			return;
+		}
+		promptForSurvey(cfg, now);
+	};
+	const ms = msBetween(now, dateToPrompt);
+	setTimeout(callback, ms);
+	return cfg;
+}
+
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
+	// If the prompt value is not set, assume we haven't prompted the user
+	// and should do so.
+	if (cfg.prompt === undefined) {
+		cfg.prompt = true;
+	}
+	if (!cfg.prompt) {
+		return;
+	}
+
+	// Check if the user has taken the survey in the last year.
+	// Don't prompt them if they have been.
+	if (cfg.lastDateAccepted) {
+		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+			return;
+		}
+	}
+
+	// Check if the user has been prompted for the survey in the last 90 days.
+	// Don't prompt them if they have been.
+	if (cfg.lastDatePrompted) {
+		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+			return;
+		}
+	}
+
+	// Check if the extension has been activated this month.
+	if (cfg.dateComputedPromptThisMonth) {
+		// The extension has been activated this month, so we should have already
+		// decided if the user should be prompted.
+		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
+			if (cfg.dateToPromptThisMonth) {
+				return cfg.dateToPromptThisMonth;
+			}
+		}
+	}
+	// This is the first activation this month (or ever), so decide if we
+	// should prompt the user. This is done by generating a random number in
+	// the range [0, 1) and checking if it is < 0.05, for a 5% probability.
+	// We then randomly pick a day in the rest of the month on which to prompt
+	// the user.
+	cfg.promptThisMonth = Math.random() < 0.05;
+	if (cfg.promptThisMonth) {
+		// end is the last day of the month, day is the random day of the
+		// month on which to prompt.
+		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+		const day = randomIntInRange(now.getUTCDate(), end.getUTCDate());
+		cfg.dateToPromptThisMonth = new Date(now.getFullYear(), now.getMonth(), day);
+	} else {
+		cfg.dateToPromptThisMonth = undefined;
+	}
+	cfg.dateComputedPromptThisMonth = now;
+	return cfg.dateToPromptThisMonth;
+}
+
+async function promptForSurvey(cfg: SurveyConfig, now: Date) {
 	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
 Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
@@ -726,8 +889,7 @@ Would you be willing to fill out a quick survey about your experience with gopls
 			cfg.lastDateAccepted = now;
 			cfg.prompt = true;
 
-			// Open the link to the survey.
-			vscode.env.openExternal(vscode.Uri.parse('https://www.whattimeisitrightnow.com/'));
+			await vscode.env.openExternal(vscode.Uri.parse(`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX`));
 			break;
 		case 'Not now':
 			cfg.prompt = true;
@@ -739,52 +901,13 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 			vscode.window.showInformationMessage(`No problem! We won't ask again.`);
 			break;
-	}
-	return cfg;
-}
+		default:
+			// If the user closes the prompt without making a selection, treat it
+			// like a "Not now" response.
+			cfg.prompt = true;
 
-export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): boolean {
-	// If the prompt value is not set, assume we haven't prompted the user
-	// and should do so.
-	if (cfg.prompt === undefined) {
-		cfg.prompt = true;
+			break;
 	}
-	if (!cfg.prompt) {
-		return false;
-	}
-
-	// Check if the user has taken the survey in the last year.
-	// Don't prompt them if they have been.
-	if (cfg.lastDateAccepted) {
-		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
-			return false;
-		}
-	}
-
-	// Check if the user has been prompted for the survey in the last 90 days.
-	// Don't prompt them if they have been.
-	if (cfg.lastDatePrompted) {
-		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
-			return false;
-		}
-	}
-
-	// Check if the extension has been activated this month.
-	if (cfg.promptThisMonthTimestamp) {
-		// The extension has been activated this month, so we should have already
-		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.promptThisMonthTimestamp) < 30) {
-			return cfg.promptThisMonth;
-		}
-	}
-	// This is the first activation this month (or ever), so decide if we
-	// should prompt the user. This is done by generating a random number
-	// and % 20 to get a 5% chance.
-	const r = Math.floor(Math.random() * 20);
-	cfg.promptThisMonth = (r % 20 === 0);
-	cfg.promptThisMonthTimestamp = now;
-
-	return cfg.promptThisMonth;
 }
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
@@ -797,7 +920,7 @@ function getSurveyConfig(): SurveyConfig {
 	try {
 		const cfg = JSON.parse(saved, (key: string, value: any) => {
 			// Make sure values that should be dates are correctly converted.
-			if (key.includes('Date')) {
+			if (key.toLowerCase().includes('date') || key.toLowerCase().includes('timestamp')) {
 				return new Date(value);
 			}
 			return value;
@@ -898,9 +1021,27 @@ DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
 	}
 }
 
-// daysBetween returns the number of days between a and b,
-// assuming that a occurs after b.
-function daysBetween(a: Date, b: Date) {
-	const ms = a.getTime() - b.getTime();
-	return ms / (1000 * 60 * 60 * 24);
+// randomIntInRange returns a random integer between min and max, inclusive.
+function randomIntInRange(min: number, max: number): number {
+	const low = Math.ceil(min);
+	const high = Math.floor(max);
+	return Math.floor(Math.random() * (high - low + 1)) + low;
+}
+
+const timeMinute = 1000 * 60;
+const timeHour = timeMinute * 60;
+const timeDay = timeHour * 24;
+
+// daysBetween returns the number of days between a and b.
+function daysBetween(a: Date, b: Date): number {
+	return msBetween(a, b) / timeDay;
+}
+
+// minutesBetween returns the number of days between a and b.
+function minutesBetween(a: Date, b: Date): number {
+	return msBetween(a, b) / timeMinute;
+}
+
+function msBetween(a: Date, b: Date): number {
+	return Math.abs(a.getTime() - b.getTime());
 }

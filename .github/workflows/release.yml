@@ -21,10 +21,9 @@ name: Release (golang.go)
 #    the 'Release (golang.go)' workflow specified in this file.
 #      - For stable version release (vX.X.X), check if the package.json has the matching version.
 #      - Packaging using 'vsce package'
-#      - Create a release in Github
+#      - Create a release in GitHub
 #      - Upload the vsix file as an asset of the release
 #      - For stable version release (vX.X.X), upload to the vscode market place
-#        (not implemented in this CL)
 
 on:
   push:
@@ -32,9 +31,10 @@ on:
       - v*
 
 jobs:
-  build:
+  release:
     name: create release
     runs-on: ubuntu-latest
+    if: github.repository == 'golang/vscode-go'
 
     steps:
       - name: checkout code
@@ -95,6 +95,14 @@ jobs:
           asset_path: ./go-${{ env.EXT_VERSION }}.vsix
           asset_name: go-${{ env.EXT_VERSION }}.vsix
           asset_content_type: application/zip
+
+      - name: publish
+        if: env.EXT_ISPREVIEW != 1 && github.repository == 'golang/vscode-go'
+        uses: lannonbr/vsce-action@704da577da0f27de5cdb4ae018374c2f08b5f523
+        with:
+          args: "publish -p $VSCE_TOKEN"
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+
 # TODO: check if the commit is in green state. (test-long.yml results)
-# TODO: publish to the market if VERSION is for a stable version.
 # TODO: after publishing, create a gerrit CL to update 'latest' branch if VERSION is for a stable version.
