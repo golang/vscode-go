@@ -61,9 +61,17 @@ If true, shows test coverage when Go: Test Single File command is run.
 
 If true, shows test coverage when Go: Test Package command is run.
 
+### `go.coverMode`
+
+When generating code coverage, the value for -covermode: 'set', 'count', 'atomic'
+
+### `go.coverShowCounts`
+
+When generating code coverage, should counts be shown as --374--
+
 ### `go.coverageDecorator`
 
-This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the color for the former and the style for the latter.
+This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the color and border for the former and the style for the latter.
 
 ### `go.coverageOptions`
 

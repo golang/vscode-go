@@ -13,19 +13,28 @@ import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { getGoConfig } from './util';
 
-let gutterSvgs: { [key: string]: string };
+let gutterSvgs: { [key: string]: string; };
+
+interface Highlight {
+	top: vscode.TextEditorDecorationType;
+	mid: vscode.TextEditorDecorationType;
+	bot: vscode.TextEditorDecorationType;
+	all: vscode.TextEditorDecorationType;
+}
 let decorators: {
-	type: string;
-	coveredGutterDecorator: vscode.TextEditorDecorationType;
-	uncoveredGutterDecorator: vscode.TextEditorDecorationType;
-	coveredHighlightDecorator: vscode.TextEditorDecorationType;
-	uncoveredHighlightDecorator: vscode.TextEditorDecorationType;
+	type: 'highlight' | 'gutter';
+	coveredGutter: vscode.TextEditorDecorationType;
+	uncoveredGutter: vscode.TextEditorDecorationType;
+	coveredHighlight: Highlight;
+	uncoveredHighlight: Highlight;
 };
 let decoratorConfig: {
 	[key: string]: any;
-	type: string;
+	type: 'highlight' | 'gutter';
 	coveredHighlightColor: string;
 	uncoveredHighlightColor: string;
+	coveredBorderColor: string;
+	uncoveredBorderColor: string;
 	coveredGutterStyle: string;
 	uncoveredGutterStyle: string;
 };
@@ -57,6 +66,7 @@ export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 	};
 
 	// Update the coverageDecorator in User config, if they are using the old style.
+	// Maybe it is time to deprecate the old style, and send warnings for a release or two.
 	const goConfig = getGoConfig();
 	const inspectResult = goConfig.inspect('coverageDecorator');
 	if (inspectResult) {
@@ -94,23 +104,29 @@ export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 	// These defaults are chosen to be distinguishable in nearly any color scheme (even Red)
 	// as well as by people who have difficulties with color perception.
-	// (how do these relate the defaults in package.json?)
-	// and where do the defaults actually come from? (raised as issue #256)
+	// It appears that the contributions in package.json are only used to check what users
+	// put in settings.json, while the defaults come from the defaults section of
+	// go.coverageDecorator in package.json.
 	decoratorConfig = {
 		type: 'highlight',
 		coveredHighlightColor: 'rgba(64,128,128,0.5)',
+		coveredBorderColor: 'rgba(64,128,128,1.0)',
 		uncoveredHighlightColor: 'rgba(128,64,64,0.25)',
+		uncoveredBorderColor: 'rgba(128,64,64,1.0)',
 		coveredGutterStyle: 'blockblue',
 		uncoveredGutterStyle: 'slashyellow'
 	};
 
-	// Update from configuration
-	if (typeof coverageDecoratorConfig === 'string') {
+	// Update from configuration. First case is obsolete; we should warn the user.
+	if (typeof coverageDecoratorConfig === 'string' &&
+		(coverageDecoratorConfig === 'highlight' || coverageDecoratorConfig === 'gutter')) {
 		decoratorConfig.type = coverageDecoratorConfig;
 	} else {
 		for (const k in coverageDecoratorConfig) {
 			if (coverageDecoratorConfig.hasOwnProperty(k)) {
 				decoratorConfig[k] = coverageDecoratorConfig[k];
+			} else {
+				vscode.window.showWarningMessage(`unknown coverage parameter ${k}`);
 			}
 		}
 	}
@@ -120,20 +136,53 @@ export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 
 function setDecorators() {
 	disposeDecorators();
+	if (!decorators) { initForTest(); } // only happens in tests
+	const f = (x: { overviewRulerColor: string, backgroundColor: string; }, arg: string) => {
+		const y = {
+			overviewRulerLane: 2,
+			borderStyle: arg,
+			borderWidth: '2px',
+		};
+		return Object.assign(y, x);
+	};
+	const cov = {
+		overviewRulerColor: 'green',
+		backgroundColor: decoratorConfig.coveredHighlightColor,
+		borderColor: decoratorConfig.coveredBorderColor
+	};
+	const uncov = {
+		overviewRulerColor: 'red',
+		backgroundColor: decoratorConfig.uncoveredHighlightColor,
+		borderColor: decoratorConfig.uncoveredBorderColor
+	};
+	const ctop = f(cov, 'solid solid none solid');
+	const cmid = f(cov, 'none solid none solid');
+	const cbot = f(cov, 'none solid solid solid');
+	const cone = f(cov, 'solid solid solid solid');
+	const utop = f(uncov, 'solid solid none solid');
+	const umid = f(uncov, 'none solid none solid');
+	const ubot = f(uncov, 'none solid solid solid');
+	const uone = f(uncov, 'solid solid solid solid');
 	decorators = {
 		type: decoratorConfig.type,
-		coveredGutterDecorator: vscode.window.createTextEditorDecorationType({
+		coveredGutter: vscode.window.createTextEditorDecorationType({
 			gutterIconPath: gutterSvgs[decoratorConfig.coveredGutterStyle]
 		}),
-		uncoveredGutterDecorator: vscode.window.createTextEditorDecorationType({
+		uncoveredGutter: vscode.window.createTextEditorDecorationType({
 			gutterIconPath: gutterSvgs[decoratorConfig.uncoveredGutterStyle]
 		}),
-		coveredHighlightDecorator: vscode.window.createTextEditorDecorationType({
-			backgroundColor: decoratorConfig.coveredHighlightColor
-		}),
-		uncoveredHighlightDecorator: vscode.window.createTextEditorDecorationType({
-			backgroundColor: decoratorConfig.uncoveredHighlightColor
-		})
+		coveredHighlight: {
+			all: vscode.window.createTextEditorDecorationType(cone),
+			top: vscode.window.createTextEditorDecorationType(ctop),
+			mid: vscode.window.createTextEditorDecorationType(cmid),
+			bot: vscode.window.createTextEditorDecorationType(cbot),
+		},
+		uncoveredHighlight: {
+			all: vscode.window.createTextEditorDecorationType(uone),
+			top: vscode.window.createTextEditorDecorationType(utop),
+			mid: vscode.window.createTextEditorDecorationType(umid),
+			bot: vscode.window.createTextEditorDecorationType(ubot)
+		},
 	};
 }
 
@@ -142,20 +191,33 @@ function setDecorators() {
  */
 function disposeDecorators() {
 	if (decorators) {
-		decorators.coveredGutterDecorator.dispose();
-		decorators.uncoveredGutterDecorator.dispose();
-		decorators.coveredHighlightDecorator.dispose();
-		decorators.uncoveredHighlightDecorator.dispose();
+		decorators.coveredGutter.dispose();
+		decorators.uncoveredGutter.dispose();
+		decorators.coveredHighlight.all.dispose();
+		decorators.coveredHighlight.top.dispose();
+		decorators.coveredHighlight.mid.dispose();
+		decorators.coveredHighlight.bot.dispose();
+		decorators.uncoveredHighlight.all.dispose();
+		decorators.uncoveredHighlight.top.dispose();
+		decorators.uncoveredHighlight.mid.dispose();
+		decorators.uncoveredHighlight.bot.dispose();
 	}
 }
 
 interface CoverageData {
-	uncoveredRange: vscode.Range[];
-	coveredRange: vscode.Range[];
+	uncoveredOptions: vscode.DecorationOptions[];
+	coveredOptions: vscode.DecorationOptions[];
 }
 
-let coverageData: { [key: string]: CoverageData } = {};  // actual file path to the coverage data.
+let coverageData: { [key: string]: CoverageData; } = {};  // actual file path to the coverage data.
 let isCoverageApplied: boolean = false;
+
+function emptyCoverageData(): CoverageData {
+	return {
+		uncoveredOptions: [],
+		coveredOptions: []
+	};
+}
 
 /**
  * Clear the coverage on all files
@@ -175,6 +237,7 @@ function clearCoverage() {
 export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?: string): Promise<void> {
 	const v = new Promise<void>((resolve, reject) => {
 		try {
+			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
 			const coveragePath = new Map<string, CoverageData>();  // <filename> from the cover profile to the coverage data.
 
 			// Clear existing coverage files
@@ -200,39 +263,59 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?
 				}
 
 				// and fill in coveragePath
-				const coverage = coveragePath.get(parse[1]) || { coveredRange: [], uncoveredRange: [] };
+				const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
 				const range = new vscode.Range(
-					// Start Line converted to zero based
+					// Convert lines and columns to 0-based
 					parseInt(parse[2], 10) - 1,
-					// Start Column converted to zero based
 					parseInt(parse[3], 10) - 1,
-					// End Line converted to zero based
 					parseInt(parse[4], 10) - 1,
-					// End Column converted to zero based
 					parseInt(parse[5], 10) - 1
 				);
+				const counts = parseInt(parse[7], 10);
 				// If is Covered (CoverCount > 0)
-				if (parseInt(parse[7], 10) > 0) {
-					coverage.coveredRange.push(range);
+				if (counts > 0) {
+					coverage.coveredOptions.push(...elaborate(range, counts, showCounts));
 				} else {
-					coverage.uncoveredRange.push(range);
+					coverage.uncoveredOptions.push(...elaborate(range, counts, showCounts));
 				}
 				coveragePath.set(parse[1], coverage);
 			});
 
 			getImportPathToFolder([...seenPaths], testDir)
 				.then((pathsToDirs) => {
-				createCoverageData(pathsToDirs, coveragePath);
-				setDecorators();
-				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
-				resolve();
-			});
+					createCoverageData(pathsToDirs, coveragePath);
+					setDecorators();
+					vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
+					resolve();
+				});
 		} catch (e) {
 			vscode.window.showInformationMessage(e.msg);
 			reject(e);
 		}
 	});
 	return v;
+}
+
+// add decorations to the range
+function elaborate(r: vscode.Range, count: number, showCounts: boolean): vscode.DecorationOptions[] {
+	// irrelevant for "gutter"
+	if (!decorators || decorators.type === 'gutter') { return [{ range: r }]; }
+	const ans: vscode.DecorationOptions[] = [];
+	const dc = decoratorConfig;
+	const backgroundColor = [dc.uncoveredHighlightColor, dc.coveredHighlightColor];
+	const txt: vscode.ThemableDecorationAttachmentRenderOptions = {
+		contentText: count > 0 && showCounts ? `--${count}--` : '',
+		backgroundColor: backgroundColor[count === 0 ? 0 : 1]
+	};
+	const v: vscode.DecorationOptions = {
+		range: r,
+		hoverMessage: `${count} executions`,
+		renderOptions: {
+			before: txt,
+		}
+	};
+	ans.push(v);
+	return ans;
 }
 
 function createCoverageData(
@@ -291,28 +374,69 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 	const cfg = getGoConfig(editor.document.uri);
 	const coverageOptions = cfg['coverageOptions'];
 	for (const filename in coverageData) {
-		if (editor.document.uri.fsPath.endsWith(filename)) {
-			isCoverageApplied = true;
-			const cd = coverageData[filename];
-			if (coverageOptions === 'showCoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
-				editor.setDecorations(
-					decorators.type === 'gutter'
-						? decorators.coveredGutterDecorator
-						: decorators.coveredHighlightDecorator,
-					cd.coveredRange
-				);
+		if (!editor.document.uri.fsPath.endsWith(filename)) {
+			continue;
+		}
+		isCoverageApplied = true;
+		const cd = coverageData[filename];
+		if (coverageOptions === 'showCoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
+			if (decorators.type === 'gutter') {
+				editor.setDecorations(decorators.coveredGutter, cd.coveredOptions);
+			} else {
+				detailed(editor, decorators.coveredHighlight, cd.coveredOptions);
 			}
+		}
 
-			if (coverageOptions === 'showUncoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
-				editor.setDecorations(
-					decorators.type === 'gutter'
-						? decorators.uncoveredGutterDecorator
-						: decorators.uncoveredHighlightDecorator,
-					cd.uncoveredRange
-				);
+		if (coverageOptions === 'showUncoveredCodeOnly' || coverageOptions === 'showBothCoveredAndUncoveredCode') {
+			if (decorators.type === 'gutter') {
+				editor.setDecorations(decorators.uncoveredGutter, cd.uncoveredOptions);
+			} else {
+				detailed(editor, decorators.uncoveredHighlight, cd.uncoveredOptions);
 			}
 		}
 	}
+}
+
+function detailed(editor: vscode.TextEditor, h: Highlight, opts: vscode.DecorationOptions[]) {
+	const tops: vscode.DecorationOptions[] = [];
+	const mids: vscode.DecorationOptions[] = [];
+	const bots: vscode.DecorationOptions[] = [];
+	const alls: vscode.DecorationOptions[] = [];
+	opts.forEach((opt) => {
+		const r = opt.range;
+		if (r.start.line === r.end.line) {
+			alls.push(opt);
+			return;
+		}
+		for (let line = r.start.line; line <= r.end.line; line++) {
+			if (line === r.start.line) {
+				const use: vscode.DecorationOptions = {
+					range: editor.document.validateRange(
+						new vscode.Range(line, r.start.character, line, Number.MAX_SAFE_INTEGER)),
+					hoverMessage: opt.hoverMessage,
+					renderOptions: opt.renderOptions
+				};
+				tops.push(use);
+			} else if (line < r.end.line) {
+				const use = {
+					range: editor.document.validateRange(
+						new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER)),
+					hoverMessage: opt.hoverMessage
+				};
+				mids.push(use);
+			} else {
+				const use = {
+					range: new vscode.Range(line, 0, line, r.end.character),
+					hoverMessage: opt.hoverMessage
+				};
+				bots.push(use);
+			}
+		}
+	});
+	if (tops.length > 0) { editor.setDecorations(h.top, tops); }
+	if (mids.length > 0) { editor.setDecorations(h.mid, mids); }
+	if (bots.length > 0) { editor.setDecorations(h.bot, bots); }
+	if (alls.length > 0) { editor.setDecorations(h.all, alls); }
 }
 
 /**
@@ -410,7 +534,7 @@ export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 
 // These routines enable testing without starting an editing session.
 
-export function coverageFilesForTest():  { [key: string]: CoverageData; } {
+export function coverageFilesForTest(): { [key: string]: CoverageData; } {
 	return coverageData;
 }
 
@@ -426,6 +550,8 @@ export function initForTest() {
 			type: 'highlight',
 			coveredHighlightColor: x,
 			uncoveredHighlightColor: x,
+			coveredBorderColor: x,
+			uncoveredBorderColor: x,
 			coveredGutterStyle: x,
 			uncoveredGutterStyle: x
 		};

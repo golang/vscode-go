@@ -9,7 +9,6 @@ import vscode = require('vscode');
 
 import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
-import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
 import {
@@ -269,7 +268,17 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		} else {
 			args.push('-timeout', testconfig.goConfig['testTimeout']);
 			if (testconfig.applyCodeCoverage) {
+				let coverMode = testconfig.goConfig['coverMode'];
+				switch (coverMode) {
+					case 'set': case 'count': case 'atomic': break;
+					default:
+						vscode.window.showWarningMessage(
+							`go.coverMode=${coverMode} is illegal. Use 'set', 'count', atomic'`
+						);
+						coverMode = 'set';
+				}
 				args.push('-coverprofile=' + tmpCoverPath);
+				args.push('-covermode', coverMode);
 			}
 		}
 		if (testTags && testconfig.flags.indexOf('-tags') === -1) {
