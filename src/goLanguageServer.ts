@@ -402,33 +402,43 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
 function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
-	const args = lens.command.arguments;
+	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
+	// so this needs to be deconstructured here
+	// Note that there will always only be one test function name in this context
+	if (lens.command.arguments.length < 2 || lens.command.arguments[1].length < 1) {
+		return [lens];
+	}
 	return [
 		new vscode.CodeLens(lens.range, {
 			...lens.command,
 			command: 'go.test.cursor',
-			arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+			arguments: [{ functionName: lens.command.arguments[1][0] }],
 		}),
 		new vscode.CodeLens(lens.range, {
 			title: 'debug test',
 			command: 'go.debug.cursor',
-			arguments: [{ functionName: args[args.indexOf('-run') + 1] }],
+			arguments: [{ functionName: lens.command.arguments[1][0] }],
 		}),
 	];
 }
 
 function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
-	const args = lens.command.arguments;
+	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
+	// so this needs to be deconstructured here
+	// Note that there will always only be one benchmark function name in this context
+	if (lens.command.arguments.length < 3 || lens.command.arguments[2].length < 1) {
+		return [lens];
+	}
 	return [
 		new vscode.CodeLens(lens.range, {
 			...lens.command,
 			command: 'go.benchmark.cursor',
-			arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+			arguments: [{ functionName: lens.command.arguments[2][0] }],
 		}),
 		new vscode.CodeLens(lens.range, {
 			title: 'debug benchmark',
 			command: 'go.debug.cursor',
-			arguments: [{ functionName: args[args.indexOf('-bench') + 1] }],
+			arguments: [{ functionName: lens.command.arguments[2][0] }],
 		}),
 	];
 }
