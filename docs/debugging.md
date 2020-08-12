@@ -28,12 +28,23 @@ This document explains how to debug your Go programs in VS Code. The Go debugger
 
 [Delve] should be installed by default when you install this extension.
 
+You may need to update `dlv` to the latest version to support the latest version
+of Go&mdash;see [Installation](#installation) below.
+
 ### Installation
 
 You can also install it manually in one of two ways:
 
 1. Open the Command Palette (Ctrl+Shift+P), select [`Go: Install/Update Tools`](settings.md#go-installupdate-tools), and select [`dlv`](tools.md#dlv).
 2. Follow the [Delve installation instructions](https://github.com/go-delve/delve/tree/master/Documentation/installation).
+
+### Start debugging
+
+1. Open the `package main` source file or the test file you want to debug.
+2. Open the Command Pallette (Ctrl+Shift+P), select `Debug: Start Debugging`,
+   then select `Go`.
+   * Alternatively, open the debug window (Ctrl+Shift+D) and click
+     `Run and Debug`, then select `Go`.
 
 ### Configuration
 
