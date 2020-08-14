@@ -1927,7 +1927,7 @@
               "description": "Alternate tool to use instead of the guru binary or alternate path to use for the guru binary."
             }
           },
-          "additionalProperties": false
+          "additionalProperties": true
         }
       }
     },
