@@ -33,7 +33,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		];
 	}
 
-	public resolveDebugConfiguration?(
+	public resolveDebugConfigurationWithSubstitutedVariables(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken

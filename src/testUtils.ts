@@ -19,7 +19,8 @@ import {
 	LineBuffer,
 	resolvePath
 } from './util';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
+import { parseEnvFile } from './utils/envUtils';
+import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
 import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');

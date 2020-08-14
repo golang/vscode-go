@@ -20,13 +20,8 @@ import {
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-
-import {
-	envPath,
-	getBinPathWithPreferredGopathGoroot,
-	parseEnvFile
-} from '../utils/goPath';
-
+import { parseEnvFile } from '../utils/envUtils';
+import { envPath, getBinPathWithPreferredGopathGoroot } from '../utils/goPath';
 import { killProcessTree } from '../utils/processUtils';
 
 import { DAPClient } from './dapClient';
