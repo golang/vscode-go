@@ -41,3 +41,16 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
 	}
 }
+
+export function parseEnvFiles(envFiles: string[]|string): { [key: string]: string } {
+	const fileEnvs = [];
+	if (typeof envFiles === 'string') {
+		fileEnvs.push(parseEnvFile(envFiles));
+	}
+	if (Array.isArray(envFiles)) {
+		envFiles.forEach((envFile) => {
+			fileEnvs.push(parseEnvFile(envFile));
+		});
+	}
+	return Object.assign({}, ...fileEnvs);
+}

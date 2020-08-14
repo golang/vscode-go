@@ -29,7 +29,7 @@ import {
 	Thread
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { parseEnvFile } from '../utils/envUtils';
+import { parseEnvFiles } from '../utils/envUtils';
 import {
 	envPath,
 	fixDriveCasingInWindows,
@@ -424,22 +424,13 @@ export class Delve {
 				}
 
 				// read env from disk and merge into env variables
-				const fileEnvs = [];
 				try {
-					if (typeof launchArgs.envFile === 'string') {
-						fileEnvs.push(parseEnvFile(launchArgs.envFile));
-					}
-					if (Array.isArray(launchArgs.envFile)) {
-						launchArgs.envFile.forEach((envFile) => {
-							fileEnvs.push(parseEnvFile(envFile));
-						});
-					}
+					const fileEnvs = parseEnvFiles(launchArgs.envFile);
+					const launchArgsEnv = launchArgs.env || {};
+					env = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
 				} catch (e) {
-					return reject(e);
+					return reject(`failed to process 'envFile' and 'env' settings: ${e}`);
 				}
-
-				const launchArgsEnv = launchArgs.env || {};
-				env = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
 
 				const dirname = isProgramDirectory ? program : path.dirname(program);
 				if (!env['GOPATH'] && (mode === 'debug' || mode === 'test')) {

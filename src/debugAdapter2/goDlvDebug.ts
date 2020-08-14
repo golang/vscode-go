@@ -20,7 +20,7 @@ import {
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { parseEnvFile } from '../utils/envUtils';
+import { parseEnvFiles } from '../utils/envUtils';
 import { envPath, getBinPathWithPreferredGopathGoroot } from '../utils/goPath';
 import { killProcessTree } from '../utils/processUtils';
 
@@ -611,18 +611,9 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 		}
 
 		// Read env from disk and merge into env variables.
-		const fileEnvs = [];
-		if (typeof launchArgs.envFile === 'string') {
-			fileEnvs.push(parseEnvFile(launchArgs.envFile));
-		}
-		if (Array.isArray(launchArgs.envFile)) {
-			launchArgs.envFile.forEach((envFile) => {
-				fileEnvs.push(parseEnvFile(envFile));
-			});
-		}
-
+		const fileEnvs = parseEnvFiles(launchArgs.envFile);
 		const launchArgsEnv = launchArgs.env || {};
-		const programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
+		const programEnv = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
 
 		log(`Current working directory: ${dirname}`);
 		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
