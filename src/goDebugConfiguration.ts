@@ -12,6 +12,7 @@ import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import { parseEnvFiles } from './utils/envUtils';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') { }
@@ -60,20 +61,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
-		const gopath = getCurrentGoPath(folder ? folder.uri : undefined);
-		if (!debugConfiguration['env']) {
-			debugConfiguration['env'] = { GOPATH: gopath };
-		} else if (!debugConfiguration['env']['GOPATH']) {
-			debugConfiguration['env']['GOPATH'] = gopath;
-		}
-
 		const goConfig = getGoConfig(folder && folder.uri);
-		const goToolsEnvVars = toolExecutionEnvironment();
-		Object.keys(goToolsEnvVars).forEach((key) => {
-			if (!debugConfiguration['env'].hasOwnProperty(key)) {
-				debugConfiguration['env'][key] = goToolsEnvVars[key];
-			}
-		});
+
+		combineEnvFilesAndEnv(folder, debugConfiguration);
 
 		const dlvConfig = goConfig.get<any>('delveConfig');
 		let useApiV1 = false;
@@ -145,4 +135,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		});
 	}
+}
+
+// combineEnvFilesAndEnv reads debugConfiguration.envFile and
+// combines the environment variables from all the env files and
+// debugConfiguration.env, on top of the tools execution environment variables.
+// It also unsets 'envFile' from the user-suppled debugConfiguration
+// because it is already applied.
+function combineEnvFilesAndEnv(
+	folder: vscode.WorkspaceFolder, debugConfiguration: vscode.DebugConfiguration) {
+	const goToolsEnvVars = toolExecutionEnvironment(folder?.uri); // also includes GOPATH: getCurrentGoPath().
+	const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
+	const env = debugConfiguration['env'] || {};
+
+	debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
+	debugConfiguration['envFile'] = undefined;  // unset, since we already processed.
 }

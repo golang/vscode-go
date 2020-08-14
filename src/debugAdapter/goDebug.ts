@@ -259,8 +259,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	buildFlags?: string;
 	init?: string;
 	trace?: 'verbose' | 'log' | 'error';
-	/** Optional path to .env file. */
-	envFile?: string | string[];
 	backend?: string;
 	output?: string;
 	/** Delve LoadConfig parameters */
@@ -273,6 +271,12 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 
 	showGlobalVariables?: boolean;
 	packagePathToGoModPathMap: { [key: string]: string };
+
+	/** Optional path to .env file. */
+	// TODO: deprecate .env file processing from DA.
+	// We expect the extension processes .env files
+	// and send the information to DA using the 'env' property.
+	envFile?: string | string[];
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {

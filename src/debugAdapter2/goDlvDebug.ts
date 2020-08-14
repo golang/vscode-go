@@ -20,7 +20,6 @@ import {
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { parseEnvFiles } from '../utils/envUtils';
 import { envPath, getBinPathWithPreferredGopathGoroot } from '../utils/goPath';
 import { killProcessTree } from '../utils/processUtils';
 
@@ -57,8 +56,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	buildFlags?: string;
 	init?: string;
 	trace?: 'verbose' | 'log' | 'error';
-	/** Optional path to .env file. */
-	envFile?: string | string[];
 	backend?: string;
 	output?: string;
 	/** Delve LoadConfig parameters */
@@ -610,10 +607,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			goRunArgs.push(...launchArgs.args);
 		}
 
-		// Read env from disk and merge into env variables.
-		const fileEnvs = parseEnvFiles(launchArgs.envFile);
+		// launchArgs.env includes all the environment variables
+		// including vscode-go's toolsExecutionEnvironment (PATH, GOPATH, ...),
+		// and those read from .env files.
 		const launchArgsEnv = launchArgs.env || {};
-		const programEnv = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
+		const programEnv = Object.assign({}, process.env, launchArgsEnv);
 
 		log(`Current working directory: ${dirname}`);
 		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
