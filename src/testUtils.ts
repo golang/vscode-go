@@ -293,6 +293,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		let pkgMapPromise: Promise<Map<string, string> | null> = Promise.resolve(null);
 
 		if (testconfig.isMod) {
+			getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
 			// We need the mapping to get absolute paths for the files in the test output.
 			pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
 		} else {  // GOPATH mode
