@@ -340,14 +340,18 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	try {
+		const env = toolExecutionEnvironment();
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, ['version']);
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env});
 		if (stderr) {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
+		if (!cachedGoVersion.isValid()) {
+			warn (`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
+		}
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
 		return;
