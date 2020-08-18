@@ -1560,7 +1560,7 @@
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
+          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
         },
         "go.gotoSymbol.includeImports": {
           "type": "boolean",

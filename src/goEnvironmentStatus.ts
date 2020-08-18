@@ -7,15 +7,16 @@
 
 import cp = require('child_process');
 import fs = require('fs');
+import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
-import { outputChannel } from './goStatus';
-import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
-import { getBinPath, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
+import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
+import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
+import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
 import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
 
 export class GoEnvironmentOption {
@@ -450,4 +451,111 @@ async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 		const label = result.version.replace('go', 'Go ');
 		return [...opts, new GoEnvironmentOption(dlPath, label)];
 	}, []);
+}
+
+export const latestGoVersionKey = 'latestGoVersions';
+const oneday = 60 * 60 * 24 * 1000; // 24 hours in milliseconds
+
+export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
+	const timeout = oneday;
+	const now = moment.now();
+
+	let results: GoEnvironmentOption[];
+
+	// Check if we can use cached results
+	const cachedResults = getFromGlobalState(latestGoVersionKey);
+	if (cachedResults && now - cachedResults.timestamp < timeout) {
+		results = cachedResults.goVersions;
+	} else {
+		// fetch the latest supported Go versions
+		try {
+			// fetch the latest Go versions and cache the results
+			results = await fetchDownloadableGoVersions();
+			await updateGlobalState(latestGoVersionKey, {
+				timestamp: now,
+				goVersions: results,
+			});
+		} catch (e) {
+			// hardcode the latest versions of Go in case golang.dl is unavailable
+			results = [
+				new GoEnvironmentOption('go get golang.org/dl/go1.15', 'Go 1.15'),
+				new GoEnvironmentOption('go get golang.org/dl/go1.14.7', 'Go 1.14.7'),
+			];
+		}
+	}
+
+	return results;
+}
+
+const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
+
+export async function offerToInstallLatestGoVersion() {
+	const goConfig = getGoConfig();
+	if (!goConfig['useGoProxyToCheckForToolUpdates']) {
+		return;
+	}
+
+	let options = await getLatestGoVersions();
+
+	// filter out Go versions the user has already dismissed
+	let dismissedOptions: GoEnvironmentOption[];
+	dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
+	if (!!dismissedOptions) {
+		options = options.filter((version) => !dismissedOptions.find((x) => x.label === version.label));
+	}
+
+	// compare to current go version.
+	const currentVersion = await getGoVersion();
+	if (!!currentVersion) {
+		options = options.filter((version) => currentVersion.lt(version.label));
+	}
+
+	// notify user that there is a newer version of Go available
+	if (options.length > 0) {
+		showGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
+		vscode.commands.registerCommand('go.promptforgoinstall', () => {
+			const download = {
+				title: 'Download',
+				async command() {
+					await vscode.env.openExternal(vscode.Uri.parse(`https://golang.org/dl/`));
+				}
+			};
+
+			const neverAgain = {
+				title: `Don't Show Again`,
+				async command() {
+					// mark these versions as seen
+					dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
+					if (!dismissedOptions) {
+						dismissedOptions = [];
+					}
+					options.forEach((version) => {
+						dismissedOptions.push(version);
+					});
+					await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+				}
+			};
+
+			let versionsText: string;
+			if (options.length > 1) {
+				versionsText = `${options.map((x) => x.label)
+					.reduce((prev, next) => {
+						return prev + ' and ' + next;
+					})} are available`;
+			} else {
+				versionsText = `${options[0].label} is available`;
+			}
+
+			vscode.window
+				.showInformationMessage(
+					`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
+					download,
+					neverAgain
+				)
+				.then((selection) => {
+					hideGoStatus();
+					selection.command();
+				});
+		});
+	}
 }

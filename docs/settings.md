@@ -227,7 +227,7 @@ Complete functions with their parameter signature, excluding the variable types
 
 ### `go.useGoProxyToCheckForToolUpdates`
 
-When enabled, the extension automatically checks the Go proxy if there are updates available for the Go tools (at present, only gopls) it depends on and prompts the user accordingly
+When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly
 
 ### `go.useLanguageServer`
 

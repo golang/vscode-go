@@ -19,7 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, disposeGoStatusBar, setEnvironmentVariableCollection } from './goEnvironmentStatus';
+import { chooseGoEnvironment, disposeGoStatusBar, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -84,6 +84,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
+		offerToInstallLatestGoVersion();
 		offerToInstallTools();
 		configureLanguageServer(ctx);
 
