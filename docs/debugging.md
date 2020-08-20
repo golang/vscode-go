@@ -33,18 +33,23 @@ of Go&mdash;see [Installation](#installation) below.
 
 ### Installation
 
-You can also install it manually in one of two ways:
+You can also install Delve manually in one of two ways:
 
-1. Open the Command Palette (Ctrl+Shift+P), select [`Go: Install/Update Tools`](settings.md#go-installupdate-tools), and select [`dlv`](tools.md#dlv).
+1. Open the [Command Palette][] (Windows/Linux: Ctrl+Shift+P; OSX: Shift+Command+P), select [`Go: Install/Update Tools`](settings.md#go-installupdate-tools), and select [`dlv`](tools.md#dlv).
 2. Follow the [Delve installation instructions](https://github.com/go-delve/delve/tree/master/Documentation/installation).
 
 ### Start debugging
 
 1. Open the `package main` source file or the test file you want to debug.
-2. Open the Command Pallette (Ctrl+Shift+P), select `Debug: Start Debugging`,
-   then select `Go`.
-   * Alternatively, open the debug window (Ctrl+Shift+D) and click
+2. Start debugging using one of the following options:
+   * Open the [Command Palette][], select
+     `Debug: Start Debugging`, then select `Go`.
+   * Open the debug window (Windows/Linux: Ctrl+Shift+D; OSX: Shift+Command+D) and click
      `Run and Debug`, then select `Go`.
+   * Select **Run > Start Debugging** from the main menu.
+
+   See [the VS Code Debugging documentation](https://code.visualstudio.com/docs/editor/debugging)
+   for more information.
 
 ### Configuration
 
@@ -373,3 +378,4 @@ This error can show up for Mac users using Delve versions 0.12.2 and above. `xco
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
 [snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets
+[Command Palette]: https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette
