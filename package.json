@@ -1219,7 +1219,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'. Options are 'workspace', 'package or 'off'.",
+          "description": "Vets code on file save using 'go tool vet'.",
           "scope": "resource"
         },
         "go.vetFlags": {
@@ -1234,7 +1234,7 @@
         "go.formatTool": {
           "type": "string",
           "default": "goreturns",
-          "description": "Pick 'gofmt', 'goimports', 'goreturns' or 'goformat' to run on format. Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.",
+          "description": "Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.",
           "scope": "resource",
           "enum": [
             "gofmt",
@@ -1311,13 +1311,13 @@
         },
         "go.coverMode": {
           "type": "string",
-          "enum:": [
+          "enum": [
             "set",
             "count",
             "atomic"
           ],
           "default": "set",
-          "description": "When generating code coverage, the value for -covermode: 'set', 'count', 'atomic'",
+          "description": "When generating code coverage, the value for -covermode",
           "scope": "resource"
         },
         "go.coverShowCounts": {
@@ -1409,7 +1409,7 @@
             "coveredGutterStyle": "blockblue",
             "uncoveredGutterStyle": "slashyellow"
           },
-          "description": "This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the colors for the former and the style for the latter.",
+          "description": "This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the colors and borders for the former and the style for the latter.",
           "scope": "resource"
         },
         "go.testTimeout": {
@@ -1729,9 +1729,9 @@
               "type": "boolean",
               "default": true,
               "description": "Whether to run the created Go Playground after creation"
-            },
-            "description": "The flags configured here will be passed through to command `goplay`"
+            }
           },
+          "description": "The flags configured here will be passed through to command `goplay`",
           "additionalProperties": false,
           "default": {
             "openbrowser": true,

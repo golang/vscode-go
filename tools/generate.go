@@ -43,6 +43,7 @@ type Property struct {
 	Default     interface{} `json:"default,omitempty"`
 	Description string      `json:"description,omitempty"`
 	Type        interface{} `json:"type,omitempty"`
+	Enum        []string    `json:"enum,omitempty"`
 }
 
 func main() {
@@ -116,13 +117,56 @@ func main() {
 			Default:     p.Default,
 			Description: p.Description,
 			Type:        p.Type,
+			Enum:        p.Enum,
 		})
 	}
 	sort.Slice(properties, func(i, j int) bool {
 		return properties[i].Name < properties[j].Name
 	})
+	indent := "&nbsp;&nbsp;"
 	for i, p := range properties {
 		b.WriteString(fmt.Sprintf("### `%s`\n\n%s", p.Name, p.Description))
+		if p.Enum != nil {
+			b.WriteString(fmt.Sprintf("\n\nAllowed Values:`%v`", p.Enum))
+		}
+		switch p.Type {
+		case "object":
+			x, ok := p.Default.(map[string]interface{})
+			// do nothing if it is nil
+			if ok && len(x) > 0 {
+				keys := []string{}
+				for k := range x {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				b.WriteString(fmt.Sprintf("\n\nDefault:{<br/>\n"))
+				for _, k := range keys {
+					v := x[k]
+					output := fmt.Sprintf("%v", v)
+					if str, ok := v.(string); ok {
+						output = fmt.Sprintf("%q", str)
+					}
+					// if v is an empty string, nothing gets printed
+					// if v is a map/object, it is printed on one line
+					// this could be improved at the cost of more code
+					b.WriteString(fmt.Sprintf("%s`\"%s\": %s`,<br/>\n", indent, k, output))
+				}
+				b.WriteString("    }\n")
+			}
+		case "boolean", "string", "number":
+			b.WriteString(fmt.Sprintf("\n\nDefault: `%v`", p.Default))
+		case "array":
+			x := p.Default.([]interface{})
+			if len(x) > 0 {
+				b.WriteString(fmt.Sprintf("\n\nDefault: `%v`", p.Default))
+			}
+		default:
+			if _, ok := p.Type.([]interface{}); ok {
+				b.WriteString(fmt.Sprintf("\n\nefault: `%v`", p.Default))
+				break
+			}
+			log.Fatalf("implement default when p.Type is %q in %#v %T", p.Type, p, p.Default)
+		}
 		if i != len(properties)-1 {
 			b.WriteString("\n\n")
 		}
