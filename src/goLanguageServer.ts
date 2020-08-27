@@ -1040,8 +1040,12 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 					errKind = 'initialization';
 					break;
 			}
+			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
 			const title = `gopls: automated issue report (${errKind})`;
-			const body = `ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
+			const body = `
+gopls version: ${usersGoplsVersion}
+
+ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
 Describe what you observed.
 
