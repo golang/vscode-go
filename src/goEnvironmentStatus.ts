@@ -302,20 +302,26 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
 		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
-	} else if (!terminalCreationListener) {  // process.platform === 'darwin'
-		// We don't use EnvironmentVariableCollection on mac
-		// because this gets confusing for users. Instead we send the
-		// shell command to change the PATH env var,
-		// following the suggestion to workaround described in
+	} else {
+		// When '-l' or '--login' flags are set, the terminal will invoke a login
+		// shell again and the paths from the user's login shell will be prepended
+		// again in front of the path mutated by environmentVariableCollection API.
+		// That causes the mutated path to be ignored which we don't want.
+		// So, let's not use the API if those flags are set, but go with the old way
+		// -- i.e. send the export shell command.
+		// See the open issue and the discussion here:
 		// https://github.com/microsoft/vscode/issues/99878#issuecomment-642808852
 		const terminalShellArgs = <string[]>(
-			vscode.workspace.getConfiguration('terminal.integrated.shellArgs').get('osx') || []);
-		// User explicitly chose to run the login shell. So, don't mess with their config.
-		if (!terminalShellArgs.includes('-l') && !terminalShellArgs.includes('--login')) {
+		vscode.workspace.getConfiguration('terminal.integrated.shellArgs').get('osx') || []);
+		if (terminalShellArgs.includes('-l') || terminalShellArgs.includes('--login')) {
 			for (const term of vscode.window.terminals) {
 				updateIntegratedTerminal(term);
 			}
-			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
+			if (!terminalCreationListener) {
+				terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
+			}
+		} else {
+			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
 		}
 	}
 
