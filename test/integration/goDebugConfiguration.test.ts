@@ -97,4 +97,34 @@ suite('Debug Environment Variable Merge Test', () => {
 			SOMEVAR1: 'valueFromEnv',
 			SOMEVAR2: 'valueFromEnvFile2'});
 	});
+
+	test('launchArgs.env overwrites toolsEnvVar', () => {
+		const toolsEnv = {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromToolsEnvVar1',
+			SOMEVAR2: 'valueFromToolsEnvVar2'
+		};
+
+		const env = {SOMEVAR1: 'valueFromEnv'};
+		runTest({ env, toolsEnv }, {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromEnv',
+			SOMEVAR2: 'valueFromToolsEnvVar2'});
+	});
+
+	test('launchArgs.envFile overwrites toolsEnvVar', () => {
+		const toolsEnv = {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromToolsEnvVar1',
+			SOMEVAR2: 'valueFromToolsEnvVar2'
+		};
+		const envFile = path.join(tmpDir, 'env');
+		fs.writeFileSync(envFile, [
+			'SOMEVAR2=valueFromEnvFile2'].join('\n'));
+
+		runTest({ toolsEnv, envFile }, {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromToolsEnvVar1',
+			SOMEVAR2: 'valueFromEnvFile2'});
+	});
 });
