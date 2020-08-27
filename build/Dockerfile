@@ -32,7 +32,8 @@ RUN GO111MODULE=on go get -x -v github.com/acroca/go-symbols && \
 	GO111MODULE=on go get -x -v github.com/uudashr/gopkgs/v2/cmd/gopkgs && \
 	GO111MODULE=on go get -x -v github.com/zmb3/gogetdoc && \
 	GO111MODULE=on go get -x -v golang.org/x/lint/golint && \
-	GO111MODULE=on go get -x -v golang.org/x/tools/cmd/gorename
+	GO111MODULE=on go get -x -v golang.org/x/tools/cmd/gorename && \
+	GO111MODULE=on go get -x -v github.com/go-delve/delve/cmd/dlv
 
 WORKDIR /workspace
 ENTRYPOINT ["build/all.bash"]
