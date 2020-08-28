@@ -38,7 +38,7 @@ import {
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
 } from '../utils/pathUtils';
-import {killProcessTree} from '../utils/processUtils';
+import { killProcessTree } from '../utils/processUtils';
 
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);
@@ -473,7 +473,11 @@ export class Delve {
 				log(`Using GOPATH: ${env['GOPATH']}`);
 				log(`Using GOROOT: ${this.goroot}`);
 				log(`Using PATH: ${env['PATH']}`);
-
+				if (launchArgs.trace === 'verbose') {
+					Object.keys(env).forEach((key) => {
+						log('  export ' + key + '="' + env[key] + '"');
+					});
+				}
 				if (!!launchArgs.noDebug) {
 					if (mode === 'debug') {
 						this.noDebug = true;
@@ -529,8 +533,7 @@ export class Delve {
 
 				if (!existsSync(launchArgs.dlvToolPath)) {
 					log(
-						`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
-						env['GOPATH'] ? ', ' + env['GOPATH'] : ''
+						`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 						} or ${envPath}`
 					);
 					return reject(
