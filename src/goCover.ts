@@ -21,6 +21,7 @@ interface Highlight {
 	bot: vscode.TextEditorDecorationType;
 	all: vscode.TextEditorDecorationType;
 }
+
 let decorators: {
 	type: 'highlight' | 'gutter';
 	coveredGutter: vscode.TextEditorDecorationType;
@@ -28,6 +29,7 @@ let decorators: {
 	coveredHighlight: Highlight;
 	uncoveredHighlight: Highlight;
 };
+
 let decoratorConfig: {
 	[key: string]: any;
 	type: 'highlight' | 'gutter';
@@ -65,35 +67,7 @@ export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 		verticalyellow: ctx.asAbsolutePath('images/gutter-vertyellow.svg')
 	};
 
-	// Update the coverageDecorator in User config, if they are using the old style.
-	// Maybe it is time to deprecate the old style, and send warnings for a release or two.
 	const goConfig = getGoConfig();
-	const inspectResult = goConfig.inspect('coverageDecorator');
-	if (inspectResult) {
-		if (typeof inspectResult.globalValue === 'string') {
-			goConfig.update(
-				'coverageDecorator',
-				{ type: inspectResult.globalValue },
-				vscode.ConfigurationTarget.Global
-			);
-		}
-		if (typeof inspectResult.workspaceValue === 'string') {
-			goConfig.update(
-				'coverageDecorator',
-				{ type: inspectResult.workspaceValue },
-				vscode.ConfigurationTarget.Workspace
-			);
-		}
-		if (typeof inspectResult.workspaceFolderValue === 'string') {
-			goConfig.update(
-				'coverageDecorator',
-				{ type: inspectResult.workspaceValue },
-				vscode.ConfigurationTarget.WorkspaceFolder
-			);
-		}
-	}
-
-	// Update the decorators
 	updateCodeCoverageDecorators(goConfig.get('coverageDecorator'));
 }
 
@@ -117,16 +91,15 @@ export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 		uncoveredGutterStyle: 'slashyellow'
 	};
 
-	// Update from configuration. First case is obsolete; we should warn the user.
-	if (typeof coverageDecoratorConfig === 'string' &&
-		(coverageDecoratorConfig === 'highlight' || coverageDecoratorConfig === 'gutter')) {
-		decoratorConfig.type = coverageDecoratorConfig;
+	// Update from configuration.
+	if (typeof coverageDecoratorConfig !== 'object') {
+		vscode.window.showWarningMessage(`invalid go.coverageDecorator type, expected an 'object'`);
 	} else {
 		for (const k in coverageDecoratorConfig) {
 			if (coverageDecoratorConfig.hasOwnProperty(k)) {
 				decoratorConfig[k] = coverageDecoratorConfig[k];
 			} else {
-				vscode.window.showWarningMessage(`unknown coverage parameter ${k}`);
+				vscode.window.showWarningMessage(`invalid coverage parameter ${k}`);
 			}
 		}
 	}
