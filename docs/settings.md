@@ -244,9 +244,9 @@ Default: `false`
 
 ### `go.installDependenciesWhenBuilding`
 
-If true, then `-i` flag will be passed to `go build` everytime the code is compiled.
+If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.
 
-Default: `true`
+Default: `false`
 
 ### `go.languageServerExperimentalFeatures`
 

@@ -1174,8 +1174,8 @@
         },
         "go.installDependenciesWhenBuilding": {
           "type": "boolean",
-          "default": true,
-          "description": "If true, then `-i` flag will be passed to `go build` everytime the code is compiled.",
+          "default": false,
+          "description": "If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.",
           "scope": "resource"
         },
         "go.lintOnSave": {
