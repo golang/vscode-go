@@ -66,7 +66,7 @@ You may not need to configure any settings to start debugging your programs, but
     * `maxStructFields`: Maximum number of fields read from a struct. A setting of `-1` indicates that all fields should be read (default: `-1`).
     * `maxVariableRecurse`: How far to recurse when evaluating nested types (default: `1`).
     * `followPointers`: Automatically dereference pointers (default: `true`).
-  * `showGlobalVariables`: Show global variables in the Debug view (default: `true`).
+  * `showGlobalVariables`: Show global variables in the Debug view (default: `false`).
 
 There are some common cases when you might want to tweak the Delve configurations.
 

@@ -620,7 +620,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -750,7 +750,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1003,7 +1003,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1125,7 +1125,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1894,7 +1894,7 @@
             "showGlobalVariables": {
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
-              "default": true
+              "default": false
             }
           },
           "default": {
@@ -1906,7 +1906,7 @@
               "maxStructFields": -1
             },
             "apiVersion": 2,
-            "showGlobalVariables": true
+            "showGlobalVariables": false
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"

@@ -129,7 +129,7 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 Default:{<br/>
 &nbsp;&nbsp;`"apiVersion": 2`,<br/>
 &nbsp;&nbsp;`"dlvLoadConfig": map[followPointers:true maxArrayValues:64 maxStringLen:64 maxStructFields:-1 maxVariableRecurse:1]`,<br/>
-&nbsp;&nbsp;`"showGlobalVariables": true`,<br/>
+&nbsp;&nbsp;`"showGlobalVariables": false`,<br/>
     }
 
 
