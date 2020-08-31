@@ -81,55 +81,63 @@ export function goLint(
 		return Promise.resolve([]);
 	}
 
-	const lintTool = goConfig['lintTool'] || 'golint';
+	let lintTool = goConfig['lintAlternateTool'] || null;
 	const lintFlags: string[] = goConfig['lintFlags'] || [];
 	const lintEnv = toolExecutionEnvironment();
 	const args: string[] = [];
 
-	lintFlags.forEach((flag) => {
-		// --json is not a valid flag for golint and in gometalinter, it is used to print output in json which we dont want
-		if (flag === '--json') {
-			return;
-		}
-		if (flag.startsWith('--config=') || flag.startsWith('-config=')) {
-			let configFilePath = flag.substr(flag.indexOf('=') + 1).trim();
-			if (!configFilePath) {
+	if (lintTool === null) {
+		lintTool = goConfig['lintTool'] || 'golint';
+
+		lintFlags.forEach((flag) => {
+			// --json is not a valid flag for golint and in gometalinter, it is used to print output in json which we dont want
+			if (flag === '--json') {
 				return;
 			}
-			configFilePath = resolvePath(configFilePath);
-			args.push(`${flag.substr(0, flag.indexOf('=') + 1)}${configFilePath}`);
-			return;
+			if (flag.startsWith('--config=') || flag.startsWith('-config=')) {
+				let configFilePath = flag.substr(flag.indexOf('=') + 1).trim();
+				if (!configFilePath) {
+					return;
+				}
+				configFilePath = resolvePath(configFilePath);
+				args.push(`${flag.substr(0, flag.indexOf('=') + 1)}${configFilePath}`);
+				return;
+			}
+			args.push(flag);
+		});
+		if (lintTool === 'gometalinter') {
+			if (args.indexOf('--aggregate') === -1) {
+				args.push('--aggregate');
+			}
+			if (goConfig['toolsGopath']) {
+				// gometalinter will expect its linters to be in the GOPATH
+				// So add the toolsGopath to GOPATH
+				lintEnv['GOPATH'] += path.delimiter + getToolsGopath();
+			}
 		}
-		args.push(flag);
-	});
-	if (lintTool === 'gometalinter') {
-		if (args.indexOf('--aggregate') === -1) {
-			args.push('--aggregate');
+		if (lintTool === 'golangci-lint') {
+			if (args.indexOf('run') === -1) {
+				args.unshift('run');
+			}
+			if (args.indexOf('--print-issued-lines=false') === -1) {
+				// print only file:number:column
+				args.push('--print-issued-lines=false');
+			}
+			if (args.indexOf('--out-format=colored-line-number') === -1) {
+				// print file:number:column.
+				// Explicit override in case .golangci.yml calls for a format we don't understand
+				args.push('--out-format=colored-line-number');
+			}
+			if (args.indexOf('--issues-exit-code=') === -1) {
+				// adds an explicit no-error-code return argument, to avoid npm error
+				// message detection logic. See golang/vscode-go/issues/411
+				args.push('--issues-exit-code=0');
+			}
 		}
-		if (goConfig['toolsGopath']) {
-			// gometalinter will expect its linters to be in the GOPATH
-			// So add the toolsGopath to GOPATH
-			lintEnv['GOPATH'] += path.delimiter + getToolsGopath();
-		}
-	}
-	if (lintTool === 'golangci-lint') {
-		if (args.indexOf('run') === -1) {
-			args.unshift('run');
-		}
-		if (args.indexOf('--print-issued-lines=false') === -1) {
-			// print only file:number:column
-			args.push('--print-issued-lines=false');
-		}
-		if (args.indexOf('--out-format=colored-line-number') === -1) {
-			// print file:number:column.
-			// Explicit override in case .golangci.yml calls for a format we don't understand
-			args.push('--out-format=colored-line-number');
-		}
-		if (args.indexOf('--issues-exit-code=') === -1) {
-			// adds an explicit no-error-code return argument, to avoid npm error
-			// message detection logic. See golang/vscode-go/issues/411
-			args.push('--issues-exit-code=0');
-		}
+	} else {
+		lintFlags.forEach((flag) => {
+			args.push(flag);
+		});
 	}
 
 	if (scope === 'workspace' && currentWorkspace) {

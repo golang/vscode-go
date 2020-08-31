@@ -1202,6 +1202,15 @@
             "staticcheck"
           ]
         },
+        "go.lintAlternateTool": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Alternate linter to use, overrides `go.lintTool`. Useful for unsupported linters, `go.lintFlags` might be required to parse it's output.",
+          "scope": "resource"
+        },
         "go.lintFlags": {
           "type": "array",
           "items": {

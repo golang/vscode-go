@@ -158,6 +158,8 @@ Other lint tools can be used instead of [`golint`] by configuring the [`"go.lint
 * [`golangci-lint`]: This tool combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
 * [`revive`]: This tool is an enhancement on top of [`golint`], and it provides additional checks.
 
+Other unsupported lint tools can be used by configuring the [`"go.lintAlternateTool"`](settings.md#go.lintAlternateTool) setting. As they are not officially supported, it might be required to set the [`"go.lintAlternateTool"`](settings.md#go.lintAlternateTool) setting to understand the tool's output.
+
 You can use the [`"go.lintFlags"`](settings.md#go.lintFlags) setting to further configure your linter of choice. Most linters can be configured via special configuration files, but you may still need to pass these command-line flags. The configuration documentation for each supported linter is listed here:
 
 * [`staticcheck`](https://staticcheck.io/docs/#configuration)

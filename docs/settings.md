@@ -288,6 +288,12 @@ Allowed Values:`[golint golangci-lint revive staticcheck]`
 
 Default: `golint`
 
+### `go.lintAlternateTool`
+
+Alternate linter to use, overrides `go.lintTool`. Useful for unsupported linters, `go.lintFlags` might be required to parse it's output.
+
+Default: `<nil>`
+
 ### `go.liveErrors`
 
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay.

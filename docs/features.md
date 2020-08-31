@@ -160,6 +160,8 @@ Much like vet errors, lint errors can also be shown on save. This behavior is co
 
 The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting. [`staticcheck`], [`golangci-lint`], and [`revive`] are supported.
 
+Unsupported tools can be configured via the [`"go.lintAlternateTool"`](settings.md#go.lintAlternateTool) setting.
+
 For a complete overview of linter options, see the [documentation for diagnostic tools](tools.md#diagnostics).
 
 ## Run and test in the editor
