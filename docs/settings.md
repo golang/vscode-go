@@ -180,9 +180,15 @@ Flags to pass to format tool (e.g. ["-s"])
 
 Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.
 
-Allowed Values:`[gofmt goimports goreturns goformat]`
+Allowed Values: `[gofmt goimports goreturns goformat]`
 
 Default: `goreturns`
+
+### `go.formatAlternateTool`
+
+Not applicable when using the language server. Alternate formatter to use, overrides `go.formatTool`. Useful for unsupported formatters, `go.formatFlags` might be required to parse it's output.
+
+Default: `<nil>`
 
 ### `go.generateTestsFlags`
 

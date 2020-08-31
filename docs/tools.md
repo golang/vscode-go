@@ -130,7 +130,7 @@ Configure this via the [`"go.docsTool"`](settings.md#go.docsTool) setting.
 
 Formatting tools are used by the [formatting and import organization](features.md#format-and-organize-imports) features.
 
-[`goreturns`] is used by default. It formats the file according to the industry standard [`gofmt`] style, organizes imports, and fills in default return values for functions. Other tools can be used for formatting instead; this can be configured with the [`"go.go.formatTool"`](settings.md#formatTool) setting.
+[`goreturns`] is used by default. It formats the file according to the industry standard [`gofmt`] style, organizes imports, and fills in default return values for functions. Other tools can be used for formatting instead; this can be configured with the [`"go.formatTool"`](settings.md#formatTool) setting.
 
 **NOTE: [`goreturns`] does not have support for Go modules, so we recommend using [`goimports`] or [`gopls`] instead.**
 
@@ -139,6 +139,8 @@ Other format tool options include:
 * [`goimports`], which applies the default `gofmt` style and organizes imports, but without the behavior of filling in default return values
 * [`gofmt`] only formats the file, without import organization or filling in return values
 * [`goformat`] is a configurable version of [`gofmt`]
+
+Unsupported formatters by the extension can also be used with the [`"go.formatAlternateTool"`](settings.md#go.formatAlternateTool) setting.
 
 ### Diagnostics
 

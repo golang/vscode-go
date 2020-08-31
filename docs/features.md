@@ -102,7 +102,7 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 Format code and organize imports, either manually or on save. The code is formatted by the [`gofmt`](tools.md#formatting) tool, which is the standard for Go code. Imports are added automatically to your file via the [`goimports`](tools.md#formatting) tool, which is also an industry standard. By default, this extension also uses the [`goreturns`](tools.md#formatting) tool, which automatically fills in default return values for functions.
 
-The behavior of the formatter can be configured via the [`"go.formatTool"`](settings.md#go.formatTool) tool setting. The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
+The behavior of the formatter can be configured via the [`"go.formatTool"`](settings.md#go.formatTool) tool setting. This setting supports some tools by default but, if a different formatter tool is to be used, it can be configured via the [`"go.formatAlternateTool"`](settings.md#go.formatAlternateTool) setting. The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
 
 #### Add import
 

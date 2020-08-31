@@ -1243,6 +1243,15 @@
             "goformat"
           ]
         },
+        "go.formatAlternateTool": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Not applicable when using the language server. Alternate formatter to use, overrides `go.formatTool`. Useful for unsupported formatters, `go.formatFlags` might be required to parse it's output.",
+          "scope": "resource"
+        },
         "go.formatFlags": {
           "type": "array",
           "items": {
