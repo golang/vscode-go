@@ -11,7 +11,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import { getBinPath, getGoConfig, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -89,6 +89,10 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		if (debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
+		}
+		if (debugConfiguration['cwd']) {
+			// expand 'cwd' folder path containing '~', which would cause dlv to fail
+			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
 		}
 
 		debugConfiguration['dlvToolPath'] = getBinPath('dlv');
