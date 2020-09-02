@@ -1,3 +1,14 @@
+## v0.16.2 - 2nd Sep, 2020
+
+### Fixed
+
+- Fixed the compile error message parsing bug that prevented correct file name expansion in test output. ([Issue 522](https://github.com/golang/vscode-go/issues/522)).
+- Fixed the regression that caused to run tests in the local directory mode and
+  result in more verbose output than the package list mode. ([Issue 528](https://github.com/golang/vscode-go/issues/528)).
+- Fixed `"go.alternateTools"` settings to accept any tool names without
+  settings.json diagnostics warning. ([Issue 526](https://github.com/golang/vscode-go/issues/526)
+
+
 ## v0.16.1 - 5th Aug, 2020
 
 ### Fixed
