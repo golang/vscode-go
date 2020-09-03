@@ -24,7 +24,7 @@ import {
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
-} from './utils/goPath';
+} from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
 let userNameHash: number = 0;

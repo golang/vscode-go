@@ -21,7 +21,7 @@ import {
 	resolvePath
 } from './util';
 import { parseEnvFile } from './utils/envUtils';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
+import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
@@ -492,17 +492,6 @@ export function cancelRunningTests(): Thenable<boolean> {
 		runningTestProcesses.splice(0, runningTestProcesses.length);
 		resolve(true);
 	});
-}
-
-function expandFilePathInOutput(output: string, cwd: string): string {
-	const lines = output.split('\n');
-	for (let i = 0; i < lines.length; i++) {
-		const matches = lines[i].match(/\s*(\S+\.go):(\d+):/);
-		if (matches && matches[1] && !path.isAbsolute(matches[1])) {
-			lines[i] = lines[i].replace(matches[1], path.join(cwd, matches[1]));
-		}
-	}
-	return lines.join('\n');
 }
 
 /**

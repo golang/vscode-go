@@ -35,7 +35,7 @@ import {
 	GoVersion,
 	rmdirRecursive,
 } from './util';
-import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/goPath';
+import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];

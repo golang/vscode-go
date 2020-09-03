@@ -17,7 +17,7 @@ import {
 	getGoConfig,
 	getWorkspaceFolderPath
 } from './util';
-import { envPath, getCurrentGoRoot } from './utils/goPath';
+import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import {killProcessTree} from './utils/processUtils';
 
 interface GoListOutput {

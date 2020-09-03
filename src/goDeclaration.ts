@@ -22,7 +22,7 @@ import {
 	isPositionInString,
 	runGodoc
 } from './util';
-import { getCurrentGoRoot } from './utils/goPath';
+import { getCurrentGoRoot } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
 const missingToolMsg = 'Missing tool: ';

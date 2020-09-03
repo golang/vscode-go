@@ -17,7 +17,7 @@ import { toolInstallationEnvironment } from '../../src/goEnv';
 import { installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, rmdirRecursive } from '../../src/util';
-import { correctBinname } from '../../src/utils/goPath';
+import { correctBinname } from '../../src/utils/pathUtils';
 
 suite('Installation Tests', function () {
 	// Disable timeout when we are running slow tests.

@@ -49,7 +49,7 @@ import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
-import { getToolFromToolPath } from './utils/goPath';
+import { getToolFromToolPath } from './utils/pathUtils';
 
 interface LanguageServerConfig {
 	serverName: string;

@@ -17,7 +17,7 @@ import { toolInstallationEnvironment } from './goEnv';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
-import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/goPath';
+import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {

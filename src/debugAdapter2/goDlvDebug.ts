@@ -20,7 +20,7 @@ import {
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { envPath, getBinPathWithPreferredGopathGoroot } from '../utils/goPath';
+import { envPath, expandFilePathInOutput, getBinPathWithPreferredGopathGoroot } from '../utils/pathUtils';
 import { killProcessTree } from '../utils/processUtils';
 
 import { DAPClient } from './dapClient';
@@ -684,13 +684,15 @@ class DelveClient extends DAPClient {
 
 		log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
+		const dir = parseProgramArgSync(launchArgs).dirname;
 		this.debugProcess = spawn(dlvPath, dlvArgs, {
-			cwd: parseProgramArgSync(launchArgs).dirname,
+			cwd: dir,
 			env
 		});
 
 		this.debugProcess.stderr.on('data', (chunk) => {
-			const str = chunk.toString();
+			let str = chunk.toString();
+			str = expandFilePathInOutput(str, dir);
 			this.emit('stderr', str);
 		});
 

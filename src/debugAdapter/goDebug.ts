@@ -32,12 +32,13 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { parseEnvFiles } from '../utils/envUtils';
 import {
 	envPath,
+	expandFilePathInOutput,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopathGoroot,
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
-} from '../utils/goPath';
-import { killProcessTree } from '../utils/processUtils';
+} from '../utils/pathUtils';
+import {killProcessTree} from '../utils/processUtils';
 
 const fsAccess = util.promisify(fs.access);
 const fsUnlink = util.promisify(fs.unlink);
@@ -1763,6 +1764,9 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.sendEvent(new OutputEvent(str, 'stdout'));
 		};
 		this.delve.onstderr = (str: string) => {
+			if (localPath.length > 0) {
+				str = expandFilePathInOutput(str, localPath);
+			}
 			this.sendEvent(new OutputEvent(str, 'stderr'));
 		};
 		this.delve.onclose = (code) => {

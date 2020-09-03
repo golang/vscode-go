@@ -21,7 +21,7 @@ import {
 	ICheckResult,
 	runTool
 } from './util';
-import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 /**
  * Builds current package or workspace.

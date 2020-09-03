@@ -61,7 +61,7 @@ import {
 	isGoPathSet,
 	resolvePath,
 } from './util';
-import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/goPath';
+import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
