@@ -178,9 +178,9 @@ Flags to pass to format tool (e.g. ["-s"])
 
 ### `go.formatTool`
 
-Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.
+Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.
 
-Allowed Values:`[gofmt goimports goreturns goformat]`
+Allowed Values:`[gofmt goimports goreturns goformat gofumpt gofumports]`
 
 Default: `goreturns`
 

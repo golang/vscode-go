@@ -1236,13 +1236,15 @@
         "go.formatTool": {
           "type": "string",
           "default": "goreturns",
-          "description": "Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.",
+          "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
           "scope": "resource",
           "enum": [
             "gofmt",
             "goimports",
             "goreturns",
-            "goformat"
+            "goformat",
+            "gofumpt",
+            "gofumports"
           ]
         },
         "go.formatFlags": {

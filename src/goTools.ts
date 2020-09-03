@@ -273,6 +273,18 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Go to definition & text shown on hover'
 	},
+	'gofumports': {
+		name: 'gofumports',
+		importPath: 'mvdan.cc/gofumpt/gofumports',
+		isImportant: false,
+		description: 'Formatter'
+	},
+	'gofumpt': {
+		name: 'gofumpt',
+		importPath: 'mvdan.cc/gofumpt',
+		isImportant: false,
+		description: 'Formatter'
+	},
 	'goimports': {
 		name: 'goimports',
 		importPath: 'golang.org/x/tools/cmd/goimports',
