@@ -1327,7 +1327,8 @@
         "go.coverShowCounts": {
           "type": "boolean",
           "default": false,
-          "description": "When generating code coverage, should counts be shown as --374--"
+          "description": "When generating code coverage, should counts be shown as --374--",
+          "scope": "resource"
         },
         "go.coverageOptions": {
           "type": "string",

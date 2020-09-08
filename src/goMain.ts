@@ -461,7 +461,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 						updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 					}
 					applyCodeCoverageToAllEditors(
-						coverProfilePath
+						coverProfilePath, getWorkspaceFolderPath(vscode.window.activeTextEditor.document.uri)
 					);
 				});
 		})

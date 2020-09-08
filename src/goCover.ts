@@ -205,9 +205,9 @@ function clearCoverage() {
  * Extract the coverage data from the given cover profile & apply them on the files in the open editors.
  * @param coverProfilePath Path to the file that has the cover profile data
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
- * @param testDir Directory to execute go list in, when there is no workspace, for some tests
+ * @param dir Directory to execute go list in
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?: string): Promise<void> {
+export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: string): Promise<void> {
 	const v = new Promise<void>((resolve, reject) => {
 		try {
 			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
@@ -254,7 +254,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, testDir?
 				coveragePath.set(parse[1], coverage);
 			});
 
-			getImportPathToFolder([...seenPaths], testDir)
+			getImportPathToFolder([...seenPaths], dir)
 				.then((pathsToDirs) => {
 					createCoverageData(pathsToDirs, coveragePath);
 					setDecorators();
