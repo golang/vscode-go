@@ -11,7 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
-import { toolInstallationEnvironment } from './goEnv';
+import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
@@ -32,6 +32,7 @@ import {
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
+	getWorkspaceFolderPath,
 	GoVersion,
 	rmdirRecursive,
 } from './util';
@@ -350,8 +351,15 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	}
 
 	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'], (err, stdout, stderr) => {
-			if (err) {
+		cp.execFile(goRuntimePath,
+			['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
+			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
+			(err, stdout, stderr) => {
+			if (err || stderr) {
+				outputChannel.append(`Failed to run '${goRuntimePath} env: ${err}\n${stderr}`);
+				outputChannel.show();
+
+				vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
 				return reject();
 			}
 			const envOutput = stdout.split('\n');
