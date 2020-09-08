@@ -242,7 +242,7 @@ async function downloadGo(goOption: GoEnvironmentOption) {
 		const goXExecutable = getBinPath(newExecutableName);
 		outputChannel.appendLine(`Running: ${goXExecutable} download`);
 		try {
-			await execFile(goXExecutable, ['download'], { env });
+			await execFile(goXExecutable, ['download'], { env, cwd: toolsTmpDir });
 		} catch (downloadErr) {
 			outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
 			throw new Error('Could not download Go version.');

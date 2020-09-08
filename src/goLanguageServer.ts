@@ -48,7 +48,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
 interface LanguageServerConfig {
@@ -745,7 +745,9 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(cfg.path, ['version'], { env: toolExecutionEnvironment() });
+		const env = toolExecutionEnvironment();
+		const cwd = getWorkspaceFolderPath();
+		const { stdout } = await execFile(cfg.path, ['version'], { env, cwd });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.

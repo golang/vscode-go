@@ -341,8 +341,10 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 	}
 	try {
 		const env = toolExecutionEnvironment();
+		const docUri = vscode.window.activeTextEditor.document.uri;
+		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env});
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env, cwd});
 		if (stderr) {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
