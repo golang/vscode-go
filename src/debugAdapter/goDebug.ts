@@ -85,11 +85,10 @@ interface CommandOut {
 interface DebuggerState {
 	exited: boolean;
 	exitStatus: number;
-	breakPoint: DebugBreakpoint;
-	breakPointInfo: {};
 	currentThread: DebugThread;
 	currentGoroutine: DebugGoroutine;
 	Running: boolean;
+	Threads: DebugThread[];
 }
 
 export interface PackageBuildInfo {
@@ -150,6 +149,8 @@ interface DebugThread {
 	line: number;
 	pc: number;
 	goroutineID: number;
+	breakPoint: DebugBreakpoint;
+	breakPointInfo: {};
 	function?: DebugFunction;
 	ReturnValues: DebugVariable[];
 }
@@ -2195,7 +2196,13 @@ export class GoDebugSession extends LoggingDebugSession {
 			const state = this.delve.isApiV1 ? <DebuggerState>out : (<CommandOut>out).State;
 			log('continue state', state);
 			this.debugState = state;
-			this.handleReenterDebug('breakpoint');
+
+			// Check if the current thread was stopped on a breakpoint.
+			// Other stopping events (eg pause) create their own StoppedEvents,
+			// if necessary.
+			if (!!state.currentThread.breakPoint) {
+				this.handleReenterDebug('breakpoint');
+			}
 		};
 
 		// If called when setting breakpoint internally, we want the error to bubble up.
