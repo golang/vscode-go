@@ -215,6 +215,11 @@
 			"body": "func Test$1(t *testing.T) {\n\t$0\n}",
 			"description": "Snippet for Test function"
 		},
+		"test main": {
+			"prefix": "tm",
+			"body": "func TestMain(m *testing.M) {\n\t$1\n\n\tos.Exit(m.Run())\n}",
+			"description": "Snippet for TestMain function"
+		},
 		"benchmark function": {
 			"prefix": "bf",
 			"body": "func Benchmark$1(b *testing.B) {\n\tfor ${2:i} := 0; ${2:i} < b.N; ${2:i}++ {\n\t\t$0\n\t}\n}",
