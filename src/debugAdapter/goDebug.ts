@@ -2017,8 +2017,8 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	/**
-	 * Returns the remote module name. This only applies
-	 * to code in the extension.
+	 * Returns the main package's module name in the remote binary.
+	 * Returns an empty string if this does not exist.
 	 */
 	private async getRemoteGoModName(): Promise<string> {
 		if (this.remoteGoModName !== undefined) {
