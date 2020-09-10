@@ -44,14 +44,14 @@ suite('GoDebugSession Tests', async () => {
 		sinon.restore();
 	});
 
-	test('inferRemotePathFromLocalPath works', () => {
+	test('inferRemotePathFromLocalPath works', async () => {
 		const sourceFileMapping = new Map<string, string[]>();
 		sourceFileMapping.set('main.go', ['/app/hello-world/main.go', '/app/main.go']);
 		sourceFileMapping.set('blah.go', ['/app/blah.go']);
 
 		remoteSourcesAndPackages.remoteSourceFilesNameGrouping = sourceFileMapping;
 
-		const inferredPath = goDebugSession['inferRemotePathFromLocalPath'](
+		const inferredPath = await goDebugSession['inferRemotePathFromLocalPath'](
 			'C:\\Users\\Documents\\src\\hello-world\\main.go');
 		assert.strictEqual(inferredPath, '/app/hello-world/main.go');
 	});
