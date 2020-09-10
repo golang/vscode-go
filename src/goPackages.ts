@@ -46,7 +46,9 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 			args.push('-workDir', workDir);
 		}
 
-		const cmd = cp.spawn(gopkgsBinPath, args, { env: toolExecutionEnvironment() });
+		const env = toolExecutionEnvironment();
+		env['GOROOT'] = getCurrentGoRoot();  // https://github.com/golang/vscode-go/issues/294
+		const cmd = cp.spawn(gopkgsBinPath, args, { env, cwd: workDir });
 		const chunks: any[] = [];
 		const errchunks: any[] = [];
 		let err: any;
