@@ -951,7 +951,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				// the remote machine runtime has the same name.
 				if (filePath.startsWith(this.delve.program)) {
 					const goModName = await this.getLocalGoModName(filePath);
-					const remoteGoModName = await this.getRemoteGoModName();
+					const remoteGoModName = await this.getRemoteGoMainModName();
 					// Be conservative and only rejects the matching if the module name does not match.
 					if (goModName && remoteGoModName && goModName !== remoteGoModName) {
 						return;
@@ -999,7 +999,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (bestMatchingLocalPath) {
 			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
 			const goModName = await this.getLocalGoModName(bestMatchingLocalPath);
-			const remoteGoModName = await this.getRemoteGoModName();
+			const remoteGoModName = await this.getRemoteGoMainModName();
 			// Be conservative and only reject the matching if the module name does not match.
 			if (goModName && remoteGoModName && goModName !== remoteGoModName) {
 				return;
@@ -2020,7 +2020,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * Returns the main package's module name in the remote binary.
 	 * Returns an empty string if this does not exist.
 	 */
-	private async getRemoteGoModName(): Promise<string> {
+	private async getRemoteGoMainModName(): Promise<string> {
 		if (this.remoteGoModName !== undefined) {
 			return this.remoteGoModName;
 		}
@@ -2030,10 +2030,10 @@ export class GoDebugSession extends LoggingDebugSession {
 				{ expression: 'runtime.modinfo[16:]' } as DebugProtocol.EvaluateArguments);
 			const variableResult = this.delve.isApiV1 ? <DebugVariable>evaluateResult : (<EvalOut>evaluateResult).Variable;
 			if (variableResult && variableResult.value) {
-				// This is of the form 'path<whitespace>name<whitespace>mod<whitespace>name';
-				const splitResult = variableResult.value.split(/\s+/);
-				if (splitResult.length > 4) {
-					this.remoteGoModName = splitResult[3];
+				// This is of the form 'path<tab>name<line>mod<tab>name';
+				const splitResult = variableResult.value.split(/\r?\n/);
+				if (splitResult.length > 2 && splitResult[1].includes('\t')) {
+					this.remoteGoModName = splitResult[1].split('\t')[1];
 				}
 			}
 		} catch (error) {
