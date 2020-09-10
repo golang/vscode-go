@@ -12,6 +12,7 @@ import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { getGoConfig } from './util';
+import { fixDriveCasingInWindows } from './utils/pathUtils';
 
 let gutterSvgs: { [key: string]: string; };
 
@@ -228,11 +229,26 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				// See https://golang.org/issues/40251.
 				//
 				// The first line will be like "mode: set" which we will ignore.
-				const parse = line.match(/([^:]+)\:([\d]+)\.([\d]+)\,([\d]+)\.([\d]+)\s([\d]+)\s([\d]+)/);
+				// TODO: port https://golang.org/cl/179377 for faster parsing.
+
+				const parse = line.match(/^(\S+)\:(\d+)\.(\d+)\,(\d+)\.(\d+)\s(\d+)\s(\d+)/);
 				if (!parse) { return; }
-				const lastSlash = parse[1].lastIndexOf('/');
-				if (lastSlash !== -1) {
-					seenPaths.add(parse[1].slice(0, lastSlash));
+
+				let filename = parse[1];
+				if (filename.startsWith('.' + path.sep)) {
+					// If it's a relative file path, convert it to an absolute path.
+					// From now on, we can assume that it's a real file name if it is
+					// an absolute path.
+					filename = path.resolve(filename);
+				}
+				// If this is not a real file name, that's package_path + file name,
+				// Record it in seenPaths for `go list` call to resolve package path ->
+				// directory mapping.
+				if (!path.isAbsolute(filename)) {
+					const lastSlash = filename.lastIndexOf('/');
+					if (lastSlash !== -1) {
+						seenPaths.add(filename.slice(0, lastSlash));
+					}
 				}
 
 				// and fill in coveragePath
@@ -251,7 +267,8 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				} else {
 					coverage.uncoveredOptions.push(...elaborate(range, counts, showCounts));
 				}
-				coveragePath.set(parse[1], coverage);
+
+				coveragePath.set(filename, coverage);
 			});
 
 			getImportPathToFolder([...seenPaths], dir)
@@ -296,22 +313,19 @@ function createCoverageData(
 	coveragePath: Map<string, CoverageData>) {
 
 	coveragePath.forEach((cd, ip) => {
-		const lastSlash = ip.lastIndexOf('/');
-		if (lastSlash === -1) {  // malformed
-			console.log(`invalid entry: ${ip}`);
+		if (path.isAbsolute(ip)) {
+			setCoverageDataByFilePath(ip, cd);
 			return;
 		}
-		const importPath = ip.slice(0, lastSlash);
-		let fileDir = importPath;
-		if (path.isAbsolute(importPath)) {
-			// This is the true file path.
-		} else if (importPath.startsWith('.')) {
-			fileDir = path.resolve(fileDir);
-		} else {
-			// This is the package import path.
-			// we need to look up `go list` output stored in pathsToDir.
-			fileDir = pathsToDirs.get(importPath) || importPath;
+
+		const lastSlash = ip.lastIndexOf('/');
+		if (lastSlash === -1) {
+			setCoverageDataByFilePath(ip, cd);
+			return;
 		}
+
+		const maybePkgPath = ip.slice(0, lastSlash);
+		const fileDir = pathsToDirs.get(maybePkgPath) || path.resolve(maybePkgPath);
 		const file = fileDir + path.sep + ip.slice(lastSlash + 1);
 		setCoverageDataByFilePath(file, cd);
 	});
@@ -343,11 +357,15 @@ export function applyCodeCoverage(editor: vscode.TextEditor) {
 	if (!editor || editor.document.languageId !== 'go' || editor.document.fileName.endsWith('_test.go')) {
 		return;
 	}
+	let doc = editor.document.fileName;
+	if (path.isAbsolute(doc)) {
+		doc = fixDriveCasingInWindows(doc);
+	}
 
 	const cfg = getGoConfig(editor.document.uri);
 	const coverageOptions = cfg['coverageOptions'];
 	for (const filename in coverageData) {
-		if (!editor.document.uri.fsPath.endsWith(filename)) {
+		if (doc !== fixDriveCasingInWindows(filename)) {
 			continue;
 		}
 		isCoverageApplied = true;
