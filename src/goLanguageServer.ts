@@ -492,7 +492,9 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 		e.affectsConfiguration('go.useLanguageServer') ||
 		e.affectsConfiguration('go.languageServerFlags') ||
 		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
-		e.affectsConfiguration('go.alternateTools')
+		e.affectsConfiguration('go.alternateTools') ||
+		e.affectsConfiguration('go.toolsEnvVars')
+		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer();
 	}
