@@ -341,7 +341,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 	}
 	try {
 		const env = toolExecutionEnvironment();
-		const docUri = vscode.window.activeTextEditor.document.uri;
+		const docUri = vscode.window.activeTextEditor?.document.uri;
 		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env, cwd});
@@ -896,7 +896,7 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
-export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
+export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string|undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);
 		if (workspace) {
@@ -909,6 +909,7 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	if (folders && folders.length) {
 		return fixDriveCasingInWindows(folders[0].uri.fsPath);
 	}
+	return undefined;
 }
 
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
