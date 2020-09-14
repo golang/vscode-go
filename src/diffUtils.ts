@@ -5,7 +5,7 @@
 
 import jsDiff = require('diff');
 import { Position, Range, TextEditorEdit, Uri, WorkspaceEdit } from 'vscode';
-import { getBinPathFromEnvVar } from './utils/goPath';
+import { getBinPathFromEnvVar } from './utils/pathUtils';
 
 let diffToolAvailable: boolean | null = null;
 

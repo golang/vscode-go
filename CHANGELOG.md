@@ -6,7 +6,7 @@
 - Fixed the regression that caused to run tests in the local directory mode and
   result in more verbose output than the package list mode. ([Issue 528](https://github.com/golang/vscode-go/issues/528)).
 - Fixed `"go.alternateTools"` settings to accept any tool names without
-  settings.json diagnostics warning. ([Issue 526](https://github.com/golang/vscode-go/issues/526)
+  settings.json diagnostics warning. ([Issue 526](https://github.com/golang/vscode-go/issues/526))
 
 
 ## v0.16.1 - 5th Aug, 2020
@@ -93,7 +93,6 @@ can see the details of the test results, but we will continue working to make th
 ### Thanks
 
 Thank you for your contribution, fujimoto kyosuke, OneOfOne, Aditya Thakral, Oleg Butuzov, Rebecca Stambler, Peter Weinberger, Brayden Cloud, Eli Bendersky, Robert Findley, Hana Kim!
-
 
 ## v0.15.2 - 21st July, 2020
 

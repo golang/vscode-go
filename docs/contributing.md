@@ -62,6 +62,15 @@ If you make subsequent edits in the codebase, you can reload (`Ctrl+R`) the `[Ex
 
 ## Test
 
+Simple unit tests that do not require interaction with VS Code are located in `test/unit`. 
+Tests in `test/integration` and `test/gopls` directories are integration tests. They involve invocation of the VS Code API and 
+require external Go tools installed in `GOPATH`. The command `setup_env` in [`build/all.bash`](https://github.com/golang/vscode-go/blob/master/build/all.bash)
+installs all the tool dependencies in `GOPATH`. 
+
+1. `export GOPATH=/path/to/gopath/for/test`
+1. `build/all.bash setup_env`
+1. Unfortunately, VS Code test framework inherits your user settings when running tests [Issue 43](https://github.com/golang/vscode-go/issues/43). Make sure VS Code user settings do not contain any go related configuration, except `go.gopath` or `go.toolsGopath` in case you installed the tools for testing in a different `GOPATH`.
+
 There are currently three test launch configurations: (1) `Launch Extension Tests`, (2) `Launch Extension Tests with Gopls`, and (3) `Launch Unit Tests`. To run the tests locally, open the Run view (`Ctrl+Shift+D`), select the relevant launch configuration, and hit the Play button (`F5`).
 
 ## Sideload

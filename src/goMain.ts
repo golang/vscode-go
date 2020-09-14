@@ -19,7 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, disposeGoStatusBar, setEnvironmentVariableCollection } from './goEnvironmentStatus';
+import { chooseGoEnvironment, disposeGoStatusBar, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -61,7 +61,7 @@ import {
 	isGoPathSet,
 	resolvePath,
 } from './util';
-import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/goPath';
+import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -84,6 +84,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
+		offerToInstallLatestGoVersion();
 		offerToInstallTools();
 		configureLanguageServer(ctx);
 
@@ -460,7 +461,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 						updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 					}
 					applyCodeCoverageToAllEditors(
-						coverProfilePath
+						coverProfilePath, getWorkspaceFolderPath(vscode.window.activeTextEditor.document.uri)
 					);
 				});
 		})

@@ -11,7 +11,7 @@ import { installTools } from './goInstallTools';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getModuleCache } from './util';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/goPath';
+import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
 
 export let GO111MODULE: string;
 

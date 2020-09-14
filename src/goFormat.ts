@@ -34,7 +34,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 		}
 
 		// Fix for https://github.com/Microsoft/vscode-go/issues/613 and https://github.com/Microsoft/vscode-go/issues/630
-		if (formatTool === 'goimports' || formatTool === 'goreturns') {
+		if (formatTool === 'goimports' || formatTool === 'goreturns' || formatTool === 'gofumports') {
 			formatFlags.push('-srcdir', filename);
 		}
 

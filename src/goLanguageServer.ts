@@ -18,11 +18,11 @@ import {
 	CloseAction,
 	CompletionItemKind,
 	ErrorAction,
-	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	LanguageClient,
 	Message,
+	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
 	RevealOutputChannelOn,
@@ -48,8 +48,8 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig } from './util';
-import { getToolFromToolPath } from './utils/goPath';
+import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
+import { getToolFromToolPath } from './utils/pathUtils';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -258,34 +258,35 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 				},
 			},
 			middleware: {
-				provideCodeLenses: async (doc, token, next): Promise<vscode.CodeLens[]> => {
+				provideCodeLenses: async (
+					doc: vscode.TextDocument,
+					token: vscode.CancellationToken,
+					next: ProvideCodeLensesSignature
+				): Promise<vscode.CodeLens[]> => {
 					const codeLens = await next(doc, token);
 					if (!codeLens || codeLens.length === 0) {
 						return codeLens;
 					}
-					return codeLens.map((lens: vscode.CodeLens) => {
+					const goplsEnabledLens = (getGoConfig().get('overwriteGoplsMiddleware') as any)?.codelens ?? {};
+					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
-								const args = lens.command.arguments;
-								return new vscode.CodeLens(lens.range, {
-									...lens.command,
-									command: 'go.test.cursor',
-									arguments: [{ functionName: args[args.indexOf('run') + 1] }],
-								});
+								if (goplsEnabledLens.test) {
+									return [...lenses, lens];
+								}
+								return [...lenses, ...createTestCodeLens(lens)];
 							}
 							case 'run benchmark': {
-								const args = lens.command.arguments;
-								return new vscode.CodeLens(lens.range, {
-									...lens.command,
-									command: 'go.benchmark.cursor',
-									arguments: [{ functionName: args[args.indexOf('bench') + 1] }],
-								});
+								if (goplsEnabledLens.bench) {
+									return [...lenses, lens];
+								}
+								return [...lenses, ...createBenchmarkCodeLens(lens)];
 							}
 							default: {
-								return lens;
+								return [...lenses, lens];
 							}
 						}
-					});
+					}, []);
 				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
@@ -330,7 +331,16 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					if (!Array.isArray(list) && list.isIncomplete && list.items.length > 1) {
 						let hardcodedFilterText = items[0].filterText;
 						if (!hardcodedFilterText) {
-							hardcodedFilterText = '';
+							// tslint:disable:max-line-length
+							// According to LSP spec,
+							// https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion
+							// if filterText is falsy, the `label` should be used.
+							// But we observed that's not the case.
+							// Even if vscode picked the label value, that would
+							// cause to reorder candiates, which is not ideal.
+							// Force to use non-empty `label`.
+							// https://github.com/golang/vscode-go/issues/441
+							hardcodedFilterText = items[0].label;
 						}
 						for (const item of items) {
 							item.filterText = hardcodedFilterText;
@@ -390,6 +400,49 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 	return c;
 }
 
+// createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
+function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
+	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
+	// so this needs to be deconstructured here
+	// Note that there will always only be one test function name in this context
+	if (lens.command.arguments.length < 2 || lens.command.arguments[1].length < 1) {
+		return [lens];
+	}
+	return [
+		new vscode.CodeLens(lens.range, {
+			...lens.command,
+			command: 'go.test.cursor',
+			arguments: [{ functionName: lens.command.arguments[1][0] }],
+		}),
+		new vscode.CodeLens(lens.range, {
+			title: 'debug test',
+			command: 'go.debug.cursor',
+			arguments: [{ functionName: lens.command.arguments[1][0] }],
+		}),
+	];
+}
+
+function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
+	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
+	// so this needs to be deconstructured here
+	// Note that there will always only be one benchmark function name in this context
+	if (lens.command.arguments.length < 3 || lens.command.arguments[2].length < 1) {
+		return [lens];
+	}
+	return [
+		new vscode.CodeLens(lens.range, {
+			...lens.command,
+			command: 'go.benchmark.cursor',
+			arguments: [{ functionName: lens.command.arguments[2][0] }],
+		}),
+		new vscode.CodeLens(lens.range, {
+			title: 'debug benchmark',
+			command: 'go.debug.cursor',
+			arguments: [{ functionName: lens.command.arguments[2][0] }],
+		}),
+	];
+}
+
 // registerUsualProviders registers the language feature providers if the language server is not enabled.
 function registerDefaultProviders(ctx: vscode.ExtensionContext) {
 	const completionProvider = new GoCompletionItemProvider(ctx.globalState);
@@ -439,7 +492,9 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 		e.affectsConfiguration('go.useLanguageServer') ||
 		e.affectsConfiguration('go.languageServerFlags') ||
 		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
-		e.affectsConfiguration('go.alternateTools')
+		e.affectsConfiguration('go.alternateTools') ||
+		e.affectsConfiguration('go.toolsEnvVars')
+		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer();
 	}
@@ -692,7 +747,9 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
-		const { stdout } = await execFile(cfg.path, ['version'], { env: toolExecutionEnvironment() });
+		const env = toolExecutionEnvironment();
+		const cwd = getWorkspaceFolderPath();
+		const { stdout } = await execFile(cfg.path, ['version'], { env, cwd });
 		output = stdout;
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
@@ -860,10 +917,10 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < 0.05, for a 5% probability.
+	// the range [0, 1) and checking if it is < 0.0275, for a 2.75% probability.
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
-	cfg.promptThisMonth = Math.random() < 0.05;
+	cfg.promptThisMonth = Math.random() < 0.0275;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
 		// month on which to prompt.

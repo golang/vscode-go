@@ -24,7 +24,7 @@ import {
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
-} from './utils/goPath';
+} from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
 let userNameHash: number = 0;
@@ -340,14 +340,20 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	try {
+		const env = toolExecutionEnvironment();
+		const docUri = vscode.window.activeTextEditor?.document.uri;
+		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, ['version']);
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env, cwd});
 		if (stderr) {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
+		if (!cachedGoVersion.isValid()) {
+			warn (`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
+		}
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
 		return;
@@ -890,7 +896,7 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
-export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
+export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string|undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);
 		if (workspace) {
@@ -903,6 +909,7 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string {
 	if (folders && folders.length) {
 		return fixDriveCasingInWindows(folders[0].uri.fsPath);
 	}
+	return undefined;
 }
 
 export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {

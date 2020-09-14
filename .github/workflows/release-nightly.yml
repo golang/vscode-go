@@ -29,7 +29,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v1
         with:
-         go-version: '1.14'
+         go-version: '1.15'
 
       - name: Install dependencies
         run: npm ci
@@ -55,18 +55,12 @@ jobs:
             go get golang.org/x/lint/golint
             go get golang.org/x/tools/cmd/gorename
             go get golang.org/x/tools/gopls
+            go get github.com/cweill/gotests/...
+            go get github.com/rogpeppe/godef
+            go get github.com/ramya-rao-a/go-outline
+            go get github.com/go-delve/delve/cmd/dlv
         env:
           GO111MODULE: on   
-          
-      - name: Install Go tools (GOPATH mode)
-        run: |
-          go version
-          go get github.com/cweill/gotests/...
-          go get github.com/rogpeppe/godef
-          go get github.com/ramya-rao-a/go-outline
-            # Because some tests depend on the source code checked in GOPATH. TODO: FIX THEM.
-        env:
-          GO111MODULE: off
 
       - name: Run unit tests
         run: npm run unit-test
