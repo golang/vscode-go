@@ -56,7 +56,7 @@ run_test() {
 
 run_test_in_docker() {
   echo "**** Building the docker image ***"
-  docker build -t vscode-test-env ./build
+  docker build -t vscode-test-env -f ./build/Dockerfile .
   docker run --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
 
