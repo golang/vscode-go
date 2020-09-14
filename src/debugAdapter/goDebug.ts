@@ -951,10 +951,12 @@ export class GoDebugSession extends LoggingDebugSession {
 				// the remote machine runtime has the same name.
 				if (filePath.startsWith(this.delve.program)) {
 					const goModName = await this.getLocalGoModName(filePath);
-					const remoteGoModName = await this.getRemoteGoMainModName();
-					// Be conservative and only rejects the matching if the module name does not match.
-					if (goModName && remoteGoModName && goModName !== remoteGoModName) {
-						return;
+					if (goModName) {
+						const remoteGoModName = await this.getRemoteGoMainModName();
+						// Be conservative and only rejects the matching if the module name does not match.
+						if (remoteGoModName && goModName !== remoteGoModName) {
+							return;
+						}
 					}
 				}
 
@@ -999,10 +1001,12 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (bestMatchingLocalPath) {
 			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
 			const goModName = await this.getLocalGoModName(bestMatchingLocalPath);
-			const remoteGoModName = await this.getRemoteGoMainModName();
-			// Be conservative and only reject the matching if the module name does not match.
-			if (goModName && remoteGoModName && goModName !== remoteGoModName) {
-				return;
+			if (goModName) {
+				const remoteGoModName = await this.getRemoteGoMainModName();
+				// Be conservative and only reject the matching if the module name does not match.
+				if (remoteGoModName && goModName !== remoteGoModName) {
+					return;
+				}
 			}
 
 			this.remoteToLocalPathMapping.set(remotePath, fullLocalPath);
@@ -2025,13 +2029,24 @@ export class GoDebugSession extends LoggingDebugSession {
 			return this.remoteGoModName;
 		}
 
+		// Only attempts to find remote go mod name once. If we fail,
+		// then just use empty string.
+		this.remoteGoModName = '';
 		try {
 			const evaluateResult = await this.evaluateRequestImpl(
-				{ expression: 'runtime.modinfo[16:]' } as DebugProtocol.EvaluateArguments);
+				// Use runtime.modinfo instead of runtime.modinfo[16:] since this info
+				// may not be available and we don't want to slice into a null item.
+				{ expression: 'runtime.modinfo' } as DebugProtocol.EvaluateArguments,
+				// Use our own load config to evaluate this in case the user sets it to a small value.
+				{	followPointers: true,
+					maxVariableRecurse: 1,
+					maxStringLen: 128,
+					maxArrayValues: 128,
+					maxStructFields: -1});
 			const variableResult = this.delve.isApiV1 ? <DebugVariable>evaluateResult : (<EvalOut>evaluateResult).Variable;
-			if (variableResult && variableResult.value) {
+			if (variableResult && variableResult.value && variableResult.value.length > 16) {
 				// This is of the form 'path<tab>name<line>mod<tab>name';
-				const splitResult = variableResult.value.split(/\r?\n/);
+				const splitResult = variableResult.value.substr(16).split(/\r?\n/);
 				if (splitResult.length > 2 && splitResult[1].includes('\t')) {
 					this.remoteGoModName = splitResult[1].split('\t')[1];
 				}
@@ -2342,7 +2357,9 @@ export class GoDebugSession extends LoggingDebugSession {
 		return returnValue;
 	}
 
-	private evaluateRequestImpl(args: DebugProtocol.EvaluateArguments): Thenable<EvalOut | DebugVariable> {
+	private evaluateRequestImpl(
+			args: DebugProtocol.EvaluateArguments,
+			loadConfig?: LoadConfig): Thenable<EvalOut | DebugVariable> {
 		// default to the topmost stack frame of the current goroutine
 		let goroutineId = -1;
 		let frameId = 0;
@@ -2361,7 +2378,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		const apiV2Args = {
 			Expr: args.expression,
 			Scope: scope,
-			Cfg: this.delve.loadConfig
+			Cfg: loadConfig || this.delve.loadConfig
 		};
 		const evalSymbolArgs = this.delve.isApiV1 ? apiV1Args : apiV2Args;
 		const returnValue = this.delve
