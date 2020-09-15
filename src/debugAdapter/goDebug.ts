@@ -878,6 +878,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = await this.delve.getDebugState();
 			if (!this.debugState.Running) {
 				this.continueRequest(<DebugProtocol.ContinueResponse>response);
+			} else {
+				this.sendResponse(response);
 			}
 		}
 	}
