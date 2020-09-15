@@ -2040,12 +2040,12 @@ export class GoDebugSession extends LoggingDebugSession {
 				// Use our own load config to evaluate this in case the user sets it to a small value.
 				{	followPointers: true,
 					maxVariableRecurse: 1,
-					maxStringLen: 128,
-					maxArrayValues: 128,
+					maxStringLen: 1024,
+					maxArrayValues: 1024,
 					maxStructFields: -1});
 			const variableResult = this.delve.isApiV1 ? <DebugVariable>evaluateResult : (<EvalOut>evaluateResult).Variable;
 			if (variableResult && variableResult.value && variableResult.value.length > 16) {
-				// This is of the form 'path<tab>name<line>mod<tab>name';
+				// This is of the form 'path<tab>name<line>mod<tab>name<line>...';
 				const splitResult = variableResult.value.substr(16).split(/\r?\n/);
 				if (splitResult.length > 2 && splitResult[1].includes('\t')) {
 					this.remoteGoModName = splitResult[1].split('\t')[1];
