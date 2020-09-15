@@ -319,27 +319,33 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	}
 	const goVersion = await getGoVersion();
 	let updateMsg = `Your version of ${tool.name} appears to be out of date. Please update for an improved experience.`;
-	const choices: string[] = ['Update'];
+	let choices: string[] = ['Update'];
 	if (toolName === `gopls`) {
 		choices.push('Release Notes');
 	}
 	if (newVersion) {
 		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
 	}
-	const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
-	switch (selected) {
-		case 'Update':
-			await installTools([toolVersion], goVersion);
-			break;
-		case 'Release Notes':
-			vscode.commands.executeCommand(
-				'vscode.open',
-				vscode.Uri.parse(`https://github.com/golang/tools/releases/tag/${tool.name}/v${newVersion}`)
-			);
-			break;
-		default:
-			declinedUpdates.push(tool);
-			break;
+
+	while (choices.length > 0) {
+		const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
+		switch (selected) {
+			case 'Update':
+				choices = [];
+				await installTools([toolVersion], goVersion);
+				break;
+			case 'Release Notes':
+				choices = choices.filter((value) => value !== 'Release Notes');
+				vscode.commands.executeCommand(
+					'vscode.open',
+					vscode.Uri.parse(`https://github.com/golang/tools/releases/tag/${tool.name}/v${newVersion}`)
+				);
+				break;
+			default:
+				choices = [];
+				declinedUpdates.push(tool);
+				break;
+		}
 	}
 }
 
