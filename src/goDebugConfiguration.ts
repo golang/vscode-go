@@ -34,7 +34,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		];
 	}
 
-	public resolveDebugConfigurationWithSubstitutedVariables(
+	public resolveDebugConfiguration(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
@@ -62,9 +62,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
 		const goConfig = getGoConfig(folder && folder.uri);
-
-		combineEnvFilesAndEnv(folder, debugConfiguration);
-
 		const dlvConfig = goConfig.get<any>('delveConfig');
 		let useApiV1 = false;
 		if (debugConfiguration.hasOwnProperty('useApiV1')) {
@@ -126,6 +123,26 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		return debugConfiguration;
 	}
 
+	public resolveDebugConfigurationWithSubstitutedVariables(
+		folder: vscode.WorkspaceFolder | undefined,
+		debugConfiguration: vscode.DebugConfiguration,
+		token?: vscode.CancellationToken
+	): vscode.DebugConfiguration {
+		// Reads debugConfiguration.envFile and
+		// combines the environment variables from all the env files and
+		// debugConfiguration.env, on top of the tools execution environment variables.
+		// It also unsets 'envFile' from the user-suppled debugConfiguration
+		// because it is already applied.
+		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri); // also includes GOPATH: getCurrentGoPath().
+		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
+		const env = debugConfiguration['env'] || {};
+
+		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
+		debugConfiguration['envFile'] = undefined;  // unset, since we already processed.
+
+		return debugConfiguration;
+	}
+
 	private showWarning(ignoreWarningKey: string, warningMessage: string) {
 		const ignoreWarning = getFromGlobalState(ignoreWarningKey);
 		if (ignoreWarning) {
@@ -139,19 +156,4 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		});
 	}
-}
-
-// combineEnvFilesAndEnv reads debugConfiguration.envFile and
-// combines the environment variables from all the env files and
-// debugConfiguration.env, on top of the tools execution environment variables.
-// It also unsets 'envFile' from the user-suppled debugConfiguration
-// because it is already applied.
-function combineEnvFilesAndEnv(
-	folder: vscode.WorkspaceFolder, debugConfiguration: vscode.DebugConfiguration) {
-	const goToolsEnvVars = toolExecutionEnvironment(folder?.uri); // also includes GOPATH: getCurrentGoPath().
-	const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
-	const env = debugConfiguration['env'] || {};
-
-	debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
-	debugConfiguration['envFile'] = undefined;  // unset, since we already processed.
 }
