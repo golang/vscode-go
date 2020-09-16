@@ -950,7 +950,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				// If the path is in the program, we can get the module name and check that the one from
 				// the remote machine runtime has the same name.
 				if (filePath.startsWith(this.delve.program)) {
-					if (!this.isLocalRemoteGoModMatchInWorkingDir(filePath)) {
+					if (!(await this.isLocalRemoteGoModMatchInWorkingDir(filePath))) {
 						return;
 					}
 				}
@@ -994,7 +994,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 		const bestMatchingLocalPath = this.findPathWithBestMatchingSuffix(remotePath, globSync);
 		if (bestMatchingLocalPath) {
-			if (!this.isLocalRemoteGoModMatchInWorkingDir(bestMatchingLocalPath)) {
+			if (!(await this.isLocalRemoteGoModMatchInWorkingDir(bestMatchingLocalPath))) {
 				return;
 			}
 
@@ -1733,7 +1733,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		// Be conservative and only reject the matching we can determine both the modules names.
-		return goModName !== remoteGoModName;
+		return goModName === remoteGoModName;
 	}
 
 	// contains common code for launch and attach debugging initialization
@@ -2045,9 +2045,6 @@ export class GoDebugSession extends LoggingDebugSession {
 			return this.remoteGoModName;
 		}
 
-		// Only attempts to find remote go mod name once. If we fail,
-		// then just use empty string.
-		this.remoteGoModName = '';
 		try {
 			const evaluateResult = await this.evaluateRequestImpl(
 				// Use runtime.modinfo instead of runtime.modinfo[16:] since this info
@@ -2069,6 +2066,12 @@ export class GoDebugSession extends LoggingDebugSession {
 			}
 		} catch (error) {
 			logError(error);
+		}
+
+		// Only attempts to find remote go mod name once. If we fail,
+		// then just use empty string.
+		if (!this.remoteGoModName) {
+			this.remoteGoModName = '';
 		}
 
 		return this.remoteGoModName;
