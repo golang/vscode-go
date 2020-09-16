@@ -873,15 +873,13 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.stopOnEntry) {
 			this.sendEvent(new StoppedEvent('entry', 1));
 			log('StoppedEvent("entry")');
-			this.sendResponse(response);
 		} else {
 			this.debugState = await this.delve.getDebugState();
 			if (!this.debugState.Running) {
-				this.continueRequest(<DebugProtocol.ContinueResponse>response);
-			} else {
-				this.sendResponse(response);
+				this.continue();
 			}
 		}
+		this.sendResponse(response);
 	}
 
 	/**
@@ -1529,13 +1527,6 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.sendResponse(response);
 			log('VariablesResponse', JSON.stringify(variables, null, ' '));
 		});
-	}
-
-	protected continueRequest(response: DebugProtocol.ContinueResponse): void {
-		log('ContinueRequest');
-		this.continue();
-		this.sendResponse(response);
-		log('ContinueResponse');
 	}
 
 	protected nextRequest(response: DebugProtocol.NextResponse): void {
