@@ -189,7 +189,7 @@ suite('Go Extension Tests With Gopls', function () {
 		await env.reset('gogetdocTestData');
 		const { uri } = await env.openDoc('test.go');
 		const testCases: [string, vscode.Position, string][] = [
-			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
+			['fmt.P<>', new vscode.Position(19, 6), 'Print'],
 		];
 		for (const [name, position, wantFilterText] of testCases) {
 			let list: vscode.CompletionList<vscode.CompletionItem>;
