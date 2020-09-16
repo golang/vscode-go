@@ -950,13 +950,8 @@ export class GoDebugSession extends LoggingDebugSession {
 				// If the path is in the program, we can get the module name and check that the one from
 				// the remote machine runtime has the same name.
 				if (filePath.startsWith(this.delve.program)) {
-					const goModName = await this.getLocalGoModName(filePath);
-					if (goModName) {
-						const remoteGoModName = await this.getRemoteGoMainModName();
-						// Be conservative and only rejects the matching if the module name does not match.
-						if (remoteGoModName && goModName !== remoteGoModName) {
-							return;
-						}
+					if (!this.isLocalRemoteGoModMatchInWorkingDir(filePath)) {
+						return;
 					}
 				}
 
@@ -999,16 +994,11 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 		const bestMatchingLocalPath = this.findPathWithBestMatchingSuffix(remotePath, globSync);
 		if (bestMatchingLocalPath) {
-			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
-			const goModName = await this.getLocalGoModName(bestMatchingLocalPath);
-			if (goModName) {
-				const remoteGoModName = await this.getRemoteGoMainModName();
-				// Be conservative and only reject the matching if the module name does not match.
-				if (remoteGoModName && goModName !== remoteGoModName) {
-					return;
-				}
+			if (!this.isLocalRemoteGoModMatchInWorkingDir(bestMatchingLocalPath)) {
+				return;
 			}
 
+			const fullLocalPath = path.join(this.delve.program, bestMatchingLocalPath);
 			this.remoteToLocalPathMapping.set(remotePath, fullLocalPath);
 			return fullLocalPath;
 		}
@@ -1718,6 +1708,32 @@ export class GoDebugSession extends LoggingDebugSession {
 		return process.env['GOROOT'] || '';
 		// this is a workaround to keep the tests in integration/goDebug.test.ts running.
 		// The tests synthesize a bogus Delve instance.
+	}
+
+	/**
+	 * Given a file inside the current working directory,
+	 * checks if the file's module matches the runtime module.
+	 * It is important that we only do this comparison for files in the
+	 * current working directory because for files outside the main module,
+	 * we already have logic in place to check for their packages.
+	 * Also, runtime.modinfo does not seem to work for files outside the
+	 * main module.
+	 * If we cannot determine the module name for either the remote or local case,
+	 * we will treat that as a match.
+	 */
+	private async isLocalRemoteGoModMatchInWorkingDir(filePath: string): Promise<boolean> {
+		const goModName = await this.getLocalGoModName(filePath);
+		if (!goModName) {
+			return true;
+		}
+
+		const remoteGoModName = await this.getRemoteGoMainModName();
+		if (!remoteGoModName) {
+			return true;
+		}
+
+		// Be conservative and only reject the matching we can determine both the modules names.
+		return goModName !== remoteGoModName;
 	}
 
 	// contains common code for launch and attach debugging initialization
