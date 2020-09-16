@@ -1,3 +1,111 @@
+## v0.17.0 - 17th Sep, 2020
+
+Go code debugging and code coverage support is getting better.
+
+The extension will help you stay updated with the new Go releases.
+
+### New Features
+
+- Delve's function call feature is now accessible. To use this feature,
+explicitly specify the `call` command. E.g. `call myAwesomeFunc()`.
+([Issue 100](https://github.com/golang/vscode-go/issues/100))
+- The extension checks the go official download site and notifies users of
+newly available Go versions. When a newer version is available,
+`Go Update Available` status bar item will appear.
+This feature is available only if `go.useGoProxyToCheckForToolUpdates`
+is set true. ([Issue 483](https://github.com/golang/vscode-go/issues/483))
+- The new `go.coverMode` setting allows to use different coverage modes
+(`atomic`, `count`, `set (default)`). `go.coverShowCounts`,
+`go.coverageDecorator.{coveredBorderColor, uncoveredBorderColor}`
+were newly added. We are still investigating better ways to
+visualize the `count` coverage data; feedback and contribution is welcome!
+(Issue [256](https://github.com/golang/vscode-go/issues/256),
+[594](https://github.com/golang/vscode-go/issues/594))
+
+### Enhancement
+
+- Expands `'~'` in the `cwd` attribute of the launch configuration.
+([Issue 116](https://github.com/golang/vscode-go/issues/116))
+- Debug config's `showGlobalVariables` is disabled by default, and
+this change improves speed. You can still inspect the global
+variables by registering them in the `WATCH` section, or by
+configuring `showGlobalVariables` in `launch.json`.
+([Issue 138](https://github.com/golang/vscode-go/issues/138))
+- `gofumpt`, `gofumports` is added to recognized formatters list.
+([Issue 587](https://github.com/golang/vscode-go/issues/587))
+- Automatically restarts the language server if `go.toolsEnvVars` configuration is changed.
+([CL 254370](https://go-review.googlesource.com/c/vscode-go/+/254370))
+- Reports `go env` failures.
+([Issue 555](https://github.com/golang/vscode-go/issues/555))
+
+### Fixes
+- Fixed to use absolute file paths in error messages appearing in the DEBUG OUTPUT.
+This allows VS Code to locate the correct files.
+([Issue 456](https://github.com/golang/vscode-go/issues/456))
+- Fixed handling of absolute file paths in coverage profile, on windows.
+([Issue 553](https://github.com/golang/vscode-go/issues/553))
+- Changed to pass `GOROOT` when invoking the `gopkgs` tool so `gopkgs`
+continues to work with different go versions without being recompiled.
+([CL 254137]( https://go-review.googlesource.com/c/vscode-go/+/254137))
+- Fixed to provide explicit directory for running go list and go version.
+([Issue 610](https://github.com/golang/vscode-go/issues/610),
+CL [253600]( https://go-review.googlesource.com/c/vscode-go/+/253600),
+[253602]( https://go-review.googlesource.com/c/vscode-go/+/253602))
+- Fixed to trigger extension activation when commands for diagnostics,
+such as `Go: Locate Configured Go Tools` are invoked.
+([Issue 457](https://github.com/golang/vscode-go/issues/457))
+- Fixed to prepend `GOROOT/bin` to integrated terminal's PATH
+environment variable when `go.goroot` is set on OS X.
+([Issue 544](https://github.com/golang/vscode-go/issues/544))
+- Fixed to correctly apply environment variables setting read from `envFile`
+in the launch configuration. We reworked how the environment variables
+configuration is processed during this cycle. Now the extension processes
+the `envFile` attribute instead of asking the debug adapter process to
+read the specified `envFile`.
+([Issue 452](https://github.com/golang/vscode-go/issues/452))
+- Disabled `go.installDependenciesWhenBuilding` by default. When this is
+enabled, the extension runs `go` commands with `-i`, which is no longer
+recommended with recent versions of Go.
+([Issue 568](https://github.com/golang/vscode-go/issues/568))
+- Fixed a bug where we are not sending back 'configuration done' response.
+(([Issue eclipse-theia/theia#8455](https://github.com/eclipse-theia/theia/issues/8455),
+[CL 254959](https://go-review.googlesource.com/c/vscode-go/+/254959))
+
+### Documentation
+
+- Added new documentation about
+[switching go versions](https://github.com/golang/vscode-go/blob/master/docs/go-version.md),
+and settings for [standard library development](https://github.com/golang/vscode-go/blob/master/docs/stdlib.md).
+- Improved debugging instruction and contribution guide. Enhanced automated settings documentation generation.
+
+### Code Health
+
+- Removed the obsolete string-type coverageDecorator support.
+([Issue 519](https://github.com/golang/vscode-go/issues/519))
+- When gopls integration tests fail, tests print the observed gopls traces
+to help debugging.
+
+### Experimental Features
+
+- We plan to delegate computation of various `run test` CodeLenses to `gopls`.
+The feature can be enabled with the following setting:
+```
+"go.useLanguageServer": true,
+"gopls": {
+	"codelens": { "test": true }
+}
+"go.overwriteGoplsMiddleware": {
+	"codelens": {
+		"test": true,
+		"bench": true
+	}
+}
+```
+
+### Thanks
+
+Thank you for your contribution, @suzmue, @pjweinbgo, @ekulabuhov, @stamblerre, @tpbg, @FiloSottile, @findleyr, @quoctruong, @polinasok, @hyangah!
+
 ## v0.16.2 - 2nd Sep, 2020
 
 ### Fixed
