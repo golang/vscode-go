@@ -91,6 +91,10 @@ Generates unit tests for the selected function in the current file
 
 Generates method stub for implementing the provided interface and inserts at the cursor.
 
+### `Go: Toggle gc details`
+
+Toggle the display of compiler optimization choices
+
 ### `Go: Add Import`
 
 Add an import declaration

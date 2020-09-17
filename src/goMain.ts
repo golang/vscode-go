@@ -29,7 +29,7 @@ import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
 	updateGoVarsFromConfig
 } from './goInstallTools';
-import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
+import { sendToggleCommand, startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
@@ -442,6 +442,10 @@ export function activate(ctx: vscode.ExtensionContext) {
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.build.workspace', () => buildCode(true)));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
+		sendToggleCommand('gc_details', vscode.window.activeTextEditor?.document.uri);
+	}));
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.apply.coverprofile', () => {

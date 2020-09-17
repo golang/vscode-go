@@ -18,6 +18,9 @@ import {
 	CloseAction,
 	CompletionItemKind,
 	ErrorAction,
+	ExecuteCommandParams,
+	ExecuteCommandRequest,
+	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	LanguageClient,
@@ -25,7 +28,7 @@ import {
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
-	RevealOutputChannelOn,
+	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import WebRequest = require('web-request');
 import { extensionId } from './const';
@@ -398,6 +401,22 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 		}
 	);
 	return c;
+}
+
+export function sendToggleCommand(cmd: string, file: vscode.Uri) {
+	if (languageClient === undefined || file === undefined) {
+		return;
+	}
+	const params: ExecuteCommandParams = {
+		command: cmd,
+		arguments: [file.toString()],
+	};
+	languageClient.sendRequest(ExecuteCommandRequest.type, params).then(
+		undefined,
+		(error: any) => {
+			return languageClient.logFailedRequest(ExecuteCommandRequest.type, error);
+		}
+	);
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
