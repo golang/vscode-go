@@ -876,10 +876,12 @@ export class GoDebugSession extends LoggingDebugSession {
 		} else {
 			this.debugState = await this.delve.getDebugState();
 			if (!this.debugState.Running) {
+				log('Changing DebugState from Halted to Running');
 				this.continue();
 			}
 		}
 		this.sendResponse(response);
+		log('ConfigurationDoneResponse', response);
 	}
 
 	/**
