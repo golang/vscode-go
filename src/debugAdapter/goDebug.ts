@@ -1531,6 +1531,13 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 	}
 
+	protected continueRequest(response: DebugProtocol.ContinueResponse): void {
+		log('ContinueRequest');
+		this.continue();
+		this.sendResponse(response);
+		log('ContinueResponse');
+	}
+
 	protected nextRequest(response: DebugProtocol.NextResponse): void {
 		log('NextRequest');
 		this.delve.call<DebuggerState | CommandOut>('Command', [{ name: 'next' }], (err, out) => {
