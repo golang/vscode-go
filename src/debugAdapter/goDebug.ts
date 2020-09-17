@@ -873,13 +873,15 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.stopOnEntry) {
 			this.sendEvent(new StoppedEvent('entry', 1));
 			log('StoppedEvent("entry")');
-			this.sendResponse(response);
 		} else {
 			this.debugState = await this.delve.getDebugState();
 			if (!this.debugState.Running) {
-				this.continueRequest(<DebugProtocol.ContinueResponse>response);
+				log('Changing DebugState from Halted to Running');
+				this.continue();
 			}
 		}
+		this.sendResponse(response);
+		log('ConfigurationDoneResponse', response);
 	}
 
 	/**
