@@ -1504,7 +1504,7 @@ export class GoDebugSession extends LoggingDebugSession {
 							};
 						});
 					}
-				})
+				}).filter((v) => v != null) // remove the null values created by combining keys and values
 			);
 		} else {
 			variablesPromise = Promise.all(
