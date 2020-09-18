@@ -28,12 +28,28 @@ This document explains how to debug your Go programs in VS Code. The Go debugger
 
 [Delve] should be installed by default when you install this extension.
 
+You may need to update `dlv` to the latest version to support the latest version
+of Go&mdash;see [Installation](#installation) below.
+
 ### Installation
 
-You can also install it manually in one of two ways:
+You can also install Delve manually in one of two ways:
 
-1. Open the Command Palette (Ctrl+Shift+P), select [`Go: Install/Update Tools`](settings.md#go-installupdate-tools), and select [`dlv`](tools.md#dlv).
+1. Open the [Command Palette][] (Windows/Linux: Ctrl+Shift+P; OSX: Shift+Command+P), select [`Go: Install/Update Tools`](settings.md#go-installupdate-tools), and select [`dlv`](tools.md#dlv).
 2. Follow the [Delve installation instructions](https://github.com/go-delve/delve/tree/master/Documentation/installation).
+
+### Start debugging
+
+1. Open the `package main` source file or the test file you want to debug.
+2. Start debugging using one of the following options:
+   * Open the [Command Palette][], select
+     `Debug: Start Debugging`, then select `Go`.
+   * Open the debug window (Windows/Linux: Ctrl+Shift+D; OSX: Shift+Command+D) and click
+     `Run and Debug`, then select `Go`.
+   * Select **Run > Start Debugging** from the main menu.
+
+   See [the VS Code Debugging documentation](https://code.visualstudio.com/docs/editor/debugging)
+   for more information.
 
 ### Configuration
 
@@ -50,7 +66,7 @@ You may not need to configure any settings to start debugging your programs, but
     * `maxStructFields`: Maximum number of fields read from a struct. A setting of `-1` indicates that all fields should be read (default: `-1`).
     * `maxVariableRecurse`: How far to recurse when evaluating nested types (default: `1`).
     * `followPointers`: Automatically dereference pointers (default: `true`).
-  * `showGlobalVariables`: Show global variables in the Debug view (default: `true`).
+  * `showGlobalVariables`: Show global variables in the Debug view (default: `false`).
 
 There are some common cases when you might want to tweak the Delve configurations.
 
@@ -362,3 +378,4 @@ This error can show up for Mac users using Delve versions 0.12.2 and above. `xco
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
 [snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets
+[Command Palette]: https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette

@@ -11,7 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
-import { toolInstallationEnvironment } from './goEnv';
+import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
@@ -32,10 +32,11 @@ import {
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
+	getWorkspaceFolderPath,
 	GoVersion,
 	rmdirRecursive,
 } from './util';
-import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/goPath';
+import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
@@ -217,6 +218,8 @@ export async function installTool(
 	}
 	args.push(importPath);
 
+	const toolImportPath = tool.version ? importPath + '@' + tool.version : importPath;
+
 	let output: string;
 	let result: string = '';
 	try {
@@ -240,12 +243,11 @@ export async function installTool(
 			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
 			await execFile(goVersion.binaryPath, ['build', '-o', outputFile, importPath], opts);
 		}
-		const toolImportPath = tool.version ? importPath + '@' + tool.version : importPath;
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${toolImportPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		result = `failed to install ${tool}: ${e} ${output} `;
+		outputChannel.appendLine(`Installing ${toolImportPath} FAILED`);
+		result = `failed to install ${tool.name}(${toolImportPath}): ${e} ${output} `;
 	}
 
 	// Delete the temporary installation directory.
@@ -349,8 +351,15 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	}
 
 	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'], (err, stdout, stderr) => {
-			if (err) {
+		cp.execFile(goRuntimePath,
+			['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
+			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
+			(err, stdout, stderr) => {
+			if (err || stderr) {
+				outputChannel.append(`Failed to run '${goRuntimePath} env: ${err}\n${stderr}`);
+				outputChannel.show();
+
+				vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
 				return reject();
 			}
 			const envOutput = stdout.split('\n');

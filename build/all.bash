@@ -11,6 +11,7 @@ Available subcommands:
   help      - display this help message.
   test      - build and test locally. Some tests may fail if vscode is already in use.
   testlocal - build and test in a locally built container.
+  setup_env - setup environment for test. This installs tools under GOPATH/bin.
   ci        - build and test with headless vscode. Requires Xvfb.
 EOUSAGE
 }
@@ -55,7 +56,7 @@ run_test() {
 
 run_test_in_docker() {
   echo "**** Building the docker image ***"
-  docker build -t vscode-test-env ./build
+  docker build -t vscode-test-env -f ./build/Dockerfile .
   docker run --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
 
@@ -88,6 +89,24 @@ prepare_nightly() {
   cp build/nightly/const.ts src/const.ts
 }
 
+# setup dependencies required for tests.
+install_dependencies() {
+	GO111MODULE=on go get -x -v golang.org/x/tools/gopls
+	GO111MODULE=on go get -x -v github.com/acroca/go-symbols
+	GO111MODULE=on go get -x -v github.com/cweill/gotests/...
+	GO111MODULE=on go get -x -v github.com/davidrjenni/reftools/cmd/fillstruct
+	GO111MODULE=on go get -x -v github.com/haya14busa/goplay/cmd/goplay
+	GO111MODULE=on go get -x -v github.com/mdempsky/gocode
+	GO111MODULE=on go get -x -v github.com/ramya-rao-a/go-outline
+	GO111MODULE=on go get -x -v github.com/rogpeppe/godef
+	GO111MODULE=on go get -x -v github.com/sqs/goreturns
+	GO111MODULE=on go get -x -v github.com/uudashr/gopkgs/v2/cmd/gopkgs
+	GO111MODULE=on go get -x -v github.com/zmb3/gogetdoc
+	GO111MODULE=on go get -x -v golang.org/x/lint/golint
+	GO111MODULE=on go get -x -v golang.org/x/tools/cmd/gorename
+	GO111MODULE=on go get -x -v github.com/go-delve/delve/cmd/dlv
+}
+
 main() {
   cd "$(root_dir)"  # always run from the script root.
   case "$1" in
@@ -109,6 +128,9 @@ main() {
       ;;
     "prepare_nightly")
       prepare_nightly
+      ;;
+    "setup_env")
+      install_dependencies
       ;;
     *)
       usage

@@ -10,7 +10,7 @@ import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { getBinPath, getGoConfig, getWorkspaceFolderPath} from './util';
-import { getCurrentGoRoot } from './utils/goPath';
+import { getCurrentGoRoot } from './utils/pathUtils';
 import {killProcessTree} from './utils/processUtils';
 
 // Keep in sync with github.com/acroca/go-symbols'

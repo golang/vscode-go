@@ -29,14 +29,15 @@ import {
 	Thread
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
+import { parseEnvFiles } from '../utils/envUtils';
 import {
 	envPath,
+	expandFilePathInOutput,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopathGoroot,
 	getCurrentGoWorkspaceFromGOPATH,
 	getInferredGopath,
-	parseEnvFile
-} from '../utils/goPath';
+} from '../utils/pathUtils';
 import {killProcessTree} from '../utils/processUtils';
 
 const fsAccess = util.promisify(fs.access);
@@ -150,6 +151,7 @@ interface DebugThread {
 	pc: number;
 	goroutineID: number;
 	function?: DebugFunction;
+	ReturnValues: DebugVariable[];
 }
 
 interface StacktraceOut {
@@ -190,10 +192,13 @@ enum GoVariableFlags {
 	VariableShadowed = 2,
 	VariableConstant = 4,
 	VariableArgument = 8,
-	VariableReturnArgument = 16
+	VariableReturnArgument = 16,
+	VariableFakeAddress = 32
 }
 
 interface DebugVariable {
+	// DebugVariable corresponds to api.Variable in Delve API.
+	// https://github.com/go-delve/delve/blob/328cf87808822693dc611591519689dcd42696a3/service/api/types.go#L239-L284
 	name: string;
 	addr: number;
 	type: string;
@@ -259,8 +264,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	buildFlags?: string;
 	init?: string;
 	trace?: 'verbose' | 'log' | 'error';
-	/** Optional path to .env file. */
-	envFile?: string | string[];
 	backend?: string;
 	output?: string;
 	/** Delve LoadConfig parameters */
@@ -273,6 +276,12 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 
 	showGlobalVariables?: boolean;
 	packagePathToGoModPathMap: { [key: string]: string };
+
+	/** Optional path to .env file. */
+	// TODO: deprecate .env file processing from DA.
+	// We expect the extension processes .env files
+	// and send the information to DA using the 'env' property.
+	envFile?: string | string[];
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -424,22 +433,13 @@ export class Delve {
 				}
 
 				// read env from disk and merge into env variables
-				const fileEnvs = [];
 				try {
-					if (typeof launchArgs.envFile === 'string') {
-						fileEnvs.push(parseEnvFile(launchArgs.envFile));
-					}
-					if (Array.isArray(launchArgs.envFile)) {
-						launchArgs.envFile.forEach((envFile) => {
-							fileEnvs.push(parseEnvFile(envFile));
-						});
-					}
+					const fileEnvs = parseEnvFiles(launchArgs.envFile);
+					const launchArgsEnv = launchArgs.env || {};
+					env = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
 				} catch (e) {
-					return reject(e);
+					return reject(`failed to process 'envFile' and 'env' settings: ${e}`);
 				}
-
-				const launchArgsEnv = launchArgs.env || {};
-				env = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
 
 				const dirname = isProgramDirectory ? program : path.dirname(program);
 				if (!env['GOPATH'] && (mode === 'debug' || mode === 'test')) {
@@ -872,13 +872,15 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.stopOnEntry) {
 			this.sendEvent(new StoppedEvent('entry', 1));
 			log('StoppedEvent("entry")');
-			this.sendResponse(response);
 		} else {
 			this.debugState = await this.delve.getDebugState();
 			if (!this.debugState.Running) {
-				this.continueRequest(<DebugProtocol.ContinueResponse>response);
+				log('Changing DebugState from Halted to Running');
+				this.continue();
 			}
 		}
+		this.sendResponse(response);
+		log('ConfigurationDoneResponse', response);
 	}
 
 	/**
@@ -1281,6 +1283,10 @@ export class GoDebugSession extends LoggingDebugSession {
 
 	protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
 		log('ScopesRequest');
+		// TODO(polinasok): this.stackFrameHandles.get should succeed as long as DA
+		// clients behaves well. Find the documentation around stack frame management
+		// and in case of a failure caused by misbehavior, consider to indicate it
+		// in the error response.
 		const [goroutineId, frameId] = this.stackFrameHandles.get(args.frameId);
 		const listLocalVarsIn = { goroutineID: goroutineId, frame: frameId };
 		this.delve.call<DebugVariable[] | ListVarsOut>(
@@ -1594,8 +1600,47 @@ export class GoDebugSession extends LoggingDebugSession {
 		log('PauseResponse');
 	}
 
+	// evaluateRequest is used both for the traditional expression evaluation
+	// (https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md) and
+	// for the 'call' command support.
+	// If the args.expression starts with the 'call' keyword followed by an expression that looks
+	// like a function call, the request is interpreted as a 'call' command request,
+	// and otherwise, interpreted as `print` command equivalent with RPCServer.Eval.
 	protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
 		log('EvaluateRequest');
+		// Captures pattern that looks like the expression that starts with `call<space>`
+		// command call. This is supported only with APIv2.
+		const isCallCommand = args.expression.match(/^\s*call\s+\S+/);
+		if (!this.delve.isApiV1 && isCallCommand) {
+			this.evaluateCallImpl(args).then((out) => {
+				const state = (<CommandOut>out).State;
+				const returnValues = state?.currentThread?.ReturnValues ?? [];
+				switch (returnValues.length) {
+					case 0:
+						response.body = { result: '', variablesReference: 0 };
+						break;
+					case 1:
+						response.body = this.convertDebugVariableToProtocolVariable(returnValues[0]);
+						break;
+					default:
+						// Go function can return multiple return values while
+						// DAP EvaluateResponse assumes a single result with possibly
+						// multiple children. So, create a fake DebugVariable
+						// that has all the results as children.
+						const returnResults = this.wrapReturnVars(returnValues);
+						response.body = this.convertDebugVariableToProtocolVariable(returnResults);
+						break;
+				}
+				this.sendResponse(response);
+				log('EvaluateCallResponse');
+			}, (err) => {
+				this.sendErrorResponse(response, 2009, 'Unable to complete call: "{e}"', {
+					e: err.toString()
+				}, args.context === 'watch' ? null : ErrorDestination.User);
+			});
+			return;
+		}
+		// Now handle it as a conventional evaluateRequest.
 		this.evaluateRequestImpl(args).then(
 			(out) => {
 				const variable = this.delve.isApiV1 ? <DebugVariable>out : (<EvalOut>out).Variable;
@@ -1606,20 +1651,15 @@ export class GoDebugSession extends LoggingDebugSession {
 				log('EvaluateResponse');
 			},
 			(err) => {
-				let dest: ErrorDestination;
 				// No need to repeatedly show the error pop-up when expressions
 				// are continiously reevaluated in the Watch panel, which
 				// already displays errors.
-				if (args.context === 'watch') {
-					dest = null;
-				} else {
-					dest = ErrorDestination.User;
-				}
 				this.sendErrorResponse(response, 2009, 'Unable to eval expression: "{e}"', {
 					e: err.toString()
-				}, dest);
+				}, args.context === 'watch' ? null : ErrorDestination.User);
 			}
 		);
+
 	}
 
 	protected setVariableRequest(
@@ -1726,6 +1766,9 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.sendEvent(new OutputEvent(str, 'stdout'));
 		};
 		this.delve.onstderr = (str: string) => {
+			if (localPath.length > 0) {
+				str = expandFilePathInOutput(str, localPath);
+			}
 			this.sendEvent(new OutputEvent(str, 'stderr'));
 		};
 		this.delve.onclose = (code) => {
@@ -1955,6 +1998,41 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 	}
 
+	// Go might return more than one result while DAP and VS Code do not support
+	// such scenario but assume one single result. So, wrap all return variables
+	// in one made-up, nameless, invalid variable. This is similar to how scopes
+	// are represented. This assumes the vars are the ordered list of return
+	// values from a function call.
+	private wrapReturnVars(vars: DebugVariable[]): DebugVariable {
+		// VS Code uses the value property of the DebugVariable
+		// when displaying it. So let's formulate it in a user friendly way
+		// as if they look like a list of multiple values.
+		// Note: we use only convertDebugVariableToProtocolVariable's result,
+		// which means we will leak the variable references until the handle
+		// map is cleared. Assuming the number of return parameters is handful,
+		// this waste shouldn't be significant.
+		const values = vars.map((v) => this.convertDebugVariableToProtocolVariable(v).result) || [];
+		return {
+			value: values.join(', '),
+			kind: GoReflectKind.Invalid,
+			flags: GoVariableFlags.VariableFakeAddress | GoVariableFlags.VariableReturnArgument,
+			children: vars,
+
+			// DebugVariable requires the following fields.
+			name: '',
+			addr: 0,
+			type: '',
+			realType: '',
+			onlyAddr: false,
+			DeclLine: 0,
+			len: 0,
+			cap: 0,
+			unreadable: '',
+			base: 0,
+			fullyQualifiedName: ''
+		};
+	}
+
 	private convertDebugVariableToProtocolVariable(v: DebugVariable): { result: string; variablesReference: number } {
 		if (v.kind === GoReflectKind.UnsafePointer) {
 			return {
@@ -2021,6 +2099,35 @@ export class GoDebugSession extends LoggingDebugSession {
 			return {
 				result: v.unreadable ? '<' + v.unreadable + '>' : '"' + val + '"',
 				variablesReference: 0
+			};
+		} else if (v.kind === GoReflectKind.Interface) {
+			if (v.addr === 0) {
+				// an escaped interface variable that points to nil, this shouldn't
+				// happen in normal code but can happen if the variable is out of scope.
+				return {
+					result: 'nil',
+					variablesReference: 0
+				};
+			}
+
+			if (v.children.length === 0) { // Shouldn't happen, but to be safe.
+				return {
+					result: 'nil',
+					variablesReference: 0
+				};
+			}
+			const child = v.children[0];
+			if (child.kind === GoReflectKind.Invalid && child.addr === 0) {
+				return {
+					result: `nil <${v.type}>`,
+					variablesReference: 0
+				};
+			}
+			return {
+				// TODO(hyangah): v.value will be useless. consider displaying more info from the child.
+				// https://github.com/go-delve/delve/blob/930fa3b/service/api/prettyprint.go#L106-L124
+				result: v.value || `<${v.type}(${child.type})>)`,
+				variablesReference: v.children?.length > 0 ? this.variableHandles.create(v) : 0
 			};
 		} else {
 			// Default case - structs
@@ -2108,13 +2215,51 @@ export class GoDebugSession extends LoggingDebugSession {
 		return this.delve.callPromise('Command', [{ name: 'continue' }]).then(callback, errorCallback);
 	}
 
+	// evaluateCallImpl expects args.expression starts with the 'call ' command.
+	private evaluateCallImpl(args: DebugProtocol.EvaluateArguments)
+		: Thenable<DebuggerState | CommandOut> {
+		const callExpr = args.expression.trimLeft().slice(`call `.length);
+		// if args.frameID is 'not specified', expression is evaluated in the global scope, according to DAP.
+		// default to the topmost stack frame of the current goroutine
+		let goroutineId = -1;
+		let frameId = 0;
+		if (args.frameId) {
+			[goroutineId, frameId] = this.stackFrameHandles.get(args.frameId, [goroutineId, frameId]);
+		}
+		// See https://github.com/go-delve/delve/blob/328cf87808822693dc611591519689dcd42696a3/service/api/types.go#L321-L350
+		// for the command args for function call.
+		const returnValue = this.delve
+			.callPromise<DebuggerState | CommandOut>('Command', [
+				{
+					name: 'call',
+					goroutineID: goroutineId,
+					returnInfoLoadConfig: this.delve.loadConfig,
+					expr: callExpr,
+					unsafe: false,
+				}
+			])
+			.then(
+				(val) => val,
+				(err) => {
+					logError(
+						'Failed to call function: ',
+						JSON.stringify(callExpr, null, ' '),
+						'\n\rCall error:',
+						err.toString()
+					);
+					return Promise.reject(err);
+				}
+			);
+		return returnValue;
+	}
+
 	private evaluateRequestImpl(args: DebugProtocol.EvaluateArguments): Thenable<EvalOut | DebugVariable> {
 		// default to the topmost stack frame of the current goroutine
 		let goroutineId = -1;
 		let frameId = 0;
 		// args.frameId won't be specified when evaluating global vars
 		if (args.frameId) {
-			[goroutineId, frameId] = this.stackFrameHandles.get(args.frameId);
+			[goroutineId, frameId] = this.stackFrameHandles.get(args.frameId, [goroutineId, frameId]);
 		}
 		const scope = {
 			goroutineID: goroutineId,

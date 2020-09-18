@@ -20,7 +20,8 @@ import {
 	LineBuffer,
 	resolvePath
 } from './util';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH, parseEnvFile } from './utils/goPath';
+import { parseEnvFile } from './utils/envUtils';
+import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
@@ -269,7 +270,17 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		} else {
 			args.push('-timeout', testconfig.goConfig['testTimeout']);
 			if (testconfig.applyCodeCoverage) {
+				let coverMode = testconfig.goConfig['coverMode'];
+				switch (coverMode) {
+					case 'set': case 'count': case 'atomic': break;
+					default:
+						vscode.window.showWarningMessage(
+							`go.coverMode=${coverMode} is illegal. Use 'set', 'count', atomic'`
+						);
+						coverMode = 'set';
+				}
 				args.push('-coverprofile=' + tmpCoverPath);
+				args.push('-covermode', coverMode);
 			}
 		}
 		if (testTags && testconfig.flags.indexOf('-tags') === -1) {
@@ -481,17 +492,6 @@ export function cancelRunningTests(): Thenable<boolean> {
 		runningTestProcesses.splice(0, runningTestProcesses.length);
 		resolve(true);
 	});
-}
-
-function expandFilePathInOutput(output: string, cwd: string): string {
-	const lines = output.split('\n');
-	for (let i = 0; i < lines.length; i++) {
-		const matches = lines[i].match(/\s*(\S+\.go):(\d+):/);
-		if (matches && matches[1] && !path.isAbsolute(matches[1])) {
-			lines[i] = lines[i].replace(matches[1], path.join(cwd, matches[1]));
-		}
-	}
-	return lines.join('\n');
 }
 
 /**

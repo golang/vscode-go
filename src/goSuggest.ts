@@ -27,7 +27,7 @@ import {
 	parseFilePrelude,
 	runGodoc
 } from './util';
-import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 function vscodeKindFromGoCodeClass(kind: string, type: string): vscode.CompletionItemKind {
 	switch (kind) {

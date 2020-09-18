@@ -25,7 +25,7 @@ import {
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import ourutil = require('../../src/util');
-import { getCurrentGoRoot } from '../../src/utils/goPath';
+import { getCurrentGoRoot } from '../../src/utils/pathUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 describe('#initGoStatusBar()', function () {

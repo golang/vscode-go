@@ -10,7 +10,7 @@ import vscode = require('vscode');
 import { buildCode } from './goBuild';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/goPath';
+import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
 export function goGetPackage() {
 	const editor = vscode.window.activeTextEditor;

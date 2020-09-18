@@ -26,6 +26,10 @@ export function setGlobalState(state: vscode.Memento) {
 	globalState = state;
 }
 
+export function getGlobalState() {
+	return globalState;
+}
+
 export function getFromWorkspaceState(key: string, defaultValue?: any) {
 	if (!workspaceState) {
 		return defaultValue;

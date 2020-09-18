@@ -21,7 +21,7 @@ import {
 	ICheckResult,
 	runTool
 } from './util';
-import { getCurrentGoWorkspaceFromGOPATH } from './utils/goPath';
+import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 /**
  * Builds current package or workspace.
@@ -146,15 +146,17 @@ export async function goBuild(
 
 	outputChannel.appendLine(`Starting building the current package at ${cwd}`);
 
-	// Find the right importPath instead of directly using `.`. Fixes https://github.com/Microsoft/vscode-go/issues/846
 	const currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), cwd);
 	let importPath = '.';
-	if (currentGoWorkspace && !isMod) {
-		importPath = cwd.substr(currentGoWorkspace.length + 1);
-	} else {
-		outputChannel.appendLine(
-			`Not able to determine import path of current package by using cwd: ${cwd} and Go workspace: ${currentGoWorkspace}`
-		);
+	if (!isMod) {
+		// Find the right importPath instead of directly using `.`. Fixes https://github.com/Microsoft/vscode-go/issues/846
+		if (currentGoWorkspace && !isMod) {
+			importPath = cwd.substr(currentGoWorkspace.length + 1);
+		} else {
+			outputChannel.appendLine(
+				`Not able to determine import path of current package by using cwd: ${cwd} and Go workspace: ${currentGoWorkspace}`
+			);
+		}
 	}
 
 	running = true;

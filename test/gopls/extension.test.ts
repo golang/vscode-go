@@ -6,8 +6,33 @@ import * as assert from 'assert';
 import cp = require('child_process');
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import sinon = require('sinon');
 import * as vscode from 'vscode';
 import { extensionId } from '../../src/const';
+
+// FakeOutputChannel is a fake output channel used to buffer
+// the output of the tested language client in an in-memory
+// string array until cleared.
+class FakeOutputChannel implements vscode.OutputChannel {
+	public name = 'FakeOutputChannel';
+	public show = sinon.fake(); // no-empty
+	public hide = sinon.fake(); // no-empty
+	public dispose = sinon.fake();  // no-empty
+
+	private buf = [] as string[];
+
+	public append = (v: string) => this.enqueue(v);
+	public appendLine = (v: string) => this.enqueue(v);
+	public clear = () => { this.buf = []; };
+	public toString = () => {
+		return this.buf.join('\n');
+	}
+
+	private enqueue = (v: string) => {
+		if (this.buf.length > 1024) { this.buf.shift(); }
+		this.buf.push(v.trim());
+	}
+}
 
 // Env is a collection of test related variables
 // that define the test environment such as vscode workspace.
@@ -28,6 +53,8 @@ class Env {
 
 	public extension: vscode.Extension<any>;
 
+	private fakeOutputChannel: FakeOutputChannel;
+
 	constructor(projectDir: string) {
 		if (!projectDir) {
 			assert.fail('project directory cannot be determined');
@@ -35,6 +62,7 @@ class Env {
 		this.workspaceDir = path.resolve(projectDir, 'test/gopls/testfixtures/src/workspace');
 		this.fixturesRoot = path.resolve(projectDir, 'test/fixtures');
 		this.extension = vscode.extensions.getExtension(extensionId);
+		this.fakeOutputChannel = new FakeOutputChannel();
 
 		// Ensure the vscode extension host is configured as expected.
 		const workspaceFolder = path.resolve(vscode.workspace.workspaceFolders[0].uri.fsPath);
@@ -43,13 +71,28 @@ class Env {
 		}
 	}
 
+	public flushTrace(print: boolean) {
+		if (print) {
+			console.log(this.fakeOutputChannel.toString());
+			this.fakeOutputChannel.clear();
+		}
+	}
+
 	public async setup() {
+		// stub the language server's output channel to intercept the trace.
+		sinon.stub(vscode.window, 'createOutputChannel')
+			.callThrough().withArgs('gopls (server)').returns(this.fakeOutputChannel);
+
 		await this.reset();
 		await this.extension.activate();
 		await sleep(2000);  // allow the language server to start.
 		// TODO(hyangah): find a better way to check the language server's status.
 		// I thought I'd check the languageClient.onReady(),
 		// but couldn't make it working yet.
+	}
+
+	public teardown() {
+		sinon.restore();
 	}
 
 	public async reset(fixtureDirName?: string) {  // name of the fixtures subdirectory to use.
@@ -97,6 +140,13 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 	suiteTeardown(async () => { await env.reset(); });
 
+	this.afterEach(function () {
+		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
+		// I don't know why but this.currentTest.state does not have the expected value when
+		// used with teardown.
+		env.flushTrace(this.currentTest.state === 'failed');
+	});
+
 	test('HoverProvider', async () => {
 		await env.reset('gogetdocTestData');
 		const { uri, doc } = await env.openDoc('test.go');
@@ -139,7 +189,7 @@ suite('Go Extension Tests With Gopls', function () {
 		await env.reset('gogetdocTestData');
 		const { uri } = await env.openDoc('test.go');
 		const testCases: [string, vscode.Position, string][] = [
-			['fmt.<>', new vscode.Position(19, 5), 'Formatter'],
+			['fmt.P<>', new vscode.Position(19, 6), 'Print'],
 		];
 		for (const [name, position, wantFilterText] of testCases) {
 			let list: vscode.CompletionList<vscode.CompletionItem>;

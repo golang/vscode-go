@@ -44,9 +44,9 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 
 // toolExecutionEnvironment returns the environment in which tools should
 // be executed. It always returns a new object.
-export function toolExecutionEnvironment(): NodeJS.Dict<string> {
+export function toolExecutionEnvironment(uri?: vscode.Uri): NodeJS.Dict<string> {
 	const env = newEnvironment();
-	const gopath = getCurrentGoPath();
+	const gopath = getCurrentGoPath(uri);
 	if (gopath) {
 		env['GOPATH'] = gopath;
 	}

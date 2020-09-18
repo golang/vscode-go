@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.16.2",
+  "version": "0.17.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -90,6 +90,8 @@
     "onLanguage:go",
     "onCommand:go.gopath",
     "onCommand:go.tools.install",
+    "onCommand:go.locate.tools",
+    "onCommand:go.show.commands",
     "onDebugResolve:go"
   ],
   "main": "./dist/goMain.js",
@@ -620,7 +622,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -750,7 +752,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1003,7 +1005,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1125,7 +1127,7 @@
               },
               "showGlobalVariables": {
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
               }
             }
@@ -1174,8 +1176,8 @@
         },
         "go.installDependenciesWhenBuilding": {
           "type": "boolean",
-          "default": true,
-          "description": "If true, then `-i` flag will be passed to `go build` everytime the code is compiled.",
+          "default": false,
+          "description": "If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.",
           "scope": "resource"
         },
         "go.lintOnSave": {
@@ -1219,7 +1221,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'. Options are 'workspace', 'package or 'off'.",
+          "description": "Vets code on file save using 'go tool vet'.",
           "scope": "resource"
         },
         "go.vetFlags": {
@@ -1234,13 +1236,15 @@
         "go.formatTool": {
           "type": "string",
           "default": "goreturns",
-          "description": "Pick 'gofmt', 'goimports', 'goreturns' or 'goformat' to run on format. Not applicable when using the language server. Choosing 'goimports' or 'goreturns' will add missing imports and remove unused imports.",
+          "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
           "scope": "resource",
           "enum": [
             "gofmt",
             "goimports",
             "goreturns",
-            "goformat"
+            "goformat",
+            "gofumpt",
+            "gofumports"
           ]
         },
         "go.formatFlags": {
@@ -1309,6 +1313,23 @@
           "default": false,
           "description": "If true, shows test coverage when Go: Test Single File command is run."
         },
+        "go.coverMode": {
+          "type": "string",
+          "enum": [
+            "set",
+            "count",
+            "atomic"
+          ],
+          "default": "set",
+          "description": "When generating code coverage, the value for -covermode",
+          "scope": "resource"
+        },
+        "go.coverShowCounts": {
+          "type": "boolean",
+          "default": false,
+          "description": "When generating code coverage, should counts be shown as --374--",
+          "scope": "resource"
+        },
         "go.coverageOptions": {
           "type": "string",
           "enum": [
@@ -1325,7 +1346,6 @@
           "properties": {
             "type": {
               "type": "string",
-              "default": "highlight",
               "enum": [
                 "highlight",
                 "gutter"
@@ -1333,17 +1353,22 @@
             },
             "coveredHighlightColor": {
               "type": "string",
-              "default": "rgba(64,128,128,0.5)",
               "description": "Color in the rgba format to use to highlight covered code."
             },
             "uncoveredHighlightColor": {
               "type": "string",
-              "default": "rgba(128,64,64,0.25)",
               "description": "Color in the rgba format to use to highlight uncovered code."
+            },
+            "coveredBorderColor": {
+              "type": "string",
+              "description": "Color to use for the border of covered code."
+            },
+            "uncoveredBorderColor": {
+              "type": "string",
+              "description": "Color to use for the border of uncovered code."
             },
             "coveredGutterStyle": {
               "type": "string",
-              "default": "blockblue",
               "enum": [
                 "blockblue",
                 "blockred",
@@ -1362,7 +1387,6 @@
             },
             "uncoveredGutterStyle": {
               "type": "string",
-              "default": "blockblue",
               "enum": [
                 "blockblue",
                 "blockred",
@@ -1385,10 +1409,12 @@
             "type": "highlight",
             "coveredHighlightColor": "rgba(64,128,128,0.5)",
             "uncoveredHighlightColor": "rgba(128,64,64,0.25)",
+            "coveredBorderColor": "rgba(64,128,128,0.5)",
+            "uncoveredBorderColor": "rgba(128,64,64,0.25)",
             "coveredGutterStyle": "blockblue",
             "uncoveredGutterStyle": "slashyellow"
           },
-          "description": "This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the color for the former and the style for the latter.",
+          "description": "This option lets you choose the way to display code coverage. Choose either to highlight the complete line or to show a decorator in the gutter. You can customize the colors and borders for the former and the style for the latter.",
           "scope": "resource"
         },
         "go.testTimeout": {
@@ -1539,7 +1565,7 @@
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
+          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
         },
         "go.gotoSymbol.includeImports": {
           "type": "boolean",
@@ -1574,6 +1600,34 @@
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"
+        },
+        "go.overwriteGoplsMiddleware": {
+          "type": "object",
+          "properties": {
+            "codelens": {
+              "type": "object",
+              "properties": {
+                "test": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "'test' codelens will be handled by gopls if true"
+                },
+                "bench": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "'benchmark' codelens will be handled by gopls if true"
+                }
+              }
+            },
+            "default": {
+              "codelens": {
+                "test": false,
+                "bench": false
+              }
+            }
+          },
+          "scope": "resource",
+          "description": "This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present."
         },
         "go.addTags": {
           "type": "object",
@@ -1680,9 +1734,9 @@
               "type": "boolean",
               "default": true,
               "description": "Whether to run the created Go Playground after creation"
-            },
-            "description": "The flags configured here will be passed through to command `goplay`"
+            }
           },
+          "description": "The flags configured here will be passed through to command `goplay`",
           "additionalProperties": false,
           "default": {
             "openbrowser": true,
@@ -1845,7 +1899,7 @@
             "showGlobalVariables": {
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
-              "default": true
+              "default": false
             }
           },
           "default": {
@@ -1857,7 +1911,7 @@
               "maxStructFields": -1
             },
             "apiVersion": 2,
-            "showGlobalVariables": true
+            "showGlobalVariables": false
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"

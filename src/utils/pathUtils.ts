@@ -158,37 +158,6 @@ export function resolveHomeDir(inputPath: string): string {
 	return inputPath.startsWith('~') ? path.join(os.homedir(), inputPath.substr(1)) : inputPath;
 }
 
-export function stripBOM(s: string): string {
-	if (s && s[0] === '\uFEFF') {
-		s = s.substr(1);
-	}
-	return s;
-}
-
-export function parseEnvFile(envFilePath: string): { [key: string]: string } {
-	const env: { [key: string]: any } = {};
-	if (!envFilePath) {
-		return env;
-	}
-
-	try {
-		const buffer = stripBOM(fs.readFileSync(envFilePath, 'utf8'));
-		buffer.split('\n').forEach((line) => {
-			const r = line.match(/^\s*([\w\.\-]+)\s*=\s*(.*)?\s*$/);
-			if (r !== null) {
-				let value = r[2] || '';
-				if (value.length > 0 && value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
-					value = value.replace(/\\n/gm, '\n');
-				}
-				env[r[1]] = value.replace(/(^['"]|['"]$)/g, '');
-			}
-		});
-		return env;
-	} catch (e) {
-		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
-	}
-}
-
 // Walks up given folder path to return the closest ancestor that has `src` as a child
 export function getInferredGopath(folderPath: string): string {
 	if (!folderPath) {
@@ -257,4 +226,20 @@ export function getToolFromToolPath(toolPath: string): string | undefined {
 		tool = tool.substr(0, tool.length - 4);
 	}
 	return tool;
+}
+
+/**
+ * Returns output with relative filepaths expanded using the provided directory
+ * @param output
+ * @param cwd
+ */
+export function expandFilePathInOutput(output: string, cwd: string): string {
+	const lines = output.split('\n');
+	for (let i = 0; i < lines.length; i++) {
+		const matches = lines[i].match(/\s*(\S+\.go):(\d+):/);
+		if (matches && matches[1] && !path.isAbsolute(matches[1])) {
+			lines[i] = lines[i].replace(matches[1], path.join(cwd, matches[1]));
+		}
+	}
+	return lines.join('\n');
 }

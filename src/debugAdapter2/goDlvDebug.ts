@@ -20,13 +20,7 @@ import {
 	TerminatedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-
-import {
-	envPath,
-	getBinPathWithPreferredGopathGoroot,
-	parseEnvFile
-} from '../utils/goPath';
-
+import { envPath, expandFilePathInOutput, getBinPathWithPreferredGopathGoroot } from '../utils/pathUtils';
 import { killProcessTree } from '../utils/processUtils';
 
 import { DAPClient } from './dapClient';
@@ -62,8 +56,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	buildFlags?: string;
 	init?: string;
 	trace?: 'verbose' | 'log' | 'error';
-	/** Optional path to .env file. */
-	envFile?: string | string[];
 	backend?: string;
 	output?: string;
 	/** Delve LoadConfig parameters */
@@ -615,19 +607,11 @@ export class GoDlvDapDebugSession extends LoggingDebugSession {
 			goRunArgs.push(...launchArgs.args);
 		}
 
-		// Read env from disk and merge into env variables.
-		const fileEnvs = [];
-		if (typeof launchArgs.envFile === 'string') {
-			fileEnvs.push(parseEnvFile(launchArgs.envFile));
-		}
-		if (Array.isArray(launchArgs.envFile)) {
-			launchArgs.envFile.forEach((envFile) => {
-				fileEnvs.push(parseEnvFile(envFile));
-			});
-		}
-
+		// launchArgs.env includes all the environment variables
+		// including vscode-go's toolsExecutionEnvironment (PATH, GOPATH, ...),
+		// and those read from .env files.
 		const launchArgsEnv = launchArgs.env || {};
-		const programEnv = Object.assign({}, process.env, ...fileEnvs, launchArgsEnv);
+		const programEnv = Object.assign({}, process.env, launchArgsEnv);
 
 		log(`Current working directory: ${dirname}`);
 		const goExe = getBinPathWithPreferredGopathGoroot('go', []);
@@ -700,13 +684,15 @@ class DelveClient extends DAPClient {
 
 		log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
+		const dir = parseProgramArgSync(launchArgs).dirname;
 		this.debugProcess = spawn(dlvPath, dlvArgs, {
-			cwd: parseProgramArgSync(launchArgs).dirname,
+			cwd: dir,
 			env
 		});
 
 		this.debugProcess.stderr.on('data', (chunk) => {
-			const str = chunk.toString();
+			let str = chunk.toString();
+			str = expandFilePathInOutput(str, dir);
 			this.emit('stderr', str);
 		});
 

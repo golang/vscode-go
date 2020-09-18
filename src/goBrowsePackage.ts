@@ -10,7 +10,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { getAllPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/goPath';
+import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
 export function browsePackages() {
 	let workDir = '';
