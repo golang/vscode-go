@@ -1,4 +1,4 @@
-## v0.17.0 - 17th Sep, 2020
+## v0.17.0 - 18th Sep, 2020
 
 Go code debugging and code coverage support is getting better.
 
@@ -6,8 +6,10 @@ The extension will help you stay updated with the new Go releases.
 
 ### New Features
 
-- Delve's function call feature is now accessible. To use this feature,
-explicitly specify the `call` command. E.g. `call myAwesomeFunc()`.
+- Delve's [call](https://github.com/go-delve/delve/tree/master/Documentation/cli#call) feature is now accessible.
+To use this feature, explicitly specify the `call` command. E.g. `call myAwesomeFunc()`.
+It is an experimental feature in Delve.
+Please see [the current limitations](https://github.com/go-delve/delve/tree/master/Documentation/cli#call).
 ([Issue 100](https://github.com/golang/vscode-go/issues/100))
 - The extension checks the go official download site and notifies users of
 newly available Go versions. When a newer version is available,
@@ -68,7 +70,7 @@ enabled, the extension runs `go` commands with `-i`, which is no longer
 recommended with recent versions of Go.
 ([Issue 568](https://github.com/golang/vscode-go/issues/568))
 - Fixed a bug where we are not sending back 'configuration done' response.
-(([Issue eclipse-theia/theia#8455](https://github.com/eclipse-theia/theia/issues/8455),
+([Issue eclipse-theia/theia#8455](https://github.com/eclipse-theia/theia/issues/8455),
 [CL 254959](https://go-review.googlesource.com/c/vscode-go/+/254959))
 
 ### Documentation
@@ -88,17 +90,11 @@ to help debugging.
 ### Experimental Features
 
 - We plan to delegate computation of various `run test` CodeLenses to `gopls`.
-The feature can be enabled with the following setting:
+This experimental feature can be enabled with the following setting:
 ```
 "go.useLanguageServer": true,
 "gopls": {
 	"codelens": { "test": true }
-}
-"go.overwriteGoplsMiddleware": {
-	"codelens": {
-		"test": true,
-		"bench": true
-	}
 }
 ```
 
