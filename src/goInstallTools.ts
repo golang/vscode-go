@@ -347,7 +347,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	const goRuntimePath = getBinPath('go', false);
 	if (!goRuntimePath) {
 		suggestDownloadGo();
-		return;
+		return Promise.reject();
 	}
 
 	return new Promise<void>((resolve, reject) => {
@@ -482,7 +482,7 @@ async function suggestDownloadGo() {
 	}
 
 	const choice = await vscode.window.showErrorMessage(
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}. ` +
+		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}). ` +
 		`Check PATH, or Install Go and reload the window.`,
 		'Go to Download Page'
 	);
