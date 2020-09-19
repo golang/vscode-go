@@ -63,11 +63,11 @@ Default: ``
 
 ### `go.coverMode`
 
-When generating code coverage, the value for -covermode
+When generating code coverage, the value for -covermode. 'default' is the default value chosen by the 'go test' command.
 
-Allowed Values:`[set count atomic]`
+Allowed Values:`[default set count atomic]`
 
-Default: `set`
+Default: `default`
 
 ### `go.coverOnSave`
 
