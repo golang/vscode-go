@@ -1316,12 +1316,13 @@
         "go.coverMode": {
           "type": "string",
           "enum": [
+            "default",
             "set",
             "count",
             "atomic"
           ],
-          "default": "set",
-          "description": "When generating code coverage, the value for -covermode",
+          "default": "default",
+          "description": "When generating code coverage, the value for -covermode. 'default' is the default value chosen by the 'go test' command.",
           "scope": "resource"
         },
         "go.coverShowCounts": {

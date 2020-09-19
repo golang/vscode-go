@@ -270,17 +270,19 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		} else {
 			args.push('-timeout', testconfig.goConfig['testTimeout']);
 			if (testconfig.applyCodeCoverage) {
-				let coverMode = testconfig.goConfig['coverMode'];
+				args.push('-coverprofile=' + tmpCoverPath);
+				const coverMode = testconfig.goConfig['coverMode'];
 				switch (coverMode) {
-					case 'set': case 'count': case 'atomic': break;
+					case 'default':
+						break;
+					case 'set': case 'count': case 'atomic':
+						args.push('-covermode', coverMode);
+						break;
 					default:
 						vscode.window.showWarningMessage(
-							`go.coverMode=${coverMode} is illegal. Use 'set', 'count', atomic'`
+							`go.coverMode=${coverMode} is illegal. Use 'set', 'count', 'atomic', or 'default'.`
 						);
-						coverMode = 'set';
 				}
-				args.push('-coverprofile=' + tmpCoverPath);
-				args.push('-covermode', coverMode);
 			}
 		}
 		if (testTags && testconfig.flags.indexOf('-tags') === -1) {

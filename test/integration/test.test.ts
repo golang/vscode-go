@@ -50,7 +50,7 @@ suite('Test Go Test', function () {
 	}
 
 	async function runTest(
-		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[] },
+		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean},
 		wantFiles: string[]) {
 
 		fs.copySync(sourcePath, repoPath, { recursive: true });
@@ -65,8 +65,12 @@ suite('Test Go Test', function () {
 			flags: input.testFlags ? input.testFlags : getTestFlags(config),
 			isMod: input.isMod,
 			includeSubDirectories: input.includeSubDirectories,
+			applyCodeCoverage: input.applyCodeCoverage
 		};
 		try {
+			// TODO: instead of calling goTest, consider to test
+			// testCurrentPackage, testCurrentWorkspace, testCurrentFile
+			// which are closer to the features exposed to users.
 			const result = await goTest(testConfig);
 			assert.equal(result, false);  // we expect tests to fail.
 		} catch (e) {
@@ -91,6 +95,9 @@ suite('Test Go Test', function () {
 			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
+			{ isMod: true, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
+			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
+		await runTest(
 			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go')]);
 	});
@@ -106,6 +113,9 @@ suite('Test Go Test', function () {
 		await runTest(
 			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
+		await runTest(
+				{ isMod: true, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
+				[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
 			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go')]);
