@@ -14,6 +14,7 @@ import vscode = require('vscode');
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
+import { logVerbose } from './goLogging';
 import { restartLanguageServer } from './goMain';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import {
@@ -345,6 +346,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	// FIXIT: if updateGoVarsFromConfig is called again after addGoRuntimeBaseToPATH sets PATH,
 	// the go chosen by getBinPath based on PATH will not change.
 	const goRuntimePath = getBinPath('go', false);
+	logVerbose(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
 	if (!goRuntimePath) {
 		suggestDownloadGo();
 		return;
@@ -362,6 +364,8 @@ export function updateGoVarsFromConfig(): Promise<void> {
 				vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
 				return reject();
 			}
+			logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
+
 			const envOutput = stdout.split('\n');
 			if (!process.env['GOPATH'] && envOutput[0].trim()) {
 				process.env['GOPATH'] = envOutput[0].trim();

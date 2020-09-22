@@ -8,7 +8,6 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
-import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -32,6 +31,7 @@ import {
 } from './goInstallTools';
 import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
 import { lintCode } from './goLint';
+import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
@@ -61,7 +61,7 @@ import {
 	isGoPathSet,
 	resolvePath,
 } from './util';
-import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -73,12 +73,16 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext) {
+	const logConfig = getGoConfig()['logging'];
+	setLogConfig(logConfig);
+
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
+		logVerbose(`go.goroot = '${configGOROOT}'`);
 		setCurrentGoRoot(resolvePath(configGOROOT));
 	}
 
@@ -315,6 +319,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 				e.affectsConfiguration('go.toolsEnvVars') ||
 				e.affectsConfiguration('go.testEnvFile')) {
 				updateGoVarsFromConfig();
+			}
+			if (e.affectsConfiguration('go.logging')) {
+				setLogConfig(updatedGoConfig['logging']);
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {

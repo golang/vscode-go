@@ -1563,6 +1563,18 @@
           "default": "off",
           "description": "Trace the communication between VS Code and the Go language server."
         },
+        "go.logging.level": {
+          "type": "string",
+          "default": "error",
+          "enum": [
+            "off",
+            "error",
+            "info",
+            "verbose"
+          ],
+          "description": "The logging level the extension logs at, defaults to 'error'",
+          "scope": "machine-overridable"
+        },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,

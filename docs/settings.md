@@ -292,6 +292,14 @@ Default:{<br/>
     }
 
 
+### `go.logging.level`
+
+The logging level the extension logs at, defaults to 'error'
+
+Allowed Values:`[off error info verbose]`
+
+Default: `error`
+
 ### `go.overwriteGoplsMiddleware`
 
 This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present.

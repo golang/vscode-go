@@ -14,6 +14,7 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
+import { logVerbose } from './goLogging';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
@@ -284,19 +285,21 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	if (!newGoRuntimeBase) {
 		return;
 	}
-
 	let pathEnvVar: string;
 	if (process.env.hasOwnProperty('PATH')) {
 		pathEnvVar = 'PATH';
 	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
 		pathEnvVar = 'Path';
 	} else {
+		logVerbose(`couldn't find PATH property in process.env`);
 		return;
 	}
 
 	if (!defaultPathEnv) {  // cache the default value
 		defaultPathEnv = <string>process.env[pathEnvVar];
 	}
+
+	logVerbose(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
 
 	// calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
