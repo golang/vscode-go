@@ -35,6 +35,7 @@ import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
+import { updateLanguageServerIconGoStatusBar } from './goEnvironmentStatus';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -74,7 +75,7 @@ interface LanguageServerConfig {
 let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
-let serverOutputChannel: vscode.OutputChannel;
+export let serverOutputChannel: vscode.OutputChannel;
 let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
@@ -115,6 +116,8 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (!started && defaultLanguageProviders.length === 0) {
 		registerDefaultProviders(ctx);
 	}
+
+	updateLanguageServerIconGoStatusBar(started, cfg.serverName);
 }
 
 // scheduleGoplsSuggestions sets timeouts for the various gopls-specific

@@ -38,7 +38,7 @@ import { GO111MODULE, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { outputChannel, showHideStatus } from './goStatus';
+import { expandGoStatusBar, outputChannel, showHideStatus } from './goStatus';
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
@@ -108,11 +108,8 @@ export function activate(ctx: vscode.ExtensionContext) {
 	initCoverageDecorators(ctx);
 
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.open.modulesdoc', async () => {
-			vscode.commands.executeCommand(
-				'vscode.open',
-				vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/modules.md')
-			);
+		vscode.commands.registerCommand('go.environment.status', async () => {
+			expandGoStatusBar();
 		})
 	);
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();

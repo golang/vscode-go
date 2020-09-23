@@ -2,7 +2,7 @@
 
 ## Using The Go Status Bar
 
-You can view the current Go version by looking at the status bar item in the bottom left corner of VS Code. Clicking this button will present you with a menu from which you can select any version of Go that exists in your $HOME/sdk directory or on <https://golang.org/dl>.
+You can view the current Go version by looking at the status bar item in the bottom left corner of VS Code. Clicking this button and selecting `Choose Go Environment` will present you with a menu from which you can select any version of Go that exists in your $HOME/sdk directory or on <https://golang.org/dl>. This command is also available through the command pallette using `Go: Choose Go Environment`.
 
 Previously, the `go.goroot` and `go.alternateTools` settings controlled the Go version used by VS Code Go. If you have configured these settings, they are no longer needed and should be deleted.
 

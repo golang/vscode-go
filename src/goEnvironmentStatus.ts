@@ -14,8 +14,9 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
+import { buildLanguageServerConfig } from './goLanguageServer';
 import { logVerbose } from './goLogging';
-import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
+import { hideGoStatus, languageServerIcon, outputChannel, showGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
 import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
@@ -52,8 +53,32 @@ export async function initGoStatusBar() {
 
 	hideGoStatusBar();
 	goEnvStatusbarItem.text = goOption.label;
-	goEnvStatusbarItem.command = 'go.environment.choose';
+	goEnvStatusbarItem.command = 'go.environment.status';
+
+	// Add an icon to indicate that the 'gopls' server is running.
+	// Assume if it is configured it is already running, since the
+	// icon will be updated on an attempt to start.
+	const cfg = buildLanguageServerConfig();
+	updateLanguageServerIconGoStatusBar(true, cfg.serverName);
+
 	showGoStatusBar();
+}
+
+export async function updateLanguageServerIconGoStatusBar(started: boolean, server: string) {
+	if (!goEnvStatusbarItem) {
+		return;
+	}
+
+	const text = goEnvStatusbarItem.text;
+	if (started && server === 'gopls') {
+		if (!text.endsWith(languageServerIcon)) {
+			goEnvStatusbarItem.text = text + languageServerIcon;
+		}
+	} else {
+		if (text.endsWith(languageServerIcon)) {
+			goEnvStatusbarItem.text = text.substring(0, text.length - languageServerIcon.length);
+		}
+	}
 }
 
 /**
