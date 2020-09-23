@@ -1045,9 +1045,23 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 					break;
 			}
 			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
+			// TODO(hakim): If gopls version is too old, ask users to update it.
+			const settings = latestConfig.flags.join(' ');
 			const title = `gopls: automated issue report (${errKind})`;
+			const sanitizedLog = collectGoplsLog();
+			const goplsLog = (sanitizedLog) ?
+				`<pre>${sanitizedLog}</pre>` :
+				`
+Please attach the stack trace from the crash.
+A window with the error message should have popped up in the lower half of your screen.
+Please copy the stack trace and error messages from that window and paste it in this issue.
+
+<PASTE STACK TRACE HERE>
+`;
+
 			const body = `
 gopls version: ${usersGoplsVersion}
+gopls flags: ${settings}
 
 ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
@@ -1055,11 +1069,7 @@ Describe what you observed.
 
 <ANSWER HERE>
 
-Please attach the stack trace from the crash.
-A window with the error message should have popped up in the lower half of your screen.
-Please copy the stack trace from that window and paste it in this issue.
-
-<PASTE STACK TRACE HERE>
+${goplsLog}
 
 OPTIONAL: If you would like to share more information, you can attach your complete gopls logs.
 
@@ -1105,4 +1115,69 @@ function minutesBetween(a: Date, b: Date): number {
 
 function msBetween(a: Date, b: Date): number {
 	return Math.abs(a.getTime() - b.getTime());
+}
+
+function collectGoplsLog(): string {
+	serverOutputChannel.show();
+	// Find the logs in the output channel. There is no way to read
+	// an output channel directly, but we can find the open text
+	// document, since we just surfaced the output channel to the user.
+	// See https://github.com/microsoft/vscode/issues/65108.
+	let logs: string;
+	for (const doc of vscode.workspace.textDocuments) {
+		if (doc.languageId !== 'Log') {
+			continue;
+		}
+		if (doc.isDirty || doc.isClosed) {
+			continue;
+		}
+		// The document's name should look like 'extension-output-#X'.
+		if (doc.fileName.indexOf('extension-output-') === -1) {
+			continue;
+		}
+		logs = doc.getText();
+		break;
+	}
+	return sanitizeGoplsTrace(logs);
+}
+
+// capture only panic stack trace and the initialization error message.
+// exported for testing.
+export function sanitizeGoplsTrace(logs?: string): string {
+	if (!logs) {
+		return '';
+	}
+	const panicMsgBegin = logs.lastIndexOf('panic: ');
+	if (panicMsgBegin > -1) {  // panic message was found.
+		const panicMsgEnd = logs.indexOf('Connection to server got closed.', panicMsgBegin);
+		if (panicMsgEnd > -1) {
+			const panicTrace = logs.substr(panicMsgBegin, panicMsgEnd - panicMsgBegin);
+			const filePattern = /(\S+\.go):\d+/;
+			const sanitized = panicTrace.split('\n').map(
+				(line: string) => {
+					// Even though this is a crash from gopls, the file path
+					// can contain user names and user's filesystem directory structure.
+					// We can still locate the corresponding file if the file base is
+					// available because the full package path is part of the function
+					// name. So, leave only the file base.
+					const m = line.match(filePattern);
+					if (!m) { return line; }
+					const filePath = m[1];
+					const fileBase = path.basename(filePath);
+					return line.replace(filePath, '  ' + fileBase);
+				}
+			).join('\n');
+
+			return sanitized;
+		}
+	}
+	const initFailMsgBegin = logs.lastIndexOf('Starting client failed');
+	if (initFailMsgBegin > -1) {  // client start failed. Capture up to the 'Code:' line.
+		const initFailMsgEnd = logs.indexOf('Code: ', initFailMsgBegin);
+		if (initFailMsgEnd > -1) {
+			const lineEnd = logs.indexOf('\n', initFailMsgEnd);
+			return lineEnd > -1 ? logs.substr(initFailMsgBegin, lineEnd - initFailMsgBegin) : logs.substr(initFailMsgBegin);
+		}
+	}
+	return '';
 }
