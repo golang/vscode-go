@@ -247,6 +247,14 @@ interface DiscardedBreakpoint {
 	reason: string;
 }
 
+// Unrecovered panic and fatal throw breakpoint IDs taken from delve:
+// https://github.com/go-delve/delve/blob/f90134eb4db1c423e24fddfbc6eff41b288e6297/pkg/proc/breakpoints.go#L11-L21
+// UnrecoveredPanic is the name given to the unrecovered panic breakpoint.
+const unrecoveredPanicID = -1;
+// FatalThrow is the name given to the breakpoint triggered when the target
+// process dies because of a fatal runtime error.
+const fatalThrowID = -2;
+
 // This interface should always match the schema found in `package.json`.
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	request: 'launch';
@@ -2203,7 +2211,18 @@ export class GoDebugSession extends LoggingDebugSession {
 			// Other stopping events (eg pause) create their own StoppedEvents,
 			// if necessary.
 			if (!!state.currentThread.breakPoint) {
-				this.handleReenterDebug('breakpoint');
+				const bp = state.currentThread.breakPoint;
+				if (bp.id === unrecoveredPanicID) {
+					// If the breakpoint is actually caused by a panic,
+					// we want to return on "panic".
+					this.handleReenterDebug('panic');
+				} else if (bp.id === fatalThrowID) {
+					// If the breakpoint is actually caused by a fatal throw,
+					// we want to return on "fatal error".
+					this.handleReenterDebug('fatal error');
+				} else {
+					this.handleReenterDebug('breakpoint');
+				}
 			}
 		};
 
