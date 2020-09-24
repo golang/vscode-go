@@ -716,7 +716,7 @@ export class Delve {
 				const rpcConnection = await this.connection;
 				// tslint:disable-next-line no-any
 				(rpcConnection as any)['conn']['end']();
-				return;
+				return resolve();
 			}
 			const timeoutToken: NodeJS.Timer =
 				isLocalDebugging &&
@@ -849,14 +849,16 @@ export class GoDebugSession extends LoggingDebugSession {
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
-			// We don't have to wait for continue call
+			// We don't have to wait for getdebug state and continue call
 			// because we are not doing anything with the result.
-			// Also, DisconnectRequest will return before
-			// we get the result back from delve.
-			this.debugState = await this.delve.getDebugState();
-			if (!this.debugState.Running) {
-				this.continue();
-			}
+			// Also, it seems like most of the time
+			// DisconnectRequest will return before we get the result back from delve.
+			this.delve.getDebugState().then((state) => {
+				this.debugState = state;
+				if (!this.debugState.Running) {
+					this.continue();
+				}
+			});
 		}
 		this.delve.close().then(() => {
 			log('DisconnectRequest to parent');
