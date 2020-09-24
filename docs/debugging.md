@@ -373,6 +373,12 @@ Docker has security settings preventing `ptrace(2)` operations by default within
 
 This error can show up for Mac users using Delve versions 0.12.2 and above. `xcode-select --install` has solved the problem for a number of users.
 
+### Debugging symlink directories
+
+This extension does not provide support for debugging projects containing symlinks. Make sure that you are setting breakpoints in the files that Go will use to compile your program.
+
+For updates to symlink support reference [golang/vscode-go#622](https://github.com/golang/vscode-go/issues/622).
+
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
 [snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets
