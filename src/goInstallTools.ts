@@ -344,7 +344,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	const {binPath, why} = getBinPathWithExplanation('go', false);
+	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
 	logVerbose(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
@@ -360,12 +360,18 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
 			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
 			(err, stdout, stderr) => {
-				if (err || stderr) {
-					outputChannel.append(`Failed to run '${goRuntimePath} env: ${err}\n${stderr}`);
+				if (err) {
+					outputChannel.append(`Failed to run '${goRuntimePath} env' : ${err}\n${stderr}`);
 					outputChannel.show();
 
 					vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
 					return reject();
+				}
+				if (stderr) {
+					// 'go env' may output warnings about potential misconfiguration.
+					// Show the messages to users but keep processing the stdout.
+					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.show();
 				}
 				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
 				const envOutput = stdout.split('\n');
