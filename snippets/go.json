@@ -254,6 +254,183 @@
 			"prefix": "sort",
 			"body": "type ${1:SortBy} []${2:Type}\n\nfunc (a $1) Len() int           { return len(a) }\nfunc (a $1) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }\nfunc (a $1) Less(i, j int) bool { ${3:return a[i] < a[j]} }",
 			"description": "Snippet for a custom sort.Sort interface implementation, for a given slice type."
+		},
+		"new-test-function-with-stretchr-testify-require": {
+			"prefix": [
+				"go",
+				"go-new-test-function-with-stretchr-testify-require"
+			],
+			"body": [
+				"",
+				"import (",
+				"  \"testing\"",
+				"  \"github.com/stretchr/testify/require\"",
+				")",
+				"",
+				"func Test_${TM_DIRECTORY/^.+\\/(.*)$/$1/}_${2:FuncName}(t *testing.T) {",
+				"  ${1|require := require.New(t),t.Parallel()\nrequire := require.New(t)|}",
+				"",
+				"  require.Equal(true, false, \"TODO(${3:NO_ASSIGNEE_FOR_TODO}): ${2:FuncName} intentional failure as it needs implementing\")",
+				"}",
+				"",
+				"$0"
+			],
+			"description": "Snippet for new test function using `github.com/stretchr/testify/require`"
+		},
+		"stretchr-testify-require-equal": {
+			"prefix": [
+				"go",
+				"go-testify-require-equal"
+			],
+			"body": [
+				"require.Equal(${1:expected}, ${2:actual})",
+				"$0"
+			]
+		},
+		"stretchr-testify-require-noerror": {
+			"prefix": [
+				"go",
+				"go-testify-require-noerror"
+			],
+			"body": [
+				"require.NoError(${1:err})",
+				"$0"
+			]
+		},
+		"stretchr-testify-require-notnil": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-require-notnil"
+			],
+			"body": [
+				"require.NotNil(${1:result})",
+				"$0"
+			]
+		},
+		"stretchr-testify-require-notnilf": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-require-notnilf"
+			],
+			"body": [
+				"require.NotNil(${1:result}, \"testing.t.Name()=%#+v, ${1:result}=%s\", t.Name(), ${1:result})",
+				"$0"
+			]
+		},
+		"stretchr-testify-require-equalerror": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-require-equalerror"
+			],
+			"body": [
+				"require.EqualError(${1:actual_error}, `${0:expected_error_string}`)",
+				"$0"
+			]
+		},
+		"stretchr-testify-require-noerror-and-stretchr-testify-require-notnil": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-require-noerror-and-stretchr-testify-require-notnil"
+			],
+			"body": [
+				"require.NoError(${1:err})",
+				"require.NotNil(${2:result})",
+				"$0"
+			]
+		},
+		"new-test-function-with-stretchr-testify-assert": {
+			"prefix": [
+				"go",
+				"go-new-test-function-with-stretchr-testify-assert"
+			],
+			"body": [
+				"",
+				"import (",
+				"  \"testing\"",
+				"  \"github.com/stretchr/testify/assert\"",
+				")",
+				"",
+				"func Test_${TM_DIRECTORY/^.+\\/(.*)$/$1/}_${2:FuncName}(t *testing.T) {",
+				"  ${1|assert := assert.New(t),t.Parallel()\nassert := assert.New(t)|}",
+				"",
+				"  assert.Equal(true, false, \"TODO(${3:NO_ASSIGNEE_FOR_TODO}): ${2:FuncName} intentional failure as it needs implementing\")",
+				"}",
+				"",
+				"$0"
+			],
+			"description": "Snippet for Test function with assert"
+		},
+		"stretchr-testify-assert-equal": {
+			"prefix": [
+				"go",
+				"go-testify-assert-equal"
+			],
+			"body": [
+				"assert.Equal(${1:expected}, ${2:actual})",
+				"$0"
+			]
+		},
+		"stretchr-testify-assert-noerror": {
+			"prefix": [
+				"go",
+				"go-testify-assert-noerror"
+			],
+			"body": [
+				"assert.NoError(${1:err})",
+				"$0"
+			]
+		},
+		"stretchr-testify-assert-notnil": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-assert-notnil"
+			],
+			"body": [
+				"assert.NotNil(${1:result})",
+				"$0"
+			]
+		},
+		"stretchr-testify-assert-notnilf": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-assert-notnilf"
+			],
+			"body": [
+				"assert.NotNil(${1:result}, \"testing.t.Name()=%#+v, ${1:result}=%s\", t.Name(), ${1:result})",
+				"$0"
+			]
+		},
+		"stretchr-testify-assert-equalerror": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-assert-equalerror"
+			],
+			"body": [
+				"assert.EqualError(${1:actual_error}, `${0:expected_error_string}`)",
+				"$0"
+			]
+		},
+		"stretchr-testify-assert-noerror-and-stretchr-testify-assert-notnil": {
+			"prefix": [
+				"go",
+				"go-stretchr-testify-assert-noerror-and-stretchr-testify-assert-notnil"
+			],
+			"body": [
+				"assert.NoError(${1:err})",
+				"assert.NotNil(${2:result})",
+				"$0"
+			]
+		},
+		"testing.skipf": {
+			"prefix": [
+				"go",
+				"go-testing.skipf"
+			],
+			"body": [
+				"t.Skipf(\"Skipping: testing.t.Name()='%#+v', reason='TODO(${1:NO_ASSIGNEE_FOR_TODO}): needs implementing'\\n\", t.Name())",
+				"$0"
+			],
+			"description": "Snippet for t.Skipf() with testing.t.Name() inserted and a TODO"
 		}
 	}
 }
