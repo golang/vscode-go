@@ -144,10 +144,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		if (!goplsSurveyOn || !cfg.enabled) {
 			return;
 		}
-		const surveyCfg = await maybePromptForGoplsSurvey();
-		if (surveyCfg) {
-			flushSurveyConfig(surveyCfg);
-		}
+		maybePromptForGoplsSurvey();
 	};
 
 	setTimeout(update, 10 * timeMinute);
@@ -879,14 +876,17 @@ export interface SurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
+function maybePromptForGoplsSurvey() {
 	const now = new Date();
-	const cfg = getSurveyConfig();
-	const dateToPrompt = shouldPromptForGoplsSurvey(now, cfg);
-	if (!dateToPrompt) {
-		return cfg;
+	let cfg = shouldPromptForGoplsSurvey(now, getSurveyConfig());
+	if (!cfg) {
+		return;
 	}
-	const callback = () => {
+	flushSurveyConfig(cfg);
+	if (!cfg.dateToPromptThisMonth) {
+		return;
+	}
+	const callback = async () => {
 		const currentTime = new Date();
 
 		// Make sure the user has been idle for at least a minute.
@@ -894,14 +894,16 @@ async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		promptForSurvey(cfg, now);
+		cfg = await promptForSurvey(cfg, now);
+		if (cfg) {
+			flushSurveyConfig(cfg);
+		}
 	};
-	const ms = msBetween(now, dateToPrompt);
+	const ms = msBetween(now, cfg.dateToPromptThisMonth);
 	setTimeout(callback, ms);
-	return cfg;
 }
 
-export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): SurveyConfig {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -933,16 +935,21 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 		// decided if the user should be prompted.
 		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
 			if (cfg.dateToPromptThisMonth) {
-				return cfg.dateToPromptThisMonth;
+				return cfg;
 			}
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < 0.0275, for a 2.75% probability.
+	// the range [0, 1) and checking if it is < probability, which varies
+	// depending on whether the default or the nightly is in use.
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
-	cfg.promptThisMonth = Math.random() < 0.0275;
+	let probability = 0.01; // lower probability for the regular extension
+	if (extensionId === 'golang.go-nightly') {
+		probability = 0.0275;
+	}
+	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
 		// month on which to prompt.
@@ -953,10 +960,10 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 		cfg.dateToPromptThisMonth = undefined;
 	}
 	cfg.dateComputedPromptThisMonth = now;
-	return cfg.dateToPromptThisMonth;
+	return cfg;
 }
 
-async function promptForSurvey(cfg: SurveyConfig, now: Date) {
+async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
 	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
 Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
@@ -987,6 +994,7 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 			break;
 	}
+	return cfg;
 }
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
