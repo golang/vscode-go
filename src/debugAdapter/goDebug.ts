@@ -849,10 +849,10 @@ export class GoDebugSession extends LoggingDebugSession {
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
-			// We don't have to wait for getdebug state and continue call
+			// We don't have to wait for getDebugState and continue call
 			// because we are not doing anything with the result.
-			// Also, it seems like most of the time
-			// DisconnectRequest will return before we get the result back from delve.
+			// Also, it seems like most of the time, DisconnectRequest will
+			// return before we get the result back from getDebugState.
 			this.delve.getDebugState().then((state) => {
 				this.debugState = state;
 				if (!this.debugState.Running) {
