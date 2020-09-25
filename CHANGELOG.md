@@ -1,3 +1,27 @@
+## v0.17.2 - 29th Sep, 2020
+
+### Fixes
+- Fixed a regression caused by the change for ([Issue 679](https://github.com/golang/vscode-go/issues/679)).
+If `go` is not found from `PATH` available to the extension, the extension tries a couple of well-known
+default locations to find the `go` binary. In this case, we need to mutate `PATH` so other tools including
+`gopls` or `dlv` can choose the same go version. ([Issue 713](https://github.com/golang/vscode-go/issues/713)).
+
+## v0.17.1 - 28th Sep, 2020
+
+### Enhancement
+- Mutate the `PATH`/`Path` environment variable only if users
+explicitly configure to select the go command using `go.goroot`,
+`go.alternateTools`, or `Go: Choose Go Environment` menu.
+([Issue 679](https://github.com/golang/vscode-go/issues/679))
+- Includes sanitized gopls crash traces in the automated gopls crash report.
+([CL 256878](https://go-review.googlesource.com/c/vscode-go/+/256878))
+
+### Fixes
+- Changed the default of `go.coverMode` to be `default`. ([Issue 666](https://github.com/golang/vscode-go/issues/666))
+- Fixed a missing promise reject when go is not found. ([Issue 660](https://github.com/golang/vscode-go/issues/660))
+
+Thank you for reporting issues!
+
 ## v0.17.0 - 18th Sep, 2020
 
 Go code debugging and code coverage support is getting better.
