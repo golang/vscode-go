@@ -868,12 +868,19 @@ export class GoDebugSession extends LoggingDebugSession {
 			// because we are not doing anything with the result.
 			// Also, it seems like most of the time, DisconnectRequest will
 			// return before we get the result back from getDebugState.
-			this.delve.getDebugState().then((state) => {
-				this.debugState = state;
-				if (!this.debugState.Running) {
-					this.continue();
-				}
-			});
+			// So we give this Delve request a 5 second timeout.
+			await Promise.race([
+				this.delve.getDebugState().then((state) => {
+					this.debugState = state;
+					if (!this.debugState.Running) {
+						this.continue();
+					}
+				}),
+				new Promise((resolve) => setTimeout(() => {
+					log(`Delve's getDebugState request timeout`);
+					resolve();
+				}, 5000))
+			]);
 		}
 		this.delve.close().then(() => {
 			log('DisconnectRequest to parent');
