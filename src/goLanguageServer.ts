@@ -1212,3 +1212,25 @@ export function sanitizeGoplsTrace(logs?: string): string {
 	}
 	return '';
 }
+
+export async function promptForLanguageServerDefaultChange(cfg: vscode.WorkspaceConfiguration) {
+	const promptedForLSDefaultChangeKey = `promptedForLSDefaultChange`;
+	if (getFromGlobalState(promptedForLSDefaultChangeKey, false)) {
+		return;
+	}
+
+	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
+	if (useLanguageServer.globalValue !== undefined || useLanguageServer.workspaceValue !== undefined) {
+		return;  // user already explicitly set the field.
+	}
+
+	const selected = await vscode.window.showInformationMessage(
+		`"go.useLanguageServer" is enabled by default. If you need to disable it, please configure in the settings.`,
+		'Open Settings', 'OK');
+	switch (selected) {
+		case 'Open Settings':
+			vscode.commands.executeCommand('workbench.action.openSettings', 'go.useLanguageServer');
+		default:
+	}
+	updateGlobalState(promptedForLSDefaultChangeKey, true);
+}

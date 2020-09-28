@@ -8,6 +8,7 @@
 
 import * as path from 'path';
 import vscode = require('vscode');
+import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -29,7 +30,10 @@ import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
 	updateGoVarsFromConfig
 } from './goInstallTools';
-import { sendToggleCommand, startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
+import {
+	promptForLanguageServerDefaultChange, sendToggleCommand,
+	startLanguageServerWithFallback, watchLanguageServerConfiguration
+} from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
@@ -73,12 +77,16 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext) {
-	const logConfig = getGoConfig()['logging'];
-	setLogConfig(logConfig);
+	const cfg = getGoConfig();
+	setLogConfig(cfg['logging']);
 
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
+
+	if (extensionId === 'golang.go-nightly') {
+		promptForLanguageServerDefaultChange(cfg);
+	}
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {

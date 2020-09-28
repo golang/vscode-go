@@ -61,7 +61,7 @@ function log(logLevel: LogLevel, ...args: any[]) {
 
 // tslint:disable-next-line:no-any
 export function logVerbose(...args: any[]) {
-	log(LogLevel.Info, ...args);
+	log(LogLevel.Verbose, ...args);
 }
 
 // tslint:disable-next-line:no-any
