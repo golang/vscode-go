@@ -556,8 +556,13 @@ function addOnChangeTextDocumentListeners(ctx: vscode.ExtensionContext) {
 }
 
 function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
-	vscode.window.onDidChangeActiveTextEditor(showHideStatus, null, ctx.subscriptions);
-	vscode.window.onDidChangeActiveTextEditor(applyCodeCoverage, null, ctx.subscriptions);
+	[showHideStatus, applyCodeCoverage].forEach((listener) => {
+		// Call the listeners on initilization for current active text editor
+		if (!!vscode.window.activeTextEditor) {
+			listener(vscode.window.activeTextEditor);
+		}
+		vscode.window.onDidChangeActiveTextEditor(listener, null, ctx.subscriptions);
+	});
 }
 
 function checkToolExists(tool: string) {
