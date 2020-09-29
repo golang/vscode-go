@@ -65,7 +65,7 @@ If you want to invoke tools other than `go`, you will have to move the `"command
             "label": "run",
             "command": "go",
             "args": ["run", "${file}"],
-            "group": "build"
+            "group": "build",
             "type": "shell",
         },
         {
