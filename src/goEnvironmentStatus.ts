@@ -303,6 +303,16 @@ async function downloadGo(goOption: GoEnvironmentOption) {
 // PATH value cached before addGoRuntimeBaseToPath modified.
 let defaultPathEnv = '';
 
+function pathEnvVarName(): string|undefined {
+	if (process.env.hasOwnProperty('PATH')) {
+		return 'PATH';
+	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
+		return 'Path';
+	} else {
+		return;
+	}
+}
+
 // addGoRuntimeBaseToPATH adds the given path to the front of the PATH environment variable.
 // It removes duplicates.
 // TODO: can we avoid changing PATH but utilize toolExecutionEnv?
@@ -310,12 +320,8 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	if (!newGoRuntimeBase) {
 		return;
 	}
-	let pathEnvVar: string;
-	if (process.env.hasOwnProperty('PATH')) {
-		pathEnvVar = 'PATH';
-	} else if (process.platform === 'win32' && process.env.hasOwnProperty('Path')) {
-		pathEnvVar = 'Path';
-	} else {
+	const pathEnvVar = pathEnvVarName();
+	if (!pathEnvVar) {
 		logVerbose(`couldn't find PATH property in process.env`);
 		return;
 	}
@@ -359,14 +365,33 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	process.env[pathEnvVar] = pathVars.join(path.delimiter);
 }
 
+// Clear terminal PATH environment modification previously installed
+// using addGoRuntimeBaseToPATH.
+// In particular, changes to vscode.EnvironmentVariableCollection persist across
+// vscode sessions, so when we decide not to mutate PATH, we need to clear
+// the preexisting changes.
+export function clearGoRuntimeBaseFromPATH() {
+	if (terminalCreationListener) {
+		const l = terminalCreationListener;
+		terminalCreationListener = undefined;
+		l.dispose();
+	}
+	const pathEnvVar = pathEnvVarName();
+	if (!pathEnvVar) {
+		logVerbose(`couldn't find PATH property in process.env`);
+		return;
+	}
+	environmentVariableCollection?.delete(pathEnvVar);
+}
+
 /**
  * update the PATH variable in the given terminal to default to the currently selected Go
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promise<void> {
 	if (!terminal) { return; }
 	const gorootBin = path.join(getCurrentGoRoot(), 'bin');
-	const defaultGoRuntimeBin = path.dirname(getBinPathFromEnvVar('go', defaultPathEnv, false));
-	if (gorootBin === defaultGoRuntimeBin) {
+	const defaultGoRuntime = getBinPathFromEnvVar('go', defaultPathEnv, false);
+	if (defaultGoRuntime && gorootBin === path.dirname(defaultGoRuntime)) {
 		return;
 	}
 
