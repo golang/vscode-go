@@ -30,6 +30,7 @@ import {
 import { getFromWorkspaceState } from './stateUtils';
 import {
 	getBinPath,
+	getBinPathWithExplanation,
 	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
@@ -37,7 +38,7 @@ import {
 	GoVersion,
 	rmdirRecursive,
 } from './util';
-import { correctBinname, envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
+import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
@@ -343,7 +344,8 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	const goRuntimePath = getBinPath('go', false);
+	const {binPath, why} = getBinPathWithExplanation('go', false);
+	const goRuntimePath = binPath;
 
 	if (!goRuntimePath || !path.isAbsolute(goRuntimePath)) {
 		// getBinPath returns the absolute path to the tool if it exists.
@@ -384,8 +386,8 @@ export function updateGoVarsFromConfig(): Promise<void> {
 				// cgo, gopls, and other underlying tools will inherit the environment and attempt
 				// to locate 'go' from the PATH env var.
 				// Update the PATH only if users configured to use a different
-				// version of go than the system default.
-				if (!!goPickedByExtension()) {
+				// version of go than the system default found from PATH (or Path).
+				if (why !== 'path') {
 					addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
 				}
 				initGoStatusBar();
@@ -394,41 +396,6 @@ export function updateGoVarsFromConfig(): Promise<void> {
 				return resolve();
 			});
 	});
-}
-
-// The go command is picked up by searching directories in PATH by default.
-// But users can override it and force the extension to pick a different
-// one by configuring
-//
-//   1) with the go.environment.choose command, which stores the selection
-//      in the workspace memento with the key 'selectedGo',
-//   2) with 'go.alternateTools': { 'go': ... } setting, or
-//   3) with 'go.goroot' setting
-//
-// goPickedByExtension returns the chosen path if the default path should
-// be overridden by above methods.
-// TODO: This logic is duplicated in getBinPath. Centralize this logic.
-function goPickedByExtension(): string | undefined {
-	// getFromWorkspaceState('selectedGo')
-	const selectedGoPath: string = getFromWorkspaceState('selectedGo')?.binpath;
-	if (selectedGoPath) {
-		return selectedGoPath;
-	}
-
-	const cfg = getGoConfig();
-
-	// 'go.alternateTools.go'
-	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
-	const alternateToolPath: string = alternateTools['go'];
-	if (alternateToolPath) {
-		return alternateToolPath;
-	}
-	// 'go.goroot'
-	const goRoot: string = cfg.get('goroot');
-	if (goRoot) {
-		return path.join(goRoot, 'bin', correctBinname('go'));
-	}
-	return undefined;
 }
 
 let alreadyOfferedToInstallTools = false;

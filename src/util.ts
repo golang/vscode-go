@@ -20,7 +20,7 @@ import { getFromWorkspaceState } from './stateUtils';
 import {
 	envPath,
 	fixDriveCasingInWindows,
-	getBinPathWithPreferredGopathGoroot,
+	getBinPathWithPreferredGopathGorootWithExplanation,
 	getCurrentGoRoot,
 	getInferredGopath,
 	resolveHomeDir,
@@ -477,7 +477,15 @@ function resolveToolsGopath(): string {
 	}
 }
 
+// getBinPath returns the path to the tool.
 export function getBinPath(tool: string, useCache = true): string {
+	const r = getBinPathWithExplanation(tool, useCache);
+	return r.binPath;
+}
+
+// getBinPathWithExplanation returns the path to the tool, and the explanation on why
+// the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
+export function getBinPathWithExplanation(tool: string, useCache = true): {binPath: string, why?: string} {
 	const cfg = getGoConfig();
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
@@ -487,7 +495,7 @@ export function getBinPath(tool: string, useCache = true): string {
 		selectedGoPath = getFromWorkspaceState('selectedGo')?.binpath;
 	}
 
-	return getBinPathWithPreferredGopathGoroot(
+	return getBinPathWithPreferredGopathGorootWithExplanation(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		tool === 'go' && cfg.get('goroot') ? resolvePath(cfg.get('goroot')) : undefined,
