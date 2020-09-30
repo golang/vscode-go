@@ -12,7 +12,7 @@ import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
-import { addGoRuntimeBaseToPATH, initGoStatusBar } from './goEnvironmentStatus';
+import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH, initGoStatusBar } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { restartLanguageServer } from './goMain';
 import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
@@ -389,6 +389,9 @@ export function updateGoVarsFromConfig(): Promise<void> {
 				// version of go than the system default found from PATH (or Path).
 				if (why !== 'path') {
 					addGoRuntimeBaseToPATH(path.join(getCurrentGoRoot(), 'bin'));
+				} else {
+					// clear pre-existing terminal PATH mutation logic set up by this extension.
+					clearGoRuntimeBaseFromPATH();
 				}
 				initGoStatusBar();
 				// TODO: restart language server or synchronize with language server update.
