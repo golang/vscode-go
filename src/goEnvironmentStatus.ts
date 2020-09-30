@@ -14,9 +14,8 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
-import { buildLanguageServerConfig } from './goLanguageServer';
 import { logVerbose } from './goLogging';
-import { hideGoStatus, languageServerIcon, outputChannel, showGoStatus } from './goStatus';
+import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
 import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
@@ -36,80 +35,7 @@ export class GoEnvironmentOption {
 	}
 }
 
-// statusbar item for switching the Go environment
-let goEnvStatusbarItem: vscode.StatusBarItem;
-let terminalCreationListener: vscode.Disposable;
-
-/**
- * Initialize the status bar item with current Go binary
- */
-export async function initGoStatusBar() {
-	if (!goEnvStatusbarItem) {
-		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-	}
-	// set Go version and command
-	const version = await getGoVersion();
-	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version));
-
-	hideGoStatusBar();
-	goEnvStatusbarItem.text = goOption.label;
-	goEnvStatusbarItem.command = 'go.environment.status';
-
-	// Add an icon to indicate that the 'gopls' server is running.
-	// Assume if it is configured it is already running, since the
-	// icon will be updated on an attempt to start.
-	const cfg = buildLanguageServerConfig();
-	updateLanguageServerIconGoStatusBar(true, cfg.serverName);
-
-	showGoStatusBar();
-}
-
-export async function updateLanguageServerIconGoStatusBar(started: boolean, server: string) {
-	if (!goEnvStatusbarItem) {
-		return;
-	}
-
-	const text = goEnvStatusbarItem.text;
-	if (started && server === 'gopls') {
-		if (!text.endsWith(languageServerIcon)) {
-			goEnvStatusbarItem.text = text + languageServerIcon;
-		}
-	} else {
-		if (text.endsWith(languageServerIcon)) {
-			goEnvStatusbarItem.text = text.substring(0, text.length - languageServerIcon.length);
-		}
-	}
-}
-
-/**
- * disable the Go environment status bar item
- */
-export function disposeGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.dispose();
-	}
-	if (!!terminalCreationListener) {
-		terminalCreationListener.dispose();
-	}
-}
-
-/**
- * Show the Go Environment statusbar item on the statusbar
- */
-export function showGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.show();
-	}
-}
-
-/**
- * Hide the Go Environment statusbar item from the statusbar
- */
-export function hideGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.hide();
-	}
-}
+export let terminalCreationListener: vscode.Disposable;
 
 let environmentVariableCollection: vscode.EnvironmentVariableCollection;
 export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariableCollection) {
@@ -571,7 +497,7 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		showGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
+		addGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
 		vscode.commands.registerCommand('go.promptforgoinstall', () => {
 			const download = {
 				title: 'Download',
@@ -612,7 +538,7 @@ export async function offerToInstallLatestGoVersion() {
 					neverAgain
 				)
 				.then((selection) => {
-					hideGoStatus();
+					removeGoStatus();
 					selection.command();
 				});
 		});

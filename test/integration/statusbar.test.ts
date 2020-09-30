@@ -15,7 +15,6 @@ import * as util from 'util';
 import * as vscode from 'vscode';
 
 import {
-	disposeGoStatusBar,
 	formatGoVersion,
 	getGoEnvironmentStatusbarItem,
 	getSelectedGo,
@@ -23,6 +22,7 @@ import {
 	setSelectedGo,
 } from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
+import { disposeGoStatusBar } from '../../src/goStatus';
 import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import ourutil = require('../../src/util');
 import { getCurrentGoRoot } from '../../src/utils/pathUtils';

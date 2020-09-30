@@ -20,7 +20,6 @@ import {
 	ErrorAction,
 	ExecuteCommandParams,
 	ExecuteCommandRequest,
-	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	LanguageClient,
@@ -35,7 +34,6 @@ import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
-import { updateLanguageServerIconGoStatusBar } from './goEnvironmentStatus';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
@@ -47,6 +45,7 @@ import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
+import { updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';

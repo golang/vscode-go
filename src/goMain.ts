@@ -19,7 +19,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, disposeGoStatusBar, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
+import { chooseGoEnvironment, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -42,7 +42,7 @@ import { GO111MODULE, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { expandGoStatusBar, outputChannel, showHideStatus } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, showHideStatus } from './goStatus';
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';

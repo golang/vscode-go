@@ -12,11 +12,11 @@ import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
-import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH, initGoStatusBar } from './goEnvironmentStatus';
+import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { logVerbose } from './goLogging';
 import { restartLanguageServer } from './goMain';
-import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
+import { addGoStatus, initGoEnvStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
 	disableModulesForWildcard,
@@ -28,7 +28,6 @@ import {
 	Tool,
 	ToolAtVersion,
 } from './goTools';
-import { getFromWorkspaceState } from './stateUtils';
 import {
 	getBinPath,
 	getBinPathWithExplanation,
@@ -301,7 +300,7 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 			break;
 		case 'Install All':
 			await installTools(missing, goVersion);
-			hideGoStatus();
+			removeGoStatus();
 			break;
 		default:
 			// The user has declined to install this tool.
@@ -396,7 +395,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoStatusBar();
+				initGoEnvStatusBar();
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();
@@ -416,12 +415,12 @@ export async function offerToInstallTools() {
 	let missing = await getMissingTools(goVersion);
 	missing = missing.filter((x) => x.isImportant);
 	if (missing.length > 0) {
-		showGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
+		addGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
 		vscode.commands.registerCommand('go.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',
 				async command() {
-					hideGoStatus();
+					removeGoStatus();
 					await installTools(missing, goVersion);
 				}
 			};
@@ -443,7 +442,7 @@ export async function offerToInstallTools() {
 					if (selection) {
 						selection.command();
 					} else {
-						hideGoStatus();
+						removeGoStatus();
 					}
 				});
 		});
