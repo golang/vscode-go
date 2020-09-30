@@ -1,3 +1,11 @@
+## v0.17.2 - 29th Sep, 2020
+
+### Fixes
+- Fixed a regression caused by the change for ([Issue 679](https://github.com/golang/vscode-go/issues/679)).
+If `go` is not found from `PATH` available to the extension, the extension tries a couple of well-known
+default locations to find the `go` binary. In this case, we need to mutate `PATH` so other tools including
+`gopls` or `dlv` can choose the same go version. ([Issue 713](https://github.com/golang/vscode-go/issues/713)).
+
 ## v0.17.1 - 28th Sep, 2020
 
 ### Enhancement
