@@ -38,23 +38,37 @@ export function getBinPathWithPreferredGopathGoroot(
 	preferredGopaths: string[],
 	preferredGoroot?: string,
 	alternateTool?: string,
-	useCache = true,
+	useCache = true
 ): string {
+	const r = getBinPathWithPreferredGopathGorootWithExplanation(
+		toolName, preferredGopaths, preferredGoroot, alternateTool, useCache);
+	return r.binPath;
+}
+
+// Is same as getBinPAthWithPreferredGopathGoroot, but returns why the
+// returned path was chosen.
+export function getBinPathWithPreferredGopathGorootWithExplanation(
+	toolName: string,
+	preferredGopaths: string[],
+	preferredGoroot?: string,
+	alternateTool?: string,
+	useCache = true,
+): {binPath: string, why?: string} {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
-		return alternateTool;
+		return {binPath: alternateTool, why: 'alternateTool'};
 	}
 
 	// FIXIT: this cache needs to be invalidated when go.goroot or go.alternateTool is changed.
 	if (useCache && binPathCache[toolName]) {
-		return binPathCache[toolName];
+		return {binPath: binPathCache[toolName], why: 'cached'};
 	}
 
 	const binname = alternateTool && !path.isAbsolute(alternateTool) ? alternateTool : toolName;
 	const pathFromGoBin = getBinPathFromEnvVar(binname, process.env['GOBIN'], false);
 	if (pathFromGoBin) {
 		binPathCache[toolName] = pathFromGoBin;
-		return pathFromGoBin;
+		return {binPath: pathFromGoBin, why: 'gobin'};
 	}
 
 	for (const preferred of preferredGopaths) {
@@ -63,7 +77,7 @@ export function getBinPathWithPreferredGopathGoroot(
 			const pathFrompreferredGoPath = getBinPathFromEnvVar(binname, preferred, true);
 			if (pathFrompreferredGoPath) {
 				binPathCache[toolName] = pathFrompreferredGoPath;
-				return pathFrompreferredGoPath;
+				return {binPath: pathFrompreferredGoPath, why: 'gopath'};
 			}
 		}
 	}
@@ -72,14 +86,14 @@ export function getBinPathWithPreferredGopathGoroot(
 	const pathFromGoRoot = getBinPathFromEnvVar(binname, preferredGoroot || getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
-		return pathFromGoRoot;
+		return {binPath: pathFromGoRoot, why: 'goroot'};
 	}
 
 	// Finally search PATH parts
 	const pathFromPath = getBinPathFromEnvVar(binname, envPath, false);
 	if (pathFromPath) {
 		binPathCache[toolName] = pathFromPath;
-		return pathFromPath;
+		return {binPath: pathFromPath, why: 'path'};
 	}
 
 	// Check default path for go
@@ -87,13 +101,13 @@ export function getBinPathWithPreferredGopathGoroot(
 		const defaultPathForGo = process.platform === 'win32' ? 'C:\\Go\\bin\\go.exe' : '/usr/local/go/bin/go';
 		if (executableFileExists(defaultPathForGo)) {
 			binPathCache[toolName] = defaultPathForGo;
-			return defaultPathForGo;
+			return {binPath: defaultPathForGo, why: 'default'};
 		}
-		return;
+		return {binPath: ''};
 	}
 
 	// Else return the binary name directly (this will likely always fail downstream)
-	return toolName;
+	return {binPath: toolName};
 }
 
 /**
