@@ -866,35 +866,32 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.delve.isRemoteDebugging) {
 			// We don't have to wait for getDebugState and continue call
 			// because we are not doing anything with the result.
-			// Also, it seems like most of the time, DisconnectRequest will
+			// Also, it seems2 like most of the time, DisconnectRequest will
 			// return before we get the result back from getDebugState.
 			// So we give this Delve request a 10 second timeout.
 			await Promise.race([
-				async () => {
+				new Promise(async (resolve) => {
 					// TODO: We need to figure out why getDebugState to Delve hangs.
 					// This may be related to #497
 					this.debugState = await this.delve.getDebugState();
 					if (!this.debugState.Running) {
 						this.continue();
 					}
-					this.delve.close().then(() => {
-						log('DisconnectRequest to parent');
-						super.disconnectRequest(response, args);
-						log('DisconnectResponse');
-					});
-				},
+					await this.delve.close();
+					resolve();
+				}),
 				new Promise((resolve) => setTimeout(() => {
 					log(`Timeout while trying to disconnect`);
 					resolve();
 				}, 10_000))
 			]);
-			return;
+		} else {
+			await this.delve.close();
 		}
-		this.delve.close().then(() => {
-			log('DisconnectRequest to parent');
-			super.disconnectRequest(response, args);
-			log('DisconnectResponse');
-		});
+
+		log('DisconnectRequest to parent');
+		super.disconnectRequest(response, args);
+		log('DisconnectResponse');
 	}
 
 	protected async configurationDoneRequest(
