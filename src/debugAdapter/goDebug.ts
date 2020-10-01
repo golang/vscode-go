@@ -853,9 +853,11 @@ export class GoDebugSession extends LoggingDebugSession {
 			// because we are not doing anything with the result.
 			// Also, it seems like most of the time, DisconnectRequest will
 			// return before we get the result back from getDebugState.
-			// So we give this Delve request a 5 second timeout.
+			// So we give this Delve request a 10 second timeout.
 			await Promise.race([
 				async () => {
+					// TODO: We need to figure out why getDebugState to Delve hangs.
+					// This may be related to #497
 					this.debugState = await this.delve.getDebugState();
 					if (!this.debugState.Running) {
 						this.continue();
