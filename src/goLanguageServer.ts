@@ -52,7 +52,7 @@ import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getGoplsConfig, getWorkspaceFolderPath } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
 interface LanguageServerConfig {
@@ -210,6 +210,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
 		}
 	}
+	const goplsConfig = getGoplsConfig();
 	const c = new LanguageClient(
 		'go',  // id
 		config.serverName,  // name
@@ -219,7 +220,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 			options: { env: config.env },
 		},
 		{
-			initializationOptions: {},
+			initializationOptions: goplsConfig,
 			documentSelector: ['go', 'go.mod', 'go.sum'],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.

@@ -158,6 +158,15 @@ let toolsGopath: string;
 
 // getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
 export const getGoConfig = (uri?: vscode.Uri) => {
+	return getConfig('go');
+};
+
+// getGoplsConfig returns the user's gopls configuration.
+export function getGoplsConfig() {
+	return getConfig('gopls');
+}
+
+function getConfig(section: string, uri?: vscode.Uri) {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;
@@ -165,8 +174,8 @@ export const getGoConfig = (uri?: vscode.Uri) => {
 			uri = null;
 		}
 	}
-	return vscode.workspace.getConfiguration('go', uri);
-};
+	return vscode.workspace.getConfiguration(section, uri);
+}
 
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
@@ -344,7 +353,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		const docUri = vscode.window.activeTextEditor?.document.uri;
 		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env, cwd});
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
@@ -352,7 +361,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
 		if (!cachedGoVersion.isValid()) {
-			warn (`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
+			warn(`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
 		}
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
@@ -368,7 +377,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 export async function getGoEnv(cwd?: string): Promise<string> {
 	const goRuntime = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
-	const opts = {cwd, env: toolExecutionEnvironment()};
+	const opts = { cwd, env: toolExecutionEnvironment() };
 	const { stdout, stderr } = await execFile(goRuntime, ['env'], opts);
 	if (stderr) {
 		throw new Error(`failed to run 'go env': ${stderr}`);
@@ -485,7 +494,7 @@ export function getBinPath(tool: string, useCache = true): string {
 
 // getBinPathWithExplanation returns the path to the tool, and the explanation on why
 // the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
-export function getBinPathWithExplanation(tool: string, useCache = true): {binPath: string, why?: string} {
+export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string, why?: string } {
 	const cfg = getGoConfig();
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
@@ -904,7 +913,7 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
-export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string|undefined {
+export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string | undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);
 		if (workspace) {
