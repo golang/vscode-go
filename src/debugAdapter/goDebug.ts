@@ -376,6 +376,7 @@ export class Delve {
 	public stackTraceDepth: number;
 	public isRemoteDebugging: boolean;
 	public goroot: string;
+	public remoteDebuggerDetached = false;
 	private localDebugeePath: string | undefined;
 	private debugProcess: ChildProcess;
 	private request: 'attach' | 'launch';
@@ -721,9 +722,14 @@ export class Delve {
 			// program as well so we just want to disconnect.
 			// See https://www.github.com/go-delve/delve/issues/1587
 			if (this.isRemoteDebugging) {
+				if (this.remoteDebuggerDetached) {
+					return;
+				}
+
 				const rpcConnection = await this.connection;
 				// tslint:disable-next-line no-any
 				(rpcConnection as any)['conn']['end']();
+				this.remoteDebuggerDetached = true;
 				return resolve();
 			}
 			const timeoutToken: NodeJS.Timer =
@@ -864,30 +870,19 @@ export class GoDebugSession extends LoggingDebugSession {
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
-			// We don't have to wait for getDebugState and continue call
-			// because we are not doing anything with the result.
-			// Also, it seems2 like most of the time, DisconnectRequest will
-			// return before we get the result back from getDebugState.
-			// So we give this Delve request a 10 second timeout.
-			await Promise.race([
-				new Promise(async (resolve) => {
-					// TODO: We need to figure out why getDebugState to Delve hangs.
-					// This may be related to #497
-					this.debugState = await this.delve.getDebugState();
-					if (!this.debugState.Running) {
-						this.continue();
-					}
-					await this.delve.close();
-					resolve();
-				}),
-				new Promise((resolve) => setTimeout(() => {
-					log(`Timeout while trying to disconnect`);
-					resolve();
-				}, 10_000))
-			]);
-		} else {
-			await this.delve.close();
+			// Guard against multiple disconnectRequests.
+			if (this.delve.remoteDebuggerDetached) {
+				log('DisconnectRequest to parent');
+				super.disconnectRequest(response, args);
+				log('DisconnectResponse');
+				return;
+			}
+
+			if (!(await this.isDebuggeeRunning())) {
+				this.continue();
+			}
 		}
+		await this.delve.close();
 
 		log('DisconnectRequest to parent');
 		super.disconnectRequest(response, args);
@@ -902,12 +897,9 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (this.stopOnEntry) {
 			this.sendEvent(new StoppedEvent('entry', 1));
 			log('StoppedEvent("entry")');
-		} else {
-			this.debugState = await this.delve.getDebugState();
-			if (!this.debugState.Running) {
-				log('Changing DebugState from Halted to Running');
-				this.continue();
-			}
+		} else if (!await this.isDebuggeeRunning()) {
+			log('Changing DebugState from Halted to Running');
+			this.continue();
 		}
 		this.sendResponse(response);
 		log('ConfigurationDoneResponse', response);
@@ -1182,19 +1174,10 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.SetBreakpointsArguments
 	): Promise<void> {
 		log('SetBreakPointsRequest');
-		try {
-			// If a program is launched with --continue, the program is running
-			// before we can run attach. So we would need to check the state.
-			// We use NonBlocking so the call would return immediately.
-			this.debugState = await this.delve.getDebugState();
-		} catch (error) {
-			this.logDelveError(error, 'Failed to get state');
-		}
-
-		if (!this.debugState.Running && !this.continueRequestRunning) {
+		if (!(await this.isDebuggeeRunning())) {
 			await this.setBreakPoints(response, args);
 		} else {
-			this.skipStopEventOnce = this.continueRequestRunning;
+			this.skipStopEventOnce = false;
 			this.delve.callPromise('Command', [{ name: 'halt' }]).then(
 				() => {
 					return this.setBreakPoints(response, args).then(() => {
@@ -1217,9 +1200,9 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 	}
 
-	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-		if (this.continueRequestRunning) {
-			// Thread request to delve is syncronous and will block if a previous async continue request didn't return
+	protected async threadsRequest(response: DebugProtocol.ThreadsResponse): Promise<void> {
+		if ((await this.isDebuggeeRunning())) {
+			// Thread request to delve is synchronous and will block if a previous async continue request didn't return
 			response.body = { threads: [new Thread(1, 'Dummy')] };
 			return this.sendResponse(response);
 		}
@@ -1258,11 +1241,20 @@ export class GoDebugSession extends LoggingDebugSession {
 		});
 	}
 
-	protected stackTraceRequest(
+	protected async stackTraceRequest(
 		response: DebugProtocol.StackTraceResponse,
 		args: DebugProtocol.StackTraceArguments
-	): void {
+	): Promise<void> {
 		log('StackTraceRequest');
+		// For normal VSCode, this request doesn't get invoked when we send a Dummy thread
+		// in the scenario where the debuggee is running.
+		// For Theia, however, this does get invoked and so we should just send an error
+		// response that we cannot get the stack trace at this point since the debugggee is running.
+		if (await this.isDebuggeeRunning()) {
+			this.sendErrorResponse(response, 2004, 'Unable to produce stack trace as the debugger is running');
+			return;
+		}
+
 		// delve does not support frame paging, so we ask for a large depth
 		const goroutineId = args.threadId;
 		const stackTraceIn = { id: goroutineId, depth: this.delve.stackTraceDepth };
@@ -1933,11 +1925,16 @@ export class GoDebugSession extends LoggingDebugSession {
 											return null;
 										}
 									}
+
+									// Make sure that we compare the file names with the same separators.
+									const separator = findPathSeparator(breakpointIn.file);
 									const matchedBreakpoint = existingBreakpoints.find(
-										(existingBreakpoint) =>
-											existingBreakpoint.line === breakpointIn.line &&
-											existingBreakpoint.file === breakpointIn.file
+										(existingBreakpoint) => {
+											const fileNameWithCorrectSeparator = existingBreakpoint.file.replace(/\/|\\/g, separator);
+											return existingBreakpoint.line === breakpointIn.line && fileNameWithCorrectSeparator === breakpointIn.file;
+										}
 									);
+
 									if (!matchedBreakpoint) {
 										log(`Cannot match breakpoint ${breakpointIn} with existing breakpoints.`);
 										return null;
@@ -2215,6 +2212,22 @@ export class GoDebugSession extends LoggingDebugSession {
 			});
 		}
 	}
+
+	// Returns true if the debuggee is running.
+	// the call getDebugState is non-blocking so it should return
+	// almost instantaneously. However, if we run into some errors,
+	// we will fall back to the internal tracking of the debug state.
+	private async isDebuggeeRunning(): Promise<boolean> {
+		try {
+			this.debugState = await this.delve.getDebugState();
+			return this.debugState.Running;
+		} catch (error) {
+			this.logDelveError(error, 'Failed to get state');
+			// Fall back to the internal tracking.
+			return this.continueRequestRunning;
+		}
+	}
+
 	private continue(calledWhenSettingBreakpoint?: boolean): Thenable<void> {
 		this.continueEpoch++;
 		const closureEpoch = this.continueEpoch;
