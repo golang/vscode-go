@@ -54,6 +54,7 @@
     "semver": "^7.3.2",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "^1.40.0",
+    "vscode-debugadapter-testsupport": "^1.42.0",
     "vscode-debugprotocol": "^1.40.0",
     "vscode-languageclient": "^6.1.3",
     "web-request": "^1.0.7"

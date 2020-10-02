@@ -2,6 +2,8 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sinon from 'sinon';
+import {DebugClient} from 'vscode-debugadapter-testsupport';
+import {DebugProtocol} from 'vscode-debugprotocol';
 import {
 	Delve,
 	escapeGoModPath,
@@ -9,6 +11,7 @@ import {
 	PackageBuildInfo,
 	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
+import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -265,5 +268,162 @@ suite('RemoteSourcesAndPackages Tests', () => {
 		await remoteSourcesAndPackages.initializeRemotePackagesAndSources(delve);
 		assert.deepEqual(remoteSourcesAndPackages.remoteSourceFiles, sources);
 		assert.deepEqual(remoteSourcesAndPackages.remotePackagesBuildInfo, [helloPackage, testPackage]);
+	});
+});
+
+// Test suite adapted from:
+// https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
+suite('Go Debug Adapter', function () {
+	this.timeout(10000);
+
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	const DEBUG_ADAPTER = './dist/debugAdapter.js';
+
+	const PROJECT_ROOT = path.join(__dirname, '../../../');
+	const DATA_ROOT = path.join(PROJECT_ROOT, 'test/fixtures/');
+
+	let dc: DebugClient;
+
+	setup( () => {
+		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
+		return dc.start();
+	});
+
+	suite('basic', () => {
+
+		test('unknown request should produce error', (done) => {
+			dc.send('illegal_request').then(() => {
+				done(new Error('does not report error on unknown request'));
+			}).catch(() => {
+				done();
+			});
+		});
+	});
+
+	suite('initialize', () => {
+
+		test('should return supported features', () => {
+			return dc.initializeRequest().then((response) => {
+				response.body = response.body || {};
+				assert.strictEqual(response.body.supportsConfigurationDoneRequest, true);
+			});
+		});
+
+		test('should produce error for invalid \'pathFormat\'', (done) => {
+			dc.initializeRequest({
+				adapterID: 'mock',
+				linesStartAt1: true,
+				columnsStartAt1: true,
+				pathFormat: 'url'
+			}).then((response) => {
+				done(new Error('does not report error on invalid \'pathFormat\' attribute'));
+			}).catch((err) => {
+				// error expected
+				done();
+			});
+		});
+	});
+
+	suite('launch', () => {
+		test('should run program to the end', () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should stop on entry', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				// The debug adapter does not support a stack trace request
+				// when there are no goroutines running. Which is true when it is stopped
+				// on entry. Therefore we would need another method from dc.assertStoppedLocation
+				// to check the debugger is stopped on entry.
+				dc.waitForEvent('stopped').then((event) => {
+					const stevent = event as DebugProtocol.StoppedEvent;
+					assert.strictEqual(stevent.body.reason, 'entry');
+				})
+			]);
+		});
+	});
+
+	suite('setBreakpoints', () => {
+
+		test('should stop on a breakpoint', () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const FILE = path.join(DATA_ROOT, 'baseTest/test.go');
+
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+		});
+	});
+
+	suite('setExceptionBreakpoints', () => {
+
+		test('should stop on an exception', () => {
+
+			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'panic');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM_WITH_EXCEPTION,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+
+				dc.waitForEvent('initialized').then(() => {
+					return dc.setExceptionBreakpointsRequest({
+						filters: [ 'all' ]
+					});
+				}).then(() => {
+					return dc.configurationDoneRequest();
+				}),
+
+				dc.launch(debugConfig),
+
+				dc.assertStoppedLocation('panic', {} )
+			]);
+		});
 	});
 });
