@@ -2210,7 +2210,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			// Check if the current thread was stopped on a breakpoint.
 			// Other stopping events (eg pause) create their own StoppedEvents,
 			// if necessary.
-			if (!!state.currentThread.breakPoint) {
+			if (!!state.currentThread && !!state.currentThread.breakPoint) {
 				const bp = state.currentThread.breakPoint;
 				if (bp.id === unrecoveredPanicID) {
 					// If the breakpoint is actually caused by a panic,
@@ -2223,6 +2223,9 @@ export class GoDebugSession extends LoggingDebugSession {
 				} else {
 					this.handleReenterDebug('breakpoint');
 				}
+			} else if (state.exited) {
+				// Notify the client if the program has exited.
+				this.handleReenterDebug('');
 			}
 		};
 
