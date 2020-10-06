@@ -239,6 +239,19 @@ There is no snippet suggestion for this configuration.
 }
 ```
 
+If passing arguments to or calling subcommands and flags from a binary, the `args` property can be used.
+
+```json
+{
+    "name": "Launch executable",
+    "type": "go",
+    "request": "launch",
+    "mode": "exec",
+    "program": "/absolute/path/to/executable",
+    "args": ["subcommand", "arg", "--flag"],
+}
+```
+
 ## Debugging on [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/)
 
 If you are using using WSL, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements.
