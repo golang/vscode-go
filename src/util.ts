@@ -791,7 +791,7 @@ export function runTool(
 					atLeastSingleMatch = true;
 					const [, , file, , lineStr, , colStr, msg] = match;
 					const line = +lineStr;
-					const col = +colStr;
+					const col = colStr ? +colStr : undefined;
 
 					// Building skips vendor folders,
 					// But vet and lint take in directories and not import paths, so no way to skip them
@@ -805,7 +805,7 @@ export function runTool(
 
 					const filePath = path.resolve(cwd, file);
 					ret.push({ file: filePath, line, col, msg, severity });
-					outputChannel.appendLine(`${filePath}:${line}: ${msg}`);
+					outputChannel.appendLine(`${filePath}:${line}:${col ?? ''} ${msg}`);
 				}
 				if (!atLeastSingleMatch && unexpectedOutput && vscode.window.activeTextEditor) {
 					outputChannel.appendLine(stderr);
@@ -836,21 +836,37 @@ export function handleDiagnosticErrors(
 	diagnosticCollection.clear();
 
 	const diagnosticMap: Map<string, vscode.Diagnostic[]> = new Map();
+
+	const textDocumentMap: Map<string, vscode.TextDocument> = new Map();
+	if (document) {
+		textDocumentMap.set(document.uri.toString(), document);
+	}
+	// Also add other open .go files known to vscode for fast lookup.
+	vscode.workspace.textDocuments.forEach((t) => {
+		const fileName = t.uri.toString();
+		if (!fileName.endsWith('.go')) { return; }
+		textDocumentMap.set(fileName, t);
+	});
+
 	errors.forEach((error) => {
 		const canonicalFile = vscode.Uri.file(error.file).toString();
-		let startColumn = 0;
-		let endColumn = 1;
-		if (document && document.uri.toString() === canonicalFile) {
+		let startColumn = error.col ? error.col - 1 : 0;
+		let endColumn = startColumn + 1;
+		// Some tools output only the line number or the start position.
+		// If the file content is available, adjust the diagnostic range so
+		// the squiggly underline for the error message is more visible.
+		const doc = textDocumentMap.get(canonicalFile);
+		if (doc) {
 			const tempRange = new vscode.Range(
 				error.line - 1,
 				0,
 				error.line - 1,
-				document.lineAt(error.line - 1).range.end.character + 1
+				doc.lineAt(error.line - 1).range.end.character + 1  // end of the line
 			);
-			const text = document.getText(tempRange);
+			const text = doc.getText(tempRange);
 			const [_, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
 			if (!error.col) {
-				startColumn = leading.length;
+				startColumn = leading.length;  // beginning of the non-white space.
 			} else {
 				startColumn = error.col - 1; // range is 0-indexed
 			}
@@ -873,20 +889,20 @@ export function handleDiagnosticErrors(
 
 		if (diagnosticCollection === buildDiagnosticCollection) {
 			// If there are lint/vet warnings on current file, remove the ones co-inciding with the new build errors
-			if (lintDiagnosticCollection.has(fileUri)) {
+			if (lintDiagnosticCollection && lintDiagnosticCollection.has(fileUri)) {
 				lintDiagnosticCollection.set(
 					fileUri,
 					deDupeDiagnostics(newDiagnostics, lintDiagnosticCollection.get(fileUri).slice())
 				);
 			}
 
-			if (vetDiagnosticCollection.has(fileUri)) {
+			if (vetDiagnosticCollection && vetDiagnosticCollection.has(fileUri)) {
 				vetDiagnosticCollection.set(
 					fileUri,
 					deDupeDiagnostics(newDiagnostics, vetDiagnosticCollection.get(fileUri).slice())
 				);
 			}
-		} else if (buildDiagnosticCollection.has(fileUri)) {
+		} else if (buildDiagnosticCollection && buildDiagnosticCollection.has(fileUri)) {
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
 			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri).slice(), newDiagnostics);
 		}

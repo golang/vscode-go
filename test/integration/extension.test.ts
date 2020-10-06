@@ -35,6 +35,7 @@ import {
 	getGoConfig,
 	getImportPath,
 	getToolsGopath,
+	handleDiagnosticErrors,
 	ICheckResult,
 	isVendorSupported
 } from '../../src/util';
@@ -384,6 +385,29 @@ It returns the number of bytes written and any write error encountered.
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
 		assert.equal(processutil.killProcessTree.callCount, 1, 'should have killed 1 lint job before launching the next');
+	});
+
+	test('Linting - lint errors with multiple open files', async () => {
+		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
+		// This adjustment applies only to the text documents known to vscode. This test checks
+		// the adjustment is made consistently across multiple open text documents.
+		const file1 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')));
+		const file2 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')));
+		const warnings = await goLint(file2.uri, Object.create(vscode.workspace.getConfiguration('go'), {
+			lintTool: { value: 'golint' },
+			lintFlags: { value: [] }
+		}), 'package');
+
+		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
+		handleDiagnosticErrors(file2, warnings, diagnosticCollection);
+
+		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
+		// Both files belong to the same package name, and we want them to be identical.
+		const file1Diagnostics = diagnosticCollection.get(file1.uri);
+		const file2Diagnostics = diagnosticCollection.get(file2.uri);
+		assert(file1Diagnostics.length > 0);
+		assert(file2Diagnostics.length > 0);
+		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
 	});
 
 	test('Error checking', async () => {
