@@ -287,7 +287,8 @@ suite('Go Debug Adapter', function () {
 
 	setup( () => {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
-		return dc.start();
+		// To connect to a running debug server for debugging the tests, specify PORT.
+		return dc.start(/* PORT */);
 	});
 
 	teardown( () =>  dc.stop() );
@@ -373,6 +374,67 @@ suite('Go Debug Adapter', function () {
 				})
 			]);
 		});
+
+		test('should debug a file', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest', 'test.go');
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM
+			};
+
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should debug a single test', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'test',
+				program: PROGRAM,
+				args: [
+					'-test.run',
+					'TestMe'
+				]
+			};
+
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should debug a test package', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'test',
+				program: PROGRAM
+			};
+
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+		});
 	});
 
 	suite('setBreakpoints', () => {
@@ -395,11 +457,31 @@ suite('Go Debug Adapter', function () {
 
 			return dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
 		});
+
+		test('should stop on a breakpoint in test file', () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const FILE = path.join(DATA_ROOT, 'baseTest', 'sample_test.go');
+
+			const BREAKPOINT_LINE = 15;
+
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'test',
+				program: PROGRAM
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+		});
+
 	});
 
-	suite('setExceptionBreakpoints', () => {
+	suite('panicBreakpoints', () => {
 
-		test('should stop on an exception', () => {
+		test('should stop on panic', () => {
 
 			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'panic');
 
