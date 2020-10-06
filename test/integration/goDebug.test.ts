@@ -280,8 +280,8 @@ suite('Go Debug Adapter', function () {
 
 	const DEBUG_ADAPTER = './dist/debugAdapter.js';
 
-	const PROJECT_ROOT = path.join(__dirname, '../../../');
-	const DATA_ROOT = path.join(PROJECT_ROOT, 'test/fixtures/');
+	const PROJECT_ROOT = path.join(__dirname, '..', '..', '..');
+	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'fixtures');
 
 	let dc: DebugClient;
 
@@ -289,6 +289,8 @@ suite('Go Debug Adapter', function () {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
 		return dc.start();
 	});
+
+	teardown( () =>  dc.stop() );
 
 	suite('basic', () => {
 
@@ -378,7 +380,7 @@ suite('Go Debug Adapter', function () {
 		test('should stop on a breakpoint', () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
-			const FILE = path.join(DATA_ROOT, 'baseTest/test.go');
+			const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 
 			const BREAKPOINT_LINE = 11;
 

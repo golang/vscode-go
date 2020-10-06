@@ -854,6 +854,13 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.DisconnectArguments
 	): Promise<void> {
 		log('DisconnectRequest');
+		if (!this.delve) {
+			log('DisconnectRequest to parent');
+			super.disconnectRequest(response, args);
+			log('DisconnectResponse');
+			return;
+		}
+
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
