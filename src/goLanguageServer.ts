@@ -18,8 +18,6 @@ import {
 	CloseAction,
 	CompletionItemKind,
 	ErrorAction,
-	ExecuteCommandParams,
-	ExecuteCommandRequest,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	LanguageClient,
@@ -75,6 +73,7 @@ let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
+export let languageServerIsRunning = false;
 let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
@@ -116,6 +115,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		registerDefaultProviders(ctx);
 	}
 
+	languageServerIsRunning = started;
 	updateLanguageServerIconGoStatusBar(started, cfg.serverName);
 }
 
@@ -401,22 +401,6 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 		}
 	);
 	return c;
-}
-
-export function sendToggleCommand(cmd: string, file: vscode.Uri) {
-	if (languageClient === undefined || file === undefined) {
-		return;
-	}
-	const params: ExecuteCommandParams = {
-		command: cmd,
-		arguments: [file.toString()],
-	};
-	languageClient.sendRequest(ExecuteCommandRequest.type, params).then(
-		undefined,
-		(error: any) => {
-			return languageClient.logFailedRequest(ExecuteCommandRequest.type, error);
-		}
-	);
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens

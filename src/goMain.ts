@@ -31,7 +31,8 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	promptForLanguageServerDefaultChange, sendToggleCommand,
+	languageServerIsRunning,
+	promptForLanguageServerDefaultChange,
 	startLanguageServerWithFallback, watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -449,7 +450,16 @@ export function activate(ctx: vscode.ExtensionContext) {
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
-		sendToggleCommand('gc_details', vscode.window.activeTextEditor?.document.uri);
+		if (!languageServerIsRunning) {
+			vscode.window.showErrorMessage('"Go: Toggle gc details" command is available only when the language server is running');
+			return;
+		}
+		const doc = vscode.window.activeTextEditor?.document.uri.toString();
+		if (!doc || !doc.endsWith('.go')) {
+			vscode.window.showErrorMessage('"Go: Toggle gc details" command cannot run when no Go file is open.');
+			return;
+		}
+		vscode.commands.executeCommand('gc_details', doc);
 	}));
 
 	ctx.subscriptions.push(
