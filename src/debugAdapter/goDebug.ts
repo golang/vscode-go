@@ -350,7 +350,7 @@ function compareFilePathIgnoreSeparator(firstFilePath: string, secondFilePath: s
 	if (firstSeparator === secondSeparator) {
 		return firstFilePath === secondFilePath;
 	}
-	return firstFilePath === secondFilePath.replace(secondSeparator, firstSeparator);
+	return firstFilePath === secondFilePath.split(secondSeparator).join(firstSeparator);
 }
 
 export function escapeGoModPath(filePath: string) {
@@ -706,9 +706,10 @@ export class Delve {
 	 *
 	 * For attach debugging there are two scenarios; attaching to a local process by ID or connecting to a
 	 * remote delve server.  For attach-local we start the delve process so will also terminate it however we
-	 * detach from the debugee without killing it.  For attach-remote we only detach from delve.
+	 * detach from the debugee without killing it.  For attach-remote we only close the client connection,
+	 * but do not terminate the remote server.
 	 *
-	 * The only way to detach from delve when it is running a program is to send a Halt request first.
+	 * For local debugging, the only way to detach from delve when it is running a program is to send a Halt request first.
 	 * Since the Halt request might sometimes take too long to complete, we have a timer in place to forcefully kill
 	 * the debug process and clean up the assets in case of local debugging
 	 */
@@ -724,7 +725,6 @@ export class Delve {
 			await forceCleanup();
 			return Promise.resolve();
 		}
-		log('HaltRequest');
 		const isLocalDebugging: boolean = this.request === 'launch' && !!this.debugProcess;
 
 		return new Promise(async (resolve) => {
@@ -732,10 +732,7 @@ export class Delve {
 			// so instead of killing it via halt+detach, we just close the network connection.
 			// See https://www.github.com/go-delve/delve/issues/1587
 			if (this.isRemoteDebugging) {
-				if (this.delveConnectionClosed) {
-					return;
-				}
-
+				log('Remote Debugging: close dlv connection.');
 				const rpcConnection = await this.connection;
 				// tslint:disable-next-line no-any
 				(rpcConnection as any)['conn']['end']();
@@ -752,6 +749,7 @@ export class Delve {
 
 			let haltErrMsg: string;
 			try {
+				log('HaltRequest');
 				await this.callPromise('Command', [{ name: 'halt' }]);
 			} catch (err) {
 				log('HaltResponse');
@@ -789,6 +787,8 @@ export class Delve {
 export class GoDebugSession extends LoggingDebugSession {
 	private variableHandles: Handles<DebugVariable>;
 	private breakpoints: Map<string, DebugBreakpoint[]>;
+	// Editing breakpoints requires halting delve, skip sending Stop Event to VS Code in such cases
+	private skipStopEventOnce: boolean;
 	private debugState: DebuggerState;
 	private delve: Delve;
 	private localPathSeparator: string;
@@ -812,6 +812,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		readonly fileSystem = fs) {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
+		this.skipStopEventOnce = false;
 		this.stopOnEntry = false;
 		this.debugState = null;
 		this.delve = null;
@@ -868,12 +869,25 @@ export class GoDebugSession extends LoggingDebugSession {
 	): Promise<void> {
 		log('DisconnectRequest');
 		if (!this.delve) {
-			log('DisconnectRequest to parent');
-			super.disconnectRequest(response, args);
+			this.shutdownProtocolServer(response, args);
 			log('DisconnectResponse');
 			return;
 		}
 
+		// Since users want to reset when they issue a disconnect request,
+		// we should have a timeout in case disconnectRequestHelper hangs.
+		await Promise.race([
+			this.disconnectRequestHelper(response, args),
+			new Promise((resolve) => setTimeout(resolve, 5_000))
+		]);
+		this.shutdownProtocolServer(response, args);
+		log('DisconnectResponse');
+	}
+
+	protected async disconnectRequestHelper(
+		response: DebugProtocol.DisconnectResponse,
+		args: DebugProtocol.DisconnectArguments
+	): Promise<void> {
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
@@ -881,9 +895,6 @@ export class GoDebugSession extends LoggingDebugSession {
 			// if users click detach multiple times. In that case, we want to
 			// guard against talking to the closed Delve connection.
 			if (this.delve.delveConnectionClosed) {
-				log('DisconnectRequest to parent');
-				super.disconnectRequest(response, args);
-				log('DisconnectResponse');
 				return;
 			}
 
@@ -892,10 +903,6 @@ export class GoDebugSession extends LoggingDebugSession {
 			}
 		}
 		await this.delve.close();
-
-		log('DisconnectRequest to parent');
-		super.disconnectRequest(response, args);
-		log('DisconnectResponse');
 	}
 
 	protected async configurationDoneRequest(
@@ -1184,8 +1191,11 @@ export class GoDebugSession extends LoggingDebugSession {
 	): Promise<void> {
 		log('SetBreakPointsRequest');
 		if (!(await this.isDebuggeeRunning())) {
+			log('Debuggee is not running. Setting breakpoints without halting.');
 			await this.setBreakPoints(response, args);
 		} else {
+			this.skipStopEventOnce = this.continueRequestRunning;
+			log(`Halting before setting breakpoints. SkipStopEventOnce is ${this.skipStopEventOnce}.`);
 			this.delve.callPromise('Command', [{ name: 'halt' }]).then(
 				() => {
 					return this.setBreakPoints(response, args).then(() => {
@@ -1195,6 +1205,7 @@ export class GoDebugSession extends LoggingDebugSession {
 					});
 				},
 				(err) => {
+					this.skipStopEventOnce = false;
 					this.logDelveError(err, 'Failed to halt delve before attempting to set breakpoint');
 					return this.sendErrorResponse(
 						response,
@@ -2182,6 +2193,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	private handleReenterDebug(reason: string): void {
+		log(`Handle ReenterDebug because ${reason}.`);
 		this.cleanupHandles();
 
 		if (this.debugState.exited) {
@@ -2205,6 +2217,12 @@ export class GoDebugSession extends LoggingDebugSession {
 					this.debugState.currentGoroutine = goroutines[0];
 				}
 
+				if (this.skipStopEventOnce) {
+					log('Skipping stop event.');
+					this.skipStopEventOnce = false;
+					return;
+				}
+
 				const stoppedEvent = new StoppedEvent(reason, this.debugState.currentGoroutine.id);
 				(<any>stoppedEvent.body).allThreadsStopped = true;
 				this.sendEvent(stoppedEvent);
@@ -2218,7 +2236,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	// almost instantaneously. However, if we run into some errors,
 	// we will fall back to the internal tracking of the debug state.
 	// TODO: If Delve is not in multi-client state, we can simply
-	// tracks the running state with continueRequestRunning internally
+	// track the running state with continueRequestRunning internally
 	// instead of issuing a getDebugState call to Delve. Perhaps we want to
 	// do that to improve performance in the future.
 	private async isDebuggeeRunning(): Promise<boolean> {
@@ -2230,6 +2248,14 @@ export class GoDebugSession extends LoggingDebugSession {
 			// Fall back to the internal tracking.
 			return this.continueRequestRunning;
 		}
+	}
+
+	private shutdownProtocolServer(
+		response: DebugProtocol.DisconnectResponse,
+		args: DebugProtocol.DisconnectArguments
+	): void {
+		log('DisconnectRequest to parent to shut down protocol server.');
+		super.disconnectRequest(response, args);
 	}
 
 	private continue(calledWhenSettingBreakpoint?: boolean): Thenable<void> {
