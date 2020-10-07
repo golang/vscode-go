@@ -889,6 +889,10 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('disconnect', () => {
+		// The teardown code for the Go Debug Adapter test suite issues a disconnectRequest.
+		// In order for these tests to pass, the debug adapter must not fail if a
+		// disconnectRequest is sent after it has already disconnected.
+
 		test('disconnect should work for remote attach', async () => {
 			this.timeout(30_000);
 			const server = await getPort();
@@ -921,6 +925,209 @@ suite('Go Debug Adapter', function () {
 			assert.strictEqual(response, secondResponse);
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
+		});
+
+		test('should disconnect while continuing on entry', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: false
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect with multiple disconnectRequests', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: false
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			await Promise.all([
+				dc.disconnectRequest({restart: false}).then(() =>
+					dc.disconnectRequest({restart: false})
+				),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect after continue', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			const continueResponse = await dc.continueRequest({ threadId: 1 });
+			assert.ok(continueResponse.success);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect while nexting', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'sleep');
+			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
+			const BREAKPOINT_LINE = 11;
+			const location = getBreakpointLocation(FILE, BREAKPOINT_LINE);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: false
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, location);
+
+			const nextResponse = await dc.nextRequest({ threadId: 1 });
+			assert.ok(nextResponse.success);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect while paused on pause', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			const pauseResponse = await dc.pauseRequest({threadId: 1});
+			assert.ok(pauseResponse.success);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated'),
+			]);
+		});
+
+		test('should disconnect while paused on breakpoint', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+			const FILE = path.join(PROGRAM, 'loop.go');
+			const BREAKPOINT_LINE = 5;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect while paused on entry', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
+		});
+
+		test('should disconnect while paused on next', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				stopOnEntry: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig)
+			]);
+
+			const nextResponse = await dc.nextRequest({ threadId: 1 });
+			assert.ok(nextResponse.success);
+
+			return Promise.all([
+				dc.disconnectRequest({restart: false}),
+				dc.waitForEvent('terminated')
+			]);
 		});
 	});
 });
