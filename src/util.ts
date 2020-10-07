@@ -326,12 +326,12 @@ export function getUserNameHash() {
  * Returns undefined if go version can't be determined because
  * go is not available or `go version` fails.
  */
-export async function getGoVersion(): Promise<GoVersion | undefined> {
+export async function getGoVersion(goBinPath?: string): Promise<GoVersion | undefined> {
 	// TODO(hyangah): limit the number of concurrent getGoVersion call.
 	// When the extension starts, at least 4 concurrent calls race
 	// and end up calling `go version`.
 
-	const goRuntimePath = getBinPath('go');
+	const goRuntimePath = goBinPath ?? getBinPath('go');
 
 	const warn = (msg: string) => {
 		outputChannel.appendLine(msg);
@@ -348,6 +348,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		}
 		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
+	let goVersion: GoVersion;
 	try {
 		const env = toolExecutionEnvironment();
 		const docUri = vscode.window.activeTextEditor?.document.uri;
@@ -358,16 +359,19 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
-		cachedGoBinPath = goRuntimePath;
-		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
-		if (!cachedGoVersion.isValid()) {
-			warn(`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
-		}
+		goVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
 		return;
 	}
-	return cachedGoVersion;
+	if (!goBinPath) {  // if getGoVersion was called with a given goBinPath, don't cache the result.
+		cachedGoBinPath = goRuntimePath;
+		cachedGoVersion = goVersion;
+		if (!cachedGoVersion.isValid()) {
+			warn(`unable to determine version from the output of "${goRuntimePath} version": "${goVersion.svString}"`);
+		}
+	}
+	return goVersion;
 }
 
 /**

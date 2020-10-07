@@ -132,7 +132,7 @@ export function correctBinname(toolName: string) {
 	return toolName;
 }
 
-function executableFileExists(filePath: string): boolean {
+export function executableFileExists(filePath: string): boolean {
 	let exists = true;
 	try {
 		exists = fs.statSync(filePath).isFile();
