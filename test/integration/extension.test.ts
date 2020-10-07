@@ -21,6 +21,7 @@ import {
 } from '../../src/goGenerateTests';
 import { getTextEditForAddImport, listPackages } from '../../src/goImport';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
+import { buildLanguageServerConfig } from '../../src/goLanguageServer';
 import { goLint } from '../../src/goLint';
 import { documentSymbols, GoDocumentSymbolProvider, GoOutlineImportsOptions } from '../../src/goOutline';
 import { getAllPackages } from '../../src/goPackages';
@@ -419,14 +420,19 @@ It returns the number of bytes written and any write error encountered.
 			lintFlags: { value: [] },
 			buildOnSave: { value: 'package' }
 		});
-		const expected = [
+		const expectedLintErrors = [
 			{
 				line: 7,
 				severity: 'warning',
 				msg: 'exported function Print2 should have comment or be unexported'
 			},
-			{ line: 11, severity: 'error', msg: 'undefined: prin' }
 		];
+		// If a user has enabled diagnostics via a language server,
+		// then we disable running build or vet to avoid duplicate errors and warnings.
+		const lspConfig = buildLanguageServerConfig();
+		const expectedBuildVetErrors = lspConfig.enabled ? [] : [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
+
+		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
 		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
@@ -445,7 +451,7 @@ It returns the number of bytes written and any write error encountered.
 				);
 			});
 		});
-		assert.equal(matchCount.length >= expected.length, true, `Failed to match expected errors`);
+		assert.equal(matchCount.length >= expected.length, true, `Failed to match expected errors \n${JSON.stringify(sortedDiagnostics)} \n VS\n ${JSON.stringify(expected)}`);
 	});
 
 	test('Test Generate unit tests skeleton for file', async () => {
@@ -1365,6 +1371,12 @@ encountered.
 	});
 
 	test('Build Tags checking', async () => {
+		const goplsConfig = buildLanguageServerConfig();
+		if (goplsConfig.enabled) {
+			// Skip this test if gopls is enabled. Build/Vet checks this test depend on are
+			// disabled when the language server is enabled, and gopls is not handling tags yet.
+			return;
+		}
 		// Note: The following checks can't be parallelized because the underlying go build command
 		// runner (goBuild) will cancel any outstanding go build commands.
 
