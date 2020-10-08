@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
+import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
 import {DebugProtocol} from 'vscode-debugprotocol';
 import {
 	Delve,
@@ -277,10 +278,9 @@ suite('Go Debug Adapter', function () {
 	this.timeout(10000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
+	const DEBUG_ADAPTER = path.join('.', 'dist', 'debugAdapter.js');
 
-	const DEBUG_ADAPTER = './dist/debugAdapter.js';
-
-	const PROJECT_ROOT = path.join(__dirname, '..', '..', '..');
+	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'fixtures');
 
 	let dc: DebugClient;
@@ -288,7 +288,7 @@ suite('Go Debug Adapter', function () {
 	setup( () => {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
 		// To connect to a running debug server for debugging the tests, specify PORT.
-		return dc.start(/* PORT */);
+		return dc.start();
 	});
 
 	teardown( () =>  dc.stop() );
@@ -382,7 +382,8 @@ suite('Go Debug Adapter', function () {
 				type: 'go',
 				request: 'launch',
 				mode: 'auto',
-				program: PROGRAM
+				program: PROGRAM,
+				trace: 'verbose'
 			};
 
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
@@ -437,13 +438,20 @@ suite('Go Debug Adapter', function () {
 		});
 	});
 
+	// The file paths returned from delve use '/' not the native path
+	// separator, so we can replace any instances of '\' with '/', which
+	// allows the hitBreakpoint check to match.
+	const getBreakpointLocation =  (FILE: string, LINE: number) => {
+		return {path: FILE.replace(/\\/g, '/'), line: LINE };
+	};
+
 	suite('setBreakpoints', () => {
 
 		test('should stop on a breakpoint', () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
-			const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 
+			const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 			const BREAKPOINT_LINE = 11;
 
 			const config = {
@@ -455,14 +463,14 @@ suite('Go Debug Adapter', function () {
 			};
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			return dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE) );
 		});
 
 		test('should stop on a breakpoint in test file', () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
-			const FILE = path.join(DATA_ROOT, 'baseTest', 'sample_test.go');
 
+			const FILE = path.join(DATA_ROOT, 'baseTest', 'sample_test.go');
 			const BREAKPOINT_LINE = 15;
 
 			const config = {
@@ -474,7 +482,7 @@ suite('Go Debug Adapter', function () {
 			};
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			return dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE) );
 		});
 
 	});
