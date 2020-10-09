@@ -868,18 +868,18 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.DisconnectArguments
 	): Promise<void> {
 		log('DisconnectRequest');
-		if (!this.delve) {
-			this.shutdownProtocolServer(response, args);
-			log('DisconnectResponse');
-			return;
+		if (this.delve) {
+			// Since users want to reset when they issue a disconnect request,
+			// we should have a timeout in case disconnectRequestHelper hangs.
+			await Promise.race([
+				this.disconnectRequestHelper(response, args),
+				new Promise((resolve) => setTimeout(() => {
+					log('DisconnectRequestHelper timed out after 5s.');
+					resolve();
+				}, 5_000))
+			]);
 		}
 
-		// Since users want to reset when they issue a disconnect request,
-		// we should have a timeout in case disconnectRequestHelper hangs.
-		await Promise.race([
-			this.disconnectRequestHelper(response, args),
-			new Promise((resolve) => setTimeout(resolve, 5_000))
-		]);
 		this.shutdownProtocolServer(response, args);
 		log('DisconnectResponse');
 	}
@@ -895,13 +895,16 @@ export class GoDebugSession extends LoggingDebugSession {
 			// if users click detach multiple times. In that case, we want to
 			// guard against talking to the closed Delve connection.
 			if (this.delve.delveConnectionClosed) {
+				log(`Skip disconnectRequestHelper as Delve's connection is already closed.`);
 				return;
 			}
 
 			if (!(await this.isDebuggeeRunning())) {
+				log(`Issuing a continue command before closing Delve's connection as the debuggee is not running.`);
 				this.continue();
 			}
 		}
+		log('Closing Delve.');
 		await this.delve.close();
 	}
 
