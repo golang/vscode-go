@@ -2196,7 +2196,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	private handleReenterDebug(reason: string): void {
-		log(`Handle ReenterDebug because ${reason}.`);
+		log(`handleReenterDebug(${reason}).`);
 		this.cleanupHandles();
 
 		if (this.debugState.exited) {
