@@ -275,10 +275,10 @@ suite('RemoteSourcesAndPackages Tests', () => {
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
 suite('Go Debug Adapter', function () {
-	this.timeout(10000);
+	this.timeout(50000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	const DEBUG_ADAPTER = path.join('.', 'dist', 'debugAdapter.js');
+	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'fixtures');
@@ -287,6 +287,10 @@ suite('Go Debug Adapter', function () {
 
 	setup( () => {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
+
+		// Launching delve may take longer than the default timeout of 5000.
+		dc.defaultTimeout = 20000;
+
 		// To connect to a running debug server for debugging the tests, specify PORT.
 		return dc.start();
 	});
