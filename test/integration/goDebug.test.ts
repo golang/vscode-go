@@ -880,6 +880,117 @@ suite('Go Debug Adapter', function () {
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
+
+		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
+			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
+			const BREAKPOINT_LINE = 29;
+			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
+
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+
+			// Setup attach with a breakpoint.
+			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
+
+			// Calls the helloworld server to make the breakpoint hit.
+			await waitForBreakpoint(
+				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
+				breakpointLocation);
+
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(remoteProgram);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
+		});
+
+		test('should set breakpoints during continue', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'sleep');
+
+			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
+			const HELLO_LINE = 10;
+			const helloLocation = getBreakpointLocation(FILE, HELLO_LINE);
+
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+			]);
+
+			return Promise.all([
+				dc.setBreakpointsRequest({
+					lines: [ helloLocation.line ],
+					breakpoints: [ { line: helloLocation.line, column: 0 } ],
+					source: { path: helloLocation.path }
+				}),
+				dc.assertStoppedLocation('breakpoint', helloLocation)
+			]);
+		});
+
+		async function setBreakpointsDuringStep(nextFunc: () => void) {
+			const PROGRAM = path.join(DATA_ROOT, 'sleep');
+
+			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
+			const SLEEP_LINE = 11;
+			const setupBreakpoint = getBreakpointLocation(FILE, SLEEP_LINE);
+
+			const HELLO_LINE = 10;
+			const onNextBreakpoint = getBreakpointLocation(FILE, HELLO_LINE);
+
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, setupBreakpoint);
+
+			// The program is now stopped at the line containing time.Sleep().
+			// Issue a next request, followed by a setBreakpointsRequest.
+			nextFunc();
+
+			// Note: the current behavior of setting a breakpoint during a next
+			// request will cause the step to be interrupted, so it may not be
+			// stopped on the next line.
+			await Promise.all([
+				dc.setBreakpointsRequest({
+					lines: [ onNextBreakpoint.line ],
+					breakpoints: [ { line: onNextBreakpoint.line, column: 0 } ],
+					source: { path: onNextBreakpoint.path }
+				}),
+				dc.assertStoppedLocation('next cancelled', {})
+			]);
+
+			// Once the 'step' has completed, continue the program and
+			// make sure the breakpoint set while the program was nexting
+			// is succesfully hit.
+			await Promise.all([
+				dc.continueRequest({threadId: 1}),
+				dc.assertStoppedLocation('breakpoint', onNextBreakpoint)
+			]);
+		}
+
+		test('should set breakpoints during next', async () => {
+			setBreakpointsDuringStep(async () => {
+				const nextResponse = await dc.nextRequest({threadId: 1});
+				assert.ok(nextResponse.success);
+			});
+		});
+
+		test('should set breakpoints during step out', async () => {
+			setBreakpointsDuringStep(async () => {
+				const stepOutResponse = await dc.stepOutRequest({threadId: 1});
+				assert.ok(stepOutResponse.success);
+			});
+		});
 	});
 
 	suite('conditionalBreakpoints', () => {

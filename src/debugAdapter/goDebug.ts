@@ -90,6 +90,7 @@ interface DebuggerState {
 	currentGoroutine: DebugGoroutine;
 	Running: boolean;
 	Threads: DebugThread[];
+	NextInProgress: boolean;
 }
 
 export interface PackageBuildInfo {
@@ -857,6 +858,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	private breakpoints: Map<string, DebugBreakpoint[]>;
 	// Editing breakpoints requires halting delve, skip sending Stop Event to VS Code in such cases
 	private skipStopEventOnce: boolean;
+	private overrideStopReason: string;
 	private debugState: DebuggerState;
 	private delve: Delve;
 	private localPathSeparator: string;
@@ -877,6 +879,8 @@ export class GoDebugSession extends LoggingDebugSession {
 
 	private continueEpoch = 0;
 	private continueRequestRunning = false;
+	private nextEpoch = 0;
+	private nextRequestRunning = false;
 	public constructor(
 		debuggerLinesStartAt1: boolean,
 		isServer: boolean = false,
@@ -884,6 +888,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
 		this.skipStopEventOnce = false;
+		this.overrideStopReason = '';
 		this.stopOnEntry = false;
 		this.debugState = null;
 		this.delve = null;
@@ -1303,11 +1308,25 @@ export class GoDebugSession extends LoggingDebugSession {
 			log('Debuggee is not running. Setting breakpoints without halting.');
 			await this.setBreakPoints(response, args);
 		} else {
+			// Skip stop event if a continue request is running.
 			this.skipStopEventOnce = this.continueRequestRunning;
+			const haltedDuringNext = this.nextRequestRunning;
+			if (haltedDuringNext) {
+				this.overrideStopReason = 'next cancelled';
+			}
+
 			log(`Halting before setting breakpoints. SkipStopEventOnce is ${this.skipStopEventOnce}.`);
 			this.delve.callPromise('Command', [{ name: 'halt' }]).then(
 				() => {
 					return this.setBreakPoints(response, args).then(() => {
+						// We do not want to continue if it was running a next request, since the
+						// request was automatically cancelled.
+						if (haltedDuringNext) {
+							// Send an output event containing a warning that next was cancelled.
+							const warning = `Setting breakpoints during 'next', 'step in' or 'step out' halted delve and cancelled the next request`;
+							this.sendEvent(new OutputEvent(warning, 'stderr'));
+							return;
+						}
 						return this.continue(true).then(null, (err) => {
 							this.logDelveError(err, 'Failed to continue delve after halting it to set breakpoints');
 						});
@@ -1687,8 +1706,16 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected nextRequest(response: DebugProtocol.NextResponse): void {
+		this.nextEpoch++;
+		const closureEpoch = this.nextEpoch;
+		this.nextRequestRunning = true;
+
 		log('NextRequest');
 		this.delve.call<DebuggerState | CommandOut>('Command', [{ name: 'next' }], (err, out) => {
+			if (closureEpoch === this.continueEpoch) {
+				this.nextRequestRunning = false;
+			}
+
 			if (err) {
 				this.logDelveError(err, 'Failed to next');
 			}
@@ -1702,8 +1729,16 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected stepInRequest(response: DebugProtocol.StepInResponse): void {
+		this.nextEpoch++;
+		const closureEpoch = this.nextEpoch;
+		this.nextRequestRunning = true;
+
 		log('StepInRequest');
 		this.delve.call<DebuggerState | CommandOut>('Command', [{ name: 'step' }], (err, out) => {
+			if (closureEpoch === this.continueEpoch) {
+				this.nextRequestRunning = false;
+			}
+
 			if (err) {
 				this.logDelveError(err, 'Failed to step in');
 			}
@@ -1717,8 +1752,16 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected stepOutRequest(response: DebugProtocol.StepOutResponse): void {
+		this.nextEpoch++;
+		const closureEpoch = this.nextEpoch;
+		this.nextRequestRunning = true;
+
 		log('StepOutRequest');
 		this.delve.call<DebuggerState | CommandOut>('Command', [{ name: 'stepOut' }], (err, out) => {
+			if (closureEpoch === this.continueEpoch) {
+				this.nextRequestRunning = false;
+			}
+
 			if (err) {
 				this.logDelveError(err, 'Failed to step out');
 			}
@@ -2352,6 +2395,11 @@ export class GoDebugSession extends LoggingDebugSession {
 					return;
 				}
 
+				if (this.overrideStopReason?.length > 0) {
+					reason = this.overrideStopReason;
+					this.overrideStopReason = '';
+				}
+
 				const stoppedEvent = new StoppedEvent(reason, this.debugState.currentGoroutine.id);
 				(<any>stoppedEvent.body).allThreadsStopped = true;
 				this.sendEvent(stoppedEvent);
@@ -2375,7 +2423,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		} catch (error) {
 			this.logDelveError(error, 'Failed to get state');
 			// Fall back to the internal tracking.
-			return this.continueRequestRunning;
+			return this.continueRequestRunning || this.nextRequestRunning;
 		}
 	}
 
