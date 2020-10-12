@@ -65,7 +65,7 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
 
-		if (goConfig['inferGopath'] === true) {
+		if (goConfig['inferGopath'] === true && !fileuri.path.includes('/vendor/')) {
 			goConfig.update('inferGopath', false, vscode.ConfigurationTarget.WorkspaceFolder);
 			vscode.window.showInformationMessage(
 				'The "inferGopath" setting is disabled for this workspace because Go modules are being used.'
