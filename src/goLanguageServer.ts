@@ -86,10 +86,6 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // server.
 let restartCommand: vscode.Disposable;
 
-// When enabled, users may be prompted to fill out the gopls survey.
-// For now, we turn it on in the Nightly extension to test it.
-const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
-
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
 let lastUserAction: Date = new Date();
@@ -142,7 +138,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig();
-		if (!goplsSurveyOn || !cfg.enabled) {
+		if (!cfg.enabled) {
 			return;
 		}
 		maybePromptForGoplsSurvey();
