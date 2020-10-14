@@ -2274,26 +2274,21 @@ export class GoDebugSession extends LoggingDebugSession {
 			log('continue state', state);
 			this.debugState = state;
 
-			// Check if the current thread was stopped on a breakpoint.
-			// Other stopping events (eg pause) create their own StoppedEvents,
-			// if necessary.
+			let reason = 'breakpoint';
+			// Check if the current thread was stopped on 'panic' or 'fatal error'.
 			if (!!state.currentThread && !!state.currentThread.breakPoint) {
 				const bp = state.currentThread.breakPoint;
 				if (bp.id === unrecoveredPanicID) {
 					// If the breakpoint is actually caused by a panic,
 					// we want to return on "panic".
-					this.handleReenterDebug('panic');
+					reason = 'panic';
 				} else if (bp.id === fatalThrowID) {
 					// If the breakpoint is actually caused by a fatal throw,
 					// we want to return on "fatal error".
-					this.handleReenterDebug('fatal error');
-				} else {
-					this.handleReenterDebug('breakpoint');
+					reason = 'fatal error';
 				}
-			} else if (state.exited) {
-				// Notify the client if the program has exited.
-				this.handleReenterDebug('');
 			}
+			this.handleReenterDebug(reason);
 		};
 
 		// If called when setting breakpoint internally, we want the error to bubble up.
