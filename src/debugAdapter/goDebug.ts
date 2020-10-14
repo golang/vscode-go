@@ -825,7 +825,8 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: DebugProtocol.InitializeRequestArguments
 	): void {
 		log('InitializeRequest');
-		// This debug adapter implements the configurationDoneRequest.
+		// Set the capabilities that this debug adapter supports.
+		response.body.supportsConditionalBreakpoints = true;
 		response.body.supportsConfigurationDoneRequest = true;
 		response.body.supportsSetVariable = true;
 		this.sendResponse(response);

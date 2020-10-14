@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
-import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
 import {DebugProtocol} from 'vscode-debugprotocol';
 import {
 	Delve,
@@ -313,7 +312,9 @@ suite('Go Debug Adapter', function () {
 		test('should return supported features', () => {
 			return dc.initializeRequest().then((response) => {
 				response.body = response.body || {};
+				assert.strictEqual(response.body.supportsConditionalBreakpoints, true);
 				assert.strictEqual(response.body.supportsConfigurationDoneRequest, true);
+				assert.strictEqual(response.body.supportsSetVariable, true);
 			});
 		});
 
@@ -489,6 +490,184 @@ suite('Go Debug Adapter', function () {
 			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE) );
 		});
 
+	});
+
+	suite('conditionalBreakpoints', () => {
+		test('should stop on conditional breakpoint', () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'condbp');
+			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
+			const BREAKPOINT_LINE = 7;
+			const location = getBreakpointLocation(FILE, BREAKPOINT_LINE);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			return Promise.all([
+
+				dc.waitForEvent('initialized').then(() => {
+					return dc.setBreakpointsRequest({
+						lines: [ location.line ],
+						breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+						source: { path: location.path }
+					});
+				}).then(() => {
+					return dc.configurationDoneRequest();
+				}),
+
+				dc.launch(debugConfig),
+
+				dc.assertStoppedLocation('breakpoint', location)
+
+			]).then(() =>
+				// The program is stopped at the breakpoint, check to make sure 'i == 1'.
+				dc.threadsRequest().then((threadsResponse) =>
+					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
+						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
+							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
+							.then((variablesResponse) => {
+								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
+								assert.strictEqual(variablesResponse.body.variables[0].value, '2');
+							})
+						)
+					)
+				)
+			);
+		});
+
+		test('should add breakpoint condition', async () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'condbp');
+			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
+			const BREAKPOINT_LINE = 7;
+			const location = getBreakpointLocation(FILE, BREAKPOINT_LINE);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return dc.hitBreakpoint(debugConfig, location).then(() =>
+				// The program is stopped at the breakpoint, check to make sure 'i == 0'.
+				dc.threadsRequest().then((threadsResponse) =>
+					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
+						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
+							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
+							.then((variablesResponse) => {
+								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
+								assert.strictEqual(variablesResponse.body.variables[0].value, '0');
+							})
+						)
+					)
+				)
+			).then(() =>
+				// Add a condition to the breakpoint, and make sure it runs until 'i == 2'.
+				dc.setBreakpointsRequest({
+					lines: [ location.line ],
+					breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+					source: { path: location.path }
+				}).then(() =>
+					Promise.all([
+						dc.continueRequest({threadId: 1}),
+						dc.assertStoppedLocation('breakpoint', location)
+					]).then(() =>
+						// The program is stopped at the breakpoint, check to make sure 'i == 2'.
+						dc.threadsRequest().then((threadsResponse) =>
+							dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
+								dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
+									dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
+									.then((variablesResponse) => {
+										assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
+										assert.strictEqual(variablesResponse.body.variables[0].value, '2');
+									})
+								)
+							)
+						)
+					)
+				)
+			);
+		});
+
+		test('should remove breakpoint condition', () => {
+
+			const PROGRAM = path.join(DATA_ROOT, 'condbp');
+			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
+			const BREAKPOINT_LINE = 7;
+			const location = getBreakpointLocation(FILE, BREAKPOINT_LINE);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			return Promise.all([
+
+				dc.waitForEvent('initialized').then(() => {
+					return dc.setBreakpointsRequest({
+						lines: [ location.line ],
+						breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+						source: { path: location.path }
+					});
+				}).then(() => {
+					return dc.configurationDoneRequest();
+				}),
+
+				dc.launch(debugConfig),
+
+				dc.assertStoppedLocation('breakpoint', location)
+
+			]).then(() =>
+				// The program is stopped at the breakpoint, check to make sure 'i == 2'.
+				dc.threadsRequest().then((threadsResponse) =>
+					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
+						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
+							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
+							.then((variablesResponse) => {
+								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
+								assert.strictEqual(variablesResponse.body.variables[0].value, '2');
+							})
+						)
+					)
+				)
+			).then(() =>
+				// Remove the breakpoint condition, and make sure the program runs until 'i == 3'.
+				dc.setBreakpointsRequest({
+					lines: [ location.line ],
+					breakpoints: [ { line: location.line } ],
+					source: { path: location.path }
+				}).then(() =>
+					Promise.all([
+						dc.continueRequest({threadId: 1}),
+						dc.assertStoppedLocation('breakpoint', location)
+					]).then(() =>
+						// The program is stopped at the breakpoint, check to make sure 'i == 3'.
+						dc.threadsRequest().then((threadsResponse) =>
+							dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
+								dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
+									dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
+									.then((variablesResponse) => {
+										assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
+										assert.strictEqual(variablesResponse.body.variables[0].value, '3');
+									})
+								)
+							)
+						)
+					)
+				)
+			);
+		});
 	});
 
 	suite('panicBreakpoints', () => {
