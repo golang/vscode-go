@@ -1,10 +1,13 @@
 import * as assert from 'assert';
+import { exec, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'querystring';
 import * as sinon from 'sinon';
-import { DebugClient } from 'vscode-debugadapter-testsupport';
-import { DebugProtocol } from 'vscode-debugprotocol';
+import { ProgressStartEvent } from 'vscode-debugadapter';
+import {DebugClient} from 'vscode-debugadapter-testsupport';
+import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
+import {DebugProtocol} from 'vscode-debugprotocol';
 import {
 	Delve,
 	escapeGoModPath,
@@ -472,6 +475,44 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 	});
+
+	suite.only('attach', () => {
+		test('should attach to a headless dlv instance', async () => {
+			this.timeout(30_000);
+			const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
+			const port = 3456;
+			const childProcess = spawn('dlv',
+				['debug', '--continue', '--accept-multiclient', '--api-version=2', '--headless', `--listen=${port}`],
+				{cwd: serverFolder});
+			childProcess.stdout.on('data', (data) => console.log(data));
+
+			// Give dlv a minute to start.
+			await new Promise((resolve) => setTimeout(resolve, 1_000));
+
+			const config = {
+				name: 'Attach',
+				type: 'go',
+				request: 'attach',
+				mode: 'remote',
+				host: '127.0.0.1',
+				port,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			// Extremely hacky but there's no way to set this for attach request :(
+			dc['_supportsConfigurationDoneRequest'] = true;
+
+			console.log('initializing');
+			const initializedResult = await dc.initializeRequest();
+			console.log(initializedResult);
+			const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
+			console.log(attachResult);
+			const result = await dc.configurationDoneRequest();
+			console.log(result);
+
+			await dc.terminateRequest();
+			childProcess.kill();
+		});
+	})
 
 	// The file paths returned from delve use '/' not the native path
 	// separator, so we can replace any instances of '\' with '/', which
