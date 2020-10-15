@@ -354,7 +354,11 @@ suite('Go Debug Adapter', function () {
 			new Promise(async (resolve) => {
 				while (!stopEvent) {
 					console.log('breakpoint not hit yet');
-					action();
+					try {
+						action();
+					} catch (error) {
+						console.log(error);
+					}
 					await new Promise((res) => setTimeout(res, 2_000));
 				}
 				resolve();
@@ -601,8 +605,9 @@ suite('Go Debug Adapter', function () {
 			// Setup attach with a breakpoint.
 			await setUpRemoteAttach(debugConfig, [breakpointLocation]);
 
-			// Calls the server to make the breakpoint hit.
-			const stopEvent = await waitForBreakpoint(() => http.get('http://localhost:8080'));
+			// Calls the helloworld server to make the breakpoint hit.
+			const stopEvent = await waitForBreakpoint(
+				() => http.get('http://localhost:8080').on('error', (data) => console.log(data)));
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
@@ -638,8 +643,9 @@ suite('Go Debug Adapter', function () {
 				{source: {path: breakpointLocation.path}, breakpoints: [breakpointLocation]});
 			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints[0].verified);
 
-			// Calls the server to make the breakpoint hit.
-			const stopEvent = await waitForBreakpoint(() => http.get('http://localhost:8080'));
+			// Calls the helloworld server to make the breakpoint hit.
+			const stopEvent = await waitForBreakpoint(
+				() => http.get('http://localhost:8080').on('error', (data) => console.log(data)));
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
@@ -678,6 +684,52 @@ suite('Go Debug Adapter', function () {
 
 				dc.assertStoppedLocation('panic', {} )
 			]);
+		});
+	});
+
+	suite('disconnect', () => {
+		test('disconnect should work for remote attach', async () => {
+			this.timeout(30_000);
+			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
+			const BREAKPOINT_LINE = 29;
+			const port = 3456;
+			const remoteProgram = await setUpRemoteProgram(port);
+
+			const config = {
+				name: 'Attach',
+				type: 'go',
+				request: 'attach',
+				mode: 'remote',
+				host: '127.0.0.1',
+				port,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
+
+			// Setup attach.
+			await setUpRemoteAttach(debugConfig);
+
+			// Calls the helloworld server to get a response.
+			let response = '';
+			await new Promise((resolve) => {
+				http.get('http://localhost:8080', (res) => {
+					res.on('data', (data) => response += data);
+					res.on('end', () => resolve());
+				});
+			});
+			console.log('response is ', response);
+
+			await dc.disconnectRequest();
+			// Checks that after the disconnect, the helloworld server still works.
+			let secondResponse = '';
+			await new Promise((resolve) => {
+				http.get('http://localhost:8080', (res) => {
+					res.on('data', (data) => secondResponse += data);
+					res.on('end', () => resolve());
+				});
+			});
+			assert.strictEqual(response, secondResponse);
+			remoteProgram.kill();
 		});
 	});
 });
