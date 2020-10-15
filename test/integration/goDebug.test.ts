@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import { stringify } from 'querystring';
 import * as sinon from 'sinon';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
 import {DebugProtocol} from 'vscode-debugprotocol';
@@ -296,6 +297,35 @@ suite('Go Debug Adapter', function () {
 
 	teardown( () =>  dc.stop() );
 
+	/**
+	 * Helper function to assert that a variable has a particular value.
+	 * This should be called when the program is stopped.
+	 *
+	 * The following requests are issued by this function to determine the
+	 * value of the variable:
+	 * 	1. threadsRequest
+	 *  2. stackTraceRequest
+	 * 	3. scopesRequest
+	 *  4. variablesRequest
+	 */
+	async function assertVariableValue(name: string, val: string): Promise<void> {
+		const threadsResponse = await dc.threadsRequest();
+		assert(threadsResponse.success);
+		const stackTraceResponse = await dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id});
+		assert(stackTraceResponse.success);
+		const scopesResponse = await dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id});
+		assert(scopesResponse.success);
+		const variablesResponse = await dc.variablesRequest({
+			variablesReference: scopesResponse.body.scopes[0].variablesReference
+		});
+		assert(variablesResponse.success);
+		// Locate the variable with the matching name.
+		const i = variablesResponse.body.variables.findIndex((v) => v.name === name);
+		assert(i >= 0);
+		// Check that the value of name is val.
+		assert.strictEqual(variablesResponse.body.variables[i].value, val);
+	}
+
 	suite('basic', () => {
 
 		test('unknown request should produce error', (done) => {
@@ -526,17 +556,7 @@ suite('Go Debug Adapter', function () {
 
 			]).then(() =>
 				// The program is stopped at the breakpoint, check to make sure 'i == 1'.
-				dc.threadsRequest().then((threadsResponse) =>
-					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
-						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
-							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
-							.then((variablesResponse) => {
-								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
-								assert.strictEqual(variablesResponse.body.variables[0].value, '2');
-							})
-						)
-					)
-				)
+				assertVariableValue('i', '2')
 			);
 		});
 
@@ -558,17 +578,7 @@ suite('Go Debug Adapter', function () {
 
 			return dc.hitBreakpoint(debugConfig, location).then(() =>
 				// The program is stopped at the breakpoint, check to make sure 'i == 0'.
-				dc.threadsRequest().then((threadsResponse) =>
-					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
-						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
-							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
-							.then((variablesResponse) => {
-								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
-								assert.strictEqual(variablesResponse.body.variables[0].value, '0');
-							})
-						)
-					)
-				)
+				assertVariableValue('i', '0')
 			).then(() =>
 				// Add a condition to the breakpoint, and make sure it runs until 'i == 2'.
 				dc.setBreakpointsRequest({
@@ -581,17 +591,7 @@ suite('Go Debug Adapter', function () {
 						dc.assertStoppedLocation('breakpoint', location)
 					]).then(() =>
 						// The program is stopped at the breakpoint, check to make sure 'i == 2'.
-						dc.threadsRequest().then((threadsResponse) =>
-							dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
-								dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
-									dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
-									.then((variablesResponse) => {
-										assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
-										assert.strictEqual(variablesResponse.body.variables[0].value, '2');
-									})
-								)
-							)
-						)
+						assertVariableValue('i', '2')
 					)
 				)
 			);
@@ -630,17 +630,7 @@ suite('Go Debug Adapter', function () {
 
 			]).then(() =>
 				// The program is stopped at the breakpoint, check to make sure 'i == 2'.
-				dc.threadsRequest().then((threadsResponse) =>
-					dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
-						dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
-							dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
-							.then((variablesResponse) => {
-								assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
-								assert.strictEqual(variablesResponse.body.variables[0].value, '2');
-							})
-						)
-					)
-				)
+				assertVariableValue('i', '2')
 			).then(() =>
 				// Remove the breakpoint condition, and make sure the program runs until 'i == 3'.
 				dc.setBreakpointsRequest({
@@ -653,17 +643,7 @@ suite('Go Debug Adapter', function () {
 						dc.assertStoppedLocation('breakpoint', location)
 					]).then(() =>
 						// The program is stopped at the breakpoint, check to make sure 'i == 3'.
-						dc.threadsRequest().then((threadsResponse) =>
-							dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id}).then((stackTraceResponse) =>
-								dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id}).then((scopesResponse) =>
-									dc.variablesRequest({variablesReference: scopesResponse.body.scopes[0].variablesReference})
-									.then((variablesResponse) => {
-										assert.strictEqual(variablesResponse.body.variables[0].name, 'i');
-										assert.strictEqual(variablesResponse.body.variables[0].value, '3');
-									})
-								)
-							)
-						)
+						assertVariableValue('i', '3')
 					)
 				)
 			);
