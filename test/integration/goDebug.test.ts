@@ -340,7 +340,6 @@ suite('Go Debug Adapter', function () {
 		const childProcess = spawn('dlv',
 			['debug', '--continue', '--accept-multiclient', '--api-version=2', '--headless', `--listen=127.0.0.1:${port}`],
 			{cwd: serverFolder});
-		childProcess.stdout.on('data', (data) => console.log(data));
 
 		// Give dlv a few minutes to start.
 		await new Promise((resolve) => setTimeout(resolve, 5_000));
@@ -383,7 +382,6 @@ suite('Go Debug Adapter', function () {
 		await Promise.all([
 			new Promise(async (resolve) => {
 				while (!stopEvent) {
-					console.log('breakpoint not hit yet');
 					try {
 						action();
 					} catch (error) {
@@ -643,10 +641,8 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			console.log('done');
 			await dc.terminateRequest();
 			remoteProgram.kill();
-			console.log('killed!');
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
@@ -877,7 +873,6 @@ suite('Go Debug Adapter', function () {
 					res.on('end', () => resolve());
 				});
 			});
-			console.log('response is ', response);
 
 			await dc.disconnectRequest();
 			// Checks that after the disconnect, the helloworld server still works.
