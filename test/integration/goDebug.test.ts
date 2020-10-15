@@ -321,22 +321,26 @@ suite('Go Debug Adapter', function () {
 	 * Helper function to set up remote attach configuration.
 	 * This will issue an attachRequest, followed by initializedRequest and then breakpointRequest
 	 * if breakpoints are provided. Lastly the configurationDoneRequest will be sent.
-	 * NOTE: For simplicity, this function assumes the breakpoints are at the same location.
+	 * NOTE: For simplicity, this function assumes the breakpoints are in the same file.
 	 */
 	async function setUpRemoteAttach(config: DebugConfiguration, breakpoints: ILocation[] = []): Promise<void> {
 		const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		console.log(`Setting up attach request for ${debugConfig}.`);
 		const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 		assert.ok(attachResult.success);
+		console.log(`Sending initializing request for remote attach setup.`);
 		const initializedResult = await dc.initializeRequest();
 		assert.ok(initializedResult.success);
 		if (breakpoints.length) {
+			console.log(`Sending set breakpoints request for remote attach setup.`);
 			const breakpointsResult = await dc.setBreakpointsRequest({source: {path: breakpoints[0].path}, breakpoints});
-			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints.length > 0);
+			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints.length === breakpoints.length);
 			// Verify that there are no non-verified breakpoints.
 			breakpointsResult.body.breakpoints.forEach((breakpoint) => {
 				assert.ok(breakpoint.verified);
 			});
 		}
+		console.log(`Sending configuration done request for remote attach setup.`);
 		const configurationDoneResult = await dc.configurationDoneRequest();
 		assert.ok(configurationDoneResult.success);
 	}
@@ -530,7 +534,6 @@ suite('Go Debug Adapter', function () {
 			};
 			await setUpRemoteAttach(config);
 
-			await dc.terminateRequest();
 			childProcess.kill();
 		});
 	});
@@ -609,7 +612,6 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			await dc.terminateRequest();
 			remoteProgram.kill();
 		});
 
@@ -645,7 +647,6 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			await dc.terminateRequest();
 			remoteProgram.kill();
 		});
 
