@@ -13,6 +13,7 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
+import { logVerbose } from '../goLogging';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -120,6 +121,7 @@ export function getCurrentGoRoot(): string {
 }
 
 export function setCurrentGoRoot(goroot: string) {
+	logVerbose(`setCurrentGoRoot(${goroot})`);
 	currentGoRoot = goroot;
 }
 
@@ -130,7 +132,7 @@ export function correctBinname(toolName: string) {
 	return toolName;
 }
 
-function executableFileExists(filePath: string): boolean {
+export function executableFileExists(filePath: string): boolean {
 	let exists = true;
 	try {
 		exists = fs.statSync(filePath).isFile();

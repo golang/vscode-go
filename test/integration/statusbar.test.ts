@@ -15,7 +15,6 @@ import * as util from 'util';
 import * as vscode from 'vscode';
 
 import {
-	disposeGoStatusBar,
 	formatGoVersion,
 	getGoEnvironmentStatusbarItem,
 	getSelectedGo,
@@ -23,6 +22,7 @@ import {
 	setSelectedGo,
 } from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
+import { disposeGoStatusBar } from '../../src/goStatus';
 import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import ourutil = require('../../src/util');
 import { getCurrentGoRoot } from '../../src/utils/pathUtils';
@@ -44,8 +44,13 @@ describe('#initGoStatusBar()', function () {
 	it('should create a status bar item with a label matching go.goroot version', async () => {
 		const version = await ourutil.getGoVersion();
 		const versionLabel = formatGoVersion(version);
+		let label = getGoEnvironmentStatusbarItem().text;
+		const iconPos = label.indexOf('$');
+		if (iconPos >= 0) {
+			label = label.substring(0, iconPos);
+		}
 		assert.equal(
-			getGoEnvironmentStatusbarItem().text,
+			label,
 			versionLabel,
 			'goroot version does not match status bar item text'
 		);

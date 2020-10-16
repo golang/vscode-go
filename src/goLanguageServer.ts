@@ -20,13 +20,15 @@ import {
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
-	LanguageClient,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
-	RevealOutputChannelOn,
+	RevealOutputChannelOn
 } from 'vscode-languageclient';
+import {
+	LanguageClient
+} from 'vscode-languageclient/node';
 import WebRequest = require('web-request');
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
@@ -43,12 +45,13 @@ import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
+import { updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getWorkspaceFolderPath } from './util';
+import { getBinPath, getCurrentGoPath, getGoConfig, getGoplsConfig, getWorkspaceFolderPath } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
 interface LanguageServerConfig {
@@ -71,7 +74,8 @@ interface LanguageServerConfig {
 let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
-let serverOutputChannel: vscode.OutputChannel;
+export let serverOutputChannel: vscode.OutputChannel;
+export let languageServerIsRunning = false;
 let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
@@ -81,10 +85,6 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // restartCommand is the command used by the user to restart the language
 // server.
 let restartCommand: vscode.Disposable;
-
-// When enabled, users may be prompted to fill out the gopls survey.
-// For now, we turn it on in the Nightly extension to test it.
-const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
 
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
@@ -112,6 +112,9 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	if (!started && defaultLanguageProviders.length === 0) {
 		registerDefaultProviders(ctx);
 	}
+
+	languageServerIsRunning = started;
+	updateLanguageServerIconGoStatusBar(started, cfg.serverName);
 }
 
 // scheduleGoplsSuggestions sets timeouts for the various gopls-specific
@@ -135,13 +138,10 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig();
-		if (!goplsSurveyOn || !cfg.enabled) {
+		if (!cfg.enabled) {
 			return;
 		}
-		const surveyCfg = await maybePromptForGoplsSurvey();
-		if (surveyCfg) {
-			flushSurveyConfig(surveyCfg);
-		}
+		maybePromptForGoplsSurvey();
 	};
 
 	setTimeout(update, 10 * timeMinute);
@@ -207,6 +207,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
 		}
 	}
+	const goplsConfig = getGoplsConfig();
 	const c = new LanguageClient(
 		'go',  // id
 		config.serverName,  // name
@@ -216,7 +217,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 			options: { env: config.env },
 		},
 		{
-			initializationOptions: {},
+			initializationOptions: goplsConfig,
 			documentSelector: ['go', 'go.mod', 'go.sum'],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
@@ -857,14 +858,17 @@ export interface SurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
+function maybePromptForGoplsSurvey() {
 	const now = new Date();
-	const cfg = getSurveyConfig();
-	const dateToPrompt = shouldPromptForGoplsSurvey(now, cfg);
-	if (!dateToPrompt) {
-		return cfg;
+	let cfg = shouldPromptForGoplsSurvey(now, getSurveyConfig());
+	if (!cfg) {
+		return;
 	}
-	const callback = () => {
+	flushSurveyConfig(cfg);
+	if (!cfg.dateToPromptThisMonth) {
+		return;
+	}
+	const callback = async () => {
 		const currentTime = new Date();
 
 		// Make sure the user has been idle for at least a minute.
@@ -872,14 +876,16 @@ async function maybePromptForGoplsSurvey(): Promise<SurveyConfig> {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		promptForSurvey(cfg, now);
+		cfg = await promptForSurvey(cfg, now);
+		if (cfg) {
+			flushSurveyConfig(cfg);
+		}
 	};
-	const ms = msBetween(now, dateToPrompt);
+	const ms = msBetween(now, cfg.dateToPromptThisMonth);
 	setTimeout(callback, ms);
-	return cfg;
 }
 
-export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
+export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): SurveyConfig {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -911,16 +917,21 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 		// decided if the user should be prompted.
 		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
 			if (cfg.dateToPromptThisMonth) {
-				return cfg.dateToPromptThisMonth;
+				return cfg;
 			}
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < 0.0275, for a 2.75% probability.
+	// the range [0, 1) and checking if it is < probability, which varies
+	// depending on whether the default or the nightly is in use.
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
-	cfg.promptThisMonth = Math.random() < 0.0275;
+	let probability = 0.01; // lower probability for the regular extension
+	if (extensionId === 'golang.go-nightly') {
+		probability = 0.0275;
+	}
+	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
 		// month on which to prompt.
@@ -931,10 +942,10 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Date {
 		cfg.dateToPromptThisMonth = undefined;
 	}
 	cfg.dateComputedPromptThisMonth = now;
-	return cfg.dateToPromptThisMonth;
+	return cfg;
 }
 
-async function promptForSurvey(cfg: SurveyConfig, now: Date) {
+async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
 	const selected = await vscode.window.showInformationMessage(`Looks like you're using gopls, the Go language server.
 Would you be willing to fill out a quick survey about your experience with gopls?`, 'Yes', 'Not now', 'Never');
 
@@ -965,6 +976,7 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 			break;
 	}
+	return cfg;
 }
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
@@ -1180,4 +1192,26 @@ export function sanitizeGoplsTrace(logs?: string): string {
 		}
 	}
 	return '';
+}
+
+export async function promptForLanguageServerDefaultChange(cfg: vscode.WorkspaceConfiguration) {
+	const promptedForLSDefaultChangeKey = `promptedForLSDefaultChange`;
+	if (getFromGlobalState(promptedForLSDefaultChangeKey, false)) {
+		return;
+	}
+
+	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
+	if (useLanguageServer.globalValue !== undefined || useLanguageServer.workspaceValue !== undefined) {
+		return;  // user already explicitly set the field.
+	}
+
+	const selected = await vscode.window.showInformationMessage(
+		`"go.useLanguageServer" is enabled by default. If you need to disable it, please configure in the settings.`,
+		'Open Settings', 'OK');
+	switch (selected) {
+		case 'Open Settings':
+			vscode.commands.executeCommand('workbench.action.openSettings', 'go.useLanguageServer');
+		default:
+	}
+	updateGlobalState(promptedForLSDefaultChangeKey, true);
 }

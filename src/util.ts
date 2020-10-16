@@ -158,6 +158,15 @@ let toolsGopath: string;
 
 // getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
 export const getGoConfig = (uri?: vscode.Uri) => {
+	return getConfig('go');
+};
+
+// getGoplsConfig returns the user's gopls configuration.
+export function getGoplsConfig() {
+	return getConfig('gopls');
+}
+
+function getConfig(section: string, uri?: vscode.Uri) {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;
@@ -165,8 +174,8 @@ export const getGoConfig = (uri?: vscode.Uri) => {
 			uri = null;
 		}
 	}
-	return vscode.workspace.getConfiguration('go', uri);
-};
+	return vscode.workspace.getConfiguration(section, uri);
+}
 
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
@@ -317,12 +326,12 @@ export function getUserNameHash() {
  * Returns undefined if go version can't be determined because
  * go is not available or `go version` fails.
  */
-export async function getGoVersion(): Promise<GoVersion | undefined> {
+export async function getGoVersion(goBinPath?: string): Promise<GoVersion | undefined> {
 	// TODO(hyangah): limit the number of concurrent getGoVersion call.
 	// When the extension starts, at least 4 concurrent calls race
 	// and end up calling `go version`.
 
-	const goRuntimePath = getBinPath('go');
+	const goRuntimePath = goBinPath ?? getBinPath('go');
 
 	const warn = (msg: string) => {
 		outputChannel.appendLine(msg);
@@ -339,26 +348,30 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 		}
 		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
+	let goVersion: GoVersion;
 	try {
 		const env = toolExecutionEnvironment();
 		const docUri = vscode.window.activeTextEditor?.document.uri;
 		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], {env, cwd});
+		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
 			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 			return;
 		}
-		cachedGoBinPath = goRuntimePath;
-		cachedGoVersion = new GoVersion(goRuntimePath, stdout);
-		if (!cachedGoVersion.isValid()) {
-			warn (`unable to determine version from the output of "${goRuntimePath} version": "${stdout}"`);
-		}
+		goVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
 		warn(`failed to run "${goRuntimePath} version": ${err}`);
 		return;
 	}
-	return cachedGoVersion;
+	if (!goBinPath) {  // if getGoVersion was called with a given goBinPath, don't cache the result.
+		cachedGoBinPath = goRuntimePath;
+		cachedGoVersion = goVersion;
+		if (!cachedGoVersion.isValid()) {
+			warn(`unable to determine version from the output of "${goRuntimePath} version": "${goVersion.svString}"`);
+		}
+	}
+	return goVersion;
 }
 
 /**
@@ -368,7 +381,7 @@ export async function getGoVersion(): Promise<GoVersion | undefined> {
 export async function getGoEnv(cwd?: string): Promise<string> {
 	const goRuntime = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
-	const opts = {cwd, env: toolExecutionEnvironment()};
+	const opts = { cwd, env: toolExecutionEnvironment() };
 	const { stdout, stderr } = await execFile(goRuntime, ['env'], opts);
 	if (stderr) {
 		throw new Error(`failed to run 'go env': ${stderr}`);
@@ -485,7 +498,7 @@ export function getBinPath(tool: string, useCache = true): string {
 
 // getBinPathWithExplanation returns the path to the tool, and the explanation on why
 // the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
-export function getBinPathWithExplanation(tool: string, useCache = true): {binPath: string, why?: string} {
+export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string, why?: string } {
 	const cfg = getGoConfig();
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
@@ -782,7 +795,7 @@ export function runTool(
 					atLeastSingleMatch = true;
 					const [, , file, , lineStr, , colStr, msg] = match;
 					const line = +lineStr;
-					const col = +colStr;
+					const col = colStr ? +colStr : undefined;
 
 					// Building skips vendor folders,
 					// But vet and lint take in directories and not import paths, so no way to skip them
@@ -796,7 +809,7 @@ export function runTool(
 
 					const filePath = path.resolve(cwd, file);
 					ret.push({ file: filePath, line, col, msg, severity });
-					outputChannel.appendLine(`${filePath}:${line}: ${msg}`);
+					outputChannel.appendLine(`${filePath}:${line}:${col ?? ''} ${msg}`);
 				}
 				if (!atLeastSingleMatch && unexpectedOutput && vscode.window.activeTextEditor) {
 					outputChannel.appendLine(stderr);
@@ -827,21 +840,37 @@ export function handleDiagnosticErrors(
 	diagnosticCollection.clear();
 
 	const diagnosticMap: Map<string, vscode.Diagnostic[]> = new Map();
+
+	const textDocumentMap: Map<string, vscode.TextDocument> = new Map();
+	if (document) {
+		textDocumentMap.set(document.uri.toString(), document);
+	}
+	// Also add other open .go files known to vscode for fast lookup.
+	vscode.workspace.textDocuments.forEach((t) => {
+		const fileName = t.uri.toString();
+		if (!fileName.endsWith('.go')) { return; }
+		textDocumentMap.set(fileName, t);
+	});
+
 	errors.forEach((error) => {
 		const canonicalFile = vscode.Uri.file(error.file).toString();
-		let startColumn = 0;
-		let endColumn = 1;
-		if (document && document.uri.toString() === canonicalFile) {
+		let startColumn = error.col ? error.col - 1 : 0;
+		let endColumn = startColumn + 1;
+		// Some tools output only the line number or the start position.
+		// If the file content is available, adjust the diagnostic range so
+		// the squiggly underline for the error message is more visible.
+		const doc = textDocumentMap.get(canonicalFile);
+		if (doc) {
 			const tempRange = new vscode.Range(
 				error.line - 1,
 				0,
 				error.line - 1,
-				document.lineAt(error.line - 1).range.end.character + 1
+				doc.lineAt(error.line - 1).range.end.character + 1  // end of the line
 			);
-			const text = document.getText(tempRange);
+			const text = doc.getText(tempRange);
 			const [_, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
 			if (!error.col) {
-				startColumn = leading.length;
+				startColumn = leading.length;  // beginning of the non-white space.
 			} else {
 				startColumn = error.col - 1; // range is 0-indexed
 			}
@@ -864,20 +893,20 @@ export function handleDiagnosticErrors(
 
 		if (diagnosticCollection === buildDiagnosticCollection) {
 			// If there are lint/vet warnings on current file, remove the ones co-inciding with the new build errors
-			if (lintDiagnosticCollection.has(fileUri)) {
+			if (lintDiagnosticCollection && lintDiagnosticCollection.has(fileUri)) {
 				lintDiagnosticCollection.set(
 					fileUri,
 					deDupeDiagnostics(newDiagnostics, lintDiagnosticCollection.get(fileUri).slice())
 				);
 			}
 
-			if (vetDiagnosticCollection.has(fileUri)) {
+			if (vetDiagnosticCollection && vetDiagnosticCollection.has(fileUri)) {
 				vetDiagnosticCollection.set(
 					fileUri,
 					deDupeDiagnostics(newDiagnostics, vetDiagnosticCollection.get(fileUri).slice())
 				);
 			}
-		} else if (buildDiagnosticCollection.has(fileUri)) {
+		} else if (buildDiagnosticCollection && buildDiagnosticCollection.has(fileUri)) {
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
 			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri).slice(), newDiagnostics);
 		}
@@ -904,7 +933,7 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
-export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string|undefined {
+export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string | undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);
 		if (workspace) {

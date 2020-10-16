@@ -76,9 +76,7 @@ prepare_nightly() {
 .displayName="Go Nightly" |
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
-.author.name="Go Team at Google" |
-.repository.url="https://github.com/golang/vscode-go" |
-.bugs.url="https://github.com/golang/vscode-go/issues"
+.contributes.configuration.properties."go.useLanguageServer".default=true
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
@@ -91,20 +89,20 @@ prepare_nightly() {
 
 # setup dependencies required for tests.
 install_dependencies() {
-	GO111MODULE=on go get -x -v golang.org/x/tools/gopls
-	GO111MODULE=on go get -x -v github.com/acroca/go-symbols
-	GO111MODULE=on go get -x -v github.com/cweill/gotests/...
-	GO111MODULE=on go get -x -v github.com/davidrjenni/reftools/cmd/fillstruct
-	GO111MODULE=on go get -x -v github.com/haya14busa/goplay/cmd/goplay
-	GO111MODULE=on go get -x -v github.com/mdempsky/gocode
-	GO111MODULE=on go get -x -v github.com/ramya-rao-a/go-outline
-	GO111MODULE=on go get -x -v github.com/rogpeppe/godef
-	GO111MODULE=on go get -x -v github.com/sqs/goreturns
-	GO111MODULE=on go get -x -v github.com/uudashr/gopkgs/v2/cmd/gopkgs
-	GO111MODULE=on go get -x -v github.com/zmb3/gogetdoc
-	GO111MODULE=on go get -x -v golang.org/x/lint/golint
-	GO111MODULE=on go get -x -v golang.org/x/tools/cmd/gorename
-	GO111MODULE=on go get -x -v github.com/go-delve/delve/cmd/dlv
+	GO111MODULE=on go get -x golang.org/x/tools/gopls
+	GO111MODULE=on go get -x github.com/acroca/go-symbols
+	GO111MODULE=on go get -x github.com/cweill/gotests/...
+	GO111MODULE=on go get -x github.com/davidrjenni/reftools/cmd/fillstruct
+	GO111MODULE=on go get -x github.com/haya14busa/goplay/cmd/goplay
+	GO111MODULE=on go get -x github.com/mdempsky/gocode
+	GO111MODULE=on go get -x github.com/ramya-rao-a/go-outline
+	GO111MODULE=on go get -x github.com/rogpeppe/godef
+	GO111MODULE=on go get -x github.com/sqs/goreturns
+	GO111MODULE=on go get -x github.com/uudashr/gopkgs/v2/cmd/gopkgs
+	GO111MODULE=on go get -x github.com/zmb3/gogetdoc
+	GO111MODULE=on go get -x golang.org/x/lint/golint
+	GO111MODULE=on go get -x golang.org/x/tools/cmd/gorename
+	GO111MODULE=on go get -x github.com/go-delve/delve/cmd/dlv
 }
 
 main() {

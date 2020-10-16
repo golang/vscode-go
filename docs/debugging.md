@@ -103,13 +103,14 @@ type       | Always leave this set to `"go"`. VS Code uses this setting to deter
 request    | One of `launch` or `attach`. Use `attach` when you want to attach to a running process.
 mode       | For `launch` requests, one of `auto`, `debug`, `remote`, `test`, or `exec`. For `attach` requests, use `local` or `remote`.
 program    | In `test` or `debug` mode, this refers to the absolute path to the package or file to debug. In `exec` mode, this is the existing binary file to debug. Not applicable to `attach` requests.
-env        | Environment variables to use when debugging. Use the format: `{ "NAME": "VALUE" }`.
+env        | Environment variables to use when debugging. Use the format: `{ "NAME": "VALUE" }`. Not applicable to `attach` requests.
 envFile    | Absolute path to a file containing environment variable definitions. The environment variables passed in via the `env` property override the ones in this file.
 args       | Array of command-line arguments to pass to the program being debugged.
 showLog    | If `true`, Delve logs will be printed in the Debug Console panel.
 logOutput  | Comma-separated list of Delve components (`debugger`, `gdbwire`, `lldbout`, `debuglineerr`, `rpc`) that should produce debug output when `showLog` is `true`.
 buildFlags | Build flags to pass to the Go compiler.
-remotePath | If remote debugging (`mode`: `remote`), this should be the absolute path to the file being debugged on the remote machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
+remotePath | If remote debugging (`mode`: `remote`), this should be the absolute path to the package being debugged on the remote machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
+cwd | The working directory to be used in running the program. If remote debugging (`mode`: `remote`), this should be the absolute path to the working directory being debugged on the local machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
 processId  | This is the process ID of the executable you want to debug. Applicable only when using the `attach` request in `local` mode.
 
 ### Specifying [build tags](https://golang.org/pkg/go/build/#hdr-Build_Constraints)
@@ -238,6 +239,19 @@ There is no snippet suggestion for this configuration.
 }
 ```
 
+If passing arguments to or calling subcommands and flags from a binary, the `args` property can be used.
+
+```json
+{
+    "name": "Launch executable",
+    "type": "go",
+    "request": "launch",
+    "mode": "exec",
+    "program": "/absolute/path/to/executable",
+    "args": ["subcommand", "arg", "--flag"],
+}
+```
+
 ## Debugging on [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/)
 
 If you are using using WSL, you will need the WSL 2 Linux kernel.  See [WSL 2 Installation](https://docs.microsoft.com/en-us/windows/wsl/wsl2-install) and note the Window 10 build version requirements.
@@ -266,21 +280,18 @@ Then, create a remote debug configuration in your `launch.json`.
 {
     "name": "Launch remote",
     "type": "go",
-    "request": "launch",
+    "request": "attach",
     "mode": "remote",
-    "remotePath": "/absolute/path/file/on/remote/machine",
+    "remotePath": "/absolute/path/dir/on/remote/machine",
     "port": 2345,
     "host": "127.0.0.1",
-    "program": "/absolute/path/file/on/local/machine",
-    "env": {}
+    "cwd": "/absolute/path/dir/on/local/machine",
 }
 ```
 
 In the example, the VS Code debugger will run on the same machine as the headless `dlv` server. Make sure to update the `port` and `host` settings to point to your remote machine.
 
-`remotePath` should point to the absolute path of the file being debugged in the remote machine. See [golang/vscode-go#126](https://github.com/golang/vscode-go/issues/126) for updates regarding `remotePath`.
-
-`program` should point to the absolute path of the file on your local machine. This should be the counterpart of the file in `remotePath`.
+`remotePath` should point to the absolute path of the program being debugged in the remote machine. `cwd` should point to the absolute path of the working directory of the program being debugged on your local machine. This should be the counterpart of the folder in `remotePath`. See [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) for updates regarding `remotePath` and `cwd`.
 
 When you run the `Launch remote` target, VS Code will send debugging commands to the `dlv` server you started, instead of launching it's own `dlv` instance against your program.
 
@@ -374,6 +385,12 @@ Docker has security settings preventing `ptrace(2)` operations by default within
 #### could not launch process: exec: "lldb-server": executable file not found in $PATH
 
 This error can show up for Mac users using Delve versions 0.12.2 and above. `xcode-select --install` has solved the problem for a number of users.
+
+### Debugging symlink directories
+
+This extension does not provide support for debugging projects containing symlinks. Make sure that you are setting breakpoints in the files that Go will use to compile your program.
+
+For updates to symlink support reference [golang/vscode-go#622](https://github.com/golang/vscode-go/issues/622).
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference

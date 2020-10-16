@@ -12,10 +12,11 @@ import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
-import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH, initGoStatusBar } from './goEnvironmentStatus';
+import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
+import { logVerbose } from './goLogging';
 import { restartLanguageServer } from './goMain';
-import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
+import { addGoStatus, initGoEnvStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
 	disableModulesForWildcard,
@@ -300,7 +301,7 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 			break;
 		case 'Install All':
 			await installTools(missing, goVersion);
-			hideGoStatus();
+			removeGoStatus();
 			break;
 		default:
 			// The user has declined to install this tool.
@@ -319,34 +320,41 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	}
 	const goVersion = await getGoVersion();
 	let updateMsg = `Your version of ${tool.name} appears to be out of date. Please update for an improved experience.`;
-	const choices: string[] = ['Update'];
+	let choices: string[] = ['Update'];
 	if (toolName === `gopls`) {
 		choices.push('Release Notes');
 	}
 	if (newVersion) {
 		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
 	}
-	const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
-	switch (selected) {
-		case 'Update':
-			await installTools([toolVersion], goVersion);
-			break;
-		case 'Release Notes':
-			vscode.commands.executeCommand(
-				'vscode.open',
-				vscode.Uri.parse(`https://github.com/golang/tools/releases/tag/${tool.name}/v${newVersion}`)
-			);
-			break;
-		default:
-			declinedUpdates.push(tool);
-			break;
+
+	while (choices.length > 0) {
+		const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
+		switch (selected) {
+			case 'Update':
+				choices = [];
+				await installTools([toolVersion], goVersion);
+				break;
+			case 'Release Notes':
+				choices = choices.filter((value) => value !== 'Release Notes');
+				vscode.commands.executeCommand(
+					'vscode.open',
+					vscode.Uri.parse(`https://github.com/golang/tools/releases/tag/${tool.name}/v${newVersion}`)
+				);
+				break;
+			default:
+				choices = [];
+				declinedUpdates.push(tool);
+				break;
+		}
 	}
 }
 
 export function updateGoVarsFromConfig(): Promise<void> {
-	const {binPath, why} = getBinPathWithExplanation('go', false);
+	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
+	logVerbose(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
 	if (!goRuntimePath || !path.isAbsolute(goRuntimePath)) {
 		// getBinPath returns the absolute path to the tool if it exists.
 		// Otherwise, it may return the tool name (e.g. 'go').
@@ -359,13 +367,20 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
 			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
 			(err, stdout, stderr) => {
-				if (err || stderr) {
-					outputChannel.append(`Failed to run '${goRuntimePath} env: ${err}\n${stderr}`);
+				if (err) {
+					outputChannel.append(`Failed to run '${goRuntimePath} env' : ${err}\n${stderr}`);
 					outputChannel.show();
 
 					vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
 					return reject();
 				}
+				if (stderr) {
+					// 'go env' may output warnings about potential misconfiguration.
+					// Show the messages to users but keep processing the stdout.
+					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.show();
+				}
+				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
 				const envOutput = stdout.split('\n');
 				if (!process.env['GOPATH'] && envOutput[0].trim()) {
 					process.env['GOPATH'] = envOutput[0].trim();
@@ -393,7 +408,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoStatusBar();
+				initGoEnvStatusBar();
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();
@@ -413,12 +428,12 @@ export async function offerToInstallTools() {
 	let missing = await getMissingTools(goVersion);
 	missing = missing.filter((x) => x.isImportant);
 	if (missing.length > 0) {
-		showGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
+		addGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
 		vscode.commands.registerCommand('go.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',
 				async command() {
-					hideGoStatus();
+					removeGoStatus();
 					await installTools(missing, goVersion);
 				}
 			};
@@ -440,7 +455,7 @@ export async function offerToInstallTools() {
 					if (selection) {
 						selection.command();
 					} else {
-						hideGoStatus();
+						removeGoStatus();
 					}
 				});
 		});

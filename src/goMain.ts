@@ -7,8 +7,9 @@
 'use strict';
 
 import * as path from 'path';
+import { commands } from 'vscode';
 import vscode = require('vscode');
-import { GoDlvDapDebugSession } from './debugAdapter2/goDlvDebug';
+import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -19,7 +20,7 @@ import {
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, disposeGoStatusBar, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
+import { chooseGoEnvironment, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -30,15 +31,20 @@ import {
 	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
 	updateGoVarsFromConfig
 } from './goInstallTools';
-import { startLanguageServerWithFallback, watchLanguageServerConfiguration } from './goLanguageServer';
+import {
+	languageServerIsRunning,
+	promptForLanguageServerDefaultChange,
+	startLanguageServerWithFallback, watchLanguageServerConfiguration
+} from './goLanguageServer';
 import { lintCode } from './goLint';
+import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { outputChannel, showHideStatus } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, showHideStatus } from './goStatus';
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
@@ -61,7 +67,7 @@ import {
 	isGoPathSet,
 	resolvePath,
 } from './util';
-import { clearCacheForTools, envPath, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -73,12 +79,20 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext) {
+	const cfg = getGoConfig();
+	setLogConfig(cfg['logging']);
+
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
+	if (extensionId === 'golang.go-nightly') {
+		promptForLanguageServerDefaultChange(cfg);
+	}
+
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
+		logVerbose(`go.goroot = '${configGOROOT}'`);
 		setCurrentGoRoot(resolvePath(configGOROOT));
 	}
 
@@ -104,11 +118,8 @@ export function activate(ctx: vscode.ExtensionContext) {
 	initCoverageDecorators(ctx);
 
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.open.modulesdoc', async () => {
-			vscode.commands.executeCommand(
-				'vscode.open',
-				vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/modules.md')
-			);
+		vscode.commands.registerCommand('go.environment.status', async () => {
+			expandGoStatusBar();
 		})
 	);
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
@@ -316,6 +327,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 				e.affectsConfiguration('go.testEnvFile')) {
 				updateGoVarsFromConfig();
 			}
+			if (e.affectsConfiguration('go.logging')) {
+				setLogConfig(updatedGoConfig['logging']);
+			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
 				clearCacheForTools();
@@ -436,6 +450,25 @@ export function activate(ctx: vscode.ExtensionContext) {
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
 
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
+		if (!languageServerIsRunning) {
+			vscode.window.showErrorMessage('"Go: Toggle gc details" command is available only when the language server is running');
+			return;
+		}
+		const doc = vscode.window.activeTextEditor?.document.uri.toString();
+		if (!doc || !doc.endsWith('.go')) {
+			vscode.window.showErrorMessage('"Go: Toggle gc details" command cannot run when no Go file is open.');
+			return;
+		}
+		vscode.commands.executeCommand('gc_details', doc)
+			.then(undefined, (reason0) => {
+				vscode.commands.executeCommand('gopls_gc_details', doc)
+					.then(undefined, (reason1) => {
+						vscode.window.showErrorMessage(`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`);
+					});
+			});
+	}));
+
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.apply.coverprofile', () => {
 			if (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document.fileName.endsWith('.go')) {
@@ -545,8 +578,13 @@ function addOnChangeTextDocumentListeners(ctx: vscode.ExtensionContext) {
 }
 
 function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
-	vscode.window.onDidChangeActiveTextEditor(showHideStatus, null, ctx.subscriptions);
-	vscode.window.onDidChangeActiveTextEditor(applyCodeCoverage, null, ctx.subscriptions);
+	[showHideStatus, applyCodeCoverage].forEach((listener) => {
+		// Call the listeners on initilization for current active text editor
+		if (!!vscode.window.activeTextEditor) {
+			listener(vscode.window.activeTextEditor);
+		}
+		vscode.window.onDidChangeActiveTextEditor(listener, null, ctx.subscriptions);
+	});
 }
 
 function checkToolExists(tool: string) {

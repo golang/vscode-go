@@ -14,10 +14,11 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { toolInstallationEnvironment } from './goEnv';
-import { hideGoStatus, outputChannel, showGoStatus } from './goStatus';
+import { logVerbose } from './goLogging';
+import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
-import { correctBinname, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
+import { correctBinname, executableFileExists, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -34,61 +35,16 @@ export class GoEnvironmentOption {
 	}
 }
 
-// statusbar item for switching the Go environment
-let goEnvStatusbarItem: vscode.StatusBarItem;
-let terminalCreationListener: vscode.Disposable;
-
-/**
- * Initialize the status bar item with current Go binary
- */
-export async function initGoStatusBar() {
-	if (!goEnvStatusbarItem) {
-		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-	}
-	// set Go version and command
-	const version = await getGoVersion();
-	const goOption = new GoEnvironmentOption(version.binaryPath, formatGoVersion(version));
-
-	hideGoStatusBar();
-	goEnvStatusbarItem.text = goOption.label;
-	goEnvStatusbarItem.command = 'go.environment.choose';
-	showGoStatusBar();
-}
-
-/**
- * disable the Go environment status bar item
- */
-export function disposeGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.dispose();
-	}
-	if (!!terminalCreationListener) {
-		terminalCreationListener.dispose();
-	}
-}
-
-/**
- * Show the Go Environment statusbar item on the statusbar
- */
-export function showGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.show();
-	}
-}
-
-/**
- * Hide the Go Environment statusbar item from the statusbar
- */
-export function hideGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.hide();
-	}
-}
+export let terminalCreationListener: vscode.Disposable;
 
 let environmentVariableCollection: vscode.EnvironmentVariableCollection;
 export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariableCollection) {
 	environmentVariableCollection = env;
 }
+
+// QuickPickItem names for chooseGoEnvironment menu.
+const CLEAR_SELECTION = '$(clear-all) Clear selection';
+const CHOOSE_FROM_FILE_BROWSER = '$(folder) Choose from file browser';
 
 /**
  * Present a command palette menu to the user to select their go binary
@@ -125,8 +81,13 @@ export async function chooseGoEnvironment() {
 	const goSDKQuickPicks = goSDKOptions.map((op) => op.toQuickPickItem());
 
 	// dedup options by eliminating duplicate paths (description)
-	const clearOption: vscode.QuickPickItem = { label: 'Clear selection' };
-	const options = [clearOption, defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks]
+	const clearOption: vscode.QuickPickItem = { label: CLEAR_SELECTION };
+	const filePickerOption: vscode.QuickPickItem = {
+		label: CHOOSE_FROM_FILE_BROWSER,
+		description: 'Select the go binary to use',
+	};
+	// TODO(hyangah): Add separators after clearOption if github.com/microsoft/vscode#74967 is resolved.
+	const options = [filePickerOption, clearOption, defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks]
 		.reduce((opts, nextOption) => {
 			if (opts.find((op) => op.description === nextOption.description || op.label === nextOption.label)) {
 				return opts;
@@ -163,12 +124,39 @@ export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload 
 	if (goOption.binpath?.startsWith('go get')) {
 		// start a loading indicator
 		await downloadGo(goOption);
-	} else if (goOption.label === 'Clear selection') {
+	} else if (goOption.label === CLEAR_SELECTION) {
 		if (!getSelectedGo()) {
 			return false;  // do nothing.
 		}
 		await updateWorkspaceState('selectedGo', undefined);
-		// TODO: goEnvStatusbarItem?
+	} else if (goOption.label === CHOOSE_FROM_FILE_BROWSER) {
+		const currentGOROOT = getCurrentGoRoot();
+		const defaultUri = currentGOROOT ? vscode.Uri.file(path.join(currentGOROOT, 'bin')) : undefined;
+
+		const newGoUris = await vscode.window.showOpenDialog({
+			canSelectFiles: true,
+			canSelectFolders: false,
+			canSelectMany: false,
+			defaultUri,
+		});
+		if (!newGoUris || newGoUris.length !== 1) {
+			return false;
+		}
+		const newGoUri = newGoUris[0];
+
+		if (defaultUri === newGoUri) {
+			return false;
+		}
+		if (!executableFileExists(newGoUri.path)) {
+			vscode.window.showErrorMessage(`${newGoUri.path} is not an executable`);
+			return false;
+		}
+		const newGo = await getGoVersion(newGoUri.path);
+		if (!newGo) {
+			vscode.window.showErrorMessage(`failed to get "${newGoUri.path} version", invalid Go binary`);
+			return false;
+		}
+		await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
 	} else {
 		// check that the given binary is not already at the beginning of the PATH
 		const go = await getGoVersion();
@@ -294,15 +282,17 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	if (!newGoRuntimeBase) {
 		return;
 	}
-
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
+		logVerbose(`couldn't find PATH property in process.env`);
 		return;
 	}
 
 	if (!defaultPathEnv) {  // cache the default value
 		defaultPathEnv = <string>process.env[pathEnvVar];
 	}
+
+	logVerbose(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
 
 	// calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
@@ -350,6 +340,7 @@ export function clearGoRuntimeBaseFromPATH() {
 	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
+		logVerbose(`couldn't find PATH property in process.env`);
 		return;
 	}
 	environmentVariableCollection?.delete(pathEnvVar);
@@ -542,7 +533,7 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		showGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
+		addGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
 		vscode.commands.registerCommand('go.promptforgoinstall', () => {
 			const download = {
 				title: 'Download',
@@ -583,7 +574,7 @@ export async function offerToInstallLatestGoVersion() {
 					neverAgain
 				)
 				.then((selection) => {
-					hideGoStatus();
+					removeGoStatus();
 					selection.command();
 				});
 		});
