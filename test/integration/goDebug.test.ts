@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
 import * as sinon from 'sinon';
+import treeKill = require('tree-kill');
 import { DebugConfiguration } from 'vscode';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -534,7 +535,8 @@ suite('Go Debug Adapter', function () {
 			};
 			await setUpRemoteAttach(config);
 
-			childProcess.kill('SIGKILL');
+			treeKill(childProcess.pid);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
 
@@ -612,7 +614,8 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			remoteProgram.kill('SIGKILL');
+			treeKill(remoteProgram.pid);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
@@ -647,7 +650,8 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			remoteProgram.kill('SIGKILL');
+			treeKill(remoteProgram.pid);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
 	});
@@ -725,7 +729,8 @@ suite('Go Debug Adapter', function () {
 				});
 			});
 			assert.strictEqual(response, secondResponse);
-			remoteProgram.kill('SIGKILL');
+			treeKill(remoteProgram.pid);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
 });
