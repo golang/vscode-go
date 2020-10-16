@@ -566,7 +566,7 @@ suite('Go Debug Adapter', function () {
 			};
 			await setUpRemoteAttach(config);
 
-			childProcess.kill();
+			childProcess.kill('SIGKILL');
 		});
 	});
 
@@ -644,7 +644,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			remoteProgram.kill();
+			remoteProgram.kill('SIGKILL');
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
@@ -679,7 +679,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			remoteProgram.kill();
+			remoteProgram.kill('SIGKILL');
 		});
 
 	});
@@ -885,7 +885,7 @@ suite('Go Debug Adapter', function () {
 				});
 			});
 			assert.strictEqual(response, secondResponse);
-			remoteProgram.kill();
+			remoteProgram.kill('SIGKILL');
 		});
 	});
 });
