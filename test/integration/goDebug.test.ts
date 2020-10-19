@@ -542,9 +542,9 @@ suite('Go Debug Adapter', function () {
 				port,
 			};
 			await setUpRemoteAttach(config);
-			await dc.disconnectRequest({restart: false});
+
 			await killProcessTree(childProcess);
-			await new Promise((resolve) => setTimeout(resolve, 10_000));
+			await new Promise((resolve) => setTimeout(resolve, 15_000));
 		});
 	});
 
@@ -622,9 +622,8 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 10_000));
+			await new Promise((resolve) => setTimeout(resolve, 15_000));
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
@@ -658,9 +657,8 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 10_000));
+			await new Promise((resolve) => setTimeout(resolve, 15_000));
 		});
 
 	});
@@ -739,7 +737,7 @@ suite('Go Debug Adapter', function () {
 			assert.strictEqual(response, secondResponse);
 
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 10_000));
+			await new Promise((resolve) => setTimeout(resolve, 15_000));
 		});
 	});
 });
