@@ -1147,13 +1147,41 @@ function daysBetween(a: Date, b: Date): number {
 	return msBetween(a, b) / timeDay;
 }
 
-// minutesBetween returns the number of days between a and b.
+// minutesBetween returns the number of minutes between a and b.
 function minutesBetween(a: Date, b: Date): number {
 	return msBetween(a, b) / timeMinute;
 }
 
 function msBetween(a: Date, b: Date): number {
 	return Math.abs(a.getTime() - b.getTime());
+}
+
+export function showServerOutputChannel() {
+	if (!languageServerIsRunning) {
+		vscode.window.showInformationMessage(`gopls is not running`);
+		return;
+	}
+	// likely show() is asynchronous, despite the documentation
+	serverOutputChannel.show();
+	let found: vscode.TextDocument;
+	for (const doc of vscode.workspace.textDocuments) {
+		if (doc.fileName.indexOf('extension-output-') !== -1) {
+			// despite show() above, this might not get the output we want, so check
+			const contents = doc.getText();
+			if (contents.indexOf('[Info  - ') === -1) {
+				continue;
+			}
+			if (found !== undefined) {
+				vscode.window.showInformationMessage('multiple docs named extension-output-...');
+			}
+			found = doc;
+			// .log, as some decoration is better than none
+			vscode.workspace.openTextDocument({language: 'log', content: contents});
+		}
+	}
+	if (found === undefined) {
+		vscode.window.showErrorMessage('make sure "gopls (server)" output is showing');
+	}
 }
 
 function collectGoplsLog(): string {
