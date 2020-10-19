@@ -33,10 +33,9 @@ import {
 } from './goInstallTools';
 import {
 	languageServerIsRunning,
-	promptForLanguageServerDefaultChange,
-	resetSurveyConfig,
-	showSurveyConfig,
-	startLanguageServerWithFallback, watchLanguageServerConfiguration
+	promptForLanguageServerDefaultChange, resetSurveyConfig, showServerOutputChannel,
+	showSurveyConfig, startLanguageServerWithFallback,
+	watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
@@ -451,6 +450,10 @@ export function activate(ctx: vscode.ExtensionContext) {
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.build.workspace', () => buildCode(true)));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.extractServerChannel', () => {
+		showServerOutputChannel();
+	}));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
 		if (!languageServerIsRunning) {
