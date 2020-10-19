@@ -280,7 +280,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
 suite('Go Debug Adapter', function () {
-	this.timeout(150_000);
+	this.timeout(160_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
@@ -544,7 +544,7 @@ suite('Go Debug Adapter', function () {
 			await setUpRemoteAttach(config);
 			await dc.disconnectRequest({restart: false});
 			await killProcessTree(childProcess);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
+			await new Promise((resolve) => setTimeout(resolve, 10_000));
 		});
 	});
 
@@ -624,7 +624,7 @@ suite('Go Debug Adapter', function () {
 
 			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
+			await new Promise((resolve) => setTimeout(resolve, 10_000));
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
@@ -660,7 +660,7 @@ suite('Go Debug Adapter', function () {
 
 			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
+			await new Promise((resolve) => setTimeout(resolve, 10_000));
 		});
 
 	});
@@ -739,7 +739,7 @@ suite('Go Debug Adapter', function () {
 			assert.strictEqual(response, secondResponse);
 
 			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
+			await new Promise((resolve) => setTimeout(resolve, 10_000));
 		});
 	});
 });
