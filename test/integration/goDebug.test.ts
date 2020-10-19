@@ -345,12 +345,12 @@ suite('Go Debug Adapter', function () {
 			['debug', '--continue', '--accept-multiclient', '--api-version=2', '--headless', `--listen=127.0.0.1:${port}`],
 			{cwd: serverFolder});
 
-		childProcess.stderr.on('data', (data) => console.log('err:',data.toString()));
-		childProcess.stdout.on('data', (data) => console.log('out:',data.toString()));
+		childProcess.stderr.on('data', (data) => console.log('err:', data.toString()));
+		childProcess.stdout.on('data', (data) => console.log('out:', data.toString()));
 
 		console.log('waiting...')
 		// Give dlv a few minutes to start.
-		await new Promise((resolve) => setTimeout(resolve, 5_000));
+		await new Promise((resolve) => setTimeout(resolve, 10_000));
 		console.log('done waiting.')
 		return childProcess;
 	}
