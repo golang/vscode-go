@@ -17,6 +17,7 @@ import {
 	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import { getBinPath } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 
 suite('Path Manipulation Tests', () => {
@@ -338,13 +339,19 @@ suite('Go Debug Adapter', function () {
 	 */
 	async function setUpRemoteProgram(port: number): Promise<ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
-		const childProcess = spawn('dlv',
+		const toolPath = getBinPath('dlv');
+		console.log(`spawning ${toolPath}`)
+		const childProcess = spawn(toolPath,
 			['debug', '--continue', '--accept-multiclient', '--api-version=2', '--headless', `--listen=127.0.0.1:${port}`],
 			{cwd: serverFolder});
 
+		childProcess.stderr.on('data', (data) => console.log('err:',data.toString()));
+		childProcess.stdout.on('data', (data) => console.log('out:',data.toString()));
+
+		console.log('waiting...')
 		// Give dlv a few minutes to start.
 		await new Promise((resolve) => setTimeout(resolve, 5_000));
-
+		console.log('done waiting.')
 		return childProcess;
 	}
 
