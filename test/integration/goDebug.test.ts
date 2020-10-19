@@ -279,7 +279,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-suite.only('Go Debug Adapter', function () {
+suite('Go Debug Adapter', function () {
 	this.timeout(160_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
