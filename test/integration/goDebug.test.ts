@@ -5,7 +5,6 @@ import * as http from 'http';
 import * as path from 'path';
 import { stringify } from 'querystring';
 import * as sinon from 'sinon';
-import treeKill = require('tree-kill');
 import { DebugConfiguration } from 'vscode';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -18,6 +17,7 @@ import {
 	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import { killProcessTree } from '../../src/utils/processUtils';
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -567,7 +567,7 @@ suite('Go Debug Adapter', function () {
 			};
 			await setUpRemoteAttach(config);
 
-			treeKill(childProcess.pid);
+			await killProcessTree(childProcess);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
@@ -646,7 +646,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			treeKill(remoteProgram.pid);
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
@@ -682,7 +682,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			treeKill(remoteProgram.pid);
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
@@ -889,7 +889,7 @@ suite('Go Debug Adapter', function () {
 				});
 			});
 			assert.strictEqual(response, secondResponse);
-			treeKill(remoteProgram.pid);
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
