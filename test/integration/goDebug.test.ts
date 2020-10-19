@@ -278,8 +278,8 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-suite('Go Debug Adapter', function () {
-	this.timeout(50000);
+suite.only('Go Debug Adapter', function () {
+	this.timeout(150_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
@@ -293,7 +293,7 @@ suite('Go Debug Adapter', function () {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
 
 		// Launching delve may take longer than the default timeout of 5000.
-		dc.defaultTimeout = 20000;
+		dc.defaultTimeout = 30_000;
 
 		// To connect to a running debug server for debugging the tests, specify PORT.
 		return dc.start();
@@ -521,7 +521,8 @@ suite('Go Debug Adapter', function () {
 
 	suite('remote attach', () => {
 		test('should attach to a headless dlv instance and finish the initialize sequence successfully', async () => {
-			this.timeout(10_000);
+			this.timeout(100_000);
+			dc.defaultTimeout = 50_000;
 			const port = 3456;
 			const childProcess = await setUpRemoteProgram(port);
 
@@ -534,7 +535,7 @@ suite('Go Debug Adapter', function () {
 				port,
 			};
 			await setUpRemoteAttach(config);
-
+			await dc.disconnectRequest({restart: false});
 			await killProcessTree(childProcess);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
@@ -614,12 +615,12 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
+			await dc.disconnectRequest({restart:false});
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const port = 3456;
@@ -650,6 +651,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
+			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
@@ -690,7 +692,6 @@ suite('Go Debug Adapter', function () {
 
 	suite('disconnect', () => {
 		test('disconnect should work for remote attach', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const port = 3456;
@@ -729,6 +730,7 @@ suite('Go Debug Adapter', function () {
 				});
 			});
 			assert.strictEqual(response, secondResponse);
+			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
