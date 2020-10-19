@@ -320,7 +320,7 @@ suite('Go Debug Adapter', function () {
 
 		console.log('waiting...')
 		// Give dlv a few minutes to start.
-		await new Promise((resolve) => setTimeout(resolve, 5_000));
+		await new Promise((resolve) => setTimeout(resolve, 10_000));
 		console.log('done waiting.')
 		return childProcess;
 	}
@@ -737,7 +737,7 @@ suite('Go Debug Adapter', function () {
 				});
 			});
 			assert.strictEqual(response, secondResponse);
-			await dc.disconnectRequest({restart: false});
+
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
