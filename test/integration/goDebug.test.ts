@@ -280,7 +280,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
 suite('Go Debug Adapter', function () {
-	this.timeout(50000);
+	this.timeout(150_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
@@ -646,6 +646,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
+			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
