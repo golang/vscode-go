@@ -278,7 +278,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-suite.only('Go Debug Adapter', function () {
+suite('Go Debug Adapter', function () {
 	this.timeout(150_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -615,7 +615,7 @@ suite.only('Go Debug Adapter', function () {
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			await dc.disconnectRequest({restart:false});
+			await dc.disconnectRequest({restart: false});
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
