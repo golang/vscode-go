@@ -34,6 +34,8 @@ import {
 import {
 	languageServerIsRunning,
 	promptForLanguageServerDefaultChange,
+	resetSurveyConfig,
+	showSurveyConfig,
 	startLanguageServerWithFallback, watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -506,6 +508,12 @@ export function activate(ctx: vscode.ExtensionContext) {
 			chooseGoEnvironment();
 		})
 	);
+
+	// Survey related commands
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g

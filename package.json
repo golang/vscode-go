@@ -365,6 +365,16 @@
         "command": "go.environment.choose",
         "title": "Go: Choose Go Environment",
         "description": "Choose a different Go version or binary for this project. (WIP)"
+      },
+      {
+        "command": "go.survey.showConfig",
+        "title": "Go: Show Survey Configuration",
+        "description": "Show the current Go survey configuration"
+      },
+      {
+        "command": "go.survey.resetConfig",
+        "title": "Go: Reset Survey Configuration",
+        "description": "Reset the current Go survey configuration history"
       }
     ],
     "breakpoints": [

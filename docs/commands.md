@@ -190,3 +190,11 @@ Restart the running instance of the language server
 ### `Go: Choose Go Environment`
 
 Choose a different Go version or binary for this project. (WIP)
+
+### `Go: Show Survey Configuration`
+
+Show the current Go survey configuration
+
+### `Go: Reset Survey Configuration`
+
+Reset the current Go survey configuration history

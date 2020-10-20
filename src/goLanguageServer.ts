@@ -45,7 +45,7 @@ import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
-import { updateLanguageServerIconGoStatusBar } from './goStatus';
+import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
@@ -1005,8 +1005,31 @@ function getSurveyConfig(): SurveyConfig {
 	}
 }
 
+export async function showSurveyConfig() {
+	outputChannel.appendLine('Gopls Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getSurveyConfig(), null, 2));
+	outputChannel.show();
+
+	const selected = await vscode.window.showInformationMessage(`Maybe prompt for survey?`, 'Yes', 'No');
+	switch (selected) {
+		case 'Yes':
+			maybePromptForGoplsSurvey();
+			break;
+		default:
+			break;
+	}
+}
+
+export function resetSurveyConfig() {
+	flushSurveyConfig(null);
+}
+
 function flushSurveyConfig(cfg: SurveyConfig) {
-	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+	if (cfg) {
+		updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+	} else {
+		updateGlobalState(goplsSurveyConfig, null);  // reset
+	}
 }
 
 // errorKind refers to the different possible kinds of gopls errors.
