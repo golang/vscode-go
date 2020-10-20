@@ -367,7 +367,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
 			(err, stdout, stderr) => {
 				if (err) {
-					outputChannel.append(`Failed to run '${goRuntimePath} env' : ${err}\n${stderr}`);
+					outputChannel.append(`Failed to run '${goRuntimePath} env' (cwd: ${getWorkspaceFolderPath()}): ${err}\n${stderr}`);
 					outputChannel.show();
 
 					vscode.window.showErrorMessage(`Failed to run '${goRuntimePath} env. The config change may not be applied correctly.`);
