@@ -72,6 +72,7 @@
     "@types/vscode": "^1.41.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
+    "get-port": "^5.1.1",
     "mocha": "^7.1.1",
     "nan": "^2.14.1",
     "prettier": "^2.0.4",

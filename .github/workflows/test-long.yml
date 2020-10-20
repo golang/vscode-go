@@ -13,7 +13,7 @@ jobs:
 
     # Not containing 'SKIP CI' in the commit message AND
     # (Either non-Windows OR triggered on 'push' (if triggered by 'pull_request', github.base_ref is not empty)
-    if: github.repository == 'suzmue/vscode-go' && !contains(github.event.head_commit.message, 'SKIP CI')
+    if: github.repository == 'golang/vscode-go' && !contains(github.event.head_commit.message, 'SKIP CI')
     timeout-minutes: 20
     strategy:
       fail-fast: false
