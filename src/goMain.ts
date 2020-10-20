@@ -464,7 +464,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 		}
 		vscode.commands.executeCommand('gc_details', doc)
 			.then(undefined, (reason0) => {
-				vscode.commands.executeCommand('gopls_gc_details', doc)
+				vscode.commands.executeCommand('gopls.gc_details', doc)
 					.then(undefined, (reason1) => {
 						vscode.window.showErrorMessage(`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`);
 					});
