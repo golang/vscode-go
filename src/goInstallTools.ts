@@ -38,7 +38,7 @@ import {
 	GoVersion,
 	rmdirRecursive,
 } from './util';
-import { envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
+import { correctBinname, envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
@@ -200,6 +200,11 @@ export async function installTool(
 	} else {
 		envForTools['GO111MODULE'] = 'off';
 	}
+	// Some users use direnv-like setup where the choice of go is affected by
+	// the current directory path. In order to avoid choosing a different go,
+	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
+	// (which can be a wrapper script that switches 'go').
+	const goBinary = path.join(getCurrentGoRoot(), 'bin', correctBinname('go'));
 
 	// Build the arguments list for the tool installation.
 	const args = ['get', '-v'];
@@ -230,8 +235,9 @@ export async function installTool(
 			cwd: toolsTmpDir,
 		};
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goVersion.binaryPath, args, opts);
+		const { stdout, stderr } = await execFile(goBinary, args, opts);
 		output = `${stdout} ${stderr}`;
+		logVerbose(`install: %s %s\n%s%s`, goBinary, args.join(' '), stdout, stderr);
 
 		// TODO(rstambler): Figure out why this happens and maybe delete it.
 		if (stderr.indexOf('unexpected directory layout:') > -1) {
