@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
 import * as sinon from 'sinon';
-import treeKill = require('tree-kill');
 import { DebugConfiguration } from 'vscode';
 import {DebugClient} from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -17,6 +16,8 @@ import {
 	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import { getBinPath } from '../../src/util';
+import { killProcessTree } from '../../src/utils/processUtils';
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -279,7 +280,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
 suite('Go Debug Adapter', function () {
-	this.timeout(50000);
+	this.timeout(60_000);
 
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
@@ -293,7 +294,7 @@ suite('Go Debug Adapter', function () {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
 
 		// Launching delve may take longer than the default timeout of 5000.
-		dc.defaultTimeout = 20000;
+		dc.defaultTimeout = 20_000;
 
 		// To connect to a running debug server for debugging the tests, specify PORT.
 		return dc.start();
@@ -302,19 +303,19 @@ suite('Go Debug Adapter', function () {
 	teardown( () =>  dc.stop() );
 
 	/**
-	 * This function sets up a server that returns helloworld on port 8080.
+	 * This function sets up a server that returns helloworld on port server.
 	 * The server will be started as a Delve remote headless instance
 	 * that will listen on the specified port.
 	 */
-	async function setUpRemoteProgram(port: number): Promise<ChildProcess> {
+	async function setUpRemoteProgram(port: number, server: number): Promise<ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
-		const childProcess = spawn('dlv',
+		const toolPath = getBinPath('dlv');
+		const childProcess = spawn(toolPath,
 			['debug', '--continue', '--accept-multiclient', '--api-version=2', '--headless', `--listen=127.0.0.1:${port}`],
-			{cwd: serverFolder});
+			{cwd: serverFolder,  env: { PORT: `${server}`, ...process.env}});
 
 		// Give dlv a few minutes to start.
-		await new Promise((resolve) => setTimeout(resolve, 5_000));
-
+		await new Promise((resolve) => setTimeout(resolve, 10_000));
 		return childProcess;
 	}
 
@@ -521,9 +522,8 @@ suite('Go Debug Adapter', function () {
 
 	suite('remote attach', () => {
 		test('should attach to a headless dlv instance and finish the initialize sequence successfully', async () => {
-			this.timeout(10_000);
 			const port = 3456;
-			const childProcess = await setUpRemoteProgram(port);
+			const childProcess = await setUpRemoteProgram(port, 8081);
 
 			const config = {
 				name: 'Attach',
@@ -535,7 +535,8 @@ suite('Go Debug Adapter', function () {
 			};
 			await setUpRemoteAttach(config);
 
-			treeKill(childProcess.pid);
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(childProcess);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
@@ -588,11 +589,10 @@ suite('Go Debug Adapter', function () {
 		});
 
 		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const port = 3456;
-			const remoteProgram = await setUpRemoteProgram(port);
+			const remoteProgram = await setUpRemoteProgram(port, 8082);
 
 			const config = {
 				name: 'Attach',
@@ -610,20 +610,20 @@ suite('Go Debug Adapter', function () {
 
 			// Calls the helloworld server to make the breakpoint hit.
 			const stopEvent = await waitForBreakpoint(
-				() => http.get('http://localhost:8080').on('error', (data) => console.log(data)));
+				() => http.get(`http://localhost:8082`).on('error', (data) => console.log(data)));
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			treeKill(remoteProgram.pid);
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const port = 3456;
-			const remoteProgram = await setUpRemoteProgram(port);
+			const remoteProgram = await setUpRemoteProgram(port, 8083);
 
 			const config = {
 				name: 'Attach',
@@ -646,11 +646,12 @@ suite('Go Debug Adapter', function () {
 
 			// Calls the helloworld server to make the breakpoint hit.
 			const stopEvent = await waitForBreakpoint(
-				() => http.get('http://localhost:8080').on('error', (data) => console.log(data)));
+				() => http.get('http://localhost:8083').on('error', (data) => console.log(data)));
 			assert.ok(stopEvent && stopEvent.body);
 			assert.strictEqual(stopEvent.body!.reason, 'breakpoint');
 
-			treeKill(remoteProgram.pid);
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
@@ -690,11 +691,10 @@ suite('Go Debug Adapter', function () {
 
 	suite('disconnect', () => {
 		test('disconnect should work for remote attach', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const port = 3456;
-			const remoteProgram = await setUpRemoteProgram(port);
+			const remoteProgram = await setUpRemoteProgram(port, 8084);
 
 			const config = {
 				name: 'Attach',
@@ -713,7 +713,7 @@ suite('Go Debug Adapter', function () {
 			// Calls the helloworld server to get a response.
 			let response = '';
 			await new Promise((resolve) => {
-				http.get('http://localhost:8080', (res) => {
+				http.get('http://localhost:8084', (res) => {
 					res.on('data', (data) => response += data);
 					res.on('end', () => resolve());
 				});
@@ -723,13 +723,14 @@ suite('Go Debug Adapter', function () {
 			// Checks that after the disconnect, the helloworld server still works.
 			let secondResponse = '';
 			await new Promise((resolve) => {
-				http.get('http://localhost:8080', (res) => {
+				http.get('http://localhost:8084', (res) => {
 					res.on('data', (data) => secondResponse += data);
 					res.on('end', () => resolve());
 				});
 			});
 			assert.strictEqual(response, secondResponse);
-			treeKill(remoteProgram.pid);
+
+			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
