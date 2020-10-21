@@ -111,7 +111,8 @@
       {
         "id": "go.mod",
         "extensions": [
-          "go.mod"
+          "go.mod",
+          "gopls.mod"
         ],
         "aliases": [
           "Go Module File"
