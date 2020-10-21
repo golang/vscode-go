@@ -45,7 +45,7 @@ import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
 import { GoRenameProvider } from './goRename';
 import { GoSignatureHelpProvider } from './goSignature';
-import { updateLanguageServerIconGoStatusBar } from './goStatus';
+import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
@@ -85,6 +85,10 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // restartCommand is the command used by the user to restart the language
 // server.
 let restartCommand: vscode.Disposable;
+
+// When enabled, users may be prompted to fill out the gopls survey.
+// For now, we turn it on in the Nightly extension to test it.
+const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
 
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
@@ -138,7 +142,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig();
-		if (!cfg.enabled) {
+		if (!goplsSurveyOn || !cfg.enabled) {
 			return;
 		}
 		maybePromptForGoplsSurvey();
@@ -1001,8 +1005,31 @@ function getSurveyConfig(): SurveyConfig {
 	}
 }
 
+export async function showSurveyConfig() {
+	outputChannel.appendLine('Gopls Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getSurveyConfig(), null, 2));
+	outputChannel.show();
+
+	const selected = await vscode.window.showInformationMessage(`Maybe prompt for survey?`, 'Yes', 'No');
+	switch (selected) {
+		case 'Yes':
+			maybePromptForGoplsSurvey();
+			break;
+		default:
+			break;
+	}
+}
+
+export function resetSurveyConfig() {
+	flushSurveyConfig(null);
+}
+
 function flushSurveyConfig(cfg: SurveyConfig) {
-	updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+	if (cfg) {
+		updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+	} else {
+		updateGlobalState(goplsSurveyConfig, null);  // reset
+	}
 }
 
 // errorKind refers to the different possible kinds of gopls errors.

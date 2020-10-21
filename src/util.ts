@@ -348,11 +348,12 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion | unde
 		}
 		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
+	const docUri = vscode.window.activeTextEditor?.document.uri;
+	const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
+
 	let goVersion: GoVersion;
 	try {
 		const env = toolExecutionEnvironment();
-		const docUri = vscode.window.activeTextEditor?.document.uri;
-		const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
@@ -361,7 +362,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion | unde
 		}
 		goVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
-		warn(`failed to run "${goRuntimePath} version": ${err}`);
+		warn(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
 		return;
 	}
 	if (!goBinPath) {  // if getGoVersion was called with a given goBinPath, don't cache the result.

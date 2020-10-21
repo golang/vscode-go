@@ -34,6 +34,8 @@ import {
 import {
 	languageServerIsRunning,
 	promptForLanguageServerDefaultChange,
+	resetSurveyConfig,
+	showSurveyConfig,
 	startLanguageServerWithFallback, watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -462,7 +464,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 		}
 		vscode.commands.executeCommand('gc_details', doc)
 			.then(undefined, (reason0) => {
-				vscode.commands.executeCommand('gopls_gc_details', doc)
+				vscode.commands.executeCommand('gopls.gc_details', doc)
 					.then(undefined, (reason1) => {
 						vscode.window.showErrorMessage(`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`);
 					});
@@ -506,6 +508,12 @@ export function activate(ctx: vscode.ExtensionContext) {
 			chooseGoEnvironment();
 		})
 	);
+
+	// Survey related commands
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
