@@ -61,6 +61,8 @@ You should immediately see a prompt in the bottom-right corner of your screen ti
 
 If you see an error that looks like `command Go: Install/Update Tools not found`, it means that the extension has failed to activate and register its commands. Please uninstall and then reinstall the extension.
 
+When the extension is active, you should see the [Go status bar](docs/ui.md) in the bottom left corner.
+
 ### Start coding
 
 You're ready to Go!
