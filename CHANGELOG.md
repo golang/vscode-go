@@ -1,3 +1,41 @@
+## v0.18.0 - 23rd Oct, 2020
+
+Unified Go status UI ⚡, many debugger feature improvements, and LSP 3.16 features! A list of all issues fixed with this release can be found in the [v0.18.0 milestone](https://github.com/golang/vscode-go/milestone/11).
+
+### New Features
+- The new Go status bar provides a menu to manage the go version, open the gopls trace, open the `go.mod` file, and more. The old `Go Modules` status bar was removed in favor of this new unified status bar. See [VS Code Go UI documentation](https://github.com/golang/vscode-go/blob/master/docs/ui.md) to learn more about this.
+- New `Go: Toggle gc details` command toggles the display of compiler optimization choice for the open Go source file ([CL 256658](https://go-review.googlesource.com/c/vscode-go/+/256658)).
+- Upgraded LSP to [`3.16`](https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/#whatIsNew). Users of recent `gopls` can access new features such as [`Call hierarchy`](https://code.visualstudio.com/updates/v1_33#_call-hierarchy) and [`Semantic tokens`](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide#semantic-token-provider).
+
+### Enhancement
+
+- Debugging:
+  * Correctly presents the reason when the debugged program stops due to `panic` and `fatal error` ([Issue 648](https://github.com/golang/vscode-go/issues/649)).
+  * Be explicit about conditional breakpoint support ([Issue 781](https://github.com/golang/vscode-go/issues/781)).
+  * Debug Adapter logs all the environment variables passed to dlv when verbose logging is enabled.
+- Language Server Client: sends `gopls` config as LSP initialization options for correct workspace symbols computation ([CL 259138](https://go-review.googlesource.com/c/vscode-go/+/259138)).
+- Snippets: adds a placeholder for the `for` statement snippet ([Issue 734](https://github.com/golang/vscode-go/issues/734)).
+- Excludes `vendor` directories from `go.inferGopath` disable mechanism ([Issue 301](https://github.com/golang/vscode-go/issues/301)).
+- New `go.logging.level` setting allows extra logging to help debugging extension issues ([CL 256557](https://go-review.googlesource.com/c/vscode-go/+/256557)).
+- For Nightly extension users, `Go: Show Survey Config` and `Go: Reset Survey Config` commands are available.
+
+### Fixes
+- Fixed the bug that caused the debug adapter to leave bogus null items in the map type variable presentation ([Issue 199](https://github.com/golang/vscode-go/issues/199)).
+- Fixed several debug adapter bugs that caused remote debug to hang ([Issue 740](https://github.com/golang/vscode-go/issues/740), [766](https://github.com/golang/vscode-go/issues/766), [761](https://github.com/golang/vscode-go/issues/761), [764](https://github.com/golang/vscode-go/issues/764)).
+- Restored the correct handling of language server configuration change when users opt for enabling language server and installing `gopls`. ([CL 258997](https://go-review.googlesource.com/c/vscode-go/+/258997)).
+- Fixed a diagnostics error visualization issue when multiple files with errors are open ([Issue 743](https://github.com/golang/vscode-go/issues/743)).
+- Changed the dependency tool installation to use the `go` command chosen from the current `GOROOT/bin`. This helps avoid using a different version of `go` command for `asdf` or `direnv` users ([Issue 757](https://github.com/golang/vscode-go/issues/757)).
+
+### Documentation
+- Documented the current limitation of symlink support in debugging ([CL 257204](https://go-review.googlesource.com/c/vscode-go/+/257204)), improved the instruction for CLI application debugging ([CL 259677](https://go-review.googlesource.com/c/vscode-go/+/259677)), and fixed syntax errors in example task configuration snippets ([CL 259077](https://go-review.googlesource.com/c/vscode-go/+/259077)).
+
+### Code Health
+- Added an initial set of tests for debug adapters ([Issue 137](https://github.com/golang/vscode-go/issues/137)). We will keep working to improve our test coverage.
+
+### Thanks
+
+Thank you for your contributions, @suzmue, @vologab, @amitlevy21, @danielhelfand, @egonk, @quoctruong, @polinasok, @pjweinbgo, @stamblerre, @hyangah!
+
 ## v0.17.2 - 29th Sep, 2020
 
 ### Fixes
