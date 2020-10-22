@@ -8,7 +8,7 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
+import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig } from './util';
 
 // Interface for the output from gomodifytags
@@ -163,6 +163,12 @@ function runGomodifytags(args: string[]) {
 	const p = cp.execFile(gomodifytags, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gomodifytags');
+			return;
+		}
+		if (err && (<any>err).code === 2 && args.indexOf("--template") > 0) {
+			vscode.window.showInformationMessage(`Cannot modify tags: you might be using a` +
+												`version that does not support --template`);
+			promptForUpdatingTool('gomodifytags');
 			return;
 		}
 		if (err) {
