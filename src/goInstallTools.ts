@@ -241,7 +241,7 @@ export async function installTool(
 
 		// TODO(rstambler): Figure out why this happens and maybe delete it.
 		if (stderr.indexOf('unexpected directory layout:') > -1) {
-			await execFile(goVersion.binaryPath, args, opts);
+			await execFile(goBinary, args, opts);
 		} else if (hasModSuffix(tool)) {
 			const gopath = env['GOPATH'];
 			if (!gopath) {
@@ -249,7 +249,7 @@ export async function installTool(
 			}
 			const destDir = gopath.split(path.delimiter)[0];
 			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
-			await execFile(goVersion.binaryPath, ['build', '-o', outputFile, importPath], opts);
+			await execFile(goBinary, ['build', '-o', outputFile, importPath], opts);
 		}
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${toolImportPath} (${toolInstallPath}) SUCCEEDED`);
