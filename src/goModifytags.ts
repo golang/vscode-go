@@ -33,7 +33,8 @@ export function addTags(commandArgs: GoTagsConfig) {
 		return;
 	}
 
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(([tags, options, transformValue, template]) => {
+	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then((
+		[tags, options, transformValue, template]) => {
 		if (!tags && !options) {
 			return;
 		}
@@ -118,7 +119,7 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 	const transformValue: string =
 		commandArgs && commandArgs.hasOwnProperty('transform') ? commandArgs['transform'] : config['transform'];
 	const format: string =
-		commandArgs && commandArgs.hasOwnProperty('template') ? commandArgs['template']: config['template'];
+		commandArgs && commandArgs.hasOwnProperty('template') ? commandArgs['template'] : config['template'];
 
 	if (!promptForTags) {
 		return Promise.resolve([tags, options, transformValue, format]);
