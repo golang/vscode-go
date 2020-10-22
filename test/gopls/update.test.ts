@@ -104,6 +104,7 @@ suite('gopls update tests', () => {
 			const got = await lsp.shouldUpdateLanguageServer(tool, {
 				enabled: true,
 				path: 'bad/path/to/gopls',
+				version: '',
 				checkForUpdates: true,
 				env: {},
 				features: {
