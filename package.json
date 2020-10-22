@@ -1693,7 +1693,8 @@
             "tags": "json",
             "options": "json=omitempty",
             "promptForTags": false,
-            "transform": "snakecase"
+            "transform": "snakecase",
+            "template": ""
           },
           "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, json tags are added.",
           "scope": "resource"

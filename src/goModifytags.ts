@@ -24,6 +24,7 @@ interface GoTagsConfig {
 	tags: string;
 	options: string;
 	promptForTags: boolean;
+	template: string;
 }
 
 export function addTags(commandArgs: GoTagsConfig) {
@@ -32,7 +33,7 @@ export function addTags(commandArgs: GoTagsConfig) {
 		return;
 	}
 
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(([tags, options, transformValue]) => {
+	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(([tags, options, transformValue, template]) => {
 		if (!tags && !options) {
 			return;
 		}
@@ -47,6 +48,10 @@ export function addTags(commandArgs: GoTagsConfig) {
 		if (transformValue) {
 			args.push('--transform');
 			args.push(transformValue);
+		}
+		if (template) {
+			args.push('--template');
+			args.push(template);
 		}
 		runGomodifytags(args);
 	});
@@ -112,9 +117,11 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 			: config['promptForTags'];
 	const transformValue: string =
 		commandArgs && commandArgs.hasOwnProperty('transform') ? commandArgs['transform'] : config['transform'];
+	const format: string =
+		commandArgs && commandArgs.hasOwnProperty('template') ? commandArgs['template']: config['template'];
 
 	if (!promptForTags) {
-		return Promise.resolve([tags, options, transformValue]);
+		return Promise.resolve([tags, options, transformValue, format]);
 	}
 
 	return vscode.window
@@ -135,7 +142,14 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 							prompt: 'Enter transform value'
 						})
 						.then((transformOption) => {
-							return [inputTags, inputOptions, transformOption];
+							return vscode.window
+							.showInputBox({
+								value: format,
+								prompt: 'Enter template value'
+							})
+							.then((template) => {
+								return [inputTags, inputOptions, transformOption, template];
+							});
 						});
 				});
 		});
