@@ -44,7 +44,7 @@ class Env {
 	// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
 	//
 	// So, when we start the gopls tests, we start the test extension host with a
-	// dummy workspace, ${projectDir}/test/gopls/testfixtures/src/workspace
+	// dummy workspace, ${projectDir}/test/gopls/testdata/src/workspace
 	// (see test/runTest.ts and launch.json).
 	// Then copy necessary files to the workspace using Env.reset() from the
 	// fixturesRoot directory.
@@ -59,8 +59,8 @@ class Env {
 		if (!projectDir) {
 			assert.fail('project directory cannot be determined');
 		}
-		this.workspaceDir = path.resolve(projectDir, 'test/gopls/testfixtures/src/workspace');
-		this.fixturesRoot = path.resolve(projectDir, 'test/fixtures');
+		this.workspaceDir = path.resolve(projectDir, 'test/gopls/testdata/src/workspace');
+		this.fixturesRoot = path.resolve(projectDir, 'test/testdata');
 		this.extension = vscode.extensions.getExtension(extensionId);
 		this.fakeOutputChannel = new FakeOutputChannel();
 

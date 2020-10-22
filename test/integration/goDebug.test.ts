@@ -3,8 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'querystring';
 import * as sinon from 'sinon';
-import {DebugClient} from 'vscode-debugadapter-testsupport';
-import {DebugProtocol} from 'vscode-debugprotocol';
+import { DebugClient } from 'vscode-debugadapter-testsupport';
+import { DebugProtocol } from 'vscode-debugprotocol';
 import {
 	Delve,
 	escapeGoModPath,
@@ -281,11 +281,11 @@ suite('Go Debug Adapter', function () {
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
-	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'fixtures');
+	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'testdata');
 
 	let dc: DebugClient;
 
-	setup( () => {
+	setup(() => {
 		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
 
 		// Launching delve may take longer than the default timeout of 5000.
@@ -295,7 +295,7 @@ suite('Go Debug Adapter', function () {
 		return dc.start();
 	});
 
-	teardown( () =>  dc.stop() );
+	teardown(() => dc.stop());
 
 	/**
 	 * Helper function to assert that a variable has a particular value.
@@ -311,9 +311,9 @@ suite('Go Debug Adapter', function () {
 	async function assertVariableValue(name: string, val: string): Promise<void> {
 		const threadsResponse = await dc.threadsRequest();
 		assert(threadsResponse.success);
-		const stackTraceResponse = await dc.stackTraceRequest({threadId: threadsResponse.body.threads[0].id});
+		const stackTraceResponse = await dc.stackTraceRequest({ threadId: threadsResponse.body.threads[0].id });
 		assert(stackTraceResponse.success);
-		const scopesResponse = await dc.scopesRequest({frameId: stackTraceResponse.body.stackFrames[0].id});
+		const scopesResponse = await dc.scopesRequest({ frameId: stackTraceResponse.body.stackFrames[0].id });
 		assert(scopesResponse.success);
 		const variablesResponse = await dc.variablesRequest({
 			variablesReference: scopesResponse.body.scopes[0].variablesReference
@@ -476,8 +476,8 @@ suite('Go Debug Adapter', function () {
 	// The file paths returned from delve use '/' not the native path
 	// separator, so we can replace any instances of '\' with '/', which
 	// allows the hitBreakpoint check to match.
-	const getBreakpointLocation =  (FILE: string, LINE: number) => {
-		return {path: FILE.replace(/\\/g, '/'), line: LINE };
+	const getBreakpointLocation = (FILE: string, LINE: number) => {
+		return { path: FILE.replace(/\\/g, '/'), line: LINE };
 	};
 
 	suite('setBreakpoints', () => {
@@ -498,7 +498,7 @@ suite('Go Debug Adapter', function () {
 			};
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE) );
+			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
 		test('should stop on a breakpoint in test file', () => {
@@ -517,7 +517,7 @@ suite('Go Debug Adapter', function () {
 			};
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE) );
+			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
 	});
@@ -542,8 +542,8 @@ suite('Go Debug Adapter', function () {
 
 				dc.waitForEvent('initialized').then(() => {
 					return dc.setBreakpointsRequest({
-						lines: [ location.line ],
-						breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+						lines: [location.line],
+						breakpoints: [{ line: location.line, condition: 'i == 2' }],
 						source: { path: location.path }
 					});
 				}).then(() => {
@@ -582,12 +582,12 @@ suite('Go Debug Adapter', function () {
 			).then(() =>
 				// Add a condition to the breakpoint, and make sure it runs until 'i == 2'.
 				dc.setBreakpointsRequest({
-					lines: [ location.line ],
-					breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+					lines: [location.line],
+					breakpoints: [{ line: location.line, condition: 'i == 2' }],
 					source: { path: location.path }
 				}).then(() =>
 					Promise.all([
-						dc.continueRequest({threadId: 1}),
+						dc.continueRequest({ threadId: 1 }),
 						dc.assertStoppedLocation('breakpoint', location)
 					]).then(() =>
 						// The program is stopped at the breakpoint, check to make sure 'i == 2'.
@@ -616,8 +616,8 @@ suite('Go Debug Adapter', function () {
 
 				dc.waitForEvent('initialized').then(() => {
 					return dc.setBreakpointsRequest({
-						lines: [ location.line ],
-						breakpoints: [ { line: location.line, condition: 'i == 2' } ],
+						lines: [location.line],
+						breakpoints: [{ line: location.line, condition: 'i == 2' }],
 						source: { path: location.path }
 					});
 				}).then(() => {
@@ -634,12 +634,12 @@ suite('Go Debug Adapter', function () {
 			).then(() =>
 				// Remove the breakpoint condition, and make sure the program runs until 'i == 3'.
 				dc.setBreakpointsRequest({
-					lines: [ location.line ],
-					breakpoints: [ { line: location.line } ],
+					lines: [location.line],
+					breakpoints: [{ line: location.line }],
 					source: { path: location.path }
 				}).then(() =>
 					Promise.all([
-						dc.continueRequest({threadId: 1}),
+						dc.continueRequest({ threadId: 1 }),
 						dc.assertStoppedLocation('breakpoint', location)
 					]).then(() =>
 						// The program is stopped at the breakpoint, check to make sure 'i == 3'.
@@ -669,7 +669,7 @@ suite('Go Debug Adapter', function () {
 
 				dc.waitForEvent('initialized').then(() => {
 					return dc.setExceptionBreakpointsRequest({
-						filters: [ 'all' ]
+						filters: ['all']
 					});
 				}).then(() => {
 					return dc.configurationDoneRequest();
@@ -677,7 +677,7 @@ suite('Go Debug Adapter', function () {
 
 				dc.launch(debugConfig),
 
-				dc.assertStoppedLocation('panic', {} )
+				dc.assertStoppedLocation('panic', {})
 			]);
 		});
 	});

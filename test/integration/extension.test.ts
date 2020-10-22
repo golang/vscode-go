@@ -68,7 +68,7 @@ suite('Go Extension Tests', function () {
 
 		repoPath = path.join(gopath, 'src', 'test');
 		fixturePath = path.join(repoPath, 'testfixture');
-		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures');
+		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 		generateTestsSourcePath = path.join(repoPath, 'generatetests');
 		generateFunctionTestSourcePath = path.join(repoPath, 'generatefunctiontest');
 		generatePackageTestSourcePath = path.join(repoPath, 'generatePackagetest');
@@ -1245,8 +1245,7 @@ encountered.
 				assert.equal(
 					expected.length,
 					labels.length,
-					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${
-					position.line + 1
+					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${position.line + 1
 					},${position.character + 1}) ${labels}`
 				);
 				expected.forEach((entry, index) => {

@@ -2,8 +2,8 @@ import * as path from 'path';
 import { runTests } from 'vscode-test';
 
 async function main() {
-		// The folder containing the Extension Manifest package.json
-		// Passed to `--extensionDevelopmentPath`
+	// The folder containing the Extension Manifest package.json
+	// Passed to `--extensionDevelopmentPath`
 	const extensionDevelopmentPath = path.resolve(__dirname, '../../');
 
 	let failed = false;
@@ -30,9 +30,9 @@ async function main() {
 		// dynamically adding folders.
 		// tslint:disable-next-line:max-line-length
 		// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
-		// So, we start the test extension host with a dummy workspace (test/gopls/testfixtures/src/workspace)
+		// So, we start the test extension host with a dummy workspace (test/gopls/testdata/src/workspace)
 		// and copy necessary files to the workspace.
-		const ws = path.resolve(extensionDevelopmentPath, 'test/gopls/testfixtures/src/workspace');
+		const ws = path.resolve(extensionDevelopmentPath, 'test/gopls/testdata/src/workspace');
 
 		await runTests({
 			extensionDevelopmentPath,

@@ -17,7 +17,7 @@ import { rmdirRecursive } from '../../src/util';
 suite('Test Go Test', function () {
 	this.timeout(10000);
 
-	const sourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'goTestTest');
+	const sourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'goTestTest');
 
 	let tmpGopath: string;
 	let repoPath: string;
@@ -50,7 +50,7 @@ suite('Test Go Test', function () {
 	}
 
 	async function runTest(
-		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean},
+		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean },
 		wantFiles: string[]) {
 
 		fs.copySync(sourcePath, repoPath, { recursive: true });
@@ -114,8 +114,8 @@ suite('Test Go Test', function () {
 			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
-				{ isMod: true, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
-				[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
+			{ isMod: true, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
+			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
 			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go')]);

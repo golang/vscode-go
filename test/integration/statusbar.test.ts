@@ -134,7 +134,7 @@ describe('#updateGoVarsFromConfig()', async function () {
 		// build a fake go binary and place it in tmpRootBin.
 		fs.mkdirSync(tmpRootBin);
 
-		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'testhelpers');
+		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'testhelpers');
 		const execFile = util.promisify(cp.execFile);
 		const goRuntimePath = ourutil.getBinPath('go');
 		const { stderr } = await execFile(

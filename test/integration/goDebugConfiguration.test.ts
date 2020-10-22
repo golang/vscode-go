@@ -16,7 +16,7 @@ suite('Debug Environment Variable Merge Test', () => {
 		await updateGoVarsFromConfig();
 
 		// Set up the test fixtures.
-		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures');
+		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 		const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
 	});
@@ -41,11 +41,11 @@ suite('Debug Environment Variable Merge Test', () => {
 
 	interface Input {
 		env?: { [key: string]: any };
-		envFile?: string|string[];
-		toolsEnv?: { [key: string]: any};
+		envFile?: string | string[];
+		toolsEnv?: { [key: string]: any };
 	}
 
-	function runTest(input: Input,	expected: { [key: string]: any}) {
+	function runTest(input: Input, expected: { [key: string]: any }) {
 		sandbox.stub(goEnv, 'toolExecutionEnvironment').returns(input.toolsEnv || {});
 		const config = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
 			type: 'go',
@@ -66,28 +66,31 @@ suite('Debug Environment Variable Merge Test', () => {
 	test('toolsEnvVars is propagated', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
-			GOOS: 'valueFromToolsEnv'};
+			GOOS: 'valueFromToolsEnv'
+		};
 
-		runTest({toolsEnv}, {
+		runTest({ toolsEnv }, {
 			GOPATH: '/gopath',
-			GOOS: 'valueFromToolsEnv'});
+			GOOS: 'valueFromToolsEnv'
+		});
 	});
 
 	test('preserves settings from launchArgs.env', () => {
-		const env = {GOPATH: 'valueFromEnv', GOOS: 'valueFromEnv2'};
-		runTest({env}, {
+		const env = { GOPATH: 'valueFromEnv', GOOS: 'valueFromEnv2' };
+		runTest({ env }, {
 			GOPATH: 'valueFromEnv',
-			GOOS: 'valueFromEnv2'});
+			GOOS: 'valueFromEnv2'
+		});
 	});
 
 	test('preserves settings from launchArgs.envFile', () => {
 		const envFile = path.join(tmpDir, 'env');
 		fs.writeFileSync(envFile, 'GOPATH=valueFromEnvFile');
-		runTest({envFile}, {GOPATH: 'valueFromEnvFile'});
+		runTest({ envFile }, { GOPATH: 'valueFromEnvFile' });
 	});
 
 	test('launchArgs.env overwrites launchArgs.envFile', () => {
-		const env = {SOMEVAR1: 'valueFromEnv'};
+		const env = { SOMEVAR1: 'valueFromEnv' };
 		const envFile = path.join(tmpDir, 'env');
 		fs.writeFileSync(envFile, [
 			'SOMEVAR1=valueFromEnvFile1',
@@ -95,7 +98,8 @@ suite('Debug Environment Variable Merge Test', () => {
 
 		runTest({ env, envFile }, {
 			SOMEVAR1: 'valueFromEnv',
-			SOMEVAR2: 'valueFromEnvFile2'});
+			SOMEVAR2: 'valueFromEnvFile2'
+		});
 	});
 
 	test('launchArgs.env overwrites toolsEnvVar', () => {
@@ -105,11 +109,12 @@ suite('Debug Environment Variable Merge Test', () => {
 			SOMEVAR2: 'valueFromToolsEnvVar2'
 		};
 
-		const env = {SOMEVAR1: 'valueFromEnv'};
+		const env = { SOMEVAR1: 'valueFromEnv' };
 		runTest({ env, toolsEnv }, {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromEnv',
-			SOMEVAR2: 'valueFromToolsEnvVar2'});
+			SOMEVAR2: 'valueFromToolsEnvVar2'
+		});
 	});
 
 	test('launchArgs.envFile overwrites toolsEnvVar', () => {
@@ -125,6 +130,7 @@ suite('Debug Environment Variable Merge Test', () => {
 		runTest({ toolsEnv, envFile }, {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromToolsEnvVar1',
-			SOMEVAR2: 'valueFromEnvFile2'});
+			SOMEVAR2: 'valueFromEnvFile2'
+		});
 	});
 });
