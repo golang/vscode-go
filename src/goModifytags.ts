@@ -165,7 +165,7 @@ function runGomodifytags(args: string[]) {
 			promptForMissingTool('gomodifytags');
 			return;
 		}
-		if (err && (<any>err).code === 2 && args.indexOf("--template") > 0) {
+		if (err && (<any>err).code === 2 && args.indexOf('--template') > 0) {
 			vscode.window.showInformationMessage(`Cannot modify tags: you might be using a` +
 												`version that does not support --template`);
 			promptForUpdatingTool('gomodifytags');
