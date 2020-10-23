@@ -313,35 +313,6 @@ suite('Go Debug Adapter', function () {
 	teardown(() => dc.stop());
 
 	/**
-	 * Helper function to assert that a variable has a particular value.
-	 * This should be called when the program is stopped.
-	 *
-	 * The following requests are issued by this function to determine the
-	 * value of the variable:
-	 * 	1. threadsRequest
-	 *  2. stackTraceRequest
-	 * 	3. scopesRequest
-	 *  4. variablesRequest
-	 */
-	async function assertVariableValue(name: string, val: string): Promise<void> {
-		const threadsResponse = await dc.threadsRequest();
-		assert(threadsResponse.success);
-		const stackTraceResponse = await dc.stackTraceRequest({ threadId: threadsResponse.body.threads[0].id });
-		assert(stackTraceResponse.success);
-		const scopesResponse = await dc.scopesRequest({ frameId: stackTraceResponse.body.stackFrames[0].id });
-		assert(scopesResponse.success);
-		const variablesResponse = await dc.variablesRequest({
-			variablesReference: scopesResponse.body.scopes[0].variablesReference
-		});
-		assert(variablesResponse.success);
-		// Locate the variable with the matching name.
-		const i = variablesResponse.body.variables.findIndex((v) => v.name === name);
-		assert(i >= 0);
-		// Check that the value of name is val.
-		assert.strictEqual(variablesResponse.body.variables[i].value, val);
-	}
-
-	/**
 	 * This function sets up a server that returns helloworld on port server.
 	 * The server will be started as a Delve remote headless instance
 	 * that will listen on the specified port.
@@ -436,6 +407,35 @@ suite('Go Debug Adapter', function () {
 				resolve();
 			})
 		]);
+	}
+
+	/**
+	 * Helper function to assert that a variable has a particular value.
+	 * This should be called when the program is stopped.
+	 *
+	 * The following requests are issued by this function to determine the
+	 * value of the variable:
+	 *  1. threadsRequest
+	 *  2. stackTraceRequest
+	 *  3. scopesRequest
+	 *  4. variablesRequest
+	 */
+	async function assertVariableValue(name: string, val: string): Promise<void> {
+		const threadsResponse = await dc.threadsRequest();
+		assert(threadsResponse.success);
+		const stackTraceResponse = await dc.stackTraceRequest({ threadId: threadsResponse.body.threads[0].id });
+		assert(stackTraceResponse.success);
+		const scopesResponse = await dc.scopesRequest({ frameId: stackTraceResponse.body.stackFrames[0].id });
+		assert(scopesResponse.success);
+		const variablesResponse = await dc.variablesRequest({
+			variablesReference: scopesResponse.body.scopes[0].variablesReference
+		});
+		assert(variablesResponse.success);
+		// Locate the variable with the matching name.
+		const i = variablesResponse.body.variables.findIndex((v) => v.name === name);
+		assert(i >= 0);
+		// Check that the value of name is val.
+		assert.strictEqual(variablesResponse.body.variables[i].value, val);
 	}
 
 	suite('basic', () => {
@@ -693,6 +693,55 @@ suite('Go Debug Adapter', function () {
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
 			this.timeout(30_000);
+			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
+			const BREAKPOINT_LINE = 29;
+			const server = await getPort();
+			const remoteProgram = await setUpRemoteProgram(attachConfig.port, server);
+
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+
+			// Setup attach without a breakpoint.
+			await setUpRemoteAttach(debugConfig);
+
+			// Now sets a breakpoint.
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+			const breakpointsResult = await dc.setBreakpointsRequest(
+				{source: {path: breakpointLocation.path}, breakpoints: [breakpointLocation]});
+			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints[0].verified);
+
+			// Calls the helloworld server to make the breakpoint hit.
+			await waitForBreakpoint(
+				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
+				breakpointLocation);
+
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(remoteProgram);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
+		});
+
+		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
+			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
+			const BREAKPOINT_LINE = 29;
+			const server = await getPort();
+			const remoteProgram = await setUpRemoteProgram(attachConfig.port, server);
+
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+
+			// Setup attach with a breakpoint.
+			await setUpRemoteAttach(debugConfig, [breakpointLocation]);
+
+			// Calls the helloworld server to make the breakpoint hit.
+			await waitForBreakpoint(
+				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
+				breakpointLocation);
+
+			await dc.disconnectRequest({restart: false});
+			await killProcessTree(remoteProgram);
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
+		});
+
+		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const server = await getPort();
