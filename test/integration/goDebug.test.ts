@@ -435,7 +435,8 @@ suite('Go Debug Adapter', function () {
 		const i = variablesResponse.body.variables.findIndex((v) => v.name === name);
 		assert(i >= 0);
 		// Check that the value of name is val.
-		assert.strictEqual(variablesResponse.body.variables[i].value, val);	}
+		assert.strictEqual(variablesResponse.body.variables[i].value, val);
+	}
 
 	suite('basic', () => {
 
@@ -585,43 +586,39 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('remote attach', () => {
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true',
-			async () => {
-			const server = await getPort();
-			const childProcess = await setUpRemoteProgram(attachConfig.port, server);
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+		let childProcess: ChildProcess;
+		let server: number;
+		let debugConfig: DebugConfiguration;
+		setup(async () => {
+			server = await getPort();
+			debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+		});
 
-			await setUpRemoteAttach(debugConfig);
-
+		teardown(async () => {
 			await dc.disconnectRequest({restart: false});
 			await killProcessTree(childProcess);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
+		});
+
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true',
+			async () => {
+			childProcess = await setUpRemoteProgram(attachConfig.port, server, true, true);
+
+			await setUpRemoteAttach(debugConfig);
 		});
 
 		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false',
 			async () => {
-			const server = await getPort();
-			const childProcess = await setUpRemoteProgram(attachConfig.port, server, false, false);
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+			childProcess = await setUpRemoteProgram(attachConfig.port, server, false, false);
 
 			await setUpRemoteAttach(debugConfig);
-
-			await dc.disconnectRequest({restart: false});
-			await killProcessTree(childProcess);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
 		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false',
 			async () => {
-			const server = await getPort();
-			const childProcess = await setUpRemoteProgram(attachConfig.port, server, true, false);
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, attachConfig);
+			childProcess = await setUpRemoteProgram(attachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
-
-			await dc.disconnectRequest({restart: false});
-			await killProcessTree(childProcess);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 	});
 
