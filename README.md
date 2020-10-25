@@ -99,6 +99,9 @@ A commonly customized feature is the linter, which is a tool used to provide cod
 
 However, you are welcome to use more advanced options like [`staticcheck`](https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview), [`golangci-lint`](https://golangci-lint.run/), or [`revive`](https://pkg.go.dev/github.com/mgechev/revive?tab=overview). This can be configured via the [`"go.lintTool"`](docs/settings.md#go.lintTool) setting, and the different options are explained more thoroughly in the [list of diagnostic tools](docs/tools.md#diagnostics).
 
+File not formatting properly? You may need to set the following property in your settings.json file under [go] "editor.defaultFormatter": "golang.go"
+
+
 ### [GOPATH](docs/gopath.md)
 
 Advanced users may want to set different `GOPATH`s for different projects or install the Go tools to a different `GOPATH`. This is possible and explained in the [`GOPATH documentation`](docs/gopath.md).
