@@ -16,7 +16,7 @@ import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironm
 import { getLanguageServerToolPath } from './goLanguageServer';
 import { logVerbose } from './goLogging';
 import { restartLanguageServer } from './goMain';
-import { addGoStatus, initGoEnvStatusBar, outputChannel, removeGoStatus } from './goStatus';
+import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
 	disableModulesForWildcard,
@@ -414,7 +414,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoEnvStatusBar();
+				initGoStatusBar();
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();

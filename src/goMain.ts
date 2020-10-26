@@ -45,7 +45,7 @@ import { GO111MODULE, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, outputChannel, showHideStatus } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
@@ -589,7 +589,7 @@ function addOnChangeTextDocumentListeners(ctx: vscode.ExtensionContext) {
 }
 
 function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
-	[showHideStatus, applyCodeCoverage].forEach((listener) => {
+	[updateGoStatusBar, applyCodeCoverage].forEach((listener) => {
 		// Call the listeners on initilization for current active text editor
 		if (!!vscode.window.activeTextEditor) {
 			listener(vscode.window.activeTextEditor);

@@ -25,24 +25,18 @@ let statusBarEntry: vscode.StatusBarItem;
 let modulePath: string;
 export const languageServerIcon = '$(zap)';
 
-export function showHideStatus(editor: vscode.TextEditor) {
-	// Update the status bar entry
-	if (!editor) {
-		hideGoStatusBar();
-	} else {
-		showGoStatusBar();
-		// Only update the module path if we are in a Go file.
-		// This allows the user to open output windows without losing
-		// the go.mod information in the status bar.
-		if (isGoFile(editor.document)) {
-			isModSupported(editor.document.uri).then((isMod) => {
-				if (isMod) {
-					getModFolderPath(editor.document.uri).then((p) => modulePath = p);
-				} else {
-					modulePath = '';
-				}
-			});
-		}
+export function updateGoStatusBar(editor: vscode.TextEditor) {
+	// Only update the module path if we are in a Go file.
+	// This allows the user to open output windows without losing
+	// the go.mod information in the status bar.
+	if (!!editor && isGoFile(editor.document)) {
+		isModSupported(editor.document.uri).then((isMod) => {
+			if (isMod) {
+				getModFolderPath(editor.document.uri).then((p) => modulePath = p);
+			} else {
+				modulePath = '';
+			}
+		});
 	}
 }
 
@@ -93,7 +87,7 @@ export async function expandGoStatusBar() {
 /**
  * Initialize the status bar item with current Go binary
  */
-export async function initGoEnvStatusBar() {
+export async function initGoStatusBar() {
 	if (!goEnvStatusbarItem) {
 		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 	}
@@ -110,7 +104,7 @@ export async function initGoEnvStatusBar() {
 	const cfg = buildLanguageServerConfig();
 	updateLanguageServerIconGoStatusBar(true, cfg.serverName);
 
-	showHideStatus(vscode.window.activeTextEditor);
+	showGoStatusBar();
 }
 
 export async function updateLanguageServerIconGoStatusBar(started: boolean, server: string) {
@@ -150,21 +144,6 @@ export function showGoStatusBar() {
 	if (!!goEnvStatusbarItem) {
 		goEnvStatusbarItem.show();
 	}
-	if (!!statusBarEntry) {
-		statusBarEntry.show();
-	}
-}
-
-/**
- * Hide the Go statusbar items on the statusbar
- */
-export function hideGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
-		goEnvStatusbarItem.hide();
-	}
-	if (!!statusBarEntry) {
-		statusBarEntry.hide();
-	}
 }
 
 export function removeGoStatus() {
@@ -178,5 +157,5 @@ export function addGoStatus(message: string, command: string, tooltip?: string) 
 	statusBarEntry.text = `$(alert) ${message}`;
 	statusBarEntry.command = command;
 	statusBarEntry.tooltip = tooltip;
-	showHideStatus(vscode.window.activeTextEditor);
+	statusBarEntry.show();
 }
