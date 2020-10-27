@@ -7,6 +7,8 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import parse = require('yargs-parser');
+import unparse = require('yargs-unparser');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
@@ -92,6 +94,28 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
 		}
 
+		// Remove any '--gcflags' entries and show a warning
+		if (debugConfiguration['buildFlags']) {
+			const resp = this.removeFlag(debugConfiguration['buildFlags'], 'gcflags');
+			if (resp.removed) {
+				debugConfiguration['buildFlags'] = resp.args;
+				this.showWarning(
+					'ignoreDebugGCFlagsWarning',
+					`User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+				);
+			}
+		}
+		if (debugConfiguration['env'] && debugConfiguration['env']['GOFLAGS']) {
+			const resp = this.removeFlag(debugConfiguration['env']['GOFLAGS'], 'gcflags');
+			if (resp.removed) {
+				debugConfiguration['env']['GOFLAGS'] = resp.args;
+				this.showWarning(
+					'ignoreDebugGCFlagsWarning',
+					`User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+				);
+			}
+		}
+
 		debugConfiguration['dlvToolPath'] = getBinPath('dlv');
 		if (!path.isAbsolute(debugConfiguration['dlvToolPath'])) {
 			promptForMissingTool('dlv');
@@ -155,5 +179,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				updateGlobalState(ignoreWarningKey, true);
 			}
 		});
+	}
+
+	private removeFlag(args: string, flag: string): {args: string, removed: boolean} {
+		const argv = parse(args, {configuration: {'short-option-groups': false}});
+		if (argv[flag]) {
+			delete argv[flag];
+			return { args: unparse(argv).join(' '), removed: true };
+		}
+		return {args, removed: false};
 	}
 }
