@@ -89,20 +89,20 @@ prepare_nightly() {
 
 # setup dependencies required for tests.
 install_dependencies() {
-	GO111MODULE=on go get -x golang.org/x/tools/gopls
-	GO111MODULE=on go get -x github.com/acroca/go-symbols
-	GO111MODULE=on go get -x github.com/cweill/gotests/...
-	GO111MODULE=on go get -x github.com/davidrjenni/reftools/cmd/fillstruct
-	GO111MODULE=on go get -x github.com/haya14busa/goplay/cmd/goplay
-	GO111MODULE=on go get -x github.com/mdempsky/gocode
-	GO111MODULE=on go get -x github.com/ramya-rao-a/go-outline
-	GO111MODULE=on go get -x github.com/rogpeppe/godef
-	GO111MODULE=on go get -x github.com/sqs/goreturns
-	GO111MODULE=on go get -x github.com/uudashr/gopkgs/v2/cmd/gopkgs
-	GO111MODULE=on go get -x github.com/zmb3/gogetdoc
-	GO111MODULE=on go get -x golang.org/x/lint/golint
-	GO111MODULE=on go get -x golang.org/x/tools/cmd/gorename
-	GO111MODULE=on go get -x github.com/go-delve/delve/cmd/dlv
+	GO111MODULE=on go get golang.org/x/tools/gopls
+	GO111MODULE=on go get github.com/acroca/go-symbols
+	GO111MODULE=on go get github.com/cweill/gotests/...
+	GO111MODULE=on go get github.com/davidrjenni/reftools/cmd/fillstruct
+	GO111MODULE=on go get github.com/haya14busa/goplay/cmd/goplay
+	GO111MODULE=on go get github.com/mdempsky/gocode
+	GO111MODULE=on go get github.com/ramya-rao-a/go-outline
+	GO111MODULE=on go get github.com/rogpeppe/godef
+	GO111MODULE=on go get github.com/sqs/goreturns
+	GO111MODULE=on go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
+	GO111MODULE=on go get github.com/zmb3/gogetdoc
+	GO111MODULE=on go get golang.org/x/lint/golint
+	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
+	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv
 }
 
 main() {

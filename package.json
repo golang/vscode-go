@@ -244,6 +244,11 @@
         "description": "Generates method stub for implementing the provided interface and inserts at the cursor."
       },
       {
+        "command": "go.extractServerChannel",
+        "title": "Go: extract server output channel to editor",
+        "description": "Show the gopls (server) output channel in the editor."
+      },
+      {
         "command": "go.toggle.gc_details",
         "title": "Go: Toggle gc details",
         "description": "Toggle the display of compiler optimization choices"

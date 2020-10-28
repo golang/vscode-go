@@ -15,8 +15,11 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
+	CancellationToken,
 	CloseAction,
 	CompletionItemKind,
+	ConfigurationParams,
+	ConfigurationRequest,
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
@@ -24,6 +27,7 @@ import {
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
+	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import {
@@ -57,6 +61,7 @@ import { getToolFromToolPath } from './utils/pathUtils';
 interface LanguageServerConfig {
 	serverName: string;
 	path: string;
+	version: string;
 	modtime: Date;
 	enabled: boolean;
 	flags: string[];
@@ -171,7 +176,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = buildLanguageClient(config);
+		languageClient = await buildLanguageClient(config);
 		crashCount = 0;
 	}
 
@@ -201,27 +206,28 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
+async function buildLanguageClient(cfg: LanguageServerConfig): Promise<LanguageClient> {
 	// Reuse the same output channel for each instance of the server.
-	if (config.enabled) {
+	if (cfg.enabled) {
 		if (!serverOutputChannel) {
-			serverOutputChannel = vscode.window.createOutputChannel(config.serverName + ' (server)');
+			serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
 		}
 		if (!serverTraceChannel) {
-			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
+			serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
 		}
 	}
-	const goplsConfig = getGoplsConfig();
+	let goplsWorkspaceConfig = getGoplsConfig();
+	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
 	const c = new LanguageClient(
 		'go',  // id
-		config.serverName,  // name
+		cfg.serverName,  // name
 		{
-			command: config.path,
-			args: ['-mode=stdio', ...config.flags],
-			options: { env: config.env },
+			command: cfg.path,
+			args: ['-mode=stdio', ...cfg.flags],
+			options: { env: cfg.env },
 		},
 		{
-			initializationOptions: goplsConfig,
+			initializationOptions: goplsWorkspaceConfig,
 			documentSelector: ['go', 'go.mod', 'go.sum'],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
@@ -298,7 +304,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					diagnostics: vscode.Diagnostic[],
 					next: HandleDiagnosticsSignature
 				) => {
-					if (!config.features.diagnostics) {
+					if (!cfg.features.diagnostics) {
 						return null;
 					}
 					return next(uri, diagnostics);
@@ -308,7 +314,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					token: vscode.CancellationToken,
 					next: ProvideDocumentLinksSignature
 				) => {
-					if (!config.features.documentLink) {
+					if (!cfg.features.documentLink) {
 						return null;
 					}
 					return next(document, token);
@@ -399,10 +405,48 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					lastUserAction = new Date();
 					next(e);
 				},
+				workspace: {
+					configuration: async (params: ConfigurationParams, token: CancellationToken, next: ConfigurationRequest.HandlerSignature): Promise<any[] | ResponseError<void>> => {
+						const configs = await next(params, token);
+						if (!Array.isArray(configs)) {
+							return configs;
+						}
+						for (let workspaceConfig of configs) {
+							workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig);
+						}
+						return configs;
+					},
+				},
 			}
 		}
 	);
 	return c;
+}
+
+// adjustGoplsWorkspaceConfiguration adds any extra options to the gopls
+// config. Right now, the only extra option is enabling experiments for the
+// Nightly extension.
+async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, config: any): Promise<any> {
+	if (!config) {
+		return config;
+	}
+	// Only modify the user's configurations for the Nightly.
+	if (extensionId !== 'golang.go-nightly') {
+		return config;
+	}
+	// allExperiments is only available with gopls/v0.5.2 and above.
+	const version = await getLocalGoplsVersion(cfg);
+	if (!version) {
+		return config;
+	}
+	const sv = semver.parse(version, true);
+	if (!sv || semver.lt(sv, 'v0.5.2')) {
+		return config;
+	}
+	if (!config['allExperiments']) {
+		config['allExperiments'] = true;
+	}
+	return config;
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
@@ -510,6 +554,7 @@ export function buildLanguageServerConfig(): LanguageServerConfig {
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
+		version: '', // compute version lazily
 		modtime: null,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
@@ -748,7 +793,12 @@ export const getLatestGoplsVersion = async (tool: Tool) => {
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
+//
+// If this command has already been executed, it returns the saved result.
 export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
+	if (cfg.version !== '') {
+		return cfg.version;
+	}
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
@@ -802,7 +852,8 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	//
 	//    v0.1.3
 	//
-	return split[1];
+	cfg.version = split[1];
+	return cfg.version;
 };
 
 async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
@@ -1147,13 +1198,41 @@ function daysBetween(a: Date, b: Date): number {
 	return msBetween(a, b) / timeDay;
 }
 
-// minutesBetween returns the number of days between a and b.
+// minutesBetween returns the number of minutes between a and b.
 function minutesBetween(a: Date, b: Date): number {
 	return msBetween(a, b) / timeMinute;
 }
 
 function msBetween(a: Date, b: Date): number {
 	return Math.abs(a.getTime() - b.getTime());
+}
+
+export function showServerOutputChannel() {
+	if (!languageServerIsRunning) {
+		vscode.window.showInformationMessage(`gopls is not running`);
+		return;
+	}
+	// likely show() is asynchronous, despite the documentation
+	serverOutputChannel.show();
+	let found: vscode.TextDocument;
+	for (const doc of vscode.workspace.textDocuments) {
+		if (doc.fileName.indexOf('extension-output-') !== -1) {
+			// despite show() above, this might not get the output we want, so check
+			const contents = doc.getText();
+			if (contents.indexOf('[Info  - ') === -1) {
+				continue;
+			}
+			if (found !== undefined) {
+				vscode.window.showInformationMessage('multiple docs named extension-output-...');
+			}
+			found = doc;
+			// .log, as some decoration is better than none
+			vscode.workspace.openTextDocument({language: 'log', content: contents});
+		}
+	}
+	if (found === undefined) {
+		vscode.window.showErrorMessage('make sure "gopls (server)" output is showing');
+	}
 }
 
 function collectGoplsLog(): string {
