@@ -83,6 +83,9 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 export let restartLanguageServer = () => { return; };
 
 export function activate(ctx: vscode.ExtensionContext) {
+	if (process.env['VSCODE_GO_IN_TEST'] === '1') {  // Make sure this does not run when running in test.
+		return;
+	}
 	const cfg = getGoConfig();
 	setLogConfig(cfg['logging']);
 

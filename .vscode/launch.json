@@ -64,10 +64,14 @@
 				"--timeout",
 				"999999"
 			],
+			"env": {
+				"VSCODE_GO_IN_TEST": "1"  // Disable code that shouldn't be used in test
+			},
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"smartStep": true,
 			"outFiles": [
+				"${workspaceFolder}/out/**/*.js",
 				"${workspaceFolder}/out/test/**/*.js"
 			],
 			"preLaunchTask": "npm: watch"
@@ -83,11 +87,14 @@
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/out/test/gopls/index",
 				"--timeout", "999999",
-				"${workspaceFolder}/test/gopls/testfixtures/src/workspace"  // gopls requires a workspace to work with.
 			],
+			"env": {
+				"VSCODE_GO_IN_TEST": "1"  // Disable code that shouldn't be used in test
+			},
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"outFiles": [
+				"${workspaceFolder}/out/**/*.js",
 				"${workspaceFolder}/out/test/**/*.js"
 			],
 			"preLaunchTask": "npm: watch",

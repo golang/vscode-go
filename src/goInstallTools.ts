@@ -466,6 +466,11 @@ export async function offerToInstallTools() {
 		});
 	}
 
+	const goConfig = getGoConfig();
+	if (!goConfig['useLanguageServer']) {
+		return;
+	}
+
 	const usingSourceGraph = getToolFromToolPath(getLanguageServerToolPath()) === 'go-langserver';
 	if (usingSourceGraph && goVersion.gt('1.10')) {
 		const promptMsg =
@@ -476,7 +481,6 @@ export async function offerToInstallTools() {
 		if (selected === installLabel) {
 			await installTools([getTool('gopls')], goVersion);
 		} else if (selected === disableLabel) {
-			const goConfig = getGoConfig();
 			const inspectLanguageServerSetting = goConfig.inspect('useLanguageServer');
 			if (inspectLanguageServerSetting.globalValue === true) {
 				goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.Global);

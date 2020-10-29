@@ -58,7 +58,7 @@ import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig, getGoplsConfig, getWorkspaceFolderPath } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
-interface LanguageServerConfig {
+export interface LanguageServerConfig {
 	serverName: string;
 	path: string;
 	version: string;
@@ -102,7 +102,7 @@ let lastUserAction: Date = new Date();
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
-	const cfg = buildLanguageServerConfig();
+	const cfg = buildLanguageServerConfig(getGoConfig());
 
 	// If the language server is gopls, we enable a few additional features.
 	// These include prompting for updates and surveys.
@@ -134,7 +134,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 	const update = async () => {
 		setTimeout(update, timeDay);
 
-		const cfg = buildLanguageServerConfig();
+		const cfg = buildLanguageServerConfig(getGoConfig());
 		if (!cfg.enabled) {
 			return;
 		}
@@ -146,7 +146,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 
-		const cfg = buildLanguageServerConfig();
+		const cfg = buildLanguageServerConfig(getGoConfig());
 		if (!goplsSurveyOn || !cfg.enabled) {
 			return;
 		}
@@ -176,7 +176,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = await buildLanguageClient(config);
+		languageClient = await buildLanguageClient(buildLanguageClientOption(config));
 		crashCount = 0;
 	}
 
@@ -206,21 +206,38 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-async function buildLanguageClient(cfg: LanguageServerConfig): Promise<LanguageClient> {
-	// Reuse the same output channel for each instance of the server.
-	if (cfg.enabled) {
-		if (!serverOutputChannel) {
-			serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
+export interface BuildLanguageClientOption extends LanguageServerConfig {
+	outputChannel?: vscode.OutputChannel;
+	traceOutputChannel?: vscode.OutputChannel;
+}
+
+// buildLanguageClientOption returns the default, extra configuration
+// used in building a new LanguageClient instance. Options specified
+// in LanguageServerConfig
+function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClientOption {
+		// Reuse the same output channel for each instance of the server.
+		if (cfg.enabled) {
+			if (!serverOutputChannel) {
+				serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
+			}
+			if (!serverTraceChannel) {
+				serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
+			}
 		}
-		if (!serverTraceChannel) {
-			serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
-		}
-	}
+		return Object.assign({
+			outputChannel: serverOutputChannel,
+			traceOutputChannel: serverTraceChannel
+		}, cfg);
+}
+
+// buildLanguageClient returns a language client built using the given language server config.
+// The returned language client need to be started before use.
+export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
 	let goplsWorkspaceConfig = getGoplsConfig();
 	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
 	const c = new LanguageClient(
 		'go',  // id
-		cfg.serverName,  // name
+		cfg.serverName,  // name e.g. gopls
 		{
 			command: cfg.path,
 			args: ['-mode=stdio', ...cfg.flags],
@@ -235,8 +252,8 @@ async function buildLanguageClient(cfg: LanguageServerConfig): Promise<LanguageC
 					(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
 				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 			},
-			outputChannel: serverOutputChannel,
-			traceOutputChannel: serverTraceChannel,
+			outputChannel: cfg.outputChannel,
+			traceOutputChannel: cfg.traceOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
@@ -550,8 +567,8 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 	}
 }
 
-export function buildLanguageServerConfig(): LanguageServerConfig {
-	const goConfig = getGoConfig();
+export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
+
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -604,9 +621,6 @@ Please try reinstalling it.`);
  */
 export function getLanguageServerToolPath(): string {
 	const goConfig = getGoConfig();
-	if (!goConfig['useLanguageServer']) {
-		return;
-	}
 	// Check that all workspace folders are configured with the same GOPATH.
 	if (!allFoldersHaveSameGopath()) {
 		vscode.window.showInformationMessage(
