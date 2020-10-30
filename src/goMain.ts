@@ -32,10 +32,13 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
+	isNightly,
 	languageServerIsRunning,
-	promptForLanguageServerDefaultChange, resetSurveyConfig, showServerOutputChannel,
-	showSurveyConfig, startLanguageServerWithFallback,
-	watchLanguageServerConfiguration
+	promptForLanguageServerDefaultChange,
+	resetSurveyConfig,
+	showServerOutputChannel,
+	showSurveyConfig,
+	startLanguageServerWithFallback, timeMinute, watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
@@ -87,8 +90,12 @@ export function activate(ctx: vscode.ExtensionContext) {
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
-	if (extensionId === 'golang.go-nightly') {
+	if (isNightly()) {
 		promptForLanguageServerDefaultChange(cfg);
+
+		// For Nightly extension users, show a message directing them to forums
+		// to give feedback.
+		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
 	}
 
 	const configGOROOT = getGoConfig()['goroot'];
@@ -522,6 +529,36 @@ export function activate(ctx: vscode.ExtensionContext) {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
 }
+
+async function showGoNightlyWelcomeMessage() {
+	const shown = getFromGlobalState(goNightlyPromptKey, false);
+	if (shown === true) {
+		return;
+	}
+	const prompt = async () => {
+		const selected = await vscode.window.showInformationMessage(`Thank you for testing new features by using the Go Nightly extension!
+We'd like to welcome you to share feedback and/or join our community of Go Nightly users and developers.`, 'Share feedback', 'Community resources');
+		switch (selected) {
+			case 'Share feedback':
+				await vscode.env.openExternal(vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#feedback'));
+				break;
+			case 'Community resources':
+				await vscode.env.openExternal(vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#community'));
+				break;
+			default:
+				return;
+		}
+		// Only prompt again if the user clicked one of the buttons.
+		// They may want to look at the other option.
+		prompt();
+	};
+	prompt();
+
+	// Update state to indicate that we've shown this message to the user.
+	updateGlobalState(goNightlyPromptKey, true);
+}
+
+const goNightlyPromptKey = 'goNightlyPrompt';
 
 export function deactivate() {
 	return Promise.all([

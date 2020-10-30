@@ -29,6 +29,7 @@ Default:{<br/>
 &nbsp;&nbsp;`"options": "json=omitempty"`,<br/>
 &nbsp;&nbsp;`"promptForTags": false`,<br/>
 &nbsp;&nbsp;`"tags": "json"`,<br/>
+&nbsp;&nbsp;`"template": ""`,<br/>
 &nbsp;&nbsp;`"transform": "snakecase"`,<br/>
     }
 

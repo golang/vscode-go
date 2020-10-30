@@ -93,7 +93,7 @@ let restartCommand: vscode.Disposable;
 
 // When enabled, users may be prompted to fill out the gopls survey.
 // For now, we turn it on in the Nightly extension to test it.
-const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
+const goplsSurveyOn: boolean = isNightly();
 
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
@@ -757,7 +757,7 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	return time;
 };
 
-const acceptGoplsPrerelease = (extensionId === 'golang.go-nightly');
+const acceptGoplsPrerelease = isNightly();
 
 export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
@@ -983,7 +983,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
 	let probability = 0.01; // lower probability for the regular extension
-	if (extensionId === 'golang.go-nightly') {
+	if (isNightly()) {
 		probability = 0.0275;
 	}
 	cfg.promptThisMonth = Math.random() < probability;
@@ -998,6 +998,12 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	}
 	cfg.dateComputedPromptThisMonth = now;
 	return cfg;
+}
+
+// isNightly returns true if the extension ID is the extension ID for the
+// Nightly extension.
+export function isNightly(): boolean {
+	return extensionId === 'golang.go-nightly';
 }
 
 async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
@@ -1189,7 +1195,7 @@ function randomIntInRange(min: number, max: number): number {
 	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
-const timeMinute = 1000 * 60;
+export const timeMinute = 1000 * 60;
 const timeHour = timeMinute * 60;
 const timeDay = timeHour * 24;
 
