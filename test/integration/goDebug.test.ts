@@ -1,11 +1,12 @@
 import * as assert from 'assert';
-import { ChildProcess, spawn } from 'child_process';
-import { debug } from 'console';
+import * as cp from 'child_process';
 import * as fs from 'fs';
 import getPort = require('get-port');
 import * as http from 'http';
+import { tmpdir } from 'os';
 import * as path from 'path';
 import * as sinon from 'sinon';
+import util = require('util');
 import { DebugConfiguration } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -18,7 +19,7 @@ import {
 	RemoteSourcesAndPackages,
 } from '../../src/debugAdapter/goDebug';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
-import { getBinPath } from '../../src/util';
+import { getBinPath, getGoVersion, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 
 suite('Path Manipulation Tests', () => {
@@ -323,7 +324,7 @@ suite('Go Debug Adapter', function () {
 	 */
 	async function setUpRemoteProgram(
 			dlvPort: number, serverPort: number,
-			acceptMultiClient = true, continueOnStart = true): Promise<ChildProcess> {
+			acceptMultiClient = true, continueOnStart = true): Promise<cp.ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
 		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
@@ -333,7 +334,7 @@ suite('Go Debug Adapter', function () {
 		if (continueOnStart) {
 			args.push('--continue');
 		}
-		const childProcess = spawn(toolPath, args,
+		const childProcess = cp.spawn(toolPath, args,
 			{cwd: serverFolder,  env: { PORT: `${serverPort}`, ...process.env}});
 
 		// Give dlv a few seconds to start.
@@ -514,7 +515,6 @@ suite('Go Debug Adapter', function () {
 				request: 'launch',
 				mode: 'auto',
 				program: PROGRAM,
-				trace: 'verbose'
 			};
 
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
@@ -745,7 +745,7 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('remote attach', () => {
-		let childProcess: ChildProcess;
+		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
 		setup(async () => {
@@ -1284,4 +1284,213 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 	});
+
+	suite('substitute path', () => {
+		// TODO(suzmue): add unit tests for substitutePath.
+		let tmpDir: string;
+
+		suiteSetup(() => {
+			tmpDir = fs.mkdtempSync(path.join(DATA_ROOT, 'substitutePathTest'));
+		});
+
+		suiteTeardown(() => {
+			rmdirRecursive(tmpDir);
+		});
+
+		suite('substitutePath with symlinks', () => {
+			let linkedDir: string;
+			setup(() => {
+				linkedDir = path.join(tmpDir, 'src');
+				fs.symlinkSync(DATA_ROOT, linkedDir);
+			});
+
+			teardown(() => {
+				fs.unlinkSync(linkedDir);
+			});
+
+			test('should stop on a breakpoint set in file with substituted path', () => {
+				const PROGRAM_TEMP = path.join(linkedDir, 'baseTest');
+				const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+				const FILE = path.join(PROGRAM_TEMP, 'test.go');
+				const BREAKPOINT_LINE = 11;
+
+				const config = {
+					name: 'Launch',
+					type: 'go',
+					request: 'launch',
+					mode: 'auto',
+					program: PROGRAM_TEMP,
+					substitutePath: [
+						{
+							from: PROGRAM_TEMP,
+							to: PROGRAM
+						}
+					]
+				};
+				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			});
+
+			test('should stop on a breakpoint in test file with substituted path', () => {
+				const PROGRAM_TEMP = path.join(linkedDir, 'baseTest');
+				const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+				const FILE = path.join(PROGRAM_TEMP, 'sample_test.go');
+				const BREAKPOINT_LINE = 15;
+
+				const config = {
+					name: 'Launch file',
+					type: 'go',
+					request: 'launch',
+					mode: 'test',
+					program: PROGRAM_TEMP,
+					substitutePath: [
+						{
+							from: PROGRAM_TEMP,
+							to: PROGRAM
+						}
+					]
+				};
+				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			});
+		});
+
+		function copyDirectory(name: string) {
+			const from = path.join(DATA_ROOT, name);
+			const to = path.join(tmpDir, name);
+			fs.mkdirSync(to);
+			fs.readdirSync(from).forEach((file) => {
+				fs.copyFileSync(path.join(from, file), path.join(to, file));
+			});
+			return to;
+		}
+
+		async function buildGoProgram(cwd: string, outputFile: string): Promise<string> {
+			const goRuntimePath = getBinPath('go');
+			const execFile = util.promisify(cp.execFile);
+			const child = await execFile(goRuntimePath,
+				['build', '-o', outputFile, `--gcflags='all=-N -l'`, '.'],
+				{cwd});
+			if (child.stderr.length > 0) {
+				throw Error(child.stderr);
+			}
+			return outputFile;
+		}
+
+		suite('substitutePath with missing files', () => {
+			let goBuildOutput: string;
+			suiteSetup(() => {
+				goBuildOutput = fs.mkdtempSync(path.join(tmpdir(), 'output'));
+			});
+
+			suiteTeardown(() => {
+				rmdirRecursive(goBuildOutput);
+			});
+
+			async function copyBuildDelete(program: string): Promise<{program: string, output: string}> {
+				const wd = copyDirectory(program);
+				const output = await buildGoProgram(wd, path.join(goBuildOutput, program));
+				rmdirRecursive(wd);
+				return {program: wd, output};
+			}
+
+			test('should stop on a breakpoint set in file with substituted path', async () => {
+				const {program, output} = await copyBuildDelete('baseTest');
+				const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
+				const BREAKPOINT_LINE = 11;
+
+				const config = {
+					name: 'Launch',
+					type: 'go',
+					request: 'launch',
+					mode: 'exec',
+					program: output,
+					substitutePath: [
+						{
+							from: path.join(DATA_ROOT, 'baseTest'),
+							to: program
+						}
+					]
+				};
+				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			});
+		});
+
+		suite('substitutePath with remote program', () => {
+			let server: number;
+			let remoteAttachDebugConfig: DebugConfiguration;
+			let helloWorldLocal: string;
+			let helloWorldRemote: string;
+			setup(async () => {
+				server = await getPort();
+				remoteAttachConfig.port = await getPort();
+				remoteAttachDebugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+			});
+
+			suiteSetup(() => {
+				helloWorldLocal = copyDirectory('helloWorldServer');
+				helloWorldRemote = path.join(DATA_ROOT, 'helloWorldServer');
+			});
+
+			suiteTeardown(() => {
+				rmdirRecursive(helloWorldLocal);
+			});
+
+			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
+				const FILE = path.join(helloWorldLocal, 'main.go');
+				const BREAKPOINT_LINE = 29;
+				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
+
+				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+				// Setup attach with a breakpoint.
+				remoteAttachDebugConfig.cwd = tmpDir;
+				remoteAttachDebugConfig.remotePath = '';
+				remoteAttachDebugConfig.substitutePath = [
+					{from: helloWorldLocal, to: helloWorldRemote}
+				];
+				await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
+
+				// Calls the helloworld server to make the breakpoint hit.
+				await waitForBreakpoint(
+					() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
+					breakpointLocation);
+
+				await dc.disconnectRequest({restart: false});
+				await killProcessTree(remoteProgram);
+				await new Promise((resolve) => setTimeout(resolve, 2_000));
+			});
+
+			test('stopped for a breakpoint set during initialization using remotePath (remote attach)', async () => {
+				const FILE = path.join(helloWorldLocal, 'main.go');
+				const BREAKPOINT_LINE = 29;
+				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
+
+				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+				// Setup attach with a breakpoint.
+				remoteAttachDebugConfig.cwd = helloWorldLocal;
+				remoteAttachDebugConfig.remotePath = helloWorldRemote;
+				// This is a bad mapping, make sure that the remotePath config is used first.
+				remoteAttachDebugConfig.substitutePath = [
+					{from: helloWorldLocal, to: helloWorldLocal}
+				];
+				await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
+
+				// Calls the helloworld server to make the breakpoint hit.
+				await waitForBreakpoint(
+					() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
+					breakpointLocation);
+
+				await dc.disconnectRequest({restart: false});
+				await killProcessTree(remoteProgram);
+				await new Promise((resolve) => setTimeout(resolve, 2_000));
+			});
+		});
+	});
+
 });

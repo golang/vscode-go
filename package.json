@@ -522,6 +522,26 @@
                 "description": "Environment variables passed to the program.",
                 "default": {}
               },
+              "substitutePath": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "The absolute local path to be replaced when passing paths to the debugger",
+                      "default": ""
+                    },
+                    "to": {
+                      "type": "string",
+                      "description": "The absolute remote path to be replaced when passing paths back to the client",
+                      "default": ""
+                    }
+                  }
+                },
+                "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath.",
+                "default": []
+              },
               "buildFlags": {
                 "type": "string",
                 "description": "Build flags, to be passed to the Go compiler.",
@@ -534,7 +554,7 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "Absolute path to the file being debugged on the remote machine in case of remote debugging.",
+                "description": "Absolute path to the file being debugged on the remote machine in case of remote debugging. If specified, becomes the first entry in substitutePath.",
                 "default": ""
               },
               "port": {
@@ -680,7 +700,7 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine.",
+                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine. If specified, becomes the first entry in substitutePath.",
                 "default": ""
               },
               "port": {
@@ -692,6 +712,26 @@
                 "type": "string",
                 "description": "The host name of the machine the delve debugger will be listening on.",
                 "default": "127.0.0.1"
+              },
+              "substitutePath": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "The absolute local path to be replaced when passing paths to the debugger",
+                      "default": ""
+                    },
+                    "to": {
+                      "type": "string",
+                      "description": "The absolute remote path to be replaced when passing paths back to the client",
+                      "default": ""
+                    }
+                  }
+                },
+                "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls.",
+                "default": []
               },
               "trace": {
                 "type": "string",
@@ -1063,7 +1103,7 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine.",
+                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine. If specified, becomes the first entry in substitutePath.",
                 "default": ""
               },
               "port": {
