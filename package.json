@@ -244,8 +244,8 @@
       },
       {
         "command": "go.extractServerChannel",
-        "title": "Go: extract server output channel to editor",
-        "description": "Show the gopls (server) output channel in the editor."
+        "title": "Go: Extract Language Server Logs To Editor",
+        "description": "Extract logs in the `gopls (server)` output channel to the editor."
       },
       {
         "command": "go.toggle.gc_details",

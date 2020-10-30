@@ -1,6 +1,19 @@
+## v0.18.1 - 30th Oct, 2020
+
+A list of all issues and changes can be found in the [v0.18.1 milestone](https://github.com/golang/vscode-go/milestone/15?closed=1).
+
+### Enhancement
+- New `Go: extract language server logs to editor` command was added ([CL 263526](https://go-review.googlesource.com/c/vscode-go/+/263526)).
+
+### Fixes
+- Fixed a bug that hid the Go status bar when there is no active text editor ([Issue 831](https://github.com/golang/vscode-go/issues/831)).
+
+### Thanks
+Thank you for your contributions, @suzmue, @pjweinbgo!
+
 ## v0.18.0 - 23rd Oct, 2020
 
-Unified Go status UI ⚡, many debugger feature improvements, and LSP 3.16 features! A list of all issues fixed with this release can be found in the [v0.18.0 milestone](https://github.com/golang/vscode-go/milestone/11).
+Unified Go status UI ⚡, many debugger feature improvements, and LSP 3.16 features! A list of all issues fixed with this release can be found in the [v0.18.0 milestone](https://github.com/golang/vscode-go/milestone/11?closed=1).
 
 ### New Features
 - The new Go status bar provides a menu to manage the go version, open the gopls trace, open the `go.mod` file, and more. The old `Go Modules` status bar was removed in favor of this new unified status bar. See [VS Code Go UI documentation](https://github.com/golang/vscode-go/blob/master/docs/ui.md) to learn more about this.

@@ -91,9 +91,9 @@ Generates unit tests for the selected function in the current file
 
 Generates method stub for implementing the provided interface and inserts at the cursor.
 
-### `Go: extract server output channel to editor`
+### `Go: Extract Language Server Logs To Editor`
 
-Show the gopls (server) output channel in the editor.
+Extract logs in the `gopls (server)` output channel to the editor.
 
 ### `Go: Toggle gc details`
 
