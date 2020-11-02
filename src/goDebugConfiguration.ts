@@ -62,7 +62,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
 		const goConfig = getGoConfig(folder && folder.uri);
-		const dlvConfig = goConfig.get<any>('delveConfig');
+		const dlvConfig = goConfig['delveConfig'];
 		let useApiV1 = false;
 		if (debugConfiguration.hasOwnProperty('useApiV1')) {
 			useApiV1 = debugConfiguration['useApiV1'] === true;

@@ -20,7 +20,10 @@ async function main() {
 		await runTests({
 			extensionDevelopmentPath,
 			extensionTestsPath,
-			launchArgs: ['--disable-extensions'],  // disable all other extensions
+			launchArgs: [
+				'--disable-extensions',
+				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
+			],  // disable all other extensions
 		});
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
@@ -37,6 +40,7 @@ async function main() {
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
 				'--disable-extensions',  // disable all other extensions
+				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
 			],
 		});
 	} catch (err) {
