@@ -6,9 +6,9 @@ import * as http from 'http';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import { DebugConfiguration } from 'vscode';
-import {DebugClient} from 'vscode-debugadapter-testsupport';
+import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
-import {DebugProtocol} from 'vscode-debugprotocol';
+import { DebugProtocol } from 'vscode-debugprotocol';
 import {
 	Delve,
 	escapeGoModPath,
@@ -313,19 +313,19 @@ suite('Go Debug Adapter', function () {
 	teardown(() => dc.stop());
 
 	/**
-	 * This function sets up a server that returns helloworld on port server.
+	 * This function sets up a server that returns helloworld on serverPort.
 	 * The server will be started as a Delve remote headless instance
-	 * that will listen on the specified port.
+	 * that will listen on the specified dlvPort.
 	 * We are using a server as opposed to a long-running program
 	 * because we can use responses to better test when the program is
 	 * running vs stopped/killed.
 	 */
 	async function setUpRemoteProgram(
-			port: number, server: number,
+			dlvPort: number, serverPort: number,
 			acceptMultiClient = true, continueOnStart = true): Promise<ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
-		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${port}`];
+		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
 		if (acceptMultiClient) {
 			args.push('--accept-multiclient');
 		}
@@ -333,9 +333,9 @@ suite('Go Debug Adapter', function () {
 			args.push('--continue');
 		}
 		const childProcess = spawn(toolPath, args,
-			{cwd: serverFolder,  env: { PORT: `${server}`, ...process.env}});
+			{cwd: serverFolder,  env: { PORT: `${serverPort}`, ...process.env}});
 
-		// Give dlv a few minutes to start.
+		// Give dlv a few seconds to start.
 		await new Promise((resolve) => setTimeout(resolve, 10_000));
 		return childProcess;
 	}
@@ -574,12 +574,14 @@ suite('Go Debug Adapter', function () {
 		let debugConfig: DebugConfiguration;
 		setup(async () => {
 			server = await getPort();
+			remoteAttachConfig.port = await getPort();
 			debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 		});
 
 		teardown(async () => {
 			await dc.disconnectRequest({restart: false});
 			await killProcessTree(childProcess);
+			// Wait 2 seconds for the process to be killed.
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
@@ -613,6 +615,13 @@ suite('Go Debug Adapter', function () {
 	};
 
 	suite('setBreakpoints', () => {
+		let server: number;
+		let remoteAttachDebugConfig: DebugConfiguration;
+		setup(async () => {
+			server = await getPort();
+			remoteAttachConfig.port = await getPort();
+			remoteAttachDebugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+		});
 
 		test('should stop on a breakpoint', () => {
 
@@ -655,14 +664,12 @@ suite('Go Debug Adapter', function () {
 		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
-			const server = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
 
 			// Setup attach with a breakpoint.
-			await setUpRemoteAttach(debugConfig, [breakpointLocation]);
+			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
 
 			// Calls the helloworld server to make the breakpoint hit.
 			await waitForBreakpoint(
@@ -678,13 +685,10 @@ suite('Go Debug Adapter', function () {
 			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
-			const server = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
-
 			// Setup attach without a breakpoint.
-			await setUpRemoteAttach(debugConfig);
+			await setUpRemoteAttach(remoteAttachDebugConfig);
 
 			// Now sets a breakpoint.
 			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
@@ -705,14 +709,12 @@ suite('Go Debug Adapter', function () {
 		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
-			const server = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
 
 			// Setup attach with a breakpoint.
-			await setUpRemoteAttach(debugConfig, [breakpointLocation]);
+			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
 
 			// Calls the helloworld server to make the breakpoint hit.
 			await waitForBreakpoint(
