@@ -443,10 +443,11 @@ async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, conf
 	if (!sv || semver.lt(sv, 'v0.5.2')) {
 		return config;
 	}
+	const newConfig = Object.assign({}, config);
 	if (!config['allExperiments']) {
-		config['allExperiments'] = true;
+		newConfig['allExperiments'] = true;
 	}
-	return config;
+	return newConfig;
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
