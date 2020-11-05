@@ -95,6 +95,7 @@
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
+    "onDebugInitialConfigurations",
     "onDebugResolve:go"
   ],
   "main": "./dist/goMain.js",
