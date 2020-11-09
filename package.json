@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.18.0-dev",
+  "version": "0.19.0-dev",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -53,9 +53,9 @@
     "moment": "^2.24.0",
     "semver": "^7.3.2",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.40.0",
+    "vscode-debugadapter": "^1.42.1",
     "vscode-debugadapter-testsupport": "^1.42.0",
-    "vscode-debugprotocol": "^1.40.0",
+    "vscode-debugprotocol": "^1.42.0",
     "vscode-languageclient": "^7.0.0-next.12",
     "vscode-languageserver-protocol": "^3.16.0-next.7",
     "web-request": "^1.0.7"
