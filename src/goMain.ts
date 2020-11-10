@@ -217,7 +217,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
 			if (vscode.debug.activeDebugSession) {
-				vscode.window.showErrorMessage('Debug session has already been started.');
+				vscode.window.showErrorMessage('Debug session has already been started');
 				return;
 			}
 			const goConfig = getGoConfig();
@@ -596,7 +596,8 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 			if (document.languageId !== 'go') {
 				return;
 			}
-			if (vscode.debug.activeDebugSession) {
+			const session =  vscode.debug.activeDebugSession;
+			if (session && (session.type === 'go' || session.type === 'godlvdap')) {
 				const neverAgain = { title: `Don't Show Again` };
 				const ignoreActiveDebugWarningKey = 'ignoreActiveDebugWarningKey';
 				const ignoreActiveDebugWarning = getFromGlobalState(ignoreActiveDebugWarningKey);
