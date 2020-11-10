@@ -15,7 +15,6 @@ import { getNonVendorPackages } from './goPackages';
 import {
 	getBinPath,
 	getCurrentGoPath,
-	getGoVersion,
 	getTempFilePath,
 	LineBuffer,
 	resolvePath
@@ -249,169 +248,168 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 	if (testconfig.outputChannel) {
 		outputChannel = testconfig.outputChannel;
 	}
-	const tmpCoverPath = getTempFilePath('go-code-cover');
-	const testResult = await new Promise<boolean>(async (resolve, reject) => {
-		// We do not want to clear it if tests are already running, as that could
-		// lose valuable output.
-		if (runningTestProcesses.length < 1) {
-			outputChannel.clear();
-		}
 
-		if (!testconfig.background) {
-			outputChannel.show(true);
-		}
-
-		const testTags: string = getTestTags(testconfig.goConfig);
-		const args: Array<string> = ['test'];
-		const testType: string = testconfig.isBenchmark ? 'Benchmarks' : 'Tests';
-
-		if (testconfig.isBenchmark) {
-			args.push('-benchmem', '-run=^$');
-		} else {
-			args.push('-timeout', testconfig.goConfig['testTimeout']);
-			if (testconfig.applyCodeCoverage) {
-				args.push('-coverprofile=' + tmpCoverPath);
-				const coverMode = testconfig.goConfig['coverMode'];
-				switch (coverMode) {
-					case 'default':
-						break;
-					case 'set': case 'count': case 'atomic':
-						args.push('-covermode', coverMode);
-						break;
-					default:
-						vscode.window.showWarningMessage(
-							`go.coverMode=${coverMode} is illegal. Use 'set', 'count', 'atomic', or 'default'.`
-						);
-				}
-			}
-		}
-		if (testTags && testconfig.flags.indexOf('-tags') === -1) {
-			args.push('-tags', testTags);
-		}
-
-		const testEnvVars = getTestEnvVars(testconfig.goConfig);
-		const goRuntimePath = getBinPath('go');
-
-		if (!goRuntimePath) {
-			vscode.window.showErrorMessage(
-				`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
-			);
-			return Promise.resolve();
-		}
-
-		let targets = testconfig.includeSubDirectories ? ['./...'] : targetArgs(testconfig);
-
-		let currentGoWorkspace = '';
-		let getCurrentPackagePromise = Promise.resolve('');
-		let pkgMapPromise: Promise<Map<string, string> | null> = Promise.resolve(null);
-
-		if (testconfig.isMod) {
-			getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
-			// We need the mapping to get absolute paths for the files in the test output.
-			pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
-		} else {  // GOPATH mode
-			currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
-			if (currentGoWorkspace) {
-				getCurrentPackagePromise = Promise.resolve(testconfig.dir.substr(currentGoWorkspace.length + 1));
-			}
-			if (testconfig.includeSubDirectories) {
-				pkgMapPromise = getGoVersion().then((goVersion) => {
-					targets = ['./...'];
-					return null; // We dont need mapping, as we can derive the absolute paths from package path
-				});
-			}
-		}
-
-		Promise.all([pkgMapPromise, getCurrentPackagePromise]).then(
-			([pkgMap, currentPackage]) => {
-				if (!pkgMap) {
-					pkgMap = new Map<string, string>();
-				}
-				// Use the package name to be in the args to enable running tests in symlinked directories
-				// TODO(hyangah): check why modules mode didn't set currentPackage.
-				if (!testconfig.includeSubDirectories && currentPackage) {
-					targets.splice(0, 0, currentPackage);
-				}
-
-				const outTargets = args.slice(0);
-				if (targets.length > 4) {
-					outTargets.push('<long arguments omitted>');
-				} else {
-					outTargets.push(...targets);
-				}
-
-				if (args.includes('-v') && !args.includes('-json')) {
-					args.push('-json');
-				}
-
-				args.push(...targets);
-
-				// ensure that user provided flags are appended last (allow use of -args ...)
-				// ignore user provided -run flag if we are already using it
-				if (args.indexOf('-run') > -1) {
-					removeRunFlag(testconfig.flags);
-				}
-				args.push(...testconfig.flags);
-
-				outTargets.push(...testconfig.flags);
-				outputChannel.appendLine(['Running tool:', goRuntimePath, ...outTargets].join(' '));
-				outputChannel.appendLine('');
-
-				const tp = cp.spawn(goRuntimePath, args, { env: testEnvVars, cwd: testconfig.dir });
-				const outBuf = new LineBuffer();
-				const errBuf = new LineBuffer();
-
-				const testResultLines: string[] = [];
-				const processTestResultLine = args.includes('-json') ?
-					processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel) :
-					processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
-
-				outBuf.onLine((line) => processTestResultLine(line));
-				outBuf.onDone((last) => {
-					if (last) {
-						processTestResultLine(last);
-					}
-
-					// If there are any remaining test result lines, emit them to the output channel.
-					if (testResultLines.length > 0) {
-						testResultLines.forEach((line) => outputChannel.appendLine(line));
-					}
-				});
-
-				// go test emits build errors on stderr, which contain paths relative to the cwd
-				errBuf.onLine((line) => outputChannel.appendLine(expandFilePathInOutput(line, testconfig.dir)));
-				errBuf.onDone((last) => last && outputChannel.appendLine(expandFilePathInOutput(last, testconfig.dir)));
-
-				tp.stdout.on('data', (chunk) => outBuf.append(chunk.toString()));
-				tp.stderr.on('data', (chunk) => errBuf.append(chunk.toString()));
-
-				statusBarItem.show();
-
-				tp.on('close', (code, signal) => {
-					outBuf.done();
-					errBuf.done();
-
-					const index = runningTestProcesses.indexOf(tp, 0);
-					if (index > -1) {
-						runningTestProcesses.splice(index, 1);
-					}
-
-					if (!runningTestProcesses.length) {
-						statusBarItem.hide();
-					}
-
-					resolve(code === 0);
-				});
-
-				runningTestProcesses.push(tp);
-			},
-			(err) => {
-				outputChannel.appendLine(`Error: ${testType} failed.`);
-				outputChannel.appendLine(err);
-				resolve(false);
-			}
+	const goRuntimePath = getBinPath('go');
+	if (!goRuntimePath) {
+		vscode.window.showErrorMessage(
+			`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
-	});
+		return Promise.resolve(false);
+	}
+
+	const tmpCoverPath = testconfig.applyCodeCoverage ? getTempFilePath('go-code-cover') : undefined;
+	// We do not want to clear it if tests are already running, as that could
+	// lose valuable output.
+	if (runningTestProcesses.length < 1) {
+		outputChannel.clear();
+	}
+
+	if (!testconfig.background) {
+		outputChannel.show(true);
+	}
+
+	const testTags: string = getTestTags(testconfig.goConfig);
+	const args: Array<string> = ['test'];
+	const testType: string = testconfig.isBenchmark ? 'Benchmarks' : 'Tests';
+
+	if (testconfig.isBenchmark) {
+		args.push('-benchmem', '-run=^$');
+	} else {
+		args.push('-timeout', testconfig.goConfig['testTimeout']);
+		if (testconfig.applyCodeCoverage) {
+			args.push('-coverprofile=' + tmpCoverPath);
+			const coverMode = testconfig.goConfig['coverMode'];
+			switch (coverMode) {
+				case 'default':
+					break;
+				case 'set': case 'count': case 'atomic':
+					args.push('-covermode', coverMode);
+					break;
+				default:
+					vscode.window.showWarningMessage(
+						`go.coverMode=${coverMode} is illegal. Use 'set', 'count', 'atomic', or 'default'.`
+					);
+			}
+		}
+	}
+
+	if (testTags && testconfig.flags.indexOf('-tags') === -1) {
+		args.push('-tags', testTags);
+	}
+
+	const targets = testconfig.includeSubDirectories ? ['./...'] : targetArgs(testconfig);
+
+	let currentGoWorkspace = '';
+	let getCurrentPackagePromise: Promise<string>;
+	let pkgMapPromise: Promise<Map<string, string>>;
+	if (testconfig.isMod) {
+		getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
+		// We need the mapping to get absolute paths for the files in the test output.
+		pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
+	} else {  // GOPATH mode
+		currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
+		getCurrentPackagePromise = Promise.resolve(
+			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : '');
+		// We dont need mapping, as we can derive the absolute paths from package path
+		pkgMapPromise = Promise.resolve(null);
+	}
+
+	let pkgMap = new Map<string, string>();
+	// run go list to populate pkgMap and currentPackage necessary to adjust the test output later.
+	try {
+		const [pkgMap0, currentPackage] = await Promise.all([pkgMapPromise, getCurrentPackagePromise]);
+		if (pkgMap0) {
+			pkgMap = pkgMap0;
+		}
+		// Use the package name to be in the args to enable running tests in symlinked directories
+		// TODO(hyangah): check why modules mode didn't set currentPackage.
+		if (!testconfig.includeSubDirectories && currentPackage) {
+			targets.splice(0, 0, currentPackage);
+		}
+	} catch (err) {
+		outputChannel.appendLine(`warning: failed to compute package mapping... ${err}`);
+	}
+
+	const outTargets = args.slice(0);
+	if (targets.length > 4) {
+		outTargets.push('<long arguments omitted>');
+	} else {
+		outTargets.push(...targets);
+	}
+
+	if (args.includes('-v') && !args.includes('-json')) {
+		args.push('-json');
+	}
+
+	args.push(...targets);
+
+	// ensure that user provided flags are appended last (allow use of -args ...)
+	// ignore user provided -run flag if we are already using it
+	if (args.indexOf('-run') > -1) {
+		removeRunFlag(testconfig.flags);
+	}
+	args.push(...testconfig.flags);
+	outTargets.push(...testconfig.flags);
+
+	outputChannel.appendLine(['Running tool:', goRuntimePath, ...outTargets].join(' '));
+	outputChannel.appendLine('');
+
+	let testResult = false;
+	try {
+		testResult = await new Promise<boolean>(async (resolve, reject) => {
+			const testEnvVars = getTestEnvVars(testconfig.goConfig);
+			const tp = cp.spawn(goRuntimePath, args, { env: testEnvVars, cwd: testconfig.dir });
+			const outBuf = new LineBuffer();
+			const errBuf = new LineBuffer();
+
+			const testResultLines: string[] = [];
+			const processTestResultLine = args.includes('-json') ?
+				processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel) :
+				processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
+
+			outBuf.onLine((line) => processTestResultLine(line));
+			outBuf.onDone((last) => {
+				if (last) {
+					processTestResultLine(last);
+				}
+
+				// If there are any remaining test result lines, emit them to the output channel.
+				if (testResultLines.length > 0) {
+					testResultLines.forEach((line) => outputChannel.appendLine(line));
+				}
+			});
+
+			// go test emits build errors on stderr, which contain paths relative to the cwd
+			errBuf.onLine((line) => outputChannel.appendLine(expandFilePathInOutput(line, testconfig.dir)));
+			errBuf.onDone((last) => last && outputChannel.appendLine(expandFilePathInOutput(last, testconfig.dir)));
+
+			tp.stdout.on('data', (chunk) => outBuf.append(chunk.toString()));
+			tp.stderr.on('data', (chunk) => errBuf.append(chunk.toString()));
+
+			statusBarItem.show();
+
+			tp.on('close', (code, signal) => {
+				outBuf.done();
+				errBuf.done();
+
+				const index = runningTestProcesses.indexOf(tp, 0);
+				if (index > -1) {
+					runningTestProcesses.splice(index, 1);
+				}
+
+				if (!runningTestProcesses.length) {
+					statusBarItem.hide();
+				}
+
+				resolve(code === 0);
+			});
+
+			runningTestProcesses.push(tp);
+		});
+	} catch (err) {
+		outputChannel.appendLine(`Error: ${testType} failed.`);
+		outputChannel.appendLine(err);
+	}
 	if (testconfig.applyCodeCoverage) {
 		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
 	}
