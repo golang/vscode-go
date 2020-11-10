@@ -490,6 +490,7 @@ export function cancelRunningTests(): Thenable<boolean> {
 		});
 		// All processes are now dead. Empty the array to prepare for the next run.
 		runningTestProcesses.splice(0, runningTestProcesses.length);
+		statusBarItem.hide();
 		resolve(true);
 	});
 }
