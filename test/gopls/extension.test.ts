@@ -63,6 +63,7 @@ class Env {
 		if (print) {
 			console.log(this.fakeOutputChannel.toString());
 		}
+		this.fakeOutputChannel.clear();
 	}
 
 	// This is a hack to check the progress of package loading.
