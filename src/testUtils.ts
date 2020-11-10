@@ -257,7 +257,6 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		return Promise.resolve(false);
 	}
 
-	const tmpCoverPath = testconfig.applyCodeCoverage ? getTempFilePath('go-code-cover') : undefined;
 	// We do not want to clear it if tests are already running, as that could
 	// lose valuable output.
 	if (runningTestProcesses.length < 1) {
@@ -268,90 +267,15 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		outputChannel.show(true);
 	}
 
-	const testTags: string = getTestTags(testconfig.goConfig);
-	const args: Array<string> = ['test'];
 	const testType: string = testconfig.isBenchmark ? 'Benchmarks' : 'Tests';
 
-	if (testconfig.isBenchmark) {
-		args.push('-benchmem', '-run=^$');
-	} else {
-		args.push('-timeout', testconfig.goConfig['testTimeout']);
-		if (testconfig.applyCodeCoverage) {
-			args.push('-coverprofile=' + tmpCoverPath);
-			const coverMode = testconfig.goConfig['coverMode'];
-			switch (coverMode) {
-				case 'default':
-					break;
-				case 'set': case 'count': case 'atomic':
-					args.push('-covermode', coverMode);
-					break;
-				default:
-					vscode.window.showWarningMessage(
-						`go.coverMode=${coverMode} is illegal. Use 'set', 'count', 'atomic', or 'default'.`
-					);
-			}
-		}
-	}
+	// compute test target package
+	const { targets, pkgMap, currentGoWorkspace } = await getTestTargetPackages(testconfig, outputChannel);
 
-	if (testTags && testconfig.flags.indexOf('-tags') === -1) {
-		args.push('-tags', testTags);
-	}
+	// generate full test args.
+	const { args, outArgs, tmpCoverPath, addJSONFlag } = computeTestCommand(testconfig, targets);
 
-	const targets = testconfig.includeSubDirectories ? ['./...'] : targetArgs(testconfig);
-
-	let currentGoWorkspace = '';
-	let getCurrentPackagePromise: Promise<string>;
-	let pkgMapPromise: Promise<Map<string, string>>;
-	if (testconfig.isMod) {
-		getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
-		// We need the mapping to get absolute paths for the files in the test output.
-		pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
-	} else {  // GOPATH mode
-		currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
-		getCurrentPackagePromise = Promise.resolve(
-			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : '');
-		// We dont need mapping, as we can derive the absolute paths from package path
-		pkgMapPromise = Promise.resolve(null);
-	}
-
-	let pkgMap = new Map<string, string>();
-	// run go list to populate pkgMap and currentPackage necessary to adjust the test output later.
-	try {
-		const [pkgMap0, currentPackage] = await Promise.all([pkgMapPromise, getCurrentPackagePromise]);
-		if (pkgMap0) {
-			pkgMap = pkgMap0;
-		}
-		// Use the package name to be in the args to enable running tests in symlinked directories
-		// TODO(hyangah): check why modules mode didn't set currentPackage.
-		if (!testconfig.includeSubDirectories && currentPackage) {
-			targets.splice(0, 0, currentPackage);
-		}
-	} catch (err) {
-		outputChannel.appendLine(`warning: failed to compute package mapping... ${err}`);
-	}
-
-	const outTargets = args.slice(0);
-	if (targets.length > 4) {
-		outTargets.push('<long arguments omitted>');
-	} else {
-		outTargets.push(...targets);
-	}
-
-	if (args.includes('-v') && !args.includes('-json')) {
-		args.push('-json');
-	}
-
-	args.push(...targets);
-
-	// ensure that user provided flags are appended last (allow use of -args ...)
-	// ignore user provided -run flag if we are already using it
-	if (args.indexOf('-run') > -1) {
-		removeRunFlag(testconfig.flags);
-	}
-	args.push(...testconfig.flags);
-	outTargets.push(...testconfig.flags);
-
-	outputChannel.appendLine(['Running tool:', goRuntimePath, ...outTargets].join(' '));
+	outputChannel.appendLine(['Running tool:', goRuntimePath, ...outArgs].join(' '));
 	outputChannel.appendLine('');
 
 	let testResult = false;
@@ -363,7 +287,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const errBuf = new LineBuffer();
 
 			const testResultLines: string[] = [];
-			const processTestResultLine = args.includes('-json') ?
+			const processTestResultLine = addJSONFlag ?
 				processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel) :
 				processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
@@ -410,10 +334,131 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		outputChannel.appendLine(`Error: ${testType} failed.`);
 		outputChannel.appendLine(err);
 	}
-	if (testconfig.applyCodeCoverage) {
+	if (tmpCoverPath) {
 		await applyCodeCoverageToAllEditors(tmpCoverPath, testconfig.dir);
 	}
 	return testResult;
+}
+
+async function getTestTargetPackages(testconfig: TestConfig, outputChannel: vscode.OutputChannel) {
+	const targets = testconfig.includeSubDirectories ? ['./...'] : [];
+	let currentGoWorkspace = '';
+	let getCurrentPackagePromise: Promise<string>;
+	let pkgMapPromise: Promise<Map<string, string>>;
+	if (testconfig.isMod) {
+		getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
+		// We need the mapping to get absolute paths for the files in the test output.
+		pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
+	} else { // GOPATH mode
+		currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
+		getCurrentPackagePromise = Promise.resolve(
+			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : '');
+		// We dont need mapping, as we can derive the absolute paths from package path
+		pkgMapPromise = Promise.resolve(null);
+	}
+
+	let pkgMap = new Map<string, string>();
+	// run go list to populate pkgMap and currentPackage necessary to adjust the test output later.
+	try {
+		const [pkgMap0, currentPackage] = await Promise.all([pkgMapPromise, getCurrentPackagePromise]);
+		if (pkgMap0) {
+			pkgMap = pkgMap0;
+		}
+		// Use the package name to be in the args to enable running tests in symlinked directories
+		// TODO(hyangah): check why modules mode didn't set currentPackage.
+		if (!testconfig.includeSubDirectories && currentPackage) {
+			targets.splice(0, 0, currentPackage);
+		}
+	} catch (err) {
+		outputChannel.appendLine(`warning: failed to compute package mapping... ${err}`);
+	}
+	return { targets, pkgMap, currentGoWorkspace };
+}
+
+// computeTestCommand returns the test command argument list and extra info necessary
+// to post process the test results.
+// Exported for testing.
+export function computeTestCommand(testconfig: TestConfig, targets: string[])
+	: {
+		args: Array<string>,  // test command args.
+		outArgs: Array<string>,  // compact test command args to show to user.
+		tmpCoverPath?: string,  // coverage file path if coverage info is necessary.
+		addJSONFlag: boolean  // true if we add extra -json flag for stream processing.
+	} {
+	const args: Array<string> = ['test'];
+	// user-specified flags
+	const argsFlagIdx = testconfig.flags?.indexOf('-args') ?? -1;
+	const userFlags = argsFlagIdx < 0 ? testconfig.flags : testconfig.flags.slice(0, argsFlagIdx);
+	const userArgsFlags = argsFlagIdx < 0 ? [] : testconfig.flags.slice(argsFlagIdx);
+
+	// flags to limit test time
+	if (testconfig.isBenchmark) {
+		args.push('-benchmem', '-run=^$');
+	} else {
+		args.push('-timeout', testconfig.goConfig['testTimeout']);
+	}
+
+	// tags flags only if user didn't set -tags yet.
+	const testTags: string = getTestTags(testconfig.goConfig);
+	if (testTags && userFlags.indexOf('-tags') === -1) {
+		args.push('-tags', testTags);
+	}
+
+	// coverage flags
+	let tmpCoverPath: string;
+	if (testconfig.applyCodeCoverage) {
+		tmpCoverPath = getTempFilePath('go-code-cover');
+		args.push('-coverprofile=' + tmpCoverPath);
+		const coverMode = testconfig.goConfig['coverMode'];
+		switch (coverMode) {
+			case 'default':
+				break;
+			case 'set': case 'count': case 'atomic':
+				args.push('-covermode', coverMode);
+				break;
+			default:
+				vscode.window.showWarningMessage(
+					`go.coverMode=${coverMode} is illegal. Use 'set', 'count', 'atomic', or 'default'.`
+				);
+		}
+	}
+
+	// all other test run/benchmark flags
+	args.push(...targetArgs(testconfig));
+
+	const outArgs = args.slice(0);  // command to show
+
+	// if user set -v, set -json to emulate streaming test output
+	const addJSONFlag = userFlags.includes('-v') && !userFlags.includes('-json');
+	if (addJSONFlag) {
+		args.push('-json');  // this is not shown to the user.
+	}
+
+	if (targets.length > 4) {
+		outArgs.push('<long arguments omitted>');
+	} else {
+		outArgs.push(...targets);
+	}
+	args.push(...targets);
+
+	// ensure that user provided flags are appended last (allow use of -args ...)
+	// ignore user provided -run flag if we are already using it
+	if (args.indexOf('-run') > -1) {
+		removeRunFlag(userFlags);
+	}
+
+	args.push(...userFlags);
+	outArgs.push(...userFlags);
+
+	args.push(...userArgsFlags);
+	outArgs.push(...userArgsFlags);
+
+	return {
+		args,
+		outArgs,
+		tmpCoverPath,
+		addJSONFlag
+	};
 }
 
 function processTestResultLineInJSONMode(
