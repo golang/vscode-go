@@ -357,7 +357,7 @@ suite('Go Debug Adapter', function () {
 		// an initialized event.
 		await Promise.all([
 			new Promise(async (resolve) => {
-				console.log(`Setting up attach request for ${debugConfig}.`);
+				console.log(`Setting up attach request for ${JSON.stringify(debugConfig)}.`);
 				const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 				assert.ok(attachResult.success);
 				resolve();
