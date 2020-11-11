@@ -245,7 +245,19 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		},
 		{
 			initializationOptions: goplsWorkspaceConfig,
-			documentSelector: ['go', 'go.mod', 'go.sum'],
+			documentSelector: [
+				// Filter out unsupported document types, e.g. vsls, git.
+				// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
+				//
+				// - files
+				{ language: 'go', scheme: 'file' },
+				{ language: 'go.mod', scheme: 'file' },
+				{ language: 'go.sum', scheme: 'file' },
+				// - unsaved files
+				{ language: 'go', scheme: 'untitled' },
+				{ language: 'go.mod', scheme: 'untitled' },
+				{ language: 'go.sum', scheme: 'untitled' },
+			],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
 				code2Protocol: (uri: vscode.Uri): string =>
