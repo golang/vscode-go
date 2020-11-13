@@ -29,7 +29,7 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env }, (err, stdout) => {
 			if (err) {
 				console.warn(`Error when running go env GOMOD: ${err}`);
-				return resolve();
+				return resolve('');
 			}
 			const [goMod] = stdout.split('\n');
 			resolve(goMod);
@@ -179,7 +179,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 				.split('\n')
 				.filter((line) => line && line.indexOf(' ') === -1);
 			if (pkgs.length !== 1) {
-				resolve();
+				resolve('');
 				return;
 			}
 			folderToPackageMapping[cwd] = pkgs[0];

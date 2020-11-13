@@ -452,8 +452,8 @@ function processTestResultLineInStandardMode(
 	currentGoWorkspace: string,
 	testResultLines: string[],
 	outputChannel: vscode.OutputChannel) {
-	// 1=ok/FAIL, 2=package, 3=time/(cached)
-	const packageResultLineRE = /^(ok|FAIL)\s+(\S+)\s+([0-9\.]+s|\(cached\))/;
+	// 1=ok/FAIL/?, 2=package, 3=time/(cached)/[no test files]
+	const packageResultLineRE = /^(ok|FAIL|\?)\s+(\S+)\s+([0-9\.]+s|\(cached\)|\[no test files\])/;
 	const lineWithErrorRE = /^(\t|\s\s\s\s)\S/;
 
 	return (line: string) => {
