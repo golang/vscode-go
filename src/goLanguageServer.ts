@@ -998,9 +998,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
 		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
-			if (cfg.dateToPromptThisMonth) {
-				return cfg;
-			}
+			return cfg;
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
