@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { ChildProcess, spawn } from 'child_process';
+import { debug } from 'console';
 import * as fs from 'fs';
 import getPort = require('get-port');
 import * as http from 'http';
@@ -566,6 +567,181 @@ suite('Go Debug Adapter', function () {
 				dc.waitForEvent('terminated')
 			]);
 		});
+	});
+
+	suite('set current working directory', () => {
+		test('should debug program with cwd set', async () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				cwd: WD,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+
+			await assertVariableValue('strdat', '"Hello, World!"');
+		});
+
+		test('should debug program without cwd set', async () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+
+			await assertVariableValue('strdat', '"Goodbye, World."');
+		});
+
+		test('should debug file program with cwd set', async () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
+			const FILE = PROGRAM;
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				cwd: WD,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+
+			await assertVariableValue('strdat', '"Hello, World!"');
+		});
+
+		test('should debug file program without cwd set', async () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
+			const FILE = PROGRAM;
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+
+			await assertVariableValue('strdat', '"Goodbye, World."');
+		});
+
+		test('should run program with cwd set (noDebug)', () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				cwd: WD,
+				noDebug: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.launch(debugConfig),
+				dc.waitForEvent('output').then((event) => {
+					assert.strictEqual(event.body.output, 'Hello, World!\n');
+				})
+			]);
+		});
+
+		test('should run program without cwd set (noDebug)', () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				noDebug: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.launch(debugConfig),
+				dc.waitForEvent('output').then((event) => {
+					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
+				})
+			]);
+		});
+
+		test('should run file program with cwd set (noDebug)', () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				cwd: WD,
+				noDebug: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.launch(debugConfig),
+				dc.waitForEvent('output').then((event) => {
+					assert.strictEqual(event.body.output, 'Hello, World!\n');
+				})
+			]);
+		});
+
+		test('should run file program without cwd set (noDebug)', () => {
+			const WD = path.join(DATA_ROOT, 'cwdTest');
+			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				noDebug: true
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.launch(debugConfig),
+				dc.waitForEvent('output').then((event) => {
+					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
+				})
+			]);
+		});
+
 	});
 
 	suite('remote attach', () => {
