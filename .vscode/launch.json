@@ -18,6 +18,9 @@
 			"sourceMaps": true,
 			"smartStep": true,
 			"preLaunchTask": "npm: webpack",
+			"env": {
+				"VSCODE_GO_IN_TEST": ""  // Enable code
+			},
 		},
 		{
 			"name": "Launch as server",
