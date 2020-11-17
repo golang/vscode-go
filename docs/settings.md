@@ -414,3 +414,301 @@ Vets code on file save using 'go tool vet'.
 Allowed Values:`[package workspace off]`
 
 Default: `package`
+
+### `gopls.analyses`
+
+(Experimental) analyses specify analyses that the user would like to enable or disable.
+A map of the names of analysis passes that should be enabled/disabled.
+A full list of analyzers that gopls uses can be found [here](analyzers.md)
+
+Example Usage:
+```json5
+...
+"analyses": {
+  "unreachable": false, // Disable the unreachable analyzer.
+  "unusedparams": true  // Enable the unusedparams analyzer.
+}
+...
+```
+
+
+### `gopls.annotations`
+
+(Experimental) annotations suppress various kinds of optimization diagnostics
+that would be reported by the gc_details command.
+ * noNilcheck suppresses display of nilchecks.
+ * noEscape suppresses escape choices.
+ * noInline suppresses inlining choices.
+ * noBounds suppresses bounds checking diagnostics.
+
+
+### `gopls.buildFlags`
+
+buildFlags is the set of flags passed on to the build system when invoked.
+It is applied to queries like `go list`, which is used when discovering files.
+The most common use is to set `-tags`.
+
+
+### `gopls.codelens`
+
+(Experimental) codelens overrides the enabled/disabled state of code lenses. See the "Code Lenses"
+section of settings.md for the list of supported lenses.
+
+Example Usage:
+```json5
+"gopls": {
+...
+  "codelens": {
+    "generate": false,  // Don't show the `go generate` lens.
+    "gc_details": true  // Show a code lens toggling the display of gc's choices.
+  }
+...
+}
+```
+
+
+Default:{<br/>
+&nbsp;&nbsp;`"gc_details": false`,<br/>
+&nbsp;&nbsp;`"generate": true`,<br/>
+&nbsp;&nbsp;`"regenerate_cgo": true`,<br/>
+&nbsp;&nbsp;`"tidy": true`,<br/>
+&nbsp;&nbsp;`"upgrade_dependency": true`,<br/>
+&nbsp;&nbsp;`"vendor": true`,<br/>
+    }
+
+
+### `gopls.completeUnimported`
+
+(Experimental) completeUnimported enables completion for packages that you do not currently import.
+
+
+Default: `true`
+
+### `gopls.completionBudget`
+
+(For Debugging) completionBudget is the soft latency goal for completion requests. Most
+requests finish in a couple milliseconds, but in some cases deep
+completions can take much longer. As we use up our budget we
+dynamically reduce the search scope to ensure we return timely
+results. Zero means unlimited.
+
+
+Default: `100ms`
+
+### `gopls.completionDocumentation`
+
+(Experimental) completionDocumentation enables documentation with completion results.
+
+
+Default: `true`
+
+### `gopls.deepCompletion`
+
+(Experimental) deepCompletion enables the ability to return completions from deep inside relevant entities, rather than just the locally accessible ones.
+
+Consider this example:
+
+```go
+package main
+
+import "fmt"
+
+type wrapString struct {
+    str string
+}
+
+func main() {
+    x := wrapString{"hello world"}
+    fmt.Printf(<>)
+}
+```
+
+At the location of the `<>` in this program, deep completion would suggest the result `x.str`.
+
+
+Default: `true`
+
+### `gopls.env`
+
+env adds environment variables to external commands run by `gopls`, most notably `go list`.
+
+
+### `gopls.expandWorkspaceToModule`
+
+(Experimental) expandWorkspaceToModule instructs `gopls` to adjust the scope of the
+workspace to find the best available module root. `gopls` first looks for
+a go.mod file in any parent directory of the workspace folder, expanding
+the scope to that directory if it exists. If no viable parent directory is
+found, gopls will check if there is exactly one child directory containing
+a go.mod file, narrowing the scope to that directory if it exists.
+
+
+Default: `true`
+
+### `gopls.experimentalDiagnosticsDelay`
+
+(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+after the most recent file modification before computing deep diagnostics.
+Simple diagnostics (parsing and type-checking) are always run immediately
+on recently modified packages.
+
+This option must be set to a valid duration string, for example `"250ms"`.
+
+
+Default: `0s`
+
+### `gopls.experimentalPackageCacheKey`
+
+(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key
+for package type information to increase cache hits. This setting removes
+the user's environment, build flags, and working directory from the cache
+key, which should be a safe change as all relevant inputs into the type
+checking pass are already hashed into the key. This is temporarily guarded
+by an experiment because caching behavior is subtle and difficult to
+comprehensively test.
+
+
+Default: `true`
+
+### `gopls.experimentalWorkspaceModule`
+
+(Experimental) experimentalWorkspaceModule opts a user into the experimental support
+for multi-module workspaces.
+
+
+Default: `false`
+
+### `gopls.gofumpt`
+
+gofumpt indicates if we should run gofumpt formatting.
+
+
+Default: `false`
+
+### `gopls.hoverKind`
+
+hoverKind controls the information that appears in the hover text.
+SingleLine and Structured are intended for use only by authors of editor plugins.
+
+
+Allowed Values:`[FullDocumentation NoDocumentation SingleLine Structured SynopsisDocumentation]`
+
+Default: `FullDocumentation`
+
+### `gopls.importShortcut`
+
+(Experimental) importShortcut specifies whether import statements should link to
+documentation or go to definitions.
+
+
+Allowed Values:`[Both Definition Link]`
+
+Default: `Both`
+
+### `gopls.linkTarget`
+
+linkTarget controls where documentation links go.
+It might be one of:
+
+* `"godoc.org"`
+* `"pkg.go.dev"`
+
+If company chooses to use its own `godoc.org`, its address can be used as well.
+
+
+Default: `pkg.go.dev`
+
+### `gopls.linksInHover`
+
+(Experimental) linksInHover toggles the presence of links to documentation in hover.
+
+
+Default: `true`
+
+### `gopls.local`
+
+local is the equivalent of the `goimports -local` flag, which puts imports beginning with this string after 3rd-party packages.
+It should be the prefix of the import path whose imports should be grouped separately.
+
+
+Default: ``
+
+### `gopls.matcher`
+
+(Experimental) matcher sets the algorithm that is used when calculating completion candidates.
+
+
+Allowed Values:`[CaseInsensitive CaseSensitive Fuzzy]`
+
+Default: `Fuzzy`
+
+### `gopls.semanticTokens`
+
+(Experimental) semanticTokens controls whether the LSP server will send
+semantic tokens to the client.
+
+
+Default: `false`
+
+### `gopls.staticcheck`
+
+(Experimental) staticcheck enables additional analyses from staticcheck.io.
+
+
+Default: `false`
+
+### `gopls.symbolMatcher`
+
+(Experimental) symbolMatcher sets the algorithm that is used when finding workspace symbols.
+
+
+Allowed Values:`[CaseInsensitive CaseSensitive Fuzzy]`
+
+Default: `Fuzzy`
+
+### `gopls.symbolStyle`
+
+(Experimental) symbolStyle controls how symbols are qualified in symbol responses.
+
+Example Usage:
+```json5
+"gopls": {
+...
+  "symbolStyle": "dynamic",
+...
+}
+```
+
+
+Allowed Values:`[Dynamic Full Package]`
+
+Default: `Package`
+
+### `gopls.tempModfile`
+
+(Experimental) tempModfile controls the use of the -modfile flag in Go 1.14.
+
+
+Default: `true`
+
+### `gopls.usePlaceholders`
+
+placeholders enables placeholders for function parameters or struct fields in completion responses.
+
+
+Default: `false`
+
+### `gopls.verboseOutput`
+
+(For Debugging) verboseOutput enables additional debug logging.
+
+
+Default: `false`
+
+### `gopls.verboseWorkDoneProgress`
+
+(Experimental) verboseWorkDoneProgress controls whether the LSP server should send
+progress reports for all work done outside the scope of an RPC.
+
+
+Default: `false`

@@ -233,7 +233,8 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
 export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
-	let goplsWorkspaceConfig = getGoplsConfig();
+	let goplsWorkspaceConfig = getGoplsConfig() as any;
+	goplsWorkspaceConfig = filterDefaultConfigValues(goplsWorkspaceConfig, 'gopls',  undefined);
 	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
 	const c = new LanguageClient(
 		'go',  // id
@@ -437,19 +438,65 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				workspace: {
 					configuration: async (params: ConfigurationParams, token: CancellationToken, next: ConfigurationRequest.HandlerSignature): Promise<any[] | ResponseError<void>> => {
 						const configs = await next(params, token);
-						if (!Array.isArray(configs)) {
+						if (!configs || !Array.isArray(configs)) {
 							return configs;
 						}
-						for (let workspaceConfig of configs) {
-							workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig);
+						const ret = [] as any[];
+						for (let i = 0; i < configs.length; i++) {
+							let workspaceConfig = configs[i];
+							if (!!workspaceConfig && typeof workspaceConfig === 'object') {
+								const scopeUri = params.items[i].scopeUri;
+								const resource = scopeUri ? vscode.Uri.parse(scopeUri) : undefined;
+								const section = params.items[i].section;
+								workspaceConfig = filterDefaultConfigValues(workspaceConfig, section, resource);
+								workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig);
+							}
+							ret.push(workspaceConfig);
 						}
-						return configs;
+						return ret;
 					},
 				},
 			}
 		}
 	);
 	return c;
+}
+
+// filterDefaultConfigValues removes the entries filled based on the default values
+// and selects only those the user explicitly specifies in their settings.
+// This assumes workspaceConfig is a non-null(undefined) object type.
+// Exported for testing.
+export function filterDefaultConfigValues(workspaceConfig: any, section: string, resource: vscode.Uri): any {
+	if (!workspaceConfig) {
+		return workspaceConfig;
+	}
+
+	const dot = section?.lastIndexOf('.') || -1;
+	const sectionKey = dot >= 0 ? section.substr(0, dot) : section;  // e.g. 'gopls'
+
+	const cfg = vscode.workspace.getConfiguration(sectionKey, resource);
+	const filtered = {} as { [key: string]: any };
+	for (const [key, value] of Object.entries(workspaceConfig)) {
+		if (typeof value === 'function') {
+			continue;
+		}
+		const c = cfg.inspect(key);
+		// select only the field whose current value comes from non-default setting.
+		if (!c || !deepEqual(c.defaultValue, value) ||
+			// c.defaultValue !== value would be most likely sufficient, except
+			// when gopls' default becomes different from extension's default.
+			// So, we also forward the key if ever explicitely stated in one of the
+			// settings layers.
+			c.globalLanguageValue !== undefined ||
+			c.globalValue !== undefined ||
+			c.workspaceFolderLanguageValue !== undefined ||
+			c.workspaceFolderValue !== undefined ||
+			c.workspaceLanguageValue !== undefined ||
+			c.workspaceValue !== undefined) {
+			filtered[key] = value;
+		}
+	}
+	return filtered;
 }
 
 // adjustGoplsWorkspaceConfiguration adds any extra options to the gopls
