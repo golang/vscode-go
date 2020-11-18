@@ -15,8 +15,11 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import {
+	CancellationToken,
 	CloseAction,
 	CompletionItemKind,
+	ConfigurationParams,
+	ConfigurationRequest,
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
@@ -24,6 +27,7 @@ import {
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentLinksSignature,
+	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import {
@@ -54,9 +58,10 @@ import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getCurrentGoPath, getGoConfig, getGoplsConfig, getWorkspaceFolderPath } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
-interface LanguageServerConfig {
+export interface LanguageServerConfig {
 	serverName: string;
 	path: string;
+	version: string;
 	modtime: Date;
 	enabled: boolean;
 	flags: string[];
@@ -88,7 +93,7 @@ let restartCommand: vscode.Disposable;
 
 // When enabled, users may be prompted to fill out the gopls survey.
 // For now, we turn it on in the Nightly extension to test it.
-const goplsSurveyOn: boolean = extensionId === 'golang.go-nightly';
+const goplsSurveyOn: boolean = isNightly();
 
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
@@ -97,7 +102,7 @@ let lastUserAction: Date = new Date();
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
-	const cfg = buildLanguageServerConfig();
+	const cfg = buildLanguageServerConfig(getGoConfig());
 
 	// If the language server is gopls, we enable a few additional features.
 	// These include prompting for updates and surveys.
@@ -129,7 +134,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 	const update = async () => {
 		setTimeout(update, timeDay);
 
-		const cfg = buildLanguageServerConfig();
+		const cfg = buildLanguageServerConfig(getGoConfig());
 		if (!cfg.enabled) {
 			return;
 		}
@@ -141,7 +146,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 
-		const cfg = buildLanguageServerConfig();
+		const cfg = buildLanguageServerConfig(getGoConfig());
 		if (!goplsSurveyOn || !cfg.enabled) {
 			return;
 		}
@@ -171,7 +176,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
-		languageClient = buildLanguageClient(config);
+		languageClient = await buildLanguageClient(buildLanguageClientOption(config));
 		crashCount = 0;
 	}
 
@@ -201,36 +206,66 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	return true;
 }
 
-function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
-	// Reuse the same output channel for each instance of the server.
-	if (config.enabled) {
-		if (!serverOutputChannel) {
-			serverOutputChannel = vscode.window.createOutputChannel(config.serverName + ' (server)');
+export interface BuildLanguageClientOption extends LanguageServerConfig {
+	outputChannel?: vscode.OutputChannel;
+	traceOutputChannel?: vscode.OutputChannel;
+}
+
+// buildLanguageClientOption returns the default, extra configuration
+// used in building a new LanguageClient instance. Options specified
+// in LanguageServerConfig
+function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClientOption {
+		// Reuse the same output channel for each instance of the server.
+		if (cfg.enabled) {
+			if (!serverOutputChannel) {
+				serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
+			}
+			if (!serverTraceChannel) {
+				serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
+			}
 		}
-		if (!serverTraceChannel) {
-			serverTraceChannel = vscode.window.createOutputChannel(config.serverName);
-		}
-	}
-	const goplsConfig = getGoplsConfig();
+		return Object.assign({
+			outputChannel: serverOutputChannel,
+			traceOutputChannel: serverTraceChannel
+		}, cfg);
+}
+
+// buildLanguageClient returns a language client built using the given language server config.
+// The returned language client need to be started before use.
+export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
+	let goplsWorkspaceConfig = getGoplsConfig();
+	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
 	const c = new LanguageClient(
 		'go',  // id
-		config.serverName,  // name
+		cfg.serverName,  // name e.g. gopls
 		{
-			command: config.path,
-			args: ['-mode=stdio', ...config.flags],
-			options: { env: config.env },
+			command: cfg.path,
+			args: ['-mode=stdio', ...cfg.flags],
+			options: { env: cfg.env },
 		},
 		{
-			initializationOptions: goplsConfig,
-			documentSelector: ['go', 'go.mod', 'go.sum'],
+			initializationOptions: goplsWorkspaceConfig,
+			documentSelector: [
+				// Filter out unsupported document types, e.g. vsls, git.
+				// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
+				//
+				// - files
+				{ language: 'go', scheme: 'file' },
+				{ language: 'go.mod', scheme: 'file' },
+				{ language: 'go.sum', scheme: 'file' },
+				// - unsaved files
+				{ language: 'go', scheme: 'untitled' },
+				{ language: 'go.mod', scheme: 'untitled' },
+				{ language: 'go.sum', scheme: 'untitled' },
+			],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
 				code2Protocol: (uri: vscode.Uri): string =>
 					(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
 				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 			},
-			outputChannel: serverOutputChannel,
-			traceOutputChannel: serverTraceChannel,
+			outputChannel: cfg.outputChannel,
+			traceOutputChannel: cfg.traceOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
@@ -298,7 +333,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					diagnostics: vscode.Diagnostic[],
 					next: HandleDiagnosticsSignature
 				) => {
-					if (!config.features.diagnostics) {
+					if (!cfg.features.diagnostics) {
 						return null;
 					}
 					return next(uri, diagnostics);
@@ -308,7 +343,7 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					token: vscode.CancellationToken,
 					next: ProvideDocumentLinksSignature
 				) => {
-					if (!config.features.documentLink) {
+					if (!cfg.features.documentLink) {
 						return null;
 					}
 					return next(document, token);
@@ -399,10 +434,49 @@ function buildLanguageClient(config: LanguageServerConfig): LanguageClient {
 					lastUserAction = new Date();
 					next(e);
 				},
+				workspace: {
+					configuration: async (params: ConfigurationParams, token: CancellationToken, next: ConfigurationRequest.HandlerSignature): Promise<any[] | ResponseError<void>> => {
+						const configs = await next(params, token);
+						if (!Array.isArray(configs)) {
+							return configs;
+						}
+						for (let workspaceConfig of configs) {
+							workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig);
+						}
+						return configs;
+					},
+				},
 			}
 		}
 	);
 	return c;
+}
+
+// adjustGoplsWorkspaceConfiguration adds any extra options to the gopls
+// config. Right now, the only extra option is enabling experiments for the
+// Nightly extension.
+async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, config: any): Promise<any> {
+	if (!config) {
+		return config;
+	}
+	// Only modify the user's configurations for the Nightly.
+	if (extensionId !== 'golang.go-nightly') {
+		return config;
+	}
+	// allExperiments is only available with gopls/v0.5.2 and above.
+	const version = await getLocalGoplsVersion(cfg);
+	if (!version) {
+		return config;
+	}
+	const sv = semver.parse(version, true);
+	if (!sv || semver.lt(sv, 'v0.5.2')) {
+		return config;
+	}
+	const newConfig = Object.assign({}, config);
+	if (!config['allExperiments']) {
+		newConfig['allExperiments'] = true;
+	}
+	return newConfig;
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
@@ -505,11 +579,12 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 	}
 }
 
-export function buildLanguageServerConfig(): LanguageServerConfig {
-	const goConfig = getGoConfig();
+export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
+
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
+		version: '', // compute version lazily
 		modtime: null,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
@@ -558,9 +633,6 @@ Please try reinstalling it.`);
  */
 export function getLanguageServerToolPath(): string {
 	const goConfig = getGoConfig();
-	if (!goConfig['useLanguageServer']) {
-		return;
-	}
 	// Check that all workspace folders are configured with the same GOPATH.
 	if (!allFoldersHaveSameGopath()) {
 		vscode.window.showInformationMessage(
@@ -712,7 +784,7 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	return time;
 };
 
-const acceptGoplsPrerelease = (extensionId === 'golang.go-nightly');
+const acceptGoplsPrerelease = isNightly();
 
 export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
@@ -748,7 +820,12 @@ export const getLatestGoplsVersion = async (tool: Tool) => {
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
+//
+// If this command has already been executed, it returns the saved result.
 export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
+	if (cfg.version !== '') {
+		return cfg.version;
+	}
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
@@ -802,7 +879,8 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	//
 	//    v0.1.3
 	//
-	return split[1];
+	cfg.version = split[1];
+	return cfg.version;
 };
 
 async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
@@ -920,9 +998,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
 		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
-			if (cfg.dateToPromptThisMonth) {
-				return cfg;
-			}
+			return cfg;
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
@@ -932,7 +1008,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
 	let probability = 0.01; // lower probability for the regular extension
-	if (extensionId === 'golang.go-nightly') {
+	if (isNightly()) {
 		probability = 0.0275;
 	}
 	cfg.promptThisMonth = Math.random() < probability;
@@ -947,6 +1023,12 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	}
 	cfg.dateComputedPromptThisMonth = now;
 	return cfg;
+}
+
+// isNightly returns true if the extension ID is the extension ID for the
+// Nightly extension.
+export function isNightly(): boolean {
+	return extensionId === 'golang.go-nightly';
 }
 
 async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
@@ -1138,7 +1220,7 @@ function randomIntInRange(min: number, max: number): number {
 	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
-const timeMinute = 1000 * 60;
+export const timeMinute = 1000 * 60;
 const timeHour = timeMinute * 60;
 const timeDay = timeHour * 24;
 

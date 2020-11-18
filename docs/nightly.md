@@ -4,8 +4,6 @@ This master branch of this extension is built and published nightly through the 
 
 [Go Nightly] is the **preview** version of the Go extension, so it may be broken or unstable at times. The [Changelog](nightly/CHANGELOG.md) and [README](nightly/README.md) for [Go Nightly] can be found in the [docs/nightly](nightly/) directory.
 
-If you try out [Go Nightly], please file issues when you notice bugs. You can also join the maintainers in the [#vscode-dev](https://gophers.slack.com/archives/CUWGEKH5Z) channel on the [Gophers Slack](https://invite.slack.golangbridge.org/).
-
 ## Installation
 
 To use the [Go Nightly] extension (`golang.go-nightly`), you **must** first disable the standard Go extension (`golang.go`). The two are not compatible and will cause conflicts if enabled simultaneously.
@@ -15,6 +13,14 @@ If you'd like to make a permanent switch, you can uninstall the Go extension.
 Otherwise, you can disable it temporarily. To do so, open the Extensions view in VS Code, click on the gear icon next to the Go extension, and select Disable. Read more in the [documentation on how to disable an extension](https://code.visualstudio.com/docs/editor/extension-gallery#_disable-an-extension).
 
 Once you have uninstalled or disabled the standard Go extension, search for [Go Nightly] in the VS Code Marketplace and install it instead.
+
+## Feedback
+
+If you use [Go Nightly], please share your feedback or bug reports by [filing an issue]. You can also speak to the maintainers directly in the [#vscode-dev](https://gophers.slack.com/archives/CUWGEKH5Z) channel on the [Gophers Slack].
+
+### Community
+
+Go Nightly users are encouraged to discuss issues and share feedback in the [#vscode-go-nightly](https://gophers.slack.com/archives/C01DQ2KBMNU) channel on [Gophers Slack] or on the [Go Nightly mailing list](https://groups.google.com/g/vscode-go-nightly). The VS Code Go maintainers may send communications to these channels to request feedback as well.
 
 ## Releases
 
@@ -33,3 +39,5 @@ Pre-releases of the Go extension will be made available on the [Releases page](h
 **Note**: If you install an extension from a VSIX file, you will stop receiving automatic prompts when updates are released.
 
 [Go Nightly]: https://marketplace.visualstudio.com/items?itemName=golang.go-nightly
+[filing an issue]: https://github.com/golang/vscode-go/issues/new/choose
+[Gophers Slack]: https://invite.slack.golangbridge.org/

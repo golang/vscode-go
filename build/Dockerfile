@@ -12,13 +12,18 @@ RUN /scratch/build/all.bash setup_env
 
 FROM node:latest
 
+# Prepare a home directory under workspace.
+RUN mkdir -p /workspace/vscodego
+ENV HOME=/workspace/vscodego
+
 # GO111MODULE=auto
 RUN mkdir /go
 COPY --from=gobuilder /gobin /go/bin
 COPY --from=gobuilder /usr/local/go /usr/local/go
 
-ENV GOPATH /go
-ENV PATH ${GOPATH}/bin:/usr/local/go/bin:${PATH}
+# Add the default GOPATH/bin to the PATH.
+# Add the directories of the go tool chains to PATH.
+ENV PATH /workspace/vscodego/go/bin:/go/bin:/usr/local/go/bin:${PATH}
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0

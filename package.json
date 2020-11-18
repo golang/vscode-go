@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -53,10 +53,10 @@
     "moment": "^2.24.0",
     "semver": "^7.3.2",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.40.0",
+    "vscode-debugadapter": "^1.42.1",
     "vscode-debugadapter-testsupport": "^1.42.0",
-    "vscode-debugprotocol": "^1.40.0",
-    "vscode-languageclient": "^7.0.0-next.9",
+    "vscode-debugprotocol": "^1.42.0",
+    "vscode-languageclient": "^7.0.0-next.12",
     "vscode-languageserver-protocol": "^3.16.0-next.7",
     "web-request": "^1.0.7"
   },
@@ -72,6 +72,7 @@
     "@types/vscode": "^1.41.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
+    "get-port": "^5.1.1",
     "mocha": "^7.1.1",
     "nan": "^2.14.1",
     "prettier": "^2.0.4",
@@ -94,6 +95,7 @@
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
+    "onDebugInitialConfigurations",
     "onDebugResolve:go"
   ],
   "main": "./dist/goMain.js",
@@ -1698,7 +1700,8 @@
             "tags": "json",
             "options": "json=omitempty",
             "promptForTags": false,
-            "transform": "snakecase"
+            "transform": "snakecase",
+            "template": ""
           },
           "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, json tags are added.",
           "scope": "resource"

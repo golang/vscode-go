@@ -38,12 +38,14 @@ type Command struct {
 }
 
 type Property struct {
-	Name string
+	name string // Set by us.
 
-	Default     interface{} `json:"default,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Type        interface{} `json:"type,omitempty"`
-	Enum        []string    `json:"enum,omitempty"`
+	// Below are defined in package.json
+	Default             interface{} `json:"default,omitempty"`
+	MarkdownDescription string      `json:"markdownDescription,omitempty"`
+	Description         string      `json:"description,omitempty"`
+	Type                interface{} `json:"type,omitempty"`
+	Enum                []string    `json:"enum,omitempty"`
 }
 
 func main() {
@@ -63,6 +65,7 @@ func main() {
 	if err := json.Unmarshal(data, pkgJSON); err != nil {
 		log.Fatal(err)
 	}
+
 	rewrite := func(filename string, toAdd []byte) {
 		oldContent, err := ioutil.ReadFile(filename)
 		if err != nil {
@@ -95,7 +98,7 @@ func main() {
 			base := filepath.Join("docs", filepath.Base(filename))
 			fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
 `, strings.TrimSuffix(base, ".md"), base)
-			os.Exit(1)
+			os.Exit(1) // causes CI to break.
 		}
 	}
 	var b bytes.Buffer
@@ -112,20 +115,19 @@ func main() {
 
 	var properties []Property
 	for name, p := range pkgJSON.Contributes.Configuration.Properties {
-		properties = append(properties, Property{
-			Name:        name,
-			Default:     p.Default,
-			Description: p.Description,
-			Type:        p.Type,
-			Enum:        p.Enum,
-		})
+		p.name = name
+		properties = append(properties, p)
 	}
 	sort.Slice(properties, func(i, j int) bool {
-		return properties[i].Name < properties[j].Name
+		return properties[i].name < properties[j].name
 	})
 	indent := "&nbsp;&nbsp;"
 	for i, p := range properties {
-		b.WriteString(fmt.Sprintf("### `%s`\n\n%s", p.Name, p.Description))
+		desc := p.Description
+		if p.MarkdownDescription != "" {
+			desc = p.MarkdownDescription
+		}
+		b.WriteString(fmt.Sprintf("### `%s`\n\n%s", p.name, desc))
 		if p.Enum != nil {
 			b.WriteString(fmt.Sprintf("\n\nAllowed Values:`%v`", p.Enum))
 		}

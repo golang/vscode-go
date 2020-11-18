@@ -12,7 +12,7 @@ import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from '
 import { buildLanguageServerConfig, getLocalGoplsVersion, serverOutputChannel } from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
-import { getGoVersion } from './util';
+import { getGoConfig, getGoVersion } from './util';
 
 export let outputChannel = vscode.window.createOutputChannel('Go');
 
@@ -47,7 +47,7 @@ export async function expandGoStatusBar() {
 	];
 
 	// Get the gopls configuration
-	const cfg = buildLanguageServerConfig();
+	const cfg = buildLanguageServerConfig(getGoConfig());
 	if (cfg.serverName === 'gopls') {
 		const goplsVersion = await getLocalGoplsVersion(cfg);
 		options.push({label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}`});
@@ -101,7 +101,7 @@ export async function initGoStatusBar() {
 	// Add an icon to indicate that the 'gopls' server is running.
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
-	const cfg = buildLanguageServerConfig();
+	const cfg = buildLanguageServerConfig(getGoConfig());
 	updateLanguageServerIconGoStatusBar(true, cfg.serverName);
 
 	showGoStatusBar();

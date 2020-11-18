@@ -41,7 +41,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		// Set up the test fixtures.
 		repoPath = path.join(gopath, 'src', 'test');
 		fixturePath = path.join(repoPath, 'testfixture');
-		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'codelens');
+		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'codelens');
 
 		fs.removeSync(repoPath);
 		fs.copySync(fixtureSourcePath, fixturePath, {

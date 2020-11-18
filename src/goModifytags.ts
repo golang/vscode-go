@@ -8,7 +8,7 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
+import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig } from './util';
 
 // Interface for the output from gomodifytags
@@ -24,6 +24,7 @@ interface GoTagsConfig {
 	tags: string;
 	options: string;
 	promptForTags: boolean;
+	template: string;
 }
 
 export function addTags(commandArgs: GoTagsConfig) {
@@ -32,7 +33,8 @@ export function addTags(commandArgs: GoTagsConfig) {
 		return;
 	}
 
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(([tags, options, transformValue]) => {
+	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then((
+		[tags, options, transformValue, template]) => {
 		if (!tags && !options) {
 			return;
 		}
@@ -47,6 +49,10 @@ export function addTags(commandArgs: GoTagsConfig) {
 		if (transformValue) {
 			args.push('--transform');
 			args.push(transformValue);
+		}
+		if (template) {
+			args.push('--template');
+			args.push(template);
 		}
 		runGomodifytags(args);
 	});
@@ -112,9 +118,11 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 			: config['promptForTags'];
 	const transformValue: string =
 		commandArgs && commandArgs.hasOwnProperty('transform') ? commandArgs['transform'] : config['transform'];
+	const format: string =
+		commandArgs && commandArgs.hasOwnProperty('template') ? commandArgs['template'] : config['template'];
 
 	if (!promptForTags) {
-		return Promise.resolve([tags, options, transformValue]);
+		return Promise.resolve([tags, options, transformValue, format]);
 	}
 
 	return vscode.window
@@ -135,7 +143,14 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 							prompt: 'Enter transform value'
 						})
 						.then((transformOption) => {
-							return [inputTags, inputOptions, transformOption];
+							return vscode.window
+							.showInputBox({
+								value: format,
+								prompt: 'Enter template value'
+							})
+							.then((template) => {
+								return [inputTags, inputOptions, transformOption, template];
+							});
 						});
 				});
 		});
@@ -148,6 +163,12 @@ function runGomodifytags(args: string[]) {
 	const p = cp.execFile(gomodifytags, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
 			promptForMissingTool('gomodifytags');
+			return;
+		}
+		if (err && (<any>err).code === 2 && args.indexOf('--template') > 0) {
+			vscode.window.showInformationMessage(`Cannot modify tags: you might be using a` +
+												`version that does not support --template`);
+			promptForUpdatingTool('gomodifytags');
 			return;
 		}
 		if (err) {

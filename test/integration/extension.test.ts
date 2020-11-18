@@ -68,7 +68,7 @@ suite('Go Extension Tests', function () {
 
 		repoPath = path.join(gopath, 'src', 'test');
 		fixturePath = path.join(repoPath, 'testfixture');
-		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures');
+		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 		generateTestsSourcePath = path.join(repoPath, 'generatetests');
 		generateFunctionTestSourcePath = path.join(repoPath, 'generatefunctiontest');
 		generatePackageTestSourcePath = path.join(repoPath, 'generatePackagetest');
@@ -429,7 +429,7 @@ It returns the number of bytes written and any write error encountered.
 		];
 		// If a user has enabled diagnostics via a language server,
 		// then we disable running build or vet to avoid duplicate errors and warnings.
-		const lspConfig = buildLanguageServerConfig();
+		const lspConfig = buildLanguageServerConfig(getGoConfig());
 		const expectedBuildVetErrors = lspConfig.enabled ? [] : [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
 
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
@@ -1245,8 +1245,7 @@ encountered.
 				assert.equal(
 					expected.length,
 					labels.length,
-					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${
-					position.line + 1
+					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${position.line + 1
 					},${position.character + 1}) ${labels}`
 				);
 				expected.forEach((entry, index) => {
@@ -1371,7 +1370,7 @@ encountered.
 	});
 
 	test('Build Tags checking', async () => {
-		const goplsConfig = buildLanguageServerConfig();
+		const goplsConfig = buildLanguageServerConfig(getGoConfig());
 		if (goplsConfig.enabled) {
 			// Skip this test if gopls is enabled. Build/Vet checks this test depend on are
 			// disabled when the language server is enabled, and gopls is not handling tags yet.

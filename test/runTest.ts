@@ -2,8 +2,11 @@ import * as path from 'path';
 import { runTests } from 'vscode-test';
 
 async function main() {
-		// The folder containing the Extension Manifest package.json
-		// Passed to `--extensionDevelopmentPath`
+	// We are in test mode.
+	process.env['VSCODE_GO_IN_TEST'] = '1';
+
+	// The folder containing the Extension Manifest package.json
+	// Passed to `--extensionDevelopmentPath`
 	const extensionDevelopmentPath = path.resolve(__dirname, '../../');
 
 	let failed = false;
@@ -17,7 +20,10 @@ async function main() {
 		await runTests({
 			extensionDevelopmentPath,
 			extensionTestsPath,
-			launchArgs: ['--disable-extensions'],  // disable all other extensions
+			launchArgs: [
+				'--disable-extensions',
+				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
+			],  // disable all other extensions
 		});
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
@@ -26,20 +32,15 @@ async function main() {
 
 	// Integration tests using gopls.
 	try {
-		// Currently gopls requires a workspace. Code in test environment does not support
-		// dynamically adding folders.
+		// Note: Code in test environment does not support dynamically adding folders.
 		// tslint:disable-next-line:max-line-length
 		// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
-		// So, we start the test extension host with a dummy workspace (test/gopls/testfixtures/src/workspace)
-		// and copy necessary files to the workspace.
-		const ws = path.resolve(extensionDevelopmentPath, 'test/gopls/testfixtures/src/workspace');
-
 		await runTests({
 			extensionDevelopmentPath,
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
 				'--disable-extensions',  // disable all other extensions
-				ws  // dummy workspace to start with
+				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
 			],
 		});
 	} catch (err) {

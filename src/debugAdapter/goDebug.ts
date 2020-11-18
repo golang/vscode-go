@@ -731,6 +731,8 @@ export class Delve {
 		const isLocalDebugging: boolean = this.request === 'launch' && !!this.debugProcess;
 
 		return new Promise(async (resolve) => {
+			this.delveConnectionClosed = true;
+
 			// For remote debugging, we want to leave the remote dlv server running,
 			// so instead of killing it via halt+detach, we just close the network connection.
 			// See https://www.github.com/go-delve/delve/issues/1587
@@ -739,7 +741,6 @@ export class Delve {
 				const rpcConnection = await this.connection;
 				// tslint:disable-next-line no-any
 				(rpcConnection as any)['conn']['end']();
-				this.delveConnectionClosed = true;
 				return resolve();
 			}
 			const timeoutToken: NodeJS.Timer =
@@ -892,17 +893,21 @@ export class GoDebugSession extends LoggingDebugSession {
 		response: DebugProtocol.DisconnectResponse,
 		args: DebugProtocol.DisconnectArguments
 	): Promise<void> {
+		// There is a chance that a second disconnectRequest can come through
+		// if users click detach multiple times. In that case, we want to
+		// guard against talking to the closed Delve connection.
+		// Note: this does not completely guard against users attempting to
+		// disconnect multiple times when a disconnect request is still running.
+		// The order of the execution may results in strange states that don't allow
+		// the delve connection to fully disconnect.
+		if (this.delve.delveConnectionClosed) {
+			log(`Skip disconnectRequestHelper as Delve's connection is already closed.`);
+			return;
+		}
+
 		// For remote process, we have to issue a continue request
 		// before disconnecting.
 		if (this.delve.isRemoteDebugging) {
-			// There is a chance that a second disconnectRequest can come through
-			// if users click detach multiple times. In that case, we want to
-			// guard against talking to the closed Delve connection.
-			if (this.delve.delveConnectionClosed) {
-				log(`Skip disconnectRequestHelper as Delve's connection is already closed.`);
-				return;
-			}
-
 			if (!(await this.isDebuggeeRunning())) {
 				log(`Issuing a continue command before closing Delve's connection as the debuggee is not running.`);
 				this.continue();

@@ -18,7 +18,14 @@ import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getGoConfig, getGoVersion, getTempFilePath, GoVersion, rmdirRecursive } from './util';
-import { correctBinname, executableFileExists, getBinPathFromEnvVar, getCurrentGoRoot, pathExists } from './utils/pathUtils';
+import {
+	correctBinname,
+	executableFileExists,
+	fixDriveCasingInWindows,
+	getBinPathFromEnvVar,
+	getCurrentGoRoot,
+	pathExists
+} from './utils/pathUtils';
 
 export class GoEnvironmentOption {
 	public static fromQuickPickItem({ description, label }: vscode.QuickPickItem): GoEnvironmentOption {
@@ -77,7 +84,7 @@ export async function chooseGoEnvironment() {
 
 	// create quick pick items
 	const uninstalledQuickPicks = uninstalledOptions.map((op) => op.toQuickPickItem());
-	const defaultQuickPick = defaultOption.toQuickPickItem();
+	const defaultQuickPick = defaultOption ? [ defaultOption.toQuickPickItem() ] : [];
 	const goSDKQuickPicks = goSDKOptions.map((op) => op.toQuickPickItem());
 
 	// dedup options by eliminating duplicate paths (description)
@@ -87,7 +94,7 @@ export async function chooseGoEnvironment() {
 		description: 'Select the go binary to use',
 	};
 	// TODO(hyangah): Add separators after clearOption if github.com/microsoft/vscode#74967 is resolved.
-	const options = [filePickerOption, clearOption, defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks]
+	const options = [filePickerOption, clearOption, ...defaultQuickPick, ...goSDKQuickPicks, ...uninstalledQuickPicks]
 		.reduce((opts, nextOption) => {
 			if (opts.find((op) => op.description === nextOption.description || op.label === nextOption.label)) {
 				return opts;
@@ -103,10 +110,7 @@ export async function chooseGoEnvironment() {
 
 	// update currently selected go
 	try {
-		const changed = await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
-		if (changed) {
-			vscode.window.showInformationMessage(`Switched to ${selection.label}`);
-		}
+		await setSelectedGo(GoEnvironmentOption.fromQuickPickItem(selection));
 	} catch (e) {
 		vscode.window.showErrorMessage(e.message);
 	}
@@ -142,18 +146,19 @@ export async function setSelectedGo(goOption: GoEnvironmentOption, promptReload 
 		if (!newGoUris || newGoUris.length !== 1) {
 			return false;
 		}
-		const newGoUri = newGoUris[0];
+		const newGoBin = fixDriveCasingInWindows(newGoUris[0].fsPath);
+		const oldGoBin = fixDriveCasingInWindows(path.join(defaultUri.fsPath, correctBinname('go')));
 
-		if (defaultUri === newGoUri) {
+		if (newGoBin === oldGoBin) {
 			return false;
 		}
-		if (!executableFileExists(newGoUri.path)) {
-			vscode.window.showErrorMessage(`${newGoUri.path} is not an executable`);
+		if (!executableFileExists(newGoBin)) {
+			vscode.window.showErrorMessage(`${newGoBin} is not an executable`);
 			return false;
 		}
-		const newGo = await getGoVersion(newGoUri.path);
-		if (!newGo) {
-			vscode.window.showErrorMessage(`failed to get "${newGoUri.path} version", invalid Go binary`);
+		const newGo = await getGoVersion(newGoBin);
+		if (!newGo || !newGo.isValid() ) {
+			vscode.window.showErrorMessage(`failed to get "${newGoBin} version", invalid Go binary`);
 			return false;
 		}
 		await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
@@ -422,11 +427,11 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	);
 }
 
-export async function getDefaultGoOption(): Promise<GoEnvironmentOption> {
+export async function getDefaultGoOption(): Promise<GoEnvironmentOption|undefined> {
 	// make goroot default to go.goroot
 	const goroot = getCurrentGoRoot();
 	if (!goroot) {
-		throw new Error('No Go command could be found.');
+		return undefined;
 	}
 
 	// set Go version and command

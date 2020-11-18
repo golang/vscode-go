@@ -28,7 +28,7 @@ suite('Coverage for tests', function () {
 		await updateGoVarsFromConfig();
 
 		// Set up the test fixtures.
-		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'coverage');
+		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'coverage');
 		coverFilePath = path.join(fixtureSourcePath, 'cover.out');
 		return;
 	});

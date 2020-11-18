@@ -4,11 +4,13 @@
  *--------------------------------------------------------*/
 import * as assert from 'assert';
 import cp = require('child_process');
-import * as fs from 'fs-extra';
+import { EventEmitter } from 'events';
 import * as path from 'path';
 import sinon = require('sinon');
 import * as vscode from 'vscode';
-import { extensionId } from '../../src/const';
+import { LanguageClient } from 'vscode-languageclient/node';
+import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
+import { getGoConfig } from '../../src/util';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -21,6 +23,16 @@ class FakeOutputChannel implements vscode.OutputChannel {
 
 	private buf = [] as string[];
 
+	private eventEmitter = new EventEmitter();
+	private registeredPatterns = new Set<string>();
+	public onPattern(msg: string, listener: () => void) {
+		this.registeredPatterns.add(msg);
+		this.eventEmitter.once(msg, () => {
+			this.registeredPatterns.delete(msg);
+			listener();
+		});
+	}
+
 	public append = (v: string) => this.enqueue(v);
 	public appendLine = (v: string) => this.enqueue(v);
 	public clear = () => { this.buf = []; };
@@ -29,98 +41,76 @@ class FakeOutputChannel implements vscode.OutputChannel {
 	}
 
 	private enqueue = (v: string) => {
+		this.registeredPatterns?.forEach((p) => {
+			if (v.includes(p)) {
+				this.eventEmitter.emit(p);
+			}
+		});
+
 		if (this.buf.length > 1024) { this.buf.shift(); }
 		this.buf.push(v.trim());
 	}
 }
 
-// Env is a collection of test related variables
-// that define the test environment such as vscode workspace.
+// Env is a collection of test-related variables and lsp client.
+// Currently, this works only in module-aware mode.
 class Env {
-
-	// Currently gopls requires a workspace and does not work in a single-file mode.
-	// Code in test environment does not support dynamically adding folders.
-	// tslint:disable-next-line:max-line-length
-	// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
-	//
-	// So, when we start the gopls tests, we start the test extension host with a
-	// dummy workspace, ${projectDir}/test/gopls/testfixtures/src/workspace
-	// (see test/runTest.ts and launch.json).
-	// Then copy necessary files to the workspace using Env.reset() from the
-	// fixturesRoot directory.
-	public workspaceDir: string;
-	public fixturesRoot: string;
-
-	public extension: vscode.Extension<any>;
-
+	public languageClient?: LanguageClient;
 	private fakeOutputChannel: FakeOutputChannel;
-
-	constructor(projectDir: string) {
-		if (!projectDir) {
-			assert.fail('project directory cannot be determined');
-		}
-		this.workspaceDir = path.resolve(projectDir, 'test/gopls/testfixtures/src/workspace');
-		this.fixturesRoot = path.resolve(projectDir, 'test/fixtures');
-		this.extension = vscode.extensions.getExtension(extensionId);
-		this.fakeOutputChannel = new FakeOutputChannel();
-
-		// Ensure the vscode extension host is configured as expected.
-		const workspaceFolder = path.resolve(vscode.workspace.workspaceFolders[0].uri.fsPath);
-		if (this.workspaceDir !== workspaceFolder) {
-			assert.fail(`specified workspaceDir: ${this.workspaceDir} does not match the workspace folder: ${workspaceFolder}`);
-		}
-	}
+	private disposables = [] as { dispose(): any }[];
 
 	public flushTrace(print: boolean) {
 		if (print) {
 			console.log(this.fakeOutputChannel.toString());
-			this.fakeOutputChannel.clear();
 		}
+		this.fakeOutputChannel.clear();
 	}
 
-	public async setup() {
-		// stub the language server's output channel to intercept the trace.
-		sinon.stub(vscode.window, 'createOutputChannel')
-			.callThrough().withArgs('gopls (server)').returns(this.fakeOutputChannel);
-
-		await this.reset();
-		await this.extension.activate();
-		await sleep(2000);  // allow the language server to start.
-		// TODO(hyangah): find a better way to check the language server's status.
-		// I thought I'd check the languageClient.onReady(),
-		// but couldn't make it working yet.
-	}
-
-	public teardown() {
-		sinon.restore();
-	}
-
-	public async reset(fixtureDirName?: string) {  // name of the fixtures subdirectory to use.
-		try {
-			// clean everything except the .gitignore file
-			// needed to keep the empty directory in vcs.
-			await fs.readdir(this.workspaceDir).then((files) => {
-				return Promise.all(
-					files.filter((filename) => filename !== '.gitignore' && filename !== '.vscode').map((file) => {
-						fs.remove(path.resolve(this.workspaceDir, file));
-					}));
+	// This is a hack to check the progress of package loading.
+	// TODO(hyangah): use progress message middleware hook instead
+	// once it becomes available.
+	public onMessageInTrace(msg: string, timeoutMS: number): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.flushTrace(true);
+				reject(`Timed out while waiting for '${msg}'`);
+			}, timeoutMS);
+			this.fakeOutputChannel.onPattern(msg, () => {
+				clearTimeout(timeout);
+				resolve();
 			});
-
-			if (!fixtureDirName) {
-				return;
-			}
-			const src = path.resolve(this.fixturesRoot, fixtureDirName);
-			const dst = this.workspaceDir;
-			await fs.copy(src, dst, { recursive: true });
-		} catch (err) {
-			assert.fail(err);
-		}
+		});
 	}
 
-	// openDoc opens the file in the workspace with the given path (paths
-	// are the path elements of a file).
+	public async setup(filePath: string) {  // file path to open.
+		this.fakeOutputChannel = new FakeOutputChannel();
+		const pkgLoadingDone = this.onMessageInTrace('Finished loading packages.', 60_000);
+
+		// Start the language server with the fakeOutputChannel.
+		const goConfig = Object.create(getGoConfig(), {
+			useLanguageServer: { value: true },
+			languageServerFlags: { value: ['-rpc.trace'] },  // enable rpc tracing to monitor progress reports
+		});
+		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
+		cfg.outputChannel = this.fakeOutputChannel;  // inject our fake output channel.
+		this.languageClient = await buildLanguageClient(cfg);
+		this.disposables.push(this.languageClient.start());
+
+		await this.languageClient.onReady();
+		await this.openDoc(filePath);
+		await pkgLoadingDone;
+	}
+
+	public async teardown() {
+		await this.languageClient?.stop();
+		for (const d of this.disposables) {
+			d.dispose();
+		}
+		this.languageClient = undefined;
+	}
+
 	public async openDoc(...paths: string[]) {
-		const uri = vscode.Uri.file(path.resolve(this.workspaceDir, ...paths));
+		const uri = vscode.Uri.file(path.resolve(...paths));
 		const doc = await vscode.workspace.openTextDocument(uri);
 		return { uri, doc };
 	}
@@ -133,12 +123,11 @@ async function sleep(ms: number) {
 suite('Go Extension Tests With Gopls', function () {
 	this.timeout(300000);
 	const projectDir = path.join(__dirname, '..', '..', '..');
-	const env = new Env(projectDir);
+	const testdataDir = path.join(projectDir, 'test', 'testdata');
+	const env = new Env();
 
-	suiteSetup(async () => {
-		await env.setup();
-	});
-	suiteTeardown(async () => { await env.reset(); });
+	suiteSetup(async () => await env.setup(path.resolve(testdataDir, 'gogetdocTestData', 'test.go')));
+	suiteTeardown(() => env.teardown());
 
 	this.afterEach(function () {
 		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
@@ -148,11 +137,7 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('HoverProvider', async () => {
-		await env.reset('gogetdocTestData');
-		const { uri, doc } = await env.openDoc('test.go');
-
-		// TODO(hyangah): find a way to wait for the language server to complete processing.
-
+		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
 			['keyword', new vscode.Position(0, 3), null, null], // keyword
@@ -186,8 +171,7 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('Completion middleware', async () => {
-		await env.reset('gogetdocTestData');
-		const { uri } = await env.openDoc('test.go');
+		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string][] = [
 			['fmt.P<>', new vscode.Position(19, 6), 'Print'],
 		];
@@ -213,14 +197,18 @@ suite('Go Extension Tests With Gopls', function () {
 			if (!list.isIncomplete) {
 				assert.fail(`gopls should provide an incomplete list by default`);
 			}
-			// TODO(rstambler): For some reason, the filter text gets deleted
-			// from the first item. I can't reproduce this outside of the test
-			// suite.
-			for (let i = 1; i < list.items.length; i++) {
-				const item = list.items[i];
-				assert.equal(item.filterText, wantFilterText, `${uri}:${name} failed, unexpected filter text (got ${item.filterText}, want ${wantFilterText})`);
-			}
+
+			// vscode.executeCompletionItemProvider will return results from all
+			// registered completion item providers, not only gopls but also snippets.
+			// Alternative is to directly query the language client, but that will
+			// prevent us from detecting problems caused by issues between the language
+			// client library and the vscode.
 			for (const item of list.items) {
+				if (item.kind === vscode.CompletionItemKind.Snippet) { continue; }  // gopls does not supply Snippet yet.
+				assert.strictEqual(item.filterText ?? item.label, wantFilterText,
+					`${uri}:${name} failed, unexpected filter text ` +
+					`(got ${item.filterText ?? item.label}, want ${wantFilterText})\n` +
+					`${JSON.stringify(item, null, 2)}`);
 				if (item.kind === vscode.CompletionItemKind.Method || item.kind === vscode.CompletionItemKind.Function) {
 					assert.ok(item.command, `${uri}:${name}: expected command associated with ${item.label}, found none`);
 				}
