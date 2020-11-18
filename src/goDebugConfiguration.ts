@@ -19,21 +19,135 @@ import { parseEnvFiles } from './utils/envUtils';
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') { }
 
-	public provideDebugConfigurations(
+	public async provideDebugConfigurations(
 		folder: vscode.WorkspaceFolder | undefined,
 		token?: vscode.CancellationToken
-	): vscode.DebugConfiguration[] {
-		return [
+	): Promise<vscode.DebugConfiguration[] | undefined> {
+		return await this.pickConfiguration();
+	}
+
+	public async pickConfiguration(): Promise<vscode.DebugConfiguration[]> {
+		const debugConfigurations = [
 			{
-				name: 'Launch',
-				type: this.defaultDebugAdapterType,
-				request: 'launch',
-				mode: 'auto',
-				program: '${fileDirname}',
-				env: {},
-				args: []
+				label: 'Go: Launch package',
+				description: 'Debug the package in the program attribute',
+				config: {
+					name: 'Launch Package',
+					type: this.defaultDebugAdapterType,
+					request: 'launch',
+					mode: 'debug',
+					program: '${workspaceFolder}'
+				},
+			},
+			{
+				label: 'Go: Launch file',
+				description: 'Debug the file in the program attribute',
+				config: {
+					name: 'Launch file',
+					type: 'go',
+					request: 'launch',
+					mode: 'debug',
+					program: '${file}'
+				}
+			},
+			{
+				label: 'Go: Launch test package',
+				description: 'Debug the test package in the program attribute',
+				config: {
+					name: 'Launch test package',
+					type: 'go',
+					request: 'launch',
+					mode: 'test',
+					program: '${workspaceFolder}'
+				}
+			},
+			{
+				label: 'Go: Launch test function',
+				description: 'Debug the test function in the args, ensure program attributes points to right package',
+				config: {
+					name: 'Launch test function',
+					type: 'go',
+					request: 'launch',
+					mode: 'test',
+					program: '${workspaceFolder}',
+					args: [
+						'-test.run',
+						'MyTestFunction'
+					]
+				},
+				fill: async (config: vscode.DebugConfiguration) => {
+					const testFunc = await vscode.window.showInputBox({
+						placeHolder: 'MyTestFunction',
+						prompt: 'Name of the function to test'
+					});
+					if (!!testFunc) {
+						config.args = [
+							'-test.run',
+							testFunc
+						];
+					}
+				}
+			},
+			{
+				label: 'Go: Attach to local process',
+				description: 'Attach to an existing process by process ID',
+				config: {
+					name: 'Attach to Process',
+					type: 'go',
+					request: 'attach',
+					mode: 'local',
+					processId: 0
+				}
+			},
+			{
+				label: 'Go: Connect to server',
+				description: 'Connect to a remote headless debug server',
+				config: {
+					name: 'Connect to server',
+					type: 'go',
+					request: 'attach',
+					mode: 'remote',
+					remotePath: '${workspaceFolder}',
+					port: 2345,
+					host: '127.0.0.1'
+				},
+				fill: async (config: vscode.DebugConfiguration) => {
+					const host = await vscode.window.showInputBox({
+						prompt: 'Enter hostname',
+						value: '127.0.0.1',
+					});
+					if (!!host) {
+						config.host = host;
+					}
+					const port = Number(await vscode.window.showInputBox({
+						prompt: 'Enter port',
+						value: '2345',
+						validateInput: (value: string) => {
+							if (isNaN(Number(value))) {
+								return 'Please enter a number.';
+							}
+							return '';
+						}
+					}));
+					if (!!port) {
+						config.port = port;
+					}
+
+				}
 			}
 		];
+
+		const choice = await vscode.window.showQuickPick(debugConfigurations, {
+			placeHolder: 'Choose debug configuration',
+		});
+		if (!choice) {
+			return [];
+		}
+
+		if (!!choice.fill) {
+			await choice.fill(choice.config);
+		}
+		return [choice.config];
 	}
 
 	public resolveDebugConfiguration(
