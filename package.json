@@ -1689,7 +1689,10 @@
               "type": "string",
               "enum": [
                 "snakecase",
-                "camelcase"
+                "camelcase",
+                "lispcase",
+                "pascalcase",
+                "keep"
               ],
               "default": "snakecase",
               "description": "Transformation rule used by Go: Add Tags command to add tags"
