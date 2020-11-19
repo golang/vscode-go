@@ -46,6 +46,7 @@
   },
   "extensionDependencies": [],
   "dependencies": {
+    "@types/yargs-parser": "^15.0.0",
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
     "glob": "^7.1.6",
@@ -1689,7 +1690,10 @@
               "type": "string",
               "enum": [
                 "snakecase",
-                "camelcase"
+                "camelcase",
+                "lispcase",
+                "pascalcase",
+                "keep"
               ],
               "default": "snakecase",
               "description": "Transformation rule used by Go: Add Tags command to add tags"

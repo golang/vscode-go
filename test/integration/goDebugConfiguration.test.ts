@@ -4,6 +4,7 @@ import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
+import parse = require('yargs-parser');
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import goEnv = require('../../src/goEnv');
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
@@ -276,6 +277,139 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(dlvLoadConfig.maxStringLen, 128);
 			assert.strictEqual(dlvLoadConfig.maxArrayValues, 128);
 			assert.strictEqual(dlvLoadConfig.maxStructFields, -1);
+		});
+	});
+});
+
+suite('Debug Configuration Modify User Config', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	function checkBuildFlags(input: string, expected: { [key: string]: any }) {
+		// Parse the string result.
+		const actual = parse(input, {configuration: {'short-option-groups': false}} );
+
+		// Delete the empty entry that is created by parse.
+		delete actual['_'];
+
+		// Compare the two maps.
+		assert.strictEqual(actual.size, expected.size);
+
+		const expectedKeys = [];
+		for (const key in expected) {
+			if (expected.hasOwnProperty(key)) {
+				expectedKeys.push(key);
+			}
+		}
+		expectedKeys.sort();
+
+		const actualKeys = [];
+		for (const key in actual) {
+			if (actual.hasOwnProperty(key)) {
+				actualKeys.push(key);
+			}
+		}
+		actualKeys.sort();
+
+		for (let i = 0; i < expectedKeys.length; i ++) {
+			assert.strictEqual(actualKeys[i], expectedKeys[i]);
+			assert.strictEqual(actual[actualKeys[i]], expected[expectedKeys[i]]);
+		}
+	}
+
+	suite('remove gcflags', () => {
+		test('remove user set --gcflags in buildFlags', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {},
+				buildFlags: '--gcflags=all=-l'
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.buildFlags, {});
+		});
+
+		test('remove user set -gcflags in buildFlags', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {},
+				buildFlags: `-gcflags all=-l`
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.buildFlags, {});
+		});
+
+		test('remove user set --gcflags while preserving other build flags in buildFlags', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {},
+				buildFlags: '-race --gcflags=all=-l --mod=mod'
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.buildFlags, {race: true, mod: 'mod'});
+		});
+
+		test('preserve empty buildFlags', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {},
+				buildFlags: ''
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.buildFlags, {});
+		});
+
+		test('preserve buildFlags', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {},
+				buildFlags: '-race --mod=mod'
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.buildFlags, {race: true, mod: 'mod'});
+		});
+
+		test('remove user set --gcflags in GOFLAGS', () => {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}',
+				env: {GOFLAGS: '-race --gcflags=-l --mod=mod'},
+			};
+
+			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			checkBuildFlags(config.env.GOFLAGS, {race: true, mod: 'mod'});
 		});
 	});
 });

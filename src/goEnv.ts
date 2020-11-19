@@ -39,6 +39,15 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	}
 	env['GOPATH'] = toolsGopath;
 
+	// Unset env vars that would affect tool build process: 'GOROOT', 'GOOS', 'GOARCH', ...
+	// Tool installation should be done for the host OS/ARCH (GOHOSTOS/GOHOSTARCH) with
+	// the default setup.
+	delete env['GOOS'];
+	delete env['GOARCH'];
+	delete env['GOROOT'];
+	delete env['GOFLAGS'];
+	delete env['GOENV'];
+
 	return env;
 }
 

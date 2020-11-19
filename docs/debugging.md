@@ -9,6 +9,7 @@ This document explains how to debug your Go programs in VS Code. The Go debugger
   * [Configuration](#configuration)
 * [Launch Configurations](#launch-configurations)
   * [Specifying build tags](#specifying-build-tags)
+  * [Specifying other build flags](#specifying-other-build-flags)
   * [Using VS Code Variables](#using-vs-code-variables)
   * [Snippets](#snippets)
 * [Debugging on Windows Subsystem for Linux (WSL)](#debugging-on-windows-subsystem-for-linux-wsl)
@@ -134,6 +135,22 @@ in your launch configuration. This property supports multiple tags, which you ca
 ```
 
 <!--TODO(rstambler): Confirm that the extension works with a comma (not space) separated list.-->
+
+### Specifying other build flags
+
+The flags specified in `buildFlags` and `env.GOFLAGS` are passed to the Go compiler when building your program for debugging. Delve adds `--gcflags='all=-N -l'` to the list of build flags to disable optimizations. User specified buildFlags conflict with this setting, so the extension removes them ([Issue #117](https://github.com/golang/vscode-go/issues/117)). If you wish to debug a program using custom `--gcflags`, build the program using `go build` and launch using `exec` mode:
+
+```json
+{
+    "name": "Launch executable",
+    "type": "go",
+    "request": "launch",
+    "mode": "exec",
+    "program": "/absolute/path/to/executable"
+}
+```
+
+Note that it is not recommended to debug optimized executables as Delve may not have the information necessary to properly debug your program.
 
 ### Using [VS Code variables]
 

@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import { ChildProcess, execFile, spawn } from 'child_process';
+import { ChildProcess, execFile, spawn, spawnSync } from 'child_process';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { existsSync, lstatSync } from 'fs';
@@ -481,25 +481,68 @@ export class Delve {
 				if (!!launchArgs.noDebug) {
 					if (mode === 'debug') {
 						this.noDebug = true;
-						const runArgs = ['run'];
-						const runOptions: { [key: string]: any } = { cwd: dirname, env };
+						const build = ['build'];
+
+						const output = path.join(os.tmpdir(), 'out');
+						build.push(`-o=${output}`);
+
+						const buildOptions: { [key: string]: any } = { cwd: dirname, env };
 						if (launchArgs.buildFlags) {
-							runArgs.push(launchArgs.buildFlags);
+							build.push(launchArgs.buildFlags);
 						}
+
 						if (isProgramDirectory) {
-							runArgs.push('.');
+							build.push('.');
 						} else {
-							runArgs.push(program);
-						}
-						if (launchArgs.args) {
-							runArgs.push(...launchArgs.args);
+							build.push(program);
 						}
 
 						const goExe = getBinPathWithPreferredGopathGoroot('go', []);
 						log(`Current working directory: ${dirname}`);
-						log(`Running: ${goExe} ${runArgs.join(' ')}`);
+						log(`Building: ${goExe} ${build.join(' ')}`);
 
-						this.debugProcess = spawn(goExe, runArgs, runOptions);
+						// Use spawnSync to ensure that the binary exists before running it.
+						const buffer = spawnSync(goExe, build, buildOptions);
+						if (buffer.stderr  && buffer.stderr.length > 0) {
+							const str = buffer.stderr.toString();
+							if (this.onstderr) {
+								this.onstderr(str);
+							}
+						}
+						if (buffer.stdout && buffer.stdout.length > 0) {
+							const str = buffer.stdout.toString();
+							if (this.onstdout) {
+								this.onstdout(str);
+							}
+						}
+						if (buffer.status) {
+							logError(`Build process exiting with code: ${buffer.status} signal: ${buffer.signal}`);
+							if (this.onclose) {
+								this.onclose(buffer.status);
+							}
+						} else {
+							log(`Build process exiting normally ${buffer.signal}`);
+						}
+						if (buffer.error) {
+							reject(buffer.error);
+						}
+
+						// Run the built binary
+						let wd = dirname;
+						if (!!launchArgs.cwd) {
+							wd = launchArgs.cwd;
+						}
+						const runOptions: { [key: string]: any } = { cwd: wd, env };
+
+						const run = [];
+						if (launchArgs.args) {
+							run.push(...launchArgs.args);
+						}
+
+						log(`Current working directory: ${wd}`);
+						log(`Running: ${output} ${run.join(' ')}`);
+
+						this.debugProcess = spawn(output, run, runOptions);
 						this.debugProcess.stderr.on('data', (chunk) => {
 							const str = chunk.toString();
 							if (this.onstderr) {
@@ -525,6 +568,7 @@ export class Delve {
 						this.debugProcess.on('error', (err) => {
 							reject(err);
 						});
+
 						resolve();
 						return;
 					}
