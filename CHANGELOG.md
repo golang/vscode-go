@@ -1,3 +1,57 @@
+## v0.19.0 - 19 Nov, 2020
+
+A list of all issues and changes can be found in the [v0.19.0 milestone](https://github.com/golang/vscode-go/milestone/14).
+
+### Community
+
+- Go Nightly users are encouraged to discuss issues and share feedback in the [#vscode-go-nightly](https://gophers.slack.com/archives/C01DQ2KBMNU) slack channel as well as the newly created [Go Nightly mailing list](https://groups.google.com/g/vscode-go-nightly) ([Issue 817](https://github.com/golang/vscode-go/issues/817)) <!-- CL 266419 -->
+- All experiments have been turned on for Go nightly ([Issue 818](https://github.com/golang/vscode-go/issues/818)) <!-- CL 264317 --> <!-- CL 267678 -->
+
+### Enhancements
+
+- Added a snippet for TestMain ([Issue 629](https://github.com/golang/vscode-go/issues/629)) <!-- CL 254497 -->
+- Added `lispcase`, `pascalcase` and `keep` as transform variants for go.addTags ([Issue 906](https://github.com/golang/vscode-go/issues/906), [936](https://github.com/golang/vscode-go/issues/936)) <!-- CL 271357 -->
+- Added support for `gomodifytags`'s --template flag ([Issue 826](https://github.com/golang/vscode-go/issues/826)) <!-- CL 264299 -->
+- Language Server
+	* Upgraded to the latest vscode-languageclient pre-release ([Issue 42148](https://github.com/golang/go/issues/42148)) <!-- CL 266497 -->
+- Debugging
+	* package.json: activate extension onDebugInitialConfigurations ([Issue 131](https://github.com/golang/vscode-go/issues/131)) <!-- CL 267899 -->
+
+
+### Fixes
+
+- Fixed test streaming output handling to correctly add -json flag ([Issue 471](https://github.com/golang/vscode-go/issues/471)) <!-- CL 268839 -->
+- Fixed bug that unnecessarily buffered test output ([Issue 917](https://github.com/golang/vscode-go/issues/917)) <!-- CL 269917 -->
+- Fixed a bug that occurred when choosing a new Go environment using the file picker ([Issue 868](https://github.com/golang/vscode-go/issues/868), [864](https://github.com/golang/vscode-go/issues/864)) <!-- CL 267898 -->
+- Hide running test StatusBarItem after cancelling tests <!-- CL 268838 -->
+- Tool Installation
+	* Unset GOOS/GOARCH/GOROOT/... from tool installation env since the tools need to be built for the host machine ([Issue 628](https://github.com/golang/vscode-go/issues/628)) <!-- CL 264323 -->
+	* Changed the dependency tool installation to use the `go` command chosen from the current `GOROOT/bin` for gocode-gomode too ([Issue 757](https://github.com/golang/vscode-go/issues/757)) <!-- CL 264318 -->
+- Filter out unsupported document types to improve VS Code Live Share experience ([Issue 605](https://github.com/golang/vscode-go/issues/605)) <!-- CL 269157 -->
+- Fixed language server survey computation error <!-- CL 270039 -->
+- Debugging
+	* No longer shows a warning about editing Go files if there is no Go Debug Session running. <!-- CL 269137 -->
+	* Now removes user set '--gcflags' before passing the program to the debugger, since the debugger adds its own flags before building resulting in an error ([Issue 117](https://github.com/golang/vscode-go/issues/117)) <!-- CL 265580 -->
+	* Fixed bug where the working directory passed in by the user is ignored ([Issue 918](https://github.com/golang/vscode-go/issues/918)) <!-- CL 270437 -->
+
+### Code Health
+
+- Debugging
+	* Added additional tests for the debug adapter including for disconnect requests<!-- CL 262297 --> and remote attach scenarios ([Issue 779](https://github.com/golang/vscode-go/issues/779), [790](https://github.com/golang/vscode-go/issues/790)) <!-- CL 262442 -->
+	* Added tests for the debug configuration to test the user settings that should affect the debug configuration
+- Improved the extension contributor experience by renaming the test fixtures folder to avoid errors being shown for these files <!-- CL 264324 -->
+- Language Server Tests
+	- Changed the test environment setup to use single file edit ([Issue 655](https://github.com/golang/vscode-go/issues/655), [832](https://github.com/golang/vscode-go/issues/832)) <!-- CL 266418 --> <!-- CL 270802 --> <!-- CL 268878 -->
+- Adjusted home directory used in gerrit CI since recent changes in kokoro were restricting access ([Issue 833](https://github.com/golang/vscode-go/issues/833)) <!-- CL 264877 -->
+- Updated Github workflows actions/setup-go to v2 <!-- CL 268997 -->
+- Restructured the goTest code to be more readable and easier to test <!-- CL 268837 --> <!-- CL 268839 -->
+- Continued to improve the gopls settings documentation generator ([Issue 197](https://github.com/golang/vscode-go/issues/197)) <!-- CL 265742 -->
+
+
+### Thanks
+
+Thank you for your contribution, @pofl, @hyangah, @perrito666, @pjweinbgo, @quoctruong,  @stamblerre, @skaldesh, and @suzmue!
+
 ## v0.18.1 - 30th Oct, 2020
 
 A list of all issues and changes can be found in the [v0.18.1 milestone](https://github.com/golang/vscode-go/milestone/15?closed=1).
