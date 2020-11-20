@@ -41,7 +41,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
+import { installTools, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import { restartLanguageServer } from './goMain';
 import { GO_MODE } from './goMode';
@@ -52,10 +52,17 @@ import { GoSignatureHelpProvider } from './goSignature';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { getTool, Tool } from './goTools';
+import { getTool, Tool, ToolAtVersion } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getCurrentGoPath, getGoConfig, getGoplsConfig, getWorkspaceFolderPath } from './util';
+import {
+	getBinPath,
+	getCurrentGoPath,
+	getGoConfig,
+	getGoplsConfig,
+	getGoVersion,
+	getWorkspaceFolderPath
+} from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
 export interface LanguageServerConfig {
@@ -107,14 +114,27 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	}
 	languageServerStartInProgress = true;
 
-	const cfg = buildLanguageServerConfig(getGoConfig());
+	const goConfig = getGoConfig();
+	const cfg = buildLanguageServerConfig(goConfig);
 
 	// If the language server is gopls, we enable a few additional features.
 	// These include prompting for updates and surveys.
-	if (activation && cfg.serverName === 'gopls') {
+	if (cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			scheduleGoplsSuggestions(tool);
+			if (activation) {
+				scheduleGoplsSuggestions(tool);
+			}
+
+			// If the language server is turned on because it is enabled by default,
+			// make sure that the user is using a new enough version.
+			if (cfg.enabled && languageServerUsingDefault(goConfig)) {
+				const updated = await forceUpdateGopls(tool, cfg);
+				if (updated) {
+					// restartLanguageServer will be called when the new version of gopls was installed.
+					return;
+				}
+			}
 		}
 	}
 
@@ -807,6 +827,50 @@ export async function shouldUpdateLanguageServer(
 	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
 }
 
+/**
+ * forceUpdateGopls will make sure the user is using the latest version of `gopls`,
+ * when go.useLanguageServer is changed to true by default.
+ *
+ * @param tool	Object of type `Tool` for gopls tool.
+ * @param cfg	Object of type `Language Server Config` for the users language server
+ * 				configuration.
+ * @returns		true if the tool was updated
+ */
+async function forceUpdateGopls(
+	tool: Tool,
+	cfg: LanguageServerConfig,
+): Promise<boolean> {
+	const forceUpdatedGoplsKey = 'forceUpdateForGoplsOnDefault';
+	// forceUpdated is true when the process of updating has been succesfully completed.
+	const forceUpdated = getFromGlobalState(forceUpdatedGoplsKey, false);
+	// TODO: If we want to force update again, switch this to be a comparison for a newer version.
+	if (!!forceUpdated) {
+		return false;
+	}
+	// Update the state to the latest version to show the last version that was checked.
+	await updateGlobalState(forceUpdatedGoplsKey, tool.latestVersion);
+
+	const latestVersion = await shouldUpdateLanguageServer(tool, cfg);
+
+	if (!latestVersion) {
+		// The user is using a new enough version
+		return false;
+	}
+
+	const toolVersion = { ...tool, version: latestVersion }; // ToolWithVersion
+	const goVersion = await getGoVersion();
+	const failures = await installTools([toolVersion], goVersion);
+
+	// We successfully updated to the latest version.
+	if (failures.length === 0) {
+		return true;
+	}
+
+	// Failed to install the new version of gopls, warn the user.
+	vscode.window.showWarningMessage(`'gopls' is now enabled by default and you are using an old version. Please [update 'gopls'](https://github.com/golang/tools/blob/master/gopls/doc/user.md#installation) and restart the language server for the best experience.`);
+	return false;
+}
+
 // Copied from src/cmd/go/internal/modfetch.go.
 const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+incompatible)?$/;
 
@@ -1448,7 +1512,7 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, fail
 
 export async function promptForLanguageServerDefaultChange(cfg: vscode.WorkspaceConfiguration) {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
-	if (useLanguageServer.globalValue !== undefined || useLanguageServer.workspaceValue !== undefined) {
+	if (!languageServerUsingDefault(cfg)) {
 		if (!cfg['useLanguageServer']) {  // ask users who explicitly disabled.
 			promptForLanguageServerOptOutSurvey();
 		}
@@ -1469,6 +1533,11 @@ export async function promptForLanguageServerDefaultChange(cfg: vscode.Workspace
 		default:
 	}
 	updateGlobalState(promptedForLSDefaultChangeKey, true);
+}
+
+function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
+	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
+	return useLanguageServer.globalValue === undefined && useLanguageServer.workspaceValue === undefined;
 }
 
 // Prompt users who disabled the language server and ask to file an issue.
@@ -1513,4 +1582,5 @@ function getExtensionInfo(): ExtensionInfo {
 	const version = vscode.extensions.getExtension(extensionId)?.packageJSON?.version;
 	const appName = vscode.env.appName;
 	return { version, appName };
+
 }
