@@ -226,8 +226,6 @@ export async function installTool(
 	}
 	args.push(importPath);
 
-	const toolImportPath = tool.version ? importPath + '@' + tool.version : importPath;
-
 	let output: string;
 	let result: string = '';
 	try {
@@ -253,10 +251,10 @@ export async function installTool(
 			await execFile(goBinary, ['build', '-o', outputFile, importPath], opts);
 		}
 		const toolInstallPath = getBinPath(tool.name);
-		outputChannel.appendLine(`Installing ${toolImportPath} (${toolInstallPath}) SUCCEEDED`);
+		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${toolImportPath} FAILED`);
-		result = `failed to install ${tool.name}(${toolImportPath}): ${e} ${output} `;
+		outputChannel.appendLine(`Installing ${importPath} FAILED`);
+		result = `failed to install ${tool.name}(${importPath}): ${e} ${output} `;
 	}
 
 	// Delete the temporary installation directory.
@@ -316,7 +314,7 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 	}
 }
 
-export async function promptForUpdatingTool(toolName: string, newVersion?: SemVer) {
+export async function promptForUpdatingTool(toolName: string, newVersion?: SemVer, crashed?: boolean) {
 	const tool = getTool(toolName);
 	const toolVersion = { ...tool, version: newVersion }; // ToolWithVersion
 
@@ -324,14 +322,20 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 	if (containsTool(declinedUpdates, tool)) {
 		return;
 	}
-	const goVersion = await getGoVersion();
-	let updateMsg = `Your version of ${tool.name} appears to be out of date. Please update for an improved experience.`;
+
+	// Adjust the prompt if it occurred because the tool crashed.
+	let updateMsg: string;
+	if (crashed === true) {
+		updateMsg = `${tool.name} has crashed, but you are using an outdated version. Please update to the latest version of ${tool.name}.`;
+	} else if (newVersion) {
+		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
+	} else {
+		updateMsg = `Your version of ${tool.name} appears to be out of date. Please update for an improved experience.`;
+	}
+
 	let choices: string[] = ['Update'];
 	if (toolName === `gopls`) {
 		choices.push('Release Notes');
-	}
-	if (newVersion) {
-		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
 	}
 
 	while (choices.length > 0) {
@@ -339,6 +343,7 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 		switch (selected) {
 			case 'Update':
 				choices = [];
+				const goVersion = await getGoVersion();
 				await installTools([toolVersion], goVersion);
 				break;
 			case 'Release Notes':

@@ -215,19 +215,19 @@ export interface BuildLanguageClientOption extends LanguageServerConfig {
 // used in building a new LanguageClient instance. Options specified
 // in LanguageServerConfig
 function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClientOption {
-		// Reuse the same output channel for each instance of the server.
-		if (cfg.enabled) {
-			if (!serverOutputChannel) {
-				serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
-			}
-			if (!serverTraceChannel) {
-				serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
-			}
+	// Reuse the same output channel for each instance of the server.
+	if (cfg.enabled) {
+		if (!serverOutputChannel) {
+			serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
 		}
-		return Object.assign({
-			outputChannel: serverOutputChannel,
-			traceOutputChannel: serverTraceChannel
-		}, cfg);
+		if (!serverTraceChannel) {
+			serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
+		}
+	}
+	return Object.assign({
+		outputChannel: serverOutputChannel,
+		traceOutputChannel: serverTraceChannel
+	}, cfg);
 }
 
 // buildLanguageClient returns a language client built using the given language server config.
@@ -1128,6 +1128,17 @@ async function suggestGoplsIssueReport(msg: string, reason: errorKind) {
 		return;
 	}
 
+	// The user may have an outdated version of gopls, in which case we should
+	// just prompt them to update, not file an issue.
+	const tool = getTool('gopls');
+	if (tool) {
+		const versionToUpdate = await shouldUpdateLanguageServer(tool, latestConfig);
+		if (versionToUpdate) {
+			promptForUpdatingTool(tool.name, versionToUpdate, true);
+			return;
+		}
+	}
+
 	// Show the user the output channel content to alert them to the issue.
 	serverOutputChannel.show();
 
@@ -1165,8 +1176,8 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 					errKind = 'initialization';
 					break;
 			}
+			// Get the user's version in case the update prompt above failed.
 			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-			// TODO(hakim): If gopls version is too old, ask users to update it.
 			const settings = latestConfig.flags.join(' ');
 			const title = `gopls: automated issue report (${errKind})`;
 			const sanitizedLog = collectGoplsLog();
@@ -1258,7 +1269,7 @@ export function showServerOutputChannel() {
 			}
 			found = doc;
 			// .log, as some decoration is better than none
-			vscode.workspace.openTextDocument({language: 'log', content: contents});
+			vscode.workspace.openTextDocument({ language: 'log', content: contents });
 		}
 	}
 	if (found === undefined) {
