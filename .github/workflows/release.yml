@@ -50,17 +50,21 @@ jobs:
             exit 1
           fi
 
-          echo ::set-env name=EXT_VERSION::"${TAGGED_VERSION}"
+          echo "EXT_VERSION=${TAGGED_VERSION}" >> $GITHUB_ENV
           WRITTEN_VERSION="$(cat package.json | jq '.version' -r)"
 
-          if [[ ${TAGGED_VERSION} == *"-"* ]]; then
-            echo ::set-env name=EXT_ISPREVIEW::1
+          if [[ "${TAGGED_VERSION}" == *"-"* ]]; then
+            if [[ ! "${TAGGED_VERSION}" == "${WRITTEN_VERSION}"-rc.* ]]; then
+              echo "Prerelease Tag and Version in package.json are not compatible: '${TAGGED_VERSION}' vs '${WRITTEN_VERSION}'"
+              exit 1
+            fi
+            echo "EXT_ISPREVIEW=1" >> $GITHUB_ENV
           else
             if [[ "${TAGGED_VERSION}" != "${WRITTEN_VERSION}" ]]; then
               echo "Release Tag and Version in package.json do not match: '${TAGGED_VERSION}' vs '${WRITTEN_VERSION}'"
               exit 1
             fi
-            echo ::set-env name=EXT_ISPREVIEW::0
+            echo "EXT_ISPREVIEW=0" >> $GITHUB_ENV
           fi
 
       - name: stamp version
