@@ -127,8 +127,8 @@ func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
 
 	opts := []*OptionJSON{}
 	for _, v := range options {
-		if emoji := sectionEmoji(v.section); emoji != "" {
-			v.OptionJSON.Doc = emoji + " " + v.OptionJSON.Doc
+		if name := sectionName(v.section); name != "" {
+			v.OptionJSON.Doc = name + " " + v.OptionJSON.Doc
 		}
 		opts = append(opts, v.OptionJSON)
 	}
@@ -147,12 +147,12 @@ func priority(section string) int {
 	return 1000
 }
 
-func sectionEmoji(section string) string {
+func sectionName(section string) string {
 	switch section {
 	case "Experimental":
-		return "🧪"
+		return "(Experimental)"
 	case "Debugging":
-		return "🔍"
+		return "(For Debugging)"
 	}
 	return ""
 }
