@@ -1697,6 +1697,11 @@
               ],
               "default": "snakecase",
               "description": "Transformation rule used by Go: Add Tags command to add tags"
+            },
+            "template": {
+              "type": "string",
+              "default": "",
+              "description": "Custom format used by Go: Add Tags command for the tag value to be applied"
             }
           },
           "additionalProperties": false,
