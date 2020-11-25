@@ -1,4 +1,4 @@
-## v0.19.0 - 19 Nov, 2020
+## v0.19.0 - 25 Nov, 2020
 
 A list of all issues and changes can be found in the [v0.19.0 milestone](https://github.com/golang/vscode-go/milestone/14).
 
