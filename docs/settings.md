@@ -40,7 +40,7 @@ Alternate tools or alternate paths for the same tools used by the Go extension. 
 
 ### `go.autocompleteUnimportedPackages`
 
-Include unimported packages in auto-complete suggestions.
+Include unimported packages in auto-complete suggestions. Not applicable when using the language server.
 
 Default: `false`
 
@@ -175,7 +175,7 @@ Default:{<br/>
 
 ### `go.formatFlags`
 
-Flags to pass to format tool (e.g. ["-s"])
+Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.
 
 ### `go.formatTool`
 
@@ -223,17 +223,17 @@ efault: `<nil>`
 
 ### `go.gotoSymbol.ignoreFolders`
 
-Folder names (not paths) to ignore while using Go to Symbol in Workspace feature
+Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.
 
 ### `go.gotoSymbol.includeGoroot`
 
-If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature
+If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
 
 ### `go.gotoSymbol.includeImports`
 
-If false, the import statements will be excluded while using the Go to Symbol in File feature
+If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
 
@@ -285,7 +285,7 @@ Default: `golint`
 
 ### `go.liveErrors`
 
-Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay.
+Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.
 
 Default:{<br/>
 &nbsp;&nbsp;`"delay": 500`,<br/>
@@ -339,7 +339,7 @@ Environment variables that will passed to the process that runs the Go tests
 
 ### `go.testFlags`
 
-Flags to pass to `go test`. If null, then buildFlags will be used.
+Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.
 
 efault: `<nil>`
 
@@ -363,7 +363,7 @@ Default: `30s`
 
 ### `go.toolsEnvVars`
 
-Environment variables that will passed to the processes that run the Go tools (e.g. CGO_CFLAGS)
+Environment variables that will passed to the tools that run the Go tools (e.g. CGO_CFLAGS)
 
 ### `go.toolsGopath`
 
@@ -381,13 +381,13 @@ Default: `off`
 
 ### `go.useCodeSnippetsOnFunctionSuggest`
 
-Complete functions with their parameter signature, including the variable types
+Complete functions with their parameter signature, including the variable type. Not propagated to the language server.
 
 Default: `false`
 
 ### `go.useCodeSnippetsOnFunctionSuggestWithoutType`
 
-Complete functions with their parameter signature, excluding the variable types
+Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.
 
 Default: `false`
 
@@ -399,7 +399,7 @@ Default: `true`
 
 ### `go.useLanguageServer`
 
-Use the Go language server "gopls" from Google for powering language features like code navigation, completion, formatting & diagnostics.
+Use the Go language server "gopls" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics.
 
 Default: `false`
 

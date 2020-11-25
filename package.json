@@ -1279,7 +1279,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Flags to pass to format tool (e.g. [\"-s\"])",
+          "description": "Flags to pass to format tool (e.g. [\"-s\"]). Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.inferGopath": {
@@ -1471,7 +1471,7 @@
             "type": "string"
           },
           "default": null,
-          "description": "Flags to pass to `go test`. If null, then buildFlags will be used.",
+          "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {
@@ -1486,7 +1486,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the processes that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
           "scope": "resource"
         },
         "go.gocodeFlags": {
@@ -1522,19 +1522,19 @@
         "go.useCodeSnippetsOnFunctionSuggest": {
           "type": "boolean",
           "default": false,
-          "description": "Complete functions with their parameter signature, including the variable types",
+          "description": "Complete functions with their parameter signature, including the variable type. Not propagated to the language server.",
           "scope": "resource"
         },
         "go.useCodeSnippetsOnFunctionSuggestWithoutType": {
           "type": "boolean",
           "default": false,
-          "description": "Complete functions with their parameter signature, excluding the variable types",
+          "description": "Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.",
           "scope": "resource"
         },
         "go.autocompleteUnimportedPackages": {
           "type": "boolean",
           "default": false,
-          "description": "Include unimported packages in auto-complete suggestions.",
+          "description": "Include unimported packages in auto-complete suggestions. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.docsTool": {
@@ -1551,7 +1551,7 @@
         "go.useLanguageServer": {
           "type": "boolean",
           "default": false,
-          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, formatting & diagnostics."
+          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics."
         },
         "go.languageServerFlags": {
           "type": "array",
@@ -1609,13 +1609,13 @@
         "go.gotoSymbol.includeImports": {
           "type": "boolean",
           "default": false,
-          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature",
+          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.gotoSymbol.includeGoroot": {
           "type": "boolean",
           "default": false,
-          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature",
+          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.enableCodeLens": {
@@ -1624,7 +1624,7 @@
             "references": {
               "type": "boolean",
               "default": false,
-              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling."
+              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead."
             },
             "runtest": {
               "type": "boolean",
@@ -1666,6 +1666,7 @@
             }
           },
           "scope": "resource",
+          "deprecationMessage": "This option is deprecated.",
           "description": "This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present."
         },
         "go.addTags": {
@@ -1674,7 +1675,7 @@
             "promptForTags": {
               "type": "boolean",
               "default": false,
-              "description": "If true, Go: Add Tags command will prompt the user to provide tags and options instead of using the configured values"
+              "description": "If true, Go: Add Tags command will prompt the user to provide tags, options, transform values instead of using the configured values"
             },
             "tags": {
               "type": "string",
@@ -1734,7 +1735,7 @@
             "enabled": false,
             "delay": 500
           },
-          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay.",
+          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.removeTags": {
@@ -1891,7 +1892,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature",
+          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.delveConfig": {
