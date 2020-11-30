@@ -67,7 +67,7 @@
 		},
 		"for range statement": {
 			"prefix": "forr",
-			"body": "for ${1:_, }${2:var} := range ${3:var} {\n\t$0\n}",
+			"body": "for ${1:_, }${2:v} := range ${3:v} {\n\t$0\n}",
 			"description": "Snippet for a for range loop"
 		},
 		"channel declaration": {
