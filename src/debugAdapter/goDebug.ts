@@ -586,6 +586,9 @@ export class Delve {
 				}
 
 				const currentGOWorkspace = getCurrentGoWorkspaceFromGOPATH(env['GOPATH'], dirname);
+				if (!launchArgs.packagePathToGoModPathMap) {
+					launchArgs.packagePathToGoModPathMap = {};
+				}
 				dlvArgs.push(mode || 'debug');
 				if (mode === 'exec' || (mode === 'debug' && !isProgramDirectory)) {
 					dlvArgs.push(program);
