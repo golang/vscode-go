@@ -234,7 +234,7 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 // The returned language client need to be started before use.
 export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
 	let goplsWorkspaceConfig = getGoplsConfig() as any;
-	goplsWorkspaceConfig = filterDefaultConfigValues(goplsWorkspaceConfig, 'gopls',  undefined);
+	goplsWorkspaceConfig = filterDefaultConfigValues(goplsWorkspaceConfig, 'gopls', undefined);
 	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
 	const c = new LanguageClient(
 		'go',  // id
@@ -267,7 +267,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 			},
 			outputChannel: cfg.outputChannel,
 			traceOutputChannel: cfg.traceOutputChannel,
-			revealOutputChannelOn: RevealOutputChannelOn.Never,
+			revealOutputChannelOn: RevealOutputChannelOn.Error,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
@@ -1225,22 +1225,26 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 			}
 			// Get the user's version in case the update prompt above failed.
 			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
+			const extInfo = getExtensionInfo();
 			const settings = latestConfig.flags.join(' ');
 			const title = `gopls: automated issue report (${errKind})`;
-			const sanitizedLog = collectGoplsLog();
+			const { sanitizedLog, failureReason } = await collectGoplsLog();
 			const goplsLog = (sanitizedLog) ?
 				`<pre>${sanitizedLog}</pre>` :
-				`
-Please attach the stack trace from the crash.
+				`Please attach the stack trace from the crash.
 A window with the error message should have popped up in the lower half of your screen.
 Please copy the stack trace and error messages from that window and paste it in this issue.
 
 <PASTE STACK TRACE HERE>
+
+Failed to auto-collect gopls trace: ${failureReason}.
 `;
 
 			const body = `
 gopls version: ${usersGoplsVersion}
 gopls flags: ${settings}
+extension version: ${extInfo.version}
+environment: ${extInfo.appName}
 
 ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
@@ -1324,35 +1328,48 @@ export function showServerOutputChannel() {
 	}
 }
 
-function collectGoplsLog(): string {
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function collectGoplsLog(): Promise<{ sanitizedLog?: string; failureReason?: string; }> {
 	serverOutputChannel.show();
 	// Find the logs in the output channel. There is no way to read
 	// an output channel directly, but we can find the open text
 	// document, since we just surfaced the output channel to the user.
 	// See https://github.com/microsoft/vscode/issues/65108.
 	let logs: string;
-	for (const doc of vscode.workspace.textDocuments) {
-		if (doc.languageId !== 'Log') {
-			continue;
+	for (let i = 0; i < 3; i++) {
+		// try a couple of times until successfully finding the channel.
+		for (const doc of vscode.workspace.textDocuments) {
+			if (doc.languageId !== 'Log') {
+				continue;
+			}
+			if (doc.isDirty || doc.isClosed) {
+				continue;
+			}
+			// The document's name should look like 'extension-output-#X'.
+			if (doc.fileName.indexOf('extension-output-') === -1) {
+				continue;
+			}
+			logs = doc.getText();
+			break;
 		}
-		if (doc.isDirty || doc.isClosed) {
-			continue;
+		if (!!logs) {
+			break;
 		}
-		// The document's name should look like 'extension-output-#X'.
-		if (doc.fileName.indexOf('extension-output-') === -1) {
-			continue;
-		}
-		logs = doc.getText();
-		break;
+		// sleep a bit before the next try. The choice of the sleep time is arbitrary.
+		await sleep((i + 1) * 10);
 	}
+
 	return sanitizeGoplsTrace(logs);
 }
 
 // capture only panic stack trace and the initialization error message.
 // exported for testing.
-export function sanitizeGoplsTrace(logs?: string): string {
+export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, failureReason?: string } {
 	if (!logs) {
-		return '';
+		return { failureReason: 'no gopls log' };
 	}
 	const panicMsgBegin = logs.lastIndexOf('panic: ');
 	if (panicMsgBegin > -1) {  // panic message was found.
@@ -1375,18 +1392,25 @@ export function sanitizeGoplsTrace(logs?: string): string {
 				}
 			).join('\n');
 
-			return sanitized;
+			if (sanitized) {
+				return { sanitizedLog: sanitized };
+			}
+			return { failureReason: 'empty panic trace' };
 		}
+		return { failureReason: 'incomplete panic trace' };
 	}
 	const initFailMsgBegin = logs.lastIndexOf('Starting client failed');
 	if (initFailMsgBegin > -1) {  // client start failed. Capture up to the 'Code:' line.
 		const initFailMsgEnd = logs.indexOf('Code: ', initFailMsgBegin);
 		if (initFailMsgEnd > -1) {
 			const lineEnd = logs.indexOf('\n', initFailMsgEnd);
-			return lineEnd > -1 ? logs.substr(initFailMsgBegin, lineEnd - initFailMsgBegin) : logs.substr(initFailMsgBegin);
+			return { sanitizedLog: lineEnd > -1 ? logs.substr(initFailMsgBegin, lineEnd - initFailMsgBegin) : logs.substr(initFailMsgBegin) };
 		}
 	}
-	return '';
+	if (logs.lastIndexOf('Usage: gopls') > -1) {
+		return { failureReason: 'incorrect gopls command usage' };
+	}
+	return { failureReason: 'unrecognized crash pattern' };
 }
 
 export async function promptForLanguageServerDefaultChange(cfg: vscode.WorkspaceConfiguration) {
@@ -1445,4 +1469,15 @@ Please tell us why you had to disable the language server.
 		default:
 	}
 	updateGlobalState(promptedForLSOptOutSurveyKey, JSON.stringify(value));
+}
+
+interface ExtensionInfo {
+	version: string;  // Extension version
+	appName: string;  // The application name of the editor, like 'VS Code'
+}
+
+function getExtensionInfo(): ExtensionInfo {
+	const version = vscode.extensions.getExtension(extensionId)?.packageJSON?.version;
+	const appName = vscode.env.appName;
+	return { version, appName };
 }

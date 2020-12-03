@@ -11,13 +11,14 @@ suite('gopls issue report tests', () => {
 		interface TestCase {
 			name: string;
 			in: string;
-			want: string;
+			want?: string;
+			wantReason?: string;
 		}
 		const testCases: TestCase[] = [
 			{
 				name: `panic trace`,
 				in: traceFromIssueGo41435,
-				want: sanitizedTraceFromIssueGo41435
+				want: sanitizedTraceFromIssueGo41435,
 			},
 			{
 				name: `initialization error message`,
@@ -27,18 +28,19 @@ suite('gopls issue report tests', () => {
 			{
 				name: `incomplete panic trace`,
 				in: `panic: \nsecret\n`,
-				want: ''
+				wantReason: `incomplete panic trace`
 			},
 			{
 				name: `incomplete initialization error message`,
 				in: `Secret Starting client failed.\nAnoter Secret\n`,
-				want: ''
+				wantReason: `unrecognized crash pattern`
 			}
 		];
 
 		testCases.map((tc: TestCase) => {
-			const out = sanitizeGoplsTrace(tc.in);
-			assert.strictEqual(out, tc.want, `sanitizeGoplsTrace(${tc.name}) returned unexpected results`);
+			const {sanitizedLog, failureReason}  = sanitizeGoplsTrace(tc.in);
+			assert.strictEqual(sanitizedLog, tc.want, `sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result`);
+			assert.strictEqual(failureReason, tc.wantReason, `sanitizeGoplsTrace(${tc.name}) returned unexpected failureReason result`);
 		});
 
 	});
