@@ -117,6 +117,31 @@ suite('GoDebugSession Tests', async () => {
 		assert.strictEqual(inferredLocalPath, localPath);
 	});
 
+	test('inferLocalPathFromRemoteGoPackage works for package that shares the same folder with other packages in GOPATH/pkg/mod', () => {
+		const remotePath = 'remote/pkg/mod/foo/test/test.go';
+		const helloPackage: PackageBuildInfo = {
+			ImportPath: 'foo/test/hello',
+			DirectoryPath: 'remote/pkg/mod/foo/test',
+			Files: ['remote/pkg/mod/foo/test/hello.go', 'remote/pkg/mod/foo/test/world.go']
+		};
+
+		const testPackage: PackageBuildInfo = {
+			ImportPath: 'foo/test/test',
+			DirectoryPath: 'remote/pkg/mod/foo/test',
+			Files: ['remote/pkg/mod/foo/test/test.go']
+		};
+
+		const localPath = path.join(process.env.GOPATH, 'pkg/mod/foo/test/test.go');
+		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
+		existsSyncStub.withArgs(localPath).returns(true);
+
+		remoteSourcesAndPackages.remotePackagesBuildInfo = [helloPackage, testPackage];
+
+		goDebugSession['localPathSeparator'] = '/';
+		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
+		assert.strictEqual(inferredLocalPath, localPath);
+	});
+
 	test('inferLocalPathFromRemoteGoPackage works for package in GOPATH/pkg/mod with relative path', () => {
 		const remotePath = '!foo!bar/test@v1.0.2/test.go';
 		const helloPackage: PackageBuildInfo = {
@@ -240,6 +265,33 @@ suite('GoDebugSession Tests', async () => {
 		goDebugSession['localPathSeparator'] = '/';
 		const inferredLocalPath = goDebugSession['inferLocalPathFromRemoteGoPackage'](remotePath);
 		assert.strictEqual(inferredLocalPath, localPath);
+	});
+
+	test('findPathWithBestMatchingSuffix finds package with the longest suffix (no tie).', () => {
+		const filePath = '/a/b/c/src/foo/bar.go';
+		const potentialPaths = [
+			'src/foo/bar.go',
+			'test/bar.go',
+			'bar.go',
+			'different/foo/bar.go'
+		];
+		assert.strictEqual(
+			goDebugSession['findPathWithBestMatchingSuffix'](filePath, potentialPaths),
+			'src/foo/bar.go');
+	});
+
+	test('findPathWithBestMatchingSuffix finds package with the longest suffix (with ties).', () => {
+		const filePath = '/a/b/c/src/foo/bar.go';
+		const potentialPaths = [
+			'src/foo/bar.go',
+			'test/bar.go',
+			'bar.go',
+			'different/foo/bar.go',
+			'different/src/foo/bar.go'
+		];
+		assert.strictEqual(
+			goDebugSession['findPathWithBestMatchingSuffix'](filePath, potentialPaths),
+			'src/foo/bar.go');
 	});
 });
 

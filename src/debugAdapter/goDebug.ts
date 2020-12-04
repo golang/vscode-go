@@ -986,6 +986,10 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * For example, if filePath is /usr/local/foo/bar/main.go
 	 * and potentialPaths are abc/xyz/main.go, bar/main.go
 	 * then bar/main.go will be the result.
+	 * In case of tie, however, the shortest path will win.
+	 * For example, if filePath is /usr/local/foo/bar/main.go
+	 * and potentialPaths are test/bar/main.go and bar/main.go
+	 * then bar/main.go will be the best result.
 	 * NOTE: This function assumes that potentialPaths array only contains
 	 * files with the same base names as filePath.
 	 */
@@ -999,21 +1003,28 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		const filePathSegments = filePath.split(/\/|\\/).reverse();
-		let bestPathSoFar = potentialPaths[0];
-		let bestSegmentsCount = 0;
+		let bestPathsSoFar: string[] = [];
+		let bestSegmentsCount = -1;
 		for (const potentialPath of potentialPaths) {
 			const potentialPathSegments = potentialPath.split(/\/|\\/).reverse();
 			let i = 0;
 			for (; i < filePathSegments.length
 				&& i < potentialPathSegments.length
 				&& filePathSegments[i] === potentialPathSegments[i]; i++) {
-				if (i > bestSegmentsCount) {
-					bestSegmentsCount = i;
-					bestPathSoFar = potentialPath;
-				}
+			}
+
+			if (i > bestSegmentsCount) {
+				bestSegmentsCount = i;
+				bestPathsSoFar = [potentialPath];
+			}
+
+			if (i === bestSegmentsCount) {
+				bestPathsSoFar.push(potentialPath);
 			}
 		}
-		return bestPathSoFar;
+		const shortestBestPath = bestPathsSoFar.reduce(
+			(firstPath, secondPath) => firstPath.length < secondPath.length ? firstPath : secondPath);
+		return shortestBestPath;
 	}
 
 	/**
@@ -1088,44 +1099,72 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	/**
-	 * Given a remote path, we attempt to infer the local path by first checking
-	 * if it is in any remote packages. If so, then we attempt to find the matching
-	 * local package and find the local path from there.
+	 * Given a remote path, search the packages from remoteSourcesAndPackages
+	 * to see if we can find a matching package.
+	 * If so, convert the remote to a relative path by comparing it
+	 * to the import path and trimming off unneeded path location.
+	 * For example, if the remote path is /mygopackagepath/pkd/mod/packagepath,
+	 * we will want to trim it off to just packagepath.
 	 */
-	protected inferLocalPathFromRemoteGoPackage(remotePath: string): string | undefined {
-		const remotePackage = this.remoteSourcesAndPackages.remotePackagesBuildInfo.find(
+	private findRelativeRemotePathFromPackage(remotePath: string): string {
+		// We are using filters instead of find because if there are more than 1 package
+		// in a directory, we may erroneously get the wrong package if we are just
+		// getting the first one.
+		const remotePackages = this.remoteSourcesAndPackages.remotePackagesBuildInfo.filter(
 			(buildInfo) => remotePath.startsWith(buildInfo.DirectoryPath));
 		// Since we know pathToConvert exists in a remote package, we can try to find
 		// that same package in the local client. We can use import path to search for the package.
-		if (!remotePackage) {
-			return;
-		}
-
-		if (!this.remotePathSeparator) {
-			this.remotePathSeparator = findPathSeparator(remotePackage.DirectoryPath);
+		if (!remotePackages.length) {
+			return '';
 		}
 
 		// Escaping package path.
 		// It seems like sometimes Delve don't escape the path properly
 		// so we should do it.
 		remotePath = escapeGoModPath(remotePath);
-		const escapedImportPath = escapeGoModPath(remotePackage.ImportPath);
+		const potentialEscapedImportPaths = remotePackages.map(remotePackage => escapeGoModPath(remotePackage.ImportPath));
 
 		// The remotePackage.DirectoryPath should be something like
 		// <gopath|goroot|source>/<import-path>/xyz...
 		// Directory Path can be like "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp"
 		// and Import Path can be like "github.com/google/go-cmp/cmp"
 		// and Remote Path "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp/blah.go"
-		const importPathIndex = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '')
-			.indexOf(escapedImportPath);
-		if (importPathIndex < 0) {
+		const remotePathWithoutVersion = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '')
+		let escapedImportPath = potentialEscapedImportPaths.find(escapedImportPath =>
+			remotePathWithoutVersion.indexOf(escapedImportPath) >= 0);
+		if (escapedImportPath) {
+			return remotePath
+				.substr(remotePathWithoutVersion.indexOf(escapedImportPath));
+		}
+
+		// Check whether the remote path is a shorter version of import path instead.
+		// For example, import path as "github.com/google/go-cmp/cmp"
+		// and remote path as "go-cmp/cmp/blah.go". In this case, remotePathWithoutVersion is already
+		// all we need!
+		if (potentialEscapedImportPaths.find(escapedImportPath =>
+				escapedImportPath.indexOf(path.dirname(remotePathWithoutVersion)) >= 0)) {
+			return remotePathWithoutVersion;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Given a remote path, we attempt to infer the local path by first checking
+	 * if it is in any remote packages. If so, then we attempt to find the matching
+	 * local package and find the local path from there.
+	 */
+	protected inferLocalPathFromRemoteGoPackage(remotePath: string): string | undefined {
+		let relativeRemotePath = this.findRelativeRemotePathFromPackage(remotePath);
+		if (!relativeRemotePath) {
 			return;
 		}
 
-		const relativeRemotePath = remotePath
-			.substr(importPathIndex)
-			.split(this.remotePathSeparator)
-			.join(this.localPathSeparator);
+		if (!this.remotePathSeparator) {
+			this.remotePathSeparator = findPathSeparator(relativeRemotePath);
+		}
+		relativeRemotePath = relativeRemotePath.split(this.remotePathSeparator).join(this.localPathSeparator);
+
 		const pathToConvertWithLocalSeparator = remotePath.split(this.remotePathSeparator).join(this.localPathSeparator);
 
 		// Scenario 1: The package is inside the current working directory.
