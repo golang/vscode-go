@@ -20,6 +20,11 @@
 			"body": "const (\n\t${1:name} = ${2:value}\n)",
 			"description": "Snippet for a constant block"
 		},
+		"type function declaration": {
+			"prefix": "tyf",
+			"body": "type ${1:name} func($3) $4",
+			"description": "Snippet for a type function declaration"
+		},
 		"type interface declaration": {
 			"prefix": "tyi",
 			"body": "type ${1:name} interface {\n\t$0\n}",
