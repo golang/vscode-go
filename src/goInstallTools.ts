@@ -198,7 +198,7 @@ export async function installTool(
 		const writeFile = util.promisify(fs.writeFile);
 		await writeFile(tmpGoModFile, 'module tools');
 	} else {
-		envForTools['GO111MODULE'] = 'off';
+		env['GO111MODULE'] = 'off';
 	}
 	// Some users use direnv-like setup where the choice of go is affected by
 	// the current directory path. In order to avoid choosing a different go,
@@ -225,7 +225,7 @@ export async function installTool(
 	}
 	args.push(importPath);
 
-	let output: string;
+	let output: string = 'no output';
 	let result: string = '';
 	try {
 		const opts = {
@@ -237,13 +237,10 @@ export async function installTool(
 		output = `${stdout} ${stderr}`;
 		logVerbose(`install: %s %s\n%s%s`, goBinary, args.join(' '), stdout, stderr);
 
-		// TODO(rstambler): Figure out why this happens and maybe delete it.
-		if (stderr.indexOf('unexpected directory layout:') > -1) {
-			await execFile(goBinary, args, opts);
-		} else if (hasModSuffix(tool)) {
-			const gopath = env['GOPATH'];
+		if (hasModSuffix(tool)) {  // Actual installation of the -gomod tool is done by running go build.
+			const gopath = env['GOBIN'] ?? env['GOPATH'];
 			if (!gopath) {
-				return `GOPATH not configured in environment`;
+				return `GOBIN/GOPATH not configured in environment`;
 			}
 			const destDir = gopath.split(path.delimiter)[0];
 			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
@@ -253,7 +250,8 @@ export async function installTool(
 		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
 		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		result = `failed to install ${tool.name}(${importPath}): ${e} ${output} `;
+		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
+		result = `failed to install ${tool.name}(${importPath}): ${e} ${output}`;
 	}
 
 	// Delete the temporary installation directory.
