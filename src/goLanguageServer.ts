@@ -91,10 +91,6 @@ let defaultLanguageProviders: vscode.Disposable[] = [];
 // server.
 let restartCommand: vscode.Disposable;
 
-// When enabled, users may be prompted to fill out the gopls survey.
-// For now, we turn it on in the Nightly extension to test it.
-const goplsSurveyOn: boolean = isNightly();
-
 // lastUserAction is the time of the last user-triggered change.
 // A user-triggered change is a didOpen, didChange, didSave, or didClose event.
 let lastUserAction: Date = new Date();
@@ -147,7 +143,7 @@ function scheduleGoplsSuggestions(tool: Tool) {
 		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig(getGoConfig());
-		if (!goplsSurveyOn || !cfg.enabled) {
+		if (!cfg.enabled) {
 			return;
 		}
 		maybePromptForGoplsSurvey();
@@ -823,6 +819,9 @@ export const getLatestGoplsVersion = async (tool: Tool) => {
 //
 // If this command has already been executed, it returns the saved result.
 export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
+	if (!cfg) {
+		return null;
+	}
 	if (cfg.version !== '') {
 		return cfg.version;
 	}
@@ -1042,8 +1041,8 @@ Would you be willing to fill out a quick survey about your experience with gopls
 		case 'Yes':
 			cfg.lastDateAccepted = now;
 			cfg.prompt = true;
-
-			await vscode.env.openExternal(vscode.Uri.parse(`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX`));
+			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
+			await vscode.env.openExternal(vscode.Uri.parse(`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?gopls=${usersGoplsVersion}&extid=${extensionId}`));
 			break;
 		case 'Not now':
 			cfg.prompt = true;
@@ -1080,7 +1079,7 @@ function getSurveyConfig(): SurveyConfig {
 			}
 			return value;
 		});
-		return cfg;
+		return cfg || {};
 	} catch (err) {
 		console.log(`Error parsing JSON from ${saved}: ${err}`);
 		return {};
@@ -1092,9 +1091,12 @@ export async function showSurveyConfig() {
 	outputChannel.appendLine(JSON.stringify(getSurveyConfig(), null, 2));
 	outputChannel.show();
 
-	const selected = await vscode.window.showInformationMessage(`Maybe prompt for survey?`, 'Yes', 'No');
+	const selected = await vscode.window.showInformationMessage(`Prompt for survey?`, 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
+			promptForSurvey(getSurveyConfig(), new Date());
+			break;
+		case 'Maybe':
 			maybePromptForGoplsSurvey();
 			break;
 		default:
