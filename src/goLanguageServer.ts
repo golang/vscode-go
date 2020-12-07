@@ -267,7 +267,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 			},
 			outputChannel: cfg.outputChannel,
 			traceOutputChannel: cfg.traceOutputChannel,
-			revealOutputChannelOn: RevealOutputChannelOn.Error,
+			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
