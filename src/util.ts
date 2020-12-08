@@ -845,7 +845,8 @@ export function runTool(
 export function handleDiagnosticErrors(
 	document: vscode.TextDocument,
 	errors: ICheckResult[],
-	diagnosticCollection: vscode.DiagnosticCollection
+	diagnosticCollection: vscode.DiagnosticCollection,
+	diagnosticSource?: string
 ) {
 	diagnosticCollection.clear();
 
@@ -891,7 +892,8 @@ export function handleDiagnosticErrors(
 		const range = new vscode.Range(error.line - 1, startColumn, error.line - 1, endColumn);
 		const severity = mapSeverityToVSCodeSeverity(error.severity);
 		const diagnostic = new vscode.Diagnostic(range, error.msg, severity);
-		diagnostic.source = diagnosticCollection.name;
+		// vscode uses source for deduping diagnostics.
+		diagnostic.source = diagnosticSource || diagnosticCollection.name;
 		let diagnostics = diagnosticMap.get(canonicalFile);
 		if (!diagnostics) {
 			diagnostics = [];

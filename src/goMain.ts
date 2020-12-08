@@ -239,7 +239,9 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
-	lintDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-lint');
+	lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(
+		lintDiagnosticCollectionName(getGoConfig()['lintTool'])
+	);
 	ctx.subscriptions.push(lintDiagnosticCollection);
 	vetDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-vet');
 	ctx.subscriptions.push(vetDiagnosticCollection);
@@ -469,6 +471,15 @@ If you would like additional configuration for diagnostics from gopls, please se
 							vscode.commands.executeCommand('workbench.action.reloadWindow');
 						}
 					});
+				}
+			}
+			if (e.affectsConfiguration('go.lintTool')) {
+				const lintTool = lintDiagnosticCollectionName(updatedGoConfig['lintTool']);
+				if (lintDiagnosticCollection && lintDiagnosticCollection.name !== lintTool) {
+					lintDiagnosticCollection.dispose();
+					lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(lintTool);
+					ctx.subscriptions.push(lintDiagnosticCollection);
+					// TODO: actively maintain our own disposables instead of keeping pushing to ctx.subscription.
 				}
 			}
 		})
@@ -946,4 +957,11 @@ async function getConfiguredGoToolsCommand() {
 			outputChannel.appendLine(`failed to run 'go env': ${e}`);
 		}
 	}
+}
+
+function lintDiagnosticCollectionName(lintToolName: string) {
+	if (!lintToolName || lintToolName === 'golint') {
+		return 'go-lint';
+	}
+	return `go-${lintToolName}`;
 }
