@@ -514,18 +514,15 @@ function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
+	const msg = `Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).` +
+			`Check PATH, or Install Go and reload the window. ` +
+			`If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971`;
 	if (suggestedDownloadGo) {
-		vscode.window.showErrorMessage(
-			`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).`
-		);
+		vscode.window.showErrorMessage(msg);
 		return;
 	}
 
-	const choice = await vscode.window.showErrorMessage(
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}). ` +
-		`Check PATH, or Install Go and reload the window.`,
-		'Go to Download Page'
-	);
+	const choice = await vscode.window.showErrorMessage(msg, 'Go to Download Page');
 	if (choice === 'Go to Download Page') {
 		vscode.env.openExternal(vscode.Uri.parse('https://golang.org/dl/'));
 	}
