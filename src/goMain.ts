@@ -7,9 +7,7 @@
 'use strict';
 
 import * as path from 'path';
-import { commands } from 'vscode';
 import vscode = require('vscode');
-import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -111,15 +109,15 @@ export function activate(ctx: vscode.ExtensionContext) {
 		suggestUpdates(ctx);
 		offerToInstallLatestGoVersion();
 		offerToInstallTools();
-		configureLanguageServer(ctx);
+		await configureLanguageServer(ctx);
 
 		if (
+			!languageServerIsRunning &&
 			vscode.window.activeTextEditor &&
 			vscode.window.activeTextEditor.document.languageId === 'go' &&
 			isGoPathSet()
 		) {
 			// Check mod status so that cache is updated and then run build/lint/vet
-			// TODO(hyangah): skip if the language server is used (it will run build too)
 			isModSupported(vscode.window.activeTextEditor.document.uri).then(() => {
 				runBuilds(vscode.window.activeTextEditor.document, getGoConfig());
 			});
@@ -711,8 +709,7 @@ function configureLanguageServer(ctx: vscode.ExtensionContext) {
 	};
 
 	// Start the language server, or fallback to the default language providers.
-	startLanguageServerWithFallback(ctx, true);
-
+	return startLanguageServerWithFallback(ctx, true);
 }
 
 function getCurrentGoPathCommand() {
@@ -753,7 +750,7 @@ async function getConfiguredGoToolsCommand() {
 	outputChannel.appendLine('');
 
 	const goVersion = await getGoVersion();
-	const allTools = getConfiguredTools(goVersion);
+	const allTools = getConfiguredTools(goVersion, getGoConfig());
 
 	allTools.forEach((tool) => {
 		const toolPath = getBinPath(tool.name);

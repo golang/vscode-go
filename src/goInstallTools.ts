@@ -48,7 +48,7 @@ const declinedInstalls: Tool[] = [];
 
 export async function installAllTools(updateExistingToolsOnly: boolean = false) {
 	const goVersion = await getGoVersion();
-	let allTools = getConfiguredTools(goVersion);
+	let allTools = getConfiguredTools(goVersion, getGoConfig());
 
 	// exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
@@ -204,7 +204,9 @@ export async function installTool(
 	// the current directory path. In order to avoid choosing a different go,
 	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
 	// (which can be a wrapper script that switches 'go').
-	const goBinary = path.join(getCurrentGoRoot(), 'bin', correctBinname('go'));
+	const goBinary = getCurrentGoRoot() ?
+		path.join(getCurrentGoRoot(), 'bin', correctBinname('go')) :
+		goVersion.binaryPath;
 
 	// Build the arguments list for the tool installation.
 	const args = ['get', '-v'];
@@ -449,8 +451,9 @@ export async function offerToInstallTools() {
 				title: 'Show',
 				command() {
 					outputChannel.clear();
+					outputChannel.show();
 					outputChannel.appendLine('Below tools are needed for the basic features of the Go extension.');
-					missing.forEach((x) => outputChannel.appendLine(x.name));
+					missing.forEach((x) => outputChannel.appendLine(`  ${x.name}`));
 				}
 			};
 			vscode.window
@@ -495,7 +498,7 @@ export async function offerToInstallTools() {
 }
 
 function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
-	const keys = getConfiguredTools(goVersion);
+	const keys = getConfiguredTools(goVersion, getGoConfig());
 	return Promise.all<Tool>(
 		keys.map(
 			(tool) =>

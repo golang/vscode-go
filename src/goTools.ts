@@ -18,6 +18,7 @@ export interface Tool {
 	name: string;
 	importPath: string;
 	isImportant: boolean;
+	replacedByGopls?: boolean;
 	description: string;
 
 	// latestVersion and latestVersionTimestamp are hardcoded default values
@@ -107,12 +108,20 @@ export function isGocode(tool: Tool): boolean {
 	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
-export function getConfiguredTools(goVersion: GoVersion): Tool[] {
+export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: string]: any }): Tool[] {
+	// If language server is enabled, don't suggest tools that are replaced by gopls.
+	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
+	// the go version is no longer supported by gopls while the legacy tools are
+	// no longer working (or we remove the legacy language feature providers completely).
+	const useLanguageServer = goConfig['useLanguageServer'] && goVersion.gt('1.11');
+
 	const tools: Tool[] = [];
 	function maybeAddTool(name: string) {
 		const tool = allToolsInformation[name];
 		if (tool) {
-			tools.push(tool);
+			if (!useLanguageServer || !tool.replacedByGopls) {
+				tools.push(tool);
+			}
 		}
 	}
 
@@ -146,8 +155,6 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 		maybeAddTool('gocode-gomod');
 	}
 
-	const goConfig = getGoConfig();
-
 	// Add the doc/def tool that was chosen by the user.
 	switch (goConfig['docsTool']) {
 		case 'godoc':
@@ -164,8 +171,10 @@ export function getConfiguredTools(goVersion: GoVersion): Tool[] {
 	// Add the linter that was chosen by the user.
 	maybeAddTool(goConfig['lintTool']);
 
-	// Add the language server for Go versions > 1.10 if user has choosen to do so.
-	if (goConfig['useLanguageServer'] && goVersion.gt('1.10')) {
+	// Add the language server if the user has chosen to do so.
+	// Even though we arranged this to run after the first attempt to start gopls
+	// this is still useful if we've fail to start gopls.
+	if (useLanguageServer) {
 		maybeAddTool('gopls');
 	}
 
@@ -181,6 +190,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',
 		isImportant: true,
+		replacedByGopls: true,
 		description: 'Auto-completion, does not work with modules',
 		close: async (env: NodeJS.Dict<string>): Promise<string> => {
 			const toolBinPath = getBinPath('gocode');
@@ -204,128 +214,150 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gocode-gomod',
 		importPath: 'github.com/stamblerre/gocode',
 		isImportant: true,
+		replacedByGopls: true,
 		description: 'Auto-completion, works with modules',
 		minimumGoVersion: semver.coerce('1.11'),
 	},
 	'gopkgs': {
 		name: 'gopkgs',
 		importPath: 'github.com/uudashr/gopkgs/v2/cmd/gopkgs',
+		replacedByGopls: false,  // TODO(github.com/golang/vscode-go/issues/258): disable Add Import command.
 		isImportant: true,
 		description: 'Auto-completion of unimported packages & Add Import feature'
 	},
 	'go-outline': {
 		name: 'go-outline',
 		importPath: 'github.com/ramya-rao-a/go-outline',
+		replacedByGopls: false,  // TODO(github.com/golang/vscode-go/issues/1020): replace with Gopls.
 		isImportant: true,
-		description: 'Go to symbol in file'
+		description: 'Go to symbol in file'  // GoDocumentSymbolProvider, used by 'run test' codelens
 	},
 	'go-symbols': {
 		name: 'go-symbols',
 		importPath: 'github.com/acroca/go-symbols',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Go to symbol in workspace'
 	},
 	'guru': {
 		name: 'guru',
 		importPath: 'golang.org/x/tools/cmd/guru',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Find all references and Go to implementation of symbols'
 	},
 	'gorename': {
 		name: 'gorename',
 		importPath: 'golang.org/x/tools/cmd/gorename',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Rename symbols'
 	},
 	'gomodifytags': {
 		name: 'gomodifytags',
 		importPath: 'github.com/fatih/gomodifytags',
+		replacedByGopls: false,
 		isImportant: false,
 		description: 'Modify tags on structs'
 	},
 	'goplay': {
 		name: 'goplay',
 		importPath: 'github.com/haya14busa/goplay/cmd/goplay',
+		replacedByGopls: false,
 		isImportant: false,
 		description: 'The Go playground'
 	},
 	'impl': {
 		name: 'impl',
 		importPath: 'github.com/josharian/impl',
+		replacedByGopls: false,
 		isImportant: false,
 		description: 'Stubs for interfaces'
 	},
 	'gotype-live': {
 		name: 'gotype-live',
 		importPath: 'github.com/tylerb/gotype-live',
+		replacedByGopls: true,  // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
 		isImportant: false,
 		description: 'Show errors as you type'
 	},
 	'godef': {
 		name: 'godef',
 		importPath: 'github.com/rogpeppe/godef',
+		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to definition'
 	},
 	'gogetdoc': {
 		name: 'gogetdoc',
 		importPath: 'github.com/zmb3/gogetdoc',
+		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to definition & text shown on hover'
 	},
 	'gofumports': {
 		name: 'gofumports',
 		importPath: 'mvdan.cc/gofumpt/gofumports',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
 		importPath: 'mvdan.cc/gofumpt',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
 	},
 	'goimports': {
 		name: 'goimports',
 		importPath: 'golang.org/x/tools/cmd/goimports',
+		replacedByGopls: true,
 		isImportant: true,
 		description: 'Formatter'
 	},
 	'goreturns': {
 		name: 'goreturns',
 		importPath: 'github.com/sqs/goreturns',
+		replacedByGopls: true,
 		isImportant: true,
 		description: 'Formatter'
 	},
 	'goformat': {
 		name: 'goformat',
 		importPath: 'winterdrache.de/goformat/goformat',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
-	},
-	'golint': {
-		name: 'golint',
-		importPath: 'golang.org/x/lint/golint',
-		isImportant: true,
-		description: 'Linter',
-		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'gotests': {
 		name: 'gotests',
 		importPath: 'github.com/cweill/gotests/...',
+		replacedByGopls: false,
 		isImportant: false,
 		description: 'Generate unit tests',
+		minimumGoVersion: semver.coerce('1.9'),
+	},
+	// TODO(github.com/golang/vscode-go/issues/189): consider disabling lint when gopls is turned on.
+	'golint': {
+		name: 'golint',
+		importPath: 'golang.org/x/lint/golint',
+		replacedByGopls: false,
+		isImportant: true,
+		description: 'Linter',
 		minimumGoVersion: semver.coerce('1.9'),
 	},
 	'staticcheck': {
 		name: 'staticcheck',
 		importPath: 'honnef.co/go/tools/...',
+		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter'
 	},
 	'golangci-lint': {
 		name: 'golangci-lint',
 		importPath: 'github.com/golangci/golangci-lint/cmd/golangci-lint',
+		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter'
 	},
@@ -338,7 +370,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gopls': {
 		name: 'gopls',
 		importPath: 'golang.org/x/tools/gopls',
-		isImportant: false,
+		replacedByGopls: false,  // lol
+		isImportant: true,
 		description: 'Language Server from Google',
 		minimumGoVersion: semver.coerce('1.12'),
 		latestVersion: semver.coerce('0.5.1'),
@@ -349,18 +382,21 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'dlv': {
 		name: 'dlv',
 		importPath: 'github.com/go-delve/delve/cmd/dlv',
-		isImportant: false,
+		replacedByGopls: false,
+		isImportant: true,
 		description: 'Debugging'
 	},
 	'fillstruct': {
 		name: 'fillstruct',
 		importPath: 'github.com/davidrjenni/reftools/cmd/fillstruct',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Fill structs with defaults'
 	},
 	'godoctor': {
 		name: 'godoctor',
 		importPath: 'github.com/godoctor/godoctor',
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Extract to functions and variables'
 	}
