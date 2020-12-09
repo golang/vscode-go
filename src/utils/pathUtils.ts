@@ -98,12 +98,14 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 		return {binPath: pathFromPath, why: found('path')};
 	}
 
-	// Check default path for go
+	// Check common paths for go
 	if (toolName === 'go') {
-		const defaultPathForGo = process.platform === 'win32' ? 'C:\\Go\\bin\\go.exe' : '/usr/local/go/bin/go';
-		if (executableFileExists(defaultPathForGo)) {
-			binPathCache[toolName] = defaultPathForGo;
-			return {binPath: defaultPathForGo, why: 'default'};
+		const defaultPathsForGo = process.platform === 'win32' ? ['C:\\Go\\bin\\go.exe'] : ['/usr/local/go/bin/go', '/usr/local/bin/go'];
+		for (const p of defaultPathsForGo) {
+			if (executableFileExists(p)) {
+				binPathCache[toolName] = p;
+			}
+			return {binPath: p, why: 'default'};
 		}
 		return {binPath: ''};
 	}
