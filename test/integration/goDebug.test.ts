@@ -842,7 +842,7 @@ suite('Go Debug Adapter', function () {
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
 
 			// Setup attach with a breakpoint.
 			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
@@ -858,7 +858,6 @@ suite('Go Debug Adapter', function () {
 		});
 
 		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
-			this.timeout(30_000);
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -867,7 +866,7 @@ suite('Go Debug Adapter', function () {
 			await setUpRemoteAttach(remoteAttachDebugConfig);
 
 			// Now sets a breakpoint.
-			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
 			const breakpointsResult = await dc.setBreakpointsRequest(
 				{source: {path: breakpointLocation.path}, breakpoints: [breakpointLocation]});
 			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints[0].verified);
@@ -881,27 +880,6 @@ suite('Go Debug Adapter', function () {
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
-
-		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
-			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
-			const BREAKPOINT_LINE = 29;
-			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
-
-			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
-
-			// Setup attach with a breakpoint.
-			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
-
-			// Calls the helloworld server to make the breakpoint hit.
-			await waitForBreakpoint(
-				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
-				breakpointLocation);
-
-			await dc.disconnectRequest({restart: false});
-			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
-		});
-
 	});
 
 	suite('conditionalBreakpoints', () => {
@@ -1070,8 +1048,8 @@ suite('Go Debug Adapter', function () {
 		// disconnectRequest is sent after it has already disconnected.
 
 		test('disconnect should work for remote attach', async () => {
-			this.timeout(30_000);
 			const server = await getPort();
+			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
@@ -1247,7 +1225,7 @@ suite('Go Debug Adapter', function () {
 			};
 			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			await dc.hitBreakpoint(debugConfig, { path: FILE, line: BREAKPOINT_LINE } );
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			return Promise.all([
 				dc.disconnectRequest({restart: false}),
