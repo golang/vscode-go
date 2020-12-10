@@ -42,7 +42,7 @@ import {
 } from '../../src/util';
 
 suite('Go Extension Tests', function () {
-	this.timeout(15000);
+	this.timeout(20000);
 
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
 
