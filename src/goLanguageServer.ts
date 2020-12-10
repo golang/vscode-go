@@ -81,6 +81,9 @@ let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
+// TODO: combine languageServerIsRunning & languageServerStartInProgress
+// as one languageServerStatus variable.
+let languageServerStartInProgress = false;
 let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
@@ -98,6 +101,12 @@ let lastUserAction: Date = new Date();
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
+	if (!activation && languageServerStartInProgress) {
+		console.log('language server restart is already in progress...');
+		return;
+	}
+	languageServerStartInProgress = true;
+
 	const cfg = buildLanguageServerConfig(getGoConfig());
 
 	// If the language server is gopls, we enable a few additional features.
@@ -109,17 +118,39 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		}
 	}
 
-	const started = await startLanguageServer(ctx, cfg);
+	const progressMsg = languageServerIsRunning ? 'Restarting language service' : 'Starting language service';
+	await vscode.window.withProgress({
+		title: progressMsg,
+		cancellable: !activation,
+		location: vscode.ProgressLocation.Notification,
+	}, async (progress, token) => {
+		let disposable: vscode.Disposable;
+		if (token) {
+			disposable = token.onCancellationRequested(async () => {
+				const choice = await vscode.window.showErrorMessage(
+					'Language service restart request was interrupted and language service may be in a bad state. ' +
+					'Please reload the window.',
+					'Reload Window');
+				if (choice === 'Reload Window') {
+					await vscode.commands.executeCommand('workbench.action.reloadWindow');
+				}
+			});
+		}
 
-	// If the server has been disabled, or failed to start,
-	// fall back to the default providers, while making sure not to
-	// re-register any providers.
-	if (!started && defaultLanguageProviders.length === 0) {
-		registerDefaultProviders(ctx);
-	}
+		const started = await startLanguageServer(ctx, cfg);
 
-	languageServerIsRunning = started;
-	updateLanguageServerIconGoStatusBar(started, cfg.serverName);
+		// If the server has been disabled, or failed to start,
+		// fall back to the default providers, while making sure not to
+		// re-register any providers.
+		if (!started && defaultLanguageProviders.length === 0) {
+			registerDefaultProviders(ctx);
+		}
+
+		if (disposable) { disposable.dispose(); }
+		languageServerIsRunning = started;
+		updateLanguageServerIconGoStatusBar(started, cfg.serverName);
+		languageServerStartInProgress = false;
+	});
 }
 
 // scheduleGoplsSuggestions sets timeouts for the various gopls-specific
