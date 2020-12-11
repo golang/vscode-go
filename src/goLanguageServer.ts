@@ -108,6 +108,15 @@ let lastUserAction: Date = new Date();
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
+
+	for (const folder of vscode.workspace.workspaceFolders || []) {
+		if (folder.uri.scheme === 'vsls') {
+			outputChannel.appendLine(`Language service on the guest side is disabled. ` +
+				`The server-side language service will provide the language features.`);
+			return;
+		}
+	}
+
 	if (!activation && languageServerStartInProgress) {
 		console.log('language server restart is already in progress...');
 		return;
