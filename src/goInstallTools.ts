@@ -245,7 +245,7 @@ export async function installTool(
 		logVerbose(`install: %s %s\n%s%s`, goBinary, args.join(' '), stdout, stderr);
 
 		if (hasModSuffix(tool)) {  // Actual installation of the -gomod tool is done by running go build.
-			const gopath = env['GOBIN'] ?? env['GOPATH'];
+			const gopath = env['GOBIN'] || env['GOPATH'];
 			if (!gopath) {
 				return `GOBIN/GOPATH not configured in environment`;
 			}
