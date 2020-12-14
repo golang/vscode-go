@@ -371,7 +371,18 @@ function normalizePath(filePath: string) {
 	return filePath;
 }
 
-function normalizeSeparators(filePath: string): string {
+// normalizeSeparators will prepare the filepath for comparison in mapping from
+// local to debugger path and from debugger path to local path. All separators are
+// replaced with '/', and the drive name is capitalized for windows paths.
+// Exported for testing
+export function normalizeSeparators(filePath: string): string {
+	// Although the current machine may not be running windows,
+	// the remote machine may be and we need to fix the drive
+	// casing.
+	// This is a workaround for issue in https://github.com/Microsoft/vscode/issues/9448#issuecomment-244804026
+	if (filePath.indexOf(':') === 1) {
+		filePath = filePath.substr(0, 1).toUpperCase() + filePath.substr(1);
+	}
 	return filePath.replace(/\/|\\/g, '/');
 }
 
