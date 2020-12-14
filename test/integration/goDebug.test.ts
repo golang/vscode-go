@@ -1297,68 +1297,6 @@ suite('Go Debug Adapter', function () {
 			rmdirRecursive(tmpDir);
 		});
 
-		suite('substitutePath with symlinks', () => {
-			let linkedDir: string;
-			setup(() => {
-				linkedDir = path.join(tmpDir, 'src');
-				fs.symlinkSync(DATA_ROOT, linkedDir);
-			});
-
-			teardown(() => {
-				fs.unlinkSync(linkedDir);
-			});
-
-			test('should stop on a breakpoint set in file with substituted path', () => {
-				const PROGRAM_TEMP = path.join(linkedDir, 'baseTest');
-				const PROGRAM = path.join(DATA_ROOT, 'baseTest');
-
-				const FILE = path.join(PROGRAM_TEMP, 'test.go');
-				const BREAKPOINT_LINE = 11;
-
-				const config = {
-					name: 'Launch',
-					type: 'go',
-					request: 'launch',
-					mode: 'auto',
-					program: PROGRAM_TEMP,
-					substitutePath: [
-						{
-							from: PROGRAM_TEMP,
-							to: PROGRAM
-						}
-					]
-				};
-				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
-			});
-
-			test('should stop on a breakpoint in test file with substituted path', () => {
-				const PROGRAM_TEMP = path.join(linkedDir, 'baseTest');
-				const PROGRAM = path.join(DATA_ROOT, 'baseTest');
-
-				const FILE = path.join(PROGRAM_TEMP, 'sample_test.go');
-				const BREAKPOINT_LINE = 15;
-
-				const config = {
-					name: 'Launch file',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: PROGRAM_TEMP,
-					substitutePath: [
-						{
-							from: PROGRAM_TEMP,
-							to: PROGRAM
-						}
-					]
-				};
-				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
-			});
-		});
-
 		function copyDirectory(name: string) {
 			const from = path.join(DATA_ROOT, name);
 			const to = path.join(tmpDir, name);
