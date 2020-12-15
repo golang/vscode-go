@@ -2124,13 +2124,13 @@
             },
             "analyses": {
               "type": "object",
-              "markdownDescription": "(Experimental) analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found [here](analyzers.md)\n\nExample Usage:\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
+              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found [here](analyzers.md)\n\nExample Usage:\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
               "default": {},
               "scope": "resource"
             },
-            "codelens": {
+            "codelenses": {
               "type": "object",
-              "markdownDescription": "(Experimental) codelens overrides the enabled/disabled state of code lenses. See the \"Code Lenses\"\nsection of settings.md for the list of supported lenses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"codelens\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the \"Code Lenses\"\nsection of settings.md for the list of supported lenses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
               "default": {
                 "gc_details": false,
                 "generate": true,
@@ -2141,27 +2141,31 @@
               },
               "scope": "resource"
             },
-            "completionDocumentation": {
+            "linksInHover": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) completionDocumentation enables documentation with completion results.\n",
+              "markdownDescription": "linksInHover toggles the presence of links to documentation in hover.\n",
               "default": true,
               "scope": "resource"
             },
-            "completeUnimported": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) completeUnimported enables completion for packages that you do not currently import.\n",
-              "default": true,
-              "scope": "resource"
-            },
-            "deepCompletion": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) deepCompletion enables the ability to return completions from deep inside relevant entities, rather than just the locally accessible ones.\n\nConsider this example:\n\n```go\npackage main\n\nimport \"fmt\"\n\ntype wrapString struct {\n    str string\n}\n\nfunc main() {\n    x := wrapString{\"hello world\"}\n    fmt.Printf(<>)\n}\n```\n\nAt the location of the `<>` in this program, deep completion would suggest the result `x.str`.\n",
-              "default": true,
+            "importShortcut": {
+              "type": "string",
+              "markdownDescription": "importShortcut specifies whether import statements should link to\ndocumentation or go to definitions.\n",
+              "enum": [
+                "Both",
+                "Definition",
+                "Link"
+              ],
+              "markdownEnumDescriptions": [
+                "",
+                "",
+                ""
+              ],
+              "default": "Both",
               "scope": "resource"
             },
             "matcher": {
               "type": "string",
-              "markdownDescription": "(Experimental) matcher sets the algorithm that is used when calculating completion candidates.\n",
+              "markdownDescription": "matcher sets the algorithm that is used when calculating completion candidates.\n",
               "enum": [
                 "CaseInsensitive",
                 "CaseSensitive",
@@ -2175,21 +2179,9 @@
               "default": "Fuzzy",
               "scope": "resource"
             },
-            "annotations": {
-              "type": "object",
-              "markdownDescription": "(Experimental) annotations suppress various kinds of optimization diagnostics\nthat would be reported by the gc_details command.\n * noNilcheck suppresses display of nilchecks.\n * noEscape suppresses escape choices.\n * noInline suppresses inlining choices.\n * noBounds suppresses bounds checking diagnostics.\n",
-              "default": {},
-              "scope": "resource"
-            },
-            "staticcheck": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\n",
-              "default": false,
-              "scope": "resource"
-            },
             "symbolMatcher": {
               "type": "string",
-              "markdownDescription": "(Experimental) symbolMatcher sets the algorithm that is used when finding workspace symbols.\n",
+              "markdownDescription": "symbolMatcher sets the algorithm that is used when finding workspace symbols.\n",
               "enum": [
                 "CaseInsensitive",
                 "CaseSensitive",
@@ -2205,7 +2197,7 @@
             },
             "symbolStyle": {
               "type": "string",
-              "markdownDescription": "(Experimental) symbolStyle controls how symbols are qualified in symbol responses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"symbolStyle\": \"dynamic\",\n...\n}\n```\n",
+              "markdownDescription": "symbolStyle controls how symbols are qualified in symbol responses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"symbolStyle\": \"dynamic\",\n...\n}\n```\n",
               "enum": [
                 "Dynamic",
                 "Full",
@@ -2216,40 +2208,24 @@
                 "`\"Full\"` is fully qualified symbols, i.e.\n\"path/to/pkg.Foo.Field\".\n",
                 "`\"Package\"` is package qualified symbols i.e.\n\"pkg.Foo.Field\".\n"
               ],
-              "default": "Package",
+              "default": "Dynamic",
               "scope": "resource"
             },
-            "linksInHover": {
+            "directoryFilters": {
+              "type": "array",
+              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\nExclude node_modules: `-node_modules`\nInclude only project_a: `-` (exclude everything), `+project_a`\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "default": [],
+              "scope": "resource"
+            },
+            "annotations": {
+              "type": "object",
+              "markdownDescription": "(Experimental) annotations suppress various kinds of optimization diagnostics\nthat would be reported by the gc_details command.\n * noNilcheck suppresses display of nilchecks.\n * noEscape suppresses escape choices.\n * noInline suppresses inlining choices.\n * noBounds suppresses bounds checking diagnostics.\n",
+              "default": {},
+              "scope": "resource"
+            },
+            "staticcheck": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) linksInHover toggles the presence of links to documentation in hover.\n",
-              "default": true,
-              "scope": "resource"
-            },
-            "tempModfile": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) tempModfile controls the use of the -modfile flag in Go 1.14.\n",
-              "default": true,
-              "scope": "resource"
-            },
-            "importShortcut": {
-              "type": "string",
-              "markdownDescription": "(Experimental) importShortcut specifies whether import statements should link to\ndocumentation or go to definitions.\n",
-              "enum": [
-                "Both",
-                "Definition",
-                "Link"
-              ],
-              "markdownEnumDescriptions": [
-                "",
-                "",
-                ""
-              ],
-              "default": "Both",
-              "scope": "resource"
-            },
-            "verboseWorkDoneProgress": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) verboseWorkDoneProgress controls whether the LSP server should send\nprogress reports for all work done outside the scope of an RPC.\n",
+              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\n",
               "default": false,
               "scope": "resource"
             },
@@ -2274,13 +2250,25 @@
             "experimentalDiagnosticsDelay": {
               "type": "string",
               "markdownDescription": "(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
-              "default": "0s",
+              "default": "250ms",
               "scope": "resource"
             },
             "experimentalPackageCacheKey": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key\nfor package type information to increase cache hits. This setting removes\nthe user's environment, build flags, and working directory from the cache\nkey, which should be a safe change as all relevant inputs into the type\nchecking pass are already hashed into the key. This is temporarily guarded\nby an experiment because caching behavior is subtle and difficult to\ncomprehensively test.\n",
               "default": true,
+              "scope": "resource"
+            },
+            "allowModfileModifications": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) allowModfileModifications disables -mod=readonly, allowing imports from\nout-of-scope modules. This option will eventually be removed.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "allowImplicitNetworkAccess": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) allowImplicitNetworkAccess disables GOPROXY=off, allowing implicit module\ndownloads rather than requiring user action. This option will eventually\nbe removed.\n",
+              "default": false,
               "scope": "resource"
             },
             "verboseOutput": {

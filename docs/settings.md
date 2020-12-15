@@ -576,8 +576,19 @@ Default: `package`
 
 Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.
 
+#### `allowImplicitNetworkAccess`
+(Experimental) allowImplicitNetworkAccess disables GOPROXY=off, allowing implicit module
+downloads rather than requiring user action. This option will eventually
+be removed.
+
+
+#### `allowModfileModifications`
+(Experimental) allowModfileModifications disables -mod=readonly, allowing imports from
+out-of-scope modules. This option will eventually be removed.
+
+
 #### `analyses`
-(Experimental) analyses specify analyses that the user would like to enable or disable.
+analyses specify analyses that the user would like to enable or disable.
 A map of the names of analysis passes that should be enabled/disabled.
 A full list of analyzers that gopls uses can be found [here](analyzers.md)
 
@@ -607,25 +618,21 @@ It is applied to queries like `go list`, which is used when discovering files.
 The most common use is to set `-tags`.
 
 
-#### `codelens`
-(Experimental) codelens overrides the enabled/disabled state of code lenses. See the "Code Lenses"
+#### `codelenses`
+codelenses overrides the enabled/disabled state of code lenses. See the "Code Lenses"
 section of settings.md for the list of supported lenses.
 
 Example Usage:
 ```json5
 "gopls": {
 ...
-  "codelens": {
+  "codelenses": {
     "generate": false,  // Don't show the `go generate` lens.
     "gc_details": true  // Show a code lens toggling the display of gc's choices.
   }
 ...
 }
 ```
-
-
-#### `completeUnimported`
-(Experimental) completeUnimported enables completion for packages that you do not currently import.
 
 
 #### `completionBudget`
@@ -636,31 +643,18 @@ dynamically reduce the search scope to ensure we return timely
 results. Zero means unlimited.
 
 
-#### `completionDocumentation`
-(Experimental) completionDocumentation enables documentation with completion results.
+#### `directoryFilters`
+directoryFilters can be used to exclude unwanted directories from the
+workspace. By default, all directories are included. Filters are an
+operator, `+` to include and `-` to exclude, followed by a path prefix
+relative to the workspace folder. They are evaluated in order, and
+the last filter that applies to a path controls whether it is included.
+The path prefix can be empty, so an initial `-` excludes everything.
 
-
-#### `deepCompletion`
-(Experimental) deepCompletion enables the ability to return completions from deep inside relevant entities, rather than just the locally accessible ones.
-
-Consider this example:
-
-```go
-package main
-
-import "fmt"
-
-type wrapString struct {
-    str string
-}
-
-func main() {
-    x := wrapString{"hello world"}
-    fmt.Printf(<>)
-}
-```
-
-At the location of the `<>` in this program, deep completion would suggest the result `x.str`.
+Examples:
+Exclude node_modules: `-node_modules`
+Include only project_a: `-` (exclude everything), `+project_a`
+Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
 
 #### `env`
@@ -710,7 +704,7 @@ SingleLine and Structured are intended for use only by authors of editor plugins
 
 
 #### `importShortcut`
-(Experimental) importShortcut specifies whether import statements should link to
+importShortcut specifies whether import statements should link to
 documentation or go to definitions.
 
 
@@ -725,7 +719,7 @@ If company chooses to use its own `godoc.org`, its address can be used as well.
 
 
 #### `linksInHover`
-(Experimental) linksInHover toggles the presence of links to documentation in hover.
+linksInHover toggles the presence of links to documentation in hover.
 
 
 #### `local`
@@ -734,7 +728,7 @@ It should be the prefix of the import path whose imports should be grouped separ
 
 
 #### `matcher`
-(Experimental) matcher sets the algorithm that is used when calculating completion candidates.
+matcher sets the algorithm that is used when calculating completion candidates.
 
 
 #### `semanticTokens`
@@ -747,11 +741,11 @@ semantic tokens to the client.
 
 
 #### `symbolMatcher`
-(Experimental) symbolMatcher sets the algorithm that is used when finding workspace symbols.
+symbolMatcher sets the algorithm that is used when finding workspace symbols.
 
 
 #### `symbolStyle`
-(Experimental) symbolStyle controls how symbols are qualified in symbol responses.
+symbolStyle controls how symbols are qualified in symbol responses.
 
 Example Usage:
 ```json5
@@ -763,19 +757,10 @@ Example Usage:
 ```
 
 
-#### `tempModfile`
-(Experimental) tempModfile controls the use of the -modfile flag in Go 1.14.
-
-
 #### `usePlaceholders`
 placeholders enables placeholders for function parameters or struct fields in completion responses.
 
 
 #### `verboseOutput`
 (For Debugging) verboseOutput enables additional debug logging.
-
-
-#### `verboseWorkDoneProgress`
-(Experimental) verboseWorkDoneProgress controls whether the LSP server should send
-progress reports for all work done outside the scope of an RPC.
 
