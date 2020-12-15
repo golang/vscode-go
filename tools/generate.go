@@ -38,14 +38,16 @@ type Command struct {
 }
 
 type Property struct {
-	name string // Set by us.
+	name string `json:"name,omitempty"` // Set by us.
 
 	// Below are defined in package.json
-	Default             interface{} `json:"default,omitempty"`
-	MarkdownDescription string      `json:"markdownDescription,omitempty"`
-	Description         string      `json:"description,omitempty"`
-	Type                interface{} `json:"type,omitempty"`
-	Enum                []string    `json:"enum,omitempty"`
+	Default                    interface{} `json:"default,omitempty"`
+	MarkdownDescription        string      `json:"markdownDescription,omitempty"`
+	Description                string      `json:"description,omitempty"`
+	MarkdownDeprecationMessage string      `json:"markdownDeprecationMessage,omitempty"`
+	DeprecationMessage         string      `json:"deprecationMessage,omitempty"`
+	Type                       interface{} `json:"type,omitempty"`
+	Enum                       []string    `json:"enum,omitempty"`
 }
 
 func main() {
@@ -127,7 +129,19 @@ func main() {
 		if p.MarkdownDescription != "" {
 			desc = p.MarkdownDescription
 		}
-		b.WriteString(fmt.Sprintf("### `%s`\n\n%s", p.name, desc))
+		deprecation := p.DeprecationMessage
+		if p.MarkdownDeprecationMessage != "" {
+			deprecation = p.MarkdownDeprecationMessage
+		}
+
+		name := p.name
+		if deprecation != "" {
+			name += " (deprecated)"
+			desc = deprecation + "\n" + desc
+		}
+
+		b.WriteString(fmt.Sprintf("### `%s`\n\n%s", name, desc))
+
 		if p.Enum != nil {
 			b.WriteString(fmt.Sprintf("\n\nAllowed Values:`%v`", p.Enum))
 		}

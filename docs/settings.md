@@ -301,8 +301,9 @@ Allowed Values:`[off error info verbose]`
 
 Default: `error`
 
-### `go.overwriteGoplsMiddleware`
+### `go.overwriteGoplsMiddleware (deprecated)`
 
+This option is deprecated.
 This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present.
 
 ### `go.playground`
