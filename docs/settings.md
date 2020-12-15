@@ -34,9 +34,42 @@ Default:{<br/>
     }
 
 
+#### `options`
+Comma separated tag=options pairs to be used by Go: Add Tags command
+
+#### `promptForTags`
+If true, Go: Add Tags command will prompt the user to provide tags, options, transform values instead of using the configured values
+
+#### `tags`
+Comma separated tags to be used by Go: Add Tags command
+
+#### `template`
+Custom format used by Go: Add Tags command for the tag value to be applied
+
+#### `transform`
+Transformation rule used by Go: Add Tags command to add tags
+
 ### `go.alternateTools`
 
 Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in.
+
+#### `go`
+Alternate tool to use instead of the go binary or alternate path to use for the go binary.
+
+#### `go-outline`
+Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary.
+
+#### `gocode`
+Alternate tool to use instead of the gocode binary or alternate path to use for the gocode binary.
+
+#### `gopkgs`
+Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary.
+
+#### `gopls`
+Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary.
+
+#### `guru`
+Alternate tool to use instead of the guru binary or alternate path to use for the guru binary.
 
 ### `go.autocompleteUnimportedPackages`
 
@@ -115,6 +148,27 @@ Default:{<br/>
     }
 
 
+#### `coveredBorderColor`
+Color to use for the border of covered code.
+
+#### `coveredGutterStyle`
+Gutter style to indicate covered code.
+
+#### `coveredHighlightColor`
+Color in the rgba format to use to highlight covered code.
+
+#### `type`
+
+
+#### `uncoveredBorderColor`
+Color to use for the border of uncovered code.
+
+#### `uncoveredGutterStyle`
+Gutter style to indicate covered code.
+
+#### `uncoveredHighlightColor`
+Color in the rgba format to use to highlight uncovered code.
+
 ### `go.coverageOptions`
 
 Use these options to control whether only covered or only uncovered code or both should be highlighted after running test coverage
@@ -133,6 +187,15 @@ Default:{<br/>
 &nbsp;&nbsp;`"showGlobalVariables": false`,<br/>
     }
 
+
+#### `apiVersion`
+Delve Api Version to use. Default value is 2.
+
+#### `dlvLoadConfig`
+LoadConfig describes to delve, how to load values from target's memory
+
+#### `showGlobalVariables`
+Boolean value to indicate whether global package variables should be shown in the variables pane or not.
 
 ### `go.docsTool`
 
@@ -163,6 +226,48 @@ Default:{<br/>
     }
 
 
+#### `addImport`
+If true, adds command to import a package to the editor context menu
+
+#### `addTags`
+If true, adds command to add configured tags from struct fields to the editor context menu
+
+#### `debugTestAtCursor`
+If true, adds command to debug the test under the cursor to the editor context menu
+
+#### `fillStruct`
+If true, adds command to fill struct literal with default values to the editor context menu
+
+#### `generateTestForFile`
+If true, adds command to generate unit tests for current file to the editor context menu
+
+#### `generateTestForFunction`
+If true, adds command to generate unit tests for function under the cursor to the editor context menu
+
+#### `generateTestForPackage`
+If true, adds command to generate unit tests for currnt package to the editor context menu
+
+#### `playground`
+If true, adds command to upload the current file or selection to the Go Playground
+
+#### `removeTags`
+If true, adds command to remove configured tags from struct fields to the editor context menu
+
+#### `testAtCursor`
+If true, adds command to run the test under the cursor to the editor context menu
+
+#### `testCoverage`
+If true, adds command to run test coverage to the editor context menu
+
+#### `testFile`
+If true, adds command to run all tests in the current file to the editor context menu
+
+#### `testPackage`
+If true, adds command to run all tests in the current package to the editor context menu
+
+#### `toggleTestFile`
+If true, adds command to toggle between a Go file and its test file to the editor context menu
+
 ### `go.enableCodeLens`
 
 Feature level setting to enable/disable code lens for references and run/debug tests
@@ -172,6 +277,12 @@ Default:{<br/>
 &nbsp;&nbsp;`"runtest": true`,<br/>
     }
 
+
+#### `references`
+If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead.
+
+#### `runtest`
+If true, enables code lens for running and debugging tests
 
 ### `go.formatFlags`
 
@@ -259,6 +370,12 @@ Default:{<br/>
     }
 
 
+#### `diagnostics`
+If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings.
+
+#### `documentLink`
+If true, the language server will provide clickable Godoc links for import statements.
+
 ### `go.languageServerFlags`
 
 Flags like -rpc.trace and -logfile to be used while running the language server.
@@ -293,6 +410,12 @@ Default:{<br/>
     }
 
 
+#### `delay`
+The number of milliseconds to delay before execution. Resets with each keystroke.
+
+#### `enabled`
+If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found.
+
 ### `go.logging.level`
 
 The logging level the extension logs at, defaults to 'error'
@@ -306,6 +429,12 @@ Default: `error`
 This option is deprecated.
 This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present.
 
+#### `codelens`
+
+
+#### `default`
+
+
 ### `go.playground`
 
 The flags configured here will be passed through to command `goplay`
@@ -317,6 +446,15 @@ Default:{<br/>
     }
 
 
+#### `openbrowser`
+Whether to open the created Go Playground in the default browser
+
+#### `run`
+Whether to run the created Go Playground after creation
+
+#### `share`
+Whether to make the created Go Playground shareable
+
 ### `go.removeTags`
 
 Tags and options configured here will be used by the Remove Tags command to remove tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, all tags and options will be removed.
@@ -327,6 +465,15 @@ Default:{<br/>
 &nbsp;&nbsp;`"tags": ""`,<br/>
     }
 
+
+#### `options`
+Comma separated tag=options pairs to be used by Go: Remove Tags command
+
+#### `promptForTags`
+If true, Go: Remove Tags command will prompt the user to provide tags and options instead of using the configured values
+
+#### `tags`
+Comma separated tags to be used by Go: Remove Tags command
 
 ### `go.testEnvFile`
 
@@ -428,3 +575,207 @@ Default: `package`
 ### `gopls`
 
 Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.
+
+#### `analyses`
+(Experimental) analyses specify analyses that the user would like to enable or disable.
+A map of the names of analysis passes that should be enabled/disabled.
+A full list of analyzers that gopls uses can be found [here](analyzers.md)
+
+Example Usage:
+```json5
+...
+"analyses": {
+  "unreachable": false, // Disable the unreachable analyzer.
+  "unusedparams": true  // Enable the unusedparams analyzer.
+}
+...
+```
+
+
+#### `annotations`
+(Experimental) annotations suppress various kinds of optimization diagnostics
+that would be reported by the gc_details command.
+ * noNilcheck suppresses display of nilchecks.
+ * noEscape suppresses escape choices.
+ * noInline suppresses inlining choices.
+ * noBounds suppresses bounds checking diagnostics.
+
+
+#### `buildFlags`
+buildFlags is the set of flags passed on to the build system when invoked.
+It is applied to queries like `go list`, which is used when discovering files.
+The most common use is to set `-tags`.
+
+
+#### `codelens`
+(Experimental) codelens overrides the enabled/disabled state of code lenses. See the "Code Lenses"
+section of settings.md for the list of supported lenses.
+
+Example Usage:
+```json5
+"gopls": {
+...
+  "codelens": {
+    "generate": false,  // Don't show the `go generate` lens.
+    "gc_details": true  // Show a code lens toggling the display of gc's choices.
+  }
+...
+}
+```
+
+
+#### `completeUnimported`
+(Experimental) completeUnimported enables completion for packages that you do not currently import.
+
+
+#### `completionBudget`
+(For Debugging) completionBudget is the soft latency goal for completion requests. Most
+requests finish in a couple milliseconds, but in some cases deep
+completions can take much longer. As we use up our budget we
+dynamically reduce the search scope to ensure we return timely
+results. Zero means unlimited.
+
+
+#### `completionDocumentation`
+(Experimental) completionDocumentation enables documentation with completion results.
+
+
+#### `deepCompletion`
+(Experimental) deepCompletion enables the ability to return completions from deep inside relevant entities, rather than just the locally accessible ones.
+
+Consider this example:
+
+```go
+package main
+
+import "fmt"
+
+type wrapString struct {
+    str string
+}
+
+func main() {
+    x := wrapString{"hello world"}
+    fmt.Printf(<>)
+}
+```
+
+At the location of the `<>` in this program, deep completion would suggest the result `x.str`.
+
+
+#### `env`
+env adds environment variables to external commands run by `gopls`, most notably `go list`.
+
+
+#### `expandWorkspaceToModule`
+(Experimental) expandWorkspaceToModule instructs `gopls` to adjust the scope of the
+workspace to find the best available module root. `gopls` first looks for
+a go.mod file in any parent directory of the workspace folder, expanding
+the scope to that directory if it exists. If no viable parent directory is
+found, gopls will check if there is exactly one child directory containing
+a go.mod file, narrowing the scope to that directory if it exists.
+
+
+#### `experimentalDiagnosticsDelay`
+(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+after the most recent file modification before computing deep diagnostics.
+Simple diagnostics (parsing and type-checking) are always run immediately
+on recently modified packages.
+
+This option must be set to a valid duration string, for example `"250ms"`.
+
+
+#### `experimentalPackageCacheKey`
+(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key
+for package type information to increase cache hits. This setting removes
+the user's environment, build flags, and working directory from the cache
+key, which should be a safe change as all relevant inputs into the type
+checking pass are already hashed into the key. This is temporarily guarded
+by an experiment because caching behavior is subtle and difficult to
+comprehensively test.
+
+
+#### `experimentalWorkspaceModule`
+(Experimental) experimentalWorkspaceModule opts a user into the experimental support
+for multi-module workspaces.
+
+
+#### `gofumpt`
+gofumpt indicates if we should run gofumpt formatting.
+
+
+#### `hoverKind`
+hoverKind controls the information that appears in the hover text.
+SingleLine and Structured are intended for use only by authors of editor plugins.
+
+
+#### `importShortcut`
+(Experimental) importShortcut specifies whether import statements should link to
+documentation or go to definitions.
+
+
+#### `linkTarget`
+linkTarget controls where documentation links go.
+It might be one of:
+
+* `"godoc.org"`
+* `"pkg.go.dev"`
+
+If company chooses to use its own `godoc.org`, its address can be used as well.
+
+
+#### `linksInHover`
+(Experimental) linksInHover toggles the presence of links to documentation in hover.
+
+
+#### `local`
+local is the equivalent of the `goimports -local` flag, which puts imports beginning with this string after 3rd-party packages.
+It should be the prefix of the import path whose imports should be grouped separately.
+
+
+#### `matcher`
+(Experimental) matcher sets the algorithm that is used when calculating completion candidates.
+
+
+#### `semanticTokens`
+(Experimental) semanticTokens controls whether the LSP server will send
+semantic tokens to the client.
+
+
+#### `staticcheck`
+(Experimental) staticcheck enables additional analyses from staticcheck.io.
+
+
+#### `symbolMatcher`
+(Experimental) symbolMatcher sets the algorithm that is used when finding workspace symbols.
+
+
+#### `symbolStyle`
+(Experimental) symbolStyle controls how symbols are qualified in symbol responses.
+
+Example Usage:
+```json5
+"gopls": {
+...
+  "symbolStyle": "dynamic",
+...
+}
+```
+
+
+#### `tempModfile`
+(Experimental) tempModfile controls the use of the -modfile flag in Go 1.14.
+
+
+#### `usePlaceholders`
+placeholders enables placeholders for function parameters or struct fields in completion responses.
+
+
+#### `verboseOutput`
+(For Debugging) verboseOutput enables additional debug logging.
+
+
+#### `verboseWorkDoneProgress`
+(Experimental) verboseWorkDoneProgress controls whether the LSP server should send
+progress reports for all work done outside the scope of an RPC.
+

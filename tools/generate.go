@@ -41,13 +41,14 @@ type Property struct {
 	name string `json:"name,omitempty"` // Set by us.
 
 	// Below are defined in package.json
-	Default                    interface{} `json:"default,omitempty"`
-	MarkdownDescription        string      `json:"markdownDescription,omitempty"`
-	Description                string      `json:"description,omitempty"`
-	MarkdownDeprecationMessage string      `json:"markdownDeprecationMessage,omitempty"`
-	DeprecationMessage         string      `json:"deprecationMessage,omitempty"`
-	Type                       interface{} `json:"type,omitempty"`
-	Enum                       []string    `json:"enum,omitempty"`
+	Properties                 map[string]interface{} `json:"properties,omitempty"`
+	Default                    interface{}            `json:"default,omitempty"`
+	MarkdownDescription        string                 `json:"markdownDescription,omitempty"`
+	Description                string                 `json:"description,omitempty"`
+	MarkdownDeprecationMessage string                 `json:"markdownDeprecationMessage,omitempty"`
+	DeprecationMessage         string                 `json:"deprecationMessage,omitempty"`
+	Type                       interface{}            `json:"type,omitempty"`
+	Enum                       []string               `json:"enum,omitempty"`
 }
 
 func main() {
@@ -169,6 +170,8 @@ func main() {
 				}
 				b.WriteString("    }\n")
 			}
+			writeSettingsObjectProperties(&b, "####", p.Properties)
+
 		case "boolean", "string", "number":
 			b.WriteString(fmt.Sprintf("\n\nDefault: `%v`", p.Default))
 		case "array":
@@ -188,4 +191,41 @@ func main() {
 		}
 	}
 	rewrite(filepath.Join(dir, "docs", "settings.md"), b.Bytes())
+}
+
+func writeSettingsObjectProperties(b *bytes.Buffer, heading string, properties map[string]interface{}) {
+	var names []string
+	for name := range properties {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		p, ok := properties[name].(map[string]interface{})
+		if !ok {
+			b.WriteString(fmt.Sprintf("\n\n\n%s %s\n", heading, name))
+			continue
+		}
+
+		desc := ""
+		if d := p["description"]; d != nil {
+			desc = fmt.Sprintf("%v", d)
+		}
+		if d := p["markdownDescription"]; d != nil {
+			desc = fmt.Sprintf("%v", d)
+		}
+		deprecation := ""
+		if d := p["deprecationMessage"]; d != nil {
+			deprecation = fmt.Sprintf("%v", d)
+		}
+		if d := p["markdownDeprecationMessage"]; d != nil {
+			deprecation = fmt.Sprintf("%v", d)
+		}
+
+		if deprecation != "" {
+			name += " (deprecated)"
+			desc = deprecation + "\n" + desc
+		}
+		b.WriteString(fmt.Sprintf("\n\n%s `%s`\n%s", heading, name, desc))
+	}
 }
