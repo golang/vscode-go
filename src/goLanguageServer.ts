@@ -57,6 +57,7 @@ import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import {
 	getBinPath,
+	getCheckForToolsUpdatesConfig,
 	getCurrentGoPath,
 	getGoConfig,
 	getGoplsConfig,
@@ -77,7 +78,7 @@ export interface LanguageServerConfig {
 		diagnostics: boolean;
 		documentLink: boolean;
 	};
-	checkForUpdates: boolean;
+	checkForUpdates: string;
 }
 
 // Global variables used for management of the language client.
@@ -698,7 +699,7 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
 		env: toolExecutionEnvironment(),
-		checkForUpdates: goConfig['useGoProxyToCheckForToolUpdates']
+		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig),
 	};
 	// Don't look for the path if the server is not enabled.
 	if (!cfg.enabled) {
@@ -785,7 +786,7 @@ export async function shouldUpdateLanguageServer(
 	cfg: LanguageServerConfig,
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls') {
+	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off') {
 		return null;
 	}
 
@@ -800,7 +801,7 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = cfg.checkForUpdates ? await getLatestGoplsVersion(tool) : tool.latestVersion;
+	let latestVersion = cfg.checkForUpdates === 'local' ? tool.latestVersion : await getLatestGoplsVersion(tool);
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {

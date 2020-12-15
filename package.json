@@ -1641,10 +1641,26 @@
           "description": "The logging level the extension logs at, defaults to 'error'",
           "scope": "machine-overridable"
         },
+        "go.toolsManagement.checkForUpdates": {
+          "type": "string",
+          "default": "proxy",
+          "enum": [
+            "proxy",
+            "local",
+            "off"
+          ],
+          "enumDescriptions": [
+            "keeps notified of new releases by checking the Go module proxy (GOPROXY)",
+            "checks only the minimum tools versions required by the extension",
+            "completely disables version check (not recommended)"
+          ],
+          "markdownDescription": "Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on"
+        },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
+          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly",
+          "markdownDeprecationMessage": "Use `go.toolsManagement.checkForUpdates` instead."
         },
         "go.gotoSymbol.includeImports": {
           "type": "boolean",

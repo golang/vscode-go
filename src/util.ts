@@ -166,6 +166,22 @@ export function getGoplsConfig() {
 	return getConfig('gopls');
 }
 
+// getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
+export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfiguration) {
+	// useGoProxyToCheckForToolUpdates deprecation
+	// TODO: Step 1. mark as deprecated in Dec 2020 release, and update dev containers.
+	//       Step 2. prompt users to switch config. Jan 2020
+	//       Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
+	const legacyCfg = gocfg.get('useGoProxyToCheckForToolUpdates');
+	if (legacyCfg === false) {
+		const cfg = gocfg.inspect('toolsManagement.checkForUpdates');
+		if (cfg.globalValue === undefined && cfg.workspaceValue === undefined) {
+			return 'local';
+		}
+	}
+	return gocfg.get('toolsManagement.checkForUpdates') as string;
+}
+
 function getConfig(section: string, uri?: vscode.Uri) {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {

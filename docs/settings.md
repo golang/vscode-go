@@ -372,6 +372,14 @@ Location to install the Go tools that the extension depends on if you don't want
 
 Default: ``
 
+### `go.toolsManagement.checkForUpdates`
+
+Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on
+
+Allowed Values:`[proxy local off]`
+
+Default: `proxy`
+
 ### `go.trace.server`
 
 Trace the communication between VS Code and the Go language server.
@@ -392,8 +400,9 @@ Complete functions with their parameter signature, excluding the variable types.
 
 Default: `false`
 
-### `go.useGoProxyToCheckForToolUpdates`
+### `go.useGoProxyToCheckForToolUpdates (deprecated)`
 
+Use `go.toolsManagement.checkForUpdates` instead.
 When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly
 
 Default: `true`
