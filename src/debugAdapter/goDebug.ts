@@ -1010,8 +1010,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			let i = 0;
 			for (; i < filePathSegments.length
 				&& i < potentialPathSegments.length
-				&& filePathSegments[i] === potentialPathSegments[i]; i++) {
-			}
+				// tslint:disable-next-line no-empty
+				&& filePathSegments[i] === potentialPathSegments[i]; i++) { }
 
 			if (i > bestSegmentsCount) {
 				bestSegmentsCount = i;
@@ -1023,7 +1023,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			}
 		}
 		const shortestBestPath = bestPathsSoFar.reduce(
-			(firstPath, secondPath) => firstPath.length < secondPath.length ? firstPath : secondPath);
+			(firstPath, secondPath) =>
+				firstPath.split(/\/|\\/).length < secondPath.split(/\/|\\/).length ? firstPath : secondPath);
 		return shortestBestPath;
 	}
 
@@ -1106,7 +1107,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * For example, if the remote path is /mygopackagepath/pkd/mod/packagepath,
 	 * we will want to trim it off to just packagepath.
 	 */
-	private findRelativeRemotePathFromPackage(remotePath: string): string {
+	protected findRelativeRemotePathFromPackage(remotePath: string): string {
 		// We are using filters instead of find because if there are more than 1 package
 		// in a directory, we may erroneously get the wrong package if we are just
 		// getting the first one.
@@ -1122,16 +1123,17 @@ export class GoDebugSession extends LoggingDebugSession {
 		// It seems like sometimes Delve don't escape the path properly
 		// so we should do it.
 		remotePath = escapeGoModPath(remotePath);
-		const potentialEscapedImportPaths = remotePackages.map(remotePackage => escapeGoModPath(remotePackage.ImportPath));
+		const potentialEscapedImportPaths = remotePackages.map((remotePackage) =>
+			escapeGoModPath(remotePackage.ImportPath));
 
 		// The remotePackage.DirectoryPath should be something like
 		// <gopath|goroot|source>/<import-path>/xyz...
 		// Directory Path can be like "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp"
 		// and Import Path can be like "github.com/google/go-cmp/cmp"
 		// and Remote Path "/go/pkg/mod/github.com/google/go-cmp@v0.4.0/cmp/blah.go"
-		const remotePathWithoutVersion = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '')
-		let escapedImportPath = potentialEscapedImportPaths.find(escapedImportPath =>
-			remotePathWithoutVersion.indexOf(escapedImportPath) >= 0);
+		const remotePathWithoutVersion = remotePath.replace(/@v\d+\.\d+\.\d+[^\/]*/, '');
+		const escapedImportPath = potentialEscapedImportPaths.find((potentialPath) =>
+			remotePathWithoutVersion.indexOf(potentialPath) >= 0);
 		if (escapedImportPath) {
 			return remotePath
 				.substr(remotePathWithoutVersion.indexOf(escapedImportPath));
@@ -1141,8 +1143,8 @@ export class GoDebugSession extends LoggingDebugSession {
 		// For example, import path as "github.com/google/go-cmp/cmp"
 		// and remote path as "go-cmp/cmp/blah.go". In this case, remotePathWithoutVersion is already
 		// all we need!
-		if (potentialEscapedImportPaths.find(escapedImportPath =>
-				escapedImportPath.indexOf(path.dirname(remotePathWithoutVersion)) >= 0)) {
+		if (potentialEscapedImportPaths.find((potentialPath) =>
+				potentialPath.indexOf(path.dirname(remotePathWithoutVersion)) >= 0)) {
 			return remotePathWithoutVersion;
 		}
 
