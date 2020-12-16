@@ -8,7 +8,7 @@ import { EventEmitter } from 'events';
 import * as path from 'path';
 import sinon = require('sinon');
 import * as vscode from 'vscode';
-import { LanguageClient } from 'vscode-languageclient/node';
+import { LanguageClient } from 'vscode-languageclient';
 import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
 import { getGoConfig } from '../../src/util';
 

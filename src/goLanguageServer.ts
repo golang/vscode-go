@@ -23,6 +23,7 @@ import {
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
+	LanguageClient,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
@@ -30,9 +31,6 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import {
-	LanguageClient
-} from 'vscode-languageclient/node';
 import WebRequest = require('web-request');
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';

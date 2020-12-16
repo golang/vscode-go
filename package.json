@@ -56,9 +56,9 @@
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "^1.42.1",
     "vscode-debugadapter-testsupport": "^1.42.0",
-    "vscode-debugprotocol": "^1.42.0",
-    "vscode-languageclient": "^7.0.0-next.12",
-    "vscode-languageserver-protocol": "^3.16.0-next.7",
+    "vscode-debugprotocol": "^1.40.0",
+    "vscode-languageclient": "6.1.3",
+    "vscode-languageserver-protocol": "3.15.3",
     "web-request": "^1.0.7"
   },
   "devDependencies": {
@@ -87,7 +87,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.46.0"
+    "vscode": "^1.44.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
@@ -783,7 +783,7 @@
               }
             }
           }
-        }      
+        }
       }
     ],
     "configuration": {
