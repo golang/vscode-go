@@ -52,6 +52,9 @@ run_test() {
 
   echo "**** Run settings generator ****"
   go run tools/generate.go -w=false
+
+  echo "**** Check if vsce works ****"
+  vsce package
 }
 
 run_test_in_docker() {

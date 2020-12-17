@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -522,6 +522,26 @@
                 "description": "Environment variables passed to the program.",
                 "default": {}
               },
+              "substitutePath": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "The absolute local path to be replaced when passing paths to the debugger",
+                      "default": ""
+                    },
+                    "to": {
+                      "type": "string",
+                      "description": "The absolute remote path to be replaced when passing paths back to the client",
+                      "default": ""
+                    }
+                  }
+                },
+                "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath.",
+                "default": []
+              },
               "buildFlags": {
                 "type": "string",
                 "description": "Build flags, to be passed to the Go compiler.",
@@ -534,7 +554,7 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "Absolute path to the file being debugged on the remote machine in case of remote debugging.",
+                "description": "Absolute path to the file being debugged on the remote machine in case of remote debugging. If specified, becomes the first entry in substitutePath.",
                 "default": ""
               },
               "port": {
@@ -680,7 +700,7 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine.",
+                "description": "If remote debugging, the path to the source code on the remote machine, if different from the local machine. If specified, becomes the first entry in substitutePath.",
                 "default": ""
               },
               "port": {
@@ -692,6 +712,26 @@
                 "type": "string",
                 "description": "The host name of the machine the delve debugger will be listening on.",
                 "default": "127.0.0.1"
+              },
+              "substitutePath": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "The absolute local path to be replaced when passing paths to the debugger",
+                      "default": ""
+                    },
+                    "to": {
+                      "type": "string",
+                      "description": "The absolute remote path to be replaced when passing paths back to the client",
+                      "default": ""
+                    }
+                  }
+                },
+                "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls.",
+                "default": []
               },
               "trace": {
                 "type": "string",
@@ -904,7 +944,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Flags to pass to format tool (e.g. [\"-s\"])",
+          "description": "Flags to pass to format tool (e.g. [\"-s\"]). Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.inferGopath": {
@@ -1096,7 +1136,7 @@
             "type": "string"
           },
           "default": null,
-          "description": "Flags to pass to `go test`. If null, then buildFlags will be used.",
+          "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {
@@ -1111,7 +1151,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the processes that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
           "scope": "resource"
         },
         "go.gocodeFlags": {
@@ -1147,19 +1187,19 @@
         "go.useCodeSnippetsOnFunctionSuggest": {
           "type": "boolean",
           "default": false,
-          "description": "Complete functions with their parameter signature, including the variable types",
+          "description": "Complete functions with their parameter signature, including the variable type. Not propagated to the language server.",
           "scope": "resource"
         },
         "go.useCodeSnippetsOnFunctionSuggestWithoutType": {
           "type": "boolean",
           "default": false,
-          "description": "Complete functions with their parameter signature, excluding the variable types",
+          "description": "Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.",
           "scope": "resource"
         },
         "go.autocompleteUnimportedPackages": {
           "type": "boolean",
           "default": false,
-          "description": "Include unimported packages in auto-complete suggestions.",
+          "description": "Include unimported packages in auto-complete suggestions. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.docsTool": {
@@ -1176,7 +1216,7 @@
         "go.useLanguageServer": {
           "type": "boolean",
           "default": false,
-          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, formatting & diagnostics."
+          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics."
         },
         "go.languageServerFlags": {
           "type": "array",
@@ -1226,21 +1266,37 @@
           "description": "The logging level the extension logs at, defaults to 'error'",
           "scope": "machine-overridable"
         },
+        "go.toolsManagement.checkForUpdates": {
+          "type": "string",
+          "default": "proxy",
+          "enum": [
+            "proxy",
+            "local",
+            "off"
+          ],
+          "enumDescriptions": [
+            "keeps notified of new releases by checking the Go module proxy (GOPROXY)",
+            "checks only the minimum tools versions required by the extension",
+            "completely disables version check (not recommended)"
+          ],
+          "markdownDescription": "Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on"
+        },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly"
+          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly",
+          "markdownDeprecationMessage": "Use `go.toolsManagement.checkForUpdates` instead."
         },
         "go.gotoSymbol.includeImports": {
           "type": "boolean",
           "default": false,
-          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature",
+          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.gotoSymbol.includeGoroot": {
           "type": "boolean",
           "default": false,
-          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature",
+          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.enableCodeLens": {
@@ -1249,7 +1305,7 @@
             "references": {
               "type": "boolean",
               "default": false,
-              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling."
+              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead."
             },
             "runtest": {
               "type": "boolean",
@@ -1291,6 +1347,7 @@
             }
           },
           "scope": "resource",
+          "deprecationMessage": "This option is deprecated.",
           "description": "This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present."
         },
         "go.addTags": {
@@ -1299,7 +1356,7 @@
             "promptForTags": {
               "type": "boolean",
               "default": false,
-              "description": "If true, Go: Add Tags command will prompt the user to provide tags and options instead of using the configured values"
+              "description": "If true, Go: Add Tags command will prompt the user to provide tags, options, transform values instead of using the configured values"
             },
             "tags": {
               "type": "string",
@@ -1359,7 +1416,7 @@
             "enabled": false,
             "delay": 500
           },
-          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay.",
+          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.removeTags": {
@@ -1516,7 +1573,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature",
+          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.delveConfig": {
@@ -1627,6 +1684,231 @@
             }
           },
           "additionalProperties": true
+        },
+        "gopls": {
+          "type": "object",
+          "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
+          "scope": "resource",
+          "additionalProperties": false,
+          "properties": {
+            "buildFlags": {
+              "type": "array",
+              "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n",
+              "default": [],
+              "scope": "resource"
+            },
+            "env": {
+              "type": "object",
+              "markdownDescription": "env adds environment variables to external commands run by `gopls`, most notably `go list`.\n",
+              "default": {},
+              "scope": "resource"
+            },
+            "hoverKind": {
+              "type": "string",
+              "markdownDescription": "hoverKind controls the information that appears in the hover text.\nSingleLine and Structured are intended for use only by authors of editor plugins.\n",
+              "enum": [
+                "FullDocumentation",
+                "NoDocumentation",
+                "SingleLine",
+                "Structured",
+                "SynopsisDocumentation"
+              ],
+              "markdownEnumDescriptions": [
+                "",
+                "",
+                "",
+                "`\"Structured\"` is an experimental setting that returns a structured hover format.\nThis format separates the signature from the documentation, so that the client\ncan do more manipulation of these fields.\n\nThis should only be used by clients that support this behavior.\n",
+                ""
+              ],
+              "default": "FullDocumentation",
+              "scope": "resource"
+            },
+            "usePlaceholders": {
+              "type": "boolean",
+              "markdownDescription": "placeholders enables placeholders for function parameters or struct fields in completion responses.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "linkTarget": {
+              "type": "string",
+              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n",
+              "default": "pkg.go.dev",
+              "scope": "resource"
+            },
+            "local": {
+              "type": "string",
+              "markdownDescription": "local is the equivalent of the `goimports -local` flag, which puts imports beginning with this string after 3rd-party packages.\nIt should be the prefix of the import path whose imports should be grouped separately.\n",
+              "default": "",
+              "scope": "resource"
+            },
+            "gofumpt": {
+              "type": "boolean",
+              "markdownDescription": "gofumpt indicates if we should run gofumpt formatting.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "analyses": {
+              "type": "object",
+              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found [here](analyzers.md)\n\nExample Usage:\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
+              "default": {},
+              "scope": "resource"
+            },
+            "codelenses": {
+              "type": "object",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the \"Code Lenses\"\nsection of settings.md for the list of supported lenses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "default": {
+                "gc_details": false,
+                "generate": true,
+                "regenerate_cgo": true,
+                "tidy": true,
+                "upgrade_dependency": true,
+                "vendor": true
+              },
+              "scope": "resource"
+            },
+            "linksInHover": {
+              "type": "boolean",
+              "markdownDescription": "linksInHover toggles the presence of links to documentation in hover.\n",
+              "default": true,
+              "scope": "resource"
+            },
+            "importShortcut": {
+              "type": "string",
+              "markdownDescription": "importShortcut specifies whether import statements should link to\ndocumentation or go to definitions.\n",
+              "enum": [
+                "Both",
+                "Definition",
+                "Link"
+              ],
+              "markdownEnumDescriptions": [
+                "",
+                "",
+                ""
+              ],
+              "default": "Both",
+              "scope": "resource"
+            },
+            "matcher": {
+              "type": "string",
+              "markdownDescription": "matcher sets the algorithm that is used when calculating completion candidates.\n",
+              "enum": [
+                "CaseInsensitive",
+                "CaseSensitive",
+                "Fuzzy"
+              ],
+              "markdownEnumDescriptions": [
+                "",
+                "",
+                ""
+              ],
+              "default": "Fuzzy",
+              "scope": "resource"
+            },
+            "symbolMatcher": {
+              "type": "string",
+              "markdownDescription": "symbolMatcher sets the algorithm that is used when finding workspace symbols.\n",
+              "enum": [
+                "CaseInsensitive",
+                "CaseSensitive",
+                "Fuzzy"
+              ],
+              "markdownEnumDescriptions": [
+                "",
+                "",
+                ""
+              ],
+              "default": "Fuzzy",
+              "scope": "resource"
+            },
+            "symbolStyle": {
+              "type": "string",
+              "markdownDescription": "symbolStyle controls how symbols are qualified in symbol responses.\n\nExample Usage:\n```json5\n\"gopls\": {\n...\n  \"symbolStyle\": \"dynamic\",\n...\n}\n```\n",
+              "enum": [
+                "Dynamic",
+                "Full",
+                "Package"
+              ],
+              "markdownEnumDescriptions": [
+                "`\"Dynamic\"` uses whichever qualifier results in the highest scoring\nmatch for the given symbol query. Here a \"qualifier\" is any \"/\" or \".\"\ndelimited suffix of the fully qualified symbol. i.e. \"to/pkg.Foo.Field\" or\njust \"Foo.Field\".\n",
+                "`\"Full\"` is fully qualified symbols, i.e.\n\"path/to/pkg.Foo.Field\".\n",
+                "`\"Package\"` is package qualified symbols i.e.\n\"pkg.Foo.Field\".\n"
+              ],
+              "default": "Dynamic",
+              "scope": "resource"
+            },
+            "directoryFilters": {
+              "type": "array",
+              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\nExclude node_modules: `-node_modules`\nInclude only project_a: `-` (exclude everything), `+project_a`\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "default": [],
+              "scope": "resource"
+            },
+            "annotations": {
+              "type": "object",
+              "markdownDescription": "(Experimental) annotations suppress various kinds of optimization diagnostics\nthat would be reported by the gc_details command.\n * noNilcheck suppresses display of nilchecks.\n * noEscape suppresses escape choices.\n * noInline suppresses inlining choices.\n * noBounds suppresses bounds checking diagnostics.\n",
+              "default": {},
+              "scope": "resource"
+            },
+            "staticcheck": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "semanticTokens": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) semanticTokens controls whether the LSP server will send\nsemantic tokens to the client.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "expandWorkspaceToModule": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) expandWorkspaceToModule instructs `gopls` to adjust the scope of the\nworkspace to find the best available module root. `gopls` first looks for\na go.mod file in any parent directory of the workspace folder, expanding\nthe scope to that directory if it exists. If no viable parent directory is\nfound, gopls will check if there is exactly one child directory containing\na go.mod file, narrowing the scope to that directory if it exists.\n",
+              "default": true,
+              "scope": "resource"
+            },
+            "experimentalWorkspaceModule": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "experimentalDiagnosticsDelay": {
+              "type": "string",
+              "markdownDescription": "(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
+              "default": "250ms",
+              "scope": "resource"
+            },
+            "experimentalPackageCacheKey": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key\nfor package type information to increase cache hits. This setting removes\nthe user's environment, build flags, and working directory from the cache\nkey, which should be a safe change as all relevant inputs into the type\nchecking pass are already hashed into the key. This is temporarily guarded\nby an experiment because caching behavior is subtle and difficult to\ncomprehensively test.\n",
+              "default": true,
+              "scope": "resource"
+            },
+            "allowModfileModifications": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) allowModfileModifications disables -mod=readonly, allowing imports from\nout-of-scope modules. This option will eventually be removed.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "allowImplicitNetworkAccess": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) allowImplicitNetworkAccess disables GOPROXY=off, allowing implicit module\ndownloads rather than requiring user action. This option will eventually\nbe removed.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "verboseOutput": {
+              "type": "boolean",
+              "markdownDescription": "(For Debugging) verboseOutput enables additional debug logging.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "completionBudget": {
+              "type": "string",
+              "markdownDescription": "(For Debugging) completionBudget is the soft latency goal for completion requests. Most\nrequests finish in a couple milliseconds, but in some cases deep\ncompletions can take much longer. As we use up our budget we\ndynamically reduce the search scope to ensure we return timely\nresults. Zero means unlimited.\n",
+              "default": "100ms",
+              "scope": "resource"
+            }
+          }
         }
       }
     },

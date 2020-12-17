@@ -127,8 +127,8 @@ func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
 
 	opts := []*OptionJSON{}
 	for _, v := range options {
-		if emoji := sectionEmoji(v.section); emoji != "" {
-			v.OptionJSON.Doc = emoji + " " + v.OptionJSON.Doc
+		if name := sectionName(v.section); name != "" {
+			v.OptionJSON.Doc = name + " " + v.OptionJSON.Doc
 		}
 		opts = append(opts, v.OptionJSON)
 	}
@@ -147,12 +147,12 @@ func priority(section string) int {
 	return 1000
 }
 
-func sectionEmoji(section string) string {
+func sectionName(section string) string {
 	switch section {
 	case "Experimental":
-		return "🧪"
+		return "(Experimental)"
 	case "Debugging":
-		return "🔍"
+		return "(For Debugging)"
 	}
 	return ""
 }
@@ -181,14 +181,20 @@ func writeAsVSCodeSettings(f io.Writer, options []*OptionJSON) {
 	}
 
 	line(`{`)
+	line(`"gopls": {`)
+	line(`    "type": "object",`)
+	line(`    "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",`)
+	line(`    "scope": "resource",`)
+	line(`    "additionalProperties": false,`)
+	line(`    "properties": {`)
 	for i, o := range options {
-		line(`  "gopls.%v" : {`, o.Name)
+		line(`    "%v" : {`, o.Name)
 
 		typ := propertyType(o.Type)
-		line(`    "type": %q,`, typ)
+		line(`      "type": %q,`, typ)
 		// TODO: consider 'additionalProperties' if gopls api-json outputs acceptable peoperties.
 
-		line(`    "markdownDescription": %q,`, o.Doc)
+		line(`      "markdownDescription": %q,`, o.Doc)
 
 		var enums, enumDocs []string
 		for _, v := range o.EnumValues {
@@ -196,25 +202,28 @@ func writeAsVSCodeSettings(f io.Writer, options []*OptionJSON) {
 			enumDocs = append(enumDocs, fmt.Sprintf("%q", v.Doc))
 		}
 		if len(enums) > 0 {
-			line(`    "enum": [%v],`, strings.Join(enums, ","))
-			line(`    "markdownEnumDescriptions": [%v],`, strings.Join(enumDocs, ","))
+			line(`      "enum": [%v],`, strings.Join(enums, ","))
+			line(`      "markdownEnumDescriptions": [%v],`, strings.Join(enumDocs, ","))
 		}
 
 		if len(o.Default) > 0 {
-			line(`    "default": %v,`, o.Default)
+			line(`      "default": %v,`, o.Default)
 		}
 
 		// TODO: are all gopls settings in the resource scope?
-		line(`    "scope": "resource"`)
+		line(`      "scope": "resource"`)
 		// TODO: deprecation attribute
 
+		// "%v" : {
 		if i == len(options)-1 {
-			line(`  }`)
+			line(`    }`)
 		} else {
-			line(`  },`)
+			line(`    },`)
 		}
 	}
-	line(`}`)
+	line(`    }`) //  "properties": {
+	line(`  }`)   // "gopls": {
+	line(`}`)     // {
 }
 
 func propertyType(t string) string {

@@ -96,7 +96,7 @@ suite('Test Go Test Args', () => {
 });
 
 suite('Test Go Test', function () {
-	this.timeout(10000);
+	this.timeout(50000);
 
 	const sourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'goTestTest');
 
@@ -133,8 +133,6 @@ suite('Test Go Test', function () {
 	async function runTest(
 		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean },
 		wantFiles: string[]) {
-
-		fs.copySync(sourcePath, repoPath, { recursive: true });
 
 		const config = Object.create(vscode.workspace.getConfiguration('go'));
 		const outputChannel = new FakeOutputChannel();
@@ -184,21 +182,21 @@ suite('Test Go Test', function () {
 	});
 
 	test('resolves file names in logs (GOPATH)', async () => {
-		setupRepo(true);
+		setupRepo(false);
 		await runTest(
-			{ isMod: true, includeSubDirectories: true },
+			{ isMod: false, includeSubDirectories: true },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
-			{ isMod: true, includeSubDirectories: false },
+			{ isMod: false, includeSubDirectories: false },
 			[path.join(repoPath, 'a_test.go')]);
 		await runTest(
-			{ isMod: true, includeSubDirectories: true, testFlags: ['-v'] },
+			{ isMod: false, includeSubDirectories: true, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
-			{ isMod: true, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
+			{ isMod: false, includeSubDirectories: true, testFlags: ['-race'], applyCodeCoverage: true },
 			[path.join(repoPath, 'a_test.go'), path.join(repoPath, 'b', 'b_test.go')]);
 		await runTest(
-			{ isMod: true, includeSubDirectories: false, testFlags: ['-v'] },
+			{ isMod: false, includeSubDirectories: false, testFlags: ['-v'] },
 			[path.join(repoPath, 'a_test.go')]);
 	});
 });

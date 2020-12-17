@@ -276,6 +276,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	trace?: 'verbose' | 'log' | 'error';
 	backend?: string;
 	output?: string;
+	substitutePath?: {from: string, to: string}[];
 	/** Delve LoadConfig parameters */
 	dlvLoadConfig?: LoadConfig;
 	dlvToolPath: string;
@@ -307,6 +308,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	host?: string;
 	trace?: 'verbose' | 'log' | 'error';
 	backend?: string;
+	substitutePath?: {from: string, to: string}[];
 	/** Delve LoadConfig parameters */
 	dlvLoadConfig?: LoadConfig;
 	dlvToolPath: string;
@@ -367,6 +369,10 @@ function normalizePath(filePath: string) {
 		return fixDriveCasingInWindows(filePath);
 	}
 	return filePath;
+}
+
+function normalizeSeparators(filePath: string): string {
+	return filePath.replace(/\/|\\/g, '/');
 }
 
 function getBaseName(filePath: string) {
@@ -853,6 +859,9 @@ export class GoDebugSession extends LoggingDebugSession {
 	private localToRemotePathMapping = new Map<string, string>();
 	private remoteToLocalPathMapping = new Map<string, string>();
 
+	// TODO(suzmue): Use delve's implementation of substitute-path.
+	private substitutePath: {from: string, to: string}[];
+
 	private showGlobalVariables: boolean = false;
 
 	private continueEpoch = 0;
@@ -1038,7 +1047,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	}
 
 	protected async toDebuggerPath(filePath: string): Promise<string> {
-		if (this.delve.remotePath.length === 0) {
+		if (this.substitutePath.length === 0) {
 			if (this.delve.isRemoteDebugging) {
 				// The user trusts us to infer the remote path mapping!
 				await this.initializeRemotePackagesAndSources();
@@ -1047,14 +1056,28 @@ export class GoDebugSession extends LoggingDebugSession {
 					return matchedRemoteFile;
 				}
 			}
+
 			return this.convertClientPathToDebugger(filePath);
 		}
 
 		// The filePath may have a different path separator than the localPath
-		// So, update it to use the same separator as the remote path to ease
-		// in replacing the local path in it with remote path
-		filePath = filePath.replace(/\/|\\/g, this.remotePathSeparator);
-		return filePath.replace(this.delve.program.replace(/\/|\\/g, this.remotePathSeparator), this.delve.remotePath);
+		// So, update it to use the same separator for ease in path replacement.
+		filePath = normalizeSeparators(filePath);
+		let substitutedPath = filePath;
+		let substituteRule: {from: string, to: string};
+		this.substitutePath.forEach((value) => {
+			if (filePath.startsWith(value.from)) {
+				if (!!substituteRule) {
+					log(`Substitutition rule ${value.from}:${value.to} applies to local path ${filePath} but it was already mapped to debugger path using rule ${substituteRule.from}:${substituteRule.to}`);
+					return;
+				}
+				substitutedPath = filePath.replace(value.from, value.to);
+				substituteRule = {from: value.from, to: value.to};
+			}
+		});
+		filePath = substitutedPath;
+
+		return filePath = filePath.replace(/\/|\\/g, this.remotePathSeparator);
 	}
 
 	/**
@@ -1203,7 +1226,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * have been initialized.
 	 */
 	protected toLocalPath(pathToConvert: string): string {
-		if (this.delve.remotePath.length === 0) {
+		if (this.substitutePath.length === 0) {
 			// User trusts use to infer the path
 			if (this.delve.isRemoteDebugging) {
 				const inferredPath = this.inferLocalPathFromRemotePath(pathToConvert);
@@ -1211,11 +1234,28 @@ export class GoDebugSession extends LoggingDebugSession {
 					return inferredPath;
 				}
 			}
+
 			return this.convertDebuggerPathToClient(pathToConvert);
 		}
 
+		// If there is a substitutePath mapping, then we replace the path.
+		pathToConvert = normalizeSeparators(pathToConvert);
+		let substitutedPath = pathToConvert;
+		let substituteRule: {from: string, to: string};
+		this.substitutePath.forEach((value) => {
+			if (pathToConvert.startsWith(value.to)) {
+				if (!!substituteRule) {
+					log(`Substitutition rule ${value.from}:${value.to} applies to debugger path ${pathToConvert} but it was already mapped to local path using rule ${substituteRule.from}:${substituteRule.to}`);
+					return;
+				}
+				substitutedPath = pathToConvert.replace(value.to, value.from);
+				substituteRule = {from: value.from, to: value.to};
+			}
+		});
+		pathToConvert = substitutedPath;
+
 		// When the pathToConvert is under GOROOT or Go module cache, replace path appropriately
-		if (!pathToConvert.startsWith(this.delve.remotePath)) {
+		if (!substituteRule) {
 			// Fix for https://github.com/Microsoft/vscode-go/issues/1178
 			const index = pathToConvert.indexOf(`${this.remotePathSeparator}src${this.remotePathSeparator}`);
 			const goroot = this.getGOROOT();
@@ -1239,7 +1279,6 @@ export class GoDebugSession extends LoggingDebugSession {
 			}
 		}
 		return pathToConvert
-			.replace(this.delve.remotePath, this.delve.program)
 			.split(this.remotePathSeparator)
 			.join(this.localPathSeparator);
 	}
@@ -1835,6 +1874,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		this.localPathSeparator = findPathSeparator(localPath);
+		this.substitutePath = [];
 		if (args.remotePath.length > 0) {
 			this.remotePathSeparator = findPathSeparator(args.remotePath);
 
@@ -1857,6 +1897,25 @@ export class GoDebugSession extends LoggingDebugSession {
 			) {
 				args.remotePath = args.remotePath.substring(0, args.remotePath.length - 1);
 			}
+
+			// Make the remotePath mapping the first one in substitutePath
+			// so that it will take precedence over the other mappings.
+			this.substitutePath.push({
+				from: normalizeSeparators(localPath),
+				to: normalizeSeparators(args.remotePath)
+			});
+		}
+
+		if (!!args.substitutePath) {
+			args.substitutePath.forEach((value) => {
+				if (!this.remotePathSeparator) {
+					this.remotePathSeparator = findPathSeparator(value.to);
+				}
+				this.substitutePath.push({
+					from: normalizeSeparators(value.from),
+					to: normalizeSeparators(value.to)
+				});
+			});
 		}
 
 		// Launch the Delve debugger on the program

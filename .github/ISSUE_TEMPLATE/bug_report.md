@@ -12,9 +12,10 @@ Please direct general questions to:
 
 Please review the [documentation](https://github.com/golang/vscode-go/tree/master/docs) before filing an issue.
 Helpful pages include:
-
+ 
 - [GOPATH](https://github.com/golang/vscode-go/tree/master/docs/gopath.md)
 - [Module Support](https://github.com/golang/vscode-go/tree/master/docs/modules.md)
+- [Go Language Server](https://github.com/golang/vscode-go/blob/master/docs/gopls.md)
 - [Debugging](https://github.com/golang/vscode-go/tree/master/docs/debugging.md)
   - Set "trace": "log" and share the resulting logs in the debug console when logging an issue.
 
@@ -23,9 +24,11 @@ Please answer these questions before submitting your issue. Thanks!
 ### What version of Go, VS Code & VS Code Go extension are you using?
 - Run `go version` to get version of Go
 	- <Paste go version here>
+- Run `gopls -v version` to get version of Gopls if you are using [the language server](https://github.com/golang/vscode-go/blob/master/docs/gopls.md).
+	- <Paste gopls version here>
 - Run `code -v` or `code-insiders -v` to get version of VS Code or VS Code Insiders
 	- <Paste VS Code version here>
-- Check your installed extensions to get the version of the VS Code Go extension 
+- Check your installed extensions to get the version of the VS Code Go extension
 	- <Paste Go extension version here>
 - Run `go env` to get the go development environment details
 	- <Paste the output here>
