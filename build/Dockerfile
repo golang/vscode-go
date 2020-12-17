@@ -27,6 +27,7 @@ ENV PATH /workspace/vscodego/go/bin:/go/bin:/usr/local/go/bin:${PATH}
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0
+RUN npm install -g vsce
 
 WORKDIR /workspace
 ENTRYPOINT ["build/all.bash"]
