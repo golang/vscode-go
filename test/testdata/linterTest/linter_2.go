@@ -1,5 +1,10 @@
 package linterTest
 
-func secondFunc() error {
+import (
+	"errors"
+	"fmt"
+)
 
+func secondFunc() error {
+	return errors.New(fmt.Sprint("Errors"))
 }

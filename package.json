@@ -977,14 +977,14 @@
         },
         "go.lintTool": {
           "type": "string",
-          "default": "golint",
+          "default": "staticcheck",
           "description": "Specifies Lint tool name.",
           "scope": "resource",
           "enum": [
+            "staticcheck",
             "golint",
             "golangci-lint",
-            "revive",
-            "staticcheck"
+            "revive"
           ]
         },
         "go.lintFlags": {

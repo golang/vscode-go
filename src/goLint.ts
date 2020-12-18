@@ -9,14 +9,7 @@ import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import {
-	getToolsGopath,
-	getWorkspaceFolderPath,
-	handleDiagnosticErrors,
-	ICheckResult,
-	resolvePath,
-	runTool
-} from './util';
+import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
 /**
  * Runs linter on the current file, package or workspace.
  */
@@ -81,7 +74,7 @@ export function goLint(
 		return Promise.resolve([]);
 	}
 
-	const lintTool = goConfig['lintTool'] || 'golint';
+	const lintTool = goConfig['lintTool'] || 'staticcheck';
 	const lintFlags: string[] = goConfig['lintFlags'] || [];
 	const lintEnv = toolExecutionEnvironment();
 	const args: string[] = [];
@@ -102,16 +95,6 @@ export function goLint(
 		}
 		args.push(flag);
 	});
-	if (lintTool === 'gometalinter') {
-		if (args.indexOf('--aggregate') === -1) {
-			args.push('--aggregate');
-		}
-		if (goConfig['toolsGopath']) {
-			// gometalinter will expect its linters to be in the GOPATH
-			// So add the toolsGopath to GOPATH
-			lintEnv['GOPATH'] += path.delimiter + getToolsGopath();
-		}
-	}
 	if (lintTool === 'golangci-lint') {
 		if (args.indexOf('run') === -1) {
 			args.unshift('run');

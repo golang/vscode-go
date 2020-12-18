@@ -343,7 +343,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
 		replacedByGopls: false,
-		isImportant: true,
+		isImportant: false,
 		description: 'Linter',
 		minimumGoVersion: semver.coerce('1.9')
 	},

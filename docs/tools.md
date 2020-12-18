@@ -60,13 +60,14 @@ This tool provides support for the [`Go: Generate Interface Stubs`](features.md#
 
 This tool provides support for the [`Go: Generate Unit Tests`](features.md#generate-unit-tests) set of commands.
 
-### [`golint`]
+### [`staticcheck`]
 
-This is the default lint tool. Other lint tools can be used by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting. Other options include:
+This is the default lint tool. See the [full list of checks](https://staticcheck.io/docs/checks) that `staticcheck` provides. Other lint tools can be used by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting.
+Other options include:
 
-  * [`staticcheck`]: This tool provides a great deal of useful checks that are not provided by [`golint`]. See the full list at [staticcheck.io/docs/checks](https://staticcheck.io/docs/checks). It is also officially supported by the [Go team at Google](https://staticcheck.io/sponsors).
-  * [`golangci-lint`]: This tool combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
+  * [`golangci-lint`]: This meta-linter combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
   * [`revive`]: This tool is an enhancement on top of [`golint`], and it provides additional checks.
+  * [`golint`]: This used to be the default linter used by this extension before it was officially deprecated.
 
 You can use the [`"go.lintFlags"`](settings.md#go.lintFlags) setting to further configure your linter of choice. Most linters can be configured via special configuration files, but you may still need to pass these command-line flags. The configuration documentation for each supported linter is listed here:
 

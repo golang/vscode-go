@@ -312,9 +312,9 @@ Default: `"package"`
 ### `go.lintTool`
 
 Specifies Lint tool name.<br/>
-Allowed Options: `golint`, `golangci-lint`, `revive`, `staticcheck`
+Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
 
-Default: `"golint"`
+Default: `"staticcheck"`
 ### `go.liveErrors`
 
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.

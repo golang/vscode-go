@@ -425,8 +425,11 @@ It returns the number of bytes written and any write error encountered.
 		const warnings = await goLint(
 			file2.uri,
 			Object.create(getGoConfig(), {
-				lintTool: { value: 'golint' },
-				lintFlags: { value: [] }
+				lintTool: { value: 'staticcheck' },
+				lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
+				// staticcheck skips debatable checks such as ST1003 by default,
+				// but this test depends on ST1003 (MixedCaps package name) presented in both files
+				// in the same package. So, enable that.
 			}),
 			'package'
 		);
@@ -448,15 +451,17 @@ It returns the number of bytes written and any write error encountered.
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
 			lintOnSave: { value: 'package' },
-			lintTool: { value: 'golint' },
+			lintTool: { value: 'staticcheck' },
 			lintFlags: { value: [] },
 			buildOnSave: { value: 'package' }
 		});
 		const expectedLintErrors = [
+			// Unlike golint, staticcheck will report only those compile errors,
+			// but not lint errors when the program is broken.
 			{
-				line: 7,
+				line: 11,
 				severity: 'warning',
-				msg: 'exported function Print2 should have comment or be unexported'
+				msg: 'undeclared name: prin (compile)'
 			}
 		];
 		// If a user has enabled diagnostics via a language server,
@@ -466,6 +471,7 @@ It returns the number of bytes written and any write error encountered.
 			? []
 			: [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
 
+		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
 		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
