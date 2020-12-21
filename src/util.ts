@@ -158,12 +158,12 @@ let toolsGopath: string;
 
 // getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
 export const getGoConfig = (uri?: vscode.Uri) => {
-	return getConfig('go');
+	return getConfig('go', uri);
 };
 
 // getGoplsConfig returns the user's gopls configuration.
-export function getGoplsConfig() {
-	return getConfig('gopls');
+export function getGoplsConfig(uri?: vscode.Uri) {
+	return getConfig('gopls', uri);
 }
 
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.

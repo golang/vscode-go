@@ -290,9 +290,7 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
 export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
-	let goplsWorkspaceConfig = getGoplsConfig() as any;
-	goplsWorkspaceConfig = filterDefaultConfigValues(goplsWorkspaceConfig, 'gopls', undefined);
-	goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, goplsWorkspaceConfig);
+	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 	const c = new LanguageClient(
 		'go',  // id
 		cfg.serverName,  // name e.g. gopls
@@ -505,8 +503,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 								const scopeUri = params.items[i].scopeUri;
 								const resource = scopeUri ? vscode.Uri.parse(scopeUri) : undefined;
 								const section = params.items[i].section;
-								workspaceConfig = filterDefaultConfigValues(workspaceConfig, section, resource);
-								workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig);
+								workspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, workspaceConfig, section, resource);
 							}
 							ret.push(workspaceConfig);
 						}
@@ -519,19 +516,15 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	return c;
 }
 
-// filterDefaultConfigValues removes the entries filled based on the default values
+// filterGoplsDefaultConfigValues removes the entries filled based on the default values
 // and selects only those the user explicitly specifies in their settings.
-// This assumes workspaceConfig is a non-null(undefined) object type.
+// This returns a new object created based on the filtered properties of workspaceConfig.
 // Exported for testing.
-export function filterDefaultConfigValues(workspaceConfig: any, section: string, resource: vscode.Uri): any {
+export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource: vscode.Uri): any {
 	if (!workspaceConfig) {
-		return workspaceConfig;
+		workspaceConfig = {};
 	}
-
-	const dot = section?.lastIndexOf('.') || -1;
-	const sectionKey = dot >= 0 ? section.substr(0, dot) : section;  // e.g. 'gopls'
-
-	const cfg = vscode.workspace.getConfiguration(sectionKey, resource);
+	const cfg = getGoplsConfig(resource);
 	const filtered = {} as { [key: string]: any };
 	for (const [key, value] of Object.entries(workspaceConfig)) {
 		if (typeof value === 'function') {
@@ -556,31 +549,63 @@ export function filterDefaultConfigValues(workspaceConfig: any, section: string,
 	return filtered;
 }
 
-// adjustGoplsWorkspaceConfiguration adds any extra options to the gopls
-// config. Right now, the only extra option is enabling experiments for the
-// Nightly extension.
-async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, config: any): Promise<any> {
-	if (!config) {
-		return config;
+// passGoConfigToGoplsConfigValues passes some of the relevant 'go.' settings to gopls settings.
+// This assumes `goplsWorkspaceConfig` is an output of filterGoplsDefaultConfigValues,
+// so it is modifiable and doesn't contain properties that are not explicitly set.
+//   - go.buildTags and go.buildFlags are passed as gopls.buildFlags
+//     if goplsWorkspaceConfig doesn't explicitly set it yet.
+// Exported for testing.
+export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWorkspaceConfig: any): any {
+	if (!goplsWorkspaceConfig) {
+		goplsWorkspaceConfig = {};
 	}
+
+	// If gopls.buildFlags is set, don't touch it.
+	if (goplsWorkspaceConfig.buildFlags === undefined) {
+		const buildFlags = [] as string[];
+		if (goWorkspaceConfig?.buildFlags) {
+			buildFlags.push(...goWorkspaceConfig?.buildFlags);
+		}
+		if (goWorkspaceConfig?.buildTags && buildFlags.indexOf('-tags') === -1) {
+			buildFlags.push('-tags', goWorkspaceConfig?.buildTags);
+		}
+		if (buildFlags.length > 0) {
+			goplsWorkspaceConfig.buildFlags = buildFlags;
+		}
+	}
+	return goplsWorkspaceConfig;
+}
+
+// adjustGoplsWorkspaceConfiguration filters unnecessary options and adds any necessary, additional
+// options to the gopls config. See filterGoplsDefaultConfigValues, passGoConfigToGoplsConfigValues.
+// If this is for the nightly extension, we also request to activate features under experiments.
+async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, workspaceConfig: any, section: string, resource: vscode.Uri): Promise<any> {
+	// We process only gopls config
+	if (section !== 'gopls') {
+		return workspaceConfig;
+	}
+
+	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource);
+	// note: workspaceConfig is a modifiable, valid object.
+	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
+
 	// Only modify the user's configurations for the Nightly.
 	if (extensionId !== 'golang.go-nightly') {
-		return config;
+		return workspaceConfig;
 	}
 	// allExperiments is only available with gopls/v0.5.2 and above.
 	const version = await getLocalGoplsVersion(cfg);
 	if (!version) {
-		return config;
+		return workspaceConfig;
 	}
 	const sv = semver.parse(version, true);
 	if (!sv || semver.lt(sv, 'v0.5.2')) {
-		return config;
+		return workspaceConfig;
 	}
-	const newConfig = Object.assign({}, config);
-	if (!config['allExperiments']) {
-		newConfig['allExperiments'] = true;
+	if (!workspaceConfig['allExperiments']) {
+		workspaceConfig['allExperiments'] = true;
 	}
-	return newConfig;
+	return workspaceConfig;
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens

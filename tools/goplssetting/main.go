@@ -194,7 +194,11 @@ func writeAsVSCodeSettings(f io.Writer, options []*OptionJSON) {
 		line(`      "type": %q,`, typ)
 		// TODO: consider 'additionalProperties' if gopls api-json outputs acceptable peoperties.
 
-		line(`      "markdownDescription": %q,`, o.Doc)
+		doc := o.Doc
+		if mappedTo, ok := associatedToExtensionProperties[o.Name]; ok {
+			doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+		}
+		line(`      "markdownDescription": %q,`, doc)
 
 		var enums, enumDocs []string
 		for _, v := range o.EnumValues {
@@ -224,6 +228,10 @@ func writeAsVSCodeSettings(f io.Writer, options []*OptionJSON) {
 	line(`    }`) //  "properties": {
 	line(`  }`)   // "gopls": {
 	line(`}`)     // {
+}
+
+var associatedToExtensionProperties = map[string][]string{
+	"buildFlags": []string{"go.buildFlags", "go.buildTags"},
 }
 
 func propertyType(t string) string {

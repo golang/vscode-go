@@ -79,7 +79,7 @@ Default: `false`
 
 ### `go.buildFlags`
 
-Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"])
+Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.buildFlags` is not specified.
 
 ### `go.buildOnSave`
 
@@ -91,7 +91,7 @@ Default: `package`
 
 ### `go.buildTags`
 
-The Go build tags to use for all commands, that support a `-tags '...'` argument. When running tests, go.testTags will be used instead if it was set.
+The Go build tags to use for all commands, that support a `-tags '...'` argument. When running tests, go.testTags will be used instead if it was set. This is propagated to the language server if `gopls.buildFlags` is not specified.
 
 Default: ``
 
@@ -617,6 +617,8 @@ buildFlags is the set of flags passed on to the build system when invoked.
 It is applied to queries like `go list`, which is used when discovering files.
 The most common use is to set `-tags`.
 
+If unspecified, values of `go.buildFlags, go.buildTags` will be propagated.
+
 
 #### `codelenses`
 codelenses overrides the enabled/disabled state of code lenses. See the "Code Lenses"
@@ -626,7 +628,7 @@ Example Usage:
 ```json5
 "gopls": {
 ...
-  "codelenses": {
+  "codelens": {
     "generate": false,  // Don't show the `go generate` lens.
     "gc_details": true  // Show a code lens toggling the display of gc's choices.
   }
