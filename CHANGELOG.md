@@ -1,3 +1,46 @@
+## v0.20.0 - 22nd Dec, 2020
+
+A list of all issues and changes can be found in the [v0.20.0 milestone](https://github.com/golang/vscode-go/milestone/18?closed=1).
+
+> 📣 &nbsp;&nbsp;Announcement: We plan to enable the language server, `gopls`, by default early next year. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037))
+>
+> Please test and provide us your feedback on the `#vscode-dev` [Gophers Slack](https://gophers.slack.com/) channel.
+
+### Enhancements
+- Debugging
+    - The new `substitutePath` config property allows users to translate their symlinked directories to the actual paths, and
+    the local paths to the remote paths. See [Launch Configurations](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#launch-configurations)
+    and [Remote Debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging) for details.
+    - Quick pick menu for creating `launch.json` was added. ([Issue 131](https://github.com/golang/vscode-go/issues/131))
+    - Report that `next` is automatically cancelled by delve if interrupted, for example, because breakpoint is set. See [Issue 787](https://github.com/golang/vscode-go/issues/787) for details. ([CL 261078](https://go-review.googlesource.com/c/vscode-go/+/261078))
+- The new `tyf` snippet for `type name func()` was added. ([Issue 1002](https://github.com/golang/vscode-go/issues/1002))
+- Include the `gopls` settings section definition based on `gopls` v0.6.0. ([Issue 197](https://github.com/golang/vscode-go/issues/197), [CL 278355](https://go-review.googlesource.com/c/vscode-go/+/278355))
+- `go.buildFlags` and `go.buildTags` are propagated to `gopls` unless `"gopls": {"buildFlags": ..}` is set. ([Issue 155](https://github.com/golang/vscode-go/issues/155))
+- The new `go.toolsManagement.checkForUpdates` setting allows users to completely disable version checks.
+This deprecates `go.useGoProxyToCheckForToolUpdates`. ([Issue 963](https://github.com/golang/vscode-go/issues/963))
+
+### Fixes
+- Added a workaround for [the VSCode `PATH` setup issue](https://github.com/microsoft/vscode/issues/108003). When `go` isn't
+found from `PATH`, the extension will check `/usr/local/bin` too ([Issue 971](https://github.com/golang/vscode-go/issues/971)).
+- Fixed language client crashes or duplicate language features on the guest side of a VS Live Share session.
+The initial fix added in v0.19.0 for VS Live Share wasn't sufficient. (Issue [605](https://github.com/golang/vscode-go/issues/605), [1024](https://github.com/golang/vscode-go/issues/1024))
+- Stop requiring to install legacy tools when the language server is used. ([Issue 51](https://github.com/golang/vscode-go/issues/51))
+- Update `gopls` if the existing version in the system is older than the minimum required version when the extension enables `gopls` automatically. ([Issue 938](https://github.com/golang/vscode-go/issues/938))
+- Show language server start progress and allow only one outstanding language server restart request. ([Issue 1011](https://github.com/golang/vscode-go/issues/1011))
+- Fixed a gocode-gomod installation bug that caused to ignore `GOBIN` setting. ([CL 275877](https://go-review.googlesource.com/c/vscode-go/+/275877))
+- Marked settings that are not applicable when using the language server. ([Issue 155](https://github.com/golang/vscode-go/issues/155))
+
+### Code Health
+- Deprecated unused settings such as `go.overwriteGoplsMiddleware` and marked deprecated settings.
+- Improved stability of debug functionality tests on windows.
+- Improve the automated gopls issue template message. It includes the extension name and version.
+- Prompt users to file an issue for feedback when they choose to opt out of gopls.
+- CI test workflow now runs `vsce package` to detect packaging errors early.
+
+### Thanks
+Thank you for your contribution, @hyangah, @suzmue, and @programmer04!
+
+
 ## v0.19.1 - 9th Dec, 2020
 
 A list of all issues and changes can be found in the [v0.19.1 milestone](https://github.com/golang/vscode-go/milestone/17?closed=1).
