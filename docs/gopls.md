@@ -1,8 +1,6 @@
 # [`gopls`], the Go language server
 
-[`gopls`] is the official Go [language server](https://langserver.org/) developed by the Go team. It was developed in response to the release of [Go modules], and it is the recommended approach when working with [Go modules] in VS Code.
-
-[`gopls`] is currently in an alpha state, so it is not enabled by default. Please note that [`gopls`] only supports Go versions above 1.12.
+[`gopls`] is the official Go [language server](https://langserver.org/) developed by the Go team. It was developed in response to the release of [Go modules], and it is the recommended approach when working with [Go modules] in VS Code. [`gopls`] is not enabled by default yet and users have to opt in by changing from [their settings](#enable-the-language-server). We plan to switch the default and enable it by default early 2021.
 
 [`gopls`] has its own [documentation pages](https://github.com/golang/tools/tree/master/gopls/doc), and they should be treated as the source of truth for how to use [`gopls` in VS Code](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md).
 
@@ -41,27 +39,18 @@ If you would like to opt-out of these updates, set [`"go.useGoProxyToCheckForToo
 
 There are a number of VS Code Go settings for controlling the language server.
 
+* [`"go.toolsEnvVars"`](settings.md#go.toolsEnvVars) is used when launching `gopls` for the workspace.
+* [`"go.buildFlags"`](settings.md#go.buildFlags) and [`"go.buildTags"`](settings.md#go.buildTags) are propagated to `gopls`.
 * [`"go.languageServerExperimentalFeatures"`](settings.md#go.languageServerExperimentalFeatures) allows you to disable certain features.
   * `"diagnostics": false` disables diagnostic warnings from `gopls`. You might want to disable these if you don't like the diagnostics changing as you type.
-  * `"documentLink": false` disables document links. The reason to disable these is explained in [golang/go#39065](https://github.com/golang/go/issues/39065): the Ctrl+Click shortcut for clicking on a link collides with the Ctrl+Click shortcut for go-to-definition.
+  * `"documentLink": false` is deprecated by `"gopls": { "importShortcut": false }` setting. It was originally meant to disable document links. The reason to disable these is explained in [golang/go#39065](https://github.com/golang/go/issues/39065): the Ctrl+Click shortcut for clicking on a link collides with the Ctrl+Click shortcut for go-to-definition.
 * [`"go.languageServerFlags"`](settings.md#go.languageServerFlags) allows you to pass flags to the `gopls` process.
   * The `-rpc.trace` flag enables verbose debug logging.
+* [`"gopls"`](settings.md#gopls) allows to fine-tune gopls behavior or override the settings propagated from the extension settings (e.g. `"go.buildFlags"`, `"go.toolsEnvVars"`) as shown in the [`gopls` VS Code user guide](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md). The sets of settings recognized by the extension and the gopls may differ if you use an old version or a pre-release version of `gopls`. In that case, the source of truth is in [the documentation](https://github.com/golang/tools/tree/master/gopls/doc/settings.md) in the `gopls` project.
 
 ### Ignored settings
 
-A number of the extension's settings are not passed in to `gopls`. We are working on unifying all of the settings, but some may still be ignored. These include:
-
-* [`"go.buildFlags"`](settings.md#go.buildFlags)
-
-These configurations can be passed to `gopls` via your environment or the `gopls.env` setting. Learn more in the [`gopls` VS Code documentation](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md#build-tags).
-
-### `gopls` settings block
-
-`gopls` exposes much more [configuration](https://github.com/golang/tools/blob/master/gopls/doc/settings.md). However, because [`gopls`] is in a state of rapid development and change, these settings change frequently. Therefore, we have not yet built these settings into the Go extension.
-
-As shown in the [`gopls` VS Code user guide](https://github.com/golang/tools/blob/master/gopls/doc/vscode.md), you can still configure these settings through VS Code by adding a `"gopls"` block to your `settings.json` file (Command Palette -> Preferences: Open Settings (JSON)). **You will see an `Unknown Configuration Setting` warning, but the settings will still work.** Add any settings there, and `gopls` will warn you if they are incorrect, unknown, or deprecated.
-
-A full list of `gopls` settings is available in the [`gopls` settings documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md).
+Some of the extension's settings are irrelevant when `gopls` is enabled. For example, the extension no longer uses `gocode` or `guru`, so the corresponding settings are no longer applicable. We are trying to document that in the settings' description and the [settings documentation](settings.md). When you find incompelete documentation, please file an issue or send a PR!
 
 ## Additional resources
 
