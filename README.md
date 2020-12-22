@@ -8,7 +8,10 @@ This extension provides rich language support for the [Go programming language](
 
 Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-> This is the **new** home for the VS Code Go extension. We just migrated from [Microsoft/vscode-go](https://github.com/Microsoft/vscode-go). Learn more about our move on the [Go blog](https://blog.golang.org/vscode-go).
+> 📣 We plan to enable the language server ([`gopls`](docs/gopls.md)) by default in early 2021. The language server
+> provides language features like intellisense, formatting, refactoring, analysis and many more.
+> We recommend switching to the language server now (`"go.useLanguageServer": true`) to confirm it works well for you.
+> Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you notice bugs or missing features.
 
 ## Overview
 
@@ -37,7 +40,8 @@ If you are unsure whether you have installed Go, open the Command Palette in VS 
 
 ### Set up your environment
 
-Read about [Go code organization](https://golang.org/doc/code.html) to learn how to configure your environment. This extension works in both [GOPATH](docs/gopath.md) and [module](docs/modules.md) modes. We suggest using modules, as they are quickly becoming the new standard in the Go community.
+Read about [Go code organization](https://golang.org/doc/code.html) to learn how to configure your environment. This extension works in both [GOPATH](docs/gopath.md) and [module](docs/modules.md) modes.
+We suggest using modules, as they are the new standard and become default from go 1.16 (to be released in early 2021).
 
 Here are some additional resources for learning about how to set up your Go project:
 
@@ -47,7 +51,6 @@ Here are some additional resources for learning about how to set up your Go proj
 
 **NOTE: If you are using modules, we recommend using the Go [language server](#language-server), which is explained below.**
 
-More advanced users may be interested in using different `GOPATH`s or Go versions per-project. You can learn about the different `GOPATH` manipulation options in the [`GOPATH` documentation](docs/gopath.md). Take a look at the other [customization](#customization) options as well.
 
 ### Install the extension
 
