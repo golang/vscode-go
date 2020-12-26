@@ -104,8 +104,8 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 		for (const p of defaultPathsForGo) {
 			if (executableFileExists(p)) {
 				binPathCache[toolName] = p;
+				return {binPath: p, why: 'default'};
 			}
-			return {binPath: p, why: 'default'};
 		}
 		return {binPath: ''};
 	}
