@@ -103,13 +103,13 @@ suite('gopls configuration tests', () => {
 				name: 'pass go config buildFlags to gopls config',
 				goplsConfig: {},
 				goConfig: { buildFlags: ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw'] },
-				want: { buildFlags: ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw']}
+				want: { 'build.buildFlags': ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw'] }
 			},
 			{
 				name: 'pass go config buildTags to gopls config',
 				goplsConfig: {},
 				goConfig: { buildTags: 'tag1,tag2' },
-				want: { buildFlags: ['-tags', 'tag1,tag2']}
+				want: { 'build.buildFlags': ['-tags', 'tag1,tag2'] }
 			},
 			{
 				name: 'do not pass go config buildTags if buildFlags already have tags',
@@ -118,34 +118,35 @@ suite('gopls configuration tests', () => {
 					buildFlags: ['-tags', 'tag0'],
 					buildTags: 'tag1,tag2'
 				},
-				want: { buildFlags: ['-tags', 'tag0']}
+				want: { 'build.buildFlags': ['-tags', 'tag0'] }
 			},
 			{
 				name: 'do not mutate other gopls config but gopls.buildFlags',
 				goplsConfig: {
-					env: {GOPROXY: 'direct'}
+					'build.env': { GOPROXY: 'direct' }
 				},
 				goConfig: { buildFlags: ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw'] },
 				want: {
-					env: { GOPROXY : 'direct' },
-					buildFlags: ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw']}
+					'build.env': { GOPROXY: 'direct' },
+					'build.buildFlags': ['-modfile', 'gopls.mod', '-tags', 'tag1,tag2', '-modcacherw']
+				}
 			},
 
 			{
 				name: 'do not mutate misconfigured gopls.buildFlags',
 				goplsConfig: {
-					buildFlags: '-modfile gopls.mod',  // misconfiguration
+					'build.buildFlags': '-modfile gopls.mod',  // misconfiguration
 				},
 				goConfig: {
 					buildFlags: '-modfile go.mod -tags tag1 -modcacherw',
 				},
-				want: { buildFlags: '-modfile gopls.mod' }
+				want: { 'build.buildFlags': '-modfile gopls.mod' }
 			},
 			{
 				name: 'do not overwrite gopls config if it is explicitly set',
 				goplsConfig: {
-					env: {GOPROXY: 'direct'},
-					buildFlags: [],  // empty
+					'build.env': { GOPROXY: 'direct' },
+					'build.buildFlags': [],  // empty
 				},
 				goConfig: {
 					// expect only non-conflicting flags (tags, modcacherw) passing.
@@ -153,8 +154,8 @@ suite('gopls configuration tests', () => {
 					buildTags: 'tag3',
 				},
 				want: {
-					env: {GOPROXY: 'direct'},
-					buildFlags: [],
+					'build.env': { GOPROXY: 'direct' },
+					'build.buildFlags': [],
 				}  // gopls.buildFlags untouched.
 			},
 

@@ -3,6 +3,8 @@
 // See LICENSE in the project root for license information.
 
 // Command generate is used to generate documentation from the package.json.
+// To run:
+// go run tools/generate.go -w
 package main
 
 import (
@@ -100,6 +102,7 @@ func main() {
 		} else {
 			base := filepath.Join("docs", filepath.Base(filename))
 			fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
+To update the settings, run "go run tools/generate.go -w".
 `, strings.TrimSuffix(base, ".md"), base)
 			os.Exit(1) // causes CI to break.
 		}
@@ -156,7 +159,7 @@ func main() {
 					keys = append(keys, k)
 				}
 				sort.Strings(keys)
-				b.WriteString(fmt.Sprintf("\n\nDefault:{<br/>\n"))
+				b.WriteString("\n\nDefault:{<br/>\n")
 				for _, k := range keys {
 					v := x[k]
 					output := fmt.Sprintf("%v", v)
