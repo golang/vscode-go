@@ -79,7 +79,7 @@ Default: `false`
 
 ### `go.buildFlags`
 
-Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.buildFlags` is not specified.
+Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.build.buildFlags` is not specified.
 
 ### `go.buildOnSave`
 
@@ -91,7 +91,7 @@ Default: `package`
 
 ### `go.buildTags`
 
-The Go build tags to use for all commands, that support a `-tags '...'` argument. When running tests, go.testTags will be used instead if it was set. This is propagated to the language server if `gopls.buildFlags` is not specified.
+The Go build tags to use for all commands, that support a `-tags '...'` argument. When running tests, go.testTags will be used instead if it was set. This is propagated to the language server if `gopls.build.buildFlags` is not specified.
 
 Default: ``
 
@@ -572,43 +572,18 @@ Default: `package`
 
 Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.
 
-#### `allowImplicitNetworkAccess`
+#### `build.allowImplicitNetworkAccess`
 (Experimental) allowImplicitNetworkAccess disables GOPROXY=off, allowing implicit module
 downloads rather than requiring user action. This option will eventually
 be removed.
 
 
-#### `allowModfileModifications`
+#### `build.allowModfileModifications`
 (Experimental) allowModfileModifications disables -mod=readonly, allowing imports from
 out-of-scope modules. This option will eventually be removed.
 
 
-#### `analyses`
-analyses specify analyses that the user would like to enable or disable.
-A map of the names of analysis passes that should be enabled/disabled.
-A full list of analyzers that gopls uses can be found [here](analyzers.md)
-
-Example Usage:
-```json5
-...
-"analyses": {
-  "unreachable": false, // Disable the unreachable analyzer.
-  "unusedparams": true  // Enable the unusedparams analyzer.
-}
-...
-```
-
-
-#### `annotations`
-(Experimental) annotations suppress various kinds of optimization diagnostics
-that would be reported by the gc_details command.
- * noNilcheck suppresses display of nilchecks.
- * noEscape suppresses escape choices.
- * noInline suppresses inlining choices.
- * noBounds suppresses bounds checking diagnostics.
-
-
-#### `buildFlags`
+#### `build.buildFlags`
 buildFlags is the set of flags passed on to the build system when invoked.
 It is applied to queries like `go list`, which is used when discovering files.
 The most common use is to set `-tags`.
@@ -616,32 +591,7 @@ The most common use is to set `-tags`.
 If unspecified, values of `go.buildFlags, go.buildTags` will be propagated.
 
 
-#### `codelenses`
-codelenses overrides the enabled/disabled state of code lenses. See the "Code Lenses"
-section of settings.md for the list of supported lenses.
-
-Example Usage:
-```json5
-"gopls": {
-...
-  "codelens": {
-    "generate": false,  // Don't show the `go generate` lens.
-    "gc_details": true  // Show a code lens toggling the display of gc's choices.
-  }
-...
-}
-```
-
-
-#### `completionBudget`
-(For Debugging) completionBudget is the soft latency goal for completion requests. Most
-requests finish in a couple milliseconds, but in some cases deep
-completions can take much longer. As we use up our budget we
-dynamically reduce the search scope to ensure we return timely
-results. Zero means unlimited.
-
-
-#### `directoryFilters`
+#### `build.directoryFilters`
 directoryFilters can be used to exclude unwanted directories from the
 workspace. By default, all directories are included. Filters are an
 operator, `+` to include and `-` to exclude, followed by a path prefix
@@ -655,11 +605,11 @@ Include only project_a: `-` (exclude everything), `+project_a`
 Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
 
-#### `env`
+#### `build.env`
 env adds environment variables to external commands run by `gopls`, most notably `go list`.
 
 
-#### `expandWorkspaceToModule`
+#### `build.expandWorkspaceToModule`
 (Experimental) expandWorkspaceToModule instructs `gopls` to adjust the scope of the
 workspace to find the best available module root. `gopls` first looks for
 a go.mod file in any parent directory of the workspace folder, expanding
@@ -668,16 +618,7 @@ found, gopls will check if there is exactly one child directory containing
 a go.mod file, narrowing the scope to that directory if it exists.
 
 
-#### `experimentalDiagnosticsDelay`
-(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
-after the most recent file modification before computing deep diagnostics.
-Simple diagnostics (parsing and type-checking) are always run immediately
-on recently modified packages.
-
-This option must be set to a valid duration string, for example `"250ms"`.
-
-
-#### `experimentalPackageCacheKey`
+#### `build.experimentalPackageCacheKey`
 (Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key
 for package type information to increase cache hits. This setting removes
 the user's environment, build flags, and working directory from the cache
@@ -687,26 +628,102 @@ by an experiment because caching behavior is subtle and difficult to
 comprehensively test.
 
 
-#### `experimentalWorkspaceModule`
+#### `build.experimentalWorkspaceModule`
 (Experimental) experimentalWorkspaceModule opts a user into the experimental support
 for multi-module workspaces.
 
 
-#### `gofumpt`
+#### `formatting.gofumpt`
 gofumpt indicates if we should run gofumpt formatting.
 
 
-#### `hoverKind`
+#### `formatting.local`
+local is the equivalent of the `goimports -local` flag, which puts
+imports beginning with this string after third-party packages. It should
+be the prefix of the import path whose imports should be grouped
+separately.
+
+
+#### `ui.codelenses`
+codelenses overrides the enabled/disabled state of code lenses. See the
+"Code Lenses" section of the
+[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)
+for the list of supported lenses.
+
+Example Usage:
+
+```json5
+"gopls": {
+...
+  "codelens": {
+    "generate": false,  // Don't show the `go generate` lens.
+    "gc_details": true  // Show a code lens toggling the display of gc's choices.
+  }
+...
+}
+```
+
+
+#### `ui.completion.completionBudget`
+(For Debugging) completionBudget is the soft latency goal for completion requests. Most
+requests finish in a couple milliseconds, but in some cases deep
+completions can take much longer. As we use up our budget we
+dynamically reduce the search scope to ensure we return timely
+results. Zero means unlimited.
+
+
+#### `ui.completion.matcher`
+(Advanced) matcher sets the algorithm that is used when calculating completion
+candidates.
+
+
+#### `ui.completion.usePlaceholders`
+placeholders enables placeholders for function parameters or struct
+fields in completion responses.
+
+
+#### `ui.diagnostic.analyses`
+analyses specify analyses that the user would like to enable or disable.
+A map of the names of analysis passes that should be enabled/disabled.
+A full list of analyzers that gopls uses can be found
+[here](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).
+
+Example Usage:
+
+```json5
+...
+"analyses": {
+  "unreachable": false, // Disable the unreachable analyzer.
+  "unusedparams": true  // Enable the unusedparams analyzer.
+}
+...
+```
+
+
+#### `ui.diagnostic.annotations`
+(Experimental) annotations specifies the various kinds of optimization diagnostics
+that should be reported by the gc_details command.
+
+
+#### `ui.diagnostic.experimentalDiagnosticsDelay`
+(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+after the most recent file modification before computing deep diagnostics.
+Simple diagnostics (parsing and type-checking) are always run immediately
+on recently modified packages.
+
+This option must be set to a valid duration string, for example `"250ms"`.
+
+
+#### `ui.diagnostic.staticcheck`
+(Experimental) staticcheck enables additional analyses from staticcheck.io.
+
+
+#### `ui.documentation.hoverKind`
 hoverKind controls the information that appears in the hover text.
 SingleLine and Structured are intended for use only by authors of editor plugins.
 
 
-#### `importShortcut`
-importShortcut specifies whether import statements should link to
-documentation or go to definitions.
-
-
-#### `linkTarget`
+#### `ui.documentation.linkTarget`
 linkTarget controls where documentation links go.
 It might be one of:
 
@@ -716,36 +733,24 @@ It might be one of:
 If company chooses to use its own `godoc.org`, its address can be used as well.
 
 
-#### `linksInHover`
+#### `ui.documentation.linksInHover`
 linksInHover toggles the presence of links to documentation in hover.
 
 
-#### `local`
-local is the equivalent of the `goimports -local` flag, which puts imports beginning with this string after 3rd-party packages.
-It should be the prefix of the import path whose imports should be grouped separately.
+#### `ui.navigation.importShortcut`
+importShortcut specifies whether import statements should link to
+documentation or go to definitions.
 
 
-#### `matcher`
-matcher sets the algorithm that is used when calculating completion candidates.
+#### `ui.navigation.symbolMatcher`
+(Advanced) symbolMatcher sets the algorithm that is used when finding workspace symbols.
 
 
-#### `semanticTokens`
-(Experimental) semanticTokens controls whether the LSP server will send
-semantic tokens to the client.
-
-
-#### `staticcheck`
-(Experimental) staticcheck enables additional analyses from staticcheck.io.
-
-
-#### `symbolMatcher`
-symbolMatcher sets the algorithm that is used when finding workspace symbols.
-
-
-#### `symbolStyle`
-symbolStyle controls how symbols are qualified in symbol responses.
+#### `ui.navigation.symbolStyle`
+(Advanced) symbolStyle controls how symbols are qualified in symbol responses.
 
 Example Usage:
+
 ```json5
 "gopls": {
 ...
@@ -755,8 +760,9 @@ Example Usage:
 ```
 
 
-#### `usePlaceholders`
-placeholders enables placeholders for function parameters or struct fields in completion responses.
+#### `ui.semanticTokens`
+(Experimental) semanticTokens controls whether the LSP server will send
+semantic tokens to the client.
 
 
 #### `verboseOutput`

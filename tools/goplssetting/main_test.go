@@ -60,7 +60,6 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 			},
 			out: `"completionBudget": {
 					"type": "string",
-					"markdownDescription": "",
 					"default": "100ms",
 					"scope": "resource"
 				}`,
@@ -74,10 +73,8 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 			},
 			out: `"analyses":{
 					"type": "object",
-					"markdownDescription": "",
-					"default": {},
 					"scope": "resource"
-		  		}`,
+				}`,
 		},
 		{
 			name: "enum",
@@ -102,7 +99,6 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 			},
 			out: `"matcher": {
  					"type": "string",
-					"markdownDescription": "",
 					"enum": [ "CaseInsensitive", "CaseSensitive", "Fuzzy" ],
 					"markdownEnumDescriptions": [ "","","" ],
 					"default": "Fuzzy",
@@ -114,15 +110,16 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			options := []*OptionJSON{tc.in}
-			buf := &bytes.Buffer{}
-			writeAsVSCodeSettings(buf, options)
-			if got, want := normalize(t, buf.String()), normalize(t, `
-			{ 
+			b, err := asVSCodeSettings(options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := normalize(t, string(b)), normalize(t, `
+			{
 				"gopls": {
 					"type": "object",
 					"markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
 					"scope": "resource",
-					"additionalProperties": false,
 					"properties": {
 				       `+tc.out+`
 					}

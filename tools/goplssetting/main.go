@@ -5,7 +5,7 @@
 // This command updates the gopls.* configurations in vscode-go package.json.
 //
 //   Usage: from the project root directory,
-//      $ go run tools/goplssetting -in ./package.json -out ./package.json
+//      $ go run tools/goplssetting/main.go -in ./package.json -out ./package.json
 package main
 
 import (
@@ -13,12 +13,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -68,19 +68,21 @@ func run(orgPkgJSON string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	options, err := extractOptions(api)
 	if err != nil {
 		return nil, err
 	}
-
+	b, err := asVSCodeSettings(options)
+	if err != nil {
+		return nil, err
+	}
 	f, err := ioutil.TempFile(workDir, "gopls.settings")
 	if err != nil {
 		return nil, err
 	}
-
-	writeAsVSCodeSettings(f, options)
-
+	if _, err := f.Write(b); err != nil {
+		return nil, err
+	}
 	if err := f.Close(); err != nil {
 		return nil, err
 	}
@@ -122,12 +124,17 @@ func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
 		}
 	}
 	sort.SliceStable(options, func(i, j int) bool {
-		return priority(options[i].section) < priority(options[j].section)
+		pi := priority(options[i].OptionJSON)
+		pj := priority(options[j].OptionJSON)
+		if pi == pj {
+			return options[i].Name < options[j].Name
+		}
+		return pi < pj
 	})
 
 	opts := []*OptionJSON{}
 	for _, v := range options {
-		if name := sectionName(v.section); name != "" {
+		if name := statusName(v.OptionJSON); name != "" {
 			v.OptionJSON.Doc = name + " " + v.OptionJSON.Doc
 		}
 		opts = append(opts, v.OptionJSON)
@@ -135,26 +142,41 @@ func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
 	return opts, nil
 }
 
-func priority(section string) int {
-	switch section {
-	case "User":
-		return 0
-	case "Experimental":
+func priority(opt *OptionJSON) int {
+	switch toStatus(opt.Status) {
+	case Experimental:
 		return 10
-	case "Debugging":
+	case Debug:
 		return 100
 	}
 	return 1000
 }
 
-func sectionName(section string) string {
-	switch section {
-	case "Experimental":
+func statusName(opt *OptionJSON) string {
+	switch toStatus(opt.Status) {
+	case Experimental:
 		return "(Experimental)"
-	case "Debugging":
+	case Advanced:
+		return "(Advanced)"
+	case Debug:
 		return "(For Debugging)"
 	}
 	return ""
+}
+
+func toStatus(s string) Status {
+	switch s {
+	case "experimental":
+		return Experimental
+	case "debug":
+		return Debug
+	case "advanced":
+		return Advanced
+	case "":
+		return None
+	default:
+		panic(fmt.Sprintf("unexpected status: %s", s))
+	}
 }
 
 // rewritePackageJSON rewrites the input package.json by running `jq`
@@ -173,65 +195,138 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 	return stdout.Bytes(), nil
 }
 
-// convertToVSCodeSettings converts the options to the vscode setting format.
-func writeAsVSCodeSettings(f io.Writer, options []*OptionJSON) {
-	line := func(format string, args ...interface{}) {
-		fmt.Fprintf(f, format, args...)
-		fmt.Fprintln(f)
+// asVSCodeSettings converts the given options to match the VS Code settings
+// format.
+func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
+	seen := map[string][]*OptionJSON{}
+	for _, opt := range options {
+		seen[opt.Hierarchy] = append(seen[opt.Hierarchy], opt)
 	}
+	for _, v := range seen {
+		sort.Slice(v, func(i, j int) bool {
+			return v[i].Name < v[j].Name
+		})
+	}
+	properties, err := collectProperties(seen)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(map[string]*Object{
+		"gopls": {
+			Type:                 "object",
+			MarkdownDescription:  "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
+			Scope:                "resource",
+			AdditionalProperties: false,
+			Properties:           properties,
+		},
+	})
+}
 
-	line(`{`)
-	line(`"gopls": {`)
-	line(`    "type": "object",`)
-	line(`    "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",`)
-	line(`    "scope": "resource",`)
-	line(`    "additionalProperties": false,`)
-	line(`    "properties": {`)
-	for i, o := range options {
-		line(`    "%v" : {`, o.Name)
-
-		typ := propertyType(o.Type)
-		line(`      "type": %q,`, typ)
-		// TODO: consider 'additionalProperties' if gopls api-json outputs acceptable peoperties.
-
-		doc := o.Doc
-		if mappedTo, ok := associatedToExtensionProperties[o.Name]; ok {
-			doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
+	var sorted []string
+	var containsEmpty bool
+	for k := range m {
+		if k == "" {
+			containsEmpty = true
+			continue
 		}
-		line(`      "markdownDescription": %q,`, doc)
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+	if containsEmpty {
+		sorted = append(sorted, "")
+	}
+	properties := map[string]*Object{}
+	for _, hierarchy := range sorted {
+		for _, opt := range m[hierarchy] {
+			doc := opt.Doc
+			if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
+				doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+			}
+			obj := &Object{
+				MarkdownDescription: doc,
+				// TODO: are all gopls settings in the resource scope?
+				Scope: "resource",
+				// TODO: consider 'additionalProperties' if gopls api-json
+				// outputs acceptable properties.
+				// TODO: deprecation attribute
+			}
+			// Handle any enum types.
+			if opt.Type == "enum" {
+				for _, v := range opt.EnumValues {
+					unquotedName, err := strconv.Unquote(v.Value)
+					if err != nil {
+						return nil, err
+					}
+					obj.Enum = append(obj.Enum, unquotedName)
+					obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
+				}
+			}
+			// Handle any objects whose keys are enums.
+			if len(opt.EnumKeys.Keys) > 0 {
+				if obj.Properties == nil {
+					obj.Properties = map[string]*Object{}
+				}
+				for _, k := range opt.EnumKeys.Keys {
+					unquotedName, err := strconv.Unquote(k.Name)
+					if err != nil {
+						return nil, err
+					}
+					obj.Properties[unquotedName] = &Object{
+						Type:                propertyType(opt.EnumKeys.ValueType),
+						MarkdownDescription: k.Doc,
+						Default:             formatDefault(k.Default),
+					}
+				}
+			}
+			obj.Type = propertyType(opt.Type)
+			obj.Default = formatOptionDefault(opt)
 
-		var enums, enumDocs []string
-		for _, v := range o.EnumValues {
-			enums = append(enums, v.Value)
-			enumDocs = append(enumDocs, fmt.Sprintf("%q", v.Doc))
-		}
-		if len(enums) > 0 {
-			line(`      "enum": [%v],`, strings.Join(enums, ","))
-			line(`      "markdownEnumDescriptions": [%v],`, strings.Join(enumDocs, ","))
-		}
-
-		if len(o.Default) > 0 {
-			line(`      "default": %v,`, o.Default)
-		}
-
-		// TODO: are all gopls settings in the resource scope?
-		line(`      "scope": "resource"`)
-		// TODO: deprecation attribute
-
-		// "%v" : {
-		if i == len(options)-1 {
-			line(`    }`)
-		} else {
-			line(`    },`)
+			key := opt.Name
+			if hierarchy != "" {
+				key = hierarchy + "." + key
+			}
+			properties[key] = obj
 		}
 	}
-	line(`    }`) //  "properties": {
-	line(`  }`)   // "gopls": {
-	line(`}`)     // {
+	return properties, nil
+}
+
+func formatOptionDefault(opt *OptionJSON) interface{} {
+	// Each key will have its own default value, instead of one large global
+	// one. (Alternatively, we can build the default from the keys.)
+	if len(opt.EnumKeys.Keys) > 0 {
+		return nil
+	}
+	def := opt.Default
+	switch opt.Type {
+	case "enum", "string", "time.Duration":
+		unquote, err := strconv.Unquote(def)
+		if err == nil {
+			def = unquote
+		}
+	}
+	return formatDefault(def)
+}
+
+// formatDefault converts a string-based default value to an actual value that
+// can be marshaled to JSON. Right now, gopls generates default values as
+// strings, but perhaps that will change.
+func formatDefault(def string) interface{} {
+	switch def {
+	case "{}", "[]":
+		return nil
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return def
+	}
 }
 
 var associatedToExtensionProperties = map[string][]string{
-	"buildFlags": []string{"go.buildFlags", "go.buildTags"},
+	"buildFlags": {"go.buildFlags", "go.buildTags"},
 }
 
 func propertyType(t string) string {
@@ -262,20 +357,56 @@ func check(err error) {
 	os.Exit(1)
 }
 
+// Object represents a VS Code settings object.
+type Object struct {
+	Type                     string             `json:"type,omitempty"`
+	MarkdownDescription      string             `json:"markdownDescription,omitempty"`
+	AdditionalProperties     bool               `json:"additionalProperties,omitempty"`
+	Enum                     []string           `json:"enum,omitempty"`
+	MarkdownEnumDescriptions []string           `json:"markdownEnumDescriptions,omitempty"`
+	Default                  interface{}        `json:"default,omitempty"`
+	Scope                    string             `json:"scope,omitempty"`
+	Properties               map[string]*Object `json:"properties,omitempty"`
+}
+
+type Status int
+
+const (
+	Experimental = Status(iota)
+	Debug
+	Advanced
+	None
+)
+
 // APIJSON is the output json type of `gopls api-json`.
 // Types copied from golang.org/x/tools/internal/lsp/source/options.go.
 type APIJSON struct {
-	Options  map[string][]*OptionJSON
-	Commands []*CommandJSON
-	Lenses   []*LensJSON
+	Options   map[string][]*OptionJSON
+	Commands  []*CommandJSON
+	Lenses    []*LensJSON
+	Analyzers []*AnalyzerJSON
 }
 
 type OptionJSON struct {
 	Name       string
 	Type       string
 	Doc        string
+	EnumKeys   EnumKeys
 	EnumValues []EnumValue
 	Default    string
+	Status     string
+	Hierarchy  string
+}
+
+type EnumKeys struct {
+	ValueType string
+	Keys      []EnumKey
+}
+
+type EnumKey struct {
+	Name    string
+	Doc     string
+	Default string
 }
 
 type EnumValue struct {
@@ -293,4 +424,10 @@ type LensJSON struct {
 	Lens  string
 	Title string
 	Doc   string
+}
+
+type AnalyzerJSON struct {
+	Name    string
+	Doc     string
+	Default bool
 }

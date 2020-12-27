@@ -52,7 +52,7 @@ import { GoSignatureHelpProvider } from './goSignature';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
 import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { getTool, Tool, ToolAtVersion } from './goTools';
+import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import {
@@ -541,7 +541,7 @@ export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource: v
 // passGoConfigToGoplsConfigValues passes some of the relevant 'go.' settings to gopls settings.
 // This assumes `goplsWorkspaceConfig` is an output of filterGoplsDefaultConfigValues,
 // so it is modifiable and doesn't contain properties that are not explicitly set.
-//   - go.buildTags and go.buildFlags are passed as gopls.buildFlags
+//   - go.buildTags and go.buildFlags are passed as gopls.build.buildFlags
 //     if goplsWorkspaceConfig doesn't explicitly set it yet.
 // Exported for testing.
 export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWorkspaceConfig: any): any {
@@ -549,18 +549,16 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 		goplsWorkspaceConfig = {};
 	}
 
-	// If gopls.buildFlags is set, don't touch it.
-	if (goplsWorkspaceConfig.buildFlags === undefined) {
-		const buildFlags = [] as string[];
-		if (goWorkspaceConfig?.buildFlags) {
-			buildFlags.push(...goWorkspaceConfig?.buildFlags);
-		}
-		if (goWorkspaceConfig?.buildTags && buildFlags.indexOf('-tags') === -1) {
-			buildFlags.push('-tags', goWorkspaceConfig?.buildTags);
-		}
-		if (buildFlags.length > 0) {
-			goplsWorkspaceConfig.buildFlags = buildFlags;
-		}
+	const buildFlags = [] as string[];
+	if (goWorkspaceConfig?.buildFlags) {
+		buildFlags.push(...goWorkspaceConfig?.buildFlags);
+	}
+	if (goWorkspaceConfig?.buildTags && buildFlags.indexOf('-tags') === -1) {
+		buildFlags.push('-tags', goWorkspaceConfig?.buildTags);
+	}
+	// If gopls.build.buildFlags is set, don't touch it.
+	if (buildFlags.length > 0 && goplsWorkspaceConfig['build.buildFlags'] === undefined) {
+		goplsWorkspaceConfig['build.buildFlags'] = buildFlags;
 	}
 	return goplsWorkspaceConfig;
 }
