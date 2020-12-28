@@ -76,7 +76,6 @@ export interface LanguageServerConfig {
 	env: any;
 	features: {
 		diagnostics: boolean;
-		documentLink: boolean;
 	};
 	checkForUpdates: string;
 }
@@ -394,16 +393,6 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 					}
 					return next(uri, diagnostics);
 				},
-				provideDocumentLinks: (
-					document: vscode.TextDocument,
-					token: vscode.CancellationToken,
-					next: ProvideDocumentLinksSignature
-				) => {
-					if (!cfg.features.documentLink) {
-						return null;
-					}
-					return next(document, token);
-				},
 				provideCompletionItem: async (
 					document: vscode.TextDocument,
 					position: vscode.Position,
@@ -709,7 +698,6 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 }
 
 export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
-
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -721,7 +709,6 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 			// TODO: We should have configs that match these names.
 			// Ultimately, we should have a centralized language server config rather than separate fields.
 			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
-			documentLink: goConfig['languageServerExperimentalFeatures']['documentLink']
 		},
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig),

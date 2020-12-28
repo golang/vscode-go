@@ -105,6 +105,13 @@ export function activate(ctx: vscode.ExtensionContext) {
 		setCurrentGoRoot(resolvePath(configGOROOT));
 	}
 
+	// Present a warning about the deprecation of the go.documentLink setting.
+	if (getGoConfig()['languageServerExperimentalFeatures']['documentLink'] === false) {
+		vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
+Please use 'gopls.importShortcut' instead.
+See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+	}
+
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
 		offerToInstallLatestGoVersion();
@@ -594,7 +601,7 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 			if (document.languageId !== 'go') {
 				return;
 			}
-			const session =  vscode.debug.activeDebugSession;
+			const session = vscode.debug.activeDebugSession;
 			if (session && (session.type === 'go' || session.type === 'godlvdap')) {
 				const neverAgain = { title: `Don't Show Again` };
 				const ignoreActiveDebugWarningKey = 'ignoreActiveDebugWarningKey';

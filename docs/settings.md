@@ -366,15 +366,11 @@ Use this setting to enable/disable experimental features from the language serve
 
 Default:{<br/>
 &nbsp;&nbsp;`"diagnostics": true`,<br/>
-&nbsp;&nbsp;`"documentLink": true`,<br/>
     }
 
 
 #### `diagnostics`
 If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings.
-
-#### `documentLink`
-If true, the language server will provide clickable Godoc links for import statements.
 
 ### `go.languageServerFlags`
 
