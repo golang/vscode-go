@@ -1,3 +1,8 @@
+## v0.20.1 - 29th Dec, 2020
+
+### Fixes
+- Fixed a bug that caused incorrect fallback to a common `go` installation path when `go` couldn't be found from the regular PATH ([Issue 1065](https://github.com/golang/vscode-go/issues/1065))
+
 ## v0.20.0 - 22nd Dec, 2020
 
 A list of all issues and changes can be found in the [v0.20.0 milestone](https://github.com/golang/vscode-go/milestone/18?closed=1).
