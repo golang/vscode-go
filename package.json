@@ -8,7 +8,7 @@
     "name": "Go Team at Google"
   },
   "license": "MIT",
-  "icon": "images/go-logo-blue.png",
+  "icon": "media/go-logo-blue.png",
   "categories": [
     "Programming Languages",
     "Snippets",
@@ -97,7 +97,8 @@
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
     "onDebugInitialConfigurations",
-    "onDebugResolve:go"
+    "onDebugResolve:go",
+    "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
   "contributes": {
@@ -249,6 +250,11 @@
         "command": "go.extractServerChannel",
         "title": "Go: Extract Language Server Logs To Editor",
         "description": "Extract logs in the `gopls (server)` output channel to the editor."
+      },
+      {
+        "command": "go.welcome",
+        "title": "Go: Welcome",
+        "description": "Open the welcome page for the Go extension."
       },
       {
         "command": "go.toggle.gc_details",

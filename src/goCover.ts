@@ -54,18 +54,18 @@ let modifiedFiles: {
 export function initCoverageDecorators(ctx: vscode.ExtensionContext) {
 	// Initialize gutter svgs
 	gutterSvgs = {
-		blockred: ctx.asAbsolutePath('images/gutter-blockred.svg'),
-		blockgreen: ctx.asAbsolutePath('images/gutter-blockgreen.svg'),
-		blockblue: ctx.asAbsolutePath('images/gutter-blockblue.svg'),
-		blockyellow: ctx.asAbsolutePath('images/gutter-blockyellow.svg'),
-		slashred: ctx.asAbsolutePath('images/gutter-slashred.svg'),
-		slashgreen: ctx.asAbsolutePath('images/gutter-slashgreen.svg'),
-		slashblue: ctx.asAbsolutePath('images/gutter-slashblue.svg'),
-		slashyellow: ctx.asAbsolutePath('images/gutter-slashyellow.svg'),
-		verticalred: ctx.asAbsolutePath('images/gutter-vertred.svg'),
-		verticalgreen: ctx.asAbsolutePath('images/gutter-vertgreen.svg'),
-		verticalblue: ctx.asAbsolutePath('images/gutter-vertblue.svg'),
-		verticalyellow: ctx.asAbsolutePath('images/gutter-vertyellow.svg')
+		blockred: ctx.asAbsolutePath('media/gutter-blockred.svg'),
+		blockgreen: ctx.asAbsolutePath('media/gutter-blockgreen.svg'),
+		blockblue: ctx.asAbsolutePath('media/gutter-blockblue.svg'),
+		blockyellow: ctx.asAbsolutePath('media/gutter-blockyellow.svg'),
+		slashred: ctx.asAbsolutePath('media/gutter-slashred.svg'),
+		slashgreen: ctx.asAbsolutePath('media/gutter-slashgreen.svg'),
+		slashblue: ctx.asAbsolutePath('media/gutter-slashblue.svg'),
+		slashyellow: ctx.asAbsolutePath('media/gutter-slashyellow.svg'),
+		verticalred: ctx.asAbsolutePath('media/gutter-vertred.svg'),
+		verticalgreen: ctx.asAbsolutePath('media/gutter-vertgreen.svg'),
+		verticalblue: ctx.asAbsolutePath('media/gutter-vertblue.svg'),
+		verticalyellow: ctx.asAbsolutePath('media/gutter-vertyellow.svg')
 	};
 
 	const goConfig = getGoConfig();

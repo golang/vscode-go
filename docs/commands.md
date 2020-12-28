@@ -95,6 +95,10 @@ Generates method stub for implementing the provided interface and inserts at the
 
 Extract logs in the `gopls (server)` output channel to the editor.
 
+### `Go: Welcome`
+
+Open the welcome page for the Go extension.
+
 ### `Go: Toggle gc details`
 
 Toggle the display of compiler optimization choices

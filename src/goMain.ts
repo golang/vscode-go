@@ -70,6 +70,7 @@ import {
 	resolvePath,
 } from './util';
 import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { WelcomePanel } from './welcome';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -90,6 +91,15 @@ export function activate(ctx: vscode.ExtensionContext) {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
+
+	if (vscode.window.registerWebviewPanelSerializer) {
+		// Make sure we register a serializer in activation event
+		vscode.window.registerWebviewPanelSerializer(WelcomePanel.viewType, {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+				WelcomePanel.revive(webviewPanel, ctx.extensionUri);
+			}
+		});
+	}
 
 	if (isNightly()) {
 		promptForLanguageServerDefaultChange(cfg);
@@ -469,6 +479,11 @@ See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshor
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.extractServerChannel', () => {
 		showServerOutputChannel();
 	}));
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.welcome', () => {
+			WelcomePanel.createOrShow(ctx.extensionUri);
+		}));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
 		if (!languageServerIsRunning) {
