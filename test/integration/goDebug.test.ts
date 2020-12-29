@@ -358,7 +358,7 @@ suite('Go Debug Adapter', function () {
 		// When the attach request is completed successfully, we should get
 		// an initialized event.
 		await Promise.all([
-			new Promise(async (resolve) => {
+			new Promise<void>(async (resolve) => {
 				console.log(`Setting up attach request for ${JSON.stringify(debugConfig)}.`);
 				const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 				assert.ok(attachResult.success);
@@ -1170,7 +1170,7 @@ suite('Go Debug Adapter', function () {
 
 			// Calls the helloworld server to get a response.
 			let response = '';
-			await new Promise((resolve) => {
+			await new Promise<void>((resolve) => {
 				http.get(`http://localhost:${server}`, (res) => {
 					res.on('data', (data) => response += data);
 					res.on('end', () => resolve());
@@ -1180,7 +1180,7 @@ suite('Go Debug Adapter', function () {
 			await dc.disconnectRequest();
 			// Checks that after the disconnect, the helloworld server still works.
 			let secondResponse = '';
-			await new Promise((resolve) => {
+			await new Promise<void>((resolve) => {
 				http.get(`http://localhost:${server}`, (res) => {
 					res.on('data', (data) => secondResponse += data);
 					res.on('end', () => resolve());

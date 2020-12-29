@@ -395,7 +395,7 @@ export class Delve {
 	public program: string;
 	public remotePath: string;
 	public loadConfig: LoadConfig;
-	public connection: Promise<RPCConnection>;
+	public connection: Promise<RPCConnection|null>;  // null if connection isn't necessary (e.g. noDebug mode)
 	public onstdout: (str: string) => void;
 	public onstderr: (str: string) => void;
 	public onclose: (code: number) => void;
@@ -587,7 +587,7 @@ export class Delve {
 							reject(err);
 						});
 
-						resolve();
+						resolve(null);
 						return;
 					}
 				}
@@ -950,7 +950,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			// we should have a timeout in case disconnectRequestHelper hangs.
 			await Promise.race([
 				this.disconnectRequestHelper(response, args),
-				new Promise((resolve) => setTimeout(() => {
+				new Promise<void>((resolve) => setTimeout(() => {
 					log('DisconnectRequestHelper timed out after 5s.');
 					resolve();
 				}, 5_000))
@@ -2046,7 +2046,7 @@ export class GoDebugSession extends LoggingDebugSession {
 
 		if (this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
 			try {
-				await new Promise((resolve) => {
+				await new Promise<void>((resolve) => {
 					this.remoteSourcesAndPackages.on(RemoteSourcesAndPackages.INITIALIZED, () => {
 						resolve();
 					});
@@ -2175,7 +2175,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			);
 	}
 
-	private async getPackageInfo(debugState: DebuggerState): Promise<string> {
+	private async getPackageInfo(debugState: DebuggerState): Promise<string|void> {
 		if (!debugState.currentThread || !debugState.currentThread.file) {
 			return Promise.resolve(null);
 		}
