@@ -116,10 +116,19 @@ export function activate(ctx: vscode.ExtensionContext) {
 	}
 
 	// Present a warning about the deprecation of the go.documentLink setting.
-	if (getGoConfig()['languageServerExperimentalFeatures']['documentLink'] === false) {
-		vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-Please use 'gopls.importShortcut' instead.
-See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
+	if (experimentalFeatures) {
+		// TODO(rstambler): Eventually notify about deprecation of all of the settings.
+		if (experimentalFeatures['documentLink'] === false) {
+			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
+	Please use 'gopls.importShortcut' instead.
+	See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+		}
+		if (experimentalFeatures['diagnostics'] === false) {
+			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.diagnostics' setting is now deprecated.
+If you would like additional configuration for diagnostics from gopls, please see and response to
+https://github.com/golang/vscode-go/issues/50.`);
+		}
 	}
 
 	updateGoVarsFromConfig().then(async () => {

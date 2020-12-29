@@ -365,18 +365,6 @@ If true, then `-i` flag will be passed to `go build` everytime the code is compi
 
 Default: `false`
 
-### `go.languageServerExperimentalFeatures`
-
-Use this setting to enable/disable experimental features from the language server.
-
-Default:{<br/>
-&nbsp;&nbsp;`"diagnostics": true`,<br/>
-    }
-
-
-#### `diagnostics`
-If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings.
-
 ### `go.languageServerFlags`
 
 Flags like -rpc.trace and -logfile to be used while running the language server.
@@ -567,7 +555,7 @@ Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
 
 ### `go.vetOnSave`
 
-Vets code on file save using 'go tool vet'.
+Vets code on file save using 'go tool vet'. Not applicable when using the language server.
 
 Allowed Values:`[package workspace off]`
 
