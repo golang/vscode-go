@@ -263,6 +263,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	[key: string]: any;
 	program: string;
 	stopOnEntry?: boolean;
+	dlvFlags?: string[];
 	args?: string[];
 	showLog?: boolean;
 	logOutput?: string;
@@ -300,6 +301,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	request: 'attach';
 	processId?: number;
 	stopOnEntry?: boolean;
+	dlvFlags?: string[];
 	showLog?: boolean;
 	logOutput?: string;
 	cwd?: string;
@@ -613,6 +615,11 @@ export class Delve {
 				} else if (currentGOWorkspace && !launchArgs.packagePathToGoModPathMap[dirname]) {
 					dlvArgs.push(dirname.substr(currentGOWorkspace.length + 1));
 				}
+				// add user-specified dlv flags first. When duplicate flags are specified,
+				// dlv doesn't mind but accepts the last flag value.
+				if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+					dlvArgs.push(...launchArgs.dlvFlags);
+				}
 				dlvArgs.push('--headless=true', `--listen=${launchArgs.host}:${launchArgs.port}`);
 				if (!this.isApiV1) {
 					dlvArgs.push('--api-version=2');
@@ -655,6 +662,11 @@ export class Delve {
 				}
 
 				dlvArgs.push('attach', `${launchArgs.processId}`);
+				// add user-specified dlv flags first. When duplicate flags are specified,
+				// dlv doesn't mind but accepts the last flag value.
+				if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+					dlvArgs.push(...launchArgs.dlvFlags);
+				}
 				dlvArgs.push('--headless=true', '--listen=' + launchArgs.host + ':' + launchArgs.port.toString());
 				if (!this.isApiV1) {
 					dlvArgs.push('--api-version=2');

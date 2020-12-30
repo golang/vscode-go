@@ -303,7 +303,7 @@ suite('Go Debug Adapter', function () {
 	let dc: DebugClient;
 
 	setup(() => {
-		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go');
+		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go', undefined, true);
 
 		// Launching delve may take longer than the default timeout of 5000.
 		dc.defaultTimeout = 20_000;
@@ -323,8 +323,8 @@ suite('Go Debug Adapter', function () {
 	 * running vs stopped/killed.
 	 */
 	async function setUpRemoteProgram(
-			dlvPort: number, serverPort: number,
-			acceptMultiClient = true, continueOnStart = true): Promise<cp.ChildProcess> {
+		dlvPort: number, serverPort: number,
+		acceptMultiClient = true, continueOnStart = true): Promise<cp.ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
 		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
@@ -335,7 +335,7 @@ suite('Go Debug Adapter', function () {
 			args.push('--continue');
 		}
 		const childProcess = cp.spawn(toolPath, args,
-			{cwd: serverFolder,  env: { PORT: `${serverPort}`, ...process.env}});
+			{ cwd: serverFolder, env: { PORT: `${serverPort}`, ...process.env } });
 
 		// Give dlv a few seconds to start.
 		await new Promise((resolve) => setTimeout(resolve, 10_000));
@@ -369,7 +369,7 @@ suite('Go Debug Adapter', function () {
 
 		if (breakpoints.length) {
 			console.log(`Sending set breakpoints request for remote attach setup.`);
-			const breakpointsResult = await dc.setBreakpointsRequest({source: {path: breakpoints[0].path}, breakpoints});
+			const breakpointsResult = await dc.setBreakpointsRequest({ source: { path: breakpoints[0].path }, breakpoints });
 			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints.length === breakpoints.length);
 			// Verify that there are no non-verified breakpoints.
 			breakpointsResult.body.breakpoints.forEach((breakpoint) => {
@@ -567,6 +567,49 @@ suite('Go Debug Adapter', function () {
 				dc.waitForEvent('terminated')
 			]);
 		});
+
+		test('invalid flags are passed to dlv but should be caught by dlv', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				dlvFlags: ['--invalid']
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			return Promise.all([
+				dc.assertOutput('stderr', 'Error: unknown flag: --invalid\n', 5000),
+				dc.waitForEvent('terminated'),
+				dc.initializeRequest().then((response) => {
+					// The current debug adapter does not respond to launch request but,
+					// instead, sends error messages and TerminatedEvent as delve is closed.
+					// The promise from dc.launchRequest resolves when the launch response
+					// is received, so the promise will never get resolved.
+					dc.launchRequest(debugConfig as any);
+				})
+			]);
+		});
+
+		test('user-specified --listen flag should be ignored', () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+				dlvFlags: ['--listen=127.0.0.1:80'],
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+		});
 	});
 
 	suite('set current working directory', () => {
@@ -755,7 +798,7 @@ suite('Go Debug Adapter', function () {
 		});
 
 		teardown(async () => {
-			await dc.disconnectRequest({restart: false});
+			await dc.disconnectRequest({ restart: false });
 			await killProcessTree(childProcess);
 			// Wait 2 seconds for the process to be killed.
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
@@ -763,31 +806,31 @@ suite('Go Debug Adapter', function () {
 
 		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true',
 			async () => {
-			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
+				childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
 
-			await setUpRemoteAttach(debugConfig);
-		});
+				await setUpRemoteAttach(debugConfig);
+			});
 
 		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false',
 			async () => {
-			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
+				childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
 
-			await setUpRemoteAttach(debugConfig);
-		});
+				await setUpRemoteAttach(debugConfig);
+			});
 
 		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false',
 			async () => {
-			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
+				childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
-			await setUpRemoteAttach(debugConfig);
-		});
+				await setUpRemoteAttach(debugConfig);
+			});
 	});
 
 	// The file paths returned from delve use '/' not the native path
 	// separator, so we can replace any instances of '\' with '/', which
 	// allows the hitBreakpoint check to match.
-	const getBreakpointLocation =  (FILE: string, LINE: number, useBackSlash = true) => {
-		return {path: useBackSlash ? FILE.replace(/\\/g, '/') : FILE, line: LINE };
+	const getBreakpointLocation = (FILE: string, LINE: number, useBackSlash = true) => {
+		return { path: useBackSlash ? FILE.replace(/\\/g, '/') : FILE, line: LINE };
 	};
 
 	suite('setBreakpoints', () => {
@@ -852,7 +895,7 @@ suite('Go Debug Adapter', function () {
 				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
 				breakpointLocation);
 
-			await dc.disconnectRequest({restart: false});
+			await dc.disconnectRequest({ restart: false });
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
@@ -868,7 +911,7 @@ suite('Go Debug Adapter', function () {
 			// Now sets a breakpoint.
 			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
 			const breakpointsResult = await dc.setBreakpointsRequest(
-				{source: {path: breakpointLocation.path}, breakpoints: [breakpointLocation]});
+				{ source: { path: breakpointLocation.path }, breakpoints: [breakpointLocation] });
 			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints[0].verified);
 
 			// Calls the helloworld server to make the breakpoint hit.
@@ -876,7 +919,7 @@ suite('Go Debug Adapter', function () {
 				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
 				breakpointLocation);
 
-			await dc.disconnectRequest({restart: false});
+			await dc.disconnectRequest({ restart: false });
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
@@ -896,7 +939,7 @@ suite('Go Debug Adapter', function () {
 				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
 				breakpointLocation);
 
-			await dc.disconnectRequest({restart: false});
+			await dc.disconnectRequest({ restart: false });
 			await killProcessTree(remoteProgram);
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
@@ -924,8 +967,8 @@ suite('Go Debug Adapter', function () {
 
 			return Promise.all([
 				dc.setBreakpointsRequest({
-					lines: [ helloLocation.line ],
-					breakpoints: [ { line: helloLocation.line, column: 0 } ],
+					lines: [helloLocation.line],
+					breakpoints: [{ line: helloLocation.line, column: 0 }],
 					source: { path: helloLocation.path }
 				}),
 				dc.assertStoppedLocation('breakpoint', helloLocation)
@@ -962,8 +1005,8 @@ suite('Go Debug Adapter', function () {
 			// stopped on the next line.
 			await Promise.all([
 				dc.setBreakpointsRequest({
-					lines: [ onNextBreakpoint.line ],
-					breakpoints: [ { line: onNextBreakpoint.line, column: 0 } ],
+					lines: [onNextBreakpoint.line],
+					breakpoints: [{ line: onNextBreakpoint.line, column: 0 }],
 					source: { path: onNextBreakpoint.path }
 				}),
 				dc.assertStoppedLocation('next cancelled', {})
@@ -973,21 +1016,21 @@ suite('Go Debug Adapter', function () {
 			// make sure the breakpoint set while the program was nexting
 			// is succesfully hit.
 			await Promise.all([
-				dc.continueRequest({threadId: 1}),
+				dc.continueRequest({ threadId: 1 }),
 				dc.assertStoppedLocation('breakpoint', onNextBreakpoint)
 			]);
 		}
 
 		test('should set breakpoints during next', async () => {
 			setBreakpointsDuringStep(async () => {
-				const nextResponse = await dc.nextRequest({threadId: 1});
+				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
 		});
 
 		test('should set breakpoints during step out', async () => {
 			setBreakpointsDuringStep(async () => {
-				const stepOutResponse = await dc.stepOutRequest({threadId: 1});
+				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
 				assert.ok(stepOutResponse.success);
 			});
 		});
@@ -1211,7 +1254,7 @@ suite('Go Debug Adapter', function () {
 			]);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1235,8 +1278,8 @@ suite('Go Debug Adapter', function () {
 			]);
 
 			await Promise.all([
-				dc.disconnectRequest({restart: false}).then(() =>
-					dc.disconnectRequest({restart: false})
+				dc.disconnectRequest({ restart: false }).then(() =>
+					dc.disconnectRequest({ restart: false })
 				),
 				dc.waitForEvent('terminated')
 			]);
@@ -1264,7 +1307,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(continueResponse.success);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1291,7 +1334,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(nextResponse.success);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1313,11 +1356,11 @@ suite('Go Debug Adapter', function () {
 				dc.launch(debugConfig)
 			]);
 
-			const pauseResponse = await dc.pauseRequest({threadId: 1});
+			const pauseResponse = await dc.pauseRequest({ threadId: 1 });
 			assert.ok(pauseResponse.success);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated'),
 			]);
 		});
@@ -1339,7 +1382,7 @@ suite('Go Debug Adapter', function () {
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1363,7 +1406,7 @@ suite('Go Debug Adapter', function () {
 			]);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1390,7 +1433,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(nextResponse.success);
 
 			return Promise.all([
-				dc.disconnectRequest({restart: false}),
+				dc.disconnectRequest({ restart: false }),
 				dc.waitForEvent('terminated')
 			]);
 		});
@@ -1423,7 +1466,7 @@ suite('Go Debug Adapter', function () {
 			const execFile = util.promisify(cp.execFile);
 			const child = await execFile(goRuntimePath,
 				['build', '-o', outputFile, `--gcflags='all=-N -l'`, '.'],
-				{cwd});
+				{ cwd });
 			if (child.stderr.length > 0) {
 				throw Error(child.stderr);
 			}
@@ -1440,15 +1483,15 @@ suite('Go Debug Adapter', function () {
 				rmdirRecursive(goBuildOutput);
 			});
 
-			async function copyBuildDelete(program: string): Promise<{program: string, output: string}> {
+			async function copyBuildDelete(program: string): Promise<{ program: string, output: string }> {
 				const wd = copyDirectory(program);
 				const output = await buildGoProgram(wd, path.join(goBuildOutput, program));
 				rmdirRecursive(wd);
-				return {program: wd, output};
+				return { program: wd, output };
 			}
 
 			test('should stop on a breakpoint set in file with substituted path', async () => {
-				const {program, output} = await copyBuildDelete('baseTest');
+				const { program, output } = await copyBuildDelete('baseTest');
 				const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 				const BREAKPOINT_LINE = 11;
 
@@ -1501,7 +1544,7 @@ suite('Go Debug Adapter', function () {
 				remoteAttachDebugConfig.cwd = tmpDir;
 				remoteAttachDebugConfig.remotePath = '';
 				remoteAttachDebugConfig.substitutePath = [
-					{from: helloWorldLocal, to: helloWorldRemote}
+					{ from: helloWorldLocal, to: helloWorldRemote }
 				];
 				await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
 
@@ -1510,7 +1553,7 @@ suite('Go Debug Adapter', function () {
 					() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
 					breakpointLocation);
 
-				await dc.disconnectRequest({restart: false});
+				await dc.disconnectRequest({ restart: false });
 				await killProcessTree(remoteProgram);
 				await new Promise((resolve) => setTimeout(resolve, 2_000));
 			});
@@ -1528,7 +1571,7 @@ suite('Go Debug Adapter', function () {
 				remoteAttachDebugConfig.remotePath = helloWorldRemote;
 				// This is a bad mapping, make sure that the remotePath config is used first.
 				remoteAttachDebugConfig.substitutePath = [
-					{from: helloWorldLocal, to: helloWorldLocal}
+					{ from: helloWorldLocal, to: helloWorldLocal }
 				];
 				await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
 
@@ -1537,7 +1580,7 @@ suite('Go Debug Adapter', function () {
 					() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
 					breakpointLocation);
 
-				await dc.disconnectRequest({restart: false});
+				await dc.disconnectRequest({ restart: false });
 				await killProcessTree(remoteProgram);
 				await new Promise((resolve) => setTimeout(resolve, 2_000));
 			});

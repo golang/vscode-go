@@ -515,7 +515,7 @@
               },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -550,13 +550,21 @@
               },
               "buildFlags": {
                 "type": "string",
-                "description": "Build flags, to be passed to the Go compiler.",
+                "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
                 "default": ""
               },
               "init": {
                 "type": "string",
-                "description": "Init file, executed by the terminal client.",
+                "description": "Init file, executed by the terminal client. Maps to dlv's `--init` flag.",
                 "default": ""
+              },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "remotePath": {
                 "type": "string",
@@ -617,7 +625,7 @@
                   "debuglineerr",
                   "rpc"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -664,7 +672,7 @@
                   1,
                   2
                 ],
-                "description": "Delve Api Version to use. Default value is 2.",
+                "description": "Delve Api Version to use. Default value is 2. Maps to dlv's `--api-version` flag.",
                 "default": 2
               },
               "stackTraceDepth": {
@@ -691,12 +699,20 @@
                   "local",
                   "remote"
                 ],
-                "description": "Indicates local or remote debugging.  Local maps to the dlv 'attach' command, remote maps to 'connect'.",
+                "description": "Indicates local or remote debugging. Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
+              },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -767,7 +783,7 @@
                   "debuglineerr",
                   "rpc"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -947,7 +963,7 @@
               },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -969,6 +985,14 @@
                 "type": "string",
                 "description": "Init file, executed by the terminal client.",
                 "default": ""
+              },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "remotePath": {
                 "type": "string",
@@ -1029,7 +1053,7 @@
                   "debuglineerr",
                   "dap"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -1097,9 +1121,17 @@
                 "description": "Indicates local or remote debugging.  Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
               },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -1151,7 +1183,7 @@
                   "dap",
                   "rpc"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
