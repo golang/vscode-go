@@ -245,6 +245,12 @@
 			"body": "func init() {\n\t$1\n}",
 			"description": "Snippet for init function"
 		},
+		
+		"go start": {
+			"prefix": "go",
+			"body": "package $1 \nimport \"fmt\" \n\nfunc main (){\n fmt.Println(\"You are ready to Go :=\")  \n}",
+			"description": "Snippet for starter template"
+		},
 		"main function": {
 			"prefix": "fmain",
 			"body": "func main() {\n\t$1\n}",
