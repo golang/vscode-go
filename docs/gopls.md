@@ -11,7 +11,6 @@
   * [Automatic updates](#automatic-updates)
 * [Configuration](#configuration)
   * [Ignored settings](#ignored-settings)
-  * [`gopls` settings block](#gopls-settings-block)
 * [Troubleshooting](https://github.com/golang/tools/blob/master/gopls/doc/troubleshooting.md)
 * [Additional resources](#additional-resources)
 
