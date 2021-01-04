@@ -32,7 +32,6 @@ import {
 import {
 	LanguageClient
 } from 'vscode-languageclient/node';
-import WebRequest = require('web-request');
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
@@ -64,6 +63,8 @@ import {
 	getWorkspaceFolderPath
 } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
+
+import WebRequest = require('web-request');
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -303,10 +304,12 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				{ language: 'go', scheme: 'file' },
 				{ language: 'go.mod', scheme: 'file' },
 				{ language: 'go.sum', scheme: 'file' },
+				{ language: 'tmpl', scheme: 'file'},
 				// - unsaved files
 				{ language: 'go', scheme: 'untitled' },
 				{ language: 'go.mod', scheme: 'untitled' },
 				{ language: 'go.sum', scheme: 'untitled' },
+				{ language: 'tmpl', scheme: 'untitled'},
 			],
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.

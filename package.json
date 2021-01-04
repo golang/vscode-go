@@ -131,6 +131,15 @@
         "aliases": [
           "Go Checksum File"
         ]
+      },
+      {
+        "id": "tmpl",
+        "extensions": [
+          ".tmpl"
+        ],
+        "aliases": [
+          "Go Template File"
+        ]
       }
     ],
     "grammars": [
