@@ -143,7 +143,9 @@ export class WelcomePanel {
 			<p><a class="release-notes">Release Notes</a></p>
 
 			<div>
-
+				<h2>Latest Updates</h2>
+				<p>📣 Announcement: We plan to enable the language server, gopls, by default early in 2021. (<a href="https://github.com/golang/vscode-go/issues/1037">Issue 1037</a>)</p>
+				<p>Please test and provide us your feedback on the #vscode-dev <a href="https://gophers.slack.com/">Gophers Slack</a> channel.</p>
 			</div>
 
 			<div>
