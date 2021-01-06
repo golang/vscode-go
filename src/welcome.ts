@@ -140,7 +140,35 @@ export class WelcomePanel {
 			<p>Rich Go language support for Visual Studio Code</p>
 			<!-- linking to a document does not actually work, but is used here to give it the appearance
 			of a link -->
-			<p><a class="release-notes"">Release Notes</a></p>
+			<p><a class="release-notes">Release Notes</a></p>
+
+			<div>
+
+			</div>
+
+			<div>
+				<h2>External Resources</h2>
+
+				<h3>Documentation</h3>
+				<ul>
+					<li>Details about the <a href="https://github.com/golang/vscode-go#features">features</a> provided by extension</li>
+					<li>Configure the extension with <a href="https://github.com/golang/vscode-go/blob/master/docs/settings.md">settings</a></li>
+					<li>Full list of the <a href="https://github.com/golang/vscode-go/blob/master/docs/commands.md#detailed-list">commands</a> provided by the Go extension</li>
+					<li><a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">Debugging</a></li>
+				</ul>
+
+				<h3>Go Tutorials</h3>
+				<ul>
+					<!-- TODO: link a tutorial for setting up and using Go Modules in vscode -->
+					<li>Learn about <a href="https://blog.golang.org/using-go-modules">Go Modules</a></li>
+					<li>Find tutorials for using Go at <a href="https://learn.go.dev/">learn.go.dev</a></li>
+					<li>Get started with <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md#set-up">debugging</a> in vscode with the Go extension</li>
+				</ul>
+
+				<h3>Outstanding Issues</h3>
+
+				All of the issues can be found on the <a href="https://github.com/golang/vscode-go/issues">issue tracker</a>. For issues that will be addressed in the next release, check out the <a href="https://github.com/golang/vscode-go/milestones">milestone</a> page.
+			<div>
 
 			<script nonce="${nonce}" src="${scriptURI}"></script>
 			</body>
