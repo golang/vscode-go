@@ -13,6 +13,7 @@ import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
+import { languageClient } from './goLanguageServer';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
@@ -910,27 +911,42 @@ export function handleDiagnosticErrors(
 
 		if (diagnosticCollection === buildDiagnosticCollection) {
 			// If there are lint/vet warnings on current file, remove the ones co-inciding with the new build errors
-			if (lintDiagnosticCollection && lintDiagnosticCollection.has(fileUri)) {
-				lintDiagnosticCollection.set(
-					fileUri,
-					deDupeDiagnostics(newDiagnostics, lintDiagnosticCollection.get(fileUri).slice())
-				);
-			}
-
-			if (vetDiagnosticCollection && vetDiagnosticCollection.has(fileUri)) {
-				vetDiagnosticCollection.set(
-					fileUri,
-					deDupeDiagnostics(newDiagnostics, vetDiagnosticCollection.get(fileUri).slice())
-				);
-			}
+			removeDuplicateDiagnostics(lintDiagnosticCollection, fileUri, newDiagnostics);
+			removeDuplicateDiagnostics(vetDiagnosticCollection, fileUri, newDiagnostics);
 		} else if (buildDiagnosticCollection && buildDiagnosticCollection.has(fileUri)) {
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
 			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri).slice(), newDiagnostics);
+		}
+		// If there are errors from the language client that are on the current file, ignore the warnings co-inciding
+		// with them.
+		if (languageClient) {
+			newDiagnostics = deDupeDiagnostics(languageClient.diagnostics.get(fileUri).slice(), newDiagnostics);
 		}
 		diagnosticCollection.set(fileUri, newDiagnostics);
 	});
 }
 
+/**
+ * Removes any diagnostics in collection, where there is a diagnostic in
+ * newDiagnostics on the same line in fileUri.
+ */
+export function removeDuplicateDiagnostics(
+	collection: vscode.DiagnosticCollection,
+	fileUri: vscode.Uri,
+	newDiagnostics: vscode.Diagnostic[]
+) {
+	if (collection && collection.has(fileUri)) {
+		collection.set(
+			fileUri,
+			deDupeDiagnostics(newDiagnostics, collection.get(fileUri).slice())
+		);
+	}
+}
+
+/**
+ * Removes any diagnostics in otherDiagnostics, where there is a diagnostic in
+ * buildDiagnostics on the same line.
+ */
 function deDupeDiagnostics(
 	buildDiagnostics: vscode.Diagnostic[],
 	otherDiagnostics: vscode.Diagnostic[]

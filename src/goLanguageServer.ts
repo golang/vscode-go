@@ -41,7 +41,7 @@ import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
 import { installTools, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
-import { restartLanguageServer } from './goMain';
+import { buildDiagnosticCollection, lintDiagnosticCollection, restartLanguageServer, vetDiagnosticCollection } from './goMain';
 import { GO_MODE } from './goMode';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
@@ -60,7 +60,8 @@ import {
 	getGoConfig,
 	getGoplsConfig,
 	getGoVersion,
-	getWorkspaceFolderPath
+	getWorkspaceFolderPath,
+	removeDuplicateDiagnostics
 } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
 
@@ -80,7 +81,7 @@ export interface LanguageServerConfig {
 // Global variables used for management of the language client.
 // They are global so that the server can be easily restarted with
 // new configurations.
-let languageClient: LanguageClient;
+export let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
@@ -386,6 +387,17 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							}
 						}
 					}, []);
+				},
+				handleDiagnostics: (
+					uri: vscode.Uri,
+					diagnostics: vscode.Diagnostic[],
+					next: HandleDiagnosticsSignature
+				) => {
+					// Deduplicate diagnostics with those found by the other tools.
+					removeDuplicateDiagnostics(vetDiagnosticCollection, uri, diagnostics);
+					removeDuplicateDiagnostics(buildDiagnosticCollection, uri, diagnostics);
+					removeDuplicateDiagnostics(lintDiagnosticCollection, uri, diagnostics);
+					return next(uri, diagnostics);
 				},
 				provideCompletionItem: async (
 					document: vscode.TextDocument,
