@@ -1,3 +1,8 @@
+## v0.20.2 - 8th Jan, 2021
+
+### Enhancement
+- Updated [`"gopls"` settings](https://github.com/golang/vscode-go/blob/705272cba4001b8caf71a1542f376daa2e0be089/docs/settings.md#gopls-1) to match gopls v0.6.2. ([CL 279728](https://go-review.googlesource.com/c/vscode-go/+/279728))
+
 ## v0.20.1 - 29th Dec, 2020
 
 ### Fixes
