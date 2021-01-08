@@ -1953,6 +1953,11 @@
               "type": "boolean",
               "default": true,
               "description": "If true, adds command to debug the test under the cursor to the editor context menu"
+            },
+            "benchmarkAtCursor": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, adds command to benchmark the test under the cursor to the editor context menu"
             }
           },
           "additionalProperties": false,
@@ -1960,6 +1965,7 @@
             "toggleTestFile": true,
             "addTags": true,
             "removeTags": false,
+            "fillStruct": false,
             "testAtCursor": true,
             "testFile": false,
             "testPackage": false,
@@ -1969,7 +1975,8 @@
             "addImport": true,
             "testCoverage": true,
             "playground": true,
-            "debugTestAtCursor": true
+            "debugTestAtCursor": true,
+            "benchmarkAtCursor": false
           },
           "description": "Experimental Feature: Enable/Disable entries from the context menu in the editor.",
           "scope": "resource"
@@ -2631,6 +2638,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.testCoverage && resourceLangId == go",
           "command": "go.test.coverage",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.playground && resourceLangId == go",
+          "command": "go.playground",
           "group": "Go group 1"
         },
         {

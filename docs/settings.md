@@ -212,7 +212,9 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 Default:{<br/>
 &nbsp;&nbsp;`"addImport": true`,<br/>
 &nbsp;&nbsp;`"addTags": true`,<br/>
+&nbsp;&nbsp;`"benchmarkAtCursor": false`,<br/>
 &nbsp;&nbsp;`"debugTestAtCursor": true`,<br/>
+&nbsp;&nbsp;`"fillStruct": false`,<br/>
 &nbsp;&nbsp;`"generateTestForFile": false`,<br/>
 &nbsp;&nbsp;`"generateTestForFunction": true`,<br/>
 &nbsp;&nbsp;`"generateTestForPackage": false`,<br/>
@@ -231,6 +233,9 @@ If true, adds command to import a package to the editor context menu
 
 #### `addTags`
 If true, adds command to add configured tags from struct fields to the editor context menu
+
+#### `benchmarkAtCursor`
+If true, adds command to benchmark the test under the cursor to the editor context menu
 
 #### `debugTestAtCursor`
 If true, adds command to debug the test under the cursor to the editor context menu
