@@ -133,14 +133,16 @@ export class WelcomePanel {
 			</head>
 			<body>
 			<div class="header">
-				<img src="${gopherURI}" alt="logo"/>
-				<h1>Go - Welcome</h1>
+				<img src="${gopherURI}" alt="logo" class="logo"/>
+				<h1 class="title">Go - Welcome</h1>
 			</div>
 
-			<p>Rich Go language support for Visual Studio Code</p>
-			<!-- linking to a document does not actually work, but is used here to give it the appearance
-			of a link -->
-			<p><a class="release-notes">Release Notes</a></p>
+			<div class="subtitle">
+				<p>Rich Go language support for Visual Studio Code</p>
+				<!-- linking to a document does not actually work, but is used here to give it the appearance
+				of a link -->
+				<a class="release-notes" href="#">Release Notes</a>
+			</div>
 
 			<div>
 				<h2>Latest Updates</h2>
