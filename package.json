@@ -1778,7 +1778,7 @@
             "enabled": {
               "type": "boolean",
               "default": false,
-              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found."
+              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found. Disabled when the language server is enabled."
             },
             "delay": {
               "type": "number",

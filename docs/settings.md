@@ -410,7 +410,7 @@ Default:{<br/>
 The number of milliseconds to delay before execution. Resets with each keystroke.
 
 #### `enabled`
-If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found.
+If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found. Disabled when the language server is enabled.
 
 ### `go.logging.level`
 
