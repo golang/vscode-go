@@ -121,7 +121,6 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		console.log('language server restart is already in progress...');
 		return;
 	}
-	languageServerStartInProgress = true;
 
 	const goConfig = getGoConfig();
 	const cfg = buildLanguageServerConfig(goConfig);
@@ -147,6 +146,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		}
 	}
 
+	languageServerStartInProgress = true;
 	const progressMsg = languageServerIsRunning ? 'Restarting language service' : 'Starting language service';
 	await vscode.window.withProgress({
 		title: progressMsg,
