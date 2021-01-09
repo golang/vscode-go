@@ -164,6 +164,12 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 
 		const started = await startLanguageServer(ctx, cfg);
 
+		if (!started && goConfig['useLanguageServer'] === true) {
+			// We already created various notification - e.g. missing gopls, ...
+			// So, just leave a log message here instead of issuing one more notification.
+			outputChannel.appendLine(
+				`Failed to start the language server (${cfg.serverName}). Falling back to default language providers...`);
+		}
 		// If the server has been disabled, or failed to start,
 		// fall back to the default providers, while making sure not to
 		// re-register any providers.
