@@ -8,7 +8,7 @@ import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
 
 const WORKSPACE_IS_TRUSTED_KEY = 'WORKSPACE_IS_TRUSTED_KEY';
 const SECURITY_SENSITIVE_CONFIG: string[] = [
-	'goroot', 'gopath', 'toolsGopath', 'alternateTools'
+	'goroot', 'gopath', 'toolsGopath', 'alternateTools', 'inferGopath'
 ];
 
 let defaultConfig: Configuration = null;

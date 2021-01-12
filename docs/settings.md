@@ -50,7 +50,7 @@ Default:{<br/>
 
 ### `go.alternateTools`
 
-Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in.
+Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 
 | Properties | Description |
 | --- | --- |
@@ -286,13 +286,13 @@ Default: `go`
 
 ### `go.gopath`
 
-Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.
+Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 
 efault: `<nil>`
 
 ### `go.goroot`
 
-Specifies the GOROOT to use when no environment variable is set.
+Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 
 efault: `<nil>`
 
@@ -314,7 +314,7 @@ Default: `false`
 
 ### `go.inferGopath`
 
-Infer GOPATH from the workspace root.
+Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 
 Default: `false`
 
@@ -464,7 +464,7 @@ Environment variables that will be passed to the tools that run the Go tools (e.
 
 ### `go.toolsGopath`
 
-Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.
+Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 
 efault: `<nil>`
 
