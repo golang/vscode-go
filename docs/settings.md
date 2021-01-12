@@ -506,7 +506,7 @@ Environment variables that will passed to the tools that run the Go tools (e.g. 
 
 Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.
 
-Default: ``
+efault: `<nil>`
 
 ### `go.toolsManagement.checkForUpdates`
 

@@ -1385,8 +1385,11 @@
           "scope": "machine-overridable"
         },
         "go.toolsGopath": {
-          "type": "string",
-          "default": "",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
           "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.",
           "scope": "machine-overridable"
         },
