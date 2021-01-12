@@ -1544,7 +1544,7 @@
         "go.testEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the process that runs the Go tests",
+          "description": "Environment variables that will be passed to the process that runs the Go tests",
           "scope": "resource"
         },
         "go.testEnvFile": {
@@ -1577,7 +1577,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
           "scope": "resource"
         },
         "go.gocodeFlags": {
