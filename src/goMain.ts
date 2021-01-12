@@ -7,7 +7,9 @@
 'use strict';
 
 import * as path from 'path';
+import semver = require('semver');
 import vscode = require('vscode');
+import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -108,6 +110,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 		// to give feedback.
 		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
 	}
+
+	// Show the Go welcome page on update.
+	showGoWelcomePage(ctx);
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
@@ -560,6 +565,28 @@ https://github.com/golang/vscode-go/issues/50.`);
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
 	});
+}
+
+function showGoWelcomePage(ctx: vscode.ExtensionContext) {
+	// Update this list of versions when there is a new version where we want to
+	// show the welcome page on update.
+	const showVersions: string[] = [];
+
+	let goExtensionVersionKey = 'go.extensionVersion';
+	if (isNightly()) {
+		goExtensionVersionKey = 'go.nightlyExtensionVersion';
+	}
+
+	const goExtension = vscode.extensions.getExtension(extensionId)!;
+	const goExtensionVersion = goExtension.packageJSON.version;
+	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '0.0.0');
+
+	if (semver.gt(semver.coerce(goExtensionVersion), semver.coerce(savedGoExtensionVersion))) {
+		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
+		if (showVersions.includes(goExtensionVersion)) {
+			WelcomePanel.createOrShow(ctx.extensionUri);
+		}
+	}
 }
 
 async function showGoNightlyWelcomeMessage() {
