@@ -11,7 +11,7 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
-import { getGoConfig } from './config';
+import { DefaultConfig, getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { languageClient } from './goLanguageServer';
@@ -478,7 +478,11 @@ function resolveToolsGopath(): string {
 		return toolsGopathForWorkspace;
 	}
 
-	// If any of the folders in multi root have toolsGopath set, use it.
+	if (DefaultConfig().workspaceIsTrusted() === false) {
+		return toolsGopathForWorkspace;
+	}
+
+	// If any of the folders in multi root have toolsGopath set and the workspace is trusted, use it.
 	for (const folder of vscode.workspace.workspaceFolders) {
 		let toolsGopathFromConfig = <string>getGoConfig(folder.uri).inspect('toolsGopath').workspaceFolderValue;
 		toolsGopathFromConfig = resolvePath(toolsGopathFromConfig, folder.uri.fsPath);
@@ -486,6 +490,7 @@ function resolveToolsGopath(): string {
 			return toolsGopathFromConfig;
 		}
 	}
+	return toolsGopathForWorkspace;
 }
 
 // getBinPath returns the path to the tool.

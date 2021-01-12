@@ -11,14 +11,14 @@ const SECURITY_SENSITIVE_CONFIG: string[] = [
 	'goroot', 'gopath', 'toolsGopath', 'alternateTools', 'inferGopath'
 ];
 
-let defaultConfig: Configuration = null;
-
 // Initialize the singleton defaultConfig and register related commands.
 // Prompt if workspace configuration was found but had to be ignored until
 // the user has to explicitly opt in to trust the workspace.
 export async function initConfig(ctx: vscode.ExtensionContext) {
 	const isTrusted = getFromWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, false);
-	defaultConfig = new Configuration(isTrusted, vscode.workspace.getConfiguration);
+	if (isTrusted !== defaultConfig.workspaceIsTrusted) {
+		defaultConfig.toggleWorkspaceIsTrusted();
+	}
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted)
 	);
@@ -66,24 +66,35 @@ async function toggleWorkspaceIsTrusted() {
 // Go extension configuration for a workspace.
 export class Configuration {
 	constructor(
-		private workspaceIsTrusted = false,
+		private _workspaceIsTrusted = false,
 		private getConfiguration = vscode.workspace.getConfiguration) { }
 
 	public toggleWorkspaceIsTrusted() {
-		this.workspaceIsTrusted = !this.workspaceIsTrusted;
-		return this.workspaceIsTrusted;
+		this._workspaceIsTrusted = !this._workspaceIsTrusted;
+		return this._workspaceIsTrusted;
 	}
 
 	// returns a Proxied vscode.WorkspaceConfiguration, which prevents
 	// from using the workspace configuration if the workspace is untrusted.
 	public get<T>(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		const cfg = this.getConfiguration(section, uri);
-		if (section !== 'go' || this.workspaceIsTrusted) {
+		if (section !== 'go' || this._workspaceIsTrusted) {
 			return cfg;
 		}
 
 		return new WrappedConfiguration(cfg);
 	}
+
+	public workspaceIsTrusted(): boolean {
+		return this._workspaceIsTrusted;
+	}
+}
+
+const defaultConfig = new Configuration();
+
+// Returns the workspace Configuration used by the extension.
+export function DefaultConfig() {
+	return defaultConfig;
 }
 
 // wrappedConfiguration wraps vscode.WorkspaceConfiguration.
@@ -141,5 +152,5 @@ function getConfig(section: string, uri?: vscode.Uri) {
 			uri = null;
 		}
 	}
-	return defaultConfig ? defaultConfig.get(section, uri) : new Configuration().get(section, uri);
+	return defaultConfig.get(section, uri);
 }
