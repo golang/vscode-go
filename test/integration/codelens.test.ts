@@ -10,6 +10,7 @@ import fs = require('fs-extra');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
+import { getGoConfig } from '../../src/config';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { GoRunTestCodeLensProvider } from '../../src/goRunTestCodelens';
 import { subTestAtCursor } from '../../src/goTest';
@@ -55,7 +56,7 @@ suite('Code lenses for testing and benchmarking', function () {
 				return true;
 			},
 		});
-		goConfig = vscode.workspace.getConfiguration('go');
+		goConfig = getGoConfig();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens_test.go'));
 		document = await vscode.workspace.openTextDocument(uri);
 	});

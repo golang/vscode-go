@@ -13,6 +13,7 @@ import sinon = require('sinon');
 import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
+import { getGoConfig } from '../../src/config';
 import { toolInstallationEnvironment } from '../../src/goEnv';
 import { installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
@@ -70,7 +71,7 @@ suite('Installation Tests', function () {
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
 			proxyDir = buildFakeProxy([].concat(...testCases));
-			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+			const goConfig = Object.create(getGoConfig(), {
 				toolsEnvVars: {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),

@@ -4,18 +4,12 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import moment = require('moment');
-import semver = require('semver');
-import sinon = require('sinon');
-import * as vscode from 'vscode';
+import { getGoplsConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
-import { getTool, Tool } from '../../src/goTools';
 
 suite('gopls configuration tests', () => {
 	test('filterGoplsDefaultConfigValues', async () => {
-		const defaultGoplsConfig = vscode.workspace.getConfiguration('gopls');
-		const defaultGoplsAnalysesConfig = vscode.workspace.getConfiguration('gopls.analyses');
-
+		const defaultGoplsConfig = getGoplsConfig();
 		interface TestCase {
 			name: string;
 			section: string;

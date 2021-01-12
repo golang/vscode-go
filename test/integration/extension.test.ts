@@ -192,7 +192,7 @@ suite('Go Extension Tests', function () {
 	}
 
 	test('Test Definition Provider using godoc', async () => {
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'godoc' }
 		});
 		await testDefinitionProvider(config);
@@ -204,7 +204,7 @@ suite('Go Extension Tests', function () {
 			// gogetdoc is not installed, so skip the test
 			return;
 		}
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'gogetdoc' }
 		});
 		await testDefinitionProvider(config);
@@ -243,7 +243,7 @@ encountered.
 				['s string']
 			]
 		];
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'godoc' }
 		});
 		await testSignatureHelpProvider(config, testCases);
@@ -286,7 +286,7 @@ It returns the number of bytes written and any write error encountered.
 				['s string']
 			]
 		];
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'gogetdoc' }
 		});
 		await testSignatureHelpProvider(config, testCases);
@@ -313,7 +313,7 @@ encountered.
 				`This is an unexported function so couldn't get this comment on hover :( Not\nanymore!!\n`
 			]
 		];
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'godoc' }
 		});
 		await testHoverProvider(config, testCases);
@@ -358,7 +358,7 @@ It returns the number of bytes written and any write error encountered.
 				'IPv4Mask returns the IP mask (in 4-byte form) of the\nIPv4 mask a.b.c.d.\n'
 			]
 		];
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'gogetdoc' }
 		});
 		await testHoverProvider(config, testCases);
@@ -370,7 +370,7 @@ It returns the number of bytes written and any write error encountered.
 		sinon.spy(util, 'runTool');
 		sinon.spy(processutil, 'killProcessTree');
 
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
 			buildOnSave: { value: 'package' },
@@ -394,7 +394,7 @@ It returns the number of bytes written and any write error encountered.
 		// the adjustment is made consistently across multiple open text documents.
 		const file1 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')));
 		const file2 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')));
-		const warnings = await goLint(file2.uri, Object.create(vscode.workspace.getConfiguration('go'), {
+		const warnings = await goLint(file2.uri, Object.create(getGoConfig(), {
 			lintTool: { value: 'golint' },
 			lintFlags: { value: [] }
 		}), 'package');
@@ -412,7 +412,7 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Error checking', async () => {
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
 			lintOnSave: { value: 'package' },
@@ -575,7 +575,7 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Test Env Variables are passed to Tests', async () => {
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			testEnvVars: { value: { dummyEnvVar: 'dummyEnvValue', dummyNonString: 1 } }
 		});
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'sample_test.go'));
@@ -772,28 +772,28 @@ It returns the number of bytes written and any write error encountered.
 
 	test('Workspace Symbols', () => {
 		const workspacePath = path.join(fixturePath, 'vendoring');
-		const configWithoutIgnoringFolders = Object.create(vscode.workspace.getConfiguration('go'), {
+		const configWithoutIgnoringFolders = Object.create(getGoConfig(), {
 			gotoSymbol: {
 				value: {
 					ignoreFolders: []
 				}
 			}
 		});
-		const configWithIgnoringFolders = Object.create(vscode.workspace.getConfiguration('go'), {
+		const configWithIgnoringFolders = Object.create(getGoConfig(), {
 			gotoSymbol: {
 				value: {
 					ignoreFolders: ['vendor']
 				}
 			}
 		});
-		const configWithIncludeGoroot = Object.create(vscode.workspace.getConfiguration('go'), {
+		const configWithIncludeGoroot = Object.create(getGoConfig(), {
 			gotoSymbol: {
 				value: {
 					includeGoroot: true
 				}
 			}
 		});
-		const configWithoutIncludeGoroot = Object.create(vscode.workspace.getConfiguration('go'), {
+		const configWithoutIncludeGoroot = Object.create(getGoConfig(), {
 			gotoSymbol: {
 				value: {
 					includeGoroot: false
@@ -887,7 +887,7 @@ encountered.
 	test('Test Completion Snippets For Functions', async () => {
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'snippets.go'));
-		const baseConfig = vscode.workspace.getConfiguration('go');
+		const baseConfig = getGoConfig();
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(textDocument);
 
@@ -1081,7 +1081,7 @@ encountered.
 	test('Test No Completion Snippets For Functions', async () => {
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'nosnippets.go'));
-		const baseConfig = vscode.workspace.getConfiguration('go');
+		const baseConfig = getGoConfig();
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(textDocument);
 
@@ -1146,7 +1146,7 @@ encountered.
 	});
 
 	test('Test Completion on unimported packages', async () => {
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			autocompleteUnimportedPackages: { value: true }
 		});
 		const provider = new GoCompletionItemProvider();
@@ -1177,7 +1177,7 @@ encountered.
 	});
 
 	test('Test Completion on unimported packages (multiple)', async () => {
-		const config = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config = Object.create(getGoConfig(), {
 			gocodeFlags: { value: ['-builtin'] }
 		});
 		const provider = new GoCompletionItemProvider();
@@ -1293,7 +1293,7 @@ encountered.
 				}
 				fmt.Print("Go!")
 			}`;
-		const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+		const goConfig = Object.create(getGoConfig(), {
 			playground: { value: { run: true, openbrowser: false, share: false } }
 		});
 
@@ -1325,7 +1325,7 @@ encountered.
 				}
 				fmt.Print("Go!")
 			}`;
-		const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+		const goConfig = Object.create(getGoConfig(), {
 			playground: { value: { run: true, openbrowser: false, share: true } }
 		});
 
@@ -1355,7 +1355,7 @@ encountered.
 			func fantasy() {
 				fmt.Print("not a main package, sorry")
 			}`;
-		const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+		const goConfig = Object.create(getGoConfig(), {
 			playground: { value: { run: true, openbrowser: false, share: false } }
 		});
 
@@ -1417,7 +1417,7 @@ encountered.
 	});
 
 	test('Test Tags checking', async () => {
-		const config1 = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config1 = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'off' },
 			lintOnSave: { value: 'off' },
 			buildOnSave: { value: 'package' },
@@ -1425,21 +1425,21 @@ encountered.
 			buildTags: { value: 'randomtag' }
 		});
 
-		const config2 = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config2 = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'off' },
 			lintOnSave: { value: 'off' },
 			buildOnSave: { value: 'package' },
 			testTags: { value: 'randomtag' }
 		});
 
-		const config3 = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config3 = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'off' },
 			lintOnSave: { value: 'off' },
 			buildOnSave: { value: 'package' },
 			testTags: { value: 'randomtag othertag' }
 		});
 
-		const config4 = Object.create(vscode.workspace.getConfiguration('go'), {
+		const config4 = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'off' },
 			lintOnSave: { value: 'off' },
 			buildOnSave: { value: 'package' },

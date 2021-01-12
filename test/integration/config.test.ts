@@ -76,7 +76,7 @@ class MockCfg implements vscode.WorkspaceConfiguration {
 		// getter
 		Object.defineProperties(this, Object.getOwnPropertyDescriptors(workspaceSettings));
 		this.map = new Map<string, any>(Object.entries(workspaceSettings));
-		this.wrapped = vscode.workspace.getConfiguration('go');
+		this.wrapped = vscode.workspace.getConfiguration('go');  // intentionally using vscode API directly.
 	}
 
 	// tslint:disable: no-any

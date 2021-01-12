@@ -135,7 +135,7 @@ suite('Test Go Test', function () {
 		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean },
 		wantFiles: string[]) {
 
-		const config = Object.create(vscode.workspace.getConfiguration('go'));
+		const config = Object.create(getGoConfig());
 		const outputChannel = new FakeOutputChannel();
 
 		const testConfig = {
