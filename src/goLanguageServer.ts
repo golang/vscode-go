@@ -20,6 +20,7 @@ import {
 	CompletionItemKind,
 	ConfigurationParams,
 	ConfigurationRequest,
+	DocumentSelector,
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
@@ -293,6 +294,28 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 // The returned language client need to be started before use.
 export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
+
+	const documentSelector = [
+		// Filter out unsupported document types, e.g. vsls, git.
+		// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
+		//
+		// - files
+		{ language: 'go', scheme: 'file' },
+		{ language: 'go.mod', scheme: 'file' },
+		{ language: 'go.sum', scheme: 'file' },
+		// - unsaved files
+		{ language: 'go', scheme: 'untitled' },
+		{ language: 'go.mod', scheme: 'untitled' },
+		{ language: 'go.sum', scheme: 'untitled' },
+	];
+
+	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
+	if (isNightly()) {
+		documentSelector.push(
+			{ language: 'tmpl', scheme: 'file' },
+			{ language: 'tmpl', scheme: 'untitled' });
+	}
+
 	const c = new LanguageClient(
 		'go',  // id
 		cfg.serverName,  // name e.g. gopls
@@ -303,21 +326,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		},
 		{
 			initializationOptions: goplsWorkspaceConfig,
-			documentSelector: [
-				// Filter out unsupported document types, e.g. vsls, git.
-				// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
-				//
-				// - files
-				{ language: 'go', scheme: 'file' },
-				{ language: 'go.mod', scheme: 'file' },
-				{ language: 'go.sum', scheme: 'file' },
-				{ language: 'tmpl', scheme: 'file'},
-				// - unsaved files
-				{ language: 'go', scheme: 'untitled' },
-				{ language: 'go.mod', scheme: 'untitled' },
-				{ language: 'go.sum', scheme: 'untitled' },
-				{ language: 'tmpl', scheme: 'untitled'},
-			],
+			documentSelector,
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
 				code2Protocol: (uri: vscode.Uri): string =>
