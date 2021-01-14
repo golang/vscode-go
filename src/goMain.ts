@@ -573,7 +573,7 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	const showVersions: string[] = [];
 
 	let goExtensionVersionKey = 'go.extensionVersion';
-	if (isNightly()) {
+	if (isInPreviewMode()) {
 		goExtensionVersionKey = 'go.nightlyExtensionVersion';
 	}
 
