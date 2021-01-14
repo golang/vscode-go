@@ -30,7 +30,7 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	isNightly,
+	isInPreviewMode,
 	languageServerIsRunning,
 	promptForLanguageServerDefaultChange,
 	resetSurveyConfig,
@@ -101,7 +101,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 		});
 	}
 
-	if (isNightly()) {
+	if (isInPreviewMode()) {
 		promptForLanguageServerDefaultChange(cfg);
 
 		// For Nightly extension users, show a message directing them to forums

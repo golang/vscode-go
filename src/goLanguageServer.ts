@@ -310,7 +310,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	];
 
 	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
-	if (isNightly()) {
+	if (isInPreviewMode()) {
 		documentSelector.push(
 			{ language: 'tmpl', scheme: 'file' },
 			{ language: 'tmpl', scheme: 'untitled' });
@@ -952,7 +952,7 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	return time;
 };
 
-const acceptGoplsPrerelease = isNightly();
+const acceptGoplsPrerelease = isInPreviewMode();
 
 export const getLatestGoplsVersion = async (tool: Tool) => {
 	// If the user has a version of gopls that we understand,
@@ -1179,7 +1179,7 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
 	let probability = 0.01; // lower probability for the regular extension
-	if (isNightly()) {
+	if (isInPreviewMode()) {
 		probability = 0.0275;
 	}
 	cfg.promptThisMonth = Math.random() < probability;
@@ -1194,12 +1194,6 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 	}
 	cfg.dateComputedPromptThisMonth = now;
 	return cfg;
-}
-
-// isNightly returns true if the extension ID is the extension ID for the
-// Nightly extension.
-export function isNightly(): boolean {
-	return extensionId === 'golang.go-nightly';
 }
 
 async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
@@ -1604,13 +1598,22 @@ Please tell us why you had to disable the language server.
 }
 
 interface ExtensionInfo {
-	version: string;  // Extension version
+	version?: string;  // Extension version
 	appName: string;  // The application name of the editor, like 'VS Code'
+	isPreview?: boolean;  // if the extension runs in preview mode (e.g. Nightly)
 }
 
 function getExtensionInfo(): ExtensionInfo {
-	const version = vscode.extensions.getExtension(extensionId)?.packageJSON?.version;
+	const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
+	const version = packageJSON?.version;
 	const appName = vscode.env.appName;
-	return { version, appName };
+	const isPreview = !!(packageJSON?.preview);
+	return { version, appName, isPreview };
+}
 
+// isInPreviewMode returns true if the extension's preview mode is set to true.
+// In the Nightly extension and the dev extension built from master, the preview
+// is set to true.
+export function isInPreviewMode(): boolean {
+	return getExtensionInfo().isPreview;
 }
