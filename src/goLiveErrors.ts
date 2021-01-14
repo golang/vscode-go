@@ -8,11 +8,12 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
-import { getBinPath, getGoConfig } from './util';
+import { getBinPath } from './util';
 
 // Interface for settings configuration for adding and removing tags
 interface GoLiveErrorsConfig {

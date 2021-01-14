@@ -12,15 +12,15 @@ import { Configuration } from '../../src/config';
 suite('GoConfiguration Tests', () => {
 	function check(trusted: boolean, workspaceConfig: { [key: string]: any }, key: string, expected: any) {
 		const getConfigurationFn = (section: string) => new MockCfg(workspaceConfig);
-		const cfg = (new Configuration(trusted, getConfigurationFn)).get();
+		const cfg = (new Configuration(trusted, getConfigurationFn)).get('go');
 
 		const got0 = JSON.stringify(cfg.get(key));
 		const got1 = JSON.stringify(cfg[key]);
 		const want = JSON.stringify(expected);
 		assert.strictEqual(got0, want, `cfg.get(${key}) = ${got0}, want ${want}`);
 		assert.strictEqual(got1, want, `cfg[${key}] = ${got1}, want ${want}`);
-
 	}
+
 	test('trusted workspace', () => {
 		check(true, { goroot: 'goroot_val' }, 'goroot', 'goroot_val');
 		check(true, { gopath: 'gopath_val' }, 'gopath', 'gopath_val');
@@ -39,6 +39,27 @@ suite('GoConfiguration Tests', () => {
 
 		check(false, { buildFlags: ['-v'] }, 'buildFlags', ['-v']);
 		check(false, { languageServerFlags: ['-rpc.trace'] }, 'languageServerFlags', ['-rpc.trace']);
+	});
+
+	function checkGopls(trusted: boolean, workspaceConfig: { [key: string]: any }, key: string, expected: any) {
+		const getConfigurationFn = (section: string) => new MockCfg(workspaceConfig);
+		const cfg = (new Configuration(trusted, getConfigurationFn)).get('gopls');
+
+		const got0 = JSON.stringify(cfg.get(key));
+		const got1 = JSON.stringify(cfg[key]);
+		const want = JSON.stringify(expected);
+		assert.strictEqual(got0, want, `cfg.get(${key}) = ${got0}, want ${want}`);
+		assert.strictEqual(got1, want, `cfg[${key}] = ${got1}, want ${want}`);
+	}
+
+	test('trusted workspace (gopls settings)', () => {
+		checkGopls(true, { buildFlags: '-v' }, 'buildFlags', '-v');
+		checkGopls(true, { env: { GOBIN: 'foo' } }, 'env', { GOBIN: 'foo' });
+	});
+
+	test('untrusted workspace (gopls settings)', () => {
+		checkGopls(false, { buildFlags: '-v' }, 'buildFlags', '-v');
+		checkGopls(false, { env: { GOBIN: 'foo' } }, 'env', { GOBIN: 'foo' });
 	});
 });
 

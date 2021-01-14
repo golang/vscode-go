@@ -8,6 +8,7 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { getTextEditForAddImport } from './goImport';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
@@ -17,7 +18,6 @@ import {
 	byteOffsetAt,
 	getBinPath,
 	getCurrentGoPath,
-	getGoConfig,
 	getParametersAndReturnType,
 	goBuiltinTypes,
 	goKeywords,

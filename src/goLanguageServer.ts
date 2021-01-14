@@ -33,6 +33,8 @@ import {
 import {
 	LanguageClient
 } from 'vscode-languageclient/node';
+import WebRequest = require('web-request');
+import { getGoConfig, getGoplsConfig } from './config';
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
@@ -58,15 +60,11 @@ import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
 	getCurrentGoPath,
-	getGoConfig,
-	getGoplsConfig,
 	getGoVersion,
 	getWorkspaceFolderPath,
 	removeDuplicateDiagnostics
 } from './util';
 import { getToolFromToolPath } from './utils/pathUtils';
-
-import WebRequest = require('web-request');
 
 export interface LanguageServerConfig {
 	serverName: string;

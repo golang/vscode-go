@@ -7,9 +7,10 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { byteOffsetAt, getBinPath, getFileArchive, getGoConfig } from './util';
+import { byteOffsetAt, getBinPath, getFileArchive } from './util';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {

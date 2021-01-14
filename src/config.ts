@@ -20,7 +20,7 @@ export async function initConfig(ctx: vscode.ExtensionContext) {
 	const isTrusted = getFromWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, false);
 	defaultConfig = new Configuration(isTrusted, vscode.workspace.getConfiguration);
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.workspace.isTrusted.toggle', defaultConfig.toggleWorkspaceIsTrusted)
+		vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted)
 	);
 
 	if (isTrusted) {
@@ -40,7 +40,7 @@ export async function initConfig(ctx: vscode.ExtensionContext) {
 		'More Info');
 	switch (val) {
 		case 'Trust This Workspace':
-			await defaultConfig.toggleWorkspaceIsTrusted();
+			await toggleWorkspaceIsTrusted();
 			break;
 		case 'More Info':
 			vscode.env.openExternal(
@@ -58,22 +58,27 @@ function ignoredWorkspaceConfig(cfg: vscode.WorkspaceConfiguration, keys: string
 	});
 }
 
+async function toggleWorkspaceIsTrusted() {
+	const v = defaultConfig.toggleWorkspaceIsTrusted();
+	await updateWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, v);
+}
+
 // Go extension configuration for a workspace.
 export class Configuration {
 	constructor(
-		private workspaceIsTrusted: boolean,
-		private getConfiguration: typeof vscode.workspace.getConfiguration) { }
+		private workspaceIsTrusted = false,
+		private getConfiguration = vscode.workspace.getConfiguration) { }
 
-	public async toggleWorkspaceIsTrusted() {
+	public toggleWorkspaceIsTrusted() {
 		this.workspaceIsTrusted = !this.workspaceIsTrusted;
-		await updateWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, this.workspaceIsTrusted);
+		return this.workspaceIsTrusted;
 	}
 
 	// returns a Proxied vscode.WorkspaceConfiguration, which prevents
 	// from using the workspace configuration if the workspace is untrusted.
-	public get<T>(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
-		const cfg = this.getConfiguration('go', uri);
-		if (this.workspaceIsTrusted) {
+	public get<T>(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+		const cfg = this.getConfiguration(section, uri);
+		if (section !== 'go' || this.workspaceIsTrusted) {
 			return cfg;
 		}
 
@@ -116,4 +121,25 @@ class WrappedConfiguration implements vscode.WorkspaceConfiguration {
 		overrideInLanguage?: boolean): Thenable<void> {
 		return this._wrapped.update(section, value, configurationTarget, overrideInLanguage);
 	}
+}
+
+// getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
+export const getGoConfig = (uri?: vscode.Uri) => {
+	return getConfig('go', uri);
+};
+
+// getGoplsConfig returns the user's gopls configuration.
+export function getGoplsConfig(uri?: vscode.Uri) {
+	return getConfig('gopls', uri);
+}
+
+function getConfig(section: string, uri?: vscode.Uri) {
+	if (!uri) {
+		if (vscode.window.activeTextEditor) {
+			uri = vscode.window.activeTextEditor.document.uri;
+		} else {
+			uri = null;
+		}
+	}
+	return defaultConfig ? defaultConfig.get(section, uri) : new Configuration().get(section, uri);
 }

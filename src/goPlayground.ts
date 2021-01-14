@@ -6,9 +6,10 @@
 import { execFile } from 'child_process';
 import * as path from 'path';
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { getBinPath, getGoConfig } from './util';
+import { getBinPath } from './util';
 
 const TOOL_CMD_NAME = 'goplay';
 

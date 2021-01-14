@@ -8,10 +8,10 @@
 import fs = require('fs');
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
-import { getGoConfig } from './util';
 import { fixDriveCasingInWindows } from './utils/pathUtils';
 
 let gutterSvgs: { [key: string]: string; };

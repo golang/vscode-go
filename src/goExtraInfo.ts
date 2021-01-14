@@ -7,8 +7,8 @@
 
 import vscode = require('vscode');
 import { CancellationToken, Hover, HoverProvider, Position, TextDocument, WorkspaceConfiguration } from 'vscode';
+import { getGoConfig } from './config';
 import { definitionLocation } from './goDeclaration';
-import { getGoConfig } from './util';
 
 export class GoHoverProvider implements HoverProvider {
 	private goConfig: WorkspaceConfiguration | undefined;

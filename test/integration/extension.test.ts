@@ -9,6 +9,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
+import { getGoConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
 import { GoDefinitionProvider } from '../../src/goDeclaration';
@@ -33,7 +34,6 @@ import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,
 	getCurrentGoPath,
-	getGoConfig,
 	getImportPath,
 	getToolsGopath,
 	handleDiagnosticErrors,

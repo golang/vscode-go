@@ -9,7 +9,7 @@
 import * as path from 'path';
 import semver = require('semver');
 import vscode = require('vscode');
-import { initConfig } from './config';
+import { getGoConfig, initConfig } from './config';
 import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
@@ -63,7 +63,6 @@ import {
 	getBinPath,
 	getCurrentGoPath,
 	getExtensionCommands,
-	getGoConfig,
 	getGoEnv,
 	getGoVersion,
 	getToolsGopath,

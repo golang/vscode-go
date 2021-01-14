@@ -7,10 +7,10 @@
 
 import vscode = require('vscode');
 import { CancellationToken, CodeLens, Command, TextDocument } from 'vscode';
+import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
-import { getGoConfig } from './util';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	private readonly benchmarkRegex = /^Benchmark.+/;

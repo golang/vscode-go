@@ -11,6 +11,7 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
+import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { languageClient } from './goLanguageServer';
@@ -157,16 +158,6 @@ let cachedGoVersion: GoVersion | undefined;
 let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
-// getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing.
-export const getGoConfig = (uri?: vscode.Uri) => {
-	return getConfig('go', uri);
-};
-
-// getGoplsConfig returns the user's gopls configuration.
-export function getGoplsConfig(uri?: vscode.Uri) {
-	return getConfig('gopls', uri);
-}
-
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
 export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfiguration) {
 	// useGoProxyToCheckForToolUpdates deprecation
@@ -181,17 +172,6 @@ export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfigurati
 		}
 	}
 	return gocfg.get('toolsManagement.checkForUpdates') as string;
-}
-
-function getConfig(section: string, uri?: vscode.Uri) {
-	if (!uri) {
-		if (vscode.window.activeTextEditor) {
-			uri = vscode.window.activeTextEditor.document.uri;
-		} else {
-			uri = null;
-		}
-	}
-	return vscode.workspace.getConfiguration(section, uri);
 }
 
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {

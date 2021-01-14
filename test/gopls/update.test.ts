@@ -9,9 +9,10 @@ import moment = require('moment');
 import semver = require('semver');
 import sinon = require('sinon');
 import * as vscode from 'vscode';
+import { getGoConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
 import { getTool, Tool } from '../../src/goTools';
-import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig, getGoConfig } from '../../src/util';
+import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';
 
 suite('getCheckForToolUpdatesConfig tests', () => {
 	const CHECK_FOR_UPDATES = 'toolsManagement.checkForUpdates';

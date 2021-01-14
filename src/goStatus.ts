@@ -8,11 +8,12 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
 import { buildLanguageServerConfig, getLocalGoplsVersion, languageServerIsRunning, serverOutputChannel } from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
-import { getGoConfig, getGoVersion } from './util';
+import { getGoVersion } from './util';
 
 export let outputChannel = vscode.window.createOutputChannel('Go');
 
