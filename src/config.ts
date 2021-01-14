@@ -4,22 +4,76 @@
  *--------------------------------------------------------*/
 
 import vscode = require('vscode');
+import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
 
+const WORKSPACE_IS_TRUSTED_KEY = 'WORKSPACE_IS_TRUSTED_KEY';
 const SECURITY_SENSITIVE_CONFIG: string[] = [
 	'goroot', 'gopath', 'toolsGopath', 'alternateTools'
 ];
 
+let defaultConfig: Configuration = null;
+
+// Initialize the singleton defaultConfig and register related commands.
+// Prompt if workspace configuration was found but had to be ignored until
+// the user has to explicitly opt in to trust the workspace.
+export async function initConfig(ctx: vscode.ExtensionContext) {
+	const isTrusted = getFromWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, false);
+	defaultConfig = new Configuration(isTrusted, vscode.workspace.getConfiguration);
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.workspace.isTrusted.toggle', defaultConfig.toggleWorkspaceIsTrusted)
+	);
+
+	if (isTrusted) {
+		return;
+	}
+	const ignored = ignoredWorkspaceConfig(vscode.workspace.getConfiguration('go'), SECURITY_SENSITIVE_CONFIG);
+	if (ignored.length === 0) {
+		return;
+	}
+	const ignoredSettings = ignored.map((x) => `"go.${x}"`).join(',');
+	const val = await vscode.window.showWarningMessage(
+		`Some workspace/folder-level settings (${ignoredSettings}) from the untrusted workspace are disabled ` +
+		`by default. If this workspace is trusted, explicitly enable the workspace/folder-level settings ` +
+		`by running the "Go: Toggle Workspace Trust Flag" command.`,
+		'OK',
+		'Trust This Workspace',
+		'More Info');
+	switch (val) {
+		case 'Trust This Workspace':
+			await defaultConfig.toggleWorkspaceIsTrusted();
+			break;
+		case 'More Info':
+			vscode.env.openExternal(
+				vscode.Uri.parse(`https://github.com/golang/vscode-go/blob/master/docs/settings.md#security`));
+			break;
+		default:
+			break;
+	}
+}
+
+function ignoredWorkspaceConfig(cfg: vscode.WorkspaceConfiguration, keys: string[]) {
+	return keys.filter((key) => {
+		const inspect = cfg.inspect(key);
+		return inspect.workspaceValue !== undefined || inspect.workspaceFolderValue !== undefined;
+	});
+}
+
 // Go extension configuration for a workspace.
 export class Configuration {
 	constructor(
-		private isTrustedWorkspace: boolean,
+		private workspaceIsTrusted: boolean,
 		private getConfiguration: typeof vscode.workspace.getConfiguration) { }
+
+	public async toggleWorkspaceIsTrusted() {
+		this.workspaceIsTrusted = !this.workspaceIsTrusted;
+		await updateWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, this.workspaceIsTrusted);
+	}
 
 	// returns a Proxied vscode.WorkspaceConfiguration, which prevents
 	// from using the workspace configuration if the workspace is untrusted.
 	public get<T>(uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		const cfg = this.getConfiguration('go', uri);
-		if (this.isTrustedWorkspace) {
+		if (this.workspaceIsTrusted) {
 			return cfg;
 		}
 

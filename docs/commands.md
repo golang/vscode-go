@@ -206,3 +206,7 @@ Show the current Go survey configuration
 ### `Go: Reset Survey Configuration`
 
 Reset the current Go survey configuration history
+
+### `Go: Toggle Workspace Trust Flag`
+
+Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces.

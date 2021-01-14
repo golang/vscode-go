@@ -17,6 +17,10 @@ To view the list of settings:
 3. Click on the `Feature Contributions` tab.
 4. Scroll through the list under `Settings`.
 
+## Security
+
+This extension runs a few [third-party command-line tools](tools.md) found from the locations determined by the `PATH` or `Path` environment variable, and the settings such as `"go.alternateTools"` or `"go.toolsGopath"`. Configuring them in workspace settings allows users to conveniently select a different set of tools based on project's need, but also allows attackers to run arbitrary binaries on your machine if they successfuly convince you to open a random repository. In order to reduce the security risk, the extension reads those settings from user settings by default. If the repository can be trusted and workspace settings must be used, you can mark the workspace as a trusted workspace using the `"Go: Toggle Workspace Trust Flag"` command.
+
 ## Detailed list
 
 <!-- Everything below this line is generated. DO NOT EDIT. -->

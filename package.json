@@ -400,6 +400,11 @@
         "command": "go.survey.resetConfig",
         "title": "Go: Reset Survey Configuration",
         "description": "Reset the current Go survey configuration history"
+      },
+      {
+        "command": "go.workspace.isTrusted.toggle",
+        "title": "Go: Toggle Workspace Trust Flag",
+        "description": "Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces."
       }
     ],
     "breakpoints": [

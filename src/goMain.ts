@@ -9,6 +9,7 @@
 import * as path from 'path';
 import semver = require('semver');
 import vscode = require('vscode');
+import { initConfig } from './config';
 import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
@@ -83,16 +84,19 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // the configuration of the server.
 export let restartLanguageServer = () => { return; };
 
-export function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext) {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {  // Make sure this does not run when running in test.
 		return;
 	}
-	const cfg = getGoConfig();
-	setLogConfig(cfg['logging']);
 
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
+
+	await initConfig(ctx);
+
+	const cfg = getGoConfig();
+	setLogConfig(cfg['logging']);
 
 	if (vscode.window.registerWebviewPanelSerializer) {
 		// Make sure we register a serializer in activation event
