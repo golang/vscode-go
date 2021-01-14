@@ -517,7 +517,7 @@
               },
               "args": {
                 "type": "array",
-                "description": "Command line arguments passed to the program.",
+                "description": "Command line arguments passed to the debugged program.",
                 "items": {
                   "type": "string"
                 },
@@ -570,7 +570,7 @@
               },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -782,7 +782,7 @@
                   "native",
                   "lldb"
                 ],
-                "description": "Backend used by delve. Only available in delve version 0.12.2 and above."
+                "description": "Backend used by delve. Only available in delve version 0.12.2 and above. Maps to dlv's `--backend` flag."
               },
               "logOutput": {
                 "type": "string",
@@ -1051,7 +1051,7 @@
               },
               "output": {
                 "type": "string",
-                "description": "Output path for the binary of delve",
+                "description": "Output path for the binary of delve. Maps to dlv's `--output` flag.",
                 "default": "debug"
               },
               "logOutput": {
