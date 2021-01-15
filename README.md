@@ -8,7 +8,7 @@ This extension provides rich language support for the [Go programming language](
 
 Take a look at the [Changelog](CHANGELOG.md) to learn about new features.
 
-> 📣 We plan to enable the language server ([`gopls`](docs/gopls.md)) by default in early 2021. The language server
+> 📣 We will enable the language server ([`gopls`](docs/gopls.md)) by default in the end of Jan 2021. The language server
 > provides language features like intellisense, formatting, refactoring, analysis and many more.
 > We recommend switching to the language server now (`"go.useLanguageServer": true`) to confirm it works well for you.
 > Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you notice bugs or missing features.
