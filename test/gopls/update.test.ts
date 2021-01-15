@@ -9,9 +9,10 @@ import moment = require('moment');
 import semver = require('semver');
 import sinon = require('sinon');
 import * as vscode from 'vscode';
+import { getGoConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
 import { getTool, Tool } from '../../src/goTools';
-import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig, getGoConfig } from '../../src/util';
+import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';
 
 suite('getCheckForToolUpdatesConfig tests', () => {
 	const CHECK_FOR_UPDATES = 'toolsManagement.checkForUpdates';
@@ -19,10 +20,10 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	const defaultConfigInspector = getGoConfig().inspect(CHECK_FOR_UPDATES);
 
 	test('default is as expected', () => {
-		const {key, defaultValue, globalValue, workspaceValue} = defaultConfigInspector;
+		const { key, defaultValue, globalValue, workspaceValue } = defaultConfigInspector;
 		assert.deepStrictEqual(
 			{ key, defaultValue, globalValue, workspaceValue },
-			{ key: `go.${CHECK_FOR_UPDATES}`, defaultValue : 'proxy', globalValue: undefined, workspaceValue: undefined},
+			{ key: `go.${CHECK_FOR_UPDATES}`, defaultValue: 'proxy', globalValue: undefined, workspaceValue: undefined },
 			CHECK_FOR_UPDATES);
 		assert.strictEqual(getGoConfig().get(LEGACY_CHECK_FOR_UPDATES), true, LEGACY_CHECK_FOR_UPDATES);
 	});
@@ -31,14 +32,14 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	// vscode.getConfiguration is read-only, and doesn't allow property modification
 	// so working with sinon directly doesn't seem possible.
 	class TestWorkspaceConfiguration implements vscode.WorkspaceConfiguration {
-		constructor(private _wrapped: vscode.WorkspaceConfiguration) {}
+		constructor(private _wrapped: vscode.WorkspaceConfiguration) { }
 		public get<T>(params: string) { return this._wrapped.get<T>(params); }
 		public has(params: string) { return this._wrapped.has(params); }
 		public inspect<T>(params: string) { return this._wrapped.inspect<T>(params); }
 		public update<T>(
 			section: string, value: any,
 			configurationTarget?: vscode.ConfigurationTarget | boolean, overrideInLanguage?: boolean) {
-				return this._wrapped.update(section, value, configurationTarget, overrideInLanguage);
+			return this._wrapped.update(section, value, configurationTarget, overrideInLanguage);
 		}
 		[key: string]: any;
 	}
@@ -62,7 +63,7 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 			.withArgs(LEGACY_CHECK_FOR_UPDATES).returns(false)
 			.withArgs(CHECK_FOR_UPDATES).returns('proxy');
 		sinon.stub(gocfg, 'inspect').withArgs(CHECK_FOR_UPDATES).returns(
-			Object.assign({}, defaultConfigInspector, {	globalValue: 'proxy' }));
+			Object.assign({}, defaultConfigInspector, { globalValue: 'proxy' }));
 
 		assert.strictEqual(getCheckForToolUpdatesConfig(gocfg), 'proxy');
 	});
@@ -72,7 +73,7 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 			.withArgs(LEGACY_CHECK_FOR_UPDATES).returns(false)
 			.withArgs(CHECK_FOR_UPDATES).returns('off');
 		sinon.stub(gocfg, 'inspect').withArgs(CHECK_FOR_UPDATES).returns(
-			Object.assign({}, defaultConfigInspector, {	workspaceValue: 'off' }));
+			Object.assign({}, defaultConfigInspector, { workspaceValue: 'off' }));
 		assert.strictEqual(getCheckForToolUpdatesConfig(gocfg), 'off');
 	});
 });
@@ -174,10 +175,6 @@ suite('gopls update tests', () => {
 				version: '',
 				checkForUpdates: 'proxy',
 				env: {},
-				features: {
-					diagnostics: true,
-					documentLink: true,
-				},
 				flags: [],
 				modtime: new Date(),
 				serverName: 'gopls',

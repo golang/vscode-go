@@ -5,10 +5,11 @@ import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
 import parse = require('yargs-parser');
+import { getGoConfig } from '../../src/config';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import goEnv = require('../../src/goEnv');
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { getGoConfig, rmdirRecursive } from '../../src/util';
+import { rmdirRecursive } from '../../src/util';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -138,7 +139,7 @@ suite('Debug Environment Variable Merge Test', () => {
 
 suite('Debug Configuration Merge User Settings', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	const utils = require('../../src/util');
+	const config = require('../../src/config');
 
 	teardown(() => sinon.restore());
 
@@ -166,7 +167,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			}) as vscode.WorkspaceConfiguration;
 
 			// Adjust the workspace config.
-			sinon.stub(utils, 'getGoConfig').returns(goConfig);
+			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg2 = {
 				name: 'Launch',
@@ -208,7 +209,7 @@ suite('Debug Configuration Merge User Settings', () => {
 					}
 				}
 			}) as vscode.WorkspaceConfiguration;
-			sinon.stub(utils, 'getGoConfig').returns(goConfig);
+			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg = {
 				name: 'Launch',
@@ -249,7 +250,7 @@ suite('Debug Configuration Merge User Settings', () => {
 					}
 				}
 			}) as vscode.WorkspaceConfiguration;
-			sinon.stub(utils, 'getGoConfig').returns(goConfig);
+			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg = {
 				name: 'Launch',

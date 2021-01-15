@@ -11,6 +11,7 @@ import path = require('path');
 import { SemVer } from 'semver';
 import util = require('util');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { getLanguageServerToolPath } from './goLanguageServer';
@@ -32,7 +33,6 @@ import { getFromWorkspaceState } from './stateUtils';
 import {
 	getBinPath,
 	getBinPathWithExplanation,
-	getGoConfig,
 	getGoVersion,
 	getTempFilePath,
 	getWorkspaceFolderPath,

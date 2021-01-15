@@ -3,14 +3,13 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import * as assert from 'assert';
-import cp = require('child_process');
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import sinon = require('sinon');
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
+import { getGoConfig } from '../../src/config';
 import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
-import { getGoConfig } from '../../src/util';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory

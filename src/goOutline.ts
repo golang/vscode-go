@@ -7,12 +7,12 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import {
 	getBinPath,
 	getFileArchive,
-	getGoConfig,
 	makeMemoizedByteOffsetConverter
 } from './util';
 import {killProcess} from './utils/processUtils';

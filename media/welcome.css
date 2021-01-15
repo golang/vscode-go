@@ -1,0 +1,27 @@
+/*---------------------------------------------------------
+ * Copyright 2020 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
+
+.header {
+  align-items: center;
+  display: flex;
+}
+
+.logo {
+  width: 4rem;
+}
+
+.title {
+  padding-left: 1rem;
+}
+
+.subtitle {
+  align-items: baseline;
+  display: flex;
+}
+
+.release-notes {
+  padding-left: 1rem;
+}
+

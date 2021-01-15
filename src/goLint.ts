@@ -5,11 +5,11 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
-	getGoConfig,
 	getToolsGopath,
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,

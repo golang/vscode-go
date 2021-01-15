@@ -44,6 +44,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	[key: string]: any;
 	program: string;
 	stopOnEntry?: boolean;
+	dlvFlags?: string[];
 	args?: string[];
 	showLog?: boolean;
 	logOutput?: string;
@@ -674,6 +675,11 @@ class DelveClient extends DAPClient {
 
 		const dlvArgs = new Array<string>();
 		dlvArgs.push('dap');
+		// add user-specified dlv flags first. When duplicate flags are specified,
+		// dlv doesn't mind but accepts the last flag value.
+		if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+			dlvArgs.push(...launchArgs.dlvFlags);
+		}
 		dlvArgs.push(`--listen=${launchArgs.host}:${launchArgs.port}`);
 		if (launchArgs.showLog) {
 			dlvArgs.push('--log=' + launchArgs.showLog.toString());
@@ -681,7 +687,6 @@ class DelveClient extends DAPClient {
 		if (launchArgs.logOutput) {
 			dlvArgs.push('--log-output=' + launchArgs.logOutput);
 		}
-
 		log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
 		const dir = parseProgramArgSync(launchArgs).dirname;

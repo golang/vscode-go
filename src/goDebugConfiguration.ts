@@ -9,11 +9,12 @@ import path = require('path');
 import vscode = require('vscode');
 import parse = require('yargs-parser');
 import unparse = require('yargs-unparser');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoConfig, resolvePath } from './util';
+import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {

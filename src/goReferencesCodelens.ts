@@ -8,10 +8,11 @@
 import { isAbsolute } from 'path';
 import vscode = require('vscode');
 import { CancellationToken, CodeLens, Range, TextDocument } from 'vscode';
+import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { GoReferenceProvider } from './goReferences';
-import { getBinPath, getGoConfig } from './util';
+import { getBinPath } from './util';
 
 const methodRegex = /^func\s+\(\s*\w+\s+\*?\w+\s*\)\s+/;
 

@@ -5,6 +5,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
@@ -13,7 +14,6 @@ import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { getTestFlags } from './testUtils';
 import {
 	getCurrentGoPath,
-	getGoConfig,
 	getModuleCache,
 	getTempFilePath,
 	getWorkspaceFolderPath,

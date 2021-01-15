@@ -7,7 +7,10 @@
 'use strict';
 
 import * as path from 'path';
+import semver = require('semver');
 import vscode = require('vscode');
+import { getGoConfig, initConfig } from './config';
+import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -30,7 +33,7 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	isNightly,
+	isInPreviewMode,
 	languageServerIsRunning,
 	promptForLanguageServerDefaultChange,
 	resetSurveyConfig,
@@ -60,7 +63,6 @@ import {
 	getBinPath,
 	getCurrentGoPath,
 	getExtensionCommands,
-	getGoConfig,
 	getGoEnv,
 	getGoVersion,
 	getToolsGopath,
@@ -70,6 +72,7 @@ import {
 	resolvePath,
 } from './util';
 import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { WelcomePanel } from './welcome';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -80,18 +83,30 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // the configuration of the server.
 export let restartLanguageServer = () => { return; };
 
-export function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext) {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {  // Make sure this does not run when running in test.
 		return;
 	}
-	const cfg = getGoConfig();
-	setLogConfig(cfg['logging']);
 
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
-	if (isNightly()) {
+	await initConfig(ctx);
+
+	const cfg = getGoConfig();
+	setLogConfig(cfg['logging']);
+
+	if (vscode.window.registerWebviewPanelSerializer) {
+		// Make sure we register a serializer in activation event
+		vscode.window.registerWebviewPanelSerializer(WelcomePanel.viewType, {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+				WelcomePanel.revive(webviewPanel, ctx.extensionUri);
+			}
+		});
+	}
+
+	if (isInPreviewMode()) {
 		promptForLanguageServerDefaultChange(cfg);
 
 		// For Nightly extension users, show a message directing them to forums
@@ -99,10 +114,29 @@ export function activate(ctx: vscode.ExtensionContext) {
 		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
 	}
 
+	// Show the Go welcome page on update.
+	showGoWelcomePage(ctx);
+
 	const configGOROOT = getGoConfig()['goroot'];
 	if (!!configGOROOT) {
 		logVerbose(`go.goroot = '${configGOROOT}'`);
 		setCurrentGoRoot(resolvePath(configGOROOT));
+	}
+
+	// Present a warning about the deprecation of the go.documentLink setting.
+	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
+	if (experimentalFeatures) {
+		// TODO(rstambler): Eventually notify about deprecation of all of the settings.
+		if (experimentalFeatures['documentLink'] === false) {
+			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
+	Please use 'gopls.importShortcut' instead.
+	See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+		}
+		if (experimentalFeatures['diagnostics'] === false) {
+			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.diagnostics' setting is now deprecated.
+If you would like additional configuration for diagnostics from gopls, please see and response to
+https://github.com/golang/vscode-go/issues/50.`);
+		}
 	}
 
 	updateGoVarsFromConfig().then(async () => {
@@ -463,6 +497,11 @@ export function activate(ctx: vscode.ExtensionContext) {
 		showServerOutputChannel();
 	}));
 
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.welcome', () => {
+			WelcomePanel.createOrShow(ctx.extensionUri);
+		}));
+
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
 		if (!languageServerIsRunning) {
 			vscode.window.showErrorMessage('"Go: Toggle gc details" command is available only when the language server is running');
@@ -531,6 +570,28 @@ export function activate(ctx: vscode.ExtensionContext) {
 	});
 }
 
+function showGoWelcomePage(ctx: vscode.ExtensionContext) {
+	// Update this list of versions when there is a new version where we want to
+	// show the welcome page on update.
+	const showVersions: string[] = [];
+
+	let goExtensionVersionKey = 'go.extensionVersion';
+	if (isInPreviewMode()) {
+		goExtensionVersionKey = 'go.nightlyExtensionVersion';
+	}
+
+	const goExtension = vscode.extensions.getExtension(extensionId)!;
+	const goExtensionVersion = goExtension.packageJSON.version;
+	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '0.0.0');
+
+	if (semver.gt(semver.coerce(goExtensionVersion), semver.coerce(savedGoExtensionVersion))) {
+		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
+		if (showVersions.includes(goExtensionVersion)) {
+			WelcomePanel.createOrShow(ctx.extensionUri);
+		}
+	}
+}
+
 async function showGoNightlyWelcomeMessage() {
 	const shown = getFromGlobalState(goNightlyPromptKey, false);
 	if (shown === true) {
@@ -594,7 +655,7 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 			if (document.languageId !== 'go') {
 				return;
 			}
-			const session =  vscode.debug.activeDebugSession;
+			const session = vscode.debug.activeDebugSession;
 			if (session && (session.type === 'go' || session.type === 'godlvdap')) {
 				const neverAgain = { title: `Don't Show Again` };
 				const ignoreActiveDebugWarningKey = 'ignoreActiveDebugWarningKey';

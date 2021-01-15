@@ -15,8 +15,9 @@ import {
 	TextDocument,
 	WorkspaceConfiguration
 } from 'vscode';
+import { getGoConfig } from './config';
 import { definitionLocation } from './goDeclaration';
-import { getGoConfig, getParametersAndReturnType, isPositionInComment, isPositionInString } from './util';
+import { getParametersAndReturnType, isPositionInComment, isPositionInString } from './util';
 
 export class GoSignatureHelpProvider implements SignatureHelpProvider {
 	constructor(private goConfig?: WorkspaceConfiguration) {}

@@ -7,11 +7,12 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { Edit, FilePatch, getEditsFromUnifiedDiffStr, isDiffToolAvailable } from './diffUtils';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getGoConfig } from './util';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath } from './util';
 import {killProcessTree} from './utils/processUtils';
 
 export class GoRenameProvider implements vscode.RenameProvider {

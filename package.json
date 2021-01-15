@@ -1,14 +1,15 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.20.2",
+  "version": "0.21.0",
+  "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
     "name": "Go Team at Google"
   },
   "license": "MIT",
-  "icon": "images/go-logo-blue.png",
+  "icon": "media/go-logo-blue.png",
   "categories": [
     "Programming Languages",
     "Snippets",
@@ -97,7 +98,8 @@
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
     "onDebugInitialConfigurations",
-    "onDebugResolve:go"
+    "onDebugResolve:go",
+    "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
   "contributes": {
@@ -129,6 +131,15 @@
         ],
         "aliases": [
           "Go Checksum File"
+        ]
+      },
+      {
+        "id": "tmpl",
+        "extensions": [
+          ".tmpl"
+        ],
+        "aliases": [
+          "Go Template File"
         ]
       }
     ],
@@ -249,6 +260,11 @@
         "command": "go.extractServerChannel",
         "title": "Go: Extract Language Server Logs To Editor",
         "description": "Extract logs in the `gopls (server)` output channel to the editor."
+      },
+      {
+        "command": "go.welcome",
+        "title": "Go: Welcome",
+        "description": "Open the welcome page for the Go extension."
       },
       {
         "command": "go.toggle.gc_details",
@@ -384,6 +400,11 @@
         "command": "go.survey.resetConfig",
         "title": "Go: Reset Survey Configuration",
         "description": "Reset the current Go survey configuration history"
+      },
+      {
+        "command": "go.workspace.isTrusted.toggle",
+        "title": "Go: Toggle Workspace Trust Flag",
+        "description": "Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces."
       }
     ],
     "breakpoints": [
@@ -501,7 +522,7 @@
               },
               "args": {
                 "type": "array",
-                "description": "Command line arguments passed to the program.",
+                "description": "Command line arguments passed to the debugged program.",
                 "items": {
                   "type": "string"
                 },
@@ -509,7 +530,7 @@
               },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -544,13 +565,21 @@
               },
               "buildFlags": {
                 "type": "string",
-                "description": "Build flags, to be passed to the Go compiler.",
+                "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
                 "default": ""
               },
               "init": {
                 "type": "string",
-                "description": "Init file, executed by the terminal client.",
+                "description": "Init file, executed by the terminal client. Maps to dlv's `--init` flag.",
                 "default": ""
+              },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "remotePath": {
                 "type": "string",
@@ -611,7 +640,7 @@
                   "debuglineerr",
                   "rpc"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -658,7 +687,7 @@
                   1,
                   2
                 ],
-                "description": "Delve Api Version to use. Default value is 2.",
+                "description": "Delve Api Version to use. Default value is 2. Maps to dlv's `--api-version` flag.",
                 "default": 2
               },
               "stackTraceDepth": {
@@ -685,12 +714,20 @@
                   "local",
                   "remote"
                 ],
-                "description": "Indicates local or remote debugging.  Local maps to the dlv 'attach' command, remote maps to 'connect'.",
+                "description": "Indicates local or remote debugging. Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
+              },
+              "dlvFlags": {
+                "type": "array",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "showLog": {
                 "type": "boolean",
-                "description": "Show log output from the delve debugger.",
+                "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
                 "default": false
               },
               "cwd": {
@@ -750,7 +787,7 @@
                   "native",
                   "lldb"
                 ],
-                "description": "Backend used by delve. Only available in delve version 0.12.2 and above."
+                "description": "Backend used by delve. Only available in delve version 0.12.2 and above. Maps to dlv's `--backend` flag."
               },
               "logOutput": {
                 "type": "string",
@@ -761,7 +798,7 @@
                   "debuglineerr",
                   "rpc"
                 ],
-                "description": "Comma separated list of components that should produce debug output.",
+                "description": "Comma separated list of components that should produce debug output. Maps to `--log-output` flag.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -823,7 +860,7 @@
               }
             }
           }
-        }      
+        }
       }
     ],
     "configuration": {
@@ -912,7 +949,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'.",
+          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server.",
           "scope": "resource"
         },
         "go.vetFlags": {
@@ -950,7 +987,7 @@
         "go.inferGopath": {
           "type": "boolean",
           "default": false,
-          "description": "Infer GOPATH from the workspace root.",
+          "description": "Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
           "scope": "resource"
         },
         "go.gopath": {
@@ -959,13 +996,16 @@
             "null"
           ],
           "default": null,
-          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.",
+          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
           "scope": "machine-overridable"
         },
         "go.toolsGopath": {
-          "type": "string",
-          "default": "",
-          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
           "scope": "machine-overridable"
         },
         "go.goroot": {
@@ -974,7 +1014,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specifies the GOROOT to use when no environment variable is set.",
+          "description": "Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
           "scope": "machine-overridable"
         },
         "go.testOnSave": {
@@ -1118,7 +1158,7 @@
         "go.testEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the process that runs the Go tests",
+          "description": "Environment variables that will be passed to the process that runs the Go tests",
           "scope": "resource"
         },
         "go.testEnvFile": {
@@ -1151,7 +1191,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
           "scope": "resource"
         },
         "go.gocodeFlags": {
@@ -1222,27 +1262,6 @@
           "type": "array",
           "default": [],
           "description": "Flags like -rpc.trace and -logfile to be used while running the language server."
-        },
-        "go.languageServerExperimentalFeatures": {
-          "type": "object",
-          "properties": {
-            "diagnostics": {
-              "type": "boolean",
-              "default": true,
-              "description": "If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings."
-            },
-            "documentLink": {
-              "type": "boolean",
-              "default": true,
-              "description": "If true, the language server will provide clickable Godoc links for import statements."
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "diagnostics": true,
-            "documentLink": true
-          },
-          "description": "Use this setting to enable/disable experimental features from the language server."
         },
         "go.trace.server": {
           "type": "string",
@@ -1403,7 +1422,7 @@
             "enabled": {
               "type": "boolean",
               "default": false,
-              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found."
+              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found. Disabled when the language server is enabled."
             },
             "delay": {
               "type": "number",
@@ -1546,6 +1565,11 @@
               "type": "boolean",
               "default": true,
               "description": "If true, adds command to debug the test under the cursor to the editor context menu"
+            },
+            "benchmarkAtCursor": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, adds command to benchmark the test under the cursor to the editor context menu"
             }
           },
           "additionalProperties": false,
@@ -1553,6 +1577,7 @@
             "toggleTestFile": true,
             "addTags": true,
             "removeTags": false,
+            "fillStruct": false,
             "testAtCursor": true,
             "testFile": false,
             "testPackage": false,
@@ -1562,7 +1587,8 @@
             "addImport": true,
             "testCoverage": true,
             "playground": true,
-            "debugTestAtCursor": true
+            "debugTestAtCursor": true,
+            "benchmarkAtCursor": false
           },
           "description": "Experimental Feature: Enable/Disable entries from the context menu in the editor.",
           "scope": "resource"
@@ -1649,7 +1675,7 @@
         "go.alternateTools": {
           "type": "object",
           "default": {},
-          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in.",
+          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
           "scope": "resource",
           "properties": {
             "go": {
@@ -2224,6 +2250,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.testCoverage && resourceLangId == go",
           "command": "go.test.coverage",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.playground && resourceLangId == go",
+          "command": "go.playground",
           "group": "Go group 1"
         },
         {

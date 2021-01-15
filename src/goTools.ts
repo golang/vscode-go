@@ -12,7 +12,7 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import { goLiveErrorsEnabled } from './goLiveErrors';
-import { getBinPath, getGoConfig, GoVersion } from './util';
+import { getBinPath, GoVersion } from './util';
 
 export interface Tool {
 	name: string;

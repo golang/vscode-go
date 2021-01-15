@@ -11,8 +11,9 @@ import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
+import { getGoConfig } from '../../src/config';
 import { computeTestCommand, getTestFlags, goTest } from '../../src/testUtils';
-import { getGoConfig, rmdirRecursive } from '../../src/util';
+import { rmdirRecursive } from '../../src/util';
 
 suite('Test Go Test Args', () => {
 	function runTest(param: {
@@ -134,7 +135,7 @@ suite('Test Go Test', function () {
 		input: { isMod: boolean, includeSubDirectories: boolean, testFlags?: string[], applyCodeCoverage?: boolean },
 		wantFiles: string[]) {
 
-		const config = Object.create(vscode.workspace.getConfiguration('go'));
+		const config = Object.create(getGoConfig());
 		const outputChannel = new FakeOutputChannel();
 
 		const testConfig = {

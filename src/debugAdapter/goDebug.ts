@@ -263,6 +263,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	[key: string]: any;
 	program: string;
 	stopOnEntry?: boolean;
+	dlvFlags?: string[];
 	args?: string[];
 	showLog?: boolean;
 	logOutput?: string;
@@ -300,6 +301,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	request: 'attach';
 	processId?: number;
 	stopOnEntry?: boolean;
+	dlvFlags?: string[];
 	showLog?: boolean;
 	logOutput?: string;
 	cwd?: string;
@@ -395,7 +397,7 @@ export class Delve {
 	public program: string;
 	public remotePath: string;
 	public loadConfig: LoadConfig;
-	public connection: Promise<RPCConnection>;
+	public connection: Promise<RPCConnection|null>;  // null if connection isn't necessary (e.g. noDebug mode)
 	public onstdout: (str: string) => void;
 	public onstderr: (str: string) => void;
 	public onclose: (code: number) => void;
@@ -587,7 +589,7 @@ export class Delve {
 							reject(err);
 						});
 
-						resolve();
+						resolve(null);
 						return;
 					}
 				}
@@ -612,6 +614,11 @@ export class Delve {
 					dlvArgs.push(program);
 				} else if (currentGOWorkspace && !launchArgs.packagePathToGoModPathMap[dirname]) {
 					dlvArgs.push(dirname.substr(currentGOWorkspace.length + 1));
+				}
+				// add user-specified dlv flags first. When duplicate flags are specified,
+				// dlv doesn't mind but accepts the last flag value.
+				if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+					dlvArgs.push(...launchArgs.dlvFlags);
 				}
 				dlvArgs.push('--headless=true', `--listen=${launchArgs.host}:${launchArgs.port}`);
 				if (!this.isApiV1) {
@@ -655,6 +662,11 @@ export class Delve {
 				}
 
 				dlvArgs.push('attach', `${launchArgs.processId}`);
+				// add user-specified dlv flags first. When duplicate flags are specified,
+				// dlv doesn't mind but accepts the last flag value.
+				if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+					dlvArgs.push(...launchArgs.dlvFlags);
+				}
 				dlvArgs.push('--headless=true', '--listen=' + launchArgs.host + ':' + launchArgs.port.toString());
 				if (!this.isApiV1) {
 					dlvArgs.push('--api-version=2');
@@ -950,7 +962,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			// we should have a timeout in case disconnectRequestHelper hangs.
 			await Promise.race([
 				this.disconnectRequestHelper(response, args),
-				new Promise((resolve) => setTimeout(() => {
+				new Promise<void>((resolve) => setTimeout(() => {
 					log('DisconnectRequestHelper timed out after 5s.');
 					resolve();
 				}, 5_000))
@@ -2046,7 +2058,7 @@ export class GoDebugSession extends LoggingDebugSession {
 
 		if (this.remoteSourcesAndPackages.initializingRemoteSourceFiles) {
 			try {
-				await new Promise((resolve) => {
+				await new Promise<void>((resolve) => {
 					this.remoteSourcesAndPackages.on(RemoteSourcesAndPackages.INITIALIZED, () => {
 						resolve();
 					});
@@ -2175,7 +2187,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			);
 	}
 
-	private async getPackageInfo(debugState: DebuggerState): Promise<string> {
+	private async getPackageInfo(debugState: DebuggerState): Promise<string|void> {
 		if (!debugState.currentThread || !debugState.currentThread.file) {
 			return Promise.resolve(null);
 		}

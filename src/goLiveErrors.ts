@@ -8,11 +8,12 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
-import { getBinPath, getGoConfig } from './util';
+import { getBinPath } from './util';
 
 // Interface for settings configuration for adding and removing tags
 interface GoLiveErrorsConfig {
@@ -23,8 +24,13 @@ interface GoLiveErrorsConfig {
 let runner: NodeJS.Timer;
 
 export function goLiveErrorsEnabled() {
-	const goConfig = <GoLiveErrorsConfig>getGoConfig()['liveErrors'];
-	if (goConfig === null || goConfig === undefined || !goConfig.enabled) {
+	const goConfig = getGoConfig();
+	// If the language server is enabled, there is no need for live errors.
+	if (goConfig['useLanguageServer'] === true) {
+		return false;
+	}
+	const liveErrorsConfig = <GoLiveErrorsConfig>goConfig['liveErrors'];
+	if (liveErrorsConfig === null || liveErrorsConfig === undefined || !liveErrorsConfig.enabled) {
 		return false;
 	}
 	const files = vscode.workspace.getConfiguration('files', null);
@@ -34,11 +40,11 @@ export function goLiveErrorsEnabled() {
 		autoSave !== null &&
 		autoSave !== undefined &&
 		autoSave === 'afterDelay' &&
-		autoSaveDelay < goConfig.delay * 1.5
+		autoSaveDelay < liveErrorsConfig.delay * 1.5
 	) {
 		return false;
 	}
-	return goConfig.enabled;
+	return liveErrorsConfig.enabled;
 }
 
 // parseLiveFile runs the gotype command in live mode to check for any syntactic or

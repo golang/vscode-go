@@ -8,11 +8,12 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
 import { buildLanguageServerConfig, getLocalGoplsVersion, languageServerIsRunning, serverOutputChannel } from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
-import { getGoConfig, getGoVersion } from './util';
+import { getGoVersion } from './util';
 
 export let outputChannel = vscode.window.createOutputChannel('Go');
 
@@ -21,7 +22,6 @@ export let diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.S
 // statusbar item for switching the Go environment
 export let goEnvStatusbarItem: vscode.StatusBarItem;
 
-let statusBarEntry: vscode.StatusBarItem;
 let modulePath: string;
 export const languageServerIcon = '$(zap)';
 
@@ -146,14 +146,20 @@ export function showGoStatusBar() {
 	}
 }
 
+// status bar item to show warning messages such as missing analysis tools.
+let statusBarEntry: vscode.StatusBarItem;
+
 export function removeGoStatus() {
 	if (statusBarEntry) {
 		statusBarEntry.dispose();
+		statusBarEntry = undefined;
 	}
 }
 
 export function addGoStatus(message: string, command: string, tooltip?: string) {
-	statusBarEntry = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, Number.MIN_VALUE);
+	if (!statusBarEntry) {
+		statusBarEntry = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, Number.MIN_VALUE);
+	}
 	statusBarEntry.text = `$(alert) ${message}`;
 	statusBarEntry.command = command;
 	statusBarEntry.tooltip = tooltip;

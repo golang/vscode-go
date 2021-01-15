@@ -1,3 +1,25 @@
+## v0.21.0 - 20th Jan, 2021
+ 
+> 📣 &nbsp;&nbsp;Announcement:
+>
+> * The language server, `gopls`, will be enabled by default in the next release. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037)). Please test and provide us your feedback on the `#vscode-dev` [Gophers Slack](https://gophers.slack.com/) channel.
+>
+> * Some workspace or folder-level settings that affect tools location will not be used by default until users explicitly opt in by running `Go: Toggle Workspace Trust Flag`. See [Issue 1094](https://github.com/golang/vscode-go/issues/1094) for more information.
+
+A list of all issues and changes can be found in the [v0.21.0 milestone](https://github.com/golang/vscode-go/milestone/16?closed=1).
+### Enhancements
+- The new `dlvFlags` debug attribute is available for conveniently supply extra flags to `dlv`. ([Issue 978](https://github.com/golang/vscode-go/issues/978))
+- Stop using workspace/folder-level settings from untrusted repositories that can be used to run arbitrary binaries. ([Issue 1024](https://github.com/golang/vscode-go/issues/1094))
+- The extension now deduplicates diagnostics from both the language server and the linter. ([Issue 142](https://github.com/golang/vscode-go/issues/142))
+- Disabled `gotype-live` automatically when the language server is enabled. ([Issue 1021](https://github.com/golang/vscode-go/issues/1021))
+- Removed the `"go.languageServerExperimentalFeatures"` setting. ([CL 280601](https://go-review.googlesource.com/c/vscode-go/+/280601)). The `documentLink` feature is replaced with `gopls`'s [`ui.navigation.importShortcut`](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum) setting. The `diagnostics` feature replacement is still under discussion. Please provide feedback in [Issue 50](https://github.com/golang/vscode-go/issues/50).
+
+### Code Health
+* Experimental features that were available only in the nightly extension are enabled in the master branch, and in presubmit & CI tests running on the master branch.
+### Thanks
+
+Thank you for your contribution, @hyangah, @suzmue, @pjweinbgo, @stamblerre!
+
 ## v0.20.2 - 8th Jan, 2021
 
 ### Enhancement
@@ -11,10 +33,6 @@
 ## v0.20.0 - 22nd Dec, 2020
 
 A list of all issues and changes can be found in the [v0.20.0 milestone](https://github.com/golang/vscode-go/milestone/18?closed=1).
-
-> 📣 &nbsp;&nbsp;Announcement: We plan to enable the language server, `gopls`, by default early next year. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037))
->
-> Please test and provide us your feedback on the `#vscode-dev` [Gophers Slack](https://gophers.slack.com/) channel.
 
 ### Enhancements
 - Debugging

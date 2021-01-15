@@ -60,7 +60,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 	// If a user has enabled diagnostics via a language server,
 	// then we disable running build or vet to avoid duplicate errors and warnings.
 	const lspConfig = buildLanguageServerConfig(goConfig);
-	const disableBuildAndVet = lspConfig.enabled && lspConfig.features.diagnostics;
+	const disableBuildAndVet = lspConfig.enabled;
 
 	let testPromise: Thenable<boolean>;
 	const testConfig: TestConfig = {
