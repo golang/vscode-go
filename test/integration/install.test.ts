@@ -22,7 +22,7 @@ import { correctBinname } from '../../src/utils/pathUtils';
 
 suite('Installation Tests', function () {
 	// Disable timeout when we are running slow tests.
-	let timeout = 10000;
+	let timeout = 60000;
 	if (shouldRunSlowTests()) {
 		timeout = 0;
 	}
