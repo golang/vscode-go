@@ -50,6 +50,8 @@ Completion results appear for symbols as you type. You can trigger this manually
 
 Autocompletion is also supported for packages you have not yet imported into your program. This feature is provided by the [`gopkgs`](tools.md#gopkgs) tool.
 
+<div style="text-align: center;"><img src="images/completion-signature-help.gif" alt="Code completion and signature help"  style="width: 75%"> </div>
+
 ### Signature help
 
 Information about the signature of a function pops up as you type in its parameters. This feature is provided by the [`gogetdoc`](tools.md#documentation) tool, but it can also be provided by a combination of [`godef`](tools.md#documentation) and [`godoc`](tools.md#documentation) (configured via the [`"go.docsTool"`](settings.md#go.docsTool) setting).
@@ -64,11 +66,15 @@ Documentation appears when you hover over a symbol. This feature is provided by 
 
 Jump to or peek a symbol's declaration. This feature is provided by the [`gogetdoc`](tools.md#documentation) tool, but it can also be provided by a combination of [`godef`](tools.md#documentation) and [`godoc`](tools.md#documentation) (configured via the [`"go.docsTool"`](settings.md#go.docsTool) setting).
 
+<div style="text-align: center;"><img src="images/gotodefinition.gif" alt="Go to definition using the context menu" style="width: 75%"> </div>
+
 ### Find references
 
 Find or go to the references of a symbol. This feature is provided the [`guru`](tools.md#guru) tool.
 
 This feature is not available if you are using Go modules **without** [`gopls`](gopls.md), the Go language server.
+
+<div style="text-align: center;"><img src="images/findallreferences.gif" alt="Find references using the context menu" style="width: 75%"> </div>
 
 ### Find interface implementations
 
@@ -76,11 +82,15 @@ Find the concrete types that implement a given interface. This feature is provid
 
 This feature is not available if you are using Go modules **without** [`gopls`](gopls.md), the Go language server.
 
+<div style="text-align: center;"><img src="images/implementations.gif" alt="Go to implementations for Server that implements http.Handler and then finds all implementations of http.Handler in the workspace" style="width: 75%"> </div>
+
 ### [Go to symbol](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-symbol)
 
 Search for symbols in your file or workspace by opening the Command Palette (Ctrl+Shift+P) and typing `@` for symbols in the current file or `#` for symbols in the entire workspace.
 
 This feature is provided by the [`go-outline`](tools.md#go-outline) and [`go-symbols`](tools.md#go-symbols) tools.
+
+<div style="text-align: center;"><img src="images/workspace-symbols.gif" alt="Use Workspace Symbols to locate Hello in the workspace" style="width: 75%"> </div>
 
 ### Document outline
 
@@ -88,9 +98,13 @@ See all the symbols in the current file in the VS Code's [Outline view](https://
 
 This feature is provided by the [`go-outline`](tools.md#go-outline) tool.
 
+<div style="text-align: center;"><img src="images/outline.png" alt="Outline of a Go file" style="width: 75%"> </div>
+
 ### Toggle between code and tests
 
 Quickly toggle between a file and its corresponding test file by using the [`Go: Toggle Test File`](commands.md#go-toggle-test-file) command.
+
+<div style="text-align: center;"><img src="images/toggletestfile.gif" alt="Toggle between reverse.go and reverse_test.go" style="width: 75%"> </div>
 
 ## Code Editing
 
@@ -108,6 +122,9 @@ The behavior of the formatter can be configured via the [`"go.formatTool"`](sett
 
 Manually add a new import to your file through the [`Go: Add Import`](commands.md#go-add-import) command. Available packages are offered from your `GOPATH` and module cache.
 
+<div style="text-align: center;"><img src="images/addimport.gif" alt="Add byte import to Go file" style="width: 75%"> </div>
+
+
 ### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
 
 Rename all occurrences of a symbol in your workspace. This feature is provided by the [`gorename`](tools.md#gorename) tool.
@@ -116,9 +133,14 @@ Rename all occurrences of a symbol in your workspace. This feature is provided b
 
 This feature is not available if you are using Go modules **without** [`gopls`](gopls.md), the Go language server.
 
+<div style="text-align: center;"><img src="images/rename.gif" alt="Rename an exported variable in Go workspace" style="width: 75%"> </div>
+
+
 ### Refactor
 
 Extract a piece of code to a local variable or to its own function using the [`Go: Extract to variable`](commands.md#go-extract-to-variable) and [`Go: Extract to function`](commands.md#go-extract-to-function) commands. These features are provided by the [`godoctor`](tools.md#godoctor) tool. These features do not work with Go modules, but they will be supported by [`gopls`] in the future (see [golang/go#37170](https://github.com/golang/go/issues/37170)).
+
+<div style="text-align: center;"><img src="images/extract-variable.gif" alt="Extract to variable followed by a rename" style="width: 75%"> </div>
 
 ## Code Generation
 
@@ -126,13 +148,19 @@ Extract a piece of code to a local variable or to its own function using the [`G
 
 Use the [`Go: Add Tags to Struct Fields`](commands.md#go-add-tags-to-struct-fields) command to automatically generate or remove [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
 
+<div style="text-align: center;"><img src="images/addtagstostructfields.gif" alt="Add tags to struct fields" style="width: 75%"> </div>
+
 ### Generate interface implementation
 
 Use the [`Go: Generate Interface Stubs`](commands.md#go-generate-interface-stubs) command to automatically generate method stubs for a given interface. This feature is provided by the [`impl`](tools.md#impl) tool.
 
+<div style="text-align: center;"><img src="images/generateinterfaceimplementation.gif" alt="Generate functions to implement an interface" style="width: 75%"> </div>
+
 ### Generate unit tests
 
 Easily generate unit tests for your project by running one of the [`Go: Generate Unit Tests for ...`](commands.md#go-generate-unit-tests-for-file) commands. This can be done at a function, file, or package level. This feature is provided by the [`gotests`](tools.md#gotests) tool.
+
+<div style="text-align: center;"><img src="images/generateunittestsforfunction.gif" alt="Generate unit tests for a function" style="width: 75%"> </div>
 
 ### Fill struct literals
 
