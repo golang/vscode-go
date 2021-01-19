@@ -2,10 +2,6 @@
 
 This document describes the features supported by this extension.
 
-If you are using the Go language server, `gopls`, please the [gopls documentation](gopls.md) instead. (You can check if you are using `gopls` by opening your VS Code settings and checking if [`"go.useLanguageServer"`](settings.md#go.useLanguageServer) is `true`.)
-
-If you are using Go modules **without** the language server, some of the features listed below will not be available.
-
 ## Table of Contents
 
 * [IntelliSense](#intellisense)
@@ -46,31 +42,30 @@ If you are using Go modules **without** the language server, some of the feature
 
 ### Code completion
 
-Completion results appear for symbols as you type. You can trigger this manually with the Ctrl+Space shortcut. This feature is provided by the [`gocode`](tools.md#gocode) tool.
+Completion results appear for symbols as you type. You can trigger this manually with the Ctrl+Space shortcut.
 
-Autocompletion is also supported for packages you have not yet imported into your program. This feature is provided by the [`gopkgs`](tools.md#gopkgs) tool.
+Autocompletion is also supported for packages you have not yet imported into your program.
 
 <div style="text-align: center;"><img src="images/completion-signature-help.gif" alt="Code completion and signature help"  style="width: 75%"> </div>
 
 ### Signature help
 
-Information about the signature of a function pops up as you type in its parameters. This feature is provided by the [`gogetdoc`](tools.md#documentation) tool, but it can also be provided by a combination of [`godef`](tools.md#documentation) and [`godoc`](tools.md#documentation) (configured via the [`"go.docsTool"`](settings.md#go.docsTool) setting).
-
+Information about the signature of a function pops up as you type in its parameters.
 ### Quick info on hover
 
-Documentation appears when you hover over a symbol. This feature is provided by the [`gogetdoc`](tools.md#documentation) tool, but it can also be provided by a combination of [`godef`](tools.md#documentation) and [`godoc`](tools.md#documentation) (configured via the [`"go.docsTool"`](settings.md#go.docsTool) setting).
+Documentation appears when you hover over a symbol.
 
 ## [Code Navigation](https://code.visualstudio.com/docs/editor/editingevolved)
 
 ### Go to definition
 
-Jump to or peek a symbol's declaration. This feature is provided by the [`gogetdoc`](tools.md#documentation) tool, but it can also be provided by a combination of [`godef`](tools.md#documentation) and [`godoc`](tools.md#documentation) (configured via the [`"go.docsTool"`](settings.md#go.docsTool) setting).
+Jump to or peek a symbol's declaration.
 
 <div style="text-align: center;"><img src="images/gotodefinition.gif" alt="Go to definition using the context menu" style="width: 75%"> </div>
 
 ### Find references
 
-Find or go to the references of a symbol. This feature is provided the [`guru`](tools.md#guru) tool.
+Find or go to the references of a symbol.
 
 This feature is not available if you are using Go modules **without** [`gopls`](gopls.md), the Go language server.
 
@@ -78,7 +73,7 @@ This feature is not available if you are using Go modules **without** [`gopls`](
 
 ### Find interface implementations
 
-Find the concrete types that implement a given interface. This feature is provided by the [`guru`](tools.md#guru) tool.
+Find the concrete types that implement a given interface.
 
 This feature is not available if you are using Go modules **without** [`gopls`](gopls.md), the Go language server.
 
@@ -88,15 +83,11 @@ This feature is not available if you are using Go modules **without** [`gopls`](
 
 Search for symbols in your file or workspace by opening the Command Palette (Ctrl+Shift+P) and typing `@` for symbols in the current file or `#` for symbols in the entire workspace.
 
-This feature is provided by the [`go-outline`](tools.md#go-outline) and [`go-symbols`](tools.md#go-symbols) tools.
-
 <div style="text-align: center;"><img src="images/workspace-symbols.gif" alt="Use Workspace Symbols to locate Hello in the workspace" style="width: 75%"> </div>
 
 ### Document outline
 
 See all the symbols in the current file in the VS Code's [Outline view](https://code.visualstudio.com/docs/getstarted/userinterface#_outline-view).
-
-This feature is provided by the [`go-outline`](tools.md#go-outline) tool.
 
 <div style="text-align: center;"><img src="images/outline.png" alt="Outline of a Go file" style="width: 75%"> </div>
 
@@ -116,9 +107,9 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 ### Format and organize imports
 
-Format code and organize imports, either manually or on save. The code is formatted by the [`gofmt`](tools.md#formatting) tool, which is the standard for Go code. Imports are added automatically to your file via the [`goimports`](tools.md#formatting) tool, which is also an industry standard. By default, this extension also uses the [`goreturns`](tools.md#formatting) tool, which automatically fills in default return values for functions.
+Format code and organize imports, either manually or on save.
 
-The behavior of the formatter can be configured via the [`"go.formatTool"`](settings.md#go.formatTool) tool setting. The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
+The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
 
 #### Add import
 
@@ -129,7 +120,7 @@ Manually add a new import to your file through the [`Go: Add Import`](commands.m
 
 ### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
 
-Rename all occurrences of a symbol in your workspace. This feature is provided by the [`gorename`](tools.md#gorename) tool.
+Rename all occurrences of a symbol in your workspace.
 
 **Note**: For undo after rename to work on Windows, you need to have `diff` tool on your `PATH`.
 
@@ -140,7 +131,9 @@ This feature is not available if you are using Go modules **without** [`gopls`](
 
 ### Refactor
 
-Extract a piece of code to a local variable or to its own function using the [`Go: Extract to variable`](commands.md#go-extract-to-variable) and [`Go: Extract to function`](commands.md#go-extract-to-function) commands. These features are provided by the [`godoctor`](tools.md#godoctor) tool. These features do not work with Go modules, but they will be supported by [`gopls`] in the future (see [golang/go#37170](https://github.com/golang/go/issues/37170)).
+Extract a piece of code to a local variable or to its own function using the [`Go: Extract to variable`](commands.md#go-extract-to-variable) and [`Go: Extract to function`](commands.md#go-extract-to-function) commands.
+
+For known issues with this feature see [golang/go#37170](https://github.com/golang/go/issues/37170).
 
 <div style="text-align: center;"><img src="images/extract-variable.gif" alt="Extract to variable followed by a rename" style="width: 75%"> </div>
 
@@ -166,7 +159,7 @@ Easily generate unit tests for your project by running one of the [`Go: Generate
 
 ### Fill struct literals
 
-Use the [`Go: Fill struct`](commands.md#fill-struct) command to automatically fill a struct literal with its default values. This command is provided by the [`fillstruct`](tools.md#fillstruct).
+Use the [`Go: Fill struct`](commands.md#fill-struct) command to automatically fill a struct literal with its default values.
 
 <div style="text-align: center;"><img src="images/fillstructliterals.gif" alt="Fill struct literals" style="width: 75%"> </div>
 
