@@ -16,7 +16,7 @@ const SECURITY_SENSITIVE_CONFIG: string[] = [
 // the user has to explicitly opt in to trust the workspace.
 export async function initConfig(ctx: vscode.ExtensionContext) {
 	const isTrusted = getFromWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, false);
-	if (isTrusted !== defaultConfig.workspaceIsTrusted) {
+	if (isTrusted !== defaultConfig.workspaceIsTrusted()) {
 		defaultConfig.toggleWorkspaceIsTrusted();
 	}
 	ctx.subscriptions.push(
@@ -81,7 +81,6 @@ export class Configuration {
 		if (section !== 'go' || this._workspaceIsTrusted) {
 			return cfg;
 		}
-
 		return new WrappedConfiguration(cfg);
 	}
 
@@ -103,7 +102,9 @@ class WrappedConfiguration implements vscode.WorkspaceConfiguration {
 		// set getters for direct setting access (e.g. cfg.gopath), but don't overwrite _wrapped.
 		const desc = Object.getOwnPropertyDescriptors(_wrapped);
 		for (const prop in desc) {
-			if (typeof prop === 'string' && prop !== '_wrapped') {
+			// TODO(hyangah): find a better way to exclude WrappedConfiguration's members.
+			// These methods are defined by WrappedConfiguration.
+			if (typeof prop === 'string' && !['get', 'has', 'inspect', 'update', '_wrapped'].includes(prop)) {
 				const d = desc[prop];
 				if (SECURITY_SENSITIVE_CONFIG.includes(prop)) {
 					const inspect = this._wrapped.inspect(prop);
