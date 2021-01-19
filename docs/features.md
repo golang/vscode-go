@@ -112,6 +112,8 @@ Quickly toggle between a file and its corresponding test file by using the [`Go:
 
 Predefined snippets for quick coding. These snippets will appear as completion suggestions when you type. Users can also define their own custom snippets (see [Snippets in Visual Studio Code](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_create-your-own-snippets)).
 
+<div style="text-align: center;"><img src="images/snippets-tys.gif" alt="Use the struct type snippet" style="width: 75%"> </div>
+
 ### Format and organize imports
 
 Format code and organize imports, either manually or on save. The code is formatted by the [`gofmt`](tools.md#formatting) tool, which is the standard for Go code. Imports are added automatically to your file via the [`goimports`](tools.md#formatting) tool, which is also an industry standard. By default, this extension also uses the [`goreturns`](tools.md#formatting) tool, which automatically fills in default return values for functions.
@@ -165,6 +167,8 @@ Easily generate unit tests for your project by running one of the [`Go: Generate
 ### Fill struct literals
 
 Use the [`Go: Fill struct`](commands.md#fill-struct) command to automatically fill a struct literal with its default values. This command is provided by the [`fillstruct`](tools.md#fillstruct).
+
+<div style="text-align: center;"><img src="images/fillstructliterals.gif" alt="Fill struct literals" style="width: 75%"> </div>
 
 ## Diagnostics
 
