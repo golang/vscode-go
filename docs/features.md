@@ -85,6 +85,12 @@ Search for symbols in your file or workspace by opening the Command Palette (Ctr
 
 <div style="text-align: center;"><img src="images/workspace-symbols.gif" alt="Use Workspace Symbols to locate Hello in the workspace" style="width: 75%"> </div>
 
+### Call hierarchy
+
+Show all calls from or to a function.
+
+<div style="text-align: center;"><img src="images/callhierarchy.gif" alt="Show call hierarchy and investigate callers of a function" style="width: 75%"> </div>
+
 ### Document outline
 
 See all the symbols in the current file in the VS Code's [Outline view](https://code.visualstudio.com/docs/getstarted/userinterface#_outline-view).
