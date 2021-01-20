@@ -29,7 +29,7 @@ Once the download completes, VS Code Go will make use of this new Go version.
 
 ### Language Server Status
 
-`gopls` is the official Go [language server](https://langserver.org/) developed by the Go team. It was developed in response to the release of [Go modules](docs/modules.md), and it is the recommended approach when working with [Go modules](docs/modules.md) in VS Code.
+`gopls` is the official Go [language server](https://langserver.org/) developed by the Go team. It was developed in response to the release of [Go modules](docs/modules.md), and it is the recommended approach when working with Go modules in VS Code.
 
 When `gopls` is enabled, :zap: is displayed next to the Go version in the status bar and the `gopls` version is displayed in the menu.
 

@@ -210,7 +210,7 @@ Behind the scenes, the `Debug: Start without Debugging` command calls `go run`. 
 
 ### Code Coverage
 
-Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: [`Go: Apply Cover Profile`](commands.md#go-apply-cover-profile) and [`Go: Toggle Test Coverage in Current Package`](commands.go-toggle-test-coverage-in-current-package).
+Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: [`Go: Apply Cover Profile`](commands.md#go-apply-cover-profile) and [`Go: Toggle Test Coverage in Current Package`](commands.md#go-toggle-test-coverage-in-current-package).
 
 ## [Debugging](debugging.md)
 
