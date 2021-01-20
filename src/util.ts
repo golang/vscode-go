@@ -904,7 +904,7 @@ export function handleDiagnosticErrors(
 		}
 		// If there are errors from the language client that are on the current file, ignore the warnings co-inciding
 		// with them.
-		if (languageClient) {
+		if (languageClient && languageClient.diagnostics?.has(fileUri)) {
 			newDiagnostics = deDupeDiagnostics(languageClient.diagnostics.get(fileUri).slice(), newDiagnostics);
 		}
 		diagnosticCollection.set(fileUri, newDiagnostics);
