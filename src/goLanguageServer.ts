@@ -27,6 +27,7 @@ import {
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
+	ProvideDocumentLinksSignature,
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -74,6 +75,9 @@ export interface LanguageServerConfig {
 	enabled: boolean;
 	flags: string[];
 	env: any;
+	features: {
+		diagnostics: boolean;
+	};
 	checkForUpdates: string;
 }
 
@@ -105,6 +109,7 @@ let lastUserAction: Date = new Date();
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
+
 	for (const folder of vscode.workspace.workspaceFolders || []) {
 		if (folder.uri.scheme === 'vsls') {
 			outputChannel.appendLine(`Language service on the guest side is disabled. ` +
@@ -400,10 +405,14 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 					diagnostics: vscode.Diagnostic[],
 					next: HandleDiagnosticsSignature
 				) => {
+					if (!cfg.features.diagnostics) {
+						return null;
+					}
 					// Deduplicate diagnostics with those found by the other tools.
 					removeDuplicateDiagnostics(vetDiagnosticCollection, uri, diagnostics);
 					removeDuplicateDiagnostics(buildDiagnosticCollection, uri, diagnostics);
 					removeDuplicateDiagnostics(lintDiagnosticCollection, uri, diagnostics);
+
 					return next(uri, diagnostics);
 				},
 				provideCompletionItem: async (
@@ -716,6 +725,11 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		modtime: null,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
+		features: {
+			// TODO: We should have configs that match these names.
+			// Ultimately, we should have a centralized language server config rather than separate fields.
+			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
+		},
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig),
 	};

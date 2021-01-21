@@ -126,19 +126,27 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	// Present a warning about the deprecation of the go.documentLink setting.
 	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
 	if (experimentalFeatures) {
-		// TODO(rstambler): Eventually notify about deprecation of all of the settings.
+		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
+		// all of the settings. See golang/vscode-go#1109 too.
+		// The `diagnostics` setting is still used as a workaround for running custom vet.
 		if (experimentalFeatures['documentLink'] === false) {
 			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-	Please use 'gopls.importShortcut' instead.
-	See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+Please use 'gopls.importShortcut' instead.
+See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
 		}
-		if (experimentalFeatures['diagnostics'] === false) {
-			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.diagnostics' setting is now deprecated.
+		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
+		const prompted = getFromGlobalState(promptKey, false);
+		if (!prompted && experimentalFeatures['diagnostics'] === false) {
+			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
 If you would like additional configuration for diagnostics from gopls, please see and response to
-https://github.com/golang/vscode-go/issues/50.`);
+https://github.com/golang/vscode-go/issues/50.`;
+			const selected = await vscode.window.showInformationMessage(msg, `Don't show again`);
+			switch (selected) {
+			case `Don't show again`:
+				updateGlobalState(promptKey, true);
+			}
 		}
 	}
-
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
 		offerToInstallLatestGoVersion();

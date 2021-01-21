@@ -865,7 +865,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Compiles code on file save using 'go build -i' or 'go test -c -i'. Options are 'workspace', 'package', or 'off'.",
+          "description": "Compiles code on file save using 'go build' or 'go test -c'. Options are 'workspace', 'package', or 'off'.  Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
           "scope": "resource"
         },
         "go.buildFlags": {
@@ -939,7 +939,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server.",
+          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
           "scope": "resource"
         },
         "go.vetFlags": {
@@ -1252,6 +1252,21 @@
           "type": "array",
           "default": [],
           "description": "Flags like -rpc.trace and -logfile to be used while running the language server."
+        },
+        "go.languageServerExperimentalFeatures": {
+          "type": "object",
+          "properties": {
+            "diagnostics": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings."
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "diagnostics": true
+          },
+          "markdownDescription": "Temporary flag to enable/disable diagnostics from the language server. This setting will be deprecated soon. Please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50)."
         },
         "go.trace.server": {
           "type": "string",
