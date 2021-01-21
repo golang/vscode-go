@@ -8,15 +8,13 @@
 (function () {
 	const vscode = acquireVsCodeApi();
 
-	function showReleaseNotes() {
-		vscode.postMessage({
-			command: 'showReleaseNotes',
-		});
-	}
-
-	document.querySelector(".release-notes").addEventListener('click', () => {
-		showReleaseNotes();
-	});
-
+  const commands = document.querySelectorAll('.Command');
+  for (let i = 0; i < commands.length; i++) {
+    const elem = commands[i];
+    const msg = JSON.parse(JSON.stringify(elem.dataset));
+    elem.addEventListener('click', () => {
+      vscode.postMessage(msg);
+    })
+  }
 }());
 
