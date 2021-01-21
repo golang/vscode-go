@@ -1,10 +1,17 @@
-## v0.21.0 - 20th Jan, 2021
- 
 > 📣 &nbsp;&nbsp;Announcement:
 >
 > * The language server, `gopls`, will be enabled by default in the next release. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037)). Please test and provide us your feedback on the `#vscode-dev` [Gophers Slack](https://gophers.slack.com/) channel.
 >
 > * Some workspace or folder-level settings that affect tools location will not be used by default until users explicitly opt in by running `Go: Toggle Workspace Trust Flag`. See [Issue 1094](https://github.com/golang/vscode-go/issues/1094) for more information.
+
+## v0.21.1 - 21st Jan, 2021
+A list of all issues and changes can be found in the [v0.21.1 milestone](https://github.com/golang/vscode-go/milestone/22?closed=1).
+
+### Fixes
+- Fixed the `Cannot get property 'get' of undefined` error. ([Issue 1104](https://github.com/golang/vscode-go/issues/1104))
+- Restored the `"go.languageServerExperimentalFeatures"` setting for users who depend on this to run custom vet analyzers. ([Issue 1110](https://github.com/golang/vscode-go/issues/1110))
+
+## v0.21.0 - 20th Jan, 2021
 
 A list of all issues and changes can be found in the [v0.21.0 milestone](https://github.com/golang/vscode-go/milestone/16?closed=1).
 ### Enhancements
