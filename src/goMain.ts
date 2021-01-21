@@ -35,7 +35,6 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
-	promptForLanguageServerDefaultChange,
 	resetSurveyConfig,
 	showServerOutputChannel,
 	showSurveyConfig,
@@ -107,8 +106,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	}
 
 	if (isInPreviewMode()) {
-		promptForLanguageServerDefaultChange(cfg);
-
 		// For Nightly extension users, show a message directing them to forums
 		// to give feedback.
 		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
