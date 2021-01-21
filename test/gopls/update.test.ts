@@ -175,6 +175,9 @@ suite('gopls update tests', () => {
 				version: '',
 				checkForUpdates: 'proxy',
 				env: {},
+				features: {
+					diagnostics: true,
+				},
 				flags: [],
 				modtime: new Date(),
 				serverName: 'gopls',

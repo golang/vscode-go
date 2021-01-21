@@ -76,7 +76,7 @@ Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. 
 
 ### `go.buildOnSave`
 
-Compiles code on file save using 'go build -i' or 'go test -c -i'. Options are 'workspace', 'package', or 'off'.
+Compiles code on file save using 'go build' or 'go test -c'. Options are 'workspace', 'package', or 'off'.  Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.
 
 Allowed Values:`[package workspace off]`
 
@@ -324,6 +324,21 @@ If true, then `-i` flag will be passed to `go build` everytime the code is compi
 
 Default: `false`
 
+### `go.languageServerExperimentalFeatures`
+
+Temporary flag to enable/disable diagnostics from the language server. This setting will be deprecated soon. Please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).
+
+| Properties | Description |
+| --- | --- |
+| `diagnostics` | If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings. |
+| | |
+
+
+Default:{<br/>
+&nbsp;&nbsp;`"diagnostics": true`,<br/>
+    }
+
+
 ### `go.languageServerFlags`
 
 Flags like -rpc.trace and -logfile to be used while running the language server.
@@ -515,7 +530,7 @@ Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
 
 ### `go.vetOnSave`
 
-Vets code on file save using 'go tool vet'. Not applicable when using the language server.
+Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.
 
 Allowed Values:`[package workspace off]`
 
