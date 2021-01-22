@@ -7,13 +7,14 @@
 // https://github.com/microsoft/vscode-extension-samples/tree/master/webview-sample
 
 import vscode = require('vscode');
+import { extensionId } from './const';
 
 export class WelcomePanel {
 	public static currentPanel: WelcomePanel | undefined;
 
 	public static readonly viewType = 'welcomeGo';
 
-	public static createOrShow(extensionUri: vscode.Uri) {
+	public static createOrShow(extensionUri: vscode.Uri, ) {
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -27,7 +28,7 @@ export class WelcomePanel {
 		// Otherwise, create a new panel.
 		const panel = vscode.window.createWebviewPanel(
 			WelcomePanel.viewType,
-			'Go - Welcome',
+			'Go for VS Code',
 			column || vscode.ViewColumn.One,
 			{
 				// Enable javascript in the webview
@@ -71,9 +72,12 @@ export class WelcomePanel {
 					case 'alert':
 						vscode.window.showErrorMessage(message.text);
 						return;
-					case 'showReleaseNotes':
-						const uri = vscode.Uri.joinPath(this.extensionUri, 'CHANGELOG.md');
+					case 'openDocument':
+						const uri = vscode.Uri.joinPath(this.extensionUri, message.document);
 						vscode.commands.executeCommand('markdown.showPreviewToSide', uri);
+						return;
+					case 'openSetting':
+						vscode.commands.executeCommand('workbench.action.openSettings', message.setting);
 						return;
 				}
 			},
@@ -106,73 +110,88 @@ export class WelcomePanel {
 		const scriptPathOnDisk = vscode.Uri.joinPath(this.dataroot, 'welcome.js');
 		const stylePath = vscode.Uri.joinPath(this.dataroot, 'welcome.css');
 		const gopherPath = vscode.Uri.joinPath(this.dataroot, 'go-logo-blue.png');
+		const announcePath = vscode.Uri.joinPath(this.dataroot, 'announce.png');
+		const goExtension = vscode.extensions.getExtension(extensionId)!;
+		const goExtensionVersion = goExtension.packageJSON.version;
 
 		// Uri to load styles and images into webview
 		const scriptURI = webview.asWebviewUri(scriptPathOnDisk);
 		const stylesURI = webview.asWebviewUri(stylePath);
 		const gopherURI = webview.asWebviewUri(gopherPath);
+		const announceURI = webview.asWebviewUri(announcePath);
 
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
+
 		return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
 				<meta charset="UTF-8">
-
 				<!--
 					Use a content security policy to only allow loading images from https or from our extension directory,
 					and only allow scripts that have a specific nonce.
 				-->
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
-
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 				<link href="${stylesURI}" rel="stylesheet">
-
-				<title>Go - Welcome</title>
+				<title>Go for VS Code</title>
 			</head>
 			<body>
-			<div class="header">
-				<img src="${gopherURI}" alt="logo" class="logo"/>
-				<h1 class="title">Go - Welcome</h1>
+			<main class="Content">
+			<div class="Header">
+				<img src="${gopherURI}" alt="Go Logo" class="Header-logo"/>
+				<div class="Header-details">
+					<h1 class="Header-title">Go for VS Code v${goExtensionVersion}</h1>
+					<p>The official Go extension for Visual Studio Code, providing rich language support for Go projects.</p>
+					<ul class="Header-links">
+						<!--
+							Here and elsewhere, we must use a fake anchor for command buttons, to get styling
+							consistent with links. We can't fake this using CSS, as it conflicts with theming.
+						-->
+						<li><a href="#" class="Command" data-command="openDocument" data-document="CHANGELOG.md">Release notes</a></li>
+						<li><a href="https://github.com/golang/vscode-go">GitHub</a></li>
+						<li><a href="https://gophers.slack.com/messages/vscode/">Slack</a></li>
+					</ul>
+				</div>
 			</div>
 
-			<div class="subtitle">
-				<p>Rich Go language support for Visual Studio Code</p>
-				<!-- linking to a document does not actually work, but is used here to give it the appearance
-				of a link -->
-				<a class="release-notes" href="#">Release Notes</a>
+			<div class="Announcement">
+				<img src="${announceURI}" alt="announce" class="Announcement-image" />
+				<p>
+					Heads up! Gopls, the official Go language server, is now enabled in VS Code by default.
+					Gopls replaces several legacy tools to provide IDE features while editing Go code.
+					See <a href="https://github.com/golang/vscode-go/issues/1037">issue 1037</a> for more
+					information.
+				</p>
 			</div>
 
-			<div>
-				<h2>Latest Updates</h2>
-				<p>📣 Announcement: We plan to enable the language server, gopls, by default early in 2021. (<a href="https://github.com/golang/vscode-go/issues/1037">Issue 1037</a>)</p>
-				<p>Please test and provide us your feedback on the #vscode-dev <a href="https://gophers.slack.com/">Gophers Slack</a> channel.</p>
+			<div class="Cards">
+				<div class="Card">
+					<div class="Card-inner">
+						<p class="Card-title">Getting started</p>
+						<p class="Card-content">Learn about the Go extension in our
+							<a href="https://github.com/golang/vscode-go/blob/master/README.md">README</a>.
+						</p>
+					</div>
+				</div>
+
+				<div class="Card">
+					<div class="Card-inner">
+						<p class="Card-title">Learning Go</p>
+						<p class="Card-content">If you're new to the Go programming language,
+							<a href="https://learn.go.dev">learn.go.dev</a> is a great place to get started.</a>
+						</p>
+					</div>
+				</div>
+
+				<div class="Card">
+					<div class="Card-inner">
+						<p class="Card-title">Troubleshooting</p>
+						<p class="Card-content">Experiencing problems? Start with our
+							<a href="https://github.com/golang/vscode-go/blob/master/docs/troubleshooting.md">troubleshooting guide</a>.  </p> </div>
+				</div>
 			</div>
-
-			<div>
-				<h2>External Resources</h2>
-
-				<h3>Documentation</h3>
-				<ul>
-					<li>Details about the <a href="https://github.com/golang/vscode-go#features">features</a> provided by extension</li>
-					<li>Configure the extension with <a href="https://github.com/golang/vscode-go/blob/master/docs/settings.md">settings</a></li>
-					<li>Full list of the <a href="https://github.com/golang/vscode-go/blob/master/docs/commands.md#detailed-list">commands</a> provided by the Go extension</li>
-					<li><a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">Debugging</a></li>
-				</ul>
-
-				<h3>Go Tutorials</h3>
-				<ul>
-					<!-- TODO: link a tutorial for setting up and using Go Modules in vscode -->
-					<li>Learn about <a href="https://blog.golang.org/using-go-modules">Go Modules</a></li>
-					<li>Find tutorials for using Go at <a href="https://learn.go.dev/">learn.go.dev</a></li>
-					<li>Get started with <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md#set-up">debugging</a> in vscode with the Go extension</li>
-				</ul>
-
-				<h3>Outstanding Issues</h3>
-
-				All of the issues can be found on the <a href="https://github.com/golang/vscode-go/issues">issue tracker</a>. For issues that will be addressed in the next release, check out the <a href="https://github.com/golang/vscode-go/milestones">milestone</a> page.
-			<div>
+			</main>
 
 			<script nonce="${nonce}" src="${scriptURI}"></script>
 			</body>

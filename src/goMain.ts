@@ -35,7 +35,6 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
-	promptForLanguageServerDefaultChange,
 	resetSurveyConfig,
 	showServerOutputChannel,
 	showSurveyConfig,
@@ -107,8 +106,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	}
 
 	if (isInPreviewMode()) {
-		promptForLanguageServerDefaultChange(cfg);
-
 		// For Nightly extension users, show a message directing them to forums
 		// to give feedback.
 		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
@@ -581,7 +578,7 @@ https://github.com/golang/vscode-go/issues/50.`;
 function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
-	const showVersions: string[] = [];
+	const showVersions: string[] = ['0.22.0'];
 
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (isInPreviewMode()) {
@@ -592,12 +589,22 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	const goExtensionVersion = goExtension.packageJSON.version;
 	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '0.0.0');
 
-	if (semver.gt(semver.coerce(goExtensionVersion), semver.coerce(savedGoExtensionVersion))) {
-		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
-		if (showVersions.includes(goExtensionVersion)) {
-			WelcomePanel.createOrShow(ctx.extensionUri);
-		}
+	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
+		WelcomePanel.createOrShow(ctx.extensionUri);
 	}
+	if (goExtensionVersion !== savedGoExtensionVersion) {
+		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
+	}
+}
+
+export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
+	if (newVersion === oldVersion) {
+		return false;
+	}
+	const coercedNew = semver.coerce(newVersion);
+	const coercedOld = semver.coerce(oldVersion);
+	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
+	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
 
 async function showGoNightlyWelcomeMessage() {

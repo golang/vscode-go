@@ -37,7 +37,9 @@ gcloud builds submit --config=build/cloudbuild.container.yaml
 
 This is the workflow triggered for every PR and commit made to our mirror repository on GitHub, [github.com/golang/vscode-go](https://github.com/golang/vscode-go). We use this CI system to run tests on platforms that GCB does not yet support. This workflow is not triggered by CLs sent via Gerrit yet.
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) defines the GitHub Actions-based CI workflow.
+[`.github/workflows/test-long.yml`](../.github/workflows/test-long.yml) and
+[`.github/workflows/test-smoke.yml`](../.github/workflows/test-smoke.yml)
+define the GitHub Actions-based CI workflow.
 
 ### [Nightly Release](nightly.md)
 

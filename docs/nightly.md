@@ -2,7 +2,7 @@
 
 This master branch of this extension is built and published nightly through the [Go Nightly]. If you're interested in testing new features and bug fixes, you may be interested in switching to the [Go Nightly] extension. Also, if you file an issue, we may suggest trying out the fix in [Go Nightly].
 
-[Go Nightly] is the **preview** version of the Go extension, so it may be broken or unstable at times. The [Changelog](nightly/CHANGELOG.md) and [README](nightly/README.md) for [Go Nightly] can be found in the [docs/nightly](nightly/) directory.
+[Go Nightly] is the **preview** version of the Go extension, so it may be broken or unstable at times.
 
 ## Installation
 

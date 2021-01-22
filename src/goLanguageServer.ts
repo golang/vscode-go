@@ -1546,67 +1546,9 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, fail
 	return { failureReason: 'unrecognized crash pattern' };
 }
 
-export async function promptForLanguageServerDefaultChange(cfg: vscode.WorkspaceConfiguration) {
-	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
-	if (!languageServerUsingDefault(cfg)) {
-		if (!cfg['useLanguageServer']) {  // ask users who explicitly disabled.
-			promptForLanguageServerOptOutSurvey();
-		}
-		return;  // user already explicitly set the field.
-	}
-
-	const promptedForLSDefaultChangeKey = `promptedForLSDefaultChange`;
-	if (getFromGlobalState(promptedForLSDefaultChangeKey, false)) {
-		return;
-	}
-
-	const selected = await vscode.window.showInformationMessage(
-		`"go.useLanguageServer" is enabled by default. If you need to disable it, please configure in the settings.`,
-		'Open Settings', 'OK');
-	switch (selected) {
-		case 'Open Settings':
-			vscode.commands.executeCommand('workbench.action.openSettings', 'go.useLanguageServer');
-		default:
-	}
-	updateGlobalState(promptedForLSDefaultChangeKey, true);
-}
-
 function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
 	return useLanguageServer.globalValue === undefined && useLanguageServer.workspaceValue === undefined;
-}
-
-// Prompt users who disabled the language server and ask to file an issue.
-async function promptForLanguageServerOptOutSurvey() {
-	const promptedForLSOptOutSurveyKey = `promptedForLSOptOutSurvey`;
-	const value = getSurveyConfig(promptedForLSOptOutSurveyKey);  // We use only 'prompt' and 'lastDatePrompted' fields.
-
-	if (value?.prompt === false ||
-		(value?.lastDatePrompted && daysBetween(value.lastDatePrompted, new Date()) < 90)) {
-		return;
-	}
-
-	value.lastDatePrompted = new Date();
-
-	const selected = await vscode.window.showInformationMessage(
-		`Looks like you've disabled the language server. Would you be willing to file an issue and tell us why you had to disable it?`,
-		'Yes', 'Not now', 'Never');
-	switch (selected) {
-		case 'Yes':
-			const title = 'gopls: automated issue report (opt out)';
-			const body = `
-Please tell us why you had to disable the language server.
-
-`;
-			const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
-			await vscode.env.openExternal(vscode.Uri.parse(url));
-			break;
-		case 'Never':
-			value.prompt = false;
-			break;
-		default:
-	}
-	updateGlobalState(promptedForLSOptOutSurveyKey, JSON.stringify(value));
 }
 
 interface ExtensionInfo {

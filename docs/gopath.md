@@ -1,8 +1,14 @@
 # `GOPATH`
 
-The `GOPATH` environment variable is a fundamental part of writing Go code **without** [Go modules]. It specifies the location of your workspace, and it defaults to `$HOME/go`. A `GOPATH` directory contains `src`, `bin`, and `pkg` directories. Your code is typically located in the `$GOPATH/src` directory.
+The `GOPATH` environment variable is a fundamental part of writing Go code
+**without** [Go modules]. It specifies the location of your workspace, and it
+defaults to `$HOME/go`. A `GOPATH` directory contains `src`, `bin`, and `pkg`
+directories. Your code is typically located in the `$GOPATH/src` directory.
 
-If you are not familiar with Go and `GOPATH`, please first read about [writing Go code with `GOPATH`](https://golang.org/doc/gopath_code.html#GOPATH).
+If you are not familiar with Go and `GOPATH`, please first read about [writing
+Go code with `GOPATH`](https://golang.org/doc/gopath_code.html#GOPATH).
+
+**If you are just starting out with Go, we recommend [using Go modules](https://blog.golang.org/using-go-modules) instead of GOPATH.**
 
 ## Overview
 
@@ -21,7 +27,7 @@ If the `GOPATH` value is incorrect, see the details below on how to configure it
 
 ## Setting `GOPATH`
 
-If you have chosen not to use [Go modules], you will need to configure your `GOPATH`. Modules have largely eliminated the need for a `GOPATH`, so if you're interested in using them, taking a look at the [modules documentation](modules.md) for the VS Code Go extension.
+If you have chosen not to use [Go modules], you will need to configure your `GOPATH`.
 
 Setting `GOPATH` is typically as simple as setting the environment variable once in your system's configuration. Take a look at the [Setting `GOPATH` Wiki](https://github.com/golang/go/wiki/SettingGOPATH) if you're unsure how to do this.
 
