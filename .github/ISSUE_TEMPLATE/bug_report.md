@@ -7,30 +7,26 @@ assignees: ''
 
 ---
 
-Please direct general questions to:
+For asking questions, see:
+- [GitHub Discussions (Q&A)](https://github.com/golang/vscode-go/discussions/categories/q-a)
 - [`#vscode` channel in Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode)
 
-Please review the [documentation](https://github.com/golang/vscode-go/tree/master/docs) before filing an issue.
-Helpful pages include:
- 
-- [GOPATH](https://github.com/golang/vscode-go/tree/master/docs/gopath.md)
-- [Module Support](https://github.com/golang/vscode-go/tree/master/docs/modules.md)
-- [Go Language Server](https://github.com/golang/vscode-go/blob/master/docs/gopls.md)
-- [Debugging](https://github.com/golang/vscode-go/tree/master/docs/debugging.md)
-  - Set "trace": "log" and share the resulting logs in the debug console when logging an issue.
+Before filing an issue, please review our troubleshooting guides
+* [Troubleshooting problems with debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#troubleshooting)
+* [Troubleshooting other problems](https://github.com/golang/vscode-go/tree/master/docs/troubleshooting.md)
 
 Please answer these questions before submitting your issue. Thanks!
 
 ### What version of Go, VS Code & VS Code Go extension are you using?
-- Run `go version` to get version of Go
+* Run `go version` to get version of Go from _the VS Code integrated terminal_.
 	- <Paste go version here>
-- Run `gopls -v version` to get version of Gopls if you are using [the language server](https://github.com/golang/vscode-go/blob/master/docs/gopls.md).
+* Run `gopls -v version` to get version of Gopls from _the VS Code integrated terminal_.
 	- <Paste gopls version here>
-- Run `code -v` or `code-insiders -v` to get version of VS Code or VS Code Insiders
+* Run `code -v` or `code-insiders -v` to get version of VS Code or VS Code Insiders.
 	- <Paste VS Code version here>
-- Check your installed extensions to get the version of the VS Code Go extension
+* Check your installed extensions to get the version of the VS Code Go extension
 	- <Paste Go extension version here>
-- Run `go env` to get the go development environment details
+* Run Ctrl+Shift+P (Cmd+Shift+P on Mac OS) > `Go: Locate Configured Go Tools` command.
 	- <Paste the output here>
 
 ### Share the Go related settings you have added/edited
