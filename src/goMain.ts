@@ -581,7 +581,7 @@ https://github.com/golang/vscode-go/issues/50.`;
 function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
-	const showVersions: string[] = [];
+	const showVersions: string[] = ['0.22.0'];
 
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (isInPreviewMode()) {
