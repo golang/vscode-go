@@ -439,7 +439,7 @@ Default: `true`
 
 Use the Go language server "gopls" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics.
 
-Default: `false`
+Default: `true`
 ### `go.vetFlags`
 
 Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
