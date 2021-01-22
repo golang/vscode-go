@@ -6,9 +6,9 @@
 
 [The VS Code Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) provides rich language support for the [Go programming language](https://golang.org/).
 
-> 📣 We will enable the language server ([`gopls`]) by default in the end of Jan 2021.
-> We recommend switching to the language server now (`"go.useLanguageServer": true`) to confirm it works well for you.
-> Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you notice bugs or missing features.
+> 📣 Gopls, the official Go language server, is now enabled in VS Code by default.
+> Gopls replaces several legacy tools to provide IDE features while editing Go code.
+> See [issue 1037](https://github.com/golang/vscode-go/issues/1037) for more information.
 
 ## Quick Start
 
