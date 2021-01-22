@@ -48,50 +48,50 @@ In addition to integrated editing features, the extension provides several comma
 
 ## Tools
 
-The extension uses a few command-line tools developed by the Go community. In particular, `go`, `gopls`, and `dlv` are the main tools that implement build/test, language features, and debugging functionalities of this extension. See [Tools](docs/tools.md) for the full list of tools the extension depends on.
+The extension uses a few command-line tools developed by the Go community. In particular, `go`, `gopls`, and `dlv` are used to implement  build/test, language features, and debugging functionalities of this extension. See the [tools documentation](docs/tools.md) for a complete list of tools the extension depends on.
 
 In order to locate the command-line tools, the extension searches `$GOPATH/bin` and directories specified in the `PATH` environment variable (or `Path` in Windows) with which the VS Code process has started. If the tools are not found, the extension will prompt you to install the missing tools and show the "⚠️ Analysis Tools Missing" warning in the bottom right corner. Please install them by responding to the warning notification, or by manually running the `Go: Install/Update Go Tools` command. The extension will run the [`go get`](https://golang.org/cmd/go) command to  install them.
 
 ## Setting up your workspace
 
-[Modules](https://golang.org/ref/mod) are how Go manages the versions and dependencies in the recent versions of Go. Modules replace the old `GOPATH`-based approach to specifying which source files are used in a given build, and they are the default build mode after go1.16. While this extension continues to support both Go modules and `GOPATH`-mode, we highly recommend Go development in module mode. If you are working on existing projects, please consider migrating to modules.
+[Go modules](https://golang.org/ref/mod) are how Go manages dependencies in recent versions of Go. Modules replace the `GOPATH`-based approach to specifying which source files are used in a given build, and they are the default build mode in go1.16+. While this extension continues to support both Go modules and `GOPATH`-mode, we highly recommend Go development in module mode. If you are working on existing projects, please consider migrating to modules.
 
-Unlike the traditional `GOPATH`-mode, module mode does not require the workspace to be under `GOPATH` nor to use a specific structure. A module is defined by a tree of Go source files with a `go.mod` file in the tree's root directory. Your project may involve one or more modules. If you are working with multiple modules or uncommon project layouts, you will need to specifically configure your workspace, so features like references can work across modules. Please see the [Workspace document](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md) for information on supported workspace layouts.
+Unlike the traditional `GOPATH`-mode, module mode does not require the workspace to be located under `GOPATH` nor to use a specific structure. A module is defined by a directory tree of Go source files with a `go.mod` file in the tree's root directory. Your project may involve one or more modules. If you are working with multiple modules or uncommon project layouts, you will need to configure your workspace so that the extension knows which code to load, so that features like references can work across modules. Please see the [workspace documentation](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md) for information on supported workspace layouts.
 
 ## Customization
 
-The extension needs no configuration and should work out of the box. However, you may wish to modify settings to meet your needs. Please see the [Settings documentation](docs/settings.md) for the comprehensive list of extension configuration options.
+The extension needs no configuration and should work out of the box. However, you may wish to adjust settings to customize its behavior. Below are a few commonly used settings. Please see the [settings documentation](docs/settings.md) for a comprehensive list of settings.
 
 ### Choosing a different version of Go
 
-The extension chooses the `go` command from the `$PATH` (or `$Path`) environment variable by default. You can configure this extension to choose a different version of Go with one of the following options.
+The extension chooses the `go` command using the `PATH` (or `Path`) environment variable by default. You can configure the extension to choose a different version of `go` with one of the following options.
 
-  - (Preferred) Adjust your `$PATH` or `$Path` environment variable, and *open VS Code with the adjusted environment* variable, or
+  - (Preferred) Adjust your `PATH` or `Path` environment variable, and *open VS Code with the adjusted environment* variable, or
   - Use the Go extension's `"Go: Choose Go Environment"` command that opens a [menu](docs/ui.md) to change the `go` version, or
   - Use the `"go.alternateTools"` settings and specify the absolute path to the `go` command.
   ```
      "go.alternateTools": { "go": "/path/to/go/command" }
   ```
 
-**note**: For historical reasons, some users use the `"go.goroot"` settings or the `GOROOT` environment variable to select the Go SDK location. With the recent versions of Go, that's unnecessary in most cases.
+**note**: For historical reasons, some users configure the `"go.goroot"` settings or the `GOROOT` environment variable to select the Go SDK location. With recent versions of Go, that's unnecessary in most cases.
 
 ### Configuring the installation of command-line tools
 
-`Go: Install/Update Tools` command uses the `go get` command to download and install requested tools. By default,  `go get` will install the compiled tools in one of the following directories.
-  - the directory the `$GOBIN` environment variable specifies, or
-  - the `bin` directory under the first `$GOPATH` (or `"go.gopath"`) directory, or
+The `Go: Install/Update Tools` command uses the `go get` command to download and install requested tools. By default, `go get` will install the compiled tools in one of the following directories.
+  - the directory the `GOBIN` environment variable specifies, or
+  - the `bin` directory under the first `GOPATH` (or `"go.gopath"`) directory, or
   - the `$HOME/go/bin` (or `$USERPROFILE/go/bin`) directory.
- 
-Some users prefer to choose a different installation location. In that case, use the `"go.toolsGopath"` setting. 
 
-The extension finds the required tools by their names (`go`, `gopls`, `dlv`, ...). Sometimes, users may need to wrap the tools or want the extension to pick an alternate tool. `"go.alternateTools"` provides a way to configure the extension to use different tools.
+Some users prefer to choose a different installation location. In that case, use the `"go.toolsGopath"` setting.
+
+The extension finds the required tools by their names (`go`, `gopls`, `dlv`, etc.). The `"go.alternateTools"` setting provides a way to configure the extension to use different tool location, for example a wrapper with a different name.
 
 ### Using a custom linter
 
-A commonly customized feature is the linter, which is a tool used to provide coding style feedback and suggestions.
-This extension supports linters such as `staticcheck`, `golangci-lint`, and `revive`. You can choose one of them using the `"go.lintTool"` setting. For customization of the linter, please consult the tools' documentation.
+A commonly customized feature is the linter, which is the tool used to provide coding style feedback and suggestions.
+This extension supports linters such as `staticcheck`, `golangci-lint`, and `revive`. You can choose one of them using the `"go.lintTool"` setting. For customization of the linter, please consult the linter's documentation.
 
-If you are using `staticcheck`, you can enable it via the `gopls` settings block by setting
+Note that if you are using `staticcheck`, you can enable it to run within `gopls` by setting
 ```
   "gopls": {
     "ui.diagnostic.staticcheck": true
@@ -102,27 +102,27 @@ If you are using `staticcheck`, you can enable it via the `gopls` settings block
 
 ### Working on the Go standard library and the Go tools
 
-When you need to work on the Go project (https://go.googlesource.com/go), please follow the instruction in the [Standard Library Development](docs/stdlib.md) to adjust your settings.
+When you need to work on the [Go project](https://go.googlesource.com/go), please follow the instruction in the [Standard Library Development](docs/stdlib.md) documentation to adjust your settings.
 
 ## Ask for help
 
 If you're having issues with this extension, please reach out to us by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose) or asking a question on the [Gophers Slack]. We hang out in the `#vscode` channel!
 
-Take a look at [learn.go.dev](https://learn.go.dev) and [golang.org/help](https://golang.org/help) for additional guidance.
+Take a look at [learn.go.dev](https://learn.go.dev) and [golang.org/help](https://golang.org/help) for more general guidance on using Go.
 
-## [Preview version](docs/nightly.md)
+## Preview version
 
 If you'd like to get early access to new features and bug fixes, you can use the nightly build of this extension. Learn how to install it in by reading the [Go Nightly documentation](docs/nightly.md).
 
-## [Contributing](docs/contributing.md)
+## Contributing
 
-We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution guide](docs/contributing.md). It explains how to build and run the extension locally, and it describes the process of sending a contribution.
+We welcome your contributions and thank you for working to improve the Go development experience in VS Code. If you would like to help work on the VS Code Go extension, please see our [contribution guide](docs/contributing.md). It explains how to build and run the extension locally, and describes the process of sending a contribution.
 
-## [Code of Conduct](CODE_OF_CONDUCT.md)
+## Code of Conduct
 
-This project follows the [Go Community Code of Conduct](https://golang.org/conduct). If you encounter an issue, please mail conduct@golang.org.
+This project follows the [Go Community Code of Conduct](https://golang.org/conduct). If you encounter a conduct-related issue, please mail conduct@golang.org.
 
-## [License](LICENSE)
+## License
 
 [MIT](LICENSE)
 
