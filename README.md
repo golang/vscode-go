@@ -120,65 +120,8 @@ The extension needs no configuration and should work out of the box. However,
 you may wish to adjust settings to customize its behavior. Below are a few
 commonly used settings. Please see the
 [settings documentation](docs/settings.md) for a comprehensive list of settings.
-
-### Choosing a different version of Go
-
-The extension chooses the `go` command using the `PATH` (or `Path`) environment
-variable by default. You can configure the extension to choose a different
-version of `go` with one of the following options.
-
-* (Preferred) Adjust your `PATH` or `Path` environment variable, and *open VS
-  Code with the adjusted environment* variable, or
-* Use the Go extension's `"Go: Choose Go Environment"` command that opens a
-  [menu](docs/ui.md) to change the `go` version, or
-* Use the `"go.alternateTools"` settings and specify the absolute path to the
-  `go` command. `"go.alternateTools": { "go": "/path/to/go/command" }`
-
-**note**: For historical reasons, some users configure the `"go.goroot"`
-
-settings or the `GOROOT` environment variable to select the Go SDK location.
-With recent versions of Go, that's unnecessary in most cases.
-
-### Configuring the installation of command-line tools
-
-The `Go: Install/Update Tools` command uses the `go get` command to download and
-install requested tools. By default, `go get` will install the compiled tools in
-one of the following directories.
-
-* the directory the `GOBIN` environment variable specifies, or
-* the `bin` directory under the first `GOPATH` (or `"go.gopath"`) directory, or
-* the `$HOME/go/bin` (or `$USERPROFILE/go/bin`) directory.
-
-Some users prefer to choose a different installation location. In that case, use
-the `"go.toolsGopath"` setting.
-
-The extension finds the required tools by their names (`go`, `gopls`, `dlv`,
-etc.). The `"go.alternateTools"` setting provides a way to configure the
-extension to use different tool location, for example a wrapper with a different
-name.
-
-### Using a custom linter
-
-A commonly customized feature is the linter, which is the tool used to provide
-coding style feedback and suggestions. This extension supports linters such as
-`staticcheck`, `golangci-lint`, and `revive`. You can choose one of them using
-the `"go.lintTool"` setting. For customization of the linter, please consult the
-linter's documentation.
-
-Note that if you are using `staticcheck`, you can enable it to run within
-`gopls` by setting `"gopls": { "ui.diagnostic.staticcheck": true }`.
-
-<!-- TODO: maybe have tips.md or settings.md to discuss more customization and
-setting tips (e.g. activating signature help after completion, disabling
-snippets to reduce the interference with gopls' suggestions, setting proxies,
-etc.)-->
-
-### Working on the Go standard library and the Go tools
-
-When you need to work on the [Go project](https://go.googlesource.com/go),
-please follow the instruction in the
-[Standard Library Development](docs/stdlib.md) documentation to adjust your
-settings.
+See [advanced topics](docs/advanced.md) for further customizations and unique
+use cases.
 
 ## Ask for help
 
