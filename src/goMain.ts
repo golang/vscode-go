@@ -592,12 +592,22 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	const goExtensionVersion = goExtension.packageJSON.version;
 	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '0.0.0');
 
-	if (semver.gt(semver.coerce(goExtensionVersion), semver.coerce(savedGoExtensionVersion))) {
-		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
-		if (showVersions.includes(goExtensionVersion)) {
-			WelcomePanel.createOrShow(ctx.extensionUri);
-		}
+	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
+		WelcomePanel.createOrShow(ctx.extensionUri);
 	}
+	if (goExtensionVersion !== savedGoExtensionVersion) {
+		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
+	}
+}
+
+export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
+	if (newVersion === oldVersion) {
+		return false;
+	}
+	const coercedNew = semver.coerce(newVersion);
+	const coercedOld = semver.coerce(oldVersion);
+	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
+	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
 
 async function showGoNightlyWelcomeMessage() {
