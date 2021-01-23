@@ -207,6 +207,14 @@ Show the current Go survey configuration
 
 Reset the current Go survey configuration history
 
+### `Go: Reset Workspace State`
+
+Reset keys in workspace state to undefined.
+
+### `Go: Reset Global State`
+
+Reset keys in global state to undefined.
+
 ### `Go: Toggle Workspace Trust Flag`
 
 Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces.

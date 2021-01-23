@@ -54,7 +54,13 @@ import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
 import { pickProcess } from './pickProcess';
 import {
-	getFromGlobalState, getFromWorkspaceState, setGlobalState, setWorkspaceState, updateGlobalState,
+	getFromGlobalState,
+	getFromWorkspaceState,
+	resetGlobalState,
+	resetWorkspaceState,
+	setGlobalState,
+	setWorkspaceState,
+	updateGlobalState,
 	updateWorkspaceState
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
@@ -507,10 +513,17 @@ https://github.com/golang/vscode-go/issues/50.`;
 		showServerOutputChannel();
 	}));
 
-	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.welcome', () => {
-			WelcomePanel.createOrShow(ctx.extensionUri);
-		}));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.welcome', () => {
+		WelcomePanel.createOrShow(ctx.extensionUri);
+	}));
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.workspace.resetState', () => {
+		resetWorkspaceState();
+	}));
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.global.resetState', () => {
+		resetGlobalState();
+	}));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
 		if (!languageServerIsRunning) {
