@@ -61,7 +61,6 @@ import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
 	getCurrentGoPath,
-	getGoVersion,
 	getWorkspaceFolderPath,
 	removeDuplicateDiagnostics
 } from './util';
@@ -138,11 +137,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 			// If the language server is turned on because it is enabled by default,
 			// make sure that the user is using a new enough version.
 			if (cfg.enabled && languageServerUsingDefault(goConfig)) {
-				const updated = await forceUpdateGopls(tool, cfg);
-				if (updated) {
-					// restartLanguageServer will be called when the new version of gopls was installed.
-					return;
-				}
+				suggestUpdateGopls(tool, cfg);
 			}
 		}
 	}
@@ -878,7 +873,7 @@ export async function shouldUpdateLanguageServer(
  * 				configuration.
  * @returns		true if the tool was updated
  */
-async function forceUpdateGopls(
+async function suggestUpdateGopls(
 	tool: Tool,
 	cfg: LanguageServerConfig,
 ): Promise<boolean> {
@@ -896,21 +891,11 @@ async function forceUpdateGopls(
 
 	if (!latestVersion) {
 		// The user is using a new enough version
-		return false;
+		return;
 	}
 
-	const toolVersion = { ...tool, version: latestVersion }; // ToolWithVersion
-	const goVersion = await getGoVersion();
-	const failures = await installTools([toolVersion], goVersion);
-
-	// We successfully updated to the latest version.
-	if (failures.length === 0) {
-		return true;
-	}
-
-	// Failed to install the new version of gopls, warn the user.
-	vscode.window.showWarningMessage(`'gopls' is now enabled by default and you are using an old version. Please [update 'gopls'](https://github.com/golang/tools/blob/master/gopls/doc/user.md#installation) and restart the language server for the best experience.`);
-	return false;
+	const updateMsg = `'gopls' is now enabled by default and you are using an old version. Please [update 'gopls'](https://github.com/golang/tools/blob/master/gopls/README.md#installation) for the best experience.`;
+	promptForUpdatingTool(tool.name, latestVersion, false, updateMsg);
 }
 
 // Copied from src/cmd/go/internal/modfetch.go.

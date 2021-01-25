@@ -318,7 +318,11 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 	}
 }
 
-export async function promptForUpdatingTool(toolName: string, newVersion?: SemVer, crashed?: boolean) {
+export async function promptForUpdatingTool(
+	toolName: string,
+	newVersion?: SemVer,
+	crashed?: boolean,
+	message?: string) {
 	const tool = getTool(toolName);
 	const toolVersion = { ...tool, version: newVersion }; // ToolWithVersion
 
@@ -329,7 +333,9 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 
 	// Adjust the prompt if it occurred because the tool crashed.
 	let updateMsg: string;
-	if (crashed === true) {
+	if (message) {
+		updateMsg = message;
+	} else if (crashed === true) {
 		updateMsg = `${tool.name} has crashed, but you are using an outdated version. Please update to the latest version of ${tool.name}.`;
 	} else if (newVersion) {
 		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
