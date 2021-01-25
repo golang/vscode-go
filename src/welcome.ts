@@ -7,6 +7,7 @@
 // https://github.com/microsoft/vscode-extension-samples/tree/master/webview-sample
 
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { extensionId } from './const';
 
 export class WelcomePanel {
@@ -123,6 +124,14 @@ export class WelcomePanel {
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
 
+		// Add an extra note if the user has already disabled gopls, asking
+		// them to enable it.
+		let alreadyDisabledGopls = '';
+		if (getGoConfig()?.get('useLanguageServer') === false) {
+			alreadyDisabledGopls = `If you previously disabled gopls through the "go.useLanguageServer"
+setting, we recommend removing that setting now.`;
+		}
+
 		return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -161,7 +170,7 @@ export class WelcomePanel {
 					Heads up! Gopls, the official Go language server, is now enabled in VS Code by default.
 					Gopls replaces several legacy tools to provide IDE features while editing Go code.
 					See <a href="https://github.com/golang/vscode-go/issues/1037">issue 1037</a> for more
-					information.
+					information. ${alreadyDisabledGopls}
 				</p>
 			</div>
 
