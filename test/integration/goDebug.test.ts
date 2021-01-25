@@ -592,6 +592,53 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
+		test('should handle threads request after initialization', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			return Promise.all([
+				dc.configurationSequence().then(() => {
+					dc.threadsRequest().then((response) => {
+						assert.ok(response.success);
+					});
+				}),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated'),
+			]);
+		});
+
+		test('should handle delayed initial threads request', async () => {
+			// If the program exits very quickly, the initial threadsRequest
+			// will complete after it has exited.
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM,
+			};
+			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('terminated')
+			]);
+
+			const response = await dc.threadsRequest();
+			assert.ok(response.success);
+		});
+
 		test('user-specified --listen flag should be ignored', () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {

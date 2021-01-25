@@ -1363,6 +1363,11 @@ export class GoDebugSession extends LoggingDebugSession {
 			// Thread request to delve is synchronous and will block if a previous async continue request didn't return
 			response.body = { threads: [new Thread(1, 'Dummy')] };
 			return this.sendResponse(response);
+		} else if (this.debugState && this.debugState.exited) {
+			// If the program exits very quickly, the initial threadsRequest will complete after it has exited.
+			// A TerminatedEvent has already been sent. d
+			response.body = { threads: [] };
+			return this.sendResponse(response);
 		}
 		log('ThreadsRequest');
 		this.delve.call<DebugGoroutine[] | ListGoroutinesOut>('ListGoroutines', [], (err, out) => {
@@ -2429,6 +2434,9 @@ export class GoDebugSession extends LoggingDebugSession {
 	// instead of issuing a getDebugState call to Delve. Perhaps we want to
 	// do that to improve performance in the future.
 	private async isDebuggeeRunning(): Promise<boolean> {
+		if (this.debugState && this.debugState.exited) {
+			return false;
+		}
 		try {
 			this.debugState = await this.delve.getDebugState();
 			return this.debugState.Running;
