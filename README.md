@@ -165,14 +165,14 @@ conduct-related issue, please mail conduct@golang.org.
 [VS Code Go extension]: https://marketplace.visualstudio.com/items?itemName=golang.go
 [Go installation guide]: https://golang.org/doc/install
 [this video from the Go Open Source Live conference]: https://opensourcelive.withgoogle.com/events/go/watch?talk=session3
-[IntelliSense]: docs/features.md#intellisense
-[code navigation]: docs/features.md#code-navigation
-[code editing]: docs/features.md#code-editing
-[diagnostics]: docs/features.md#diagnostics
-[testing]: docs/features.md##run-and-test-in-the-editor
+[IntelliSense]: https://github.com/golang/vscode-go/blob/master/docs/features.md#intellisense
+[code navigation]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-navigation
+[code editing]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-editing
+[diagnostics]: https://github.com/golang/vscode-go/blob/master/docs/features.md#diagnostics
+[testing]: https://github.com/golang/vscode-go/blob/master/docs/features.md##run-and-test-in-the-editor
 [debugging]: #debugging
-[full feature breakdown]: docs/features.md
+[full feature breakdown]: https://github.com/golang/vscode-go/blob/master/docs/features.md
 [workspace documentation]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
-[`Go: Install/Update Go Tools` command]: docs/commands.md#go-installupdate-tools
+[`Go: Install/Update Go Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
 [documentation about supported workspace layouts]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
 [Workspace Folders]: https://code.visualstudio.com/docs/editor/multi-root-workspaces
