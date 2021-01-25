@@ -128,8 +128,8 @@ export async function activate(ctx: vscode.ExtensionContext) {
 		// The `diagnostics` setting is still used as a workaround for running custom vet.
 		if (experimentalFeatures['documentLink'] === false) {
 			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-Please use 'gopls.importShortcut' instead.
-See https://github.com/golang/tools/blob/master/gopls/doc/settings.md#importshortcut-enum for more details.`);
+Please use ' "gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
+See https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut for more details.`);
 		}
 		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
 		const prompted = getFromGlobalState(promptKey, false);
