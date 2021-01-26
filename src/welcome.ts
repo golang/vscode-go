@@ -159,7 +159,7 @@ setting, we recommend removing that setting now.`;
 						-->
 						<li><a href="#" class="Command" data-command="openDocument" data-document="CHANGELOG.md">Release notes</a></li>
 						<li><a href="https://github.com/golang/vscode-go">GitHub</a></li>
-						<li><a href="https://gophers.slack.com/messages/vscode/">Slack</a></li>
+						<li><a href="https://invite.slack.golangbridge.org/">Slack</a></li>
 					</ul>
 				</div>
 			</div>
