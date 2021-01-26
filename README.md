@@ -86,7 +86,7 @@ In order to locate these command-line tools, the extension searches
 not found, the extension will prompt you to install the missing tools and show
 the "⚠️ Analysis Tools Missing" warning in the bottom right corner. Please
 install them by responding to the warning notification, or by manually running
-the [`Go: Install/Update Go Tools` command].
+the [`Go: Install/Update Tools` command].
 
 ## Setting up your workspace
 
@@ -173,6 +173,6 @@ conduct-related issue, please mail conduct@golang.org.
 [debugging]: #debugging
 [full feature breakdown]: https://github.com/golang/vscode-go/blob/master/docs/features.md
 [workspace documentation]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
-[`Go: Install/Update Go Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
+[`Go: Install/Update Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
 [documentation about supported workspace layouts]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
 [Workspace Folders]: https://code.visualstudio.com/docs/editor/multi-root-workspaces
