@@ -55,7 +55,7 @@ export async function expandGoStatusBar() {
 		const goplsVersion = await getLocalGoplsVersion(cfg);
 		options.push({label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}`});
 	}
-	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer']) {
+	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer'] === true) {
 		options.push({
 			label: `Install Go Language Server`,
 			description: `${languageServerErrorIcon}'gopls' is required but missing`});
@@ -114,7 +114,7 @@ export async function initGoStatusBar() {
 	// icon will be updated on an attempt to start.
 	const goConfig = getGoConfig();
 	const cfg = buildLanguageServerConfig(goConfig);
-	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer']);
+	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer'] === true);
 
 	showGoStatusBar();
 }
