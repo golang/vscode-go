@@ -839,7 +839,7 @@ export async function shouldUpdateLanguageServer(
 }
 
 /**
- * forceUpdateGopls will make sure the user is using the latest version of `gopls`,
+ * suggestUpdateGopls will make sure the user is using the latest version of `gopls`,
  * when go.useLanguageServer is changed to true by default.
  *
  * @param tool	Object of type `Tool` for gopls tool.
