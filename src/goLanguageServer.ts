@@ -168,7 +168,8 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 			// We already created various notification - e.g. missing gopls, ...
 			// So, just leave a log message here instead of issuing one more notification.
 			outputChannel.appendLine(
-				`Failed to start the language server (${cfg.serverName}). Falling back to default language providers...`);
+				`Failed to start the language server (gopls). Falling back to default language providers...`);
+			outputChannel.show();
 		}
 		// If the server has been disabled, or failed to start,
 		// fall back to the default providers, while making sure not to
@@ -179,7 +180,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 
 		if (disposable) { disposable.dispose(); }
 		languageServerIsRunning = started;
-		updateLanguageServerIconGoStatusBar(started, cfg.serverName);
+		updateLanguageServerIconGoStatusBar(started, goConfig['useLanguageServer']);
 		languageServerStartInProgress = false;
 	});
 }

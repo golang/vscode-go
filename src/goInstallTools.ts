@@ -302,7 +302,7 @@ export async function promptForMissingTool(toolName: string) {
 	}
 	const msg = `The "${tool.name}" command is not available.
 Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
-	const selected = await vscode.window.showInformationMessage(msg, ...installOptions);
+	const selected = await vscode.window.showErrorMessage(msg, ...installOptions);
 	switch (selected) {
 		case 'Install':
 			await installTools([tool], goVersion);
@@ -527,8 +527,8 @@ let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
 	const msg = `Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).` +
-			`Check PATH, or Install Go and reload the window. ` +
-			`If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971`;
+		`Check PATH, or Install Go and reload the window. ` +
+		`If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971`;
 	if (suggestedDownloadGo) {
 		vscode.window.showErrorMessage(msg);
 		return;
