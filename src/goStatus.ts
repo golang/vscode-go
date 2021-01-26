@@ -13,6 +13,7 @@ import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from '
 import { buildLanguageServerConfig, getLocalGoplsVersion, languageServerIsRunning, serverOutputChannel } from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
+import { allToolsInformation } from './goTools';
 import { getGoVersion } from './util';
 
 export let outputChannel = vscode.window.createOutputChannel('Go');
@@ -24,6 +25,7 @@ export let goEnvStatusbarItem: vscode.StatusBarItem;
 
 let modulePath: string;
 export const languageServerIcon = '$(zap)';
+export const languageServerErrorIcon = '$(warning)';
 
 export function updateGoStatusBar(editor: vscode.TextEditor) {
 	// Only update the module path if we are in a Go file.
@@ -47,10 +49,16 @@ export async function expandGoStatusBar() {
 	];
 
 	// Get the gopls configuration
-	const cfg = buildLanguageServerConfig(getGoConfig());
+	const goConfig = getGoConfig();
+	const cfg = buildLanguageServerConfig(goConfig);
 	if (languageServerIsRunning && cfg.serverName === 'gopls') {
 		const goplsVersion = await getLocalGoplsVersion(cfg);
 		options.push({label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}`});
+	}
+	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer']) {
+		options.push({
+			label: `Install Go Language Server`,
+			description: `${languageServerErrorIcon}'gopls' is required but missing`});
 	}
 
 	// If modules is enabled, add link to mod file
@@ -71,6 +79,9 @@ export async function expandGoStatusBar() {
 					if (!!serverOutputChannel) {
 						serverOutputChannel.show();
 					}
+					break;
+				case `Install Go Language Server`:
+					vscode.commands.executeCommand('go.tools.install', [allToolsInformation['gopls']]);
 					break;
 				case `Open 'go.mod'`:
 					const openPath = vscode.Uri.file(item.description);
@@ -101,27 +112,37 @@ export async function initGoStatusBar() {
 	// Add an icon to indicate that the 'gopls' server is running.
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
-	const cfg = buildLanguageServerConfig(getGoConfig());
-	updateLanguageServerIconGoStatusBar(languageServerIsRunning, cfg.serverName);
+	const goConfig = getGoConfig();
+	const cfg = buildLanguageServerConfig(goConfig);
+	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer']);
 
 	showGoStatusBar();
 }
 
-export async function updateLanguageServerIconGoStatusBar(started: boolean, server: string) {
+export function updateLanguageServerIconGoStatusBar(started: boolean, enabled: boolean) {
 	if (!goEnvStatusbarItem) {
 		return;
 	}
 
-	const text = goEnvStatusbarItem.text;
-	if (started && server === 'gopls') {
-		if (!text.endsWith(languageServerIcon)) {
-			goEnvStatusbarItem.text = text + languageServerIcon;
-		}
-	} else {
-		if (text.endsWith(languageServerIcon)) {
-			goEnvStatusbarItem.text = text.substring(0, text.length - languageServerIcon.length);
-		}
+	// Split the existing goEnvStatusbarItem.text into the version string part and
+	// the gopls icon part.
+	let text = goEnvStatusbarItem.text;
+	let icon = '';
+	if (text.endsWith(languageServerIcon)) {
+		icon = languageServerIcon;
+		text = text.substring(0, text.length - languageServerIcon.length);
+	} else if (text.endsWith(languageServerErrorIcon)) {
+		icon = languageServerErrorIcon;
+		text = text.substring(0, text.length - languageServerErrorIcon.length);
 	}
+
+	if (started && enabled) {
+		icon = languageServerIcon;
+	} else if (!started && enabled) {
+		icon = languageServerErrorIcon;
+	}
+
+	goEnvStatusbarItem.text = text + icon;
 }
 
 /**

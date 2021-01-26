@@ -303,7 +303,7 @@ export async function promptForMissingTool(toolName: string) {
 	}
 	const msg = `The "${tool.name}" command is not available.
 Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
-	const selected = await vscode.window.showInformationMessage(msg, ...installOptions);
+	const selected = await vscode.window.showErrorMessage(msg, ...installOptions);
 	switch (selected) {
 		case 'Install':
 			await installTools([tool], goVersion);
@@ -319,7 +319,11 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 	}
 }
 
-export async function promptForUpdatingTool(toolName: string, newVersion?: SemVer, crashed?: boolean) {
+export async function promptForUpdatingTool(
+	toolName: string,
+	newVersion?: SemVer,
+	crashed?: boolean,
+	message?: string) {
 	const tool = getTool(toolName);
 	const toolVersion = { ...tool, version: newVersion }; // ToolWithVersion
 
@@ -330,7 +334,9 @@ export async function promptForUpdatingTool(toolName: string, newVersion?: SemVe
 
 	// Adjust the prompt if it occurred because the tool crashed.
 	let updateMsg: string;
-	if (crashed === true) {
+	if (message) {
+		updateMsg = message;
+	} else if (crashed === true) {
 		updateMsg = `${tool.name} has crashed, but you are using an outdated version. Please update to the latest version of ${tool.name}.`;
 	} else if (newVersion) {
 		updateMsg = `A new version of ${tool.name} (v${newVersion}) is available. Please update for an improved experience.`;
@@ -522,8 +528,8 @@ let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
 	const msg = `Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).` +
-			`Check PATH, or Install Go and reload the window. ` +
-			`If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971`;
+		`Check PATH, or Install Go and reload the window. ` +
+		`If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971`;
 	if (suggestedDownloadGo) {
 		vscode.window.showErrorMessage(msg);
 		return;
