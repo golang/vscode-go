@@ -115,8 +115,6 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 Format code and organize imports, either manually or on save.
 
-The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
-
 #### Add import
 
 Manually add a new import to your file through the [`Go: Add Import`](commands.md#go-add-import) command. Available packages are offered from your `GOPATH` and module cache.
