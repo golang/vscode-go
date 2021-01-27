@@ -52,6 +52,7 @@ import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
+import { pickProcess } from './pickProcess';
 import {
 	getFromGlobalState, getFromWorkspaceState, setGlobalState, setWorkspaceState, updateGlobalState,
 	updateWorkspaceState
@@ -181,6 +182,10 @@ https://github.com/golang/vscode-go/issues/50.`;
 		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go')));
 	ctx.subscriptions.push(
 		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider('godlvdap')));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.debug.pickProcess', async (): Promise<string> => {
+			return await pickProcess();
+		}));
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);
