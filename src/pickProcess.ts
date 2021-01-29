@@ -46,13 +46,13 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 	let processCmd: ProcessListCommand;
 	switch (process.platform) {
 		case 'win32':
-			processCmd = psDarwinCommand;
+			processCmd = wmicCommand;
 			break;
 		case 'darwin':
-			processCmd = psLinuxCommand;
+			processCmd = psDarwinCommand;
 			break;
 		case 'linux':
-			processCmd = wmicCommand;
+			processCmd = psLinuxCommand;
 			break;
 		default:
 			// Other operating systems are not supported.
