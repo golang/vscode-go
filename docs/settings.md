@@ -51,12 +51,11 @@ Default:
 Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
 | Properties | Description |
 | --- | --- |
+| `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
 | `go-outline` | Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary. <br/> Default: `"go-outline"` |
-| `gocode` | Alternate tool to use instead of the gocode binary or alternate path to use for the gocode binary. <br/> Default: `"gocode"` |
 | `gopkgs` | Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary. <br/> Default: `"gopkgs"` |
 | `gopls` | Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary. <br/> Default: `"gopls"` |
-| `guru` | Alternate tool to use instead of the guru binary or alternate path to use for the guru binary. <br/> Default: `"guru"` |
 ### `go.autocompleteUnimportedPackages`
 
 Include unimported packages in auto-complete suggestions. Not applicable when using the language server.

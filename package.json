@@ -2121,11 +2121,6 @@
               "default": "go",
               "description": "Alternate tool to use instead of the go binary or alternate path to use for the go binary."
             },
-            "gocode": {
-              "type": "string",
-              "default": "gocode",
-              "description": "Alternate tool to use instead of the gocode binary or alternate path to use for the gocode binary."
-            },
             "gopkgs": {
               "type": "string",
               "default": "gopkgs",
@@ -2141,10 +2136,10 @@
               "default": "go-outline",
               "description": "Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary."
             },
-            "guru": {
+            "dlv": {
               "type": "string",
-              "default": "guru",
-              "description": "Alternate tool to use instead of the guru binary or alternate path to use for the guru binary."
+              "default": "dlv",
+              "description": "Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary."
             }
           },
           "additionalProperties": true
