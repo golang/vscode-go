@@ -4,8 +4,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-// Taken from:
-// https://github.com/microsoft/vscode-python/blob/main/src/client/debugger/extension/attachQuickPick/wmicProcessParser.ts
+// Modified from:
+// https://github.com/microsoft/vscode-python/blob/main/src/client/debugger/extension/attachQuickPick/wmicProcessParser.ts.
+// Added arguments to get the ExecutablePath from wmic.
 
 'use strict';
 
@@ -14,6 +15,7 @@ import { AttachItem, ProcessListCommand } from '../pickProcess';
 const wmicNameTitle = 'Name';
 const wmicCommandLineTitle = 'CommandLine';
 const wmicPidTitle = 'ProcessId';
+const wmicExecutableTitle = 'ExecutablePath';
 const defaultEmptyEntry: AttachItem = {
 	label: '',
 	description: '',
@@ -32,7 +34,7 @@ const defaultEmptyEntry: AttachItem = {
 // |		   1308 |	  1132 |
 export const wmicCommand: ProcessListCommand = {
 	command: 'wmic',
-	args: ['process', 'get', 'Name,ProcessId,CommandLine', '/FORMAT:list']
+	args: ['process', 'get', 'Name,ProcessId,CommandLine,ExecutablePath', '/FORMAT:list']
 };
 
 export function parseWmicProcesses(processes: string): AttachItem[] {
@@ -79,6 +81,8 @@ function parseLineFromWmic(line: string, item: AttachItem): AttachItem {
 
 			currentItem.detail = value;
 			currentItem.commandLine = value;
+		} else if (key === wmicExecutableTitle) {
+			currentItem.executable = value;
 		}
 	}
 

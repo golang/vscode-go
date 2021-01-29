@@ -60,12 +60,12 @@ export interface ProcessListCommand {
 
 async function getGoProcesses(): Promise<AttachItem[]> {
 	const processes = await getAllProcesses();
-	// TODO(suzmue): set the executable path for win32 and darwin.
-	if (process.platform !== 'linux') {
+	// TODO(suzmue): set the executable path for and darwin.
+	if (process.platform === 'darwin') {
 		return processes;
 	}
 
-	// Run 'go version' on all of /proc/${pid}/exe to find 'go' processes
+	// Run 'go version' on all executable paths to find 'go' processes
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
@@ -94,7 +94,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 
 	const goProcesses: AttachItem[] = [];
 	processes.forEach((item) => {
-		if (goProcessExes.indexOf(item.id) >= 0) {
+		if (goProcessExes.indexOf(item.executable) >= 0) {
 			item.isGo = true;
 			goProcesses.push(item);
 		}
