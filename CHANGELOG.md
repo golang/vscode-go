@@ -1,3 +1,17 @@
+## v0.22.1 - 4th Feb, 2021
+
+### Enhancements
+- Added error details to automated error reports. ([CL 287952](https://go-review.googlesource.com/c/vscode-go/+/287952))
+- Used clickable links in `"go.languageServerExperimentalFeatures"` setting deprecation error messages. ([CL 288133](https://go-review.googlesource.com/c/vscode-go/+/288133))
+
+### Fixes
+- Fixed a race during language client restarts. ([CL 288372](https://go-review.googlesource.com/c/vscode-go/+/288372), [CL 288352](https://go-review.googlesource.com/c/vscode-go/+/288352))
+- Disabled the language server when using workspace folders over ssh. ([Issue 1171](https://github.com/golang/vscode-go/issues/1171))
+- Added `dlv` to the `"go.alternateTools"` example value list. ([CL 289231](https://go-review.googlesource.com/c/vscode-go/+/289231))
+
+### Code Health
+- Bumped `ini` to 1.3.8 to address a vulnerability report from `npm audit`.
+
 ## v0.22.0 - 26th Jan, 2021
 
 - The language server, `gopls`, is enabled by default. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037))
