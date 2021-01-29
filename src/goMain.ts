@@ -135,15 +135,14 @@ export async function activate(ctx: vscode.ExtensionContext) {
 		// The `diagnostics` setting is still used as a workaround for running custom vet.
 		if (experimentalFeatures['documentLink'] === false) {
 			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-Please use ' "gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
-See https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut for more details.`);
+Please use '"gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
+See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut) for more details.`);
 		}
 		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
 		const prompted = getFromGlobalState(promptKey, false);
 		if (!prompted && experimentalFeatures['diagnostics'] === false) {
 			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
-If you would like additional configuration for diagnostics from gopls, please see and response to
-https://github.com/golang/vscode-go/issues/50.`;
+If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).`;
 			const selected = await vscode.window.showInformationMessage(msg, `Don't show again`);
 			switch (selected) {
 			case `Don't show again`:
