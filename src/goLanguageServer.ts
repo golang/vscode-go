@@ -61,6 +61,7 @@ import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
 	getCurrentGoPath,
+	getGoVersion,
 	getWorkspaceFolderPath,
 	removeDuplicateDiagnostics
 } from './util';
@@ -171,7 +172,17 @@ function scheduleGoplsSuggestions(tool: Tool) {
 			return;
 		}
 		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
-		if (versionToUpdate) {
+		if (!versionToUpdate) {
+			return;
+		}
+		// If the user has opted in to automatic tool updates, we can update
+		// without prompting.
+		const toolsManagementConfig = getGoConfig()['toolsManagement'];
+		if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+			const goVersion = await getGoVersion();
+			const toolVersion = { ...tool, version: versionToUpdate }; // ToolWithVersion
+			await installTools([toolVersion], goVersion, true);
+		} else {
 			promptForUpdatingTool(tool.name, versionToUpdate);
 		}
 	};

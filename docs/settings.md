@@ -402,6 +402,11 @@ Environment variables that will be passed to the tools that run the Go tools (e.
 ### `go.toolsGopath`
 
 Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+### `go.toolsManagement.autoUpdate`
+
+Automatically update the tools used by the extension, without prompting the user.
+
+Default: `false`
 ### `go.toolsManagement.checkForUpdates`
 
 Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on<br/>

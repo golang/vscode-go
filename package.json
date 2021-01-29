@@ -1730,6 +1730,12 @@
           ],
           "markdownDescription": "Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on"
         },
+        "go.toolsManagement.autoUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically update the tools used by the extension, without prompting the user.",
+          "scope": "resource"
+        },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",
           "default": true,

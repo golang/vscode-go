@@ -10,6 +10,8 @@ import fs = require('fs');
 import path = require('path');
 import { SemVer } from 'semver';
 import util = require('util');
+import { ConfigurationTarget } from 'vscode';
+import { workspace } from 'vscode';
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
@@ -98,13 +100,16 @@ export async function installAllTools(updateExistingToolsOnly: boolean = false) 
  */
 export async function installTools(
 	missing: ToolAtVersion[],
-	goVersion: GoVersion
+	goVersion: GoVersion,
+	silent?: boolean,
 ): Promise<{ tool: ToolAtVersion, reason: string }[]> {
 	if (!missing) {
 		return [];
 	}
 
-	outputChannel.show();
+	if (!silent) {
+		outputChannel.show();
+	}
 	outputChannel.clear();
 
 	const envForTools = toolInstallationEnvironment();
@@ -172,6 +177,11 @@ export async function installTools(
 	if (failures.length === 0) {
 		outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
 	} else {
+		// Show the output channel on failures, even if the installation should
+		// be silent.
+		if (silent) {
+			outputChannel.show();
+		}
 		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
 			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
@@ -345,15 +355,30 @@ export async function promptForUpdatingTool(
 
 	let choices: string[] = ['Update'];
 	if (toolName === `gopls`) {
-		choices.push('Release Notes');
+		choices = ['Always Update', 'Update Once', 'Release Notes'];
 	}
+
+	const goVersion = await getGoVersion();
 
 	while (choices.length > 0) {
 		const selected = await vscode.window.showInformationMessage(updateMsg, ...choices);
 		switch (selected) {
+			case 'Always Update':
+				// Update the user's settings to enable auto updates. They can
+				// always opt-out in their settings.
+				const goConfig = getGoConfig();
+				await goConfig.update('toolsManagement.autoUpdate', true, ConfigurationTarget.Global);
+
+				// And then install the tool.
+				choices = [];
+				await installTools([toolVersion], goVersion);
+				break;
+			case 'Update Once':
+				choices = [];
+				await installTools([toolVersion], goVersion);
+				break;
 			case 'Update':
 				choices = [];
-				const goVersion = await getGoVersion();
 				await installTools([toolVersion], goVersion);
 				break;
 			case 'Release Notes':
