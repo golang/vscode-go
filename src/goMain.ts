@@ -52,7 +52,7 @@ import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar
 import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
-import { pickProcess } from './pickProcess';
+import { pickGoProcess, pickProcess } from './pickProcess';
 import {
 	getFromGlobalState,
 	getFromWorkspaceState,
@@ -190,6 +190,10 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.pickProcess', async (): Promise<string> => {
 			return await pickProcess();
+		}));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.debug.pickGoProcess', async (): Promise<string> => {
+			return await pickGoProcess();
 		}));
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');

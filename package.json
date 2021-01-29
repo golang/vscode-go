@@ -432,7 +432,8 @@
           "go"
         ],
         "variables": {
-          "pickProcess": "go.debug.pickProcess"
+          "pickProcess": "go.debug.pickProcess",
+          "pickGoProcess": "go.debug.pickGoProcess"
         },
         "configurationSnippets": [
           {
@@ -721,17 +722,18 @@
               "processId": {
                 "anyOf": [
                   {
-                      "enum": [
-                          "${command:pickProcess}"
-                      ],
-                      "description": "Use process picker to select a process to attach, or Process ID as integer.",
-                      "default": "${command:pickProcess}"
+                    "enum": [
+                      "${command:pickProcess}",
+                      "${command:pickGoProcess}"
+                    ],
+                    "description": "Use process picker to select a process to attach, or Process ID as integer.",
+                    "default": "${command:pickProcess}"
                   },
                   {
-                      "type": "number",
-                      "description": "The ID of the process to be debugged."
+                    "type": "number",
+                    "description": "The ID of the process to be debugged."
                   }
-              ]
+                ]
               },
               "mode": {
                 "enum": [

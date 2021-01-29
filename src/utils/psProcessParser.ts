@@ -93,7 +93,7 @@ function parseLineFromPs(line: string): AttachItem | undefined {
 		const executable = matches[2].trim();
 		const cmdline = matches[3].trim();
 
-		return {
+		const attachItem: AttachItem = {
 			label: executable,
 			description: pid,
 			detail: cmdline,
@@ -101,5 +101,9 @@ function parseLineFromPs(line: string): AttachItem | undefined {
 			processName: executable,
 			commandLine: cmdline
 		};
+		if (process.platform === 'linux') {
+			attachItem.executable = `/proc/${pid}/exe`;
+		}
+		return attachItem;
 	}
 }

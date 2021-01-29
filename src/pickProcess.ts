@@ -7,14 +7,29 @@ import cp = require('child_process');
 import util = require('util');
 import { QuickPickItem } from 'vscode';
 import vscode = require('vscode');
+import { toolExecutionEnvironment } from './goEnv';
+import { getBinPath, getWorkspaceFolderPath } from './util';
+import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
 
 // TODO(suzmue): create a command pickGoProcess to filter
 // to processes that are using go.
 export async function pickProcess(): Promise<string> {
+	const allProcesses = await getAllProcesses();
+	const id = await processPicker(allProcesses);
+	return id;
+}
+
+export async function pickGoProcess(): Promise<string> {
+	const allProcesses = await getGoProcesses();
+	const id = await processPicker(allProcesses);
+	return id;
+}
+
+async function processPicker(processes: AttachItem[]): Promise<string> {
 	const selection = await vscode.window.showQuickPick(
-		getAllProcesses(),
+		processes,
 		{
 			placeHolder: 'Choose a process to attach to',
 			matchOnDescription: true,
@@ -34,12 +49,57 @@ export interface AttachItem extends QuickPickItem {
 	id: string;
 	processName: string;
 	commandLine: string;
+	executable?: string;
 	isGo?: boolean;
 }
 
 export interface ProcessListCommand {
 	command: string;
 	args: string[];
+}
+
+async function getGoProcesses(): Promise<AttachItem[]> {
+	const processes = await getAllProcesses();
+	// TODO(suzmue): set the executable path for win32 and darwin.
+	if (process.platform !== 'linux') {
+		return processes;
+	}
+
+	// Run 'go version' on all of /proc/${pid}/exe to find 'go' processes
+	const goRuntimePath = getBinPath('go');
+	if (!goRuntimePath) {
+		vscode.window.showErrorMessage(
+			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+		);
+		return processes;
+	}
+	const args = ['version'];
+	processes.forEach((item, i) => {
+		args.push(item.executable);
+	});
+	const {stdout} = cp.spawnSync(goRuntimePath, args, { env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() });
+
+	// Parse the process ids from stdout. Ignore stderr, since we expect many to fail.
+	const goProcessExes: string[] = [];
+	const lines = stdout.toString().split('\n');
+
+	const goVersionRegexp = /: go\d+.\d+.\d+$/;
+	lines.forEach((line) => {
+		const match = line.match(goVersionRegexp);
+		if (match && match.length > 0) {
+			const exe = line.substr(0, line.length - match[0].length);
+			goProcessExes.push(exe);
+		}
+	});
+
+	const goProcesses: AttachItem[] = [];
+	processes.forEach((item) => {
+		if (goProcessExes.indexOf(item.id) >= 0) {
+			item.isGo = true;
+			goProcesses.push(item);
+		}
+	});
+	return goProcesses;
 }
 
 async function getAllProcesses(): Promise<AttachItem[]> {
