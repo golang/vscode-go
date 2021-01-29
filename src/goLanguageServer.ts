@@ -94,6 +94,10 @@ let languageServerStartInProgress = false;
 let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
+// Some metrics for automated issue reports:
+let manualRestartCount = 0;
+let totalStartCount = 0;
+
 // defaultLanguageProviders is the list of providers currently registered.
 let defaultLanguageProviders: vscode.Disposable[] = [];
 
@@ -224,6 +228,8 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 			await suggestGoplsIssueReport(
 				`Looks like you're about to manually restart the language server.`,
 				errorKind.manualRestart);
+
+			manualRestartCount++;
 			restartLanguageServer();
 		});
 		ctx.subscriptions.push(restartCommand);
@@ -234,6 +240,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	disposeDefaultProviders();
 
 	languageServerDisposable = languageClient.start();
+	totalStartCount++;
 	ctx.subscriptions.push(languageServerDisposable);
 	return true;
 }
@@ -312,7 +319,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				vscode.window.showErrorMessage(
 					`The language server is not able to serve any features. Initialization failed: ${error}. `
 				);
-				suggestGoplsIssueReport(`The gopls server failed to initialize.`, errorKind.initializationFailure);
+				suggestGoplsIssueReport(`The gopls server failed to initialize`, errorKind.initializationFailure, error);
 				return false;
 			},
 			errorHandler: {
@@ -1261,7 +1268,7 @@ enum errorKind {
 }
 
 // suggestGoplsIssueReport prompts users to file an issue with gopls.
-async function suggestGoplsIssueReport(msg: string, reason: errorKind) {
+async function suggestGoplsIssueReport(msg: string, reason: errorKind, initializationError?: WebRequest.ResponseError<InitializeError>) {
 	// Don't prompt users who manually restart to file issues until gopls/v1.0.
 	if (reason === errorKind.manualRestart) {
 		return;
@@ -1337,6 +1344,9 @@ gopls version: ${usersGoplsVersion}
 gopls flags: ${settings}
 extension version: ${extInfo.version}
 environment: ${extInfo.appName}
+initialization error: ${initializationError}
+manual restart count: ${manualRestartCount}
+total start count: ${totalStartCount}
 
 ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 
