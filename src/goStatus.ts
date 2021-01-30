@@ -129,10 +129,8 @@ export function updateLanguageServerIconGoStatusBar(started: boolean, enabled: b
 	let text = goEnvStatusbarItem.text;
 	let icon = '';
 	if (text.endsWith(languageServerIcon)) {
-		icon = languageServerIcon;
 		text = text.substring(0, text.length - languageServerIcon.length);
 	} else if (text.endsWith(languageServerErrorIcon)) {
-		icon = languageServerErrorIcon;
 		text = text.substring(0, text.length - languageServerErrorIcon.length);
 	}
 
