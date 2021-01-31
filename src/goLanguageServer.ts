@@ -253,6 +253,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	languageServerDisposable = languageClient.start();
 	totalStartCount++;
 	ctx.subscriptions.push(languageServerDisposable);
+	await languageClient.onReady();
 	return true;
 }
 
