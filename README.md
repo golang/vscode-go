@@ -44,9 +44,9 @@ extension, as well as how to [customize](#customization) them. Take a look at
 guidance.
 
 If you are new to Go, [this article](https://golang.org/doc/code.html) provides
-the overview on Go code organization and basic `go` commands. Watch [this video
-from the Go Open Source Live conference] for an explanation of how to build
-your first Go application using VS Code Go.
+the overview on Go code organization and basic `go` commands. Watch ["Getting
+started with VS Code Go"] for an explanation of how to build your first Go
+application using VS Code Go.
 
 ## Features
 
@@ -168,7 +168,7 @@ conduct-related issue, please mail conduct@golang.org.
 [Managing extensions in VS Code]: https://code.visualstudio.com/docs/editor/extension-gallery
 [VS Code Go extension]: https://marketplace.visualstudio.com/items?itemName=golang.go
 [Go installation guide]: https://golang.org/doc/install
-[this video from the Go Open Source Live conference]: https://opensourcelive.withgoogle.com/events/go/watch?talk=session3
+["Getting started with VS Code Go"]: https://youtu.be/1MXIGYrMk80
 [IntelliSense]: https://github.com/golang/vscode-go/blob/master/docs/features.md#intellisense
 [code navigation]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-navigation
 [code editing]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-editing
