@@ -1,14 +1,14 @@
 /*---------------------------------------------------------
- * Copyright 2020 The Go Authors. All rights reserved.
+ * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import cp = require('child_process');
-import util = require('util');
 import { QuickPickItem } from 'vscode';
 import vscode = require('vscode');
-import { toolExecutionEnvironment } from './goEnv';
-import { getBinPath, getWorkspaceFolderPath } from './util';
+import { logError } from './goLogging';
+import { getBinPath } from './util';
+import { lsofDarwinCommand, parseLsofProcesses } from './utils/lsofProcessParser';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
@@ -35,9 +35,9 @@ async function processPicker(processes: AttachItem[]): Promise<string> {
 		}
 	);
 	if (!selection) {
-		return Promise.reject(new Error('No process selected'));
+		throw new Error('No process selected');
 	}
-	return Promise.resolve(selection.id);
+	return selection.id;
 }
 
 // Modified from:
@@ -45,10 +45,10 @@ async function processPicker(processes: AttachItem[]): Promise<string> {
 // - This extension adds a function for identifying the Go processes (getGoProcesses)
 export interface AttachItem extends QuickPickItem {
 	id: string;
-	processName: string;
-	commandLine: string;
-	executable?: string;
+	processName?: string;
+	commandLine?: string;
 	isGo?: boolean;
+	executable?: string;
 }
 
 export interface ProcessListCommand {
@@ -58,9 +58,19 @@ export interface ProcessListCommand {
 
 async function getGoProcesses(): Promise<AttachItem[]> {
 	const processes = await getAllProcesses();
-	// TODO(suzmue): Set the executable path for darwin.
 	if (process.platform === 'darwin') {
-		return processes;
+		// The executable paths are not set for darwin.
+		// It appears there is no standard way to get the executable
+		// path for a running process on darwin os. This implementation
+		// may not work for all processes.
+		const lsofOutput = await runCommand(lsofDarwinCommand);
+		if (lsofOutput.err) {
+			// We weren't able to run lsof, return all processes found.
+			return processes;
+		}
+		const darwinExes = parseLsofProcesses(lsofOutput.stdout);
+		// Merge the executable path to the processes obtained using ps.
+		mergeExecutableAttachItem(processes, darwinExes);
 	}
 
 	// Run 'go version' on all executable paths to find 'go' processes
@@ -72,32 +82,68 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 		return processes;
 	}
 	const args = ['version'];
-	processes.forEach((item, i) => {
-		args.push(item.executable);
-	});
-	const {stdout} = cp.spawnSync(goRuntimePath, args, { env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() });
-
-	// Parse the process ids from stdout. Ignore stderr, since we expect many to fail.
-	const goProcessExes: string[] = [];
-	const lines = stdout.toString().split('\n');
-
-	const goVersionRegexp = /: go\d+.\d+.\d+$/;
-	lines.forEach((line) => {
-		const match = line.match(goVersionRegexp);
-		if (match && match.length > 0) {
-			const exe = line.substr(0, line.length - match[0].length);
-			goProcessExes.push(exe);
+	processes.forEach((item) => {
+		if (item.executable?.length > 0) {
+			args.push(item.executable);
 		}
 	});
 
+	const {stdout} = await runCommand({command: goRuntimePath, args});
+
+	// Parse the executable paths from stdout. Ignore stderr, since we expect many to fail.
+	const goProcessExecutables: string[] = parseGoVersionOutput(stdout);
+
 	const goProcesses: AttachItem[] = [];
 	processes.forEach((item) => {
-		if (goProcessExes.indexOf(item.executable) >= 0) {
+		if (goProcessExecutables.indexOf(item.executable) >= 0) {
 			item.isGo = true;
 			goProcesses.push(item);
 		}
 	});
+
 	return goProcesses;
+}
+
+export function parseGoVersionOutput(stdout: string): string[] {
+	const goProcessExes: string[] = [];
+	const goVersionRegexp = /: go\d+.\d+.\d+$/;
+
+	const lines = stdout.toString().split('\n');
+	lines.forEach((line) => {
+		const match = line.match(goVersionRegexp);
+		if (match?.length > 0) {
+			const exe = line.substr(0, line.length - match[0].length);
+			goProcessExes.push(exe);
+		}
+	});
+	return goProcessExes;
+}
+
+export const compareByProcessId = (a: AttachItem, b: AttachItem) => {
+	return parseInt(a.id, 10) - parseInt(b.id, 10);
+};
+
+export function mergeExecutableAttachItem(processes: AttachItem[], addlAttachItemInfo: AttachItem[]) {
+	processes.sort(compareByProcessId);
+	addlAttachItemInfo.sort(compareByProcessId);
+	let aIdx = 0;
+	let pIdx = 0;
+	while (aIdx < addlAttachItemInfo.length && pIdx < processes.length) {
+		const aAttachItem = addlAttachItemInfo[aIdx];
+		const pAttachItem = processes[pIdx];
+		if (aAttachItem.id === pAttachItem.id) {
+			pAttachItem.executable = aAttachItem.executable;
+			aIdx ++;
+			pIdx ++;
+			continue;
+		}
+
+		if (compareByProcessId(pAttachItem, aAttachItem) > 0) {
+			aIdx ++;
+		} else {
+			pIdx ++;
+		}
+	}
 }
 
 async function getAllProcesses(): Promise<AttachItem[]> {
@@ -114,13 +160,22 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 			break;
 		default:
 			// Other operating systems are not supported.
-			return [];
+			throw new Error(`'pickProcess' and 'pickGoProcess' are not supported for ${process.platform}. Set process id in launch.json instead.`);
 	}
 
-	const execFile = util.promisify(cp.execFile);
-	const { stdout } = await execFile(processCmd.command, processCmd.args);
+	const { stdout } = await runCommand(processCmd);
 
 	return process.platform === 'win32'
 		? parseWmicProcesses(stdout)
 		: parsePsProcesses(stdout);
+}
+
+async function runCommand(
+		processCmd: ProcessListCommand
+	): Promise<{ err: cp.ExecException; stdout: string; stderr: string; }> {
+	return await new Promise<{err: cp.ExecException; stdout: string, stderr: string}>((resolve) => {
+		cp.execFile(processCmd.command, processCmd.args, (err, stdout, stderr) => {
+			resolve({err, stdout, stderr});
+		});
+	});
 }
