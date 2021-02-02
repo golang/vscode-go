@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import net = require('net');
 import * as os from 'os';
 import * as path from 'path';
+import { DebugConfiguration } from 'vscode';
 
 import {
 	logger,
@@ -39,7 +40,9 @@ interface LoadConfig {
 }
 
 // This interface should always match the schema found in `package.json`.
-interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+	type: string;
+	name: string;
 	request: 'launch';
 	[key: string]: any;
 	program: string;
@@ -652,48 +655,8 @@ class DelveClient extends DAPClient {
 	constructor(launchArgs: LaunchRequestArguments) {
 		super();
 
-		const launchArgsEnv = launchArgs.env || {};
-		const env = Object.assign({}, process.env, launchArgsEnv);
-
-		// Let users override direct path to delve by setting it in the env
-		// map in launch.json; if unspecified, fall back to dlvToolPath.
-		let dlvPath = launchArgsEnv['dlvPath'];
-		if (!dlvPath) {
-			dlvPath = launchArgs.dlvToolPath;
-		}
-
-		if (!fs.existsSync(dlvPath)) {
-			log(
-				`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
-				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
-				} or ${envPath}`
-			);
-			throw new Error(
-				`Cannot find Delve debugger. Install from https://github.com/go-delve/delve/ & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
-			);
-		}
-
-		const dlvArgs = new Array<string>();
-		dlvArgs.push('dap');
-		// add user-specified dlv flags first. When duplicate flags are specified,
-		// dlv doesn't mind but accepts the last flag value.
-		if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
-			dlvArgs.push(...launchArgs.dlvFlags);
-		}
-		dlvArgs.push(`--listen=${launchArgs.host}:${launchArgs.port}`);
-		if (launchArgs.showLog) {
-			dlvArgs.push('--log=' + launchArgs.showLog.toString());
-		}
-		if (launchArgs.logOutput) {
-			dlvArgs.push('--log-output=' + launchArgs.logOutput);
-		}
-		log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
-
 		const dir = parseProgramArgSync(launchArgs).dirname;
-		this.debugProcess = spawn(dlvPath, dlvArgs, {
-			cwd: dir,
-			env
-		});
+		this.debugProcess = spawnDapServerProcess(launchArgs, log, logError);
 
 		this.debugProcess.stderr.on('data', (chunk) => {
 			let str = chunk.toString();
@@ -759,7 +722,7 @@ class DelveClient extends DAPClient {
 //
 // Throws an exception in case args.program is not a valid file or directory.
 // This function can block because it calls a blocking fs function.
-function parseProgramArgSync(launchArgs: LaunchRequestArguments
+export function parseProgramArgSync(launchArgs: DebugConfiguration
 ): { program: string, dirname: string, programIsDirectory: boolean } {
 	const program = launchArgs.program;
 	if (!program) {
@@ -776,4 +739,53 @@ function parseProgramArgSync(launchArgs: LaunchRequestArguments
 	}
 	const dirname = programIsDirectory ? program : path.dirname(program);
 	return {program, dirname, programIsDirectory};
+}
+
+export function spawnDapServerProcess(
+	launchArgs: DebugConfiguration,
+	logFn: (...args: any[]) => void,
+	logErrFn: (...args: any[]) => void
+) {
+	const launchArgsEnv = launchArgs.env || {};
+	const env = Object.assign({}, process.env, launchArgsEnv);
+
+	// Let users override direct path to delve by setting it in the env
+	// map in launch.json; if unspecified, fall back to dlvToolPath.
+	let dlvPath = launchArgsEnv['dlvPath'];
+	if (!dlvPath) {
+		dlvPath = launchArgs.dlvToolPath;
+	}
+
+	if (!fs.existsSync(dlvPath)) {
+		logErrFn(
+			`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
+			env['GOPATH'] ? ', ' + env['GOPATH'] : ''
+			} or ${envPath}`
+		);
+		throw new Error(
+			`Cannot find Delve debugger. Install from https://github.com/go-delve/delve/ & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".`
+		);
+	}
+
+	const dlvArgs = new Array<string>();
+	dlvArgs.push('dap');
+	// add user-specified dlv flags first. When duplicate flags are specified,
+	// dlv doesn't mind but accepts the last flag value.
+	if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
+		dlvArgs.push(...launchArgs.dlvFlags);
+	}
+	dlvArgs.push(`--listen=${launchArgs.host}:${launchArgs.port}`);
+	if (launchArgs.showLog) {
+		dlvArgs.push('--log=' + launchArgs.showLog.toString());
+	}
+	if (launchArgs.logOutput) {
+		dlvArgs.push('--log-output=' + launchArgs.logOutput);
+	}
+	logFn(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
+
+	const dir = parseProgramArgSync(launchArgs).dirname;
+	return spawn(dlvPath, dlvArgs, {
+		cwd: dir,
+		env
+	});
 }

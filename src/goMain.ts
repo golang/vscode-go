@@ -19,6 +19,7 @@ import {
 	toggleCoverageCurrentPackage, trackCodeCoverageRemovalOnFileChange, updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
+import { GoDebugAdapterDescriptorFactory } from './goDebugFactory';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
 import { chooseGoEnvironment, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
@@ -195,6 +196,13 @@ If you would like additional configuration for diagnostics from gopls, please se
 		vscode.commands.registerCommand('go.debug.pickGoProcess', async (): Promise<string> => {
 			return await pickGoProcess();
 		}));
+
+	const factory = new GoDebugAdapterDescriptorFactory();
+	ctx.subscriptions.push(
+		vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(buildDiagnosticCollection);

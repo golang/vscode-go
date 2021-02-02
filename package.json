@@ -891,7 +891,6 @@
       {
         "type": "godlvdap",
         "label": "Go Dlv Dap (Experimental)",
-        "program": "./dist/debugAdapter2.js",
         "runtime": "node",
         "languages": [
           "go"
