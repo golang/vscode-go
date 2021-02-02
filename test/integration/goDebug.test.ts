@@ -350,7 +350,7 @@ suite('Go Debug Adapter', function () {
 	 * NOTE: For simplicity, this function assumes the breakpoints are in the same file.
 	 */
 	async function setUpRemoteAttach(config: DebugConfiguration, breakpoints: ILocation[] = []): Promise<void> {
-		const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		console.log(`Sending initializing request for remote attach setup.`);
 		const initializedResult = await dc.initializeRequest();
 		assert.ok(initializedResult.success);
@@ -461,7 +461,7 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('launch', () => {
-		test('should run program to the end', () => {
+		test('should run program to the end', async () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -472,7 +472,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -481,7 +481,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should stop on entry', () => {
+		test('should stop on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -491,7 +491,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -507,7 +507,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should debug a file', () => {
+		test('should debug a file', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest', 'test.go');
 			const config = {
 				name: 'Launch file',
@@ -517,7 +517,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 			};
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -526,7 +526,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should debug a single test', () => {
+		test('should debug a single test', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch file',
@@ -540,7 +540,7 @@ suite('Go Debug Adapter', function () {
 				]
 			};
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -549,7 +549,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should debug a test package', () => {
+		test('should debug a test package', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch file',
@@ -559,7 +559,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM
 			};
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -568,7 +568,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('invalid flags are passed to dlv but should be caught by dlv', () => {
+		test('invalid flags are passed to dlv but should be caught by dlv', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -578,7 +578,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 			return Promise.all([
 				dc.assertOutput('stderr', 'Error: unknown flag: --invalid\n', 5000),
 				dc.waitForEvent('terminated'),
@@ -602,7 +602,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence().then(() => {
@@ -627,7 +627,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -639,7 +639,7 @@ suite('Go Debug Adapter', function () {
 			assert.ok(response.success);
 		});
 
-		test('user-specified --listen flag should be ignored', () => {
+		test('user-specified --listen flag should be ignored', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -649,7 +649,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				dlvFlags: ['--listen=127.0.0.1:80'],
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.configurationSequence(),
@@ -674,7 +674,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				cwd: WD,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
@@ -694,7 +694,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
@@ -715,7 +715,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				cwd: WD,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
@@ -735,14 +735,14 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			await assertVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should run program with cwd set (noDebug)', () => {
+		test('should run program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -755,7 +755,7 @@ suite('Go Debug Adapter', function () {
 				cwd: WD,
 				noDebug: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.launch(debugConfig),
@@ -765,7 +765,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run program without cwd set (noDebug)', () => {
+		test('should run program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -777,7 +777,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				noDebug: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.launch(debugConfig),
@@ -787,7 +787,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run file program with cwd set (noDebug)', () => {
+		test('should run file program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -800,7 +800,7 @@ suite('Go Debug Adapter', function () {
 				cwd: WD,
 				noDebug: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.launch(debugConfig),
@@ -810,7 +810,7 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run file program without cwd set (noDebug)', () => {
+		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -822,7 +822,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				noDebug: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 				dc.launch(debugConfig),
@@ -841,7 +841,7 @@ suite('Go Debug Adapter', function () {
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
-			debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+			debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 		});
 
 		teardown(async () => {
@@ -886,10 +886,10 @@ suite('Go Debug Adapter', function () {
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
-			remoteAttachDebugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+			remoteAttachDebugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 		});
 
-		test('should stop on a breakpoint', () => {
+		test('should stop on a breakpoint', async () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -903,12 +903,12 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test('should stop on a breakpoint in test file', () => {
+		test('should stop on a breakpoint in test file', async () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -922,7 +922,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'test',
 				program: PROGRAM
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
@@ -1005,7 +1005,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1039,7 +1039,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, setupBreakpoint);
 
@@ -1084,7 +1084,7 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('conditionalBreakpoints', () => {
-		test('should stop on conditional breakpoint', () => {
+		test('should stop on conditional breakpoint', async () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
@@ -1098,7 +1098,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 			return Promise.all([
 
 				dc.waitForEvent('initialized').then(() => {
@@ -1135,7 +1135,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return dc.hitBreakpoint(debugConfig, location).then(() =>
 				// The program is stopped at the breakpoint, check to make sure 'i == 0'.
@@ -1158,7 +1158,7 @@ suite('Go Debug Adapter', function () {
 			);
 		});
 
-		test('should remove breakpoint condition', () => {
+		test('should remove breakpoint condition', async () => {
 
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
@@ -1172,7 +1172,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 			return Promise.all([
 
 				dc.waitForEvent('initialized').then(() => {
@@ -1213,7 +1213,7 @@ suite('Go Debug Adapter', function () {
 
 	suite('panicBreakpoints', () => {
 
-		test('should stop on panic', () => {
+		test('should stop on panic', async () => {
 
 			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'panic');
 
@@ -1224,7 +1224,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM_WITH_EXCEPTION,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			return Promise.all([
 
@@ -1253,7 +1253,7 @@ suite('Go Debug Adapter', function () {
 			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 
 			// Setup attach.
 			await setUpRemoteAttach(debugConfig);
@@ -1293,7 +1293,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1317,7 +1317,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1343,7 +1343,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1373,7 +1373,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, location);
 
@@ -1396,7 +1396,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1424,7 +1424,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM,
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
@@ -1445,7 +1445,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1469,7 +1469,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			await Promise.all([
 				dc.configurationSequence(),
@@ -1555,7 +1555,7 @@ suite('Go Debug Adapter', function () {
 						}
 					]
 				};
-				const debugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, config);
+				const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 			});
@@ -1569,7 +1569,7 @@ suite('Go Debug Adapter', function () {
 			setup(async () => {
 				server = await getPort();
 				remoteAttachConfig.port = await getPort();
-				remoteAttachDebugConfig = debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+				remoteAttachDebugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
 			});
 
 			suiteSetup(() => {

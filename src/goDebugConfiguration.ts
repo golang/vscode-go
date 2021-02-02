@@ -13,6 +13,7 @@ import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
+import { pickProcess } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
@@ -151,11 +152,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		return [choice.config];
 	}
 
-	public resolveDebugConfiguration(
+	public async resolveDebugConfiguration(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): vscode.DebugConfiguration {
+	): Promise<vscode.DebugConfiguration> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json
@@ -258,6 +259,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				'ignoreUsingRemotePathAndProgramWarning',
 				`Request type of 'attach' with mode 'remote' does not work with 'program' attribute, please use 'cwd' attribute instead.`
 			);
+		}
+
+		if (
+			debugConfiguration.request === 'attach' &&
+			debugConfiguration['mode'] === 'local' &&
+			( !debugConfiguration['processId'] || debugConfiguration['processId'] === 0)
+		) {
+			// The processId is not valid, offer a quickpick menu of all processes.
+			debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
 		}
 		return debugConfiguration;
 	}

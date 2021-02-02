@@ -144,7 +144,7 @@ suite('Debug Configuration Merge User Settings', () => {
 	teardown(() => sinon.restore());
 
 	suite(`merge 'go' config from settings.json`, () => {
-		test('go flags config does not affect debug config', () => {
+		test('go flags config does not affect debug config', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
 			// When this expected behavior changes, this test can be updated.
@@ -158,7 +158,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				program: '${fileDirname}',
 			};
 
-			const emptyResult = debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
+			const emptyResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
 			const goConfig = Object.create(getGoConfig(), {
 				testFlags: {value: '-tags=myTagTest'},
 				buildFlags: {value: '-tags=myTagBuild'},
@@ -177,7 +177,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				program: '${fileDirname}',
 			};
 
-			const filledResult = debugConfigProvider.resolveDebugConfiguration(undefined, cfg2);
+			const filledResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg2);
 
 			assert.strictEqual(filledResult.name, emptyResult.name);
 			assert.strictEqual(filledResult.type, emptyResult.type);
@@ -189,7 +189,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(filledResult.showGlobalVariables, emptyResult.showGlobalVariables);
 		});
 
-		test('delve config in settings.json is added to debug config', () => {
+		test('delve config in settings.json is added to debug config', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
 			// When this expected behavior changes, this test can be updated.
@@ -219,7 +219,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				program: '${fileDirname}',
 			};
 
-			const result = debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
+			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 1);
 			assert.strictEqual(result.showGlobalVariables, true);
 			const dlvLoadConfig = result.dlvLoadConfig;
@@ -230,7 +230,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(dlvLoadConfig.maxStructFields, 5);
 		});
 
-		test('delve config in settings.json is overriden by launch.json', () => {
+		test('delve config in settings.json is overriden by launch.json', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
 			// When this expected behavior changes, this test can be updated.
@@ -269,7 +269,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				},
 			};
 
-			const result = debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
+			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 2);
 			assert.strictEqual(result.showGlobalVariables, false);
 			const dlvLoadConfig = result.dlvLoadConfig;

@@ -13,8 +13,6 @@ import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
 
-// TODO(suzmue): create a command pickGoProcess to filter
-// to processes that are using go.
 export async function pickProcess(): Promise<string> {
 	const allProcesses = await getAllProcesses();
 	const id = await processPicker(allProcesses);
@@ -37,14 +35,14 @@ async function processPicker(processes: AttachItem[]): Promise<string> {
 		}
 	);
 	if (!selection) {
-		return '0';
+		return Promise.reject(new Error('No process selected'));
 	}
-	return selection.id;
+	return Promise.resolve(selection.id);
 }
 
-// Taken from:
+// Modified from:
 // https://github.com/microsoft/vscode-python/blob/main/src/client/debugger/extension/attachQuickPick/provider.ts
-
+// - This extension adds a function for identifying the Go processes (getGoProcesses)
 export interface AttachItem extends QuickPickItem {
 	id: string;
 	processName: string;
@@ -60,7 +58,7 @@ export interface ProcessListCommand {
 
 async function getGoProcesses(): Promise<AttachItem[]> {
 	const processes = await getAllProcesses();
-	// TODO(suzmue): set the executable path for and darwin.
+	// TODO(suzmue): Set the executable path for darwin.
 	if (process.platform === 'darwin') {
 		return processes;
 	}

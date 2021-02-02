@@ -6,7 +6,7 @@
 
 // Modified from:
 // https://github.com/microsoft/vscode-python/blob/main/src/client/debugger/extension/attachQuickPick/wmicProcessParser.ts.
-// Added arguments to get the ExecutablePath from wmic.
+// - Added arguments to get the ExecutablePath from wmic.
 
 'use strict';
 

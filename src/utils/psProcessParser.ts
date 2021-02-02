@@ -4,9 +4,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-// Taken from:
+// Modified from:
 // https://github.com/microsoft/vscode-python/blob/main/src/client/debugger/extension/attachQuickPick/psProcessParser.ts
-
+// - Added the executable path '/proc/{PID}/exe' for linux processes.
 'use strict';
 
 import { AttachItem, ProcessListCommand } from '../pickProcess';
