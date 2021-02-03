@@ -583,7 +583,7 @@ async function adjustGoplsWorkspaceConfiguration(cfg: LanguageServerConfig, work
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
 
 	// Only modify the user's configurations for the Nightly.
-	if (extensionId !== 'golang.go-nightly') {
+	if (!isInPreviewMode()) {
 		return workspaceConfig;
 	}
 	// allExperiments is only available with gopls/v0.5.2 and above.
