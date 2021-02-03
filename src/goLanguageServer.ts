@@ -116,10 +116,14 @@ let lastUserAction: Date = new Date();
 export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
 
 	for (const folder of vscode.workspace.workspaceFolders || []) {
-		if (folder.uri.scheme === 'vsls') {
-			outputChannel.appendLine(`Language service on the guest side is disabled. ` +
-				`The server-side language service will provide the language features.`);
-			return;
+		switch (folder.uri.scheme) {
+			case 'vsls':
+				outputChannel.appendLine(`Language service on the guest side is disabled. ` +
+					`The server-side language service will provide the language features.`);
+				return;
+			case 'ssh':
+				outputChannel.appendLine(`The language server is not supported for SSH. Disabling it.`);
+				return;
 		}
 	}
 
@@ -283,7 +287,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
-		// Filter out unsupported document types, e.g. vsls, git.
+		// Filter out unsupported document types, e.g. vsls, git, ssh.
 		// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
 		//
 		// - files
