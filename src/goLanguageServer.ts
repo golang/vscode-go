@@ -20,14 +20,12 @@ import {
 	CompletionItemKind,
 	ConfigurationParams,
 	ConfigurationRequest,
-	DocumentSelector,
 	ErrorAction,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
-	ProvideDocumentLinksSignature,
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -56,7 +54,7 @@ import { GoCompletionItemProvider } from './goSuggest';
 import { GoWorkspaceSymbolProvider } from './goSymbol';
 import { getTool, Tool } from './goTools';
 import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { getFromGlobalState, updateGlobalState } from './stateUtils';
+import { getFromGlobalState, getFromWorkspaceState, getWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
@@ -130,15 +128,17 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	const goConfig = getGoConfig();
 	const cfg = buildLanguageServerConfig(goConfig);
 
+	// We have some extra prompts for gopls users and for people who have opted
+	// out of gopls.
+	if (activation) {
+		scheduleGoplsSuggestions();
+	}
+
 	// If the language server is gopls, we enable a few additional features.
 	// These include prompting for updates and surveys.
 	if (cfg.serverName === 'gopls') {
 		const tool = getTool(cfg.serverName);
 		if (tool) {
-			if (activation) {
-				scheduleGoplsSuggestions(tool);
-			}
-
 			// If the language server is turned on because it is enabled by default,
 			// make sure that the user is using a new enough version.
 			if (cfg.enabled && languageServerUsingDefault(goConfig)) {
@@ -167,14 +167,13 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // suggestions. We check user's gopls versions once per day to prompt users to
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
-function scheduleGoplsSuggestions(tool: Tool) {
-	const update = async () => {
-		setTimeout(update, timeDay);
-
-		const cfg = buildLanguageServerConfig(getGoConfig());
-		if (!cfg.enabled) {
-			return;
-		}
+function scheduleGoplsSuggestions() {
+	// Some helper functions.
+	const usingGopls = (cfg: LanguageServerConfig): boolean => {
+		return cfg.enabled && cfg.serverName === 'gopls';
+	};
+	const installGopls = async (cfg: LanguageServerConfig) => {
+		const tool = getTool('gopls');
 		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
 		if (!versionToUpdate) {
 			return;
@@ -190,11 +189,40 @@ function scheduleGoplsSuggestions(tool: Tool) {
 			promptForUpdatingTool(tool.name, versionToUpdate);
 		}
 	};
+	const update = async () => {
+		setTimeout(update, timeDay);
+
+		let cfg = buildLanguageServerConfig(getGoConfig());
+		if (!usingGopls(cfg)) {
+			// This shouldn't happen, but if the user has a non-gopls language
+			// server enabled, we shouldn't prompt them to change.
+			if (cfg.serverName !== '') {
+				return;
+			}
+			// Check if the configuration is set in the workspace.
+			const useLanguageServer = getGoConfig().inspect('useLanguageServer');
+			let workspace: boolean;
+			if (useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false) {
+				workspace = true;
+			}
+			// Prompt the user to enable gopls and record what actions they took.
+			let optOutCfg = getGoplsOptOutConfig(workspace);
+			optOutCfg = await promptAboutGoplsOptOut(optOutCfg);
+			flushGoplsOptOutConfig(optOutCfg, workspace);
+			// Check if the language server has now been enabled, and if so,
+			// it will be installed below.
+			cfg = buildLanguageServerConfig(getGoConfig());
+			if (!cfg.enabled) {
+				return;
+			}
+		}
+		await installGopls(cfg);
+	};
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 
 		const cfg = buildLanguageServerConfig(getGoConfig());
-		if (!cfg.enabled) {
+		if (!usingGopls(cfg)) {
 			return;
 		}
 		maybePromptForGoplsSurvey();
@@ -202,6 +230,76 @@ function scheduleGoplsSuggestions(tool: Tool) {
 
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
+}
+
+export interface GoplsOptOutConfig {
+	prompt?: boolean;
+	lastDatePrompted?: Date;
+}
+
+const goplsOptOutConfigKey = 'goplsOptOutConfig';
+
+function getGoplsOptOutConfig(workspace: boolean): GoplsOptOutConfig {
+	return getStateConfig(goplsOptOutConfigKey, workspace) as GoplsOptOutConfig;
+}
+
+function flushGoplsOptOutConfig(cfg: GoplsOptOutConfig, workspace: boolean) {
+	if (workspace) {
+		updateWorkspaceState(goplsOptOutConfigKey, JSON.stringify(cfg));
+	}
+	updateGlobalState(goplsOptOutConfigKey, JSON.stringify(cfg));
+}
+
+export async function promptAboutGoplsOptOut(cfg: GoplsOptOutConfig): Promise<GoplsOptOutConfig> {
+	if (cfg.prompt === false) {
+		return cfg;
+	}
+	// Prompt the user ~once a month.
+	if (cfg.lastDatePrompted && daysBetween(new Date(), cfg.lastDatePrompted) < 30) {
+		return cfg;
+	}
+	cfg.lastDatePrompted = new Date();
+	const selected = await vscode.window.showInformationMessage(`We noticed that you have disabled the language server.
+It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
+Would you like to enable it now?`, { title: 'Enable' }, { title: 'Not now' }, { title: 'Never' });
+	if (!selected) {
+		return cfg;
+	}
+	switch (selected.title) {
+		case 'Enable':
+			// Change the user's Go configuration to enable the language server.
+			// Remove the setting entirely, since it's on by default now.
+			const goConfig = getGoConfig();
+			await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Global);
+			if (goConfig.inspect('useLanguageServer').workspaceValue === false) {
+				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Workspace);
+			}
+			if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+			}
+
+			cfg.prompt = false;
+			break;
+		case 'Not now':
+			cfg.prompt = true;
+			break;
+		case 'Never':
+			cfg.prompt = false;
+			await promptForGoplsOptOutSurvey();
+			break;
+	}
+	return cfg;
+}
+
+async function promptForGoplsOptOutSurvey() {
+	const selected = await vscode.window.showInformationMessage(`No problem. Would you be willing to tell us why you have opted out of the language server?`, { title: 'Yes' }, { title: 'No' });
+	switch (selected.title) {
+		case 'Yes':
+			await vscode.env.openExternal(vscode.Uri.parse(`https://forms.gle/hwC8CncV7Cyc2yBN6`));
+			break;
+		case 'No':
+			break;
+	}
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -987,6 +1085,9 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	if (cfg.version !== '') {
 		return cfg.version;
 	}
+	if (cfg.path === '') {
+		return null;
+	}
 	const execFile = util.promisify(cp.execFile);
 	let output: any;
 	try {
@@ -1222,8 +1323,29 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
 
-function getSurveyConfig(surveyConfigKey = goplsSurveyConfig): SurveyConfig {
-	const saved = getFromGlobalState(surveyConfigKey);
+function getSurveyConfig(): SurveyConfig {
+	return getStateConfig(goplsSurveyConfig) as SurveyConfig;
+}
+
+export function resetSurveyConfig() {
+	flushSurveyConfig(null);
+}
+
+function flushSurveyConfig(cfg: SurveyConfig) {
+	if (cfg) {
+		updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+	} else {
+		updateGlobalState(goplsSurveyConfig, null);  // reset
+	}
+}
+
+function getStateConfig(globalStateKey: string, workspace?: boolean): any {
+	let saved: any;
+	if (workspace === true) {
+		saved = getFromWorkspaceState(globalStateKey);
+	} else {
+		saved = getFromGlobalState(globalStateKey);
+	}
 	if (saved === undefined) {
 		return {};
 	}
@@ -1257,18 +1379,6 @@ export async function showSurveyConfig() {
 			break;
 		default:
 			break;
-	}
-}
-
-export function resetSurveyConfig() {
-	flushSurveyConfig(null);
-}
-
-function flushSurveyConfig(cfg: SurveyConfig) {
-	if (cfg) {
-		updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
-	} else {
-		updateGlobalState(goplsSurveyConfig, null);  // reset
 	}
 }
 
@@ -1332,7 +1442,7 @@ async function suggestGoplsIssueReport(msg: string, reason: errorKind, initializ
 			selected = await vscode.window.showInformationMessage(`The extension was unable to start the language server.
 You may have an invalid value in your "go.languageServerFlags" setting.
 It is currently set to [${languageServerFlags}]. Please correct the setting by navigating to Preferences -> Settings.`,
-'Open settings', 'I need more help.');
+				'Open settings', 'I need more help.');
 			switch (selected) {
 				case 'Open settings':
 					await vscode.commands.executeCommand('workbench.action.openSettings', 'go.languageServerFlags');

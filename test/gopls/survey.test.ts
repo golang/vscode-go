@@ -5,7 +5,8 @@
 
 import * as assert from 'assert';
 import sinon = require('sinon');
-import { shouldPromptForGoplsSurvey, SurveyConfig } from '../../src/goLanguageServer';
+import vscode = require('vscode');
+import { GoplsOptOutConfig, promptAboutGoplsOptOut, shouldPromptForGoplsSurvey, SurveyConfig } from '../../src/goLanguageServer';
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
@@ -79,6 +80,40 @@ suite('gopls survey tests', () => {
 				assert.equal(gotPrompt, wantPrompt, `prompt determination failed for ${i}`);
 			}
 			sinon.restore();
+		});
+	});
+});
+
+suite('gopls opt out', () => {
+	let sandbox: sinon.SinonSandbox;
+
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+
+	teardown(() => {
+		sandbox.restore();
+	});
+
+	const testCases: [GoplsOptOutConfig, string, number][] = [
+		// No saved config, different choices in the first dialog box.
+		[{}, 'Enable', 1],
+		[{}, 'Not now', 1],
+		[{}, 'Never', 2],
+		// // Saved config, doesn't matter what the user chooses.
+		[{ prompt: false, }, '', 0],
+		[{ prompt: false, lastDatePrompted: new Date() }, '', 0],
+		[{ prompt: true, }, '', 1],
+		[{ prompt: true, lastDatePrompted: new Date() }, '', 0],
+	];
+
+	testCases.map(async ([testConfig, choice, wantCount], i) => {
+		test(`opt out: ${i}`, async () => {
+			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
+
+			await promptAboutGoplsOptOut(testConfig);
+			assert.strictEqual(stub.callCount, wantCount);
+
 		});
 	});
 });

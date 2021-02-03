@@ -73,16 +73,9 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 			);
 		}
 
-		if (goConfig['useLanguageServer'] === false) {
-			const promptMsg = 'For better performance using Go modules, you can try the experimental Go language server, gopls.';
-			promptToUpdateToolForModules('gopls', promptMsg, goConfig)
-				.then((choseToUpdate) => {
-					if (choseToUpdate || goConfig['formatTool'] !== 'goreturns') {
-						return;
-					}
-					const promptFormatToolMsg = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".`;
-					promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
-				});
+		if (goConfig['useLanguageServer'] === false && goConfig['formatTool'] !== 'goreturns') {
+			const promptFormatToolMsg = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".`;
+			promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
 		}
 	}
 	packagePathToGoModPathMap[pkgPath] = goModEnvResult;
