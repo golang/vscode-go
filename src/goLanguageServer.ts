@@ -1344,7 +1344,7 @@ Failed to auto-collect gopls trace: ${failureReason}.
 gopls version: ${usersGoplsVersion}
 gopls flags: ${settings}
 extension version: ${extInfo.version}
-environment: ${extInfo.appName}
+environment: ${extInfo.appName} ${process.platform}
 initialization error: ${initializationError}
 manual restart count: ${manualRestartCount}
 total start count: ${totalStartCount}
