@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.23.0-dev",
+  "version": "0.23.1-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -54,11 +54,11 @@
     "moment": "^2.24.0",
     "semver": "^7.3.2",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.42.1",
-    "vscode-debugadapter-testsupport": "^1.42.0",
-    "vscode-debugprotocol": "^1.42.0",
-    "vscode-languageclient": "^7.0.0-next.12",
-    "vscode-languageserver-protocol": "^3.16.0-next.7",
+    "vscode-debugadapter": "^1.44.0",
+    "vscode-debugadapter-testsupport": "^1.44.0",
+    "vscode-debugprotocol": "^1.44.0",
+    "vscode-languageclient": "^7.0.0",
+    "vscode-languageserver-protocol": "^3.16.0",
     "web-request": "^1.0.7"
   },
   "devDependencies": {
@@ -70,7 +70,7 @@
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.41.0",
+    "@types/vscode": "^1.52.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
@@ -88,7 +88,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.46.0"
+    "vscode": "^1.52.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
