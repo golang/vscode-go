@@ -578,15 +578,16 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
 	const showVersions: string[] = ['0.22.0'];
-
+	// TODO(hyangah): use the content hash instead of hard-coded string.
+	// https://github.com/golang/vscode-go/issue/1179
+	let goExtensionVersion = 'v0.22.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (isInPreviewMode()) {
+		goExtensionVersion = '0.0.0';
 		goExtensionVersionKey = 'go.nightlyExtensionVersion';
 	}
 
-	const goExtension = vscode.extensions.getExtension(extensionId)!;
-	const goExtensionVersion = goExtension.packageJSON.version;
-	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '0.0.0');
+	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '');
 
 	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
 		WelcomePanel.createOrShow(ctx.extensionUri);
