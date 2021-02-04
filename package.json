@@ -1366,7 +1366,7 @@
             "off"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
+          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
           "scope": "resource"
         },
         "go.vetFlags": {
