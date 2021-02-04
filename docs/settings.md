@@ -449,7 +449,7 @@ Default: `true`
 Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
 ### `go.vetOnSave`
 
-Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics is used. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
+Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
 Allowed Options: `package`, `workspace`, `off`
 
 Default: `"package"`
