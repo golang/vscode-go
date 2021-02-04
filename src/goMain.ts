@@ -602,7 +602,7 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	const showVersions: string[] = ['0.22.0'];
 	// TODO(hyangah): use the content hash instead of hard-coded string.
 	// https://github.com/golang/vscode-go/issue/1179
-	let goExtensionVersion = 'v0.22.0';
+	let goExtensionVersion = '0.22.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (isInPreviewMode()) {
 		goExtensionVersion = '0.0.0';
