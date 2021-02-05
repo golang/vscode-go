@@ -603,6 +603,9 @@ export function shouldShowGoWelcomePage(showVersions: string[], newVersion: stri
 	}
 	const coercedNew = semver.coerce(newVersion);
 	const coercedOld = semver.coerce(oldVersion);
+	if (!coercedNew || !coercedOld) {
+		return true;
+	}
 	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
 	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
