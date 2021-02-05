@@ -18,6 +18,7 @@ async function main() {
 
 		// Download VS Code, unzip it and run the integration test
 		await runTests({
+			version: '1.52.1',
 			extensionDevelopmentPath,
 			extensionTestsPath,
 			launchArgs: [
@@ -36,6 +37,7 @@ async function main() {
 		// tslint:disable-next-line:max-line-length
 		// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
 		await runTests({
+			version: '1.52.1',
 			extensionDevelopmentPath,
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
