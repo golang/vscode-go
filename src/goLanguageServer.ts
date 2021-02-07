@@ -336,13 +336,13 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 			},
 			errorHandler: {
 				error: (error: Error, message: Message, count: number): ErrorAction => {
-					vscode.window.showErrorMessage(
-						`Error communicating with the language server: ${error}: ${message}.`
-					);
 					// Allow 5 crashes before shutdown.
 					if (count < 5) {
 						return ErrorAction.Continue;
 					}
+					vscode.window.showErrorMessage(
+						`Error communicating with the language server: ${error}: ${message}.`
+					);
 					return ErrorAction.Shutdown;
 				},
 				closed: (): CloseAction => {
@@ -1320,7 +1320,30 @@ async function suggestGoplsIssueReport(msg: string, reason: errorKind, initializ
 			return;
 		}
 	}
-	const selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue on GitHub?
+
+	const { sanitizedLog, failureReason } = await collectGoplsLog();
+
+	// If the user has invalid values for "go.languageServerFlags", we may get
+	// this error. Prompt them to double check their flags.
+	let selected: string;
+	if (failureReason === GoplsFailureModes.INCORRECT_COMMAND_USAGE) {
+		const languageServerFlags = getGoConfig()['languageServerFlags'] as string[];
+		if (languageServerFlags && languageServerFlags.length > 0) {
+			selected = await vscode.window.showInformationMessage(`The extension was unable to start the language server.
+You may have an invalid value in your "go.languageServerFlags" setting.
+It is currently set to [${languageServerFlags}]. Please correct the setting by navigating to Preferences -> Settings.`,
+'Open settings', 'I need more help.');
+			switch (selected) {
+				case 'Open settings':
+					await vscode.commands.executeCommand('workbench.action.openSettings', 'go.languageServerFlags');
+					return;
+				case 'I need more help':
+					// Fall through the automated issue report.
+					break;
+			}
+		}
+	}
+	selected = await vscode.window.showInformationMessage(`${msg} Would you like to report a gopls issue on GitHub?
 You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`, 'Yes', 'Next time', 'Never');
 	switch (selected) {
 		case 'Yes':
@@ -1339,7 +1362,6 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 			const extInfo = getExtensionInfo();
 			const settings = latestConfig.flags.join(' ');
 			const title = `gopls: automated issue report (${errKind})`;
-			const { sanitizedLog, failureReason } = await collectGoplsLog();
 			const goplsLog = (sanitizedLog) ?
 				`<pre>${sanitizedLog}</pre>` :
 				`Please attach the stack trace from the crash.
@@ -1453,7 +1475,7 @@ async function collectGoplsLog(): Promise<{ sanitizedLog?: string; failureReason
 	// document, since we just surfaced the output channel to the user.
 	// See https://github.com/microsoft/vscode/issues/65108.
 	let logs: string;
-	for (let i = 0; i < 3; i++) {
+	for (let i = 0; i < 10; i++) {
 		// try a couple of times until successfully finding the channel.
 		for (const doc of vscode.workspace.textDocuments) {
 			if (doc.languageId !== 'Log') {
@@ -1473,17 +1495,25 @@ async function collectGoplsLog(): Promise<{ sanitizedLog?: string; failureReason
 			break;
 		}
 		// sleep a bit before the next try. The choice of the sleep time is arbitrary.
-		await sleep((i + 1) * 10);
+		await sleep((i + 1) * 100);
 	}
 
 	return sanitizeGoplsTrace(logs);
+}
+
+enum GoplsFailureModes {
+	NO_GOPLS_LOG = 'no gopls log',
+	EMPTY_PANIC_TRACE = 'empty panic trace',
+	INCOMPLETE_PANIC_TRACE = 'incomplete panic trace',
+	INCORRECT_COMMAND_USAGE = 'incorrect gopls command usage',
+	UNRECOGNIZED_CRASH_PATTERN = 'unrecognized crash pattern'
 }
 
 // capture only panic stack trace and the initialization error message.
 // exported for testing.
 export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, failureReason?: string } {
 	if (!logs) {
-		return { failureReason: 'no gopls log' };
+		return { failureReason: GoplsFailureModes.NO_GOPLS_LOG };
 	}
 	const panicMsgBegin = logs.lastIndexOf('panic: ');
 	if (panicMsgBegin > -1) {  // panic message was found.
@@ -1509,9 +1539,9 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, fail
 			if (sanitized) {
 				return { sanitizedLog: sanitized };
 			}
-			return { failureReason: 'empty panic trace' };
+			return { failureReason: GoplsFailureModes.EMPTY_PANIC_TRACE };
 		}
-		return { failureReason: 'incomplete panic trace' };
+		return { failureReason: GoplsFailureModes.INCOMPLETE_PANIC_TRACE };
 	}
 	const initFailMsgBegin = logs.lastIndexOf('Starting client failed');
 	if (initFailMsgBegin > -1) {  // client start failed. Capture up to the 'Code:' line.
@@ -1522,9 +1552,9 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string, fail
 		}
 	}
 	if (logs.lastIndexOf('Usage: gopls') > -1) {
-		return { failureReason: 'incorrect gopls command usage' };
+		return { failureReason: GoplsFailureModes.INCORRECT_COMMAND_USAGE };
 	}
-	return { failureReason: 'unrecognized crash pattern' };
+	return { failureReason: GoplsFailureModes.UNRECOGNIZED_CRASH_PATTERN };
 }
 
 function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
