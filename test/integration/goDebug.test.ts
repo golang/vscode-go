@@ -24,6 +24,7 @@ import {
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
+import { startDapServer } from '../../src/goDebugFactory';
 import getPort = require('get-port');
 import util = require('util');
 
@@ -288,9 +289,9 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-suite('Go Debug Adapter', function () {
-	this.timeout(60_000);
-
+const testAll = (isDlvDap: boolean) => {
+	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
+	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
@@ -308,17 +309,23 @@ suite('Go Debug Adapter', function () {
 
 	let dc: DebugClient;
 
-	setup(() => {
-		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go', undefined, true);
+	setup(async () => {
+		if (isDlvDap) {
+			dc = new DebugClient('dlv', 'dap', 'go');
 
+			// Launching delve may take longer than the default timeout of 5000.
+			dc.defaultTimeout = 20_000;
+			return;
+		}
+
+		dc = new DebugClient('node', path.join(PROJECT_ROOT, DEBUG_ADAPTER), 'go', undefined, true);
 		// Launching delve may take longer than the default timeout of 5000.
 		dc.defaultTimeout = 20_000;
-
 		// To connect to a running debug server for debugging the tests, specify PORT.
-		return dc.start();
+		await dc.start();
 	});
 
-	teardown(() => dc.stop());
+	teardown(async () => await dc.stop());
 
 	/**
 	 * This function sets up a server that returns helloworld on serverPort.
@@ -361,7 +368,7 @@ suite('Go Debug Adapter', function () {
 	 * NOTE: For simplicity, this function assumes the breakpoints are in the same file.
 	 */
 	async function setUpRemoteAttach(config: DebugConfiguration, breakpoints: ILocation[] = []): Promise<void> {
-		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const debugConfig = await initializeDebugConfig(config);
 		console.log('Sending initializing request for remote attach setup.');
 		const initializedResult = await dc.initializeRequest();
 		assert.ok(initializedResult.success);
@@ -438,41 +445,62 @@ suite('Go Debug Adapter', function () {
 	}
 
 	suite('basic', () => {
-		test('unknown request should produce error', (done) => {
-			dc.send('illegal_request')
-				.then(() => {
-					done(new Error('does not report error on unknown request'));
-				})
-				.catch(() => {
-					done();
-				});
+		test('unknown request should produce error', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
+			if (isDlvDap) {
+				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+				await initializeDebugConfig(config);
+			}
+
+			try {
+				await dc.send('illegal_request');
+			} catch {
+				return;
+			}
+			throw new Error('does not report error on unknown request');
 		});
 	});
 
 	suite('initialize', () => {
-		test('should return supported features', () => {
-			return dc.initializeRequest().then((response) => {
+		test('should return supported features', async () => {
+			if (isDlvDap) {
+				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+				await initializeDebugConfig(config);
+			}
+			await dc.initializeRequest().then((response) => {
 				response.body = response.body || {};
 				assert.strictEqual(response.body.supportsConditionalBreakpoints, true);
 				assert.strictEqual(response.body.supportsConfigurationDoneRequest, true);
-				assert.strictEqual(response.body.supportsSetVariable, true);
+				if (!isDlvDap) {
+					// not supported in dlv-dap
+					assert.strictEqual(response.body.supportsSetVariable, true);
+				}
 			});
 		});
 
-		test("should produce error for invalid 'pathFormat'", (done) => {
-			dc.initializeRequest({
-				adapterID: 'mock',
-				linesStartAt1: true,
-				columnsStartAt1: true,
-				pathFormat: 'url'
-			})
-				.then((response) => {
-					done(new Error("does not report error on invalid 'pathFormat' attribute"));
-				})
-				.catch((err) => {
-					// error expected
-					done();
+		test("should produce error for invalid 'pathFormat'", async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
+			if (isDlvDap) {
+				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+				await initializeDebugConfig(config);
+			}
+			try {
+				await dc.initializeRequest({
+					adapterID: 'mock',
+					linesStartAt1: true,
+					columnsStartAt1: true,
+					pathFormat: 'url'
 				});
+			} catch (err) {
+				return; // want error
+			}
+			throw new Error("does not report error on invalid 'pathFormat' attribute");
 		});
 	});
 
@@ -487,9 +515,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 
 		test('should stop on entry', async () => {
@@ -502,9 +529,8 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.configurationSequence(),
 				dc.launch(debugConfig),
 				// The debug adapter does not support a stack trace request
@@ -528,9 +554,8 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM
 			};
 
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 
 		test('should debug a single test', async () => {
@@ -544,9 +569,8 @@ suite('Go Debug Adapter', function () {
 				args: ['-test.run', 'TestMe']
 			};
 
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 
 		test('should debug a test package', async () => {
@@ -559,12 +583,15 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM
 			};
 
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 
-		test('invalid flags are passed to dlv but should be caught by dlv', async () => {
+		test('invalid flags are passed to dlv but should be caught by dlv', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -574,8 +601,8 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.assertOutput('stderr', 'Error: unknown flag: --invalid\n', 5000),
 				dc.waitForEvent('terminated'),
 				dc.initializeRequest().then((response) => {
@@ -598,9 +625,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.configurationSequence().then(() => {
 					dc.threadsRequest().then((response) => {
 						assert.ok(response.success);
@@ -623,15 +649,18 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 
 			const response = await dc.threadsRequest();
 			assert.ok(response.success);
 		});
 
-		test('user-specified --listen flag should be ignored', async () => {
+		test('user-specified --listen flag should be ignored', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -641,14 +670,18 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				dlvFlags: ['--listen=127.0.0.1:80']
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
-			return Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 	});
 
 	suite('set current working directory', () => {
-		test('should debug program with cwd set', async () => {
+		test('should debug program with cwd set', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 			const FILE = path.join(PROGRAM, 'main.go');
@@ -662,14 +695,17 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				cwd: WD
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			await assertVariableValue('strdat', '"Hello, World!"');
 		});
 
-		test('should debug program without cwd set', async () => {
+		test('should debug program without cwd set', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 			const FILE = path.join(PROGRAM, 'main.go');
@@ -682,14 +718,17 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			await assertVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should debug file program with cwd set', async () => {
+		test('should debug file program with cwd set', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 			const FILE = PROGRAM;
@@ -703,14 +742,17 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				cwd: WD
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			await assertVariableValue('strdat', '"Hello, World!"');
 		});
 
-		test('should debug file program without cwd set', async () => {
+		test('should debug file program without cwd set', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 			const FILE = PROGRAM;
@@ -723,14 +765,18 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
 			await assertVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should run program with cwd set (noDebug)', async () => {
+		test('should run program with cwd set (noDebug)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -743,9 +789,8 @@ suite('Go Debug Adapter', function () {
 				cwd: WD,
 				noDebug: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.launch(debugConfig),
 				dc.waitForEvent('output').then((event) => {
 					assert.strictEqual(event.body.output, 'Hello, World!\n');
@@ -753,7 +798,11 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run program without cwd set (noDebug)', async () => {
+		test('should run program without cwd set (noDebug)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -765,9 +814,8 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				noDebug: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.launch(debugConfig),
 				dc.waitForEvent('output').then((event) => {
 					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
@@ -775,7 +823,11 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run file program with cwd set (noDebug)', async () => {
+		test('should run file program with cwd set (noDebug)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -788,9 +840,8 @@ suite('Go Debug Adapter', function () {
 				cwd: WD,
 				noDebug: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.launch(debugConfig),
 				dc.waitForEvent('output').then((event) => {
 					assert.strictEqual(event.body.output, 'Hello, World!\n');
@@ -798,7 +849,11 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should run file program without cwd set (noDebug)', async () => {
+		test('should run file program without cwd set (noDebug)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -810,9 +865,8 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				noDebug: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc.launch(debugConfig),
 				dc.waitForEvent('output').then((event) => {
 					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
@@ -828,29 +882,41 @@ suite('Go Debug Adapter', function () {
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
-			debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
+			debugConfig = remoteAttachConfig;
 		});
 
 		teardown(async () => {
-			await dc.disconnectRequest({ restart: false });
+			await dc.stop();
 			await killProcessTree(childProcess);
 			// Wait 2 seconds for the process to be killed.
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async () => {
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async () => {
+		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async () => {
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
@@ -870,10 +936,7 @@ suite('Go Debug Adapter', function () {
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
-			remoteAttachDebugConfig = await debugConfigProvider.resolveDebugConfiguration(
-				undefined,
-				remoteAttachConfig
-			);
+			remoteAttachDebugConfig = remoteAttachConfig;
 		});
 
 		test('should stop on a breakpoint', async () => {
@@ -889,9 +952,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
 		test('should stop on a breakpoint in test file', async () => {
@@ -907,12 +969,15 @@ suite('Go Debug Adapter', function () {
 				mode: 'test',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
+		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -933,7 +998,11 @@ suite('Go Debug Adapter', function () {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
+		test('stopped for a breakpoint set after initialization (remote attach)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -960,7 +1029,11 @@ suite('Go Debug Adapter', function () {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
+		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -981,7 +1054,11 @@ suite('Go Debug Adapter', function () {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should set breakpoints during continue', async () => {
+		test('should set breakpoints during continue', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
@@ -995,11 +1072,10 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
-			return Promise.all([
+			await Promise.all([
 				dc.setBreakpointsRequest({
 					lines: [helloLocation.line],
 					breakpoints: [{ line: helloLocation.line, column: 0 }],
@@ -1026,8 +1102,7 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, setupBreakpoint);
 
 			// The program is now stopped at the line containing time.Sleep().
@@ -1071,7 +1146,11 @@ suite('Go Debug Adapter', function () {
 	});
 
 	suite('conditionalBreakpoints', () => {
-		test('should stop on conditional breakpoint', async () => {
+		test('should stop on conditional breakpoint', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1084,8 +1163,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc
 					.waitForEvent('initialized')
 					.then(() => {
@@ -1108,7 +1187,11 @@ suite('Go Debug Adapter', function () {
 			);
 		});
 
-		test('should add breakpoint condition', async () => {
+		test('should add breakpoint condition', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1121,9 +1204,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return dc
+			const debugConfig = await initializeDebugConfig(config);
+			await dc
 				.hitBreakpoint(debugConfig, location)
 				.then(() =>
 					// The program is stopped at the breakpoint, check to make sure 'i == 0'.
@@ -1149,7 +1231,11 @@ suite('Go Debug Adapter', function () {
 				);
 		});
 
-		test('should remove breakpoint condition', async () => {
+		test('should remove breakpoint condition', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1162,11 +1248,11 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc
 					.waitForEvent('initialized')
-					.then(() => {
+					.then(async () => {
 						return dc.setBreakpointsRequest({
 							lines: [location.line],
 							breakpoints: [{ line: location.line, condition: 'i == 2' }],
@@ -1217,9 +1303,8 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM_WITH_EXCEPTION
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			return Promise.all([
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
 				dc
 					.waitForEvent('initialized')
 					.then(() => {
@@ -1243,15 +1328,17 @@ suite('Go Debug Adapter', function () {
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
 
-		test('disconnect should work for remote attach', async () => {
+		test('disconnect should work for remote attach', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const server = await getPort();
 			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, remoteAttachConfig);
-
 			// Setup attach.
-			await setUpRemoteAttach(debugConfig);
+			await setUpRemoteAttach(remoteAttachConfig);
 
 			// Calls the helloworld server to get a response.
 			let response = '';
@@ -1277,7 +1364,11 @@ suite('Go Debug Adapter', function () {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should disconnect while continuing on entry', async () => {
+		test('should disconnect while continuing on entry', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1288,14 +1379,17 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect with multiple disconnectRequests', async () => {
+		test('should disconnect with multiple disconnectRequests', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1306,7 +1400,7 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
@@ -1316,7 +1410,11 @@ suite('Go Debug Adapter', function () {
 			]);
 		});
 
-		test('should disconnect after continue', async () => {
+		test('should disconnect after continue', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1327,17 +1425,20 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			const continueResponse = await dc.continueRequest({ threadId: 1 });
 			assert.ok(continueResponse.success);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while nexting', async () => {
+		test('should disconnect while nexting', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
 			const BREAKPOINT_LINE = 11;
@@ -1351,17 +1452,20 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: false
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
+			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, location);
 
 			const nextResponse = await dc.nextRequest({ threadId: 1 });
 			assert.ok(nextResponse.success);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on pause', async () => {
+		test('should disconnect while paused on pause', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1371,17 +1475,21 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			const pauseResponse = await dc.pauseRequest({ threadId: 1 });
 			assert.ok(pauseResponse.success);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on breakpoint', async () => {
+		test('should disconnect while paused on breakpoint', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 			const FILE = path.join(PROGRAM, 'loop.go');
 			const BREAKPOINT_LINE = 5;
@@ -1393,14 +1501,18 @@ suite('Go Debug Adapter', function () {
 				mode: 'auto',
 				program: PROGRAM
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on entry', async () => {
+		test('should disconnect while paused on entry', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1411,14 +1523,18 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on next', async () => {
+		test('should disconnect while paused on next', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1429,14 +1545,14 @@ suite('Go Debug Adapter', function () {
 				program: PROGRAM,
 				stopOnEntry: true
 			};
-			const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			const debugConfig = await initializeDebugConfig(config);
 
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			const nextResponse = await dc.nextRequest({ threadId: 1 });
 			assert.ok(nextResponse.success);
 
-			return Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
+			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 	});
 
@@ -1491,7 +1607,11 @@ suite('Go Debug Adapter', function () {
 				return { program: wd, output };
 			}
 
-			test('should stop on a breakpoint set in file with substituted path', async () => {
+			test('should stop on a breakpoint set in file with substituted path', async function () {
+				if (isDlvDap) {
+					this.skip(); // not working in dlv-dap.
+				}
+
 				const { program, output } = await copyBuildDelete('baseTest');
 				const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 				const BREAKPOINT_LINE = 11;
@@ -1509,9 +1629,9 @@ suite('Go Debug Adapter', function () {
 						}
 					]
 				};
-				const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+				const debugConfig = await initializeDebugConfig(config);
 
-				return dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+				await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 			});
 		});
 
@@ -1523,10 +1643,7 @@ suite('Go Debug Adapter', function () {
 			setup(async () => {
 				server = await getPort();
 				remoteAttachConfig.port = await getPort();
-				remoteAttachDebugConfig = await debugConfigProvider.resolveDebugConfiguration(
-					undefined,
-					remoteAttachConfig
-				);
+				remoteAttachDebugConfig = remoteAttachConfig;
 			});
 
 			suiteSetup(() => {
@@ -1538,7 +1655,11 @@ suite('Go Debug Adapter', function () {
 				rmdirRecursive(helloWorldLocal);
 			});
 
-			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
+			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async function () {
+				if (isDlvDap) {
+					this.skip(); // not working in dlv-dap.
+				}
+
 				const FILE = path.join(helloWorldLocal, 'main.go');
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1563,7 +1684,11 @@ suite('Go Debug Adapter', function () {
 
 			// Skip because it times out in nightly release workflow.
 			// BUG(https://github.com/golang/vscode-go/issues/1043)
-			test.skip('stopped for a breakpoint set during initialization using remotePath (remote attach)', async () => {
+			test.skip('stopped for a breakpoint set during initialization using remotePath (remote attach)', async function () {
+				if (isDlvDap && dlvDapSkipsEnabled) {
+					this.skip(); // not working in dlv-dap.
+				}
+
 				const FILE = path.join(helloWorldLocal, 'main.go');
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1588,4 +1713,23 @@ suite('Go Debug Adapter', function () {
 			});
 		});
 	});
+
+	async function initializeDebugConfig(config: DebugConfiguration) {
+		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		if (isDlvDap) {
+			const { port } = await startDapServer(debugConfig);
+			await dc.start(port);
+		}
+		return debugConfig;
+	}
+};
+
+suite('Go Debug Adapter Tests (legacy)', function () {
+	this.timeout(60_000);
+	testAll(false);
+});
+
+suite('Go Debug Adapter Tests (dlv-dap)', function () {
+	this.timeout(60_000);
+	testAll(true);
 });

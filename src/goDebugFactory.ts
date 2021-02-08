@@ -4,7 +4,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import * as fs from 'fs';
 import { DebugConfiguration } from 'vscode';
 import { getGoConfig } from './config';
@@ -44,7 +44,8 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		// new one.
 		await this.terminateDlvDapServerProcess();
 
-		const { port, host } = await this.startDapServer(configuration);
+		const { port, host, dlvDapServer } = await startDapServer(configuration);
+		this.dlvDapServer = dlvDapServer;
 		return new vscode.DebugAdapterServer(port, host);
 	}
 
@@ -54,28 +55,27 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 			this.dlvDapServer = null;
 		}
 	}
+}
 
-	private async startDapServer(configuration: DebugConfiguration): Promise<{ port: number; host: string }> {
-		if (!configuration.host) {
-			configuration.host = '127.0.0.1';
-		}
-
-		if (configuration.port) {
-			// If a port has been specified, assume there is an already
-			// running dap server to connect to.
-			return { port: configuration.port, host: configuration.host };
-		} else {
-			configuration.port = await getPort();
-		}
-
-		this.dlvDapServer = spawnDlvDapServerProcess(configuration, logInfo, logError);
-		// Wait to give dlv-dap a chance to start before returning.
-		return await new Promise<{ port: number; host: string }>((resolve) =>
-			setTimeout(() => {
-				resolve({ port: configuration.port, host: configuration.host });
-			}, 500)
-		);
+export async function startDapServer(
+	configuration: DebugConfiguration
+): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
+	if (!configuration.host) {
+		configuration.host = '127.0.0.1';
 	}
+
+	if (configuration.port) {
+		// If a port has been specified, assume there is an already
+		// running dap server to connect to.
+		return { port: configuration.port, host: configuration.host };
+	} else {
+		configuration.port = await getPort();
+	}
+	const dlvDapServer = spawnDlvDapServerProcess(configuration, logInfo, logError);
+	// Wait to give dlv-dap a chance to start before returning.
+	return await new Promise<{ port: number; host: string; dlvDapServer: ChildProcessWithoutNullStreams }>((resolve) =>
+		setTimeout(() => resolve({ port: configuration.port, host: configuration.host, dlvDapServer }), 500)
+	);
 }
 
 function spawnDlvDapServerProcess(
@@ -140,8 +140,8 @@ function parseProgramArgSync(
 	} catch (e) {
 		throw new Error('The program attribute must point to valid directory, .go file or executable.');
 	}
-	if (!programIsDirectory && path.extname(program) !== '.go') {
-		throw new Error('The program attribute must be a directory or .go file in debug mode');
+	if (!programIsDirectory && (path.extname(program) !== '.go' || launchArgs.mode === 'exec')) {
+		throw new Error('The program attribute must be a directory or .go file in debug and test mode');
 	}
 	const dirname = programIsDirectory ? program : path.dirname(program);
 	return { program, dirname, programIsDirectory };
