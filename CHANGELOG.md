@@ -1,4 +1,4 @@
-## v0.22.1 - 4th Feb, 2021
+## v0.22.1 - 8th Feb, 2021
 
 ### Enhancements
 - Added error details to automated error reports. ([CL 287952](https://go-review.googlesource.com/c/vscode-go/+/287952))
@@ -11,6 +11,9 @@
 
 ### Code Health
 - Bumped `ini` to 1.3.8 to address a vulnerability report from `npm audit`.
+
+### Thanks
+Thank you for your contribution, @stamblerre, @hyangah, @patrasap0908!
 
 ## v0.22.0 - 26th Jan, 2021
 
