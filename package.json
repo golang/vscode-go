@@ -891,7 +891,6 @@
       {
         "type": "godlvdap",
         "label": "Go Dlv Dap (Experimental)",
-        "runtime": "node",
         "languages": [
           "go"
         ],

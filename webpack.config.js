@@ -10,7 +10,6 @@ const config = {
 	entry: {
 		goMain: './src/goMain.ts',
 		debugAdapter: './src/debugAdapter/goDebug.ts',
-		debugAdapter2: './src/debugAdapter2/goDlvDebugMain.ts',
 	},
 	output: {
 		path: path.resolve(__dirname, 'dist'),
