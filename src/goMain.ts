@@ -187,8 +187,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(
 		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go')));
 	ctx.subscriptions.push(
-		vscode.debug.registerDebugConfigurationProvider('godlvdap', new GoDebugConfigurationProvider('godlvdap')));
-	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.pickProcess', async (): Promise<string> => {
 			return await pickProcess();
 		}));
@@ -199,7 +197,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	const factory = new GoDebugAdapterDescriptorFactory();
 	ctx.subscriptions.push(
-		vscode.debug.registerDebugAdapterDescriptorFactory('godlvdap', factory));
+		vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
 	}
@@ -704,7 +702,7 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 				return;
 			}
 			const session = vscode.debug.activeDebugSession;
-			if (session && (session.type === 'go' || session.type === 'godlvdap')) {
+			if (session && (session.type === 'go')) {
 				const neverAgain = { title: `Don't Show Again` };
 				const ignoreActiveDebugWarningKey = 'ignoreActiveDebugWarningKey';
 				const ignoreActiveDebugWarning = getFromGlobalState(ignoreActiveDebugWarningKey);

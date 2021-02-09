@@ -9,6 +9,7 @@ import getPort = require('get-port');
 import path = require('path');
 import { DebugConfiguration } from 'vscode';
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { logError, logInfo } from './goLogging';
 import { envPath } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
@@ -21,18 +22,30 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		session: vscode.DebugSession,
 		executable: vscode.DebugAdapterExecutable | undefined
 		): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
+		const config = getGoConfig();
+		if (config['useDlvDap']) {
+			return this.createDebugAdapterDescriptorDlvDap(session.configuration);
+		}
+		// Terminate any running dlv dap server process.
+		await this.terminateDlvDapServerProcess();
+		return executable;
+	}
+
+	public async dispose() {
+		await this.terminateDlvDapServerProcess();
+	}
+
+	private async createDebugAdapterDescriptorDlvDap(
+		configuration: vscode.DebugConfiguration,
+		): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
 		// The dlv-dap server currently receives certain flags and arguments on startup
 		// and must be started in an appropriate folder for the program to be debugged.
 		// In order to support this, we kill the current dlv-dap server, and start a
 		// new one.
 		await this.terminateDlvDapServerProcess();
 
-		const {port, host} = await this.startDapServer(session.configuration);
+		const {port, host} = await this.startDapServer(configuration);
 		return new vscode.DebugAdapterServer(port, host);
-	}
-
-	public async dispose() {
-		await this.terminateDlvDapServerProcess();
 	}
 
 	private async terminateDlvDapServerProcess() {

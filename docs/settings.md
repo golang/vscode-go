@@ -438,6 +438,11 @@ Default: `false`
 Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.
 
 Default: `false`
+### `go.useDlvDap`
+
+Use the Go debug adapter implemented in "delve". This debug adapter is still experimental.
+
+Default: `false`
 ### `go.useGoProxyToCheckForToolUpdates (deprecated)`
 
 Use `go.toolsManagement.checkForUpdates` instead.
