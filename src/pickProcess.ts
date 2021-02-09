@@ -4,6 +4,7 @@
  *--------------------------------------------------------*/
 
 import cp = require('child_process');
+import { CodeLens } from 'vscode';
 import { QuickPickItem } from 'vscode';
 import vscode = require('vscode');
 import { logError } from './goLogging';
@@ -19,25 +20,46 @@ export async function pickProcess(): Promise<string> {
 	return id;
 }
 
+export async function pickProcessByName(name: string): Promise<string> {
+	const allProcesses = await getAllProcesses();
+	const matches = allProcesses.filter((item) => item.processName === name);
+	if (matches.length === 1) {
+		return matches[0].id;
+	}
+	const id = await processPicker(allProcesses, name);
+	return id;
+}
+
 export async function pickGoProcess(): Promise<string> {
 	const allProcesses = await getGoProcesses();
 	const id = await processPicker(allProcesses);
 	return id;
 }
 
-async function processPicker(processes: AttachItem[]): Promise<string> {
-	const selection = await vscode.window.showQuickPick(
-		processes,
-		{
-			placeHolder: 'Choose a process to attach to',
-			matchOnDescription: true,
-			matchOnDetail: true,
+async function processPicker(processes: AttachItem[], name?: string): Promise<string> {
+	return new Promise<string>(async (resolve, reject) => {
+		const menu = vscode.window.createQuickPick<AttachItem>();
+		if (name) {
+			menu.value = name;
 		}
-	);
-	if (!selection) {
-		throw new Error('No process selected');
-	}
-	return selection.id;
+		menu.items = processes;
+		menu.placeholder = 'Choose a process to attach to';
+		menu.matchOnDescription = true;
+		menu.matchOnDetail = true;
+
+		menu.onDidAccept(() => {
+			if (menu.selectedItems.length !== 1) {
+				reject(new Error('No process selected.'));
+			}
+			const selectedId = menu.selectedItems[0].id;
+
+			menu.dispose();
+
+			resolve(selectedId);
+		});
+
+		menu.show();
+	});
 }
 
 // Modified from:

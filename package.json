@@ -730,6 +730,11 @@
                     "default": "${command:pickProcess}"
                   },
                   {
+                    "type": "string",
+                    "description": "Attach to a process by name. If more than one process matches the name, use the process picker to select a aprocess.",
+                    "default": ""
+                  },
+                  {
                     "type": "number",
                     "description": "The ID of the process to be debugged."
                   }
