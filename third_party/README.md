@@ -23,4 +23,7 @@ Note: We didn't test vendoring platform-dependent modules yet.
 
 ## List of local modification
 
-`tree-kill`: vendored 1.2.2 with a fix for https://github.com/golang/vscode-go/issues/90 
+`tree-kill`:
+  - vendored 1.2.2 with a fix for https://github.com/golang/vscode-go/issues/90
+  - removed unnecessary dependency on old mocha (no test in the vendored code)
+  and unnecessary cli.js
