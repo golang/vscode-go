@@ -199,16 +199,8 @@ function scheduleGoplsSuggestions() {
 			if (cfg.serverName !== '') {
 				return;
 			}
-			// Check if the configuration is set in the workspace.
-			const useLanguageServer = getGoConfig().inspect('useLanguageServer');
-			let workspace: boolean;
-			if (useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false) {
-				workspace = true;
-			}
 			// Prompt the user to enable gopls and record what actions they took.
-			let optOutCfg = getGoplsOptOutConfig(workspace);
-			optOutCfg = await promptAboutGoplsOptOut(optOutCfg);
-			flushGoplsOptOutConfig(optOutCfg, workspace);
+			await promptAboutGoplsOptOut(false);
 			// Check if the language server has now been enabled, and if so,
 			// it will be installed below.
 			cfg = buildLanguageServerConfig(getGoConfig());
@@ -232,6 +224,76 @@ function scheduleGoplsSuggestions() {
 	setTimeout(survey, 30 * timeMinute);
 }
 
+export async function promptAboutGoplsOptOut(surveyOnly: boolean) {
+	// Check if the configuration is set in the workspace.
+	const useLanguageServer = getGoConfig().inspect('useLanguageServer');
+	const workspace = useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false;
+
+	let cfg = getGoplsOptOutConfig(workspace);
+	const promptFn = async (): Promise<GoplsOptOutConfig> => {
+		if (cfg.prompt === false) {
+			return cfg;
+		}
+		// Prompt the user ~once a month.
+		if (cfg.lastDatePrompted && daysBetween(new Date(), cfg.lastDatePrompted) < 30) {
+			return cfg;
+		}
+		cfg.lastDatePrompted = new Date();
+		if (surveyOnly) {
+			await promptForGoplsOptOutSurvey(cfg, `Looks like you've disabled the Go language server, which is the recommended default for this extension.
+Would you be willing to tell us why you've disabled it?`);
+			return cfg;
+		}
+		const selected = await vscode.window.showInformationMessage(`We noticed that you have disabled the language server.
+It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
+Would you like to enable it now?`, { title: 'Enable' }, { title: 'Not now' }, { title: 'Never' });
+		if (!selected) {
+			return cfg;
+		}
+		switch (selected.title) {
+			case 'Enable':
+				// Change the user's Go configuration to enable the language server.
+				// Remove the setting entirely, since it's on by default now.
+				const goConfig = getGoConfig();
+				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Global);
+				if (goConfig.inspect('useLanguageServer').workspaceValue === false) {
+					await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Workspace);
+				}
+				if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+					await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+				}
+				cfg.prompt = false;
+				break;
+			case 'Not now':
+				cfg.prompt = true;
+				break;
+			case 'Never':
+				cfg.prompt = false;
+				await promptForGoplsOptOutSurvey(cfg, `No problem. Would you be willing to tell us why you have opted out of the language server?`);
+				break;
+		}
+		return cfg;
+	};
+	cfg = await promptFn();
+	flushGoplsOptOutConfig(cfg, workspace);
+}
+
+async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): Promise<GoplsOptOutConfig> {
+	const s = await vscode.window.showInformationMessage(msg, { title: 'Yes' }, { title: 'No' });
+	if (!s) {
+		return cfg;
+	}
+	switch (s.title) {
+		case 'Yes':
+			cfg.prompt = false;
+			await vscode.env.openExternal(vscode.Uri.parse(`https://forms.gle/hwC8CncV7Cyc2yBN6`));
+			break;
+		case 'No':
+			break;
+	}
+	return cfg;
+}
+
 export interface GoplsOptOutConfig {
 	prompt?: boolean;
 	lastDatePrompted?: Date;
@@ -239,67 +301,15 @@ export interface GoplsOptOutConfig {
 
 const goplsOptOutConfigKey = 'goplsOptOutConfig';
 
-function getGoplsOptOutConfig(workspace: boolean): GoplsOptOutConfig {
+export const getGoplsOptOutConfig = (workspace: boolean): GoplsOptOutConfig => {
 	return getStateConfig(goplsOptOutConfigKey, workspace) as GoplsOptOutConfig;
-}
+};
 
 function flushGoplsOptOutConfig(cfg: GoplsOptOutConfig, workspace: boolean) {
 	if (workspace) {
 		updateWorkspaceState(goplsOptOutConfigKey, JSON.stringify(cfg));
 	}
 	updateGlobalState(goplsOptOutConfigKey, JSON.stringify(cfg));
-}
-
-export async function promptAboutGoplsOptOut(cfg: GoplsOptOutConfig): Promise<GoplsOptOutConfig> {
-	if (cfg.prompt === false) {
-		return cfg;
-	}
-	// Prompt the user ~once a month.
-	if (cfg.lastDatePrompted && daysBetween(new Date(), cfg.lastDatePrompted) < 30) {
-		return cfg;
-	}
-	cfg.lastDatePrompted = new Date();
-	const selected = await vscode.window.showInformationMessage(`We noticed that you have disabled the language server.
-It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
-Would you like to enable it now?`, { title: 'Enable' }, { title: 'Not now' }, { title: 'Never' });
-	if (!selected) {
-		return cfg;
-	}
-	switch (selected.title) {
-		case 'Enable':
-			// Change the user's Go configuration to enable the language server.
-			// Remove the setting entirely, since it's on by default now.
-			const goConfig = getGoConfig();
-			await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Global);
-			if (goConfig.inspect('useLanguageServer').workspaceValue === false) {
-				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Workspace);
-			}
-			if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
-				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-			}
-
-			cfg.prompt = false;
-			break;
-		case 'Not now':
-			cfg.prompt = true;
-			break;
-		case 'Never':
-			cfg.prompt = false;
-			await promptForGoplsOptOutSurvey();
-			break;
-	}
-	return cfg;
-}
-
-async function promptForGoplsOptOutSurvey() {
-	const selected = await vscode.window.showInformationMessage(`No problem. Would you be willing to tell us why you have opted out of the language server?`, { title: 'Yes' }, { title: 'No' });
-	switch (selected.title) {
-		case 'Yes':
-			await vscode.env.openExternal(vscode.Uri.parse(`https://forms.gle/hwC8CncV7Cyc2yBN6`));
-			break;
-		case 'No':
-			break;
-	}
 }
 
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
@@ -786,7 +796,7 @@ function disposeDefaultProviders() {
 	defaultLanguageProviders = [];
 }
 
-export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
+export async function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
 	if (!e.affectsConfiguration('go')) {
 		return;
 	}
@@ -800,6 +810,10 @@ export function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEv
 		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer();
+	}
+
+	if (e.affectsConfiguration('go.useLanguageServer') && getGoConfig()['useLanguageServer'] === false) {
+		promptAboutGoplsOptOut(true);
 	}
 }
 
