@@ -43,6 +43,9 @@ jobs:
             go get github.com/acroca/go-symbols
             go get github.com/davidrjenni/reftools/cmd/fillstruct
             go get github.com/haya14busa/goplay/cmd/goplay
+            # Install two versions of gocode (one as gocode-gomod)
+            go get github.com/stamblerre/gocode
+            mv "${HOME}/go/bin/gocode${{env.EXT}}"  "${HOME}/go/bin/gocode-gomod${{env.EXT}}"
             go get github.com/mdempsky/gocode
             go get github.com/sqs/goreturns
             go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
@@ -55,7 +58,8 @@ jobs:
             go get github.com/ramya-rao-a/go-outline
             go get github.com/go-delve/delve/cmd/dlv
         env:
-          GO111MODULE: on             
+          GO111MODULE: on
+          EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
       
       - name: Run unit tests
         run: npm run unit-test
