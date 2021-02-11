@@ -47,14 +47,6 @@ suite('Code lenses for testing and benchmarking', function () {
 		fs.removeSync(repoPath);
 		fs.copySync(fixtureSourcePath, fixturePath, {
 			recursive: true,
-			// All of the tests run in GOPATH mode for now.
-			// TODO(rstambler): Run tests in GOPATH and module mode.
-			filter: (src: string): boolean => {
-				if (path.basename(src) === 'go.mod') {
-					return false;
-				}
-				return true;
-			},
 		});
 		goConfig = getGoConfig();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens_test.go'));

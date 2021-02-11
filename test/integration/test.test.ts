@@ -115,20 +115,21 @@ suite('Test Go Test', function () {
 		rmdirRecursive(tmpGopath);
 	});
 
-	function setupRepo(modulesMode: boolean) {
+	function setupRepo(isModuleMode: boolean) {
 		tmpGopath = fs.mkdtempSync(path.join(os.tmpdir(), 'go-test-test'));
 		fs.mkdirSync(path.join(tmpGopath, 'src'));
 		repoPath = path.join(tmpGopath, 'src', 'goTestTest');
 		fs.copySync(sourcePath, repoPath, {
 			recursive: true,
 			filter: (src: string): boolean => {
-				if (modulesMode) {
+				if (isModuleMode) {
 					return true;
 				}
 				return path.basename(src) !== 'go.mod';  // skip go.mod file.
 			},
 		});
 		process.env.GOPATH = tmpGopath;
+		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
 	}
 
 	async function runTest(

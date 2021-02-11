@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import cp = require('child_process');
 import * as fs from 'fs-extra';
+import os = require('os');
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
@@ -41,9 +42,7 @@ import {
 	isVendorSupported
 } from '../../src/util';
 
-suite('Go Extension Tests', function () {
-	this.timeout(20000);
-
+const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
 
 	// suiteSetup will initialize the following vars.
@@ -54,9 +53,12 @@ suite('Go Extension Tests', function () {
 	let generateTestsSourcePath: string;
 	let generateFunctionTestSourcePath: string;
 	let generatePackageTestSourcePath: string;
-	let toolsGopath: string;
+	let previousEnv: any;
 
 	suiteSetup(async () => {
+		previousEnv = Object.assign({}, process.env);
+		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
+
 		await updateGoVarsFromConfig();
 
 		gopath = getCurrentGoPath();
@@ -66,25 +68,17 @@ suite('Go Extension Tests', function () {
 		}
 		console.log(`Using GOPATH: ${gopath}`);
 
-		repoPath = path.join(gopath, 'src', 'test');
+		repoPath = isModuleMode ? fs.mkdtempSync(path.join(os.tmpdir(), 'legacy')) : path.join(gopath, 'src', 'test');
 		fixturePath = path.join(repoPath, 'testfixture');
 		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 		generateTestsSourcePath = path.join(repoPath, 'generatetests');
 		generateFunctionTestSourcePath = path.join(repoPath, 'generatefunctiontest');
 		generatePackageTestSourcePath = path.join(repoPath, 'generatePackagetest');
-		toolsGopath = getToolsGopath() || gopath;
 
 		fs.removeSync(repoPath);
 		fs.copySync(fixtureSourcePath, fixturePath, {
-			recursive: true,
-			// All of the tests run in GOPATH mode for now.
-			// TODO(rstambler): Run tests in GOPATH and module mode.
-			filter: (src: string): boolean => {
-				if (path.basename(src) === 'go.mod') {
-					return false;
-				}
-				return true;
-			},
+			recursive: true
+			// TODO(hyangah): should we enable GOPATH mode
 		});
 		fs.copySync(
 			path.join(fixtureSourcePath, 'generatetests', 'generatetests.go'),
@@ -118,6 +112,7 @@ suite('Go Extension Tests', function () {
 
 	suiteTeardown(() => {
 		fs.removeSync(repoPath);
+		process.env = previousEnv;
 	});
 
 	teardown(() => {
@@ -191,14 +186,17 @@ suite('Go Extension Tests', function () {
 		return Promise.all(promises);
 	}
 
-	test('Test Definition Provider using godoc', async () => {
+	test('Test Definition Provider using godoc', async function () {
+		if (isModuleMode) { this.skip(); } // not working in module mode.
+
 		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'godoc' }
 		});
 		await testDefinitionProvider(config);
 	});
 
-	test('Test Definition Provider using gogetdoc', async () => {
+	test('Test Definition Provider using gogetdoc', async function () {
+		if (isModuleMode) {	this.skip(); }  // not working in module mode.
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -210,7 +208,9 @@ suite('Go Extension Tests', function () {
 		await testDefinitionProvider(config);
 	});
 
-	test('Test SignatureHelp Provider using godoc', async () => {
+	test('Test SignatureHelp Provider using godoc', async function () {
+		if (isModuleMode) { this.skip(); }  // not working in module mode
+
 		const printlnDoc = `Println formats using the default formats for its operands and writes to
 standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
@@ -249,7 +249,8 @@ encountered.
 		await testSignatureHelpProvider(config, testCases);
 	});
 
-	test('Test SignatureHelp Provider using gogetdoc', async () => {
+	test('Test SignatureHelp Provider using gogetdoc', async function () {
+		if (isModuleMode) {	this.skip(); }  // not working in module mode.
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -292,7 +293,9 @@ It returns the number of bytes written and any write error encountered.
 		await testSignatureHelpProvider(config, testCases);
 	});
 
-	test('Test Hover Provider using godoc', async () => {
+	test('Test Hover Provider using godoc', async function () {
+		if (isModuleMode) { this.skip(); }  // not working in module mode
+
 		const printlnDoc = `Println formats using the default formats for its operands and writes to
 standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
@@ -319,7 +322,9 @@ encountered.
 		await testHoverProvider(config, testCases);
 	});
 
-	test('Test Hover Provider using gogetdoc', async () => {
+	test('Test Hover Provider using gogetdoc', async function () {
+		if (isModuleMode) {	this.skip(); }  // not working in module mode.
+
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -454,11 +459,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(matchCount.length >= expected.length, true, `Failed to match expected errors \n${JSON.stringify(sortedDiagnostics)} \n VS\n ${JSON.stringify(expected)}`);
 	});
 
-	test('Test Generate unit tests skeleton for file', async () => {
+	test('Test Generate unit tests skeleton for file', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
@@ -470,11 +475,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test Generate unit tests skeleton for a function', async () => {
+	test('Test Generate unit tests skeleton for a function', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generateFunctionTestSourcePath, 'generatetests.go'));
@@ -487,11 +492,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test Generate unit tests skeleton for package', async () => {
+	test('Test Generate unit tests skeleton for package', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
@@ -504,6 +509,9 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Test diffUtils.getEditsFromUnifiedDiffStr', async function () {
+		// Run this test only in module mode.
+		if (!isModuleMode) { this.skip(); }
+
 		if (process.platform === 'win32') {
 			// This test requires diff tool that's not available on windows
 			this.skip();
@@ -543,7 +551,9 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(editor.document.getText(), file2contents);
 	});
 
-	test('Test diffUtils.getEdits', async () => {
+	test('Test diffUtils.getEdits', async function () {
+		if (!isModuleMode) { this.skip(); }  // Run this test only in module mode.
+
 		const file1path = path.join(fixturePath, 'diffTest2Data', 'file1.go');
 		const file2path = path.join(fixturePath, 'diffTest2Data', 'file2.go');
 		const file1uri = vscode.Uri.file(file1path);
@@ -663,7 +673,8 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false);
 	});
 
-	test('Replace vendor packages with relative path', async () => {
+	test('Replace vendor packages with relative path', async function () {
+		if (isModuleMode) {	this.skip(); }  // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
@@ -723,7 +734,8 @@ It returns the number of bytes written and any write error encountered.
 		}
 	});
 
-	test('Vendor pkgs from other projects should not be allowed to import', async () => {
+	test('Vendor pkgs from other projects should not be allowed to import', async function () {
+		if (isModuleMode) {	this.skip(); }  // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = [
@@ -1145,7 +1157,11 @@ encountered.
 		await Promise.all([symbolFollowedByBrackets, symbolAsLastParameter, symbolsAsNonLastParameter]);
 	});
 
-	test('Test Completion on unimported packages', async () => {
+	test('Test Completion on unimported packages', async function () {
+		if (isModuleMode) { this.skip(); }
+		// gocode-gomod does not handle unimported package completion.
+		// Skip if we run in module mode.
+
 		const config = Object.create(getGoConfig(), {
 			autocompleteUnimportedPackages: { value: true }
 		});
@@ -1568,4 +1584,14 @@ encountered.
 		await runFillStruct(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
+};
+
+suite('Go Extension Tests (GOPATH mode)', function () {
+	this.timeout(20000);
+	testAll(false);
+});
+
+suite('Go Extension Tests (Module mode)', function () {
+	this.timeout(20000);
+	testAll(true);
 });
