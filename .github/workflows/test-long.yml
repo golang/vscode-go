@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Not containing 'SKIP CI' in the commit message AND
-    # (Either non-Windows OR triggered on 'push' (if triggered by 'pull_request', github.base_ref is not empty)
-    if: github.repository == 'golang/vscode-go' && !contains(github.event.head_commit.message, 'SKIP CI')
+    # (Either the official repository, or the commit message contains 'FORCE RUN CI')
+    if: (github.repository == 'golang/vscode-go' || contains(github.event.head_commit.message, 'FORCE RUN CI')) && !contains(github.event.head_commit.message, 'SKIP CI')
     timeout-minutes: 20
     strategy:
       fail-fast: false
