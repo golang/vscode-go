@@ -1,21 +1,22 @@
-name: Long Tests
+name: Daily Build Status
 
-on: [push]
+on:
+  schedule:
+    - cron: "0 11 * * *"  # 11 UTC, everyday
 
 jobs:
   build:
     name: ${{ matrix.os }} ${{ matrix.version }} ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
 
-    # Not containing 'SKIP CI' in the commit message AND
-    # (Either the official repository, or the commit message contains 'FORCE RUN CI')
-    if: (github.repository == 'golang/vscode-go' || contains(github.event.head_commit.message, 'FORCE RUN CI')) && !contains(github.event.head_commit.message, 'SKIP CI')
+    # Only in the official repository.
+    if: github.repository == 'golang/vscode-go'
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest] # TODO: reenable macos-latest
-        version: ['stable']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        version: ['stable', 'insiders']
         go: ['1.15', '1.16.0-rc1']
 
     steps:
@@ -35,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Compile
         run: npm run vscode:prepublish
 
@@ -62,17 +63,18 @@ jobs:
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
-          
+
       - name: Run unit tests
         run: npm run unit-test
-        
+
       - name: Run tests
         uses: GabrielBB/xvfb-action@v1.0
         with:
           run: npm run test
         env:
           CODE_VERSION: ${{ matrix.version }}
-      
+          VSCODEGO_BEFORE_RELEASE_TESTS: true
+
       - name: Lint check
         run: npm run lint
-        if: ${{ matrix.os }} == 'ubuntu-latest'
+        if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.version }} == 'stable' && !contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")
