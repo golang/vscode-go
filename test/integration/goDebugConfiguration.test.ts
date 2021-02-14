@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-prototype-builtins */
 import assert = require('assert');
 import fs = require('fs');
 import os = require('os');
@@ -7,9 +10,9 @@ import vscode = require('vscode');
 import parse = require('yargs-parser');
 import { getGoConfig } from '../../src/config';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
-import goEnv = require('../../src/goEnv');
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
+import goEnv = require('../../src/goEnv');
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -33,7 +36,6 @@ suite('Debug Environment Variable Merge Test', () => {
 	setup(() => {
 		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'godebugconfig_test'));
 		sandbox = sinon.createSandbox();
-
 	});
 
 	teardown(() => {
@@ -54,7 +56,7 @@ suite('Debug Environment Variable Merge Test', () => {
 			name: 'Launch',
 			request: 'launch',
 			env: input.env,
-			envFile: input.envFile,
+			envFile: input.envFile
 		});
 
 		const actual = config.env;
@@ -71,18 +73,24 @@ suite('Debug Environment Variable Merge Test', () => {
 			GOOS: 'valueFromToolsEnv'
 		};
 
-		runTest({ toolsEnv }, {
-			GOPATH: '/gopath',
-			GOOS: 'valueFromToolsEnv'
-		});
+		runTest(
+			{ toolsEnv },
+			{
+				GOPATH: '/gopath',
+				GOOS: 'valueFromToolsEnv'
+			}
+		);
 	});
 
 	test('preserves settings from launchArgs.env', () => {
 		const env = { GOPATH: 'valueFromEnv', GOOS: 'valueFromEnv2' };
-		runTest({ env }, {
-			GOPATH: 'valueFromEnv',
-			GOOS: 'valueFromEnv2'
-		});
+		runTest(
+			{ env },
+			{
+				GOPATH: 'valueFromEnv',
+				GOOS: 'valueFromEnv2'
+			}
+		);
 	});
 
 	test('preserves settings from launchArgs.envFile', () => {
@@ -94,14 +102,15 @@ suite('Debug Environment Variable Merge Test', () => {
 	test('launchArgs.env overwrites launchArgs.envFile', () => {
 		const env = { SOMEVAR1: 'valueFromEnv' };
 		const envFile = path.join(tmpDir, 'env');
-		fs.writeFileSync(envFile, [
-			'SOMEVAR1=valueFromEnvFile1',
-			'SOMEVAR2=valueFromEnvFile2'].join('\n'));
+		fs.writeFileSync(envFile, ['SOMEVAR1=valueFromEnvFile1', 'SOMEVAR2=valueFromEnvFile2'].join('\n'));
 
-		runTest({ env, envFile }, {
-			SOMEVAR1: 'valueFromEnv',
-			SOMEVAR2: 'valueFromEnvFile2'
-		});
+		runTest(
+			{ env, envFile },
+			{
+				SOMEVAR1: 'valueFromEnv',
+				SOMEVAR2: 'valueFromEnvFile2'
+			}
+		);
 	});
 
 	test('launchArgs.env overwrites toolsEnvVar', () => {
@@ -112,11 +121,14 @@ suite('Debug Environment Variable Merge Test', () => {
 		};
 
 		const env = { SOMEVAR1: 'valueFromEnv' };
-		runTest({ env, toolsEnv }, {
-			GOPATH: '/gopath',
-			SOMEVAR1: 'valueFromEnv',
-			SOMEVAR2: 'valueFromToolsEnvVar2'
-		});
+		runTest(
+			{ env, toolsEnv },
+			{
+				GOPATH: '/gopath',
+				SOMEVAR1: 'valueFromEnv',
+				SOMEVAR2: 'valueFromToolsEnvVar2'
+			}
+		);
 	});
 
 	test('launchArgs.envFile overwrites toolsEnvVar', () => {
@@ -126,14 +138,16 @@ suite('Debug Environment Variable Merge Test', () => {
 			SOMEVAR2: 'valueFromToolsEnvVar2'
 		};
 		const envFile = path.join(tmpDir, 'env');
-		fs.writeFileSync(envFile, [
-			'SOMEVAR2=valueFromEnvFile2'].join('\n'));
+		fs.writeFileSync(envFile, ['SOMEVAR2=valueFromEnvFile2'].join('\n'));
 
-		runTest({ toolsEnv, envFile }, {
-			GOPATH: '/gopath',
-			SOMEVAR1: 'valueFromToolsEnvVar1',
-			SOMEVAR2: 'valueFromEnvFile2'
-		});
+		runTest(
+			{ toolsEnv, envFile },
+			{
+				GOPATH: '/gopath',
+				SOMEVAR1: 'valueFromToolsEnvVar1',
+				SOMEVAR2: 'valueFromEnvFile2'
+			}
+		);
 	});
 });
 
@@ -143,7 +157,7 @@ suite('Debug Configuration Merge User Settings', () => {
 
 	teardown(() => sinon.restore());
 
-	suite(`merge 'go' config from settings.json`, () => {
+	suite("merge 'go' config from settings.json", () => {
 		test('go flags config does not affect debug config', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
@@ -155,15 +169,15 @@ suite('Debug Configuration Merge User Settings', () => {
 				type: 'go',
 				request: 'launch',
 				mode: 'auto',
-				program: '${fileDirname}',
+				program: '${fileDirname}'
 			};
 
 			const emptyResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
 			const goConfig = Object.create(getGoConfig(), {
-				testFlags: {value: '-tags=myTagTest'},
-				buildFlags: {value: '-tags=myTagBuild'},
-				goroot: {value: '/path/to/goroot'},
-				gopath: {value: '/path/to/gopath'}
+				testFlags: { value: '-tags=myTagTest' },
+				buildFlags: { value: '-tags=myTagBuild' },
+				goroot: { value: '/path/to/goroot' },
+				gopath: { value: '/path/to/gopath' }
 			}) as vscode.WorkspaceConfiguration;
 
 			// Adjust the workspace config.
@@ -174,7 +188,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				type: 'go',
 				request: 'launch',
 				mode: 'auto',
-				program: '${fileDirname}',
+				program: '${fileDirname}'
 			};
 
 			const filledResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg2);
@@ -196,7 +210,8 @@ suite('Debug Configuration Merge User Settings', () => {
 
 			// Run resolveDebugConfiguration with the default workspace settings.
 			const goConfig = Object.create(getGoConfig(), {
-				delveConfig: { value: {
+				delveConfig: {
+					value: {
 						dlvLoadConfig: {
 							followPointers: false,
 							maxVariableRecurse: 3,
@@ -216,7 +231,7 @@ suite('Debug Configuration Merge User Settings', () => {
 				type: 'go',
 				request: 'launch',
 				mode: 'auto',
-				program: '${fileDirname}',
+				program: '${fileDirname}'
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
@@ -237,7 +252,8 @@ suite('Debug Configuration Merge User Settings', () => {
 
 			// Run resolveDebugConfiguration with the default workspace settings.
 			const goConfig = Object.create(getGoConfig(), {
-				delveConfig: { value: {
+				delveConfig: {
+					value: {
 						dlvLoadConfig: {
 							followPointers: false,
 							maxVariableRecurse: 3,
@@ -266,7 +282,7 @@ suite('Debug Configuration Merge User Settings', () => {
 					maxStringLen: 128,
 					maxArrayValues: 128,
 					maxStructFields: -1
-				},
+				}
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
@@ -287,7 +303,7 @@ suite('Debug Configuration Modify User Config', () => {
 
 	function checkBuildFlags(input: string, expected: { [key: string]: any }) {
 		// Parse the string result.
-		const actual = parse(input, {configuration: {'short-option-groups': false}} );
+		const actual = parse(input, { configuration: { 'short-option-groups': false } });
 
 		// Delete the empty entry that is created by parse.
 		delete actual['_'];
@@ -311,7 +327,7 @@ suite('Debug Configuration Modify User Config', () => {
 		}
 		actualKeys.sort();
 
-		for (let i = 0; i < expectedKeys.length; i ++) {
+		for (let i = 0; i < expectedKeys.length; i++) {
 			assert.strictEqual(actualKeys[i], expectedKeys[i]);
 			assert.strictEqual(actual[actualKeys[i]], expected[expectedKeys[i]]);
 		}
@@ -342,7 +358,7 @@ suite('Debug Configuration Modify User Config', () => {
 				mode: 'auto',
 				program: '${fileDirname}',
 				env: {},
-				buildFlags: `-gcflags all=-l`
+				buildFlags: '-gcflags all=-l'
 			};
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
@@ -363,7 +379,7 @@ suite('Debug Configuration Modify User Config', () => {
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			checkBuildFlags(config.buildFlags, {race: true, mod: 'mod'});
+			checkBuildFlags(config.buildFlags, { race: true, mod: 'mod' });
 		});
 
 		test('preserve empty buildFlags', () => {
@@ -395,7 +411,7 @@ suite('Debug Configuration Modify User Config', () => {
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			checkBuildFlags(config.buildFlags, {race: true, mod: 'mod'});
+			checkBuildFlags(config.buildFlags, { race: true, mod: 'mod' });
 		});
 
 		test('remove user set --gcflags in GOFLAGS', () => {
@@ -405,12 +421,12 @@ suite('Debug Configuration Modify User Config', () => {
 				request: 'launch',
 				mode: 'auto',
 				program: '${fileDirname}',
-				env: {GOFLAGS: '-race --gcflags=-l --mod=mod'},
+				env: { GOFLAGS: '-race --gcflags=-l --mod=mod' }
 			};
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			checkBuildFlags(config.env.GOFLAGS, {race: true, mod: 'mod'});
+			checkBuildFlags(config.env.GOFLAGS, { race: true, mod: 'mod' });
 		});
 	});
 });

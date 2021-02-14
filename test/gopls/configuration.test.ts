@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -38,8 +39,8 @@ suite('gopls configuration tests', () => {
 					env: { foo: 'bar' },
 					hoverKind: 'NoDocumentation',
 					usePlaceholders: true,
-					linkTarget: 'godoc.org',
-				},
+					linkTarget: 'godoc.org'
+				}
 			},
 			{
 				name: 'user set extra gopls settings',
@@ -48,15 +49,15 @@ suite('gopls configuration tests', () => {
 					undefinedGoplsSetting: true
 				}),
 				want: {
-					undefinedGoplsSetting: true,
-				},
+					undefinedGoplsSetting: true
+				}
 			},
 			{
 				name: 'never returns undefined',
 				section: 'undefined.section',
 				input: undefined,
-				want: {},
-			},
+				want: {}
+			}
 		];
 		testCases.map((tc: TestCase) => {
 			const actual = lsp.filterGoplsDefaultConfigValues(tc.input, undefined);
@@ -89,7 +90,7 @@ suite('gopls configuration tests', () => {
 				goplsConfig: {},
 				goConfig: {
 					buildFlags: [],
-					buildTags: '',
+					buildTags: ''
 				},
 				want: {}
 			},
@@ -129,10 +130,10 @@ suite('gopls configuration tests', () => {
 			{
 				name: 'do not mutate misconfigured gopls.buildFlags',
 				goplsConfig: {
-					'build.buildFlags': '-modfile gopls.mod',  // misconfiguration
+					'build.buildFlags': '-modfile gopls.mod' // misconfiguration
 				},
 				goConfig: {
-					buildFlags: '-modfile go.mod -tags tag1 -modcacherw',
+					buildFlags: '-modfile go.mod -tags tag1 -modcacherw'
 				},
 				want: { 'build.buildFlags': '-modfile gopls.mod' }
 			},
@@ -140,19 +141,18 @@ suite('gopls configuration tests', () => {
 				name: 'do not overwrite gopls config if it is explicitly set',
 				goplsConfig: {
 					'build.env': { GOPROXY: 'direct' },
-					'build.buildFlags': [],  // empty
+					'build.buildFlags': [] // empty
 				},
 				goConfig: {
 					// expect only non-conflicting flags (tags, modcacherw) passing.
 					buildFlags: ['-modfile go.mod -tags tag1 -modcacherw'],
-					buildTags: 'tag3',
+					buildTags: 'tag3'
 				},
 				want: {
 					'build.env': { GOPROXY: 'direct' },
-					'build.buildFlags': [],
-				}  // gopls.buildFlags untouched.
-			},
-
+					'build.buildFlags': []
+				} // gopls.buildFlags untouched.
+			}
 		];
 		testCases.map((tc: TestCase) => {
 			const actual = lsp.passGoConfigToGoplsConfigValues(tc.goplsConfig, tc.goConfig);

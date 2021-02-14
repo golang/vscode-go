@@ -16,33 +16,40 @@ suite('gopls issue report tests', () => {
 		}
 		const testCases: TestCase[] = [
 			{
-				name: `panic trace`,
+				name: 'panic trace',
 				in: traceFromIssueGo41435,
-				want: sanitizedTraceFromIssueGo41435,
+				want: sanitizedTraceFromIssueGo41435
 			},
 			{
-				name: `initialization error message`,
+				name: 'initialization error message',
 				in: traceFromIssueVSCodeGo572,
 				want: sanitizedTraceFromIssuVSCodeGo572
 			},
 			{
-				name: `incomplete panic trace`,
-				in: `panic: \nsecret\n`,
-				wantReason: `incomplete panic trace`
+				name: 'incomplete panic trace',
+				in: 'panic: \nsecret\n',
+				wantReason: 'incomplete panic trace'
 			},
 			{
-				name: `incomplete initialization error message`,
-				in: `Secret Starting client failed.\nAnoter Secret\n`,
-				wantReason: `unrecognized crash pattern`
+				name: 'incomplete initialization error message',
+				in: 'Secret Starting client failed.\nAnoter Secret\n',
+				wantReason: 'unrecognized crash pattern'
 			}
 		];
 
 		testCases.map((tc: TestCase) => {
-			const {sanitizedLog, failureReason}  = sanitizeGoplsTrace(tc.in);
-			assert.strictEqual(sanitizedLog, tc.want, `sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result`);
-			assert.strictEqual(failureReason, tc.wantReason, `sanitizeGoplsTrace(${tc.name}) returned unexpected failureReason result`);
+			const { sanitizedLog, failureReason } = sanitizeGoplsTrace(tc.in);
+			assert.strictEqual(
+				sanitizedLog,
+				tc.want,
+				`sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result`
+			);
+			assert.strictEqual(
+				failureReason,
+				tc.wantReason,
+				`sanitizeGoplsTrace(${tc.name}) returned unexpected failureReason result`
+			);
 		});
-
 	});
 });
 

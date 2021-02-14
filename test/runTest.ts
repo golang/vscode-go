@@ -1,3 +1,5 @@
+/* eslint-disable no-process-exit */
+/* eslint-disable node/no-unpublished-import */
 import * as path from 'path';
 import { runTests } from 'vscode-test';
 
@@ -28,7 +30,7 @@ async function main() {
 				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
-			],
+			]
 		});
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
@@ -45,11 +47,11 @@ async function main() {
 			extensionDevelopmentPath,
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
-				'--disable-extensions',  // disable all other extensions
+				'--disable-extensions', // disable all other extensions
 				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
-			],
+			]
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);

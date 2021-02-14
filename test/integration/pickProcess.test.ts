@@ -12,30 +12,22 @@ suite('Pick Process Tests', () => {
 		const tt = [
 			{
 				input: '/path/to/process/a: go1.16.2\n/path/to/process/b: go1.15.4\n/path/to/process/a b c: go1.8.0\n',
-				want: [
-					'/path/to/process/a',
-					'/path/to/process/b',
-					'/path/to/process/a b c',
-				],
+				want: ['/path/to/process/a', '/path/to/process/b', '/path/to/process/a b c']
 			},
 			{
-				input: 'C:\\path\\to\\process\\a: go1.16.2\nC:\\path\\to\\process\\b: go1.15.4\nC:\\path\\to\\process\\a b c: go1.8.0',
-				want: [
-					'C:\\path\\to\\process\\a',
-					'C:\\path\\to\\process\\b',
-					'C:\\path\\to\\process\\a b c',
-				],
+				input:
+					'C:\\path\\to\\process\\a: go1.16.2\nC:\\path\\to\\process\\b: go1.15.4\nC:\\path\\to\\process\\a b c: go1.8.0',
+				want: ['C:\\path\\to\\process\\a', 'C:\\path\\to\\process\\b', 'C:\\path\\to\\process\\a b c']
 			},
 			{
 				input: 'go version go1.15.7 darwin/amd64',
-				want: [],
-			},
-
+				want: []
+			}
 		];
 		for (const tc of tt) {
 			const got = parseGoVersionOutput(tc.input);
 			assert.strictEqual(got.length, tc.want.length);
-			for (let i = 0; i < got.length; i ++) {
+			for (let i = 0; i < got.length; i++) {
 				assert.strictEqual(got[i], tc.want[i]);
 			}
 		}
@@ -56,21 +48,21 @@ n/User/name/go/bin/go`,
 				want: [
 					{
 						id: '1010',
-						executable: '/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Renderer).app/Contents/MacOS/Code Helper (Renderer)'
+						executable:
+							'/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Renderer).app/Contents/MacOS/Code Helper (Renderer)'
 					},
 					{
 						id: '2020',
 						executable: '/User/name/go/bin/go'
 					}
-
-				],
-			},
+				]
+			}
 		];
 		for (const tc of tt) {
 			const got = parseLsofProcesses(tc.input);
 			got.sort(compareByProcessId);
 			assert.strictEqual(got.length, tc.want.length);
-			for (let i = 0; i < got.length; i ++) {
+			for (let i = 0; i < got.length; i++) {
 				assert.strictEqual(got[i].id, tc.want[i].id);
 				assert.strictEqual(got[i].executable, tc.want[i].executable);
 			}
@@ -110,12 +102,12 @@ n/User/name/go/bin/go`,
 					{
 						id: '50',
 						label: '',
-						executable: '/path/to/b',
+						executable: '/path/to/b'
 					},
 					{
 						id: '300',
 						label: '',
-						executable: '/path/to/c',
+						executable: '/path/to/c'
 					}
 				],
 
@@ -124,7 +116,7 @@ n/User/name/go/bin/go`,
 						id: '50',
 						processName: 'b',
 						label: 'b',
-						executable: '/path/to/b',
+						executable: '/path/to/b'
 					},
 					{
 						id: '100',
@@ -140,16 +132,16 @@ n/User/name/go/bin/go`,
 						id: '300',
 						processName: 'c',
 						label: 'c',
-						executable: '/path/to/c',
+						executable: '/path/to/c'
 					}
-				],
-			},
+				]
+			}
 		];
 		for (const tc of tt) {
 			mergeExecutableAttachItem(tc.processes, tc.execInfo);
 			tc.processes.sort(compareByProcessId);
 			assert.strictEqual(tc.processes.length, tc.want.length);
-			for (let i = 0; i < tc.processes.length; i ++) {
+			for (let i = 0; i < tc.processes.length; i++) {
 				assert.strictEqual(tc.processes[i].id, tc.want[i].id);
 				assert.strictEqual(tc.processes[i].label, tc.want[i].label);
 				assert.strictEqual(tc.processes[i].processName, tc.want[i].processName);

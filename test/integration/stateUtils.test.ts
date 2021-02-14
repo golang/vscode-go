@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -5,7 +6,13 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { getMementoKeys, getWorkspaceState, resetItemsState, setWorkspaceState, updateWorkspaceState } from '../../src/stateUtils';
+import {
+	getMementoKeys,
+	getWorkspaceState,
+	resetItemsState,
+	setWorkspaceState,
+	updateWorkspaceState
+} from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 suite('Workspace State Modification Tests', () => {
@@ -26,9 +33,9 @@ suite('Workspace State Modification Tests', () => {
 			want: string[];
 		}
 		const testCases: TestCase[] = [
-			{keys: [], values: [], want: []},
-			{keys: ['hello'], values: [false], want: ['hello']},
-			{keys: ['hello', 'goodbye'], values: [false, 25], want: ['hello', 'goodbye']},
+			{ keys: [], values: [], want: [] },
+			{ keys: ['hello'], values: [false], want: ['hello'] },
+			{ keys: ['hello', 'goodbye'], values: [false, 25], want: ['hello', 'goodbye'] }
 		];
 
 		testCases.forEach((tc) => {
@@ -38,7 +45,7 @@ suite('Workspace State Modification Tests', () => {
 			const values = tc.values;
 			assert.strictEqual(keys.length, values.length, 'List of keys and values does not have same length');
 
-			for (let i = 0; i < keys.length; i ++) {
+			for (let i = 0; i < keys.length; i++) {
 				updateWorkspaceState(keys[i], values[i]);
 			}
 
@@ -60,19 +67,19 @@ suite('Workspace State Modification Tests', () => {
 			want: string[];
 		}
 		const testCases: TestCase[] = [
-			{keys: [], values: [], items: undefined, want: []},
-			{keys: ['hello'], values: [false], items: undefined, want: ['hello']},
-			{keys: ['hello', 'goodbye'], values: [false, 25], items: undefined, want: ['hello', 'goodbye']},
+			{ keys: [], values: [], items: undefined, want: [] },
+			{ keys: ['hello'], values: [false], items: undefined, want: ['hello'] },
+			{ keys: ['hello', 'goodbye'], values: [false, 25], items: undefined, want: ['hello', 'goodbye'] },
 
-			{keys: [], values: [], items: [], want: []},
-			{keys: ['hello'], values: [false], items: [], want: ['hello']},
-			{keys: ['hello', 'goodbye'], values: [false, 25], items: [], want: ['hello', 'goodbye']},
+			{ keys: [], values: [], items: [], want: [] },
+			{ keys: ['hello'], values: [false], items: [], want: ['hello'] },
+			{ keys: ['hello', 'goodbye'], values: [false, 25], items: [], want: ['hello', 'goodbye'] },
 
-			{keys: ['hello'], values: [false], items: ['hello'], want: []},
-			{keys: ['hello', 'goodbye'], values: [false, 25], items: ['hello'], want: ['goodbye']},
+			{ keys: ['hello'], values: [false], items: ['hello'], want: [] },
+			{ keys: ['hello', 'goodbye'], values: [false, 25], items: ['hello'], want: ['goodbye'] },
 
-			{keys: ['hello'], values: [false], items: ['hello'], want: []},
-			{keys: ['hello', 'goodbye'], values: [false, 25], items: ['hello', 'goodbye'], want: []},
+			{ keys: ['hello'], values: [false], items: ['hello'], want: [] },
+			{ keys: ['hello', 'goodbye'], values: [false, 25], items: ['hello', 'goodbye'], want: [] }
 		];
 
 		testCases.forEach((tc) => {
@@ -82,7 +89,7 @@ suite('Workspace State Modification Tests', () => {
 			const values = tc.values;
 			assert.strictEqual(keys.length, values.length, 'List of keys and values does not have same length');
 
-			for (let i = 0; i < keys.length; i ++) {
+			for (let i = 0; i < keys.length; i++) {
 				updateWorkspaceState(keys[i], values[i]);
 			}
 
@@ -96,5 +103,4 @@ suite('Workspace State Modification Tests', () => {
 			});
 		});
 	});
-
 });

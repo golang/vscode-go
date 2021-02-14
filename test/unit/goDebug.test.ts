@@ -11,16 +11,16 @@ suite('NormalizeSeparators Tests', () => {
 		const tt = [
 			{
 				input: 'path/to/file',
-				want: 'path/to/file',
+				want: 'path/to/file'
 			},
 			{
 				input: '\\path\\to\\file',
-				want: '/path/to/file',
+				want: '/path/to/file'
 			},
 			{
 				input: '/path/to\\file',
-				want: '/path/to/file',
-			},
+				want: '/path/to/file'
+			}
 		];
 
 		for (const tc of tt) {
@@ -32,27 +32,27 @@ suite('NormalizeSeparators Tests', () => {
 		const tt = [
 			{
 				input: 'C:/path/to/file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			},
 			{
 				input: 'c:/path/to/file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			},
 			{
 				input: 'C:/path/to/file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			},
 			{
 				input: 'C:\\path\\to\\file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			},
 			{
 				input: 'c:\\path\\to\\file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			},
 			{
 				input: 'c:\\path\\to\\file',
-				want: 'C:/path/to/file',
+				want: 'C:/path/to/file'
 			}
 		];
 
@@ -65,27 +65,27 @@ suite('NormalizeSeparators Tests', () => {
 		const tt = [
 			{
 				input: '../path/to/file',
-				want: '../path/to/file',
+				want: '../path/to/file'
 			},
 			{
 				input: './path/to/file',
-				want: './path/to/file',
+				want: './path/to/file'
 			},
 			{
 				input: '..\\path\\to\\file',
-				want: '../path/to/file',
+				want: '../path/to/file'
 			},
 			{
 				input: '.\\path\\to\\file',
-				want: './path/to/file',
+				want: './path/to/file'
 			},
 			{
 				input: '/path/to/../file',
-				want: '/path/to/../file',
+				want: '/path/to/../file'
 			},
 			{
 				input: 'c:\\path\\to\\..\\file',
-				want: 'C:/path/to/../file',
+				want: 'C:/path/to/../file'
 			}
 		];
 
@@ -94,5 +94,4 @@ suite('NormalizeSeparators Tests', () => {
 			assert.strictEqual(got, tc.want);
 		}
 	});
-
 });

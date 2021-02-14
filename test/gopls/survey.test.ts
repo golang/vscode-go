@@ -13,10 +13,7 @@ suite('gopls survey tests', () => {
 		// global state -> offer survey
 		const testCases: [goLanguageServer.SurveyConfig, boolean][] = [
 			// User who is activating the extension for the first time.
-			[
-				{},
-				true,
-			],
+			[{}, true],
 			// User who has already taken the survey.
 			[
 				{
@@ -24,35 +21,35 @@ suite('gopls survey tests', () => {
 					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: true,
-					promptThisMonth: false,
+					promptThisMonth: false
 				},
-				undefined,
+				undefined
 			],
 			// User who has declined survey prompting.
 			[
 				{
 					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2020-04-02'),
-					prompt: false,
+					prompt: false
 				},
-				undefined,
+				undefined
 			],
 			// User who hasn't activated the extension in a while, but has opted in to prompting.
 			[
 				{
 					dateComputedPromptThisMonth: new Date('2019-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
-					prompt: true,
+					prompt: true
 				},
-				true,
+				true
 			],
 			// User who hasn't activated the extension in a while, and has never been prompted.
 			[
 				{
 					dateComputedPromptThisMonth: new Date('2019-04-10'),
-					lastDatePrompted: new Date('2019-01-02'),
+					lastDatePrompted: new Date('2019-01-02')
 				},
-				true,
+				true
 			],
 			// User who should get prompted this month, but hasn't been yet.
 			[
@@ -61,10 +58,10 @@ suite('gopls survey tests', () => {
 					dateComputedPromptThisMonth: new Date('2020-04-10'),
 					lastDatePrompted: new Date('2019-01-02'),
 					prompt: true,
-					promptThisMonth: true,
+					promptThisMonth: true
 				},
-				true,
-			],
+				true
+			]
 		];
 		testCases.map(([testConfig, wantPrompt], i) => {
 			// Replace Math.Random so that it always returns 1. This means
@@ -101,10 +98,10 @@ suite('gopls opt out', () => {
 		[{}, 'Not now', 1],
 		[{}, 'Never', 2],
 		// // Saved config, doesn't matter what the user chooses.
-		[{ prompt: false, }, '', 0],
+		[{ prompt: false }, '', 0],
 		[{ prompt: false, lastDatePrompted: new Date() }, '', 0],
-		[{ prompt: true, }, '', 1],
-		[{ prompt: true, lastDatePrompted: new Date() }, '', 0],
+		[{ prompt: true }, '', 1],
+		[{ prompt: true, lastDatePrompted: new Date() }, '', 0]
 	];
 
 	testCases.map(async ([testConfig, choice, wantCount], i) => {

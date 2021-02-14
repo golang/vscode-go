@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -7,7 +9,7 @@ import * as Mocha from 'mocha';
 import * as path from 'path';
 export function run(): Promise<void> {
 	const mocha = new Mocha({
-		ui: 'tdd',
+		ui: 'tdd'
 	});
 
 	// @types/mocha is outdated
