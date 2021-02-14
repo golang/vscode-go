@@ -160,6 +160,11 @@ Default:
 	"showGlobalVariables" :	false,
 }
 ```
+### `go.disableConcurrentTests`
+
+If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
+
+Default: `false`
 ### `go.docsTool`
 
 Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.<br/>

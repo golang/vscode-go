@@ -1322,6 +1322,12 @@
           "description": "The Go build tags to use for when running tests. If null, then buildTags will be used.",
           "scope": "resource"
         },
+        "go.disableConcurrentTests": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.",
+          "scope": "resource"
+        },
         "go.installDependenciesWhenBuilding": {
           "type": "boolean",
           "default": false,

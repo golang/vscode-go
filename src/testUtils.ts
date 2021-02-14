@@ -263,6 +263,10 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		outputChannel.clear();
 	}
 
+	if (!!testconfig.goConfig['disableConcurrentTests']) {
+		await cancelRunningTests();
+	}
+
 	if (!testconfig.background) {
 		outputChannel.show(true);
 	}
