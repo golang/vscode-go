@@ -59,7 +59,8 @@ run_test() {
 
 run_test_in_docker() {
   echo "**** Building the docker image ***"
-  docker build -t vscode-test-env -f ./build/Dockerfile .
+  docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
+
   # For debug tests, we need ptrace.
   docker run --cap-add SYS_PTRACE --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }

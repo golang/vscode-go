@@ -1,6 +1,6 @@
 # This Docker container is used for testing on GCB.
-
-FROM golang:1.15 AS gobuilder
+ARG GOVERSION=1
+FROM golang:${GOVERSION} AS gobuilder
 
 ENV GO111MODULE on
 ENV GOBIN /gobin
@@ -26,7 +26,7 @@ COPY --from=gobuilder /usr/local/go /usr/local/go
 ENV PATH /workspace/vscodego/go/bin:/go/bin:/usr/local/go/bin:${PATH}
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0
+RUN apt-get -qq update && apt-get install -qq -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0 > /dev/null
 RUN npm install -g typescript vsce
 
 WORKDIR /workspace
