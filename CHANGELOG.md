@@ -1,3 +1,32 @@
+## v0.22.1 - 8th Feb, 2021
+
+### Enhancements
+- Added error details to automated error reports. ([CL 287952](https://go-review.googlesource.com/c/vscode-go/+/287952))
+- Used clickable links in `"go.languageServerExperimentalFeatures"` setting deprecation error messages. ([CL 288133](https://go-review.googlesource.com/c/vscode-go/+/288133))
+
+### Fixes
+- Fixed a race during language client restarts. ([CL 288372](https://go-review.googlesource.com/c/vscode-go/+/288372), [CL 288352](https://go-review.googlesource.com/c/vscode-go/+/288352))
+- Disabled the language server when using workspace folders over ssh. ([Issue 1171](https://github.com/golang/vscode-go/issues/1171))
+- Added `dlv` to the `"go.alternateTools"` example value list. ([CL 289231](https://go-review.googlesource.com/c/vscode-go/+/289231))
+
+### Code Health
+- Bumped `ini` to 1.3.8 to address a vulnerability report from `npm audit`.
+
+### Thanks
+Thank you for your contribution, @stamblerre, @hyangah, @patrasap0908!
+
+## v0.22.0 - 26th Jan, 2021
+
+- The language server, `gopls`, is enabled by default. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037))
+
+### Enhancements
+- Added the new Go welcome page. ([Issue 949](https://github.com/golang/vscode-go/issues/949))
+- Updated documentation. (troubleshooting, customization, settings guide)
+- Updated the hardcoded latest gopls version to 0.6.4.
+
+### Thanks
+Thank you for your contribution, @suzmue, @stamblerre, @findleyr, @heschik, @hyangah!
+
 ## v0.21.1 - 21st Jan, 2021
 A list of all issues and changes can be found in the [v0.21.1 milestone](https://github.com/golang/vscode-go/milestone/22?closed=1).
 
@@ -6,10 +35,6 @@ A list of all issues and changes can be found in the [v0.21.1 milestone](https:/
 - Restored the `"go.languageServerExperimentalFeatures"` setting for users who depend on this to run custom vet analyzers. ([Issue 1110](https://github.com/golang/vscode-go/issues/1110))
 
 ## v0.21.0 - 20th Jan, 2021
-
-The language server, `gopls`, is enabled by default. ([Issue 1037](https://github.com/golang/vscode-go/issues/1037)).
-
-Some workspace or folder-level settings that affect tools location will not be used by default until users explicitly opt in by running `Go: Toggle Workspace Trust Flag`. See [Issue 1094](https://github.com/golang/vscode-go/issues/1094) for more information.
 
 A list of all issues and changes can be found in the [v0.21.0 milestone](https://github.com/golang/vscode-go/milestone/16?closed=1).
 ### Enhancements
