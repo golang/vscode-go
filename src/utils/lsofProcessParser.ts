@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -29,7 +30,7 @@ function parseProcessesFromLsofArray(processArray: string[], includesEnv?: boole
 	let i = 0;
 	while (i < processArray.length) {
 		const line = processArray[i];
-		i ++;
+		i++;
 		if (!line) {
 			continue;
 		}
@@ -39,7 +40,7 @@ function parseProcessesFromLsofArray(processArray: string[], includesEnv?: boole
 		if (out !== 'p') {
 			continue;
 		}
-		const processEntry: AttachItem = {id: val, label: ''};
+		const processEntry: AttachItem = { id: val, label: '' };
 
 		// Loop through every file which will have 3 lines containing: f=filedescriptor, t=type, n=name.
 		while (i < processArray.length && processArray[i].length > 0 && processArray[i][0] !== 'p') {
@@ -61,7 +62,7 @@ function parseProcessesFromLsofArray(processArray: string[], includesEnv?: boole
 	return processEntries;
 }
 
-function parseFile(start: number, lines: string[]): { fd?: string; name?: string; } {
+function parseFile(start: number, lines: string[]): { fd?: string; name?: string } {
 	const file: {
 		fd?: string;
 		name?: string;

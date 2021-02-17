@@ -7,13 +7,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import {
-	GoVersion,
-	guessPackageNameFromFile,
-
-	removeDuplicateDiagnostics,
-	substituteEnv
-} from '../../src/util';
+import { GoVersion, guessPackageNameFromFile, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
 import path = require('path');
 
 suite('utils Tests', () => {

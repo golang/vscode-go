@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*---------------------------------------------------------
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -15,10 +16,8 @@ export class WelcomePanel {
 
 	public static readonly viewType = 'welcomeGo';
 
-	public static createOrShow(extensionUri: vscode.Uri, ) {
-		const column = vscode.window.activeTextEditor
-			? vscode.window.activeTextEditor.viewColumn
-			: undefined;
+	public static createOrShow(extensionUri: vscode.Uri) {
+		const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
 
 		// If we already have a panel, show it.
 		if (WelcomePanel.currentPanel) {
@@ -36,7 +35,7 @@ export class WelcomePanel {
 				enableScripts: true,
 
 				// And restrict the webview to only loading content from our extension's directory.
-				localResourceRoots: [vscode.Uri.joinPath(extensionUri)],
+				localResourceRoots: [vscode.Uri.joinPath(extensionUri)]
 			}
 		);
 		panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'go-logo-blue.png');

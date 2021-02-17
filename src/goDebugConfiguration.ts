@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-prototype-builtins */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -19,7 +21,7 @@ import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
-	constructor(private defaultDebugAdapterType: string = 'go') { }
+	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
 		folder: vscode.WorkspaceFolder | undefined,
@@ -39,7 +41,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					request: 'launch',
 					mode: 'debug',
 					program: '${workspaceFolder}'
-				},
+				}
 			},
 			{
 				label: 'Go: Launch file',
@@ -72,21 +74,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					request: 'launch',
 					mode: 'test',
 					program: '${workspaceFolder}',
-					args: [
-						'-test.run',
-						'MyTestFunction'
-					]
+					args: ['-test.run', 'MyTestFunction']
 				},
 				fill: async (config: vscode.DebugConfiguration) => {
 					const testFunc = await vscode.window.showInputBox({
 						placeHolder: 'MyTestFunction',
 						prompt: 'Name of the function to test'
 					});
-					if (!!testFunc) {
-						config.args = [
-							'-test.run',
-							testFunc
-						];
+					if (testFunc) {
+						config.args = ['-test.run', testFunc];
 					}
 				}
 			},
@@ -116,37 +112,38 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				fill: async (config: vscode.DebugConfiguration) => {
 					const host = await vscode.window.showInputBox({
 						prompt: 'Enter hostname',
-						value: '127.0.0.1',
+						value: '127.0.0.1'
 					});
-					if (!!host) {
+					if (host) {
 						config.host = host;
 					}
-					const port = Number(await vscode.window.showInputBox({
-						prompt: 'Enter port',
-						value: '2345',
-						validateInput: (value: string) => {
-							if (isNaN(Number(value))) {
-								return 'Please enter a number.';
+					const port = Number(
+						await vscode.window.showInputBox({
+							prompt: 'Enter port',
+							value: '2345',
+							validateInput: (value: string) => {
+								if (isNaN(Number(value))) {
+									return 'Please enter a number.';
+								}
+								return '';
 							}
-							return '';
-						}
-					}));
-					if (!!port) {
+						})
+					);
+					if (port) {
 						config.port = port;
 					}
-
 				}
 			}
 		];
 
 		const choice = await vscode.window.showQuickPick(debugConfigurations, {
-			placeHolder: 'Choose debug configuration',
+			placeHolder: 'Choose debug configuration'
 		});
 		if (!choice) {
 			return [];
 		}
 
-		if (!!choice.fill) {
+		if (choice.fill) {
 			await choice.fill(choice.config);
 		}
 		return [choice.config];
@@ -217,7 +214,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration['buildFlags'] = resp.args;
 				this.showWarning(
 					'ignoreDebugGCFlagsWarning',
-					`User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+					"User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
 				);
 			}
 		}
@@ -227,7 +224,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration['env']['GOFLAGS'] = resp.args;
 				this.showWarning(
 					'ignoreDebugGCFlagsWarning',
-					`User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+					"User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
 				);
 			}
 		}
@@ -246,7 +243,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration.request === 'launch' && debugConfiguration['mode'] === 'remote') {
 			this.showWarning(
 				'ignoreDebugLaunchRemoteWarning',
-				`Request type of 'launch' with mode 'remote' is deprecated, please use request type 'attach' with mode 'remote' instead.`
+				"Request type of 'launch' with mode 'remote' is deprecated, please use request type 'attach' with mode 'remote' instead."
 			);
 		}
 
@@ -257,19 +254,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			this.showWarning(
 				'ignoreUsingRemotePathAndProgramWarning',
-				`Request type of 'attach' with mode 'remote' does not work with 'program' attribute, please use 'cwd' attribute instead.`
+				"Request type of 'attach' with mode 'remote' does not work with 'program' attribute, please use 'cwd' attribute instead."
 			);
 		}
 
-		if (
-			debugConfiguration.request === 'attach' &&
-			debugConfiguration['mode'] === 'local'
-		) {
-			if ( !debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
+		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
+			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
 				// The processId is not valid, offer a quickpick menu of all processes.
 				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
-			} else if ( typeof debugConfiguration['processId'] === 'string') {
-				debugConfiguration['processId'] = parseInt(await pickProcessByName(debugConfiguration['processId']), 10);
+			} else if (typeof debugConfiguration['processId'] === 'string') {
+				debugConfiguration['processId'] = parseInt(
+					await pickProcessByName(debugConfiguration['processId']),
+					10
+				);
 			}
 		}
 		return debugConfiguration;
@@ -290,7 +287,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const env = debugConfiguration['env'] || {};
 
 		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
-		debugConfiguration['envFile'] = undefined;  // unset, since we already processed.
+		debugConfiguration['envFile'] = undefined; // unset, since we already processed.
 
 		return debugConfiguration;
 	}
@@ -301,7 +298,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			return;
 		}
 
-		const neverAgain = { title: `Don't Show Again` };
+		const neverAgain = { title: "Don't Show Again" };
 		vscode.window.showWarningMessage(warningMessage, neverAgain).then((result) => {
 			if (result === neverAgain) {
 				updateGlobalState(ignoreWarningKey, true);
@@ -309,12 +306,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		});
 	}
 
-	private removeFlag(args: string, flag: string): {args: string, removed: boolean} {
-		const argv = parse(args, {configuration: {'short-option-groups': false}});
+	private removeFlag(args: string, flag: string): { args: string; removed: boolean } {
+		const argv = parse(args, { configuration: { 'short-option-groups': false } });
 		if (argv[flag]) {
 			delete argv[flag];
 			return { args: unparse(argv).join(' '), removed: true };
 		}
-		return {args, removed: false};
+		return { args, removed: false };
 	}
 }

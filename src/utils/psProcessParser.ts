@@ -85,7 +85,7 @@ function parseLineFromPs(line: string): AttachItem | undefined {
 	//     for the whitespace separator
 	//   - whitespace
 	//   - args (might be empty)
-	const psEntry: RegExp = new RegExp(`^\\s*([0-9]+)\\s+(.{${secondColumnCharacters - 1}})\\s+(.*)$`);
+	const psEntry = new RegExp(`^\\s*([0-9]+)\\s+(.{${secondColumnCharacters - 1}})\\s+(.*)$`);
 	const matches = psEntry.exec(line);
 
 	if (matches?.length === 4) {

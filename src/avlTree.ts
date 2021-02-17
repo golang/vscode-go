@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @license
  * Copyright Daniel Imms <http://www.growingwiththeweb.com>
@@ -34,7 +35,7 @@
 export class Node<K, V> {
 	public left: Node<K, V> | null = null;
 	public right: Node<K, V> | null = null;
-	public height: number = 0;
+	public height = 0;
 
 	/**
 	 * Creates a new AVL Tree node.
@@ -127,7 +128,7 @@ export class NearestNeighborDict<K, V> {
 	public static NUMERIC_DISTANCE_FUNCTION = (a: number, b: number) => (a > b ? a - b : b - a);
 	public static DEFAULT_COMPARE_FUNCTION = (a: any, b: any) => (a > b ? 1 : a < b ? -1 : 0);
 
-	protected root: Node<K, V>|null = null;
+	protected root: Node<K, V> | null = null;
 
 	/**
 	 * Creates a new AVL Tree.
@@ -259,7 +260,7 @@ export class NearestNeighborDict<K, V> {
 				if (heightDifference > 0) {
 					return BalanceState.UNBALANCED_LEFT;
 				}
-				return BalanceState.UNBALANCED_RIGHT;  // heightDifference can't be 0
+				return BalanceState.UNBALANCED_RIGHT; // heightDifference can't be 0
 			}
 		}
 	}

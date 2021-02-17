@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -8,7 +10,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath, getCurrentGoPath, getGoVersion, isVendorSupported } from './util';
+import { getBinPath, getCurrentGoPath, isVendorSupported } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 type GopkgsDone = (res: Map<string, PackageInfo>) => void;
@@ -22,8 +24,8 @@ export interface PackageInfo {
 	isStd: boolean;
 }
 
-let gopkgsNotified: boolean = false;
-let cacheTimeout: number = 5000;
+let gopkgsNotified = false;
+let cacheTimeout = 5000;
 
 const gopkgsSubscriptions: Map<string, GopkgsDone[]> = new Map<string, GopkgsDone[]>();
 const gopkgsRunning: Set<string> = new Set<string>();
@@ -47,7 +49,7 @@ function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 		}
 
 		const env = toolExecutionEnvironment();
-		env['GOROOT'] = getCurrentGoRoot();  // https://github.com/golang/vscode-go/issues/294
+		env['GOROOT'] = getCurrentGoRoot(); // https://github.com/golang/vscode-go/issues/294
 		const cmd = cp.spawn(gopkgsBinPath, args, { env, cwd: workDir });
 		const chunks: any[] = [];
 		const errchunks: any[] = [];
@@ -172,7 +174,7 @@ export async function getAllPackages(workDir: string): Promise<Map<string, Packa
  * @param useCache. Force to use cache
  * @returns Map<string, string> mapping between package import path and package name
  */
-export function getImportablePackages(filePath: string, useCache: boolean = false): Promise<Map<string, PackageInfo>> {
+export function getImportablePackages(filePath: string, useCache = false): Promise<Map<string, PackageInfo>> {
 	filePath = fixDriveCasingInWindows(filePath);
 	const fileDirPath = path.dirname(filePath);
 
@@ -260,10 +262,8 @@ const pkgToFolderMappingRegex = /ImportPath: (.*) FolderPath: (.*)/;
 /**
  * Returns mapping between import paths and folder paths for all packages under given folder (vendor will be excluded)
  */
-export function getNonVendorPackages(
-	currentFolderPath: string, recursive: boolean = true): Promise<Map<string, string>> {
-
-	const target = recursive ? './...' : '.';  // go list ./... excludes vendor dirs since 1.9
+export function getNonVendorPackages(currentFolderPath: string, recursive = true): Promise<Map<string, string>> {
+	const target = recursive ? './...' : '.'; // go list ./... excludes vendor dirs since 1.9
 	return getImportPathToFolder([target], currentFolderPath);
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -10,7 +11,7 @@ enum LogLevel {
 	Off = 100,
 	Error = 50,
 	Info = 30,
-	Verbose = 20,
+	Verbose = 20
 	// TODO: Trace, Warn level
 }
 
@@ -20,16 +21,21 @@ const levelMap: { [k: string]: LogLevel } = {
 	off: LogLevel.Off,
 	error: LogLevel.Error,
 	info: LogLevel.Info,
-	verbose: LogLevel.Verbose,
+	verbose: LogLevel.Verbose
 };
 
 function levelPrefix(l: LogLevel): string {
 	switch (l) {
-		case LogLevel.Off: return 'Go[O]:';
-		case LogLevel.Error: return 'Go[E]:';
-		case LogLevel.Info: return 'Go[I]:';
-		case LogLevel.Verbose: return 'Go[V]:';
-		default: return 'Go[?]:';
+		case LogLevel.Off:
+			return 'Go[O]:';
+		case LogLevel.Error:
+			return 'Go[E]:';
+		case LogLevel.Info:
+			return 'Go[I]:';
+		case LogLevel.Verbose:
+			return 'Go[V]:';
+		default:
+			return 'Go[?]:';
 	}
 }
 

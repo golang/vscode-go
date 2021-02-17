@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable eqeqeq */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -12,14 +15,8 @@ import { getGoConfig } from './config';
 import { adjustWordPosition, definitionLocation, parseMissingError } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import {
-	byteOffsetAt,
-	canonicalizeGOPATHPrefix,
-	getBinPath,
-	getFileArchive,
-	goBuiltinTypes
-} from './util';
-import {killProcessTree} from './utils/processUtils';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive, goBuiltinTypes } from './util';
+import { killProcessTree } from './utils/processUtils';
 
 interface GuruDescribeOutput {
 	desc: string;
@@ -85,7 +82,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 							!goBuiltinTypes.has(guruOutput.value.type) &&
 							guruOutput.value.type !== 'invalid type'
 						) {
-							console.log(`no typespos from guru's output - try to update guru tool`);
+							console.log("no typespos from guru's output - try to update guru tool");
 						}
 
 						// Fall back to position of declaration

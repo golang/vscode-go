@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -74,7 +75,8 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 		}
 
 		if (goConfig['useLanguageServer'] === false && goConfig['formatTool'] !== 'goreturns') {
-			const promptFormatToolMsg = `The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".`;
+			const promptFormatToolMsg =
+				'The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".';
 			promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
 		}
 	}
@@ -96,7 +98,7 @@ export async function promptToUpdateToolForModules(
 		return false;
 	}
 	const goVersion = await getGoVersion();
-	const selected = await vscode.window.showInformationMessage(promptMsg, 'Update', 'Later', `Don't show again`);
+	const selected = await vscode.window.showInformationMessage(promptMsg, 'Update', 'Later', "Don't show again");
 	let choseToUpdate = false;
 	switch (selected) {
 		case 'Update':
@@ -121,7 +123,7 @@ export async function promptToUpdateToolForModules(
 			promptedToolsForModules[tool] = true;
 			updateGlobalState('promptedToolsForModules', promptedToolsForModules);
 			break;
-		case `Don't show again`:
+		case "Don't show again":
 			promptedToolsForModules[tool] = true;
 			updateGlobalState('promptedToolsForModules', promptedToolsForModules);
 			break;

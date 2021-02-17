@@ -1,3 +1,5 @@
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -13,7 +15,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
 import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath } from './util';
-import {killProcessTree} from './utils/processUtils';
+import { killProcessTree } from './utils/processUtils';
 
 export class GoRenameProvider implements vscode.RenameProvider {
 	public provideRenameEdits(

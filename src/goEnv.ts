@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -69,8 +70,7 @@ function newEnvironment(): NodeJS.Dict<string> {
 	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
 		Object.keys(toolsEnvVars).forEach(
 			(key) =>
-				(env[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
+				(env[key] = typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
 		);
 	}
 

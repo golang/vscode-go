@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -73,14 +75,14 @@ const gocodeNoSupportForgbMsgKey = 'dontshowNoSupportForgb';
 
 export class GoCompletionItemProvider implements vscode.CompletionItemProvider, vscode.Disposable {
 	private pkgsList = new Map<string, PackageInfo>();
-	private killMsgShown: boolean = false;
-	private setGocodeOptions: boolean = true;
-	private isGoMod: boolean = false;
+	private killMsgShown = false;
+	private setGocodeOptions = true;
+	private isGoMod = false;
 	private globalState: vscode.Memento;
 	private previousFile: string;
 	private previousFileDir: string;
 	private gocodeFlags: string[];
-	private excludeDocs: boolean = false;
+	private excludeDocs = false;
 
 	constructor(globalState?: vscode.Memento) {
 		this.globalState = globalState;
@@ -326,7 +328,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			p.on('close', (code) => {
 				try {
 					if (code !== 0) {
-						if (stderr.indexOf(`rpc: can't find service Server.AutoComplete`) > -1 && !this.killMsgShown) {
+						if (stderr.indexOf("rpc: can't find service Server.AutoComplete") > -1 && !this.killMsgShown) {
 							vscode.window.showErrorMessage(
 								'Auto-completion feature failed as an older gocode process is still running. Please kill the running process for gocode and try again.'
 							);
@@ -421,22 +423,22 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 										const arg = param.substr(0, param.indexOf(' '));
 										paramSnippets.push(
 											'${' +
-											(i + 1) +
-											':' +
-											arg +
-											'}' +
-											param.substr(param.indexOf(' '), param.length)
+												(i + 1) +
+												':' +
+												arg +
+												'}' +
+												param.substr(param.indexOf(' '), param.length)
 										);
 									}
 								}
 								item.insertText = new vscode.SnippetString(
 									suggest.name +
-									'(func(' +
-									paramSnippets.join(', ') +
-									') {\n	$' +
-									(params.length + 1) +
-									'\n})' +
-									returnType
+										'(func(' +
+										paramSnippets.join(', ') +
+										') {\n	$' +
+										(params.length + 1) +
+										'\n})' +
+										returnType
 								);
 							}
 
@@ -516,10 +518,10 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 						vscode.window
 							.showInformationMessage(
 								'The go.gocodePackageLookupMode setting for gb will not be honored as github.com/mdempskey/gocode doesnt support it yet.',
-								`Don't show again`
+								"Don't show again"
 							)
 							.then((selected) => {
-								if (selected === `Don't show again`) {
+								if (selected === "Don't show again") {
 									this.globalState.update(gocodeNoSupportForgbMsgKey, true);
 								}
 							});

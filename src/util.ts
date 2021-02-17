@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-constant-condition */
+/* eslint-disable eqeqeq */
+/* eslint-disable no-useless-escape */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -25,11 +30,11 @@ import {
 	getBinPathWithPreferredGopathGorootWithExplanation,
 	getCurrentGoRoot,
 	getInferredGopath,
-	resolveHomeDir,
+	resolveHomeDir
 } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
-let userNameHash: number = 0;
+let userNameHash = 0;
 
 export const goKeywords: string[] = [
 	'break',
@@ -123,7 +128,7 @@ export class GoVersion {
 		if (this.isDevel) {
 			return `devel +${this.commit}`;
 		}
-		return `unknown`;
+		return 'unknown';
 	}
 
 	public lt(version: string): boolean {
@@ -201,7 +206,8 @@ export function parseFilePrelude(text: string): Prelude {
 		} else if (line.match(/^(\s)*import(\s)+[^\(]/)) {
 			ret.imports.push({ kind: 'single', start: i, end: i, pkgs: [] });
 		}
-		if (line.match(/^(\s)*(\/\*.*\*\/)*\s*\)/)) {  // /* comments */
+		if (line.match(/^(\s)*(\/\*.*\*\/)*\s*\)/)) {
+			// /* comments */
 			if (ret.imports[ret.imports.length - 1].end === -1) {
 				ret.imports[ret.imports.length - 1].end = i;
 			}
@@ -362,7 +368,8 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion | unde
 		warn(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
 		return;
 	}
-	if (!goBinPath) {  // if getGoVersion was called with a given goBinPath, don't cache the result.
+	if (!goBinPath) {
+		// if getGoVersion was called with a given goBinPath, don't cache the result.
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = goVersion;
 		if (!cachedGoVersion.isValid()) {
@@ -405,7 +412,7 @@ export async function isVendorSupported(): Promise<boolean> {
 		case 1:
 			vendorSupport =
 				goVersion.sv.minor > 6 ||
-					((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
+				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
 					? true
 					: false;
 			break;
@@ -451,7 +458,7 @@ export function isPositionInString(document: vscode.TextDocument, position: vsco
 	return doubleQuotesCnt % 2 === 1;
 }
 
-export function getToolsGopath(useCache: boolean = true): string {
+export function getToolsGopath(useCache = true): string {
 	if (!useCache || !toolsGopath) {
 		toolsGopath = resolveToolsGopath();
 	}
@@ -501,7 +508,7 @@ export function getBinPath(tool: string, useCache = true): string {
 
 // getBinPathWithExplanation returns the path to the tool, and the explanation on why
 // the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
-export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string, why?: string } {
+export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string; why?: string } {
 	const cfg = getGoConfig();
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
@@ -583,7 +590,7 @@ export function getExtensionCommands(): any[] {
 }
 
 export class LineBuffer {
-	private buf: string = '';
+	private buf = '';
 	private lineListeners: { (line: string): void }[] = [];
 	private lastListeners: { (last: string): void }[] = [];
 
@@ -851,7 +858,9 @@ export function handleDiagnosticErrors(
 	// Also add other open .go files known to vscode for fast lookup.
 	vscode.workspace.textDocuments.forEach((t) => {
 		const fileName = t.uri.toString();
-		if (!fileName.endsWith('.go')) { return; }
+		if (!fileName.endsWith('.go')) {
+			return;
+		}
 		textDocumentMap.set(fileName, t);
 	});
 
@@ -868,12 +877,12 @@ export function handleDiagnosticErrors(
 				error.line - 1,
 				0,
 				error.line - 1,
-				doc.lineAt(error.line - 1).range.end.character + 1  // end of the line
+				doc.lineAt(error.line - 1).range.end.character + 1 // end of the line
 			);
 			const text = doc.getText(tempRange);
 			const [_, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
 			if (!error.col) {
-				startColumn = leading.length;  // beginning of the non-white space.
+				startColumn = leading.length; // beginning of the non-white space.
 			} else {
 				startColumn = error.col - 1; // range is 0-indexed
 			}
@@ -921,10 +930,7 @@ export function removeDuplicateDiagnostics(
 	newDiagnostics: vscode.Diagnostic[]
 ) {
 	if (collection && collection.has(fileUri)) {
-		collection.set(
-			fileUri,
-			deDupeDiagnostics(newDiagnostics, collection.get(fileUri).slice())
-		);
+		collection.set(fileUri, deDupeDiagnostics(newDiagnostics, collection.get(fileUri).slice()));
 	}
 }
 

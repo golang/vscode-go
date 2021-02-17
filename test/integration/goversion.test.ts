@@ -18,7 +18,6 @@ import moment = require('moment');
 import semver = require('semver');
 import WebRequest = require('web-request');
 
-
 describe('#getLatestGoVersion()', function () {
 	this.timeout(40000);
 	let sandbox: sinon.SinonSandbox | undefined;

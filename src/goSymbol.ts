@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -10,9 +11,9 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath, getWorkspaceFolderPath} from './util';
+import { getBinPath, getWorkspaceFolderPath } from './util';
 import { getCurrentGoRoot } from './utils/pathUtils';
-import {killProcessTree} from './utils/processUtils';
+import { killProcessTree } from './utils/processUtils';
 
 // Keep in sync with github.com/acroca/go-symbols'
 interface GoSymbolDeclaration {
@@ -81,7 +82,7 @@ export function getWorkspaceSymbols(
 	query: string,
 	token: vscode.CancellationToken,
 	goConfig?: vscode.WorkspaceConfiguration,
-	ignoreFolderFeatureOn: boolean = true
+	ignoreFolderFeatureOn = true
 ): Thenable<GoSymbolDeclaration[]> {
 	if (!goConfig) {
 		goConfig = getGoConfig();

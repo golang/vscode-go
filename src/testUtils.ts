@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-useless-escape */
+/* eslint-disable no-async-promise-executor */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -12,13 +17,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getNonVendorPackages } from './goPackages';
-import {
-	getBinPath,
-	getCurrentGoPath,
-	getTempFilePath,
-	LineBuffer,
-	resolvePath
-} from './util';
+import { getBinPath, getCurrentGoPath, getTempFilePath, LineBuffer, resolvePath } from './util';
 import { parseEnvFile } from './utils/envUtils';
 import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
@@ -263,7 +262,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 		outputChannel.clear();
 	}
 
-	if (!!testconfig.goConfig['disableConcurrentTests']) {
+	if (testconfig.goConfig['disableConcurrentTests']) {
 		await cancelRunningTests();
 	}
 
@@ -291,9 +290,9 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const errBuf = new LineBuffer();
 
 			const testResultLines: string[] = [];
-			const processTestResultLine = addJSONFlag ?
-				processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel) :
-				processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
+			const processTestResultLine = addJSONFlag
+				? processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel)
+				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 			outBuf.onLine((line) => processTestResultLine(line));
 			outBuf.onDone((last) => {
@@ -353,10 +352,12 @@ async function getTestTargetPackages(testconfig: TestConfig, outputChannel: vsco
 		getCurrentPackagePromise = getCurrentPackage(testconfig.dir);
 		// We need the mapping to get absolute paths for the files in the test output.
 		pkgMapPromise = getNonVendorPackages(testconfig.dir, !!testconfig.includeSubDirectories);
-	} else { // GOPATH mode
+	} else {
+		// GOPATH mode
 		currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
 		getCurrentPackagePromise = Promise.resolve(
-			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : '');
+			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : ''
+		);
 		// We dont need mapping, as we can derive the absolute paths from package path
 		pkgMapPromise = Promise.resolve(null);
 	}
@@ -382,13 +383,15 @@ async function getTestTargetPackages(testconfig: TestConfig, outputChannel: vsco
 // computeTestCommand returns the test command argument list and extra info necessary
 // to post process the test results.
 // Exported for testing.
-export function computeTestCommand(testconfig: TestConfig, targets: string[])
-	: {
-		args: Array<string>,  // test command args.
-		outArgs: Array<string>,  // compact test command args to show to user.
-		tmpCoverPath?: string,  // coverage file path if coverage info is necessary.
-		addJSONFlag: boolean  // true if we add extra -json flag for stream processing.
-	} {
+export function computeTestCommand(
+	testconfig: TestConfig,
+	targets: string[]
+): {
+	args: Array<string>; // test command args.
+	outArgs: Array<string>; // compact test command args to show to user.
+	tmpCoverPath?: string; // coverage file path if coverage info is necessary.
+	addJSONFlag: boolean; // true if we add extra -json flag for stream processing.
+} {
 	const args: Array<string> = ['test'];
 	// user-specified flags
 	const argsFlagIdx = testconfig.flags?.indexOf('-args') ?? -1;
@@ -417,7 +420,9 @@ export function computeTestCommand(testconfig: TestConfig, targets: string[])
 		switch (coverMode) {
 			case 'default':
 				break;
-			case 'set': case 'count': case 'atomic':
+			case 'set':
+			case 'count':
+			case 'atomic':
 				args.push('-covermode', coverMode);
 				break;
 			default:
@@ -430,12 +435,12 @@ export function computeTestCommand(testconfig: TestConfig, targets: string[])
 	// all other test run/benchmark flags
 	args.push(...targetArgs(testconfig));
 
-	const outArgs = args.slice(0);  // command to show
+	const outArgs = args.slice(0); // command to show
 
 	// if user set -v, set -json to emulate streaming test output
 	const addJSONFlag = userFlags.includes('-v') && !userFlags.includes('-json');
 	if (addJSONFlag) {
-		args.push('-json');  // this is not shown to the user.
+		args.push('-json'); // this is not shown to the user.
 	}
 
 	if (targets.length > 4) {
@@ -468,10 +473,11 @@ export function computeTestCommand(testconfig: TestConfig, targets: string[])
 function processTestResultLineInJSONMode(
 	pkgMap: Map<string, string>,
 	currentGoWorkspace: string,
-	outputChannel: vscode.OutputChannel) {
+	outputChannel: vscode.OutputChannel
+) {
 	return (line: string) => {
 		try {
-			const m = <GoTestOutput>(JSON.parse(line));
+			const m = <GoTestOutput>JSON.parse(line);
 			if (m.Action !== 'output' || !m.Output) {
 				return;
 			}
@@ -498,7 +504,8 @@ function processTestResultLineInStandardMode(
 	pkgMap: Map<string, string>,
 	currentGoWorkspace: string,
 	testResultLines: string[],
-	outputChannel: vscode.OutputChannel) {
+	outputChannel: vscode.OutputChannel
+) {
 	// 1=ok/FAIL/?, 2=package, 3=time/(cached)/[no test files]
 	const packageResultLineRE = /^(ok|FAIL|\?)\s+(\S+)\s+([0-9\.]+s|\(cached\)|\[no test files\])/;
 	const lineWithErrorRE = /^\s+(\S+\.go):(\d+):/;

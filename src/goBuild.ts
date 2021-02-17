@@ -107,8 +107,8 @@ export async function goBuild(
 	const buildFlags: string[] = isTestFile
 		? getTestFlags(goConfig)
 		: Array.isArray(goConfig['buildFlags'])
-			? [...goConfig['buildFlags']]
-			: [];
+		? [...goConfig['buildFlags']]
+		: [];
 	const buildArgs: string[] = isTestFile ? ['test', '-c'] : ['build'];
 
 	if (goConfig['installDependenciesWhenBuilding'] === true && !isMod) {

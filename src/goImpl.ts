@@ -1,3 +1,5 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -7,10 +9,10 @@
 
 import cp = require('child_process');
 import { dirname } from 'path';
-import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
+import vscode = require('vscode');
 
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w./]+)$/;

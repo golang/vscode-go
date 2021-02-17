@@ -1,18 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-async-promise-executor */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import cp = require('child_process');
-import { CodeLens } from 'vscode';
 import { QuickPickItem } from 'vscode';
-import vscode = require('vscode');
-import { logError } from './goLogging';
 import { getBinPath } from './util';
 import { lsofDarwinCommand, parseLsofProcesses } from './utils/lsofProcessParser';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
+import vscode = require('vscode');
 
 export async function pickProcess(): Promise<string> {
 	const allProcesses = await getAllProcesses();
@@ -110,7 +110,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 		}
 	});
 
-	const {stdout} = await runCommand({command: goRuntimePath, args});
+	const { stdout } = await runCommand({ command: goRuntimePath, args });
 
 	// Parse the executable paths from stdout. Ignore stderr, since we expect many to fail.
 	const goProcessExecutables: string[] = parseGoVersionOutput(stdout);
@@ -155,15 +155,15 @@ export function mergeExecutableAttachItem(processes: AttachItem[], addlAttachIte
 		const pAttachItem = processes[pIdx];
 		if (aAttachItem.id === pAttachItem.id) {
 			pAttachItem.executable = aAttachItem.executable;
-			aIdx ++;
-			pIdx ++;
+			aIdx++;
+			pIdx++;
 			continue;
 		}
 
 		if (compareByProcessId(pAttachItem, aAttachItem) > 0) {
-			aIdx ++;
+			aIdx++;
 		} else {
-			pIdx ++;
+			pIdx++;
 		}
 	}
 }
@@ -182,22 +182,22 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 			break;
 		default:
 			// Other operating systems are not supported.
-			throw new Error(`'pickProcess' and 'pickGoProcess' are not supported for ${process.platform}. Set process id in launch.json instead.`);
+			throw new Error(
+				`'pickProcess' and 'pickGoProcess' are not supported for ${process.platform}. Set process id in launch.json instead.`
+			);
 	}
 
 	const { stdout } = await runCommand(processCmd);
 
-	return process.platform === 'win32'
-		? parseWmicProcesses(stdout)
-		: parsePsProcesses(stdout);
+	return process.platform === 'win32' ? parseWmicProcesses(stdout) : parsePsProcesses(stdout);
 }
 
 async function runCommand(
-		processCmd: ProcessListCommand
-	): Promise<{ err: cp.ExecException; stdout: string; stderr: string; }> {
-	return await new Promise<{err: cp.ExecException; stdout: string, stderr: string}>((resolve) => {
+	processCmd: ProcessListCommand
+): Promise<{ err: cp.ExecException; stdout: string; stderr: string }> {
+	return await new Promise<{ err: cp.ExecException; stdout: string; stderr: string }>((resolve) => {
 		cp.execFile(processCmd.command, processCmd.args, (err, stdout, stderr) => {
-			resolve({err, stdout, stderr});
+			resolve({ err, stdout, stderr });
 		});
 	});
 }

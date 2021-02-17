@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-useless-escape */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Modification copyright 2020 The Go Authors. All rights reserved.
@@ -7,22 +10,28 @@
 'use strict';
 
 import * as path from 'path';
-import semver = require('semver');
-import vscode = require('vscode');
 import { getGoConfig, initConfig } from './config';
-import { extensionId } from './const';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
 import {
-	applyCodeCoverage, applyCodeCoverageToAllEditors, initCoverageDecorators, removeCodeCoverageOnFileSave,
-	toggleCoverageCurrentPackage, trackCodeCoverageRemovalOnFileChange, updateCodeCoverageDecorators
+	applyCodeCoverage,
+	applyCodeCoverageToAllEditors,
+	initCoverageDecorators,
+	removeCodeCoverageOnFileSave,
+	toggleCoverageCurrentPackage,
+	trackCodeCoverageRemovalOnFileChange,
+	updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import { GoDebugAdapterDescriptorFactory } from './goDebugFactory';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
-import { chooseGoEnvironment, offerToInstallLatestGoVersion, setEnvironmentVariableCollection } from './goEnvironmentStatus';
+import {
+	chooseGoEnvironment,
+	offerToInstallLatestGoVersion,
+	setEnvironmentVariableCollection
+} from './goEnvironmentStatus';
 import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
@@ -30,7 +39,10 @@ import { implCursor } from './goImpl';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
-	installAllTools, installTools, offerToInstallTools, promptForMissingTool,
+	installAllTools,
+	installTools,
+	offerToInstallTools,
+	promptForMissingTool,
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
@@ -39,7 +51,9 @@ import {
 	resetSurveyConfig,
 	showServerOutputChannel,
 	showSurveyConfig,
-	startLanguageServerWithFallback, timeMinute, watchLanguageServerConfiguration
+	startLanguageServerWithFallback,
+	timeMinute,
+	watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
@@ -50,7 +64,14 @@ import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
-import { subTestAtCursor, testAtCursor, testCurrentFile, testCurrentPackage, testPrevious, testWorkspace } from './goTest';
+import {
+	subTestAtCursor,
+	testAtCursor,
+	testCurrentFile,
+	testCurrentPackage,
+	testPrevious,
+	testWorkspace
+} from './goTest';
 import { getConfiguredTools } from './goTools';
 import { vetCode } from './goVet';
 import { pickGoProcess, pickProcess } from './pickProcess';
@@ -76,10 +97,12 @@ import {
 	getWorkspaceFolderPath,
 	handleDiagnosticErrors,
 	isGoPathSet,
-	resolvePath,
+	resolvePath
 } from './util';
 import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
+import semver = require('semver');
+import vscode = require('vscode');
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -88,10 +111,13 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // restartLanguageServer wraps all of the logic needed to restart the
 // language server. It can be used to enable, disable, or otherwise change
 // the configuration of the server.
-export let restartLanguageServer = () => { return; };
+export let restartLanguageServer = () => {
+	return;
+};
 
 export async function activate(ctx: vscode.ExtensionContext) {
-	if (process.env['VSCODE_GO_IN_TEST'] === '1') {  // Make sure this does not run when running in test.
+	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
+		// Make sure this does not run when running in test.
 		return;
 	}
 
@@ -123,7 +149,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	showGoWelcomePage(ctx);
 
 	const configGOROOT = getGoConfig()['goroot'];
-	if (!!configGOROOT) {
+	if (configGOROOT) {
 		logVerbose(`go.goroot = '${configGOROOT}'`);
 		setCurrentGoRoot(resolvePath(configGOROOT));
 	}
@@ -135,7 +161,8 @@ export async function activate(ctx: vscode.ExtensionContext) {
 		// all of the settings. See golang/vscode-go#1109 too.
 		// The `diagnostics` setting is still used as a workaround for running custom vet.
 		if (experimentalFeatures['documentLink'] === false) {
-			vscode.window.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
+			vscode.window
+				.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
 Please use '"gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
 See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut) for more details.`);
 		}
@@ -144,10 +171,10 @@ See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/sett
 		if (!prompted && experimentalFeatures['diagnostics'] === false) {
 			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
 If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).`;
-			const selected = await vscode.window.showInformationMessage(msg, `Don't show again`);
+			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
 			switch (selected) {
-			case `Don't show again`:
-				updateGlobalState(promptKey, true);
+				case "Don't show again":
+					updateGlobalState(promptKey, true);
 			}
 		}
 	}
@@ -185,19 +212,27 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	// debug
 	ctx.subscriptions.push(
-		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go')));
+		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go'))
+	);
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.debug.pickProcess', async (): Promise<string> => {
-			return await pickProcess();
-		}));
+		vscode.commands.registerCommand(
+			'go.debug.pickProcess',
+			async (): Promise<string> => {
+				return await pickProcess();
+			}
+		)
+	);
 	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.debug.pickGoProcess', async (): Promise<string> => {
-			return await pickGoProcess();
-		}));
+		vscode.commands.registerCommand(
+			'go.debug.pickGoProcess',
+			async (): Promise<string> => {
+				return await pickGoProcess();
+			}
+		)
+	);
 
 	const factory = new GoDebugAdapterDescriptorFactory();
-	ctx.subscriptions.push(
-		vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
 	}
@@ -216,12 +251,14 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.gopath', () => {
 			getCurrentGoPathCommand();
-		}));
+		})
+	);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.locate.tools', async () => {
 			getConfiguredGoToolsCommand();
-		}));
+		})
+	);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.add.tags', (args) => {
@@ -388,11 +425,13 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 			const updatedGoConfig = getGoConfig();
 
-			if (e.affectsConfiguration('go.goroot') ||
+			if (
+				e.affectsConfiguration('go.goroot') ||
 				e.affectsConfiguration('go.alternateTools') ||
 				e.affectsConfiguration('go.gopath') ||
 				e.affectsConfiguration('go.toolsEnvVars') ||
-				e.affectsConfiguration('go.testEnvFile')) {
+				e.affectsConfiguration('go.testEnvFile')
+			) {
 				updateGoVarsFromConfig();
 			}
 			if (e.affectsConfiguration('go.logging')) {
@@ -518,40 +557,52 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
 
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.extractServerChannel', () => {
-		showServerOutputChannel();
-	}));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.extractServerChannel', () => {
+			showServerOutputChannel();
+		})
+	);
 
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.welcome', () => {
-		WelcomePanel.createOrShow(ctx.extensionUri);
-	}));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.welcome', () => {
+			WelcomePanel.createOrShow(ctx.extensionUri);
+		})
+	);
 
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.workspace.resetState', () => {
-		resetWorkspaceState();
-	}));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.workspace.resetState', () => {
+			resetWorkspaceState();
+		})
+	);
 
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.global.resetState', () => {
-		resetGlobalState();
-	}));
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.global.resetState', () => {
+			resetGlobalState();
+		})
+	);
 
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.toggle.gc_details', () => {
-		if (!languageServerIsRunning) {
-			vscode.window.showErrorMessage('"Go: Toggle gc details" command is available only when the language server is running');
-			return;
-		}
-		const doc = vscode.window.activeTextEditor?.document.uri.toString();
-		if (!doc || !doc.endsWith('.go')) {
-			vscode.window.showErrorMessage('"Go: Toggle gc details" command cannot run when no Go file is open.');
-			return;
-		}
-		vscode.commands.executeCommand('gc_details', doc)
-			.then(undefined, (reason0) => {
-				vscode.commands.executeCommand('gopls.gc_details', doc)
-					.then(undefined, (reason1) => {
-						vscode.window.showErrorMessage(`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`);
-					});
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.toggle.gc_details', () => {
+			if (!languageServerIsRunning) {
+				vscode.window.showErrorMessage(
+					'"Go: Toggle gc details" command is available only when the language server is running'
+				);
+				return;
+			}
+			const doc = vscode.window.activeTextEditor?.document.uri.toString();
+			if (!doc || !doc.endsWith('.go')) {
+				vscode.window.showErrorMessage('"Go: Toggle gc details" command cannot run when no Go file is open.');
+				return;
+			}
+			vscode.commands.executeCommand('gc_details', doc).then(undefined, (reason0) => {
+				vscode.commands.executeCommand('gopls.gc_details', doc).then(undefined, (reason1) => {
+					vscode.window.showErrorMessage(
+						`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`
+					);
+				});
 			});
-	}));
+		})
+	);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.apply.coverprofile', () => {
@@ -578,7 +629,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 						updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 					}
 					applyCodeCoverageToAllEditors(
-						coverProfilePath, getWorkspaceFolderPath(vscode.window.activeTextEditor.document.uri)
+						coverProfilePath,
+						getWorkspaceFolderPath(vscode.window.activeTextEditor.document.uri)
 					);
 				});
 		})
@@ -592,10 +644,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	);
 
 	// Survey related commands
-	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
-	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
@@ -644,14 +694,22 @@ async function showGoNightlyWelcomeMessage() {
 		return;
 	}
 	const prompt = async () => {
-		const selected = await vscode.window.showInformationMessage(`Thank you for testing new features by using the Go Nightly extension!
-We'd like to welcome you to share feedback and/or join our community of Go Nightly users and developers.`, 'Share feedback', 'Community resources');
+		const selected = await vscode.window.showInformationMessage(
+			`Thank you for testing new features by using the Go Nightly extension!
+We'd like to welcome you to share feedback and/or join our community of Go Nightly users and developers.`,
+			'Share feedback',
+			'Community resources'
+		);
 		switch (selected) {
 			case 'Share feedback':
-				await vscode.env.openExternal(vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#feedback'));
+				await vscode.env.openExternal(
+					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#feedback')
+				);
 				break;
 			case 'Community resources':
-				await vscode.env.openExternal(vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#community'));
+				await vscode.env.openExternal(
+					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#community')
+				);
 				break;
 			default:
 				return;
@@ -672,7 +730,8 @@ export function deactivate() {
 	return Promise.all([
 		cancelRunningTests(),
 		Promise.resolve(cleanupTempDir()),
-		Promise.resolve(disposeGoStatusBar())]);
+		Promise.resolve(disposeGoStatusBar())
+	]);
 }
 
 function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {
@@ -702,8 +761,8 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 				return;
 			}
 			const session = vscode.debug.activeDebugSession;
-			if (session && (session.type === 'go')) {
-				const neverAgain = { title: `Don't Show Again` };
+			if (session && session.type === 'go') {
+				const neverAgain = { title: "Don't Show Again" };
 				const ignoreActiveDebugWarningKey = 'ignoreActiveDebugWarningKey';
 				const ignoreActiveDebugWarning = getFromGlobalState(ignoreActiveDebugWarningKey);
 				if (!ignoreActiveDebugWarning) {
@@ -737,7 +796,7 @@ function addOnChangeTextDocumentListeners(ctx: vscode.ExtensionContext) {
 function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 	[updateGoStatusBar, applyCodeCoverage].forEach((listener) => {
 		// Call the listeners on initilization for current active text editor
-		if (!!vscode.window.activeTextEditor) {
+		if (vscode.window.activeTextEditor) {
 			listener(vscode.window.activeTextEditor);
 		}
 		vscode.window.onDidChangeActiveTextEditor(listener, null, ctx.subscriptions);
@@ -804,9 +863,7 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 function configureLanguageServer(ctx: vscode.ExtensionContext) {
 	// Subscribe to notifications for changes to the configuration
 	// of the language server, even if it's not currently in use.
-	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration(
-		(e) => watchLanguageServerConfiguration(e)
-	));
+	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(e)));
 
 	// Set the function that is used to restart the language server.
 	// This is necessary, even if the language server is not currently
@@ -823,9 +880,7 @@ function getCurrentGoPathCommand() {
 	const gopath = getCurrentGoPath();
 	let msg = `${gopath} is the current GOPATH.`;
 	const wasInfered = getGoConfig()['inferGopath'];
-	const root = getWorkspaceFolderPath(
-		vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri
-	);
+	const root = getWorkspaceFolderPath(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri);
 
 	// not only if it was configured, but if it was successful.
 	if (wasInfered && root && root.indexOf(gopath) === 0) {

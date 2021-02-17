@@ -61,6 +61,6 @@ export async function installCurrentPackage(): Promise<void> {
 	outputChannel.appendLine(`Installing ${importPath === '.' ? 'current package' : importPath}`);
 
 	cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
-		outputChannel.appendLine(err ? `Installation failed: ${stderr}` : `Installation successful`);
+		outputChannel.appendLine(err ? `Installation failed: ${stderr}` : 'Installation successful');
 	});
 }

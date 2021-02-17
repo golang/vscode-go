@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -76,13 +78,10 @@ export function getMementoKeys(state: vscode.Memento): string[] {
 }
 
 async function resetStateQuickPick(state: vscode.Memento, updateFn: (key: string, value: any) => {}) {
-	const items = await vscode.window.showQuickPick(
-		getMementoKeys(state),
-		{
-			canPickMany: true,
-			placeHolder: 'Select the keys to reset.'
-		}
-	);
+	const items = await vscode.window.showQuickPick(getMementoKeys(state), {
+		canPickMany: true,
+		placeHolder: 'Select the keys to reset.'
+	});
 	resetItemsState(items, updateFn);
 }
 
