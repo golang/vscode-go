@@ -7,7 +7,6 @@ import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import parse = require('yargs-parser');
 import { getGoConfig } from '../../src/config';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
@@ -301,55 +300,66 @@ suite('Debug Configuration Merge User Settings', () => {
 suite('Debug Configuration Modify User Config', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 
-	function checkBuildFlags(input: string, expected: { [key: string]: any }) {
-		// Parse the string result.
-		const actual = parse(input, { configuration: { 'short-option-groups': false } });
-
-		// Delete the empty entry that is created by parse.
-		delete actual['_'];
-
-		// Compare the two maps.
-		assert.strictEqual(actual.size, expected.size);
-
-		const expectedKeys = [];
-		for (const key in expected) {
-			if (expected.hasOwnProperty(key)) {
-				expectedKeys.push(key);
-			}
-		}
-		expectedKeys.sort();
-
-		const actualKeys = [];
-		for (const key in actual) {
-			if (actual.hasOwnProperty(key)) {
-				actualKeys.push(key);
-			}
-		}
-		actualKeys.sort();
-
-		for (let i = 0; i < expectedKeys.length; i++) {
-			assert.strictEqual(actualKeys[i], expectedKeys[i]);
-			assert.strictEqual(actual[actualKeys[i]], expected[expectedKeys[i]]);
-		}
-	}
-
 	suite('remove gcflags', () => {
-		test('remove user set --gcflags in buildFlags', () => {
-			const config = {
-				name: 'Launch',
-				type: 'go',
-				request: 'launch',
-				mode: 'auto',
-				program: '${fileDirname}',
-				env: {},
-				buildFlags: '--gcflags=all=-l'
-			};
+		test('remove gcflags from string args', () => {
+			const tt = [
+				{
+					input: '-gcflags=all=-l',
+					want: { args: '', removed: true }
+				},
+				{
+					input: '-gcflags all=-l',
+					want: { args: '', removed: true }
+				},
+				// Preserve other flags
+				{
+					input: '-race -gcflags=all=-l -mod=mod',
+					want: { args: '-race -mod=mod', removed: true }
+				},
+				{
+					input: '-race -gcflags all=-l -mod=mod',
+					want: { args: '-race -mod=mod', removed: true }
+				},
+				// Test with quoted value
+				{
+					input: "-mod=mod -gcflags=test/...='hello goodbye' -race",
+					want: { args: '-mod=mod -race', removed: true }
+				},
+				{
+					input: '-mod=mod -gcflags test/...="hello goodbye" -race',
+					want: { args: '-mod=mod -race', removed: true }
+				},
+				{
+					input: "-mod=mod -gcflags='test/...=hello goodbye' -race",
+					want: { args: '-mod=mod -race', removed: true }
+				},
+				{
+					input: '-mod=mod -gcflags "test/...=hello goodbye" -race',
+					want: { args: '-mod=mod -race', removed: true }
+				},
+				// Multiple -gcflags present
+				{
+					input: '-mod=mod -gcflags "test/...=hello goodbye" -race -gcflags=all="hello goodbye"',
+					want: { args: '-mod=mod -race', removed: true }
+				},
+				// No gcflags are present
+				{
+					input: '',
+					want: { args: '', removed: false }
+				},
+				{
+					input: '-race -mod=gcflags',
+					want: { args: '-race -mod=gcflags', removed: false }
+				}
+			];
 
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			tt.forEach((tc) => {
+				const got = debugConfigProvider.removeGcflags(tc.input);
 
-			checkBuildFlags(config.buildFlags, {});
+				assert.strictEqual(got.args, tc.want.args, `args for ${tc.input} do not match expected`);
+				assert.strictEqual(got.removed, tc.want.removed, `removed for ${tc.input} does not match expected`);
+			});
 		});
-
 		test('remove user set -gcflags in buildFlags', () => {
 			const config = {
 				name: 'Launch',
@@ -358,75 +368,25 @@ suite('Debug Configuration Modify User Config', () => {
 				mode: 'auto',
 				program: '${fileDirname}',
 				env: {},
-				buildFlags: '-gcflags all=-l'
+				buildFlags: '-race -gcflags=-l -mod=mod'
 			};
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			checkBuildFlags(config.buildFlags, {});
+			assert.strictEqual(config.buildFlags, '-race -mod=mod');
 		});
-
-		test('remove user set --gcflags while preserving other build flags in buildFlags', () => {
+		test('remove user set -gcflags in GOFLAGS', () => {
 			const config = {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
 				mode: 'auto',
 				program: '${fileDirname}',
-				env: {},
-				buildFlags: '-race --gcflags=all=-l --mod=mod'
+				env: { GOFLAGS: '-race -gcflags=-l -mod=mod' }
 			};
 
 			debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
-			checkBuildFlags(config.buildFlags, { race: true, mod: 'mod' });
-		});
-
-		test('preserve empty buildFlags', () => {
-			const config = {
-				name: 'Launch',
-				type: 'go',
-				request: 'launch',
-				mode: 'auto',
-				program: '${fileDirname}',
-				env: {},
-				buildFlags: ''
-			};
-
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			checkBuildFlags(config.buildFlags, {});
-		});
-
-		test('preserve buildFlags', () => {
-			const config = {
-				name: 'Launch',
-				type: 'go',
-				request: 'launch',
-				mode: 'auto',
-				program: '${fileDirname}',
-				env: {},
-				buildFlags: '-race --mod=mod'
-			};
-
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			checkBuildFlags(config.buildFlags, { race: true, mod: 'mod' });
-		});
-
-		test('remove user set --gcflags in GOFLAGS', () => {
-			const config = {
-				name: 'Launch',
-				type: 'go',
-				request: 'launch',
-				mode: 'auto',
-				program: '${fileDirname}',
-				env: { GOFLAGS: '-race --gcflags=-l --mod=mod' }
-			};
-
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
-
-			checkBuildFlags(config.env.GOFLAGS, { race: true, mod: 'mod' });
+			assert.strictEqual(config.env.GOFLAGS, '-race -mod=mod');
 		});
 	});
 });

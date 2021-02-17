@@ -47,7 +47,6 @@
   },
   "extensionDependencies": [],
   "dependencies": {
-    "@types/yargs-parser": "^15.0.0",
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
     "glob": "^7.1.6",
