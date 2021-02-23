@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest] # TODO: reenable macos-latest
         version: ['stable']
-        go: ['1.15', '1.16.0-rc1']
+        go: ['1.15', '1.16']
 
     steps:
       - name: Clone repository
@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: '10.x'
+          node-version: '14.x'
 
       - name: Setup Go
         uses: actions/setup-go@v2

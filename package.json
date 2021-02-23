@@ -652,9 +652,10 @@
                   "gdbwire",
                   "lldbout",
                   "debuglineerr",
-                  "rpc"
+                  "rpc",
+                  "dap"
                 ],
-                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -830,7 +831,7 @@
                   "rpc",
                   "dap"
                 ],
-                "description": "Comma separated list of components that should produce debug output. Maps to `--log-output` flag. `dap` is only applicable if using dlv-dap",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
