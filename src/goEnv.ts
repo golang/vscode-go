@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,7 +5,6 @@
 
 'use strict';
 
-import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';

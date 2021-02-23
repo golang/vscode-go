@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -267,17 +265,23 @@ Would you like to enable it now?`,
 		}
 		switch (selected.title) {
 			case 'Enable':
-				// Change the user's Go configuration to enable the language server.
-				// Remove the setting entirely, since it's on by default now.
-				const goConfig = getGoConfig();
-				await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Global);
-				if (goConfig.inspect('useLanguageServer').workspaceValue === false) {
-					await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Workspace);
+				{
+					// Change the user's Go configuration to enable the language server.
+					// Remove the setting entirely, since it's on by default now.
+					const goConfig = getGoConfig();
+					await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Global);
+					if (goConfig.inspect('useLanguageServer').workspaceValue === false) {
+						await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.Workspace);
+					}
+					if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+						await goConfig.update(
+							'useLanguageServer',
+							undefined,
+							vscode.ConfigurationTarget.WorkspaceFolder
+						);
+					}
+					cfg.prompt = false;
 				}
-				if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
-					await goConfig.update('useLanguageServer', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-				}
-				cfg.prompt = false;
 				break;
 			case 'Not now':
 				cfg.prompt = true;
@@ -1358,14 +1362,16 @@ Would you be willing to fill out a quick survey about your experience with gopls
 
 	switch (selected) {
 		case 'Yes':
-			cfg.lastDateAccepted = now;
-			cfg.prompt = true;
-			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-			await vscode.env.openExternal(
-				vscode.Uri.parse(
-					`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?gopls=${usersGoplsVersion}&extid=${extensionId}`
-				)
-			);
+			{
+				cfg.lastDateAccepted = now;
+				cfg.prompt = true;
+				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
+				await vscode.env.openExternal(
+					vscode.Uri.parse(
+						`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?gopls=${usersGoplsVersion}&extid=${extensionId}`
+					)
+				);
+			}
 			break;
 		case 'Not now':
 			cfg.prompt = true;
@@ -1535,24 +1541,25 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 	);
 	switch (selected) {
 		case 'Yes':
-			// Prefill an issue title and report.
-			let errKind: string;
-			switch (reason) {
-				case errorKind.crash:
-					errKind = 'crash';
-					break;
-				case errorKind.initializationFailure:
-					errKind = 'initialization';
-					break;
-			}
-			// Get the user's version in case the update prompt above failed.
-			const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-			const extInfo = getExtensionInfo();
-			const settings = latestConfig.flags.join(' ');
-			const title = `gopls: automated issue report (${errKind})`;
-			const goplsLog = sanitizedLog
-				? `<pre>${sanitizedLog}</pre>`
-				: `Please attach the stack trace from the crash.
+			{
+				// Prefill an issue title and report.
+				let errKind: string;
+				switch (reason) {
+					case errorKind.crash:
+						errKind = 'crash';
+						break;
+					case errorKind.initializationFailure:
+						errKind = 'initialization';
+						break;
+				}
+				// Get the user's version in case the update prompt above failed.
+				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
+				const extInfo = getExtensionInfo();
+				const settings = latestConfig.flags.join(' ');
+				const title = `gopls: automated issue report (${errKind})`;
+				const goplsLog = sanitizedLog
+					? `<pre>${sanitizedLog}</pre>`
+					: `Please attach the stack trace from the crash.
 A window with the error message should have popped up in the lower half of your screen.
 Please copy the stack trace and error messages from that window and paste it in this issue.
 
@@ -1561,7 +1568,7 @@ Please copy the stack trace and error messages from that window and paste it in 
 Failed to auto-collect gopls trace: ${failureReason}.
 `;
 
-			const body = `
+				const body = `
 gopls version: ${usersGoplsVersion}
 gopls flags: ${settings}
 extension version: ${extInfo.version}
@@ -1585,8 +1592,9 @@ DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
 
 <OPTIONAL: ATTACH LOGS HERE>
 `;
-			const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
-			await vscode.env.openExternal(vscode.Uri.parse(url));
+				const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
+				await vscode.env.openExternal(vscode.Uri.parse(url));
+			}
 			break;
 		case 'Next time':
 			break;

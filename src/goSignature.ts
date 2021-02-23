@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /* eslint-disable eqeqeq */
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
@@ -137,9 +136,11 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 						parenBalance++;
 						break;
 					case ',':
-						const commaPos = new Position(lineNr, char);
-						if (parenBalance === 0 && !isPositionInString(document, commaPos)) {
-							commas.push(commaPos);
+						{
+							const commaPos = new Position(lineNr, char);
+							if (parenBalance === 0 && !isPositionInString(document, commaPos)) {
+								commas.push(commaPos);
+							}
 						}
 						break;
 				}

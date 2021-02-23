@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -63,7 +61,7 @@ export function parseLiveFile(e: vscode.TextDocumentChangeEvent) {
 		return;
 	}
 
-	if (runner != null) {
+	if (runner !== null) {
 		clearTimeout(runner);
 	}
 	runner = setTimeout(() => {
@@ -106,7 +104,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 					return;
 				}
 				// extract the line, column and error message from the gotype output
-				const [_, file, line, column, message] = /^(.+):(\d+):(\d+):\s+(.+)/.exec(error);
+				const [, file, line, column, message] = /^(.+):(\d+):(\d+):\s+(.+)/.exec(error);
 				// get canonical file path
 				const canonicalFilePath = vscode.Uri.file(file).toString();
 				const range = new vscode.Range(+line - 1, +column, +line - 1, +column);

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
@@ -74,7 +73,7 @@ export class Configuration {
 
 	// returns a Proxied vscode.WorkspaceConfiguration, which prevents
 	// from using the workspace configuration if the workspace is untrusted.
-	public get<T>(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+	public get(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		const cfg = this.getConfiguration(section, uri);
 		if (section !== 'go' || this._workspaceIsTrusted) {
 			return cfg;

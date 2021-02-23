@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-constant-condition */
-/* eslint-disable eqeqeq */
-/* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -203,7 +199,7 @@ export function parseFilePrelude(text: string): Prelude {
 			ret.imports.push({ kind: 'multi', start: i, end: -1, pkgs: [] });
 		} else if (line.match(/^\s*import\s+"C"/)) {
 			ret.imports.push({ kind: 'pseudo', start: i, end: i, pkgs: [] });
-		} else if (line.match(/^(\s)*import(\s)+[^\(]/)) {
+		} else if (line.match(/^(\s)*import(\s)+[^(]/)) {
 			ret.imports.push({ kind: 'single', start: i, end: i, pkgs: [] });
 		}
 		if (line.match(/^(\s)*(\/\*.*\*\/)*\s*\)/)) {
@@ -398,7 +394,7 @@ export async function getGoEnv(cwd?: string): Promise<string> {
  * Returns boolean denoting if current version of Go supports vendoring
  */
 export async function isVendorSupported(): Promise<boolean> {
-	if (vendorSupport != null) {
+	if (vendorSupport !== null) {
 		return Promise.resolve(vendorSupport);
 	}
 	const goVersion = await getGoVersion();
@@ -451,8 +447,8 @@ export function isPositionInString(document: vscode.TextDocument, position: vsco
 	const lineTillCurrentPosition = lineText.substr(0, position.character);
 
 	// Count the number of double quotes in the line till current position. Ignore escaped double quotes
-	let doubleQuotesCnt = (lineTillCurrentPosition.match(/\"/g) || []).length;
-	const escapedDoubleQuotesCnt = (lineTillCurrentPosition.match(/\\\"/g) || []).length;
+	let doubleQuotesCnt = (lineTillCurrentPosition.match(/"/g) || []).length;
+	const escapedDoubleQuotesCnt = (lineTillCurrentPosition.match(/\\"/g) || []).length;
 
 	doubleQuotesCnt -= escapedDoubleQuotesCnt;
 	return doubleQuotesCnt % 2 === 1;
@@ -596,7 +592,7 @@ export class LineBuffer {
 
 	public append(chunk: string) {
 		this.buf += chunk;
-		do {
+		for (;;) {
 			const idx = this.buf.indexOf('\n');
 			if (idx === -1) {
 				break;
@@ -604,7 +600,7 @@ export class LineBuffer {
 
 			this.fireLine(this.buf.substring(0, idx));
 			this.buf = this.buf.substring(idx + 1);
-		} while (true);
+		}
 	}
 
 	public done() {
@@ -629,7 +625,7 @@ export class LineBuffer {
 }
 
 export function timeout(millis: number): Promise<void> {
-	return new Promise<void>((resolve, reject) => {
+	return new Promise<void>((resolve) => {
 		setTimeout(() => resolve(), millis);
 	});
 }
@@ -660,13 +656,13 @@ export function resolvePath(inputPath: string, workspaceFolder?: string): string
  */
 export function getImportPath(text: string): string {
 	// Catch cases like `import alias "importpath"` and `import "importpath"`
-	const singleLineImportMatches = text.match(/^\s*import\s+([a-z,A-Z,_,\.]\w*\s+)?\"([^\"]+)\"/);
+	const singleLineImportMatches = text.match(/^\s*import\s+([a-z,A-Z,_,.]\w*\s+)?"([^"]+)"/);
 	if (singleLineImportMatches) {
 		return singleLineImportMatches[2];
 	}
 
 	// Catch cases like `alias "importpath"` and "importpath"
-	const groupImportMatches = text.match(/^\s*([a-z,A-Z,_,\.]\w*\s+)?\"([^\"]+)\"/);
+	const groupImportMatches = text.match(/^\s*([a-z,A-Z,_,.]\w*\s+)?"([^"]+)"/);
 	if (groupImportMatches) {
 		return groupImportMatches[2];
 	}
@@ -700,7 +696,7 @@ export function guessPackageNameFromFile(filePath: string): Promise<string[]> {
 
 		const directoryPath = path.dirname(filePath);
 		const dirName = path.basename(directoryPath);
-		let segments = dirName.split(/[\.-]/);
+		let segments = dirName.split(/[.-]/);
 		segments = segments.filter((val) => val !== 'go');
 
 		if (segments.length === 0 || !/[a-zA-Z_]\w*/.test(segments[segments.length - 1])) {
@@ -881,7 +877,7 @@ export function handleDiagnosticErrors(
 				doc.lineAt(error.line - 1).range.end.character + 1 // end of the line
 			);
 			const text = doc.getText(tempRange);
-			const [_, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
+			const [, leading, trailing] = /^(\s*).*(\s*)$/.exec(text);
 			if (!error.col) {
 				startColumn = leading.length; // beginning of the non-white space.
 			} else {

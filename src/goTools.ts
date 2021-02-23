@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -8,7 +7,6 @@
 'use strict';
 
 import cp = require('child_process');
-import fs = require('fs');
 import moment = require('moment');
 import path = require('path');
 import semver = require('semver');

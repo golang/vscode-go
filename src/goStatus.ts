@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-case-declarations */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -120,7 +119,6 @@ export async function initGoStatusBar() {
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
 	const goConfig = getGoConfig();
-	const cfg = buildLanguageServerConfig(goConfig);
 	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer'] === true);
 
 	showGoStatusBar();

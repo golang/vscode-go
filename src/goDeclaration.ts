@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -128,6 +126,7 @@ const godefImportDefinitionRegex = /^import \(.* ".*"\)$/;
 function definitionLocation_godef(
 	input: GoDefinitionInput,
 	token: vscode.CancellationToken,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	useReceivers = true
 ): Promise<GoDefinitionInformation> {
 	const godefTool = 'godef';
@@ -182,7 +181,7 @@ function definitionLocation_godef(
 					// /usr/local/go/src/html/template\n
 					return resolve(null);
 				}
-				const [_, file, line, col] = match;
+				const [, file, line, col] = match;
 				const pkgPath = path.dirname(file);
 				const definitionInformation: GoDefinitionInformation = {
 					file,
@@ -278,7 +277,6 @@ function definitionLocation_gogetdoc(
 				if (!match) {
 					return resolve(definitionInfo);
 				}
-				const [_, file, line, col] = match;
 				definitionInfo.file = match[1];
 				definitionInfo.line = +match[2] - 1;
 				definitionInfo.column = +match[3] - 1;
@@ -334,7 +332,7 @@ function definitionLocation_guru(
 					if (!match) {
 						return resolve(definitionInfo);
 					}
-					const [_, file, line, col] = match;
+					// const [_, file, line, col] = match;
 					definitionInfo.file = match[1];
 					definitionInfo.line = +match[2] - 1;
 					definitionInfo.column = +match[3] - 1;
@@ -375,7 +373,7 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 	): Thenable<vscode.Location> {
 		return definitionLocation(document, position, this.goConfig, false, token).then(
 			(definitionInfo) => {
-				if (definitionInfo == null || definitionInfo.file == null) {
+				if (definitionInfo === null || definitionInfo.file === null) {
 					return null;
 				}
 				const definitionResource = vscode.Uri.file(definitionInfo.file);

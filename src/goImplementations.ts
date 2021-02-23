@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -68,7 +67,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 				goRuntimePath,
 				['list', '-e', '-json'],
 				{ cwd: root, env },
-				(err, stdout, stderr) => {
+				(err, stdout) => {
 					if (err) {
 						return reject(err);
 					}
@@ -84,7 +83,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 					}
 					args.push('-json', 'implements', `${filename}:#${offset.toString()}`);
 
-					const guruProcess = cp.execFile(goGuru, args, { env }, (guruErr, guruStdOut, guruStdErr) => {
+					const guruProcess = cp.execFile(goGuru, args, { env }, (guruErr, guruStdOut) => {
 						if (guruErr && (<any>guruErr).code === 'ENOENT') {
 							promptForMissingTool('guru');
 							return resolve(null);
@@ -102,7 +101,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 								if (!match) {
 									return;
 								}
-								const [_, file, lineStartStr, colStartStr] = match;
+								const [, file, lineStartStr, colStartStr] = match;
 								const referenceResource = vscode.Uri.file(path.resolve(cwd, file));
 								const range = new vscode.Range(
 									+lineStartStr - 1,

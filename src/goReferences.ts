@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -71,7 +70,7 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 						if (!match) {
 							continue;
 						}
-						const [_, file, lineStartStr, colStartStr, lineEndStr, colEndStr] = match;
+						const [, file, lineStartStr, colStartStr, lineEndStr, colEndStr] = match;
 						const referenceResource = vscode.Uri.file(path.resolve(cwd, file));
 
 						if (!options.includeDeclaration) {

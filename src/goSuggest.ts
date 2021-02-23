@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -211,9 +210,8 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 						const pkgPath = this.getPackagePathFromLine(lineTillCurrentPosition);
 						if (pkgPath.length === 1) {
 							// Now that we have the package path, import it right after the "package" statement
-							const { imports, pkg } = parseFilePrelude(
-								vscode.window.activeTextEditor.document.getText()
-							);
+							const v = parseFilePrelude(vscode.window.activeTextEditor.document.getText());
+							const pkg = v.pkg;
 							const posToAddImport = document.offsetAt(new vscode.Position(pkg.start + 1, 0));
 							const textToAdd = `import "${pkgPath[0]}"\n`;
 							inputText =
@@ -386,7 +384,8 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 										lineText.substr(position.character, 1) !== ')' && // Avoids snippets when typing params in a func call
 										lineText.substr(position.character, 1) !== ',')) // Avoids snippets when typing params in a func call
 							) {
-								const { params, returnType } = getParametersAndReturnType(suggest.type.substring(4));
+								const got = getParametersAndReturnType(suggest.type.substring(4));
+								const params = got.params;
 								const paramSnippets = [];
 								for (let i = 0; i < params.length; i++) {
 									let param = params[i].trim();
@@ -504,11 +503,11 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			});
 		}
 
-		const setGocodeProps = new Promise<void>((resolve, reject) => {
+		const setGocodeProps = new Promise<void>((resolve) => {
 			const gocode = getBinPath('gocode');
 			const env = toolExecutionEnvironment();
 
-			cp.execFile(gocode, ['set'], { env }, (err, stdout, stderr) => {
+			cp.execFile(gocode, ['set'], { env }, (err, stdout) => {
 				if (err && stdout.startsWith('gocode: unknown subcommand:')) {
 					if (
 						goConfig['gocodePackageLookupMode'] === 'gb' &&
@@ -573,7 +572,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			return [];
 		}
 
-		const [_, pkgNameFromWord] = wordmatches;
+		const [, pkgNameFromWord] = wordmatches;
 		// Word is isolated. Now check pkgsList for a match
 		return this.getPackageImportPath(pkgNameFromWord);
 	}

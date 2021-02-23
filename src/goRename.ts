@@ -1,4 +1,3 @@
-/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
@@ -52,6 +51,7 @@ export class GoRenameProvider implements vscode.RenameProvider {
 				gorenameArgs.push('-d');
 			}
 
+			// eslint-disable-next-line prefer-const
 			let p: cp.ChildProcess;
 			if (token) {
 				token.onCancellationRequested(() => killProcessTree(p));
