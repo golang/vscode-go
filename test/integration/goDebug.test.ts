@@ -426,20 +426,22 @@ const testAll = (isDlvDap: boolean) => {
 	 *  3. scopesRequest
 	 *  4. variablesRequest
 	 */
-	async function assertVariableValue(name: string, val: string): Promise<void> {
+	async function assertLocalVariableValue(name: string, val: string): Promise<void> {
 		const threadsResponse = await dc.threadsRequest();
 		assert(threadsResponse.success);
 		const stackTraceResponse = await dc.stackTraceRequest({ threadId: threadsResponse.body.threads[0].id });
 		assert(stackTraceResponse.success);
 		const scopesResponse = await dc.scopesRequest({ frameId: stackTraceResponse.body.stackFrames[0].id });
 		assert(scopesResponse.success);
+		const localScopeIndex = scopesResponse.body.scopes.findIndex((v) => v.name === 'Local' || v.name === 'Locals');
+		assert(localScopeIndex >= 0, "no scope named 'Local':");
 		const variablesResponse = await dc.variablesRequest({
-			variablesReference: scopesResponse.body.scopes[0].variablesReference
+			variablesReference: scopesResponse.body.scopes[localScopeIndex].variablesReference
 		});
 		assert(variablesResponse.success);
 		// Locate the variable with the matching name.
 		const i = variablesResponse.body.variables.findIndex((v) => v.name === name);
-		assert(i >= 0);
+		assert(i >= 0, `no variable in scope named ${name}`);
 		// Check that the value of name is val.
 		assert.strictEqual(variablesResponse.body.variables[i].value, val);
 	}
@@ -698,7 +700,7 @@ const testAll = (isDlvDap: boolean) => {
 			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
-			await assertVariableValue('strdat', '"Hello, World!"');
+			await assertLocalVariableValue('strdat', '"Hello, World!"');
 		});
 
 		test('should debug program without cwd set', async function () {
@@ -721,7 +723,7 @@ const testAll = (isDlvDap: boolean) => {
 			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
-			await assertVariableValue('strdat', '"Goodbye, World."');
+			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
 		test('should debug file program with cwd set', async function () {
@@ -745,7 +747,7 @@ const testAll = (isDlvDap: boolean) => {
 			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
-			await assertVariableValue('strdat', '"Hello, World!"');
+			await assertLocalVariableValue('strdat', '"Hello, World!"');
 		});
 
 		test('should debug file program without cwd set', async function () {
@@ -769,7 +771,7 @@ const testAll = (isDlvDap: boolean) => {
 
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 
-			await assertVariableValue('strdat', '"Goodbye, World."');
+			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
 		test('should run program with cwd set (noDebug)', async function () {
@@ -1146,11 +1148,7 @@ const testAll = (isDlvDap: boolean) => {
 	});
 
 	suite('conditionalBreakpoints', () => {
-		test('should stop on conditional breakpoint', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should stop on conditional breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1183,15 +1181,11 @@ const testAll = (isDlvDap: boolean) => {
 				dc.assertStoppedLocation('breakpoint', location)
 			]).then(() =>
 				// The program is stopped at the breakpoint, check to make sure 'i == 1'.
-				assertVariableValue('i', '2')
+				assertLocalVariableValue('i', '2')
 			);
 		});
 
-		test('should add breakpoint condition', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should add breakpoint condition', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1209,7 +1203,7 @@ const testAll = (isDlvDap: boolean) => {
 				.hitBreakpoint(debugConfig, location)
 				.then(() =>
 					// The program is stopped at the breakpoint, check to make sure 'i == 0'.
-					assertVariableValue('i', '0')
+					assertLocalVariableValue('i', '0')
 				)
 				.then(() =>
 					// Add a condition to the breakpoint, and make sure it runs until 'i == 2'.
@@ -1225,17 +1219,13 @@ const testAll = (isDlvDap: boolean) => {
 								dc.assertStoppedLocation('breakpoint', location)
 							]).then(() =>
 								// The program is stopped at the breakpoint, check to make sure 'i == 2'.
-								assertVariableValue('i', '2')
+								assertLocalVariableValue('i', '2')
 							)
 						)
 				);
 		});
 
-		test('should remove breakpoint condition', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should remove breakpoint condition', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
 			const BREAKPOINT_LINE = 7;
@@ -1269,7 +1259,7 @@ const testAll = (isDlvDap: boolean) => {
 			])
 				.then(() =>
 					// The program is stopped at the breakpoint, check to make sure 'i == 2'.
-					assertVariableValue('i', '2')
+					assertLocalVariableValue('i', '2')
 				)
 				.then(() =>
 					// Remove the breakpoint condition, and make sure the program runs until 'i == 3'.
@@ -1285,7 +1275,7 @@ const testAll = (isDlvDap: boolean) => {
 								dc.assertStoppedLocation('breakpoint', location)
 							]).then(() =>
 								// The program is stopped at the breakpoint, check to make sure 'i == 3'.
-								assertVariableValue('i', '3')
+								assertLocalVariableValue('i', '3')
 							)
 						)
 				);
@@ -1608,7 +1598,7 @@ const testAll = (isDlvDap: boolean) => {
 			}
 
 			test('should stop on a breakpoint set in file with substituted path', async function () {
-				if (isDlvDap) {
+				if (isDlvDap && dlvDapSkipsEnabled) {
 					this.skip(); // not working in dlv-dap.
 				}
 
@@ -1656,7 +1646,7 @@ const testAll = (isDlvDap: boolean) => {
 			});
 
 			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async function () {
-				if (isDlvDap) {
+				if (isDlvDap && dlvDapSkipsEnabled) {
 					this.skip(); // not working in dlv-dap.
 				}
 
