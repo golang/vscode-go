@@ -1452,9 +1452,14 @@ export class GoDebugSession extends LoggingDebugSession {
 			async (err, out) => {
 				if (err) {
 					this.logDelveError(err, 'Failed to produce stacktrace');
-					return this.sendErrorResponse(response, 2004, 'Unable to produce stack trace: "{e}"', {
-						e: err.toString()
-					});
+					return this.sendErrorResponse(
+						response,
+						2004,
+						'Unable to produce stack trace: "{e}"',
+						{ e: err.toString() },
+						// Disable showUser pop-up since errors already show up under the CALL STACK pane
+						null
+					);
 				}
 				const locations = this.delve.isApiV1 ? <DebugLocation[]>out : (<StacktraceOut>out).Locations;
 				log('locations', locations);
