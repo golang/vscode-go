@@ -128,7 +128,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 
 export function parseGoVersionOutput(stdout: string): string[] {
 	const goProcessExes: string[] = [];
-	const goVersionRegexp = /: go\d+.\d+.\d+$/;
+	const goVersionRegexp = /: go\d+\.\d+(\.\d+)?$/;
 
 	const lines = stdout.toString().split('\n');
 	lines.forEach((line) => {

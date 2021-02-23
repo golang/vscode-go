@@ -11,16 +11,27 @@ suite('Pick Process Tests', () => {
 	test('Parse go version output', () => {
 		const tt = [
 			{
-				input: '/path/to/process/a: go1.16.2\n/path/to/process/b: go1.15.4\n/path/to/process/a b c: go1.8.0\n',
-				want: ['/path/to/process/a', '/path/to/process/b', '/path/to/process/a b c']
+				input:
+					'/path/to/process/a: go1.16.2\n/path/to/process/b: go1.15.4\n/path/to/process/a b c: go1.8.0\n/path/to/process/d: go1.14',
+				want: ['/path/to/process/a', '/path/to/process/b', '/path/to/process/a b c', '/path/to/process/d']
 			},
 			{
 				input:
-					'C:\\path\\to\\process\\a: go1.16.2\nC:\\path\\to\\process\\b: go1.15.4\nC:\\path\\to\\process\\a b c: go1.8.0',
-				want: ['C:\\path\\to\\process\\a', 'C:\\path\\to\\process\\b', 'C:\\path\\to\\process\\a b c']
+					'C:\\path\\to\\process\\a: go1.16.2\nC:\\path\\to\\process\\b: go1.15.4\nC:\\path\\to\\process\\a b c: go1.8.0\nC:\\path\\to\\process\\d: go1.14',
+				want: [
+					'C:\\path\\to\\process\\a',
+					'C:\\path\\to\\process\\b',
+					'C:\\path\\to\\process\\a b c',
+					'C:\\path\\to\\process\\d'
+				]
 			},
 			{
 				input: 'go version go1.15.7 darwin/amd64',
+				want: []
+			},
+			{
+				input:
+					'/path/to/process/a: go11a62b12\n/path/to/process/b: go1/15/4\n/path/to/process/a b c: gob.v.b\n/path/to/process/d: gp1.14',
 				want: []
 			}
 		];
