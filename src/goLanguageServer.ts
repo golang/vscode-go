@@ -943,13 +943,6 @@ Please install it and reload this VS Code window.`
 			);
 			return;
 		}
-		// Check if the user has the deprecated "go-langserver" setting.
-		// Suggest deleting it if the alternate tool is gopls.
-		if (alternateTools['go-langserver']) {
-			vscode.window.showErrorMessage(`Support for "go-langserver" has been deprecated.
-The recommended language server is gopls. Delete the alternate tool setting for "go-langserver" to use gopls, or change "go-langserver" to "gopls" in your settings.json and reload the VS Code window.`);
-			return;
-		}
 	}
 
 	// Prompt the user to install gopls.

@@ -16,7 +16,6 @@ import { ConfigurationTarget } from 'vscode';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
-import { getLanguageServerToolPath } from './goLanguageServer';
 import { logVerbose } from './goLogging';
 import { restartLanguageServer } from './goMain';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
@@ -40,7 +39,7 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import { correctBinname, envPath, getCurrentGoRoot, getToolFromToolPath, setCurrentGoRoot } from './utils/pathUtils';
+import { correctBinname, envPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
 
@@ -538,25 +537,6 @@ export async function offerToInstallTools() {
 	const goConfig = getGoConfig();
 	if (!goConfig['useLanguageServer']) {
 		return;
-	}
-
-	const usingSourceGraph = getToolFromToolPath(getLanguageServerToolPath()) === 'go-langserver';
-	if (usingSourceGraph && goVersion.gt('1.10')) {
-		const promptMsg =
-			'The language server from Sourcegraph is no longer under active development and it does not support Go modules as well. Please install and use the language server from Google or disable the use of language servers altogether.';
-		const disableLabel = 'Disable language server';
-		const installLabel = 'Install';
-		const selected = await vscode.window.showInformationMessage(promptMsg, installLabel, disableLabel);
-		if (selected === installLabel) {
-			await installTools([getTool('gopls')], goVersion);
-		} else if (selected === disableLabel) {
-			const inspectLanguageServerSetting = goConfig.inspect('useLanguageServer');
-			if (inspectLanguageServerSetting.globalValue === true) {
-				goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.Global);
-			} else if (inspectLanguageServerSetting.workspaceFolderValue === true) {
-				goConfig.update('useLanguageServer', false, vscode.ConfigurationTarget.WorkspaceFolder);
-			}
-		}
 	}
 }
 
