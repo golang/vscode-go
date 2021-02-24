@@ -102,6 +102,7 @@ import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } fr
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
+import { getFormatTool } from './goFormat';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -451,7 +452,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 
 			if (e.affectsConfiguration('go.formatTool')) {
-				checkToolExists(updatedGoConfig['formatTool']);
+				checkToolExists(getFormatTool(updatedGoConfig));
 			}
 			if (e.affectsConfiguration('go.lintTool')) {
 				checkToolExists(updatedGoConfig['lintTool']);

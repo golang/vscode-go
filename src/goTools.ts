@@ -11,6 +11,7 @@ import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
 import util = require('util');
+import { getFormatTool, usingCustomFormatTool } from './goFormat';
 import { goLiveErrorsEnabled } from './goLiveErrors';
 import { getBinPath, GoVersion } from './util';
 
@@ -165,8 +166,11 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 			break;
 	}
 
-	// Add the format tool that was chosen by the user.
-	maybeAddTool(goConfig['formatTool']);
+	// Only add format tools if the language server is disabled and the
+	// format tool is known to us.
+	if (goConfig['useLanguageServer'] === false && !usingCustomFormatTool(goConfig)) {
+		maybeAddTool(getFormatTool(goConfig));
+	}
 
 	// Add the linter that was chosen by the user.
 	maybeAddTool(goConfig['lintTool']);

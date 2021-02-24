@@ -27,20 +27,23 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 
 		const filename = document.fileName;
 		const goConfig = getGoConfig(document.uri);
-		const formatTool = goConfig['formatTool'] || 'goreturns';
 		const formatFlags = goConfig['formatFlags'].slice() || [];
 
-		// We ignore the -w flag that updates file on disk because that would break undo feature
+		// Ignore -w because we don't want to write directly to disk.
 		if (formatFlags.indexOf('-w') > -1) {
 			formatFlags.splice(formatFlags.indexOf('-w'), 1);
 		}
 
-		// Fix for https://github.com/Microsoft/vscode-go/issues/613 and https://github.com/Microsoft/vscode-go/issues/630
+		const formatTool = getFormatTool(goConfig);
+
+		// Handle issues:
+		//  https://github.com/Microsoft/vscode-go/issues/613
+		//  https://github.com/Microsoft/vscode-go/issues/630
 		if (formatTool === 'goimports' || formatTool === 'goreturns' || formatTool === 'gofumports') {
 			formatFlags.push('-srcdir', filename);
 		}
 
-		// Since goformat supports the style flag, set tabsize if user has not passed any flags
+		// Since goformat supports the style flag, set tabsize if the user hasn't.
 		if (formatTool === 'goformat' && formatFlags.length === 0 && options.insertSpaces) {
 			formatFlags.push('-style=indent=' + options.tabSize);
 		}
@@ -110,4 +113,31 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			}
 		});
 	}
+}
+
+export function usingCustomFormatTool(goConfig: { [key: string]: any }): boolean {
+	const formatTool = getFormatTool(goConfig);
+	switch (formatTool) {
+		case 'goreturns':
+			return false;
+		case 'goimports':
+			return false;
+		case 'gofmt':
+			return false;
+		case 'gofumpt':
+			// TODO(rstambler): Prompt to configure setting in gopls.
+			return false;
+		case 'gofumports':
+			// TODO(rstambler): Prompt to configure setting in gopls.
+			return false;
+		default:
+			return true;
+	}
+}
+
+export function getFormatTool(goConfig: { [key: string]: any }): string {
+	if (goConfig['formatTool'] === 'default') {
+		return 'goimports';
+	}
+	return goConfig['formatTool'];
 }

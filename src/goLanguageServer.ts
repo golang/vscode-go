@@ -28,6 +28,7 @@ import {
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
+	ProvideDocumentFormattingEditsSignature,
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -38,7 +39,7 @@ import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
-import { GoDocumentFormattingEditProvider } from './goFormat';
+import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
 import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
@@ -83,6 +84,7 @@ export interface LanguageServerConfig {
 	env: any;
 	features: {
 		diagnostics: boolean;
+		formatter?: GoDocumentFormattingEditProvider;
 	};
 	checkForUpdates: string;
 }
@@ -92,7 +94,7 @@ export interface LanguageServerConfig {
 // new configurations.
 export let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
-let latestConfig: LanguageServerConfig;
+export let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
 
@@ -557,6 +559,17 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 						}
 					}, []);
 				},
+				provideDocumentFormattingEdits: async (
+					document: vscode.TextDocument,
+					options: vscode.FormattingOptions,
+					token: vscode.CancellationToken,
+					next: ProvideDocumentFormattingEditsSignature
+				) => {
+					if (cfg.features.formatter) {
+						return cfg.features.formatter.provideDocumentFormattingEdits(document, options, token);
+					}
+					return next(document, options, token);
+				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
 					diagnostics: vscode.Diagnostic[],
@@ -889,7 +902,8 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 		e.affectsConfiguration('go.languageServerFlags') ||
 		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
 		e.affectsConfiguration('go.alternateTools') ||
-		e.affectsConfiguration('go.toolsEnvVars')
+		e.affectsConfiguration('go.toolsEnvVars') ||
+		e.affectsConfiguration('go.formatTool')
 		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer();
@@ -901,6 +915,10 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 }
 
 export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
+	let formatter: GoDocumentFormattingEditProvider;
+	if (usingCustomFormatTool(goConfig)) {
+		formatter = new GoDocumentFormattingEditProvider();
+	}
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -911,7 +929,8 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		features: {
 			// TODO: We should have configs that match these names.
 			// Ultimately, we should have a centralized language server config rather than separate fields.
-			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics']
+			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
+			formatter: formatter
 		},
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig)

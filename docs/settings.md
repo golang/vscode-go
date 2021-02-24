@@ -233,9 +233,17 @@ Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the langua
 ### `go.formatTool`
 
 Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
-Allowed Options: `gofmt`, `goimports`, `goreturns`, `goformat`, `gofumpt`, `gofumports`
+Allowed Options:
 
-Default: `"goimports"`
+* `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
+* `gofmt`: Formats the file according to the standard Go style.
+* `goimports`: Organizes imports and formats the file with gofmt.
+* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
+* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt.
+* `gofumports`: Applies gofumpt formatting and organizes imports.
+
+
+Default: `""`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.

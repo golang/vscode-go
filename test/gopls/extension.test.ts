@@ -94,7 +94,8 @@ class Env {
 		// Start the language server with the fakeOutputChannel.
 		const goConfig = Object.create(getGoConfig(), {
 			useLanguageServer: { value: true },
-			languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
+			languageServerFlags: { value: ['-rpc.trace'] }, // enable rpc tracing to monitor progress reports
+			formatTool: { value: 'nonexistent' } // to test custom formatters
 		});
 		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
 		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
@@ -243,6 +244,18 @@ suite('Go Extension Tests With Gopls', function () {
 					);
 				}
 			}
+		}
+	});
+
+	test('Nonexistent formatter', async () => {
+		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
+		const result = (await vscode.commands.executeCommand(
+			'vscode.executeFormatDocumentProvider',
+			uri,
+			{} // empty options
+		)) as vscode.TextEdit[];
+		if (result) {
+			assert.fail(`expected no result, got one: ${result}`);
 		}
 	});
 });
