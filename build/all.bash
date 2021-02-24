@@ -117,7 +117,7 @@ install_dependencies() {
 	GO111MODULE=on go get github.com/zmb3/gogetdoc
 	GO111MODULE=on go get golang.org/x/lint/golint
 	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
-	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv
+	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master
 }
 
 main() {
