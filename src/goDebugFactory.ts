@@ -7,7 +7,6 @@
 import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import * as fs from 'fs';
 import { DebugConfiguration } from 'vscode';
-import { getGoConfig } from './config';
 import { logError, logInfo } from './goLogging';
 import { envPath } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
@@ -22,8 +21,7 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		session: vscode.DebugSession,
 		executable: vscode.DebugAdapterExecutable | undefined
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		const config = getGoConfig();
-		if (config['useDlvDap']) {
+		if (session.configuration.debugAdapter === 'dlv-dap') {
 			return this.createDebugAdapterDescriptorDlvDap(session.configuration);
 		}
 		// Terminate any running dlv dap server process.

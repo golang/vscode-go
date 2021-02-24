@@ -513,6 +513,14 @@
           "launch": {
             "required": [],
             "properties": {
+              "debugAdapter": {
+                "enum": [
+                  "legacy",
+                  "dlv-dap"
+                ],
+                "description": "Select which debug adapter to use with this launch configuration",
+                "default": "legacy"
+              },
               "program": {
                 "type": "string",
                 "description": "Path to the program folder (or any file within that folder) when in 'debug' or 'test' mode, and to the pre-built binary file to debug in 'exec' mode.",
@@ -720,6 +728,14 @@
           "attach": {
             "required": [],
             "properties": {
+              "debugAdapter": {
+                "enum": [
+                  "legacy",
+                  "dlv-dap"
+                ],
+                "description": "Select which debug adapter to use with this launch configuration",
+                "default": "legacy"
+              },
               "processId": {
                 "anyOf": [
                   {
@@ -1661,11 +1677,6 @@
           "default": [],
           "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
           "scope": "resource"
-        },
-        "go.useDlvDap": {
-          "type": "boolean",
-          "default": false,
-          "description": "Use the Go debug adapter implemented in \"delve\". This debug adapter is still experimental."
         },
         "go.delveConfig": {
           "type": "object",
