@@ -11,7 +11,7 @@
 import cp = require('child_process');
 import fs = require('fs');
 import path = require('path');
-import { SemVer } from 'semver';
+import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
@@ -41,6 +41,7 @@ import {
 import { correctBinname, envPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
+import { isInPreviewMode } from './goLanguageServer';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
@@ -195,6 +196,18 @@ export async function installTools(
 	return failures;
 }
 
+async function tmpDirForToolInstallation() {
+	// Install tools in a temporary directory, to avoid altering go.mod files.
+	const mkdtemp = util.promisify(fs.mkdtemp);
+	const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
+	// Write a temporary go.mod file to avoid version conflicts.
+	const tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
+	const writeFile = util.promisify(fs.writeFile);
+	await writeFile(tmpGoModFile, 'module tools');
+
+	return toolsTmpDir;
+}
+
 export async function installTool(
 	tool: ToolAtVersion,
 	goVersion: GoVersion,
@@ -208,21 +221,16 @@ export async function installTool(
 			return reason;
 		}
 	}
-	// Install tools in a temporary directory, to avoid altering go.mod files.
-	const mkdtemp = util.promisify(fs.mkdtemp);
-	const toolsTmpDir = await mkdtemp(getTempFilePath('go-tools-'));
-	const env = Object.assign({}, envForTools);
-	let tmpGoModFile: string;
-	if (modulesOn) {
-		env['GO111MODULE'] = 'on';
-
-		// Write a temporary go.mod file to avoid version conflicts.
-		tmpGoModFile = path.join(toolsTmpDir, 'go.mod');
-		const writeFile = util.promisify(fs.writeFile);
-		await writeFile(tmpGoModFile, 'module tools');
-	} else {
-		env['GO111MODULE'] = 'off';
+	let toolsTmpDir = '';
+	try {
+		toolsTmpDir = await tmpDirForToolInstallation();
+	} catch (e) {
+		return `Failed to create a temp directory: ${e}`;
 	}
+
+	const env = Object.assign({}, envForTools);
+	env['GO111MODULE'] = modulesOn ? 'on' : 'off';
+
 	// Some users use direnv-like setup where the choice of go is affected by
 	// the current directory path. In order to avoid choosing a different go,
 	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
@@ -246,7 +254,11 @@ export async function installTool(
 	if (!modulesOn) {
 		importPath = getImportPath(tool, goVersion);
 	} else {
-		importPath = getImportPathWithVersion(tool, tool.version, goVersion);
+		let version = tool.version;
+		if (!version && tool.usePrereleaseInPreviewMode && isInPreviewMode()) {
+			version = await latestToolVersion(tool, true);
+		}
+		importPath = getImportPathWithVersion(tool, version, goVersion);
 	}
 	args.push(importPath);
 
@@ -266,7 +278,7 @@ export async function installTool(
 			// Actual installation of the -gomod tool is done by running go build.
 			const gopath = env['GOBIN'] || env['GOPATH'];
 			if (!gopath) {
-				return 'GOBIN/GOPATH not configured in environment';
+				throw new Error('GOBIN/GOPATH not configured in environment');
 			}
 			const destDir = gopath.split(path.delimiter)[0];
 			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
@@ -278,10 +290,10 @@ export async function installTool(
 		outputChannel.appendLine(`Installing ${importPath} FAILED`);
 		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
 		result = `failed to install ${tool.name}(${importPath}): ${e} ${output}`;
+	} finally {
+		// Delete the temporary installation directory.
+		rmdirRecursive(toolsTmpDir);
 	}
-
-	// Delete the temporary installation directory.
-	rmdirRecursive(toolsTmpDir);
 
 	return result;
 }
@@ -347,7 +359,7 @@ Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 
 export async function promptForUpdatingTool(
 	toolName: string,
-	newVersion?: SemVer,
+	newVersion?: semver.SemVer,
 	crashed?: boolean,
 	message?: string
 ) {
@@ -570,4 +582,40 @@ async function suggestDownloadGo() {
 		vscode.env.openExternal(vscode.Uri.parse('https://golang.org/dl/'));
 	}
 	suggestedDownloadGo = true;
+}
+
+// ListVersionsOutput is the output of `go list -m -versions -json`.
+interface ListVersionsOutput {
+	Version: string; // module version
+	Versions?: string[]; // available module versions (with -versions)
+}
+
+// latestToolVersion returns the latest version of the tool.
+export async function latestToolVersion(tool: Tool, includePrerelease?: boolean): Promise<semver.SemVer | null> {
+	const goCmd = getBinPath('go');
+	const tmpDir = await tmpDirForToolInstallation();
+	const execFile = util.promisify(cp.execFile);
+	let ret: semver.SemVer | null = null;
+	try {
+		const env = toolInstallationEnvironment();
+		env['GO111MODULE'] = 'on';
+		// Run go list in a temp directory to avoid altering go.mod
+		// when using older versions of go (<1.16).
+		const version = 'latest'; // TODO(hyangah): use 'master' for delve-dap.
+		const { stdout } = await execFile(
+			goCmd,
+			['list', '-m', '--versions', '-json', `${tool.modulePath}@${version}`],
+			{ env, cwd: tmpDir }
+		);
+		const m = <ListVersionsOutput>JSON.parse(stdout);
+		// Versions field is a list of all known versions of the module,
+		// ordered according to semantic versioning, earliest to latest.
+		const latest = includePrerelease && m.Versions && m.Versions.length > 0 ? m.Versions.pop() : m.Version;
+		ret = semver.parse(latest);
+	} catch (e) {
+		console.log(`failed to retrieve the latest tool ${tool.name} version: ${e}`);
+	} finally {
+		rmdirRecursive(tmpDir);
+	}
+	return ret;
 }

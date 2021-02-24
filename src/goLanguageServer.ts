@@ -40,7 +40,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
 import { GoDocumentFormattingEditProvider } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
-import { installTools, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
+import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import {
 	buildDiagnosticCollection,
@@ -1006,7 +1006,8 @@ export async function shouldUpdateLanguageServer(tool: Tool, cfg: LanguageServer
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = cfg.checkForUpdates === 'local' ? tool.latestVersion : await getLatestGoplsVersion(tool);
+	let latestVersion =
+		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, isInPreviewMode());
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -1124,39 +1125,6 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	}
 	const time = moment(data['Time']);
 	return time;
-};
-
-const acceptGoplsPrerelease = isInPreviewMode();
-
-export const getLatestGoplsVersion = async (tool: Tool) => {
-	// If the user has a version of gopls that we understand,
-	// ask the proxy for the latest version, and if the user's version is older,
-	// prompt them to update.
-	const data = await goProxyRequest(tool, 'list');
-	if (!data) {
-		return null;
-	}
-	// Coerce the versions into SemVers so that they can be sorted correctly.
-	const versions = [];
-	for (const version of data.trim().split('\n')) {
-		const parsed = semver.parse(version, {
-			includePrerelease: true,
-			loose: true
-		});
-		if (parsed) {
-			versions.push(parsed);
-		}
-	}
-	if (versions.length === 0) {
-		return null;
-	}
-	versions.sort(semver.rcompare);
-
-	if (acceptGoplsPrerelease) {
-		return versions[0]; // The first one (newest one).
-	}
-	// The first version in the sorted list without a prerelease tag.
-	return versions.find((version) => !version.prerelease || !version.prerelease.length);
 };
 
 // getLocalGoplsVersion returns the version of gopls that is currently

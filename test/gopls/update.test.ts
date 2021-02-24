@@ -10,6 +10,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
+import * as goInstallTools from '../../src/goInstallTools';
 import { getTool, Tool } from '../../src/goTools';
 import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';
 import moment = require('moment');
@@ -153,7 +154,7 @@ suite('gopls update tests', () => {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
 				return usersVersion;
 			});
-			sinon.replace(lsp, 'getLatestGoplsVersion', async () => {
+			sinon.replace(goInstallTools, 'latestToolVersion', async () => {
 				if (acceptPrerelease) {
 					return latestPrereleaseVersion;
 				}

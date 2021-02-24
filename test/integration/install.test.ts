@@ -6,7 +6,7 @@
 
 import AdmZip = require('adm-zip');
 import * as assert from 'assert';
-import { getGoConfig } from '../../src/config';
+import * as config from '../../src/config';
 import { toolInstallationEnvironment } from '../../src/goEnv';
 import { installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
@@ -20,6 +20,13 @@ import sinon = require('sinon');
 import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
+import { isInPreviewMode } from '../../src/goLanguageServer';
+
+interface installationTestCase {
+	name: string;
+	versions?: string[];
+	wantVersion?: string;
+}
 
 suite('Installation Tests', function () {
 	// Disable timeout when we are running slow tests.
@@ -67,12 +74,12 @@ suite('Installation Tests', function () {
 
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
-	async function runTest(testCases: string[], withLocalProxy?: boolean) {
+	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean) {
 		let proxyDir: string;
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
-			proxyDir = buildFakeProxy([].concat(...testCases));
-			const goConfig = Object.create(getGoConfig(), {
+			proxyDir = buildFakeProxy(testCases);
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
 				toolsEnvVars: {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),
@@ -80,27 +87,36 @@ suite('Installation Tests', function () {
 					}
 				}
 			});
-			configStub = sandbox.stub(vscode.workspace, 'getConfiguration').returns(goConfig);
+			configStub = sandbox.stub(config, 'getGoConfig').returns(goConfig);
 		} else {
 			const env = toolInstallationEnvironment();
 			console.log(`Installing tools using GOPROXY=${env['GOPROXY']}`);
 		}
 
-		// TODO(rstambler): Test with versions as well.
-		const missingTools = testCases.map((tool) => getToolAtVersion(tool));
+		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
 		const goVersion = await getGoVersion();
 		await installTools(missingTools, goVersion);
 
 		// Confirm that each expected tool has been installed.
 		const checks: Promise<void>[] = [];
 		const exists = util.promisify(fs.exists);
-		for (const tool of testCases) {
+		for (const tc of testCases) {
 			checks.push(
 				new Promise<void>(async (resolve) => {
 					// Check that the expect tool has been installed to $GOPATH/bin.
-					const ok = await exists(path.join(tmpToolsGopath, 'bin', correctBinname(tool)));
+					const bin = path.join(tmpToolsGopath, 'bin', correctBinname(tc.name));
+					const ok = await exists(bin);
 					if (!ok) {
-						assert.fail(`expected ${tmpToolsGopath}/bin/${tool}, not found`);
+						assert.fail(`expected ${bin}, not found`);
+					}
+					// If wantVersion is set, check if wanted version was installed.
+					if (tc.wantVersion !== undefined) {
+						const { moduleVersion } = await inspectGoToolVersion(bin);
+						assert.strictEqual(
+							moduleVersion,
+							tc.wantVersion,
+							`expected ${tc.name}@${tc.wantVersion}, got ${moduleVersion}`
+						);
 					}
 					return resolve();
 				})
@@ -117,11 +133,26 @@ suite('Installation Tests', function () {
 	}
 
 	test('Install one tool with a local proxy', async () => {
-		await runTest(['gopls'], true);
+		await runTest(
+			[
+				{
+					name: 'gopls',
+					versions: ['v0.1.0', 'v1.0.0', 'v1.0.1-pre.2'],
+					wantVersion: isInPreviewMode() ? 'v1.0.1-pre.2' : 'v1.0.0'
+				}
+			],
+			true
+		);
 	});
 
 	test('Install multiple tools with a local proxy', async () => {
-		await runTest(['gopls', 'guru'], true);
+		await runTest(
+			[
+				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
+				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' }
+			],
+			true
+		);
 	});
 
 	test('Install all tools via GOPROXY', async () => {
@@ -129,39 +160,42 @@ suite('Installation Tests', function () {
 		if (!shouldRunSlowTests()) {
 			return;
 		}
-		const tools = Object.keys(allToolsInformation);
+		const tools = Object.keys(allToolsInformation).map((tool) => {
+			return { name: tool };
+		});
 		await runTest(tools);
 	});
 });
 
 // buildFakeProxy creates a fake file-based proxy used for testing. The code is
 // mostly adapted from golang.org/x/tools/internal/proxydir/proxydir.go.
-function buildFakeProxy(tools: string[]) {
+function buildFakeProxy(testCases: installationTestCase[]) {
 	const proxyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proxydir'));
-	for (const toolName of tools) {
-		const tool = getTool(toolName);
+	for (const tc of testCases) {
+		const tool = getTool(tc.name);
 		const module = tool.importPath;
-		const version = 'v1.0.0'; // hardcoded for now
+		const versions = tc.versions ?? ['v1.0.0']; // hardcoded for now
 		const dir = path.join(proxyDir, module, '@v');
 		fs.mkdirSync(dir, { recursive: true });
 
 		// Write the list file.
-		fs.writeFileSync(path.join(dir, 'list'), `${version}\n`);
+		fs.writeFileSync(path.join(dir, 'list'), `${versions.join('\n')}\n`);
 
-		// Write the go.mod file.
-		fs.writeFileSync(path.join(dir, `${version}.mod`), `module ${module}\n`);
+		versions.map((version) => {
+			// Write the go.mod file.
+			fs.writeFileSync(path.join(dir, `${version}.mod`), `module ${module}\n`);
+			// Write the info file.
+			fs.writeFileSync(
+				path.join(dir, `${version}.info`),
+				`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
+			);
 
-		// Write the info file.
-		fs.writeFileSync(
-			path.join(dir, `${version}.info`),
-			`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
-		);
-
-		// Write the zip file.
-		const zip = new AdmZip();
-		const content = 'package main; func main() {};';
-		zip.addFile(`${module}@${version}/main.go`, Buffer.alloc(content.length, content));
-		zip.writeZip(path.join(dir, `${version}.zip`));
+			// Write the zip file.
+			const zip = new AdmZip();
+			const content = 'package main; func main() {};';
+			zip.addFile(`${module}@${version}/main.go`, Buffer.alloc(content.length, content));
+			zip.writeZip(path.join(dir, `${version}.zip`));
+		});
 	}
 	return proxyDir;
 }
@@ -198,4 +232,26 @@ suite('getConfiguredTools', () => {
 
 function fakeGoVersion(version: string) {
 	return new GoVersion('/path/to/go', `go version go${version} windows/amd64`);
+}
+
+// inspectGoToolVersion reads the go version and module version
+// of the given go tool using `go version -m` command.
+async function inspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
+	const goCmd = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	try {
+		const { stdout } = await execFile(goCmd, ['version', '-m', binPath]);
+		/* The output format will look like this:
+			/Users/hakim/go/bin/gopls: go1.16
+			path    golang.org/x/tools/gopls
+			mod     golang.org/x/tools/gopls        v0.6.6  h1:GmCsAKZMEb1BD1BTWnQrMyx4FmNThlEsmuFiJbLBXio=
+			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+		*/
+		const lines = stdout.split('\n', 3);
+		const goVersion = lines[0].split(/\s+/)[1];
+		const moduleVersion = lines[2].split(/\s+/)[3];
+		return { goVersion, moduleVersion };
+	} catch (e) {
+		return {};
+	}
 }
