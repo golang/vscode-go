@@ -163,16 +163,6 @@ setting, we recommend removing that setting now.`;
 				</div>
 			</div>
 
-			<div class="Announcement">
-				<img src="${announceURI}" alt="announce" class="Announcement-image" />
-				<p>
-					Heads up! Gopls, the official Go language server, is now enabled in VS Code by default.
-					Gopls replaces several legacy tools to provide IDE features while editing Go code.
-					See <a href="https://github.com/golang/vscode-go/issues/1037">issue 1037</a> for more
-					information. ${alreadyDisabledGopls}
-				</p>
-			</div>
-
 			<div class="Cards">
 				<div class="Card">
 					<div class="Card-inner">
