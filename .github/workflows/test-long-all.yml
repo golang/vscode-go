@@ -60,6 +60,8 @@ jobs:
             go get github.com/rogpeppe/godef
             go get github.com/ramya-rao-a/go-outline
             go get github.com/go-delve/delve/cmd/dlv@master
+            cp "${HOME}/go/bin/dlv${{env.EXT}}" "${HOME}/go/bin/dlv-dap${{env.EXT}}"
+
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
