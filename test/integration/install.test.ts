@@ -8,7 +8,7 @@ import AdmZip = require('adm-zip');
 import * as assert from 'assert';
 import * as config from '../../src/config';
 import { toolInstallationEnvironment } from '../../src/goEnv';
-import { installTools } from '../../src/goInstallTools';
+import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
@@ -149,7 +149,12 @@ suite('Installation Tests', function () {
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
-				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' }
+				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
+				{
+					name: 'dlv-dap',
+					versions: ['v1.0.0', 'master'],
+					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
+				}
 			],
 			true
 		);
@@ -173,7 +178,9 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 	const proxyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proxydir'));
 	for (const tc of testCases) {
 		const tool = getTool(tc.name);
-		const module = tool.importPath;
+		const module = tool.modulePath;
+		const pathInModule =
+			tool.modulePath === tool.importPath ? '' : tool.importPath.slice(tool.modulePath.length + 1) + '/';
 		const versions = tc.versions ?? ['v1.0.0']; // hardcoded for now
 		const dir = path.join(proxyDir, module, '@v');
 		fs.mkdirSync(dir, { recursive: true });
@@ -182,6 +189,16 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 		fs.writeFileSync(path.join(dir, 'list'), `${versions.join('\n')}\n`);
 
 		versions.map((version) => {
+			if (version === 'master') {
+				// for dlv-dap that retrieves the version from master
+				const resolvedVersion = tool.latestVersion?.toString() || '1.0.0';
+				version = `v${resolvedVersion}`;
+				fs.writeFileSync(
+					path.join(dir, 'master.info'),
+					`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
+				);
+			}
+
 			// Write the go.mod file.
 			fs.writeFileSync(path.join(dir, `${version}.mod`), `module ${module}\n`);
 			// Write the info file.
@@ -193,7 +210,7 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 			// Write the zip file.
 			const zip = new AdmZip();
 			const content = 'package main; func main() {};';
-			zip.addFile(`${module}@${version}/main.go`, Buffer.alloc(content.length, content));
+			zip.addFile(`${module}@${version}/${pathInModule}main.go`, Buffer.alloc(content.length, content));
 			zip.writeZip(path.join(dir, `${version}.zip`));
 		});
 	}
@@ -232,26 +249,4 @@ suite('getConfiguredTools', () => {
 
 function fakeGoVersion(version: string) {
 	return new GoVersion('/path/to/go', `go version go${version} windows/amd64`);
-}
-
-// inspectGoToolVersion reads the go version and module version
-// of the given go tool using `go version -m` command.
-async function inspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
-	const goCmd = getBinPath('go');
-	const execFile = util.promisify(cp.execFile);
-	try {
-		const { stdout } = await execFile(goCmd, ['version', '-m', binPath]);
-		/* The output format will look like this:
-			/Users/hakim/go/bin/gopls: go1.16
-			path    golang.org/x/tools/gopls
-			mod     golang.org/x/tools/gopls        v0.6.6  h1:GmCsAKZMEb1BD1BTWnQrMyx4FmNThlEsmuFiJbLBXio=
-			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
-		*/
-		const lines = stdout.split('\n', 3);
-		const goVersion = lines[0].split(/\s+/)[1];
-		const moduleVersion = lines[2].split(/\s+/)[3];
-		return { goVersion, moduleVersion };
-	} catch (e) {
-		return {};
-	}
 }

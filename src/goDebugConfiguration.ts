@@ -11,12 +11,15 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
+import { promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
+import { getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
+
+let dlvDAPVersionCurrent = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') {}
@@ -227,10 +230,21 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		debugConfiguration['dlvToolPath'] = getBinPath('dlv');
-		if (!path.isAbsolute(debugConfiguration['dlvToolPath'])) {
-			promptForMissingTool('dlv');
+		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
+		const dlvToolPath = getBinPath(debugAdapter);
+		if (!path.isAbsolute(dlvToolPath)) {
+			await promptForMissingTool(debugAdapter);
 			return;
+		}
+		debugConfiguration['dlvToolPath'] = dlvToolPath;
+
+		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
+			const tool = getToolAtVersion('dlv-dap');
+			if (await shouldUpdateTool(tool, dlvToolPath)) {
+				promptForUpdatingTool('dlv-dap');
+				return;
+			}
+			dlvDAPVersionCurrent = true;
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {

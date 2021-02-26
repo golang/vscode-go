@@ -32,6 +32,7 @@ import {
 import {
 	getBinPath,
 	getBinPathWithExplanation,
+	getCheckForToolsUpdatesConfig,
 	getGoVersion,
 	getTempFilePath,
 	getWorkspaceFolderPath,
@@ -245,18 +246,22 @@ export async function installTool(
 	if (!modulesOn) {
 		args.push('-u');
 	}
-	// Tools with a "mod" suffix should not be installed,
-	// instead we run "go build -o" to rename them.
-	if (hasModSuffix(tool)) {
-		args.push('-d');
+	// dlv-dap or tools with a "mod" suffix can't be installed with
+	// simple `go install` or `go get`. We need to get, build, and rename them.
+	if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
+		args.push('-d'); // get the version, but don't build.
 	}
 	let importPath: string;
 	if (!modulesOn) {
 		importPath = getImportPath(tool, goVersion);
 	} else {
-		let version = tool.version;
-		if (!version && tool.usePrereleaseInPreviewMode && isInPreviewMode()) {
-			version = await latestToolVersion(tool, true);
+		let version: semver.SemVer | string | undefined = tool.version;
+		if (!version) {
+			if (tool.usePrereleaseInPreviewMode && isInPreviewMode()) {
+				version = await latestToolVersion(tool, true);
+			} else if (tool.defaultVersion) {
+				version = tool.defaultVersion;
+			}
 		}
 		importPath = getImportPathWithVersion(tool, version, goVersion);
 	}
@@ -274,14 +279,16 @@ export async function installTool(
 		output = `${stdout} ${stderr}`;
 		logVerbose('install: %s %s\n%s%s', goBinary, args.join(' '), stdout, stderr);
 
-		if (hasModSuffix(tool)) {
-			// Actual installation of the -gomod tool is done by running go build.
+		if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
+			// Actual installation of the -gomod tool and dlv-dap is done by running go build.
 			const gopath = env['GOBIN'] || env['GOPATH'];
 			if (!gopath) {
 				throw new Error('GOBIN/GOPATH not configured in environment');
 			}
 			const destDir = gopath.split(path.delimiter)[0];
 			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
+			// go build does not take @version suffix yet.
+			const importPath = getImportPath(tool, goVersion);
 			await execFile(goBinary, ['build', '-o', outputFile, importPath], opts);
 		}
 		const toolInstallPath = getBinPath(tool.name);
@@ -618,4 +625,51 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 		rmdirRecursive(tmpDir);
 	}
 	return ret;
+}
+
+// inspectGoToolVersion reads the go version and module version
+// of the given go tool using `go version -m` command.
+export async function inspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
+	const goCmd = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	try {
+		const { stdout } = await execFile(goCmd, ['version', '-m', binPath]);
+		/* The output format will look like this:
+			/Users/hakim/go/bin/gopls: go1.16
+			path    golang.org/x/tools/gopls
+			mod     golang.org/x/tools/gopls        v0.6.6  h1:GmCsAKZMEb1BD1BTWnQrMyx4FmNThlEsmuFiJbLBXio=
+			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+		*/
+		const lines = stdout.split('\n', 3);
+		const goVersion = lines[0].split(/\s+/)[1];
+		const moduleVersion = lines[2].split(/\s+/)[3];
+		return { goVersion, moduleVersion };
+	} catch (e) {
+		outputChannel.appendLine(
+			`Failed to determine the version of ${binPath}. For debugging, run "go version -m ${binPath}"`
+		);
+		// either go version failed or stdout is not in the expected format.
+		return {};
+	}
+}
+
+export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<boolean> {
+	if (!tool.latestVersion) {
+		return false;
+	}
+
+	const checkForUpdates = getCheckForToolsUpdatesConfig(getGoConfig());
+	if (checkForUpdates === 'off') {
+		return false;
+	}
+	const { moduleVersion } = await inspectGoToolVersion(toolPath);
+	if (!moduleVersion) {
+		return false; // failed to inspect the tool version.
+	}
+	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
+	return semver.lt(localVersion, tool.latestVersion);
+	// update only if the local version is older than the desired version.
+
+	// TODO(hyangah): figure out when to check if a version newer than
+	// tool.latestVersion is released when checkForUpdates === 'proxy'
 }

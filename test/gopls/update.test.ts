@@ -186,3 +186,62 @@ suite('gopls update tests', () => {
 		}
 	});
 });
+
+suite.only('version comparison', () => {
+	const tool = getTool('dlv-dap');
+	const latestVersion = tool.latestVersion;
+
+	teardown(() => {
+		sinon.restore();
+	});
+
+	async function testShouldUpdateTool(expected: boolean, moduleVersion?: string) {
+		sinon.stub(goInstallTools, 'inspectGoToolVersion').returns(Promise.resolve({ moduleVersion }));
+		assert.strictEqual(
+			expected,
+			goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv-dap'),
+			`hard-coded minimum: ${tool.latestVersion.toString()} vs localVersion: ${moduleVersion}`
+		);
+	}
+
+	test('local delve is old', async () => {
+		testShouldUpdateTool(true, 'v1.6.0');
+	});
+
+	test('local delve is the minimum required version', async () => {
+		testShouldUpdateTool(false, 'v' + latestVersion.toString());
+	});
+
+	test('local delve is newer', async () => {
+		testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
+	});
+
+	test('local delve is slightly older', async () => {
+		testShouldUpdateTool(
+			true,
+			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
+		);
+	});
+
+	test('local delve is slightly newer', async () => {
+		testShouldUpdateTool(
+			false,
+			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.30211231000000-5360c6286949`
+		);
+	});
+
+	test('local delve version is unknown', async () => {
+		// maybe a wrapper shellscript?
+		testShouldUpdateTool(false, undefined);
+	});
+
+	test('local delve version is non-sense', async () => {
+		// maybe a wrapper shellscript?
+		testShouldUpdateTool(false, 'hello');
+	});
+
+	test('local delve version is non-sense again', async () => {
+		// maybe a wrapper shellscript?
+		testShouldUpdateTool(false, '');
+	});
+});

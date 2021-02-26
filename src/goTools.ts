@@ -26,6 +26,11 @@ export interface Tool {
 	// If true, consider prerelease version in preview mode
 	// (nightly & dev)
 	usePrereleaseInPreviewMode?: boolean;
+	// If set, this string will be used when installing the tool
+	// instead of the default 'latest'. It can be used when
+	// we need to pin a tool version (`deadbeaf`) or to use
+	// a dev version available in a branch (e.g. `master`).
+	defaultVersion?: string;
 
 	// latestVersion and latestVersionTimestamp are hardcoded default values
 	// for the last known version of the given tool. We also hardcode values
@@ -433,7 +438,19 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Debugging'
+		description: 'Go debugger (Delve)'
+	},
+	'dlv-dap': {
+		name: 'dlv-dap',
+		importPath: 'github.com/go-delve/delve/cmd/dlv',
+		modulePath: 'github.com/go-delve/delve',
+		replacedByGopls: false,
+		isImportant: false,
+		description: 'Go debugger (Delve built for DAP experiment)',
+		defaultVersion: 'master', // Always build from the master.
+		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
+		latestVersion: semver.parse('v1.6.1-0.20210224092741-5360c6286949'),
+		latestVersionTimestamp: moment('2021-02-24', 'YYYY-MM-DD')
 	},
 	'fillstruct': {
 		name: 'fillstruct',
