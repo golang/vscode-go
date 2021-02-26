@@ -7,7 +7,6 @@
 import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import * as fs from 'fs';
 import { DebugConfiguration } from 'vscode';
-import { logError, logInfo } from './goLogging';
 import { envPath } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 import getPort = require('get-port');
@@ -69,18 +68,14 @@ export async function startDapServer(
 	} else {
 		configuration.port = await getPort();
 	}
-	const dlvDapServer = spawnDlvDapServerProcess(configuration, logInfo, logError);
+	const dlvDapServer = spawnDlvDapServerProcess(configuration);
 	// Wait to give dlv-dap a chance to start before returning.
 	return await new Promise<{ port: number; host: string; dlvDapServer: ChildProcessWithoutNullStreams }>((resolve) =>
 		setTimeout(() => resolve({ port: configuration.port, host: configuration.host, dlvDapServer }), 500)
 	);
 }
 
-function spawnDlvDapServerProcess(
-	launchArgs: DebugConfiguration,
-	logFn: (...args: any[]) => void,
-	logErrFn: (...args: any[]) => void
-) {
+function spawnDlvDapServerProcess(launchArgs: DebugConfiguration) {
 	const launchArgsEnv = launchArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
 
@@ -92,7 +87,7 @@ function spawnDlvDapServerProcess(
 	}
 
 	if (!fs.existsSync(dlvPath)) {
-		logErrFn(
+		appendToDebugConsole(
 			`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}`
@@ -116,13 +111,33 @@ function spawnDlvDapServerProcess(
 	if (launchArgs.logOutput) {
 		dlvArgs.push('--log-output=' + launchArgs.logOutput);
 	}
-	logFn(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
+	appendToDebugConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
 	const dir = parseProgramArgSync(launchArgs).dirname;
-	return spawn(dlvPath, dlvArgs, {
+	const p = spawn(dlvPath, dlvArgs, {
 		cwd: dir,
 		env
 	});
+
+	p.stderr.on('data', (chunk) => {
+		appendToDebugConsole(chunk.toString());
+	});
+	p.stdout.on('data', (chunk) => {
+		appendToDebugConsole(chunk.toString());
+	});
+	p.on('close', (code) => {
+		if (code) {
+			appendToDebugConsole(`Process exiting with code: ${code} signal: ${p.killed}`);
+		} else {
+			appendToDebugConsole(`Process exited normally: ${p.killed}`);
+		}
+	});
+	p.on('error', (err) => {
+		if (err) {
+			appendToDebugConsole(`Error: ${err}`);
+		}
+	});
+	return p;
 }
 
 function parseProgramArgSync(
@@ -143,4 +158,9 @@ function parseProgramArgSync(
 	}
 	const dirname = programIsDirectory ? program : path.dirname(program);
 	return { program, dirname, programIsDirectory };
+}
+
+function appendToDebugConsole(msg: string) {
+	// TODO(hyangah): use color distinguishable from the color used from print.
+	vscode.debug.activeDebugConsole.append(msg);
 }
