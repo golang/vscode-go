@@ -105,7 +105,7 @@ export async function goVet(
 	}
 
 	let vetArgs = ['vet', ...args, ...tagsArg, vetWorkspace ? './...' : '.'];
-	if (goVersion.lt('1.10') && args.length) {
+	if (goVersion && goVersion.lt('1.10') && args.length) {
 		vetArgs = ['tool', 'vet', ...args, ...tagsArg, '.'];
 	}
 
