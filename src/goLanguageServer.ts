@@ -31,7 +31,7 @@ import {
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { getGoConfig, getGoplsConfig } from './config';
+import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
@@ -175,6 +175,9 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
 function scheduleGoplsSuggestions() {
+	if (IsInCloudIDE) {
+		return;
+	}
 	// Some helper functions.
 	const usingGopls = (cfg: LanguageServerConfig): boolean => {
 		return cfg.enabled && cfg.serverName === 'gopls';
@@ -973,7 +976,7 @@ function allFoldersHaveSameGopath(): boolean {
 
 export async function shouldUpdateLanguageServer(tool: Tool, cfg: LanguageServerConfig): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off') {
+	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off' || IsInCloudIDE) {
 		return null;
 	}
 

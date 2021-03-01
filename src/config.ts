@@ -155,3 +155,6 @@ function getConfig(section: string, uri?: vscode.Uri) {
 	}
 	return defaultConfig.get(section, uri);
 }
+
+// True if the extension is running in known cloud-based IDEs.
+export const IsInCloudIDE = process.env.CLOUD_SHELL === 'true' || process.env.CODESPACES === 'true';

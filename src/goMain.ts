@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, initConfig } from './config';
+import { getGoConfig, initConfig, IsInCloudIDE } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -145,7 +145,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	}
 
 	// Show the Go welcome page on update.
-	showGoWelcomePage(ctx);
+	if (!IsInCloudIDE) {
+		showGoWelcomePage(ctx);
+	}
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (configGOROOT) {
