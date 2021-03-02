@@ -1,3 +1,58 @@
+## v0.23.0 - 4th Mar, 2021
+
+Delve DAP is a new debug adapter embedded in `dlv`, the Go debugger.
+It is written in Go, understands Go's data types and runtime better,
+and is under active development. In this release, we added back
+access to Delve DAP. Delve DAP is still in the experimental stage
+and we appreciate any feedback and bug reports!
+
+A list of all issues and changes can be found in the
+[v0.23.0 milestone](https://github.com/golang/vscode-go/milestone/21?closed=1)
+and the [changes since v0.22.1](https://github.com/golang/vscode-go/compare/v0.22.1...v0.23.0)
+
+### Enhancements
+
+* Improved debugging workflow of attaching to local process.
+([Issue 183](https://github.com/golang/vscode-go/issues/183))
+By setting `processId` to the command name of the process, `${command:pickProcess}`, or
+`${command:pickGoProcess}` a quick pick menu will show a list of processes to choose from.
+* Enabled access to Delve DAP again. Simplified the Delve DAP launch workflow
+and removed the intermediate Node.JS adapter.
+If `"debugAdapter": "dlv-dap"` is specified in launch.json configurations,
+the extension will use Delve DAP for the debug session. When using Delve DAP,
+install the dev version of `dlv` built from master
+(`cd; GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master`)
+to pick up the latest bug fixes and feature improvement.
+([Issue 23](https://github.com/golang/vscode-go/issues/23),
+[822](https://github.com/golang/vscode-go/issues/822),
+[844](https://github.com/golang/vscode-go/issues/844))
+* Added an opt-in "Always Update" setting for `gopls` auto-update.
+([Issue 1095](https://github.com/golang/vscode-go/issues/1095))
+* `Go: Reset Global State` and `Go: Reset Workspace State` commands are
+available for easier extension state reset.
+* Enabled survey to collect feedback from users who disabled `gopls`.
+* Added a new setting (`"go.disableConcurrentTests"`) that prevents concurrent `go test` invocation.
+([Issue 1089](https://github.com/golang/vscode-go/issues/1089))
+
+### Fixes
+* [Issue 1113](https://github.com/golang/vscode-go/issues/1113): error message when debugee terminates fast.
+* [Issue 179](https://github.com/golang/vscode-go/issues/179): disable stackTrace error pop-ups during debugging.
+* [CL 290289](https://go-review.googlesource.com/c/vscode-go/+/290289): check incorrect gopls flag usage before automated gopls crash report.
+* [Issue 948](https://github.com/golang/vscode-go/issues/948): show lint tool's name as the lint diagnostic collection name.
+* [Issue 1252](https://github.com/golang/vscode-go/issues/1252): search `C:\Program Files\Go\bin`,
+`C:\Program Files (x86)\Go\bin\go.exe`, the new default Go installation path in Windows.
+
+### Code Health
+
+* Migrated to use `gts` to enforce consistent coding style. ([Issue 1227](https://github.com/golang/vscode-go/issues/1227))
+* Preview mode features are available in both Nightly and the dev version.
+* Enabled integration test in Go module mode.
+* Enabled Delve DAP integration test.
+* Removed the `latest` branch.
+### Thanks
+
+Thanks for your contributions, @Charliekenney23, @eneuschild, @suzmue, @stamblerre, @pjweinbgo, @polinasok!
+
 ## v0.22.1 - 8th Feb, 2021
 
 ### Enhancements
