@@ -1,12 +1,14 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import path = require('path');
 import * as vscode from 'vscode';
-import { GoVersion, guessPackageNameFromFile, handleDiagnosticErrors, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
+import { GoVersion, guessPackageNameFromFile, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
+import path = require('path');
 
 suite('utils Tests', () => {
 	test('substituteEnv: default', () => {
@@ -26,67 +28,22 @@ suite('utils Tests', () => {
 
 	test('build GoVersion', () => {
 		// [input, wantFormat, wantFormatIncludePrerelease, wantIsValid]
-		const testCases: [string|undefined, string, string, boolean][] = [
+		const testCases: [string | undefined, string, string, boolean][] = [
 			[
 				'go version devel +a295d59d Fri Jun 26 19:00:25 2020 +0000 darwin/amd64',
 				'devel +a295d59d',
 				'devel +a295d59d',
-				true,
+				true
 			],
-			[
-				'go version go1.14 darwin/amd64',
-				'1.14.0',
-				'1.14',
-				true,
-			],
-			[
-				'go version go1.14.1 linux/amd64',
-				'1.14.1',
-				'1.14.1',
-				true,
-			],
-			[
-				'go version go1.15rc1 darwin/amd64',
-				'1.15.0',
-				'1.15rc1',
-				true,
-			],
-			[
-				'go version go1.15.1rc2 windows/amd64',
-				'1.15.1',
-				'1.15.1rc2',
-				true,
-			],
-			[
-				'go version go1.15.3-beta.1 darwin/amd64',
-				'1.15.3',
-				'1.15.3-beta.1',
-				true,
-			],
-			[
-				'go version go1.15.3-beta.1.2.3 foobar/amd64',
-				'1.15.3',
-				'1.15.3-beta.1.2.3',
-				true,
-			],
-			[
-				'go version go10.0.1 js/amd64',
-				'unknown',
-				'unknown',
-				false,
-			],
-			[
-				undefined,
-				'unknown',
-				'unknown',
-				false,
-			],
-			[
-				'something wrong',
-				'unknown',
-				'unknown',
-				false,
-			]
+			['go version go1.14 darwin/amd64', '1.14.0', '1.14', true],
+			['go version go1.14.1 linux/amd64', '1.14.1', '1.14.1', true],
+			['go version go1.15rc1 darwin/amd64', '1.15.0', '1.15rc1', true],
+			['go version go1.15.1rc2 windows/amd64', '1.15.1', '1.15.1rc2', true],
+			['go version go1.15.3-beta.1 darwin/amd64', '1.15.3', '1.15.3-beta.1', true],
+			['go version go1.15.3-beta.1.2.3 foobar/amd64', '1.15.3', '1.15.3-beta.1.2.3', true],
+			['go version go10.0.1 js/amd64', 'unknown', 'unknown', false],
+			[undefined, 'unknown', 'unknown', false],
+			['something wrong', 'unknown', 'unknown', false]
 		];
 		for (const [input, wantFormat, wantFormatIncludePrerelease, wantIsValid] of testCases) {
 			const go = new GoVersion('/path/to/go', input);
@@ -145,44 +102,70 @@ suite('Duplicate Diagnostics Tests', () => {
 
 		// Populate the diagnostic collection
 		const diag1 = [
-			new vscode.Diagnostic(new vscode.Range(1, 2, 1, 3), 'first line diagnostic', vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 3), 'second line diagnostic', vscode.DiagnosticSeverity.Warning),
+			new vscode.Diagnostic(
+				new vscode.Range(1, 2, 1, 3),
+				'first line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			),
+			new vscode.Diagnostic(
+				new vscode.Range(2, 0, 2, 3),
+				'second line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			),
 			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(4, 0, 4, 3), 'fourth line diagnostic', vscode.DiagnosticSeverity.Warning),
+			new vscode.Diagnostic(
+				new vscode.Range(4, 0, 4, 3),
+				'fourth line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			)
 		];
 		const diag2 = [
-			new vscode.Diagnostic(new vscode.Range(1, 2, 1, 3), 'first line diagnostic', vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 3), 'second line diagnostic', vscode.DiagnosticSeverity.Warning),
+			new vscode.Diagnostic(
+				new vscode.Range(1, 2, 1, 3),
+				'first line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			),
+			new vscode.Diagnostic(
+				new vscode.Range(2, 0, 2, 3),
+				'second line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			),
 			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(4, 0, 4, 3), 'fourth line diagnostic', vscode.DiagnosticSeverity.Warning),
+			new vscode.Diagnostic(
+				new vscode.Range(4, 0, 4, 3),
+				'fourth line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			)
 		];
 		diagnosticCollection.set(uri1, diag1);
 		diagnosticCollection.set(uri2, diag2);
 
 		// After removing diagnostics from uri1, there should only be one diagnostic remaining, and
 		// the diagnostics for uri2 should not be changed.
-		const want1 = [
-			diag1[3],
-		];
+		const want1 = [diag1[3]];
 		const want2: vscode.Diagnostic[] = [];
 		diag2.forEach((diag) => {
 			want2.push(diag);
 		});
 
 		const newDiagnostics: vscode.Diagnostic[] = [
-			new vscode.Diagnostic(new vscode.Range(1, 2, 1, 3), 'first line diagnostic', vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error),
+			new vscode.Diagnostic(
+				new vscode.Range(1, 2, 1, 3),
+				'first line diagnostic',
+				vscode.DiagnosticSeverity.Warning
+			),
+			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error)
 		];
 
 		removeDuplicateDiagnostics(diagnosticCollection, uri1, newDiagnostics);
 
 		assert.strictEqual(diagnosticCollection.get(uri1).length, want1.length);
-		for (let i = 0; i < want1.length; i ++) {
+		for (let i = 0; i < want1.length; i++) {
 			assert.strictEqual(diagnosticCollection.get(uri1)[i], want1[i]);
 		}
 
 		assert.strictEqual(diagnosticCollection.get(uri2).length, want2.length);
-		for (let i = 0; i < want2.length; i ++) {
+		for (let i = 0; i < want2.length; i++) {
 			assert.strictEqual(diagnosticCollection.get(uri2)[i], want2[i]);
 		}
 	});

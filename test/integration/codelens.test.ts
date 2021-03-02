@@ -46,15 +46,7 @@ suite('Code lenses for testing and benchmarking', function () {
 
 		fs.removeSync(repoPath);
 		fs.copySync(fixtureSourcePath, fixturePath, {
-			recursive: true,
-			// All of the tests run in GOPATH mode for now.
-			// TODO(rstambler): Run tests in GOPATH and module mode.
-			filter: (src: string): boolean => {
-				if (path.basename(src) === 'go.mod') {
-					return false;
-				}
-				return true;
-			},
+			recursive: true
 		});
 		goConfig = getGoConfig();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens_test.go'));
@@ -125,8 +117,14 @@ suite('Code lenses for testing and benchmarking', function () {
 		const benchmarkDocument = await vscode.workspace.openTextDocument(uri);
 		const codeLenses = await codeLensProvider.provideCodeLenses(benchmarkDocument, cancellationTokenSource.token);
 		assert.equal(codeLenses.length, 6);
-		const wantCommands = ['go.test.package', 'go.test.file', 'go.benchmark.package',
-			'go.benchmark.file', 'go.benchmark.cursor', 'go.debug.cursor'];
+		const wantCommands = [
+			'go.test.package',
+			'go.test.file',
+			'go.benchmark.package',
+			'go.benchmark.file',
+			'go.benchmark.cursor',
+			'go.debug.cursor'
+		];
 		for (let i = 0; i < codeLenses.length; i++) {
 			assert.equal(codeLenses[i].command.command, wantCommands[i]);
 		}

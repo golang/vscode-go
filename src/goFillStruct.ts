@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -74,7 +75,7 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 				const output = <GoFillStructOutput[]>JSON.parse(stdout);
 
 				if (output.length === 0) {
-					vscode.window.showInformationMessage(`Got empty fillstruct output`);
+					vscode.window.showInformationMessage('Got empty fillstruct output');
 					return reject();
 				}
 

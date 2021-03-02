@@ -2,9 +2,9 @@
 
 This extension is highly configurable, and as such, offers a number of settings. These can be configured by modifying your [User or Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings).
 
-To navigate to your settings, open the Command Palette (Ctrl+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
+To navigate to your settings, open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
 
-**NOTE: Many of these settings don't apply if you are using [`gopls`](gopls.md). Learn more about [`gopls`-specific settings](gopls.md#ignored-settings).**
+For tuning the features provided by `gopls`, see the [section](https://github.com/golang/vscode-go/blob/master/docs/settings.md#settings-for-gopls) for `gopls` settings.
 
 ## Latest changes
 
@@ -160,6 +160,11 @@ Default:
 	"showGlobalVariables" :	false,
 }
 ```
+### `go.disableConcurrentTests`
+
+If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
+
+Default: `false`
 ### `go.docsTool`
 
 Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.<br/>
@@ -401,6 +406,11 @@ Environment variables that will be passed to the tools that run the Go tools (e.
 ### `go.toolsGopath`
 
 Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+### `go.toolsManagement.autoUpdate`
+
+Automatically update the tools used by the extension, without prompting the user.
+
+Default: `false`
 ### `go.toolsManagement.checkForUpdates`
 
 Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on<br/>

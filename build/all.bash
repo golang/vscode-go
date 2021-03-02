@@ -59,7 +59,8 @@ run_test() {
 
 run_test_in_docker() {
   echo "**** Building the docker image ***"
-  docker build -t vscode-test-env -f ./build/Dockerfile .
+  docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
+
   # For debug tests, we need ptrace.
   docker run --cap-add SYS_PTRACE --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
@@ -93,12 +94,22 @@ prepare_nightly() {
 
 # setup dependencies required for tests.
 install_dependencies() {
+	# TARGET is where `go get` will output the compiled binaries.
+	local GOPATHS=`go env GOPATH`
+	local TARGET="${GOBIN}"
+	if [[ -z "${GOBIN}" ]]; then TARGET="${GOPATHS%%:*}/bin" ; fi
+
 	GO111MODULE=on go get golang.org/x/tools/gopls
 	GO111MODULE=on go get github.com/acroca/go-symbols
 	GO111MODULE=on go get github.com/cweill/gotests/...
 	GO111MODULE=on go get github.com/davidrjenni/reftools/cmd/fillstruct
 	GO111MODULE=on go get github.com/haya14busa/goplay/cmd/goplay
+
+	# We install two versions of gocode, one for module mode (gocode-gomod)
+	# and another for GOPATH mode (gocode).
+	GO111MODULE=on go get github.com/stamblerre/gocode && mv "${TARGET}/gocode" "${TARGET}/gocode-gomod"
 	GO111MODULE=on go get github.com/mdempsky/gocode
+
 	GO111MODULE=on go get github.com/ramya-rao-a/go-outline
 	GO111MODULE=on go get github.com/rogpeppe/godef
 	GO111MODULE=on go get github.com/sqs/goreturns
@@ -106,7 +117,7 @@ install_dependencies() {
 	GO111MODULE=on go get github.com/zmb3/gogetdoc
 	GO111MODULE=on go get golang.org/x/lint/golint
 	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
-	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv
+	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master
 }
 
 main() {

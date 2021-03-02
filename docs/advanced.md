@@ -90,4 +90,26 @@ You can add `.vscode` to `.git/info/exclude` to avoid risking checking
 If you see an "inconsistent vendoring" error, please report it at
 [golang/go#40250](https://github.com/golang/go/issues/40250).
 
+## Formatting Code and Organizing Imports
+
+When you have multiple formatter extensions, be sure to set this
+extension as the default formatter for go language.
+```json5
+"[go]": {
+  "editor.defaultFormatter": "golang.go"
+}
+```
+
+Formatting and organizing imports are enabled by default. You
+can choose to disable them by configuring the following settings.
+
+```json5
+"[go]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": false
+        }
+}
+```
+
 [Command Palette]: https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette

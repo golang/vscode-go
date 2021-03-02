@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -39,14 +39,13 @@
     "compile": "webpack --mode production",
     "watch": "tsc -watch -p ./",
     "test": "npm run test-compile && node ./out/test/runTest.js",
-    "lint": "node ./node_modules/tslint/bin/tslint --project tsconfig.json",
-    "fix-lint": "node ./node_modules/tslint/bin/tslint --fix --project tsconfig.json",
+    "lint": "gts lint src test",
+    "fix-lint": "gts fix src test",
     "unit-test": "npm run test-compile && node ./node_modules/mocha/bin/_mocha -u tdd --timeout 5000 --colors ./out/test/unit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
   "extensionDependencies": [],
   "dependencies": {
-    "@types/yargs-parser": "^15.0.0",
     "deep-equal": "^2.0.2",
     "diff": "^4.0.2",
     "glob": "^7.1.6",
@@ -74,9 +73,10 @@
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
+    "gts": "^3.1.0",
     "mocha": "^7.1.1",
     "nan": "^2.14.1",
-    "prettier": "^2.0.4",
+    "prettier": "^2.2.1",
     "sinon": "^9.0.2",
     "ts-loader": "^7.0.5",
     "tslint": "^6.1.1",
@@ -392,6 +392,16 @@
         "description": "Reset the current Go survey configuration history"
       },
       {
+        "command": "go.workspace.resetState",
+        "title": "Go: Reset Workspace State",
+        "description": "Reset keys in workspace state to undefined."
+      },
+      {
+        "command": "go.global.resetState",
+        "title": "Go: Reset Global State",
+        "description": "Reset keys in global state to undefined."
+      },
+      {
         "command": "go.workspace.isTrusted.toggle",
         "title": "Go: Toggle Workspace Trust Flag",
         "description": "Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces."
@@ -411,6 +421,10 @@
         "languages": [
           "go"
         ],
+        "variables": {
+          "pickProcess": "go.debug.pickProcess",
+          "pickGoProcess": "go.debug.pickGoProcess"
+        },
         "configurationSnippets": [
           {
             "label": "Go: Launch package",
@@ -489,6 +503,14 @@
           "launch": {
             "required": [],
             "properties": {
+              "debugAdapter": {
+                "enum": [
+                  "legacy",
+                  "dlv-dap"
+                ],
+                "description": "Select which debug adapter to use with this launch configuration",
+                "default": "legacy"
+              },
               "program": {
                 "type": "string",
                 "description": "Path to the program folder (or any file within that folder) when in 'debug' or 'test' mode, and to the pre-built binary file to debug in 'exec' mode.",
@@ -628,9 +650,10 @@
                   "gdbwire",
                   "lldbout",
                   "debuglineerr",
-                  "rpc"
+                  "rpc",
+                  "dap"
                 ],
-                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -695,9 +718,34 @@
           "attach": {
             "required": [],
             "properties": {
+              "debugAdapter": {
+                "enum": [
+                  "legacy",
+                  "dlv-dap"
+                ],
+                "description": "Select which debug adapter to use with this launch configuration",
+                "default": "legacy"
+              },
               "processId": {
-                "type": "number",
-                "description": "The ID of the process to be debugged."
+                "anyOf": [
+                  {
+                    "enum": [
+                      "${command:pickProcess}",
+                      "${command:pickGoProcess}"
+                    ],
+                    "description": "Use process picker to select a process to attach, or Process ID as integer.",
+                    "default": "${command:pickProcess}"
+                  },
+                  {
+                    "type": "string",
+                    "description": "Attach to a process by name. If more than one process matches the name, use the process picker to select a aprocess.",
+                    "default": ""
+                  },
+                  {
+                    "type": "number",
+                    "description": "The ID of the process to be debugged."
+                  }
+                ]
               },
               "mode": {
                 "enum": [
@@ -786,9 +834,10 @@
                   "gdbwire",
                   "lldbout",
                   "debuglineerr",
-                  "rpc"
+                  "rpc",
+                  "dap"
                 ],
-                "description": "Comma separated list of components that should produce debug output. Maps to `--log-output` flag.",
+                "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
               "dlvLoadConfig": {
@@ -890,6 +939,12 @@
           ],
           "default": null,
           "description": "The Go build tags to use for when running tests. If null, then buildTags will be used.",
+          "scope": "resource"
+        },
+        "go.disableConcurrentTests": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.",
           "scope": "resource"
         },
         "go.installDependenciesWhenBuilding": {
@@ -1304,6 +1359,12 @@
             "completely disables version check (not recommended)"
           ],
           "markdownDescription": "Specify whether to prompt about new versions of Go and the Go tools (currently, only `gopls`) the extension depends on"
+        },
+        "go.toolsManagement.autoUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically update the tools used by the extension, without prompting the user.",
+          "scope": "resource"
         },
         "go.useGoProxyToCheckForToolUpdates": {
           "type": "boolean",

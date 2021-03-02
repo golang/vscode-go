@@ -14,6 +14,8 @@ Check that there aren't any diagnostics that indicate a problem with your worksp
 
 ## Check your extension setup
 
+Check the bottom of the VS Code window for any warnings and notifications. For example, address warnings such as "⚠️ Analysis Tools Missing".
+
 Run the [`Go: Locate Configured Go Tools`](commands.md#go-locate-configured-go-tools) command. The output is split into sections.
 
 In the first indented section, check that at least `gopkgs`, `go-outline`, `dlv`, and `gopls` are installed -- they're necessary for the extension's basic functionality. The other tools [provide optional features](tools.md) and are less important unless you need those features. You can install tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command.
@@ -58,7 +60,7 @@ To increase the level of detail in your logs, add the following to your settings
 
 We can't diagnose a problem from just a description. When filing an issue, please include as much as possible of the following information:
 
-1. Your Go version: `go -version`
+1. Your Go version: `go version`
 1. Your `gopls` version: `gopls -v version`
 1. Your vscode version: `code -v`
 1. Your Go extension version: `Extensions: Show Installed Extensions`

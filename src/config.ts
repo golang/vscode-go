@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -7,9 +8,7 @@ import vscode = require('vscode');
 import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
 
 const WORKSPACE_IS_TRUSTED_KEY = 'WORKSPACE_IS_TRUSTED_KEY';
-const SECURITY_SENSITIVE_CONFIG: string[] = [
-	'goroot', 'gopath', 'toolsGopath', 'alternateTools', 'inferGopath'
-];
+const SECURITY_SENSITIVE_CONFIG: string[] = ['goroot', 'gopath', 'toolsGopath', 'alternateTools', 'inferGopath'];
 
 // Initialize the singleton defaultConfig and register related commands.
 // Prompt if workspace configuration was found but had to be ignored until
@@ -19,9 +18,7 @@ export async function initConfig(ctx: vscode.ExtensionContext) {
 	if (isTrusted !== defaultConfig.workspaceIsTrusted()) {
 		defaultConfig.toggleWorkspaceIsTrusted();
 	}
-	ctx.subscriptions.push(
-		vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted)
-	);
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted));
 
 	if (isTrusted) {
 		return;
@@ -33,18 +30,20 @@ export async function initConfig(ctx: vscode.ExtensionContext) {
 	const ignoredSettings = ignored.map((x) => `"go.${x}"`).join(',');
 	const val = await vscode.window.showWarningMessage(
 		`Some workspace/folder-level settings (${ignoredSettings}) from the untrusted workspace are disabled ` +
-		`by default. If this workspace is trusted, explicitly enable the workspace/folder-level settings ` +
-		`by running the "Go: Toggle Workspace Trust Flag" command.`,
+			'by default. If this workspace is trusted, explicitly enable the workspace/folder-level settings ' +
+			'by running the "Go: Toggle Workspace Trust Flag" command.',
 		'OK',
 		'Trust This Workspace',
-		'More Info');
+		'More Info'
+	);
 	switch (val) {
 		case 'Trust This Workspace':
 			await toggleWorkspaceIsTrusted();
 			break;
 		case 'More Info':
 			vscode.env.openExternal(
-				vscode.Uri.parse(`https://github.com/golang/vscode-go/blob/master/docs/settings.md#security`));
+				vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/settings.md#security')
+			);
 			break;
 		default:
 			break;
@@ -65,9 +64,7 @@ async function toggleWorkspaceIsTrusted() {
 
 // Go extension configuration for a workspace.
 export class Configuration {
-	constructor(
-		private _workspaceIsTrusted = false,
-		private getConfiguration = vscode.workspace.getConfiguration) { }
+	constructor(private _workspaceIsTrusted = false, private getConfiguration = vscode.workspace.getConfiguration) {}
 
 	public toggleWorkspaceIsTrusted() {
 		this._workspaceIsTrusted = !this._workspaceIsTrusted;
@@ -76,7 +73,7 @@ export class Configuration {
 
 	// returns a Proxied vscode.WorkspaceConfiguration, which prevents
 	// from using the workspace configuration if the workspace is untrusted.
-	public get<T>(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+	public get(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
 		const cfg = this.getConfiguration(section, uri);
 		if (section !== 'go' || this._workspaceIsTrusted) {
 			return cfg;
@@ -129,8 +126,11 @@ class WrappedConfiguration implements vscode.WorkspaceConfiguration {
 		return this._wrapped.inspect<T>(section);
 	}
 	public update(
-		section: string, value: any, configurationTarget?: boolean | vscode.ConfigurationTarget,
-		overrideInLanguage?: boolean): Thenable<void> {
+		section: string,
+		value: any,
+		configurationTarget?: boolean | vscode.ConfigurationTarget,
+		overrideInLanguage?: boolean
+	): Thenable<void> {
 		return this._wrapped.update(section, value, configurationTarget, overrideInLanguage);
 	}
 }

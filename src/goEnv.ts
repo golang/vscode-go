@@ -5,7 +5,6 @@
 
 'use strict';
 
-import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';
@@ -69,8 +68,7 @@ function newEnvironment(): NodeJS.Dict<string> {
 	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
 		Object.keys(toolsEnvVars).forEach(
 			(key) =>
-				(env[key] =
-					typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
+				(env[key] = typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
 		);
 	}
 

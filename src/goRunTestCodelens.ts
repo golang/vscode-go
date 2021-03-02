@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,7 +8,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { CancellationToken, CodeLens, Command, TextDocument } from 'vscode';
+import { CancellationToken, CodeLens, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goOutline';
@@ -54,11 +56,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 				command: 'go.test.file'
 			})
 		];
-		if (
-			pkg.children.some(
-				(sym) => sym.kind === vscode.SymbolKind.Function && this.benchmarkRegex.test(sym.name)
-			)
-		) {
+		if (pkg.children.some((sym) => sym.kind === vscode.SymbolKind.Function && this.benchmarkRegex.test(sym.name))) {
 			packageCodeLens.push(
 				new CodeLens(range, {
 					title: 'run package benchmarks',
@@ -81,40 +79,48 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 			}
 			const codelens: CodeLens[] = [];
 			for (const f of testFunctions) {
-				codelens.push(new CodeLens(f.range, {
-					title: 'run test',
-					command: 'go.test.cursor',
-					arguments: [{ functionName: f.name }]
-				}));
-				codelens.push(new CodeLens(f.range, {
-					title: 'debug test',
-					command: 'go.debug.cursor',
-					arguments: [{ functionName: f.name }]
-				}));
+				codelens.push(
+					new CodeLens(f.range, {
+						title: 'run test',
+						command: 'go.test.cursor',
+						arguments: [{ functionName: f.name }]
+					})
+				);
+				codelens.push(
+					new CodeLens(f.range, {
+						title: 'debug test',
+						command: 'go.debug.cursor',
+						arguments: [{ functionName: f.name }]
+					})
+				);
 			}
 			return codelens;
 		};
 
-		const benchmarkPromise = (async (): Promise<CodeLens[]> => {
+		const benchmarkPromise = async (): Promise<CodeLens[]> => {
 			const benchmarkFunctions = await getBenchmarkFunctions(document, token);
 			if (!benchmarkFunctions) {
 				return [];
 			}
 			const codelens: CodeLens[] = [];
 			for (const f of benchmarkFunctions) {
-				codelens.push(new CodeLens(f.range, {
-					title: 'run benchmark',
-					command: 'go.benchmark.cursor',
-					arguments: [{ functionName: f.name }]
-				}));
-				codelens.push(new CodeLens(f.range, {
-					title: 'debug benchmark',
-					command: 'go.debug.cursor',
-					arguments: [{ functionName: f.name }]
-				}));
+				codelens.push(
+					new CodeLens(f.range, {
+						title: 'run benchmark',
+						command: 'go.benchmark.cursor',
+						arguments: [{ functionName: f.name }]
+					})
+				);
+				codelens.push(
+					new CodeLens(f.range, {
+						title: 'debug benchmark',
+						command: 'go.debug.cursor',
+						arguments: [{ functionName: f.name }]
+					})
+				);
 			}
 			return codelens;
-		});
+		};
 
 		const codelenses = await Promise.all([testPromise(), benchmarkPromise()]);
 		return ([] as CodeLens[]).concat(...codelenses);

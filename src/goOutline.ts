@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -10,12 +11,8 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import {
-	getBinPath,
-	getFileArchive,
-	makeMemoizedByteOffsetConverter
-} from './util';
-import {killProcess} from './utils/processUtils';
+import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
+import { killProcess } from './utils/processUtils';
 
 // Keep in sync with https://github.com/ramya-rao-a/go-outline
 export interface GoOutlineRange {
@@ -193,7 +190,7 @@ function convertToCodeSymbols(
 }
 
 export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
-	constructor(private includeImports?: boolean) { }
+	constructor(private includeImports?: boolean) {}
 
 	public provideDocumentSymbols(
 		document: vscode.TextDocument,

@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Modification copyright 2020 The Go Authors. All rights reserved.
@@ -42,7 +43,7 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 	}
 }
 
-export function parseEnvFiles(envFiles: string[]|string): { [key: string]: string } {
+export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
 		fileEnvs.push(parseEnvFile(envFiles));

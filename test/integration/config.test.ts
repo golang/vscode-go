@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,13 +8,13 @@
 'use strict';
 
 import * as assert from 'assert';
-import vscode = require('vscode');
 import { Configuration } from '../../src/config';
+import vscode = require('vscode');
 
 suite('GoConfiguration Tests', () => {
 	function check(trusted: boolean, workspaceConfig: { [key: string]: any }, key: string, expected: any) {
 		const getConfigurationFn = (section: string) => new MockCfg(workspaceConfig);
-		const cfg = (new Configuration(trusted, getConfigurationFn)).get('go');
+		const cfg = new Configuration(trusted, getConfigurationFn).get('go');
 
 		const got0 = JSON.stringify(cfg.get(key));
 		const got1 = JSON.stringify(cfg[key]);
@@ -45,7 +47,7 @@ suite('GoConfiguration Tests', () => {
 
 	function checkGopls(trusted: boolean, workspaceConfig: { [key: string]: any }, key: string, expected: any) {
 		const getConfigurationFn = (section: string) => new MockCfg(workspaceConfig);
-		const cfg = (new Configuration(trusted, getConfigurationFn)).get('gopls');
+		const cfg = new Configuration(trusted, getConfigurationFn).get('gopls');
 
 		const got0 = JSON.stringify(cfg.get(key));
 		const got1 = JSON.stringify(cfg[key]);
@@ -76,7 +78,7 @@ class MockCfg implements vscode.WorkspaceConfiguration {
 		// getter
 		Object.defineProperties(this, Object.getOwnPropertyDescriptors(workspaceSettings));
 		this.map = new Map<string, any>(Object.entries(workspaceSettings));
-		this.wrapped = vscode.workspace.getConfiguration('go');  // intentionally using vscode API directly.
+		this.wrapped = vscode.workspace.getConfiguration('go'); // intentionally using vscode API directly.
 	}
 
 	// tslint:disable: no-any
@@ -103,9 +105,11 @@ class MockCfg implements vscode.WorkspaceConfiguration {
 	}
 
 	public update(
-		section: string, value: any,
+		section: string,
+		value: any,
 		configurationTarget?: boolean | vscode.ConfigurationTarget,
-		overrideInLanguage?: boolean): Thenable<void> {
+		overrideInLanguage?: boolean
+	): Thenable<void> {
 		throw new Error('Method not implemented.');
 	}
 }

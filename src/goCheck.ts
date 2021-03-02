@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -19,7 +21,7 @@ import { ICheckResult } from './util';
 
 const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 statusBarItem.command = 'go.test.showOutput';
-const neverAgain = { title: `Don't Show Again` };
+const neverAgain = { title: "Don't Show Again" };
 
 export function removeTestStatus(e: vscode.TextDocumentChangeEvent) {
 	if (e.document.isUntitled) {
@@ -91,7 +93,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 		);
 	}
 
-	if (!!goConfig['testOnSave']) {
+	if (goConfig['testOnSave']) {
 		statusBarItem.show();
 		statusBarItem.text = 'Tests Running';
 		runTest().then((success) => {
@@ -124,7 +126,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 		);
 	}
 
-	if (!!goConfig['coverOnSave']) {
+	if (goConfig['coverOnSave']) {
 		runTest().then((success) => {
 			if (!success) {
 				return [];

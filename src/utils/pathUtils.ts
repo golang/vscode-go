@@ -20,7 +20,7 @@ let binPathCache: { [bin: string]: string } = {};
 export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
 
 // find the tool's path from the given PATH env var, or null if the tool is not found.
-export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appendBinToPath: boolean): string|null {
+export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appendBinToPath: boolean): string | null {
 	toolName = correctBinname(toolName);
 	if (envVarValue) {
 		const paths = envVarValue.split(path.delimiter);
@@ -42,7 +42,12 @@ export function getBinPathWithPreferredGopathGoroot(
 	useCache = true
 ): string {
 	const r = getBinPathWithPreferredGopathGorootWithExplanation(
-		toolName, preferredGopaths, preferredGoroot, alternateTool, useCache);
+		toolName,
+		preferredGopaths,
+		preferredGoroot,
+		alternateTool,
+		useCache
+	);
 	return r.binPath;
 }
 
@@ -53,24 +58,24 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	preferredGopaths: string[],
 	preferredGoroot?: string,
 	alternateTool?: string,
-	useCache = true,
-): {binPath: string, why?: string} {
+	useCache = true
+): { binPath: string; why?: string } {
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
-		return {binPath: alternateTool, why: 'alternateTool'};
+		return { binPath: alternateTool, why: 'alternateTool' };
 	}
 
 	// FIXIT: this cache needs to be invalidated when go.goroot or go.alternateTool is changed.
 	if (useCache && binPathCache[toolName]) {
-		return {binPath: binPathCache[toolName], why: 'cached'};
+		return { binPath: binPathCache[toolName], why: 'cached' };
 	}
 
 	const binname = alternateTool && !path.isAbsolute(alternateTool) ? alternateTool : toolName;
-	const found = (why: string) => binname === toolName ? why : 'alternateTool';
+	const found = (why: string) => (binname === toolName ? why : 'alternateTool');
 	const pathFromGoBin = getBinPathFromEnvVar(binname, process.env['GOBIN'], false);
 	if (pathFromGoBin) {
 		binPathCache[toolName] = pathFromGoBin;
-		return {binPath: pathFromGoBin, why: binname === toolName ? 'gobin' : 'alternateTool'};
+		return { binPath: pathFromGoBin, why: binname === toolName ? 'gobin' : 'alternateTool' };
 	}
 
 	for (const preferred of preferredGopaths) {
@@ -79,7 +84,7 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 			const pathFrompreferredGoPath = getBinPathFromEnvVar(binname, preferred, true);
 			if (pathFrompreferredGoPath) {
 				binPathCache[toolName] = pathFrompreferredGoPath;
-				return {binPath: pathFrompreferredGoPath, why: found('gopath')};
+				return { binPath: pathFrompreferredGoPath, why: found('gopath') };
 			}
 		}
 	}
@@ -88,30 +93,33 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	const pathFromGoRoot = getBinPathFromEnvVar(binname, preferredGoroot || getCurrentGoRoot(), true);
 	if (pathFromGoRoot) {
 		binPathCache[toolName] = pathFromGoRoot;
-		return {binPath: pathFromGoRoot, why: found('goroot')};
+		return { binPath: pathFromGoRoot, why: found('goroot') };
 	}
 
 	// Finally search PATH parts
 	const pathFromPath = getBinPathFromEnvVar(binname, envPath, false);
 	if (pathFromPath) {
 		binPathCache[toolName] = pathFromPath;
-		return {binPath: pathFromPath, why: found('path')};
+		return { binPath: pathFromPath, why: found('path') };
 	}
 
 	// Check common paths for go
 	if (toolName === 'go') {
-		const defaultPathsForGo = process.platform === 'win32' ? ['C:\\Go\\bin\\go.exe'] : ['/usr/local/go/bin/go', '/usr/local/bin/go'];
+		const defaultPathsForGo =
+			process.platform === 'win32'
+				? ['C:\\Program Files\\Go\\bin\\go.exe', 'C:\\Program Files (x86)\\Go\\bin\\go.exe']
+				: ['/usr/local/go/bin/go', '/usr/local/bin/go'];
 		for (const p of defaultPathsForGo) {
 			if (executableFileExists(p)) {
 				binPathCache[toolName] = p;
-				return {binPath: p, why: 'default'};
+				return { binPath: p, why: 'default' };
 			}
 		}
-		return {binPath: ''};
+		return { binPath: '' };
 	}
 
 	// Else return the binary name directly (this will likely always fail downstream)
-	return {binPath: toolName};
+	return { binPath: toolName };
 }
 
 /**

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-prototype-builtins */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -7,18 +9,17 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import parse = require('yargs-parser');
-import unparse = require('yargs-unparser');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
+import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
-	constructor(private defaultDebugAdapterType: string = 'go') { }
+	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
 		folder: vscode.WorkspaceFolder | undefined,
@@ -38,7 +39,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					request: 'launch',
 					mode: 'debug',
 					program: '${workspaceFolder}'
-				},
+				}
 			},
 			{
 				label: 'Go: Launch file',
@@ -71,21 +72,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					request: 'launch',
 					mode: 'test',
 					program: '${workspaceFolder}',
-					args: [
-						'-test.run',
-						'MyTestFunction'
-					]
+					args: ['-test.run', 'MyTestFunction']
 				},
 				fill: async (config: vscode.DebugConfiguration) => {
 					const testFunc = await vscode.window.showInputBox({
 						placeHolder: 'MyTestFunction',
 						prompt: 'Name of the function to test'
 					});
-					if (!!testFunc) {
-						config.args = [
-							'-test.run',
-							testFunc
-						];
+					if (testFunc) {
+						config.args = ['-test.run', testFunc];
 					}
 				}
 			},
@@ -115,47 +110,48 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				fill: async (config: vscode.DebugConfiguration) => {
 					const host = await vscode.window.showInputBox({
 						prompt: 'Enter hostname',
-						value: '127.0.0.1',
+						value: '127.0.0.1'
 					});
-					if (!!host) {
+					if (host) {
 						config.host = host;
 					}
-					const port = Number(await vscode.window.showInputBox({
-						prompt: 'Enter port',
-						value: '2345',
-						validateInput: (value: string) => {
-							if (isNaN(Number(value))) {
-								return 'Please enter a number.';
+					const port = Number(
+						await vscode.window.showInputBox({
+							prompt: 'Enter port',
+							value: '2345',
+							validateInput: (value: string) => {
+								if (isNaN(Number(value))) {
+									return 'Please enter a number.';
+								}
+								return '';
 							}
-							return '';
-						}
-					}));
-					if (!!port) {
+						})
+					);
+					if (port) {
 						config.port = port;
 					}
-
 				}
 			}
 		];
 
 		const choice = await vscode.window.showQuickPick(debugConfigurations, {
-			placeHolder: 'Choose debug configuration',
+			placeHolder: 'Choose debug configuration'
 		});
 		if (!choice) {
 			return [];
 		}
 
-		if (!!choice.fill) {
+		if (choice.fill) {
 			await choice.fill(choice.config);
 		}
 		return [choice.config];
 	}
 
-	public resolveDebugConfiguration(
+	public async resolveDebugConfiguration(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): vscode.DebugConfiguration {
+	): Promise<vscode.DebugConfiguration> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json
@@ -211,22 +207,22 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		// Remove any '--gcflags' entries and show a warning
 		if (debugConfiguration['buildFlags']) {
-			const resp = this.removeFlag(debugConfiguration['buildFlags'], 'gcflags');
+			const resp = this.removeGcflags(debugConfiguration['buildFlags']);
 			if (resp.removed) {
 				debugConfiguration['buildFlags'] = resp.args;
 				this.showWarning(
 					'ignoreDebugGCFlagsWarning',
-					`User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+					"User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
 				);
 			}
 		}
 		if (debugConfiguration['env'] && debugConfiguration['env']['GOFLAGS']) {
-			const resp = this.removeFlag(debugConfiguration['env']['GOFLAGS'], 'gcflags');
+			const resp = this.removeGcflags(debugConfiguration['env']['GOFLAGS']);
 			if (resp.removed) {
 				debugConfiguration['env']['GOFLAGS'] = resp.args;
 				this.showWarning(
 					'ignoreDebugGCFlagsWarning',
-					`User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)`
+					"User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
 				);
 			}
 		}
@@ -245,7 +241,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration.request === 'launch' && debugConfiguration['mode'] === 'remote') {
 			this.showWarning(
 				'ignoreDebugLaunchRemoteWarning',
-				`Request type of 'launch' with mode 'remote' is deprecated, please use request type 'attach' with mode 'remote' instead.`
+				"Request type of 'launch' with mode 'remote' is deprecated, please use request type 'attach' with mode 'remote' instead."
 			);
 		}
 
@@ -256,10 +252,59 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			this.showWarning(
 				'ignoreUsingRemotePathAndProgramWarning',
-				`Request type of 'attach' with mode 'remote' does not work with 'program' attribute, please use 'cwd' attribute instead.`
+				"Request type of 'attach' with mode 'remote' does not work with 'program' attribute, please use 'cwd' attribute instead."
 			);
 		}
+
+		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
+			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
+				// The processId is not valid, offer a quickpick menu of all processes.
+				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
+			} else if (typeof debugConfiguration['processId'] === 'string') {
+				debugConfiguration['processId'] = parseInt(
+					await pickProcessByName(debugConfiguration['processId']),
+					10
+				);
+			}
+		}
 		return debugConfiguration;
+	}
+
+	public removeGcflags(args: string): { args: string; removed: boolean } {
+		// From `go help build`
+		// ...
+		// -gcflags '[pattern=]arg list'
+		// 	 arguments to pass on each go tool compile invocation.
+		//
+		// The -asmflags, -gccgoflags, -gcflags, and -ldflags flags accept a
+		// space-separated list of arguments to pass to an underlying tool
+		// during the build. To embed spaces in an element in the list, surround
+		// it with either single or double quotes. The argument list may be
+		// preceded by a package pattern and an equal sign, which restricts
+		// the use of that argument list to the building of packages matching
+		// that pattern (see 'go help packages' for a description of package
+		// patterns). Without a pattern, the argument list applies only to the
+		// packages named on the command line. The flags may be repeated
+		// with different patterns in order to specify different arguments for
+		// different sets of packages. If a package matches patterns given in
+		// multiple flags, the latest match on the command line wins.
+		// For example, 'go build -gcflags=-S fmt' prints the disassembly
+		// only for package fmt, while 'go build -gcflags=all=-S fmt'
+		// prints the disassembly for fmt and all its dependencies.
+
+		// Regexp Explanation:
+		// 	1. (^|\s): the flag is preceded by a white space or is at the start of the line.
+		//  2. -gcflags: the name of the flag.
+		//  3. (=| ): the name of the flag is followed by = or a space.
+		//  4. ('[^']*'|"[^"]*"|[^'"\s]+)+: the value of the flag is a combination of nonwhitespace
+		//       characters and quoted strings which may contain white space.
+		const gcflagsRegexp = /(^|\s)(-gcflags)(=| )('[^']*'|"[^"]*"|[^'"\s]+)+/;
+		let removed = false;
+		while (args.search(gcflagsRegexp) >= 0) {
+			args = args.replace(gcflagsRegexp, '');
+			removed = true;
+		}
+		return { args, removed };
 	}
 
 	public resolveDebugConfigurationWithSubstitutedVariables(
@@ -277,7 +322,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const env = debugConfiguration['env'] || {};
 
 		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
-		debugConfiguration['envFile'] = undefined;  // unset, since we already processed.
+		debugConfiguration['envFile'] = undefined; // unset, since we already processed.
 
 		return debugConfiguration;
 	}
@@ -288,20 +333,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			return;
 		}
 
-		const neverAgain = { title: `Don't Show Again` };
+		const neverAgain = { title: "Don't Show Again" };
 		vscode.window.showWarningMessage(warningMessage, neverAgain).then((result) => {
 			if (result === neverAgain) {
 				updateGlobalState(ignoreWarningKey, true);
 			}
 		});
-	}
-
-	private removeFlag(args: string, flag: string): {args: string, removed: boolean} {
-		const argv = parse(args, {configuration: {'short-option-groups': false}});
-		if (argv[flag]) {
-			delete argv[flag];
-			return { args: unparse(argv).join(' '), removed: true };
-		}
-		return {args, removed: false};
 	}
 }

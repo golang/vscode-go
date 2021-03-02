@@ -1,3 +1,5 @@
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -34,29 +36,30 @@ export function addTags(commandArgs: GoTagsConfig) {
 		return;
 	}
 
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then((
-		[tags, options, transformValue, template]) => {
-		if (!tags && !options) {
-			return;
+	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(
+		([tags, options, transformValue, template]) => {
+			if (!tags && !options) {
+				return;
+			}
+			if (tags) {
+				args.push('--add-tags');
+				args.push(tags);
+			}
+			if (options) {
+				args.push('--add-options');
+				args.push(options);
+			}
+			if (transformValue) {
+				args.push('--transform');
+				args.push(transformValue);
+			}
+			if (template) {
+				args.push('--template');
+				args.push(template);
+			}
+			runGomodifytags(args);
 		}
-		if (tags) {
-			args.push('--add-tags');
-			args.push(tags);
-		}
-		if (options) {
-			args.push('--add-options');
-			args.push(options);
-		}
-		if (transformValue) {
-			args.push('--transform');
-			args.push(transformValue);
-		}
-		if (template) {
-			args.push('--template');
-			args.push(template);
-		}
-		runGomodifytags(args);
-	});
+	);
 }
 
 export function removeTags(commandArgs: GoTagsConfig) {
@@ -145,13 +148,13 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 						})
 						.then((transformOption) => {
 							return vscode.window
-							.showInputBox({
-								value: format,
-								prompt: 'Enter template value'
-							})
-							.then((template) => {
-								return [inputTags, inputOptions, transformOption, template];
-							});
+								.showInputBox({
+									value: format,
+									prompt: 'Enter template value'
+								})
+								.then((template) => {
+									return [inputTags, inputOptions, transformOption, template];
+								});
 						});
 				});
 		});
@@ -167,8 +170,9 @@ function runGomodifytags(args: string[]) {
 			return;
 		}
 		if (err && (<any>err).code === 2 && args.indexOf('--template') > 0) {
-			vscode.window.showInformationMessage(`Cannot modify tags: you might be using a` +
-												`version that does not support --template`);
+			vscode.window.showInformationMessage(
+				'Cannot modify tags: you might be using a' + 'version that does not support --template'
+			);
 			promptForUpdatingTool('gomodifytags');
 			return;
 		}

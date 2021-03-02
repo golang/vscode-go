@@ -1,0 +1,4 @@
+{
+  "extends": "./node_modules/gts/",
+  "root": true
+}

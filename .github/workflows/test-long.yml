@@ -1,25 +1,22 @@
 name: Long Tests
 
-on:
-  push:
-    branches-ignore:
-      - 'latest'
-      - 'upstream'
+on: [push]
 
 jobs:
   build:
-    name: ${{ matrix.os }} ${{ matrix.version }}
+    name: ${{ matrix.os }} ${{ matrix.version }} ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
 
     # Not containing 'SKIP CI' in the commit message AND
-    # (Either non-Windows OR triggered on 'push' (if triggered by 'pull_request', github.base_ref is not empty)
-    if: github.repository == 'golang/vscode-go' && !contains(github.event.head_commit.message, 'SKIP CI')
+    # (Either the official repository, or the commit message contains 'FORCE RUN CI')
+    if: (github.repository == 'golang/vscode-go' || contains(github.event.head_commit.message, 'FORCE RUN CI')) && !contains(github.event.head_commit.message, 'SKIP CI')
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest] # TODO: reenable macos-latest
         version: ['stable']
+        go: ['1.15', '1.16']
 
     steps:
       - name: Clone repository
@@ -28,12 +25,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: '10.x'
+          node-version: '14.x'
 
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-         go-version: '1.15'
+         go-version: ${{ matrix.go }}
+         stable: '!contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")'
 
       - name: Install dependencies
         run: npm ci
@@ -47,6 +45,9 @@ jobs:
             go get github.com/acroca/go-symbols
             go get github.com/davidrjenni/reftools/cmd/fillstruct
             go get github.com/haya14busa/goplay/cmd/goplay
+            # Install two versions of gocode (one as gocode-gomod)
+            go get github.com/stamblerre/gocode
+            mv "${HOME}/go/bin/gocode${{env.EXT}}" "${HOME}/go/bin/gocode-gomod${{env.EXT}}"
             go get github.com/mdempsky/gocode
             go get github.com/sqs/goreturns
             go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
@@ -57,9 +58,10 @@ jobs:
             go get github.com/cweill/gotests/...
             go get github.com/rogpeppe/godef
             go get github.com/ramya-rao-a/go-outline
-            go get github.com/go-delve/delve/cmd/dlv
+            go get github.com/go-delve/delve/cmd/dlv@master
         env:
-          GO111MODULE: on   
+          GO111MODULE: on
+          EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
           
       - name: Run unit tests
         run: npm run unit-test

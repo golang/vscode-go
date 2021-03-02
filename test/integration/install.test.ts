@@ -1,3 +1,4 @@
+/* eslint-disable no-async-promise-executor */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -5,6 +6,12 @@
 
 import AdmZip = require('adm-zip');
 import * as assert from 'assert';
+import { getGoConfig } from '../../src/config';
+import { toolInstallationEnvironment } from '../../src/goEnv';
+import { installTools } from '../../src/goInstallTools';
+import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
+import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
+import { correctBinname } from '../../src/utils/pathUtils';
 import cp = require('child_process');
 import fs = require('fs');
 import os = require('os');
@@ -13,12 +20,6 @@ import sinon = require('sinon');
 import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
-import { getGoConfig } from '../../src/config';
-import { toolInstallationEnvironment } from '../../src/goEnv';
-import { installTools } from '../../src/goInstallTools';
-import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
-import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
-import { correctBinname } from '../../src/utils/pathUtils';
 
 suite('Installation Tests', function () {
 	// Disable timeout when we are running slow tests.
@@ -58,7 +59,7 @@ suite('Installation Tests', function () {
 			envForTest['GOPATH'] = p;
 			const execFile = util.promisify(cp.execFile);
 			await execFile(goRuntimePath, ['clean', '-modcache'], {
-				env: envForTest,
+				env: envForTest
 			});
 			rmdirRecursive(p);
 		}
@@ -75,9 +76,9 @@ suite('Installation Tests', function () {
 				toolsEnvVars: {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),
-						GOSUMDB: 'off',
+						GOSUMDB: 'off'
 					}
-				},
+				}
 			});
 			configStub = sandbox.stub(vscode.workspace, 'getConfiguration').returns(goConfig);
 		} else {
@@ -94,14 +95,16 @@ suite('Installation Tests', function () {
 		const checks: Promise<void>[] = [];
 		const exists = util.promisify(fs.exists);
 		for (const tool of testCases) {
-			checks.push(new Promise<void>(async (resolve) => {
-				// Check that the expect tool has been installed to $GOPATH/bin.
-				const ok = await exists(path.join(tmpToolsGopath, 'bin', correctBinname(tool)));
-				if (!ok) {
-					assert.fail(`expected ${tmpToolsGopath}/bin/${tool}, not found`);
-				}
-				return resolve();
-			}));
+			checks.push(
+				new Promise<void>(async (resolve) => {
+					// Check that the expect tool has been installed to $GOPATH/bin.
+					const ok = await exists(path.join(tmpToolsGopath, 'bin', correctBinname(tool)));
+					if (!ok) {
+						assert.fail(`expected ${tmpToolsGopath}/bin/${tool}, not found`);
+					}
+					return resolve();
+				})
+			);
 		}
 		await Promise.all(checks);
 
@@ -129,7 +132,6 @@ suite('Installation Tests', function () {
 		const tools = Object.keys(allToolsInformation);
 		await runTest(tools);
 	});
-
 });
 
 // buildFakeProxy creates a fake file-based proxy used for testing. The code is
@@ -139,7 +141,7 @@ function buildFakeProxy(tools: string[]) {
 	for (const toolName of tools) {
 		const tool = getTool(toolName);
 		const module = tool.importPath;
-		const version = `v1.0.0`; // hardcoded for now
+		const version = 'v1.0.0'; // hardcoded for now
 		const dir = path.join(proxyDir, module, '@v');
 		fs.mkdirSync(dir, { recursive: true });
 
@@ -150,11 +152,14 @@ function buildFakeProxy(tools: string[]) {
 		fs.writeFileSync(path.join(dir, `${version}.mod`), `module ${module}\n`);
 
 		// Write the info file.
-		fs.writeFileSync(path.join(dir, `${version}.info`), `{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `);
+		fs.writeFileSync(
+			path.join(dir, `${version}.info`),
+			`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
+		);
 
 		// Write the zip file.
 		const zip = new AdmZip();
-		const content = `package main; func main() {};`;
+		const content = 'package main; func main() {};';
 		zip.addFile(`${module}@${version}/main.go`, Buffer.alloc(content.length, content));
 		zip.writeZip(path.join(dir, `${version}.zip`));
 	}

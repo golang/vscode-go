@@ -1,3 +1,6 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -14,7 +17,7 @@ import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { fixDriveCasingInWindows } from './utils/pathUtils';
 
-let gutterSvgs: { [key: string]: string; };
+let gutterSvgs: { [key: string]: string };
 
 interface Highlight {
 	top: vscode.TextEditorDecorationType;
@@ -94,7 +97,7 @@ export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 
 	// Update from configuration.
 	if (typeof coverageDecoratorConfig !== 'object') {
-		vscode.window.showWarningMessage(`invalid go.coverageDecorator type, expected an 'object'`);
+		vscode.window.showWarningMessage("invalid go.coverageDecorator type, expected an 'object'");
 	} else {
 		for (const k in coverageDecoratorConfig) {
 			if (coverageDecoratorConfig.hasOwnProperty(k)) {
@@ -110,12 +113,14 @@ export function updateCodeCoverageDecorators(coverageDecoratorConfig: any) {
 
 function setDecorators() {
 	disposeDecorators();
-	if (!decorators) { initForTest(); } // only happens in tests
-	const f = (x: { overviewRulerColor: string, backgroundColor: string; }, arg: string) => {
+	if (!decorators) {
+		initForTest();
+	} // only happens in tests
+	const f = (x: { overviewRulerColor: string; backgroundColor: string }, arg: string) => {
 		const y = {
 			overviewRulerLane: 2,
 			borderStyle: arg,
-			borderWidth: '2px',
+			borderWidth: '2px'
 		};
 		return Object.assign(y, x);
 	};
@@ -149,14 +154,14 @@ function setDecorators() {
 			all: vscode.window.createTextEditorDecorationType(cone),
 			top: vscode.window.createTextEditorDecorationType(ctop),
 			mid: vscode.window.createTextEditorDecorationType(cmid),
-			bot: vscode.window.createTextEditorDecorationType(cbot),
+			bot: vscode.window.createTextEditorDecorationType(cbot)
 		},
 		uncoveredHighlight: {
 			all: vscode.window.createTextEditorDecorationType(uone),
 			top: vscode.window.createTextEditorDecorationType(utop),
 			mid: vscode.window.createTextEditorDecorationType(umid),
 			bot: vscode.window.createTextEditorDecorationType(ubot)
-		},
+		}
 	};
 }
 
@@ -183,8 +188,8 @@ interface CoverageData {
 	coveredOptions: vscode.DecorationOptions[];
 }
 
-let coverageData: { [key: string]: CoverageData; } = {};  // actual file path to the coverage data.
-let isCoverageApplied: boolean = false;
+let coverageData: { [key: string]: CoverageData } = {}; // actual file path to the coverage data.
+let isCoverageApplied = false;
 
 function emptyCoverageData(): CoverageData {
 	return {
@@ -212,7 +217,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 	const v = new Promise<void>((resolve, reject) => {
 		try {
 			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
-			const coveragePath = new Map<string, CoverageData>();  // <filename> from the cover profile to the coverage data.
+			const coveragePath = new Map<string, CoverageData>(); // <filename> from the cover profile to the coverage data.
 
 			// Clear existing coverage files
 			clearCoverage();
@@ -232,7 +237,9 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				// TODO: port https://golang.org/cl/179377 for faster parsing.
 
 				const parse = line.match(/^(\S+)\:(\d+)\.(\d+)\,(\d+)\.(\d+)\s(\d+)\s(\d+)/);
-				if (!parse) { return; }
+				if (!parse) {
+					return;
+				}
 
 				let filename = parse[1];
 				if (filename.startsWith('.' + path.sep)) {
@@ -271,13 +278,12 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				coveragePath.set(filename, coverage);
 			});
 
-			getImportPathToFolder([...seenPaths], dir)
-				.then((pathsToDirs) => {
-					createCoverageData(pathsToDirs, coveragePath);
-					setDecorators();
-					vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
-					resolve();
-				});
+			getImportPathToFolder([...seenPaths], dir).then((pathsToDirs) => {
+				createCoverageData(pathsToDirs, coveragePath);
+				setDecorators();
+				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
+				resolve();
+			});
 		} catch (e) {
 			vscode.window.showInformationMessage(e.msg);
 			reject(e);
@@ -289,7 +295,9 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 // add decorations to the range
 function elaborate(r: vscode.Range, count: number, showCounts: boolean): vscode.DecorationOptions[] {
 	// irrelevant for "gutter"
-	if (!decorators || decorators.type === 'gutter') { return [{ range: r }]; }
+	if (!decorators || decorators.type === 'gutter') {
+		return [{ range: r }];
+	}
 	const ans: vscode.DecorationOptions[] = [];
 	const dc = decoratorConfig;
 	const backgroundColor = [dc.uncoveredHighlightColor, dc.coveredHighlightColor];
@@ -301,17 +309,14 @@ function elaborate(r: vscode.Range, count: number, showCounts: boolean): vscode.
 		range: r,
 		hoverMessage: `${count} executions`,
 		renderOptions: {
-			before: txt,
+			before: txt
 		}
 	};
 	ans.push(v);
 	return ans;
 }
 
-function createCoverageData(
-	pathsToDirs: Map<string, string>,
-	coveragePath: Map<string, CoverageData>) {
-
+function createCoverageData(pathsToDirs: Map<string, string>, coveragePath: Map<string, CoverageData>) {
 	coveragePath.forEach((cd, ip) => {
 		if (path.isAbsolute(ip)) {
 			setCoverageDataByFilePath(ip, cd);
@@ -403,15 +408,15 @@ function detailed(editor: vscode.TextEditor, h: Highlight, opts: vscode.Decorati
 			if (line === r.start.line) {
 				const use: vscode.DecorationOptions = {
 					range: editor.document.validateRange(
-						new vscode.Range(line, r.start.character, line, Number.MAX_SAFE_INTEGER)),
+						new vscode.Range(line, r.start.character, line, Number.MAX_SAFE_INTEGER)
+					),
 					hoverMessage: opt.hoverMessage,
 					renderOptions: opt.renderOptions
 				};
 				tops.push(use);
 			} else if (line < r.end.line) {
 				const use = {
-					range: editor.document.validateRange(
-						new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER)),
+					range: editor.document.validateRange(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER)),
 					hoverMessage: opt.hoverMessage
 				};
 				mids.push(use);
@@ -424,10 +429,18 @@ function detailed(editor: vscode.TextEditor, h: Highlight, opts: vscode.Decorati
 			}
 		}
 	});
-	if (tops.length > 0) { editor.setDecorations(h.top, tops); }
-	if (mids.length > 0) { editor.setDecorations(h.mid, mids); }
-	if (bots.length > 0) { editor.setDecorations(h.bot, bots); }
-	if (alls.length > 0) { editor.setDecorations(h.all, alls); }
+	if (tops.length > 0) {
+		editor.setDecorations(h.top, tops);
+	}
+	if (mids.length > 0) {
+		editor.setDecorations(h.mid, mids);
+	}
+	if (bots.length > 0) {
+		editor.setDecorations(h.bot, bots);
+	}
+	if (alls.length > 0) {
+		editor.setDecorations(h.all, alls);
+	}
 }
 
 /**
@@ -525,7 +538,7 @@ export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 
 // These routines enable testing without starting an editing session.
 
-export function coverageFilesForTest(): { [key: string]: CoverageData; } {
+export function coverageFilesForTest(): { [key: string]: CoverageData } {
 	return coverageData;
 }
 

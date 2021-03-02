@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -12,14 +13,8 @@ import { getGoConfig } from './config';
 import { adjustWordPosition, definitionLocation, parseMissingError } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import {
-	byteOffsetAt,
-	canonicalizeGOPATHPrefix,
-	getBinPath,
-	getFileArchive,
-	goBuiltinTypes
-} from './util';
-import {killProcessTree} from './utils/processUtils';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive, goBuiltinTypes } from './util';
+import { killProcessTree } from './utils/processUtils';
 
 interface GuruDescribeOutput {
 	desc: string;
@@ -66,7 +61,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 			const args = buildTags ? ['-tags', buildTags] : [];
 			args.push('-json', '-modified', 'describe', `${filename}:#${offset.toString()}`);
 
-			const process = cp.execFile(goGuru, args, { env }, (guruErr, stdout, stderr) => {
+			const process = cp.execFile(goGuru, args, { env }, (guruErr, stdout) => {
 				try {
 					if (guruErr && (<any>guruErr).code === 'ENOENT') {
 						promptForMissingTool('guru');
@@ -85,13 +80,13 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 							!goBuiltinTypes.has(guruOutput.value.type) &&
 							guruOutput.value.type !== 'invalid type'
 						) {
-							console.log(`no typespos from guru's output - try to update guru tool`);
+							console.log("no typespos from guru's output - try to update guru tool");
 						}
 
 						// Fall back to position of declaration
 						return definitionLocation(document, position, null, false, token).then(
 							(definitionInfo) => {
-								if (definitionInfo == null || definitionInfo.file == null) {
+								if (definitionInfo === null || definitionInfo.file === null) {
 									return null;
 								}
 								const definitionResource = vscode.Uri.file(definitionInfo.file);
@@ -116,7 +111,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 						if (!match) {
 							return;
 						}
-						const [_, file, line, col] = match;
+						const [, file, line, col] = match;
 						const referenceResource = vscode.Uri.file(file);
 						const pos = new vscode.Position(parseInt(line, 10) - 1, parseInt(col, 10) - 1);
 						results.push(new vscode.Location(referenceResource, pos));

@@ -39,22 +39,6 @@
 			"preLaunchTask": "npm: webpack"
 		},
 		{
-			"name": "Launch as server (dlv dap)",
-			"type": "node",
-			"protocol": "inspector",
-			"request": "launch",
-			"program": "${workspaceFolder}/dist/debugAdapter2.js",
-			"args": [
-				"--server=4711"
-			],
-			"sourceMaps": true,
-			"smartStep": true,
-			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
-			],
-			"preLaunchTask": "npm: webpack"
-		},
-		{
 			"name": "Launch Extension Tests",
 			"type": "extensionHost",
 			"request": "launch",

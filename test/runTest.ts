@@ -1,3 +1,5 @@
+/* eslint-disable no-process-exit */
+/* eslint-disable node/no-unpublished-import */
 import * as path from 'path';
 import { runTests } from 'vscode-test';
 
@@ -11,6 +13,8 @@ async function main() {
 
 	let failed = false;
 
+	const version = process.env.CODE_VERSION || undefined;
+
 	try {
 		// The path to the extension test script
 		// Passed to --extensionTestsPath
@@ -18,13 +22,15 @@ async function main() {
 
 		// Download VS Code, unzip it and run the integration test
 		await runTests({
-			version: '1.52.1',
+			version,
 			extensionDevelopmentPath,
 			extensionTestsPath,
 			launchArgs: [
 				'--disable-extensions',
 				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
-			],  // disable all other extensions
+				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
+				'--force-disable-user-env'
+			]
 		});
 	} catch (err) {
 		console.error('Failed to run integration tests' + err);
@@ -37,13 +43,15 @@ async function main() {
 		// tslint:disable-next-line:max-line-length
 		// https://github.com/microsoft/vscode/blob/890f62dfd9f3e70198931f788c5c332b3e8b7ad7/src/vs/workbench/services/workspaces/browser/abstractWorkspaceEditingService.ts#L281
 		await runTests({
-			version: '1.52.1',
+			version,
 			extensionDevelopmentPath,
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
-				'--disable-extensions',  // disable all other extensions
+				'--disable-extensions', // disable all other extensions
 				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
-			],
+				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
+				'--force-disable-user-env'
+			]
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests' + err);

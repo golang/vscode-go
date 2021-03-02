@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -16,7 +18,7 @@ import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
 const missingToolMsg = 'Missing tool: ';
 
-export async function listPackages(excludeImportedPkgs: boolean = false): Promise<string[]> {
+export async function listPackages(excludeImportedPkgs = false): Promise<string[]> {
 	const importedPkgs =
 		excludeImportedPkgs && vscode.window.activeTextEditor
 			? await getImports(vscode.window.activeTextEditor.document)

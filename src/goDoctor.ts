@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -7,10 +8,10 @@
 
 import cp = require('child_process');
 import { dirname, isAbsolute } from 'path';
-import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
+import vscode = require('vscode');
 
 /**
  * Extracts function out of current selection and replaces the current selection with a call to the extracted function.
@@ -79,7 +80,7 @@ function runGoDoctor(
 				'-w',
 				'-pos',
 				`${selection.start.line + 1},${selection.start.character + 1}:${selection.end.line + 1},${
-				selection.end.character
+					selection.end.character
 				}`,
 				'-file',
 				fileName,

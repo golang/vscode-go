@@ -45,15 +45,13 @@ suite('WelcomePanel Tests', () => {
 		[['0.22.0'], '0.22.1', '0.22.0', false],
 		[['0.22.0'], '0.22.1', '0.23.0', false],
 		[['0.22.0'], '0.22.1', '1.0.0', false],
-		[['0.22.0'], '0.22.1', '2021.1.100', false],
+		[['0.22.0'], '0.22.1', '2021.1.100', false]
 	];
 	testCases.forEach((c: testCase) => {
 		const [showVersions, newVersion, oldVersion, expected] = c;
 
 		test(`shouldShowGoWelcomePage(${JSON.stringify(showVersions)}, ${newVersion}, ${oldVersion})`, () => {
-			assert.strictEqual(
-				shouldShowGoWelcomePage(showVersions, newVersion, oldVersion), expected);
+			assert.strictEqual(shouldShowGoWelcomePage(showVersions, newVersion, oldVersion), expected);
 		});
 	});
-
 });

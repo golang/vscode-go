@@ -42,7 +42,7 @@ export function lintCode(scope?: string) {
 
 	goLint(documentUri, goConfig, scope)
 		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
+			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection, 'go-lint');
 			diagnosticsStatusBarItem.hide();
 		})
 		.catch((err) => {

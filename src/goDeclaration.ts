@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -125,7 +126,8 @@ const godefImportDefinitionRegex = /^import \(.* ".*"\)$/;
 function definitionLocation_godef(
 	input: GoDefinitionInput,
 	token: vscode.CancellationToken,
-	useReceivers: boolean = true
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	useReceivers = true
 ): Promise<GoDefinitionInformation> {
 	const godefTool = 'godef';
 	const godefPath = getBinPath(godefTool);
@@ -156,11 +158,11 @@ function definitionLocation_godef(
 						input.isMod &&
 						!input.includeDocs &&
 						stderr &&
-						stderr.startsWith(`godef: no declaration found for`)
+						stderr.startsWith('godef: no declaration found for')
 					) {
 						promptToUpdateToolForModules(
 							'godef',
-							`To get the Go to Definition feature when using Go modules, please update your version of the "godef" tool.`
+							'To get the Go to Definition feature when using Go modules, please update your version of the "godef" tool.'
 						);
 						return reject(stderr);
 					}
@@ -179,7 +181,7 @@ function definitionLocation_godef(
 					// /usr/local/go/src/html/template\n
 					return resolve(null);
 				}
-				const [_, file, line, col] = match;
+				const [, file, line, col] = match;
 				const pkgPath = path.dirname(file);
 				const definitionInformation: GoDefinitionInformation = {
 					file,
@@ -252,10 +254,10 @@ function definitionLocation_gogetdoc(
 					return definitionLocation_gogetdoc(input, token, false).then(resolve, reject);
 				}
 				if (err) {
-					if (input.isMod && !input.includeDocs && stdout.startsWith(`gogetdoc: couldn't get package for`)) {
+					if (input.isMod && !input.includeDocs && stdout.startsWith("gogetdoc: couldn't get package for")) {
 						promptToUpdateToolForModules(
 							'gogetdoc',
-							`To get the Go to Definition feature when using Go modules, please update your version of the "gogetdoc" tool.`
+							'To get the Go to Definition feature when using Go modules, please update your version of the "gogetdoc" tool.'
 						);
 						return resolve(null);
 					}
@@ -275,7 +277,6 @@ function definitionLocation_gogetdoc(
 				if (!match) {
 					return resolve(definitionInfo);
 				}
-				const [_, file, line, col] = match;
 				definitionInfo.file = match[1];
 				definitionInfo.line = +match[2] - 1;
 				definitionInfo.column = +match[3] - 1;
@@ -331,7 +332,7 @@ function definitionLocation_guru(
 					if (!match) {
 						return resolve(definitionInfo);
 					}
-					const [_, file, line, col] = match;
+					// const [_, file, line, col] = match;
 					definitionInfo.file = match[1];
 					definitionInfo.line = +match[2] - 1;
 					definitionInfo.column = +match[3] - 1;
@@ -372,7 +373,7 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 	): Thenable<vscode.Location> {
 		return definitionLocation(document, position, this.goConfig, false, token).then(
 			(definitionInfo) => {
-				if (definitionInfo == null || definitionInfo.file == null) {
+				if (definitionInfo === null || definitionInfo.file === null) {
 					return null;
 				}
 				const definitionResource = vscode.Uri.file(definitionInfo.file);

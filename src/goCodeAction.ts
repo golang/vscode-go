@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -13,12 +14,13 @@ export class GoCodeActionProvider implements vscode.CodeActionProvider {
 		document: vscode.TextDocument,
 		range: vscode.Range,
 		context: vscode.CodeActionContext,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		token: vscode.CancellationToken
 	): Thenable<vscode.Command[]> {
 		const promises = context.diagnostics.map((diag) => {
 			// When a name is not found but could refer to a package, offer to add import
 			if (diag.message.indexOf('undefined: ') === 0) {
-				const [_, name] = /^undefined: (\S*)/.exec(diag.message);
+				const [, name] = /^undefined: (\S*)/.exec(diag.message);
 				return listPackages().then((packages) => {
 					const commands = packages
 						.filter((pkg) => pkg === name || pkg.endsWith('/' + name))

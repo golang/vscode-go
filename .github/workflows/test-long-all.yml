@@ -1,0 +1,80 @@
+name: Daily Build Status
+
+on:
+  schedule:
+    - cron: "0 11 * * *"  # 11 UTC, everyday
+
+jobs:
+  build:
+    name: ${{ matrix.os }} ${{ matrix.version }} ${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
+
+    # Only in the official repository.
+    if: github.repository == 'golang/vscode-go'
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        version: ['stable', 'insiders']
+        go: ['1.15', '1.16']
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+         go-version: ${{ matrix.go }}
+         stable: '!contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run vscode:prepublish
+
+      - name: Install Go tools (Modules mode)
+        run: |
+            go version
+            go get github.com/acroca/go-symbols
+            go get github.com/davidrjenni/reftools/cmd/fillstruct
+            go get github.com/haya14busa/goplay/cmd/goplay
+            # Install two versions of gocode (one as gocode-gomod)
+            go get github.com/stamblerre/gocode
+            mv "${HOME}/go/bin/gocode${{env.EXT}}" "${HOME}/go/bin/gocode-gomod${{env.EXT}}"
+            go get github.com/mdempsky/gocode
+            go get github.com/sqs/goreturns
+            go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
+            go get github.com/zmb3/gogetdoc
+            go get golang.org/x/lint/golint
+            go get golang.org/x/tools/cmd/gorename
+            go get golang.org/x/tools/gopls
+            go get github.com/cweill/gotests/...
+            go get github.com/rogpeppe/godef
+            go get github.com/ramya-rao-a/go-outline
+            go get github.com/go-delve/delve/cmd/dlv@master
+        env:
+          GO111MODULE: on
+          EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
+
+      - name: Run unit tests
+        run: npm run unit-test
+
+      - name: Run tests
+        uses: GabrielBB/xvfb-action@v1.0
+        with:
+          run: npm run test
+        env:
+          CODE_VERSION: ${{ matrix.version }}
+          VSCODEGO_BEFORE_RELEASE_TESTS: true
+
+      - name: Lint check
+        run: npm run lint
+        if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.version }} == 'stable' && !contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")

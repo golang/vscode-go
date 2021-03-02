@@ -23,7 +23,7 @@ The extension checks for the availability of the new Go release by periodically 
 If you encounter issues with `gopls`, please read the [troubleshooting guide](troubleshooting.md#collect-gopls-information). If you want to run the extension without the language server, you can disable it by setting `"go.useLanguageServer": false`.
 
 `gopls` officially supports the four newer major versions of Go. If you are using a very old version of Go, or you explicitly disable the language server, the extension will automatically fall back to the legacy mode. The legacy mode uses old tools instead of `gopls`. Unfortunately many of them are no longer actively maintained and many features the extension provides will not be available.
-You can tell whether the extension is using `gopls`, by checking whether the high voltage icon (⚡) is present in the [Go status bar](docs/ui.md).
+You can tell whether the extension is using `gopls`, by checking whether the high voltage icon (⚡) is present in the [Go status bar](./ui.md).
 
 `gopls` is under active development, and updating it is important to get new features. The extension periodically checks the [module proxy](https://golang.org/cmd/go/#hdr-Module_proxy_protocol) to detect a new version has been released. When a newer version is available, a pop-up will appear, prompting you to update. If you would like to opt out of this automated update check, set `"go.toolsManagement.checkForUpdates"` to `false`.
 For more information about `gopls`, please visit its [documentation](https://golang.org/s/gopls).
@@ -33,7 +33,7 @@ For more information about `gopls`, please visit its [documentation](https://gol
 ### [`dlv`](https://github.com/go-delve/delve)
 This extension uses Delve for its debug/test functionalities. The extension currently ships with a thin Debug Adapter that implements the [Debug Adapter protocol](https://microsoft.github.io/debug-adapter-protocol/) and connects VS Code and `dlv`.
 
-For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](docs/debugging.md).
+For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
 
 
 ### [`gopkgs`](https://pkg.go.dev/github.com/uudashr/gopkgs?tab=overview)

@@ -115,8 +115,6 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 Format code and organize imports, either manually or on save.
 
-The [troubleshooting guide](troubleshooting.md#formatting) gives more details and explains how to [disable formatting](troubleshooting.md#disable-formatting) entirely.
-
 #### Add import
 
 Manually add a new import to your file through the [`Go: Add Import`](commands.md#go-add-import) command. Available packages are offered from your `GOPATH` and module cache.
@@ -137,8 +135,8 @@ This feature is not available if you are using Go modules **without** [`gopls`](
 
 ### Refactor
 
-Extract a piece of code to a local variable or to its own function using the [`Go: Extract to variable`](commands.md#go-extract-to-variable) and [`Go: Extract to function`](commands.md#go-extract-to-function) commands.
-
+Select the area for refactoring (e.g. variable, function body, etc). Click on the Code Action light bulb icon
+that appears in the selected area, or select "Refactoring..." or "Rename Symbol" from the VS Code Context menu.
 For known issues with this feature see [golang/go#37170](https://github.com/golang/go/issues/37170).
 
 <div style="text-align: center;"><img src="images/extract-variable.gif" alt="Extract to variable followed by a rename" style="width: 75%"> </div>

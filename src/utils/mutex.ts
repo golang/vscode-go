@@ -29,10 +29,11 @@ export class Mutex {
 		// x, which will be the resolve callback of promise B,
 		// will run and cause to unblock the waiter of promise B.
 		this.mutex = this.mutex.then(() => {
-			return new Promise(x);  // promise A
+			return new Promise(x); // promise A
 		});
 
-		return new Promise((resolve) => {  // promise B
+		return new Promise((resolve) => {
+			// promise B
 			x = resolve;
 		});
 		// the returned Promise will resolve when all the previous

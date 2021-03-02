@@ -109,4 +109,3 @@ jobs:
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
 
 # TODO: check if the commit is in green state. (test-long.yml results)
-# TODO: after publishing, create a gerrit CL to update 'latest' branch if VERSION is for a stable version.

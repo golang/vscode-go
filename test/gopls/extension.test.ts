@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -5,11 +6,11 @@
 import * as assert from 'assert';
 import { EventEmitter } from 'events';
 import * as path from 'path';
-import sinon = require('sinon');
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
 import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
+import sinon = require('sinon');
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -18,7 +19,7 @@ class FakeOutputChannel implements vscode.OutputChannel {
 	public name = 'FakeOutputChannel';
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
-	public dispose = sinon.fake();  // no-empty
+	public dispose = sinon.fake(); // no-empty
 
 	private buf = [] as string[];
 
@@ -34,10 +35,12 @@ class FakeOutputChannel implements vscode.OutputChannel {
 
 	public append = (v: string) => this.enqueue(v);
 	public appendLine = (v: string) => this.enqueue(v);
-	public clear = () => { this.buf = []; };
+	public clear = () => {
+		this.buf = [];
+	};
 	public toString = () => {
 		return this.buf.join('\n');
-	}
+	};
 
 	private enqueue = (v: string) => {
 		this.registeredPatterns?.forEach((p) => {
@@ -46,9 +49,11 @@ class FakeOutputChannel implements vscode.OutputChannel {
 			}
 		});
 
-		if (this.buf.length > 1024) { this.buf.shift(); }
+		if (this.buf.length > 1024) {
+			this.buf.shift();
+		}
 		this.buf.push(v.trim());
-	}
+	};
 }
 
 // Env is a collection of test-related variables and lsp client.
@@ -81,17 +86,18 @@ class Env {
 		});
 	}
 
-	public async setup(filePath: string) {  // file path to open.
+	public async setup(filePath: string) {
+		// file path to open.
 		this.fakeOutputChannel = new FakeOutputChannel();
 		const pkgLoadingDone = this.onMessageInTrace('Finished loading packages.', 60_000);
 
 		// Start the language server with the fakeOutputChannel.
 		const goConfig = Object.create(getGoConfig(), {
 			useLanguageServer: { value: true },
-			languageServerFlags: { value: ['-rpc.trace'] },  // enable rpc tracing to monitor progress reports
+			languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
 		});
 		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
-		cfg.outputChannel = this.fakeOutputChannel;  // inject our fake output channel.
+		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
 		this.languageClient = await buildLanguageClient(cfg);
 		this.disposables.push(this.languageClient.start());
 
@@ -145,13 +151,21 @@ suite('Go Extension Tests With Gopls', function () {
 			['inside a number', new vscode.Position(28, 16), null, null], // inside a number
 			['func main()', new vscode.Position(22, 5), 'func main()', null],
 			['import "math"', new vscode.Position(40, 23), 'package math', '`math` on'],
-			['func Println()', new vscode.Position(19, 6), 'func fmt.Println(a ...interface{}) (n int, err error)', 'Println formats '],
+			[
+				'func Println()',
+				new vscode.Position(19, 6),
+				'func fmt.Println(a ...interface{}) (n int, err error)',
+				'Println formats '
+			],
 			['func print()', new vscode.Position(23, 4), 'func print(txt string)', 'This is an unexported function ']
 		];
 
 		const promises = testCases.map(async ([name, position, expectedSignature, expectedDoc]) => {
-			const hovers = await vscode.commands.executeCommand(
-				'vscode.executeHoverProvider', uri, position) as vscode.Hover[];
+			const hovers = (await vscode.commands.executeCommand(
+				'vscode.executeHoverProvider',
+				uri,
+				position
+			)) as vscode.Hover[];
 
 			if (expectedSignature === null && expectedDoc === null) {
 				assert.equal(hovers.length, 0, `check hovers over ${name} failed: unexpected non-empty hover message.`);
@@ -159,21 +173,24 @@ suite('Go Extension Tests With Gopls', function () {
 			}
 
 			const hover = hovers[0];
-			assert.equal(hover.contents.length, 1, `check hovers over ${name} failed: unexpected number of hover messages.`);
+			assert.equal(
+				hover.contents.length,
+				1,
+				`check hovers over ${name} failed: unexpected number of hover messages.`
+			);
 			const gotMessage = (<vscode.MarkdownString>hover.contents[0]).value;
 			assert.ok(
-				gotMessage.includes('```go\n' + expectedSignature + '\n```')
-				&& (!expectedDoc || gotMessage.includes(expectedDoc)),
-				`check hovers over ${name} failed: got ${gotMessage}`);
+				gotMessage.includes('```go\n' + expectedSignature + '\n```') &&
+					(!expectedDoc || gotMessage.includes(expectedDoc)),
+				`check hovers over ${name} failed: got ${gotMessage}`
+			);
 		});
 		return Promise.all(promises);
 	});
 
 	test('Completion middleware', async () => {
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
-		const testCases: [string, vscode.Position, string][] = [
-			['fmt.P<>', new vscode.Position(19, 6), 'Print'],
-		];
+		const testCases: [string, vscode.Position, string][] = [['fmt.P<>', new vscode.Position(19, 6), 'Print']];
 		for (const [name, position, wantFilterText] of testCases) {
 			let list: vscode.CompletionList<vscode.CompletionItem>;
 			// Query completion items. We expect the hard coded filter text hack
@@ -184,8 +201,11 @@ suite('Go Extension Tests With Gopls', function () {
 			// Retry a couple of times if we see a complete result as a workaround.
 			// (github.com/golang/vscode-go/issues/363)
 			for (let i = 0; i < 3; i++) {
-				list = await vscode.commands.executeCommand(
-					'vscode.executeCompletionItemProvider', uri, position) as vscode.CompletionList;
+				list = (await vscode.commands.executeCommand(
+					'vscode.executeCompletionItemProvider',
+					uri,
+					position
+				)) as vscode.CompletionList;
 				if (list.isIncomplete) {
 					break;
 				}
@@ -194,7 +214,7 @@ suite('Go Extension Tests With Gopls', function () {
 			}
 			// Confirm that the hardcoded filter text hack has been applied.
 			if (!list.isIncomplete) {
-				assert.fail(`gopls should provide an incomplete list by default`);
+				assert.fail('gopls should provide an incomplete list by default');
 			}
 
 			// vscode.executeCompletionItemProvider will return results from all
@@ -203,13 +223,24 @@ suite('Go Extension Tests With Gopls', function () {
 			// prevent us from detecting problems caused by issues between the language
 			// client library and the vscode.
 			for (const item of list.items) {
-				if (item.kind === vscode.CompletionItemKind.Snippet) { continue; }  // gopls does not supply Snippet yet.
-				assert.strictEqual(item.filterText ?? item.label, wantFilterText,
+				if (item.kind === vscode.CompletionItemKind.Snippet) {
+					continue;
+				} // gopls does not supply Snippet yet.
+				assert.strictEqual(
+					item.filterText ?? item.label,
+					wantFilterText,
 					`${uri}:${name} failed, unexpected filter text ` +
-					`(got ${item.filterText ?? item.label}, want ${wantFilterText})\n` +
-					`${JSON.stringify(item, null, 2)}`);
-				if (item.kind === vscode.CompletionItemKind.Method || item.kind === vscode.CompletionItemKind.Function) {
-					assert.ok(item.command, `${uri}:${name}: expected command associated with ${item.label}, found none`);
+						`(got ${item.filterText ?? item.label}, want ${wantFilterText})\n` +
+						`${JSON.stringify(item, null, 2)}`
+				);
+				if (
+					item.kind === vscode.CompletionItemKind.Method ||
+					item.kind === vscode.CompletionItemKind.Function
+				) {
+					assert.ok(
+						item.command,
+						`${uri}:${name}: expected command associated with ${item.label}, found none`
+					);
 				}
 			}
 		}

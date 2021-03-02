@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable eqeqeq */
+/* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import cp = require('child_process');
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
@@ -35,15 +38,14 @@ import {
 	getBinPath,
 	getCurrentGoPath,
 	getImportPath,
-	getToolsGopath,
 	handleDiagnosticErrors,
 	ICheckResult,
 	isVendorSupported
 } from '../../src/util';
+import cp = require('child_process');
+import os = require('os');
 
-suite('Go Extension Tests', function () {
-	this.timeout(20000);
-
+const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
 
 	// suiteSetup will initialize the following vars.
@@ -54,9 +56,12 @@ suite('Go Extension Tests', function () {
 	let generateTestsSourcePath: string;
 	let generateFunctionTestSourcePath: string;
 	let generatePackageTestSourcePath: string;
-	let toolsGopath: string;
+	let previousEnv: any;
 
 	suiteSetup(async () => {
+		previousEnv = Object.assign({}, process.env);
+		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
+
 		await updateGoVarsFromConfig();
 
 		gopath = getCurrentGoPath();
@@ -66,25 +71,17 @@ suite('Go Extension Tests', function () {
 		}
 		console.log(`Using GOPATH: ${gopath}`);
 
-		repoPath = path.join(gopath, 'src', 'test');
+		repoPath = isModuleMode ? fs.mkdtempSync(path.join(os.tmpdir(), 'legacy')) : path.join(gopath, 'src', 'test');
 		fixturePath = path.join(repoPath, 'testfixture');
 		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 		generateTestsSourcePath = path.join(repoPath, 'generatetests');
 		generateFunctionTestSourcePath = path.join(repoPath, 'generatefunctiontest');
 		generatePackageTestSourcePath = path.join(repoPath, 'generatePackagetest');
-		toolsGopath = getToolsGopath() || gopath;
 
 		fs.removeSync(repoPath);
 		fs.copySync(fixtureSourcePath, fixturePath, {
-			recursive: true,
-			// All of the tests run in GOPATH mode for now.
-			// TODO(rstambler): Run tests in GOPATH and module mode.
-			filter: (src: string): boolean => {
-				if (path.basename(src) === 'go.mod') {
-					return false;
-				}
-				return true;
-			},
+			recursive: true
+			// TODO(hyangah): should we enable GOPATH mode
 		});
 		fs.copySync(
 			path.join(fixtureSourcePath, 'generatetests', 'generatetests.go'),
@@ -118,6 +115,7 @@ suite('Go Extension Tests', function () {
 
 	suiteTeardown(() => {
 		fs.removeSync(repoPath);
+		process.env = previousEnv;
 	});
 
 	teardown(() => {
@@ -191,14 +189,21 @@ suite('Go Extension Tests', function () {
 		return Promise.all(promises);
 	}
 
-	test('Test Definition Provider using godoc', async () => {
+	test('Test Definition Provider using godoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
+
 		const config = Object.create(getGoConfig(), {
 			docsTool: { value: 'godoc' }
 		});
 		await testDefinitionProvider(config);
 	});
 
-	test('Test Definition Provider using gogetdoc', async () => {
+	test('Test Definition Provider using gogetdoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -210,7 +215,11 @@ suite('Go Extension Tests', function () {
 		await testDefinitionProvider(config);
 	});
 
-	test('Test SignatureHelp Provider using godoc', async () => {
+	test('Test SignatureHelp Provider using godoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode
+
 		const printlnDoc = `Println formats using the default formats for its operands and writes to
 standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
@@ -227,7 +236,7 @@ encountered.
 			[
 				new vscode.Position(23, 7),
 				'print(txt string)',
-				`This is an unexported function so couldn't get this comment on hover :( Not\nanymore!!\n`,
+				"This is an unexported function so couldn't get this comment on hover :( Not\nanymore!!\n",
 				['txt string']
 			],
 			[
@@ -249,7 +258,10 @@ encountered.
 		await testSignatureHelpProvider(config, testCases);
 	});
 
-	test('Test SignatureHelp Provider using gogetdoc', async () => {
+	test('Test SignatureHelp Provider using gogetdoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -270,7 +282,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(23, 7),
 				'print(txt string)',
-				`This is an unexported function so couldn't get this comment on hover :(\nNot anymore!!\n`,
+				"This is an unexported function so couldn't get this comment on hover :(\nNot anymore!!\n",
 				['txt string']
 			],
 			[
@@ -292,7 +304,11 @@ It returns the number of bytes written and any write error encountered.
 		await testSignatureHelpProvider(config, testCases);
 	});
 
-	test('Test Hover Provider using godoc', async () => {
+	test('Test Hover Provider using godoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode
+
 		const printlnDoc = `Println formats using the default formats for its operands and writes to
 standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
@@ -310,7 +326,7 @@ encountered.
 			[
 				new vscode.Position(23, 4),
 				'print func(txt string)',
-				`This is an unexported function so couldn't get this comment on hover :( Not\nanymore!!\n`
+				"This is an unexported function so couldn't get this comment on hover :( Not\nanymore!!\n"
 			]
 		];
 		const config = Object.create(getGoConfig(), {
@@ -319,7 +335,11 @@ encountered.
 		await testHoverProvider(config, testCases);
 	});
 
-	test('Test Hover Provider using gogetdoc', async () => {
+	test('Test Hover Provider using gogetdoc', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
+
 		const gogetdocPath = getBinPath('gogetdoc');
 		if (gogetdocPath === 'gogetdoc') {
 			// gogetdoc is not installed, so skip the test
@@ -339,7 +359,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(23, 4),
 				'func print(txt string)',
-				`This is an unexported function so couldn't get this comment on hover :(\nNot anymore!!\n`
+				"This is an unexported function so couldn't get this comment on hover :(\nNot anymore!!\n"
 			],
 			[
 				new vscode.Position(40, 23),
@@ -350,7 +370,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(27, 14),
 				'type ABC struct {\n    a int\n    b int\n    c int\n}',
-				`ABC is a struct, you coudn't use Goto Definition or Hover info on this before\nNow you can due to gogetdoc and go doc\n`
+				"ABC is a struct, you coudn't use Goto Definition or Hover info on this before\nNow you can due to gogetdoc and go doc\n"
 			],
 			[
 				new vscode.Position(28, 6),
@@ -385,19 +405,31 @@ It returns the number of bytes written and any write error encountered.
 			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config)
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
-		assert.equal(processutil.killProcessTree.callCount, 1, 'should have killed 1 lint job before launching the next');
+		assert.equal(
+			processutil.killProcessTree.callCount,
+			1,
+			'should have killed 1 lint job before launching the next'
+		);
 	});
 
 	test('Linting - lint errors with multiple open files', async () => {
 		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
 		// This adjustment applies only to the text documents known to vscode. This test checks
 		// the adjustment is made consistently across multiple open text documents.
-		const file1 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')));
-		const file2 = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')));
-		const warnings = await goLint(file2.uri, Object.create(getGoConfig(), {
-			lintTool: { value: 'golint' },
-			lintFlags: { value: [] }
-		}), 'package');
+		const file1 = await vscode.workspace.openTextDocument(
+			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
+		);
+		const file2 = await vscode.workspace.openTextDocument(
+			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
+		);
+		const warnings = await goLint(
+			file2.uri,
+			Object.create(getGoConfig(), {
+				lintTool: { value: 'golint' },
+				lintFlags: { value: [] }
+			}),
+			'package'
+		);
 
 		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
 		handleDiagnosticErrors(file2, warnings, diagnosticCollection);
@@ -425,12 +457,14 @@ It returns the number of bytes written and any write error encountered.
 				line: 7,
 				severity: 'warning',
 				msg: 'exported function Print2 should have comment or be unexported'
-			},
+			}
 		];
 		// If a user has enabled diagnostics via a language server,
 		// then we disable running build or vet to avoid duplicate errors and warnings.
 		const lspConfig = buildLanguageServerConfig(getGoConfig());
-		const expectedBuildVetErrors = lspConfig.enabled ? [] : [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
+		const expectedBuildVetErrors = lspConfig.enabled
+			? []
+			: [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
 
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
 		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
@@ -440,7 +474,7 @@ It returns the number of bytes written and any write error encountered.
 				diagnostics.map((x) => x.errors)
 			)
 			.sort((a: any, b: any) => a.line - b.line);
-		assert.equal(sortedDiagnostics.length > 0, true, `Failed to get linter results`);
+		assert.equal(sortedDiagnostics.length > 0, true, 'Failed to get linter results');
 
 		const matchCount = expected.filter((expectedItem) => {
 			return sortedDiagnostics.some((diag: any) => {
@@ -451,14 +485,18 @@ It returns the number of bytes written and any write error encountered.
 				);
 			});
 		});
-		assert.equal(matchCount.length >= expected.length, true, `Failed to match expected errors \n${JSON.stringify(sortedDiagnostics)} \n VS\n ${JSON.stringify(expected)}`);
+		assert.equal(
+			matchCount.length >= expected.length,
+			true,
+			`Failed to match expected errors \n${JSON.stringify(sortedDiagnostics)} \n VS\n ${JSON.stringify(expected)}`
+		);
 	});
 
-	test('Test Generate unit tests skeleton for file', async () => {
+	test('Test Generate unit tests skeleton for file', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
@@ -470,11 +508,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test Generate unit tests skeleton for a function', async () => {
+	test('Test Generate unit tests skeleton for a function', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generateFunctionTestSourcePath, 'generatetests.go'));
@@ -487,11 +525,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
 	});
 
-	test('Test Generate unit tests skeleton for package', async () => {
+	test('Test Generate unit tests skeleton for package', async function () {
 		const gotestsPath = getBinPath('gotests');
 		if (gotestsPath === 'gotests') {
 			// gotests is not installed, so skip the test
-			return;
+			this.skip();
 		}
 
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
@@ -504,6 +542,11 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Test diffUtils.getEditsFromUnifiedDiffStr', async function () {
+		// Run this test only in module mode.
+		if (!isModuleMode) {
+			this.skip();
+		}
+
 		if (process.platform === 'win32') {
 			// This test requires diff tool that's not available on windows
 			this.skip();
@@ -543,7 +586,11 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(editor.document.getText(), file2contents);
 	});
 
-	test('Test diffUtils.getEdits', async () => {
+	test('Test diffUtils.getEdits', async function () {
+		if (!isModuleMode) {
+			this.skip();
+		} // Run this test only in module mode.
+
 		const file1path = path.join(fixturePath, 'diffTest2Data', 'file1.go');
 		const file2path = path.join(fixturePath, 'diffTest2Data', 'file2.go');
 		const file1uri = vscode.Uri.file(file1path);
@@ -663,13 +710,14 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false);
 	});
 
-	test('Replace vendor packages with relative path', async () => {
+	test('Replace vendor packages with relative path', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
-		const vendorPkgsFullPath = [
-			'test/testfixture/vendoring/vendor/example.com/vendorpls',
-		];
+		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
 		const vendorPkgsRelativePath = ['example.com/vendorpls'];
 
 		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
@@ -723,12 +771,13 @@ It returns the number of bytes written and any write error encountered.
 		}
 	});
 
-	test('Vendor pkgs from other projects should not be allowed to import', async () => {
+	test('Vendor pkgs from other projects should not be allowed to import', async function () {
+		if (isModuleMode) {
+			this.skip();
+		} // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
-		const vendorPkgs = [
-			'test/testfixture/vendoring/vendor/example.com/vendorpls',
-		];
+		const vendorPkgs = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
 
 		const gopkgsPromise = new Promise<void>((resolve, reject) => {
 			const cmd = cp.spawn(getBinPath('gopkgs'), ['-format', '{{.ImportPath}}'], {
@@ -1145,7 +1194,13 @@ encountered.
 		await Promise.all([symbolFollowedByBrackets, symbolAsLastParameter, symbolsAsNonLastParameter]);
 	});
 
-	test('Test Completion on unimported packages', async () => {
+	test('Test Completion on unimported packages', async function () {
+		if (isModuleMode) {
+			this.skip();
+		}
+		// gocode-gomod does not handle unimported package completion.
+		// Skip if we run in module mode.
+
 		const config = Object.create(getGoConfig(), {
 			autocompleteUnimportedPackages: { value: true }
 		});
@@ -1245,7 +1300,8 @@ encountered.
 				assert.equal(
 					expected.length,
 					labels.length,
-					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${position.line + 1
+					`expected number of completions: ${expected.length} Actual: ${labels.length} at position(${
+						position.line + 1
 					},${position.character + 1}) ${labels}`
 				);
 				expected.forEach((entry, index) => {
@@ -1390,28 +1446,40 @@ encountered.
 			}) as vscode.WorkspaceConfiguration;
 
 			const diagnostics = await check(fileUri, cfg);
-			return ([] as string[]).concat(...diagnostics.map<string[]>((d) => {
-				return d.errors.map((e) => e.msg) as string[];
-			}));
+			return ([] as string[]).concat(
+				...diagnostics.map<string[]>((d) => {
+					return d.errors.map((e) => e.msg) as string[];
+				})
+			);
 		};
 
 		const errors1 = await checkWithTags('randomtag');
-		assert.deepEqual(errors1, ['undefined: fmt.Prinln'], 'check with buildtag "randomtag" failed. Unexpected errors found.');
+		assert.deepEqual(
+			errors1,
+			['undefined: fmt.Prinln'],
+			'check with buildtag "randomtag" failed. Unexpected errors found.'
+		);
 
 		// TODO(hyangah): after go1.13, -tags expects a comma-separated tag list.
 		// For backwards compatibility, space-separated tag lists are still recognized,
 		// but change to a space-separated list once we stop testing with go1.12.
 		const errors2 = await checkWithTags('randomtag other');
-		assert.deepEqual(errors2, ['undefined: fmt.Prinln'],
-			'check with multiple buildtags "randomtag,other" failed. Unexpected errors found.');
+		assert.deepEqual(
+			errors2,
+			['undefined: fmt.Prinln'],
+			'check with multiple buildtags "randomtag,other" failed. Unexpected errors found.'
+		);
 
 		const errors3 = await checkWithTags('');
-		assert.equal(errors3.length, 1,
-			'check without buildtag failed. Unexpected number of errors found' + JSON.stringify(errors3));
+		assert.equal(
+			errors3.length,
+			1,
+			'check without buildtag failed. Unexpected number of errors found' + JSON.stringify(errors3)
+		);
 		const errMsg = errors3[0];
 		assert.ok(
-			errMsg.includes(`can't load package: package test/testfixture/buildTags`) ||
-			errMsg.includes(`build constraints exclude all Go files`),
+			errMsg.includes("can't load package: package test/testfixture/buildTags") ||
+				errMsg.includes('build constraints exclude all Go files'),
 			`check without buildtags failed. Go files not excluded. ${errMsg}`
 		);
 	});
@@ -1467,7 +1535,7 @@ encountered.
 		if (eol === vscode.EndOfLine.LF) {
 			return strWithLF;
 		}
-		return strWithLF.split('\n').join('\r\n');  // replaceAll.
+		return strWithLF.split('\n').join('\r\n'); // replaceAll.
 	}
 
 	test('Add imports when no imports', async () => {
@@ -1494,9 +1562,9 @@ encountered.
 		await vscode.window.showTextDocument(document);
 		const eol = document.eol;
 
-		const expectedText = document.getText().replace(
-			fixEOL(eol, '\t"fmt"\n\t"math"'),
-			fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
+		const expectedText = document
+			.getText()
+			.replace(fixEOL(eol, '\t"fmt"\n\t"math"'), fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1531,10 +1599,7 @@ encountered.
 
 		const expectedText = document
 			.getText()
-			.replace(
-				fixEOL(eol, 'import "math"'),
-				fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)')
-			);
+			.replace(fixEOL(eol, 'import "math"'), fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
 		edit.set(document.uri, edits);
@@ -1568,4 +1633,14 @@ encountered.
 		await runFillStruct(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
+};
+
+suite('Go Extension Tests (GOPATH mode)', function () {
+	this.timeout(20000);
+	testAll(false);
+});
+
+suite('Go Extension Tests (Module mode)', function () {
+	this.timeout(20000);
+	testAll(true);
 });

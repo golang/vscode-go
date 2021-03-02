@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Modification copyright 2020 The Go Authors. All rights reserved.
@@ -10,15 +11,20 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
-import { buildLanguageServerConfig, getLocalGoplsVersion, languageServerIsRunning, serverOutputChannel } from './goLanguageServer';
+import {
+	buildLanguageServerConfig,
+	getLocalGoplsVersion,
+	languageServerIsRunning,
+	serverOutputChannel
+} from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
 import { allToolsInformation } from './goTools';
 import { getGoVersion } from './util';
 
-export let outputChannel = vscode.window.createOutputChannel('Go');
+export const outputChannel = vscode.window.createOutputChannel('Go');
 
-export let diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+export const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
 // statusbar item for switching the Go environment
 export let goEnvStatusbarItem: vscode.StatusBarItem;
@@ -34,7 +40,7 @@ export function updateGoStatusBar(editor: vscode.TextEditor) {
 	if (!!editor && isGoFile(editor.document)) {
 		isModSupported(editor.document.uri).then((isMod) => {
 			if (isMod) {
-				getModFolderPath(editor.document.uri).then((p) => modulePath = p);
+				getModFolderPath(editor.document.uri).then((p) => (modulePath = p));
 			} else {
 				modulePath = '';
 			}
@@ -44,8 +50,8 @@ export function updateGoStatusBar(editor: vscode.TextEditor) {
 
 export async function expandGoStatusBar() {
 	const options = [
-		{label: `Locate Configured Go Tools`, description: 'display go env'},
-		{label: `Choose Go Environment`}
+		{ label: 'Locate Configured Go Tools', description: 'display go env' },
+		{ label: 'Choose Go Environment' }
 	];
 
 	// Get the gopls configuration
@@ -53,37 +59,38 @@ export async function expandGoStatusBar() {
 	const cfg = buildLanguageServerConfig(goConfig);
 	if (languageServerIsRunning && cfg.serverName === 'gopls') {
 		const goplsVersion = await getLocalGoplsVersion(cfg);
-		options.push({label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}`});
+		options.push({ label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}` });
 	}
 	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer'] === true) {
 		options.push({
-			label: `Install Go Language Server`,
-			description: `${languageServerErrorIcon}'gopls' is required but missing`});
+			label: 'Install Go Language Server',
+			description: `${languageServerErrorIcon}'gopls' is required but missing`
+		});
 	}
 
 	// If modules is enabled, add link to mod file
-	if (!!modulePath) {
-		options.push({label: `Open 'go.mod'`, description: path.join(modulePath, 'go.mod')});
+	if (modulePath) {
+		options.push({ label: "Open 'go.mod'", description: path.join(modulePath, 'go.mod') });
 	}
 
 	vscode.window.showQuickPick(options).then((item) => {
-		if (!!item) {
+		if (item) {
 			switch (item.label) {
-				case `Locate Configured Go Tools`:
+				case 'Locate Configured Go Tools':
 					vscode.commands.executeCommand('go.locate.tools');
 					break;
-				case `Choose Go Environment`:
+				case 'Choose Go Environment':
 					vscode.commands.executeCommand('go.environment.choose');
 					break;
 				case `${languageServerIcon}Open 'gopls' trace`:
-					if (!!serverOutputChannel) {
+					if (serverOutputChannel) {
 						serverOutputChannel.show();
 					}
 					break;
-				case `Install Go Language Server`:
+				case 'Install Go Language Server':
 					vscode.commands.executeCommand('go.tools.install', [allToolsInformation['gopls']]);
 					break;
-				case `Open 'go.mod'`:
+				case "Open 'go.mod'":
 					const openPath = vscode.Uri.file(item.description);
 					vscode.workspace.openTextDocument(openPath).then((doc) => {
 						vscode.window.showTextDocument(doc);
@@ -92,7 +99,6 @@ export async function expandGoStatusBar() {
 			}
 		}
 	});
-
 }
 
 /**
@@ -113,7 +119,6 @@ export async function initGoStatusBar() {
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
 	const goConfig = getGoConfig();
-	const cfg = buildLanguageServerConfig(goConfig);
 	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer'] === true);
 
 	showGoStatusBar();
@@ -147,10 +152,10 @@ export function updateLanguageServerIconGoStatusBar(started: boolean, enabled: b
  * disable the Go status bar items
  */
 export function disposeGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
+	if (goEnvStatusbarItem) {
 		goEnvStatusbarItem.dispose();
 	}
-	if (!!terminalCreationListener) {
+	if (terminalCreationListener) {
 		terminalCreationListener.dispose();
 	}
 	removeGoStatus();
@@ -160,7 +165,7 @@ export function disposeGoStatusBar() {
  * Show the Go statusbar items on the statusbar
  */
 export function showGoStatusBar() {
-	if (!!goEnvStatusbarItem) {
+	if (goEnvStatusbarItem) {
 		goEnvStatusbarItem.show();
 	}
 }

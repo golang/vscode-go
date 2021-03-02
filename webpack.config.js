@@ -10,7 +10,6 @@ const config = {
 	entry: {
 		goMain: './src/goMain.ts',
 		debugAdapter: './src/debugAdapter/goDebug.ts',
-		debugAdapter2: './src/debugAdapter2/goDlvDebugMain.ts',
 	},
 	output: {
 		path: path.resolve(__dirname, 'dist'),
@@ -43,10 +42,6 @@ const config = {
 	optimization: {
 		// when this is true, the debugger breaks...
 		minimize: false
-	},
-	stats: {
-		// Ignore warnings due to yarg's dynamic module loading
-		warningsFilter: [/node_modules\/yargs/]
 	},
 };
 module.exports = config;

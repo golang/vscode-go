@@ -114,7 +114,7 @@ dlvFlags   | Extra flags passed to `dlv`. See `dlv help` for the full list of su
 remotePath | If remote debugging (`mode`: `remote`), this should be the absolute path to the package being debugged on the remote machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant. Becomes the first mapping in substitutePath.
 substitutePath | An array of mappings from an absolute local path to an absolute remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. The mappings are applied in order, and the first matching mapping is used. This can be used to map files that have moved since the program was built, different remote paths, and symlinked files or directories. This is intended to be equivalent to the [substitute-path](https://github.com/go-delve/delve/tree/master/Documentation/cli#config) configuration, and will eventually configure substitute-path in Delve directly.
 cwd | The working directory to be used in running the program. If remote debugging (`mode`: `remote`), this should be the absolute path to the working directory being debugged on the local machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
-processId  | This is the process ID of the executable you want to debug. Applicable only when using the `attach` request in `local` mode.
+processId  | This is the process ID of the executable you want to debug. Applicable only when using the `attach` request in `local` mode. By setting this to the command name of the process, `${command:pickProcess}`, or`${command:pickGoProcess}` a quick pick menu will show a list of processes to choose from.
 
 ### Specifying [build tags](https://golang.org/pkg/go/build/#hdr-Build_Constraints)
 
@@ -140,7 +140,7 @@ in your launch configuration. This property supports multiple tags, which you ca
 
 ### Specifying other build flags
 
-The flags specified in `buildFlags` and `env.GOFLAGS` are passed to the Go compiler when building your program for debugging. Delve adds `--gcflags='all=-N -l'` to the list of build flags to disable optimizations. User specified buildFlags conflict with this setting, so the extension removes them ([Issue #117](https://github.com/golang/vscode-go/issues/117)). If you wish to debug a program using custom `--gcflags`, build the program using `go build` and launch using `exec` mode:
+The flags specified in `buildFlags` and `env.GOFLAGS` are passed to the Go compiler when building your program for debugging. Delve adds `-gcflags='all=-N -l'` to the list of build flags to disable optimizations. User specified buildFlags conflict with this setting, so the extension removes them ([Issue #117](https://github.com/golang/vscode-go/issues/117)). If you wish to debug a program using custom `-gcflags`, build the program using `go build` and launch using `exec` mode:
 
 ```json
 {
@@ -218,7 +218,7 @@ Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS 
 
 #### Attach to a running local process via its process ID (`Go: Attach to local process`)
 
-Substitute the `0` below for the process ID (pid) of the process.
+Substitute `processName` with the name of the local process.
 
 ```json5
 {
@@ -226,7 +226,7 @@ Substitute the `0` below for the process ID (pid) of the process.
     "type": "go",
     "request": "attach",
     "mode": "local",
-    "processId": 0
+    "processId": "processName"
 }
 ```
 

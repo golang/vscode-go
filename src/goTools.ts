@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,7 +7,6 @@
 'use strict';
 
 import cp = require('child_process');
-import fs = require('fs');
 import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
@@ -199,16 +199,16 @@ export const allToolsInformation: { [key: string]: Tool } = {
 			}
 			try {
 				const execFile = util.promisify(cp.execFile);
-				const { stderr } = await execFile(toolBinPath, ['close'], {env, timeout: 10000});  // give 10sec.
-				if (stderr.indexOf(`rpc: can't find service Server.`) > -1) {
-					return `Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.`;
+				const { stderr } = await execFile(toolBinPath, ['close'], { env, timeout: 10000 }); // give 10sec.
+				if (stderr.indexOf("rpc: can't find service Server.") > -1) {
+					return 'Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.';
 				}
 			} catch (err) {
 				// This may fail if gocode isn't already running.
 				console.log(`gocode close failed: ${err}`);
 			}
 			return '';
-		},
+		}
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
@@ -216,21 +216,21 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		replacedByGopls: true,
 		description: 'Auto-completion, works with modules',
-		minimumGoVersion: semver.coerce('1.11'),
+		minimumGoVersion: semver.coerce('1.11')
 	},
 	'gopkgs': {
 		name: 'gopkgs',
 		importPath: 'github.com/uudashr/gopkgs/v2/cmd/gopkgs',
-		replacedByGopls: false,  // TODO(github.com/golang/vscode-go/issues/258): disable Add Import command.
+		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/258): disable Add Import command.
 		isImportant: true,
 		description: 'Auto-completion of unimported packages & Add Import feature'
 	},
 	'go-outline': {
 		name: 'go-outline',
 		importPath: 'github.com/ramya-rao-a/go-outline',
-		replacedByGopls: false,  // TODO(github.com/golang/vscode-go/issues/1020): replace with Gopls.
+		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/1020): replace with Gopls.
 		isImportant: true,
-		description: 'Go to symbol in file'  // GoDocumentSymbolProvider, used by 'run test' codelens
+		description: 'Go to symbol in file' // GoDocumentSymbolProvider, used by 'run test' codelens
 	},
 	'go-symbols': {
 		name: 'go-symbols',
@@ -277,7 +277,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gotype-live': {
 		name: 'gotype-live',
 		importPath: 'github.com/tylerb/gotype-live',
-		replacedByGopls: true,  // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
+		replacedByGopls: true, // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
 		isImportant: false,
 		description: 'Show errors as you type'
 	},
@@ -336,7 +336,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Generate unit tests',
-		minimumGoVersion: semver.coerce('1.9'),
+		minimumGoVersion: semver.coerce('1.9')
 	},
 	// TODO(github.com/golang/vscode-go/issues/189): consider disabling lint when gopls is turned on.
 	'golint': {
@@ -345,7 +345,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter',
-		minimumGoVersion: semver.coerce('1.9'),
+		minimumGoVersion: semver.coerce('1.9')
 	},
 	'staticcheck': {
 		name: 'staticcheck',
@@ -370,14 +370,14 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gopls': {
 		name: 'gopls',
 		importPath: 'golang.org/x/tools/gopls',
-		replacedByGopls: false,  // lol
+		replacedByGopls: false, // lol
 		isImportant: true,
 		description: 'Language Server from Google',
 		minimumGoVersion: semver.coerce('1.12'),
 		latestVersion: semver.coerce('0.6.4'),
 		latestVersionTimestamp: moment('2021-01-19', 'YYYY-MM-DD'),
 		latestPrereleaseVersion: semver.coerce('0.6.4'),
-		latestPrereleaseVersionTimestamp: moment('2021-01-19', 'YYYY-MM-DD'),
+		latestPrereleaseVersionTimestamp: moment('2021-01-19', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',

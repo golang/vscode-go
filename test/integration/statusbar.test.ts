@@ -1,3 +1,5 @@
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Modification copyright 2020 The Go Authors. All rights reserved.
@@ -13,24 +15,24 @@ import * as path from 'path';
 import * as sinon from 'sinon';
 import * as util from 'util';
 import * as vscode from 'vscode';
-
 import {
 	formatGoVersion,
 	getGoEnvironmentStatusbarItem,
 	getSelectedGo,
 	GoEnvironmentOption,
-	setSelectedGo,
+	setSelectedGo
 } from '../../src/goEnvironmentStatus';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { disposeGoStatusBar } from '../../src/goStatus';
 import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
-import ourutil = require('../../src/util');
 import { getCurrentGoRoot } from '../../src/utils/pathUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
+import ourutil = require('../../src/util');
+
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
-		await updateGoVarsFromConfig();  // should initialize the status bar.
+		await updateGoVarsFromConfig(); // should initialize the status bar.
 	});
 
 	this.afterAll(() => {
@@ -49,11 +51,7 @@ describe('#initGoStatusBar()', function () {
 		if (iconPos >= 0) {
 			label = label.substring(0, iconPos);
 		}
-		assert.equal(
-			label,
-			versionLabel,
-			'goroot version does not match status bar item text'
-		);
+		assert.equal(label, versionLabel, 'goroot version does not match status bar item text');
 	});
 });
 
@@ -137,8 +135,12 @@ describe('#updateGoVarsFromConfig()', async function () {
 		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'testhelpers');
 		const execFile = util.promisify(cp.execFile);
 		const goRuntimePath = ourutil.getBinPath('go');
-		const { stderr } = await execFile(
-			goRuntimePath, ['build', '-o', path.join(tmpRootBin, 'go'), path.join(fixtureSourcePath, 'fakego.go')]);
+		const { stderr } = await execFile(goRuntimePath, [
+			'build',
+			'-o',
+			path.join(tmpRootBin, 'go'),
+			path.join(fixtureSourcePath, 'fakego.go')
+		]);
 		if (stderr) {
 			assert.fail(`failed to build the fake go binary required for testing: ${stderr}`);
 		}
@@ -173,8 +175,11 @@ describe('#updateGoVarsFromConfig()', async function () {
 
 		const b = getGoEnvironmentStatusbarItem();
 		assert.ok(b.text.startsWith('Go'), `go env statusbar item = ${b.text}, want "Go..."`);
-		assert.equal(pathEnvVar()[0], [path.join(getCurrentGoRoot(), 'bin')],
-			`the first element in PATH must match the current GOROOT/bin`);
+		assert.equal(
+			pathEnvVar()[0],
+			[path.join(getCurrentGoRoot(), 'bin')],
+			'the first element in PATH must match the current GOROOT/bin'
+		);
 	});
 
 	it('should recognize the adjusted goroot using go.goroot', async () => {
@@ -186,8 +191,11 @@ describe('#updateGoVarsFromConfig()', async function () {
 
 		assert.equal((await ourutil.getGoVersion()).format(), '2.0.0');
 		assert.equal(getGoEnvironmentStatusbarItem().text, 'Go 2.0.0');
-		assert.equal(pathEnvVar()[0], [path.join(getCurrentGoRoot(), 'bin')],
-			`the first element in PATH must match the current GOROOT/bin`);
+		assert.equal(
+			pathEnvVar()[0],
+			[path.join(getCurrentGoRoot(), 'bin')],
+			'the first element in PATH must match the current GOROOT/bin'
+		);
 	});
 
 	it('should recognize the adjusted goroot using go.alternateTools', async () => {
@@ -201,7 +209,10 @@ describe('#updateGoVarsFromConfig()', async function () {
 
 		assert.equal((await ourutil.getGoVersion()).format(), '3.0.0');
 		assert.equal(getGoEnvironmentStatusbarItem().text, 'Go 3.0.0');
-		assert.equal(pathEnvVar()[0], [path.join(getCurrentGoRoot(), 'bin')],
-			`the first element in PATH must match the current GOROOT/bin`);
+		assert.equal(
+			pathEnvVar()[0],
+			[path.join(getCurrentGoRoot(), 'bin')],
+			'the first element in PATH must match the current GOROOT/bin'
+		);
 	});
 });

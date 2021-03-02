@@ -32,9 +32,6 @@
     "email": "peteris.krumins@gmail.com",
     "url": "http://www.catonmat.net"
   },
-  "bin": {
-    "tree-kill": "cli.js"
-  },
   "bugs": {
     "url": "https://github.com/pkrumins/node-tree-kill/issues"
   },
@@ -55,9 +52,6 @@
     }
   ],
   "description": "kill trees of processes",
-  "devDependencies": {
-    "mocha": "^2.2.5"
-  },
   "homepage": "https://github.com/pkrumins/node-tree-kill",
   "keywords": [
     "tree",
@@ -73,9 +67,6 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/pkrumins/node-tree-kill.git"
-  },
-  "scripts": {
-    "test": "mocha"
   },
   "types": "index.d.ts",
   "version": "1.2.2"
