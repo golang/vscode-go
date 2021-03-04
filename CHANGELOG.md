@@ -1,11 +1,5 @@
 ## v0.23.0 - 4th Mar, 2021
 
-Delve DAP is a new debug adapter embedded in `dlv`, the Go debugger.
-It is written in Go, understands Go's data types and runtime better,
-and is under active development. In this release, we added back
-access to Delve DAP. Delve DAP is still in the experimental stage
-and we appreciate any feedback and bug reports!
-
 A list of all issues and changes can be found in the
 [v0.23.0 milestone](https://github.com/golang/vscode-go/milestone/21?closed=1)
 and the [changes since v0.22.1](https://github.com/golang/vscode-go/compare/v0.22.1...v0.23.0)
