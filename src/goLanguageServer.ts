@@ -69,6 +69,8 @@ import {
 import { Mutex } from './utils/mutex';
 import { getToolFromToolPath } from './utils/pathUtils';
 import WebRequest = require('web-request');
+import { FoldingContext } from 'vscode';
+import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -495,6 +497,18 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				}
 			},
 			middleware: {
+				provideFoldingRanges: async (
+					doc: vscode.TextDocument,
+					context: FoldingContext,
+					token: CancellationToken,
+					next: ProvideFoldingRangeSignature
+				) => {
+					const ranges = await next(doc, context, token);
+					if ((!ranges || ranges.length === 0) && doc.lineCount > 0) {
+						return undefined;
+					}
+					return ranges;
+				},
 				provideCodeLenses: async (
 					doc: vscode.TextDocument,
 					token: vscode.CancellationToken,
