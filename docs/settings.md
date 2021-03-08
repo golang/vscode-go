@@ -581,13 +581,13 @@ Example Usage:
 
 | Properties | Description |
 | --- | --- |
-| `gc_details` | gc_details controls calculation of gc annotations. <br/> <br/> Default: `false` |
-| `generate` | generate runs `go generate` for a given directory. <br/> <br/> Default: `true` |
-| `regenerate_cgo` | regenerate_cgo regenerates cgo definitions. <br/> <br/> Default: `true` |
-| `test` | test runs `go test` for a specific test function. <br/> <br/> Default: `false` |
-| `tidy` | tidy runs `go mod tidy` for a module. <br/> <br/> Default: `true` |
-| `upgrade_dependency` | upgrade_dependency upgrades a dependency. <br/> <br/> Default: `true` |
-| `vendor` | vendor runs `go mod vendor` for a module. <br/> <br/> Default: `true` |
+| `gc_details` | Toggle the calculation of gc annotations. <br/> Default: `false` |
+| `generate` | Runs `go generate` for a given directory. <br/> Default: `true` |
+| `regenerate_cgo` | Regenerates cgo definitions. <br/> Default: `true` |
+| `test` | Runs `go test` for a specific set of test or benchmark functions. <br/> Default: `false` |
+| `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
+| `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
+| `vendor` | Runs `go mod vendor` for a module. <br/> Default: `true` |
 ### `ui.completion.completionBudget`
 
 (For Debugging) completionBudget is the soft latency goal for completion requests. Most
@@ -672,6 +672,7 @@ Example Usage:
 | `unsafeptr` | check for invalid conversions of uintptr to unsafe.Pointer <br/> The unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer to convert integers to pointers. A conversion from uintptr to unsafe.Pointer is invalid if it implies that there is a uintptr-typed word in memory that holds a pointer value, because that word will be invisible to stack copying and to the garbage collector. <br/> Default: `true` |
 | `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To reduce false positives it ignores: - methods - parameters that do not have a name or are underscored - functions in test files - functions with empty bodies or those with just a return stmt <br/> Default: `false` |
 | `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. This analyzer reports calls to certain functions in which the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
+| `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }<br/>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }<br/>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> <br/> Default: `false` |
 ### `ui.diagnostic.annotations`
 
 (Experimental) annotations specifies the various kinds of optimization diagnostics

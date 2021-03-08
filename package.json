@@ -1851,37 +1851,37 @@
               "properties": {
                 "gc_details": {
                   "type": "boolean",
-                  "markdownDescription": "gc_details controls calculation of gc annotations.\n",
+                  "markdownDescription": "Toggle the calculation of gc annotations.",
                   "default": false
                 },
                 "generate": {
                   "type": "boolean",
-                  "markdownDescription": "generate runs `go generate` for a given directory.\n",
+                  "markdownDescription": "Runs `go generate` for a given directory.",
                   "default": true
                 },
                 "regenerate_cgo": {
                   "type": "boolean",
-                  "markdownDescription": "regenerate_cgo regenerates cgo definitions.\n",
+                  "markdownDescription": "Regenerates cgo definitions.",
                   "default": true
                 },
                 "test": {
                   "type": "boolean",
-                  "markdownDescription": "test runs `go test` for a specific test function.\n",
+                  "markdownDescription": "Runs `go test` for a specific set of test or benchmark functions.",
                   "default": false
                 },
                 "tidy": {
                   "type": "boolean",
-                  "markdownDescription": "tidy runs `go mod tidy` for a module.\n",
+                  "markdownDescription": "Runs `go mod tidy` for a module.",
                   "default": true
                 },
                 "upgrade_dependency": {
                   "type": "boolean",
-                  "markdownDescription": "upgrade_dependency upgrades a dependency.\n",
+                  "markdownDescription": "Upgrades a dependency in the go.mod file for a module.",
                   "default": true
                 },
                 "vendor": {
                   "type": "boolean",
-                  "markdownDescription": "vendor runs `go mod vendor` for a module.\n",
+                  "markdownDescription": "Runs `go mod vendor` for a module.",
                   "default": true
                 }
               }
@@ -2113,6 +2113,11 @@
                   "type": "boolean",
                   "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side effects,\nso it is always a mistake to discard the result. This analyzer reports\ncalls to certain functions in which the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
                   "default": true
+                },
+                "unusedwrite": {
+                  "type": "boolean",
+                  "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}\n",
+                  "default": false
                 }
               }
             },
