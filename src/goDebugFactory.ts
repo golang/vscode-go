@@ -68,14 +68,11 @@ export async function startDapServer(
 	} else {
 		configuration.port = await getPort();
 	}
-	const dlvDapServer = spawnDlvDapServerProcess(configuration);
-	// Wait to give dlv-dap a chance to start before returning.
-	return await new Promise<{ port: number; host: string; dlvDapServer: ChildProcessWithoutNullStreams }>((resolve) =>
-		setTimeout(() => resolve({ port: configuration.port, host: configuration.host, dlvDapServer }), 500)
-	);
+	const dlvDapServer = await spawnDlvDapServerProcess(configuration);
+	return { dlvDapServer, port: configuration.port, host: configuration.host };
 }
 
-function spawnDlvDapServerProcess(launchArgs: DebugConfiguration) {
+async function spawnDlvDapServerProcess(launchArgs: DebugConfiguration): Promise<ChildProcess> {
 	const launchArgsEnv = launchArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
 
@@ -114,30 +111,66 @@ function spawnDlvDapServerProcess(launchArgs: DebugConfiguration) {
 	appendToDebugConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
 
 	const dir = parseProgramArgSync(launchArgs).dirname;
-	const p = spawn(dlvPath, dlvArgs, {
-		cwd: dir,
-		env
-	});
 
-	p.stderr.on('data', (chunk) => {
-		appendToDebugConsole(chunk.toString());
+	return await new Promise<ChildProcess>((resolve, reject) => {
+		const p = spawn(dlvPath, dlvArgs, {
+			cwd: dir,
+			env
+		});
+		let started = false;
+		const timeoutToken: NodeJS.Timer = setTimeout(
+			() => reject(new Error('timed out while waiting for DAP server to start')),
+			5_000
+		);
+
+		const stopWaitingForServerToStart = (err?: string) => {
+			clearTimeout(timeoutToken);
+			started = true;
+			if (err) {
+				killProcessTree(p); // We do not need to wait for p to actually be killed.
+				reject(new Error(err));
+			} else {
+				resolve(p);
+			}
+		};
+
+		p.stdout.on('data', (chunk) => {
+			if (!started) {
+				if (chunk.toString().startsWith('DAP server listening at:')) {
+					stopWaitingForServerToStart();
+				} else {
+					stopWaitingForServerToStart(
+						`Expected 'DAP server listening at:' from debug adapter got '${chunk.toString()}'`
+					);
+				}
+			}
+			appendToDebugConsole(chunk.toString());
+		});
+		p.stderr.on('data', (chunk) => {
+			if (!started) {
+				stopWaitingForServerToStart(`Unexpected error from dlv dap on start: '${chunk.toString()}'`);
+			}
+			appendToDebugConsole(chunk.toString());
+		});
+		p.on('close', (code) => {
+			if (!started) {
+				stopWaitingForServerToStart(`dlv dap closed with code: '${code}' signal: ${p.killed}`);
+			}
+			if (code) {
+				appendToDebugConsole(`Process exiting with code: ${code} signal: ${p.killed}`);
+			} else {
+				appendToDebugConsole(`Process exited normally: ${p.killed}`);
+			}
+		});
+		p.on('error', (err) => {
+			if (!started) {
+				stopWaitingForServerToStart(`Unexpected error from dlv dap on start: '${err}'`);
+			}
+			if (err) {
+				appendToDebugConsole(`Error: ${err}`);
+			}
+		});
 	});
-	p.stdout.on('data', (chunk) => {
-		appendToDebugConsole(chunk.toString());
-	});
-	p.on('close', (code) => {
-		if (code) {
-			appendToDebugConsole(`Process exiting with code: ${code} signal: ${p.killed}`);
-		} else {
-			appendToDebugConsole(`Process exited normally: ${p.killed}`);
-		}
-	});
-	p.on('error', (err) => {
-		if (err) {
-			appendToDebugConsole(`Error: ${err}`);
-		}
-	});
-	return p;
 }
 
 function parseProgramArgSync(
