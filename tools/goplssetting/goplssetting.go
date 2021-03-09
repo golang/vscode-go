@@ -2,16 +2,11 @@
 // Licensed under the MIT License.
 // See LICENSE in the project root for license information.
 
-// This command updates the gopls.* configurations in vscode-go package.json.
-//
-//   Usage: from the project root directory,
-//      $ go run tools/goplssetting/main.go -in ./package.json -out ./package.json
-package main
+package goplssetting
 
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -22,45 +17,25 @@ import (
 	"strings"
 )
 
-var (
-	inPkgJSON  = flag.String("in", "", "input package.json location")
-	outPkgJSON = flag.String("out", "", "output package.json location. If empty, output to the standard output.")
-
-	work = flag.Bool("w", false, "if true, do not delete intermediate files")
-)
-
-func main() {
-	flag.Parse()
-
-	if *inPkgJSON == "" {
-		log.Fatalf("-in file must be specified %q %q", *inPkgJSON, *outPkgJSON)
-	}
-	if _, err := os.Stat(*inPkgJSON); err != nil {
-		log.Fatalf("failed to find input package.json (%q): %v", *inPkgJSON, err)
+// Generate reads package.json and updates the gopls settings section
+// based on `gopls api-json` output. This function requires `jq` to
+// manipulate package.json.
+func Generate(inputFile string, skipCleanup bool) ([]byte, error) {
+	if _, err := os.Stat(inputFile); err != nil {
+		return nil, err
 	}
 
-	out, err := run(*inPkgJSON)
-	if err != nil {
-		log.Fatal(err)
+	if _, err := exec.LookPath("jq"); err != nil {
+		return nil, fmt.Errorf("missing `jq`: %w", err)
 	}
-	if *outPkgJSON != "" {
-		if err := ioutil.WriteFile(*outPkgJSON, out, 0644); err != nil {
-			log.Fatalf("writing jq output to %q failed: %v", out, err)
-		}
-	} else {
-		fmt.Printf("%s", out)
-	}
-}
 
-// run
-func run(orgPkgJSON string) ([]byte, error) {
 	workDir, err := ioutil.TempDir("", "goplssettings")
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("WORK=%v", workDir)
 
-	if !*work {
+	if !skipCleanup {
 		defer os.RemoveAll(workDir)
 	}
 
@@ -87,7 +62,7 @@ func run(orgPkgJSON string) ([]byte, error) {
 		return nil, err
 	}
 
-	return rewritePackageJSON(f.Name(), orgPkgJSON)
+	return rewritePackageJSON(f.Name(), inputFile)
 }
 
 // readGoplsAPI returns the output of `gopls api-json`.
@@ -183,8 +158,7 @@ func toStatus(s string) Status {
 // to update all existing gopls settings with the ones from the newSettings
 // file.
 func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
-	prog := `walk(if type == "object" then with_entries(select(.key | test("^gopls.[a-z]") | not)) else . end) | .contributes.configuration.properties *= $GOPLS_SETTINGS[0]`
-
+	prog := `.contributes.configuration.properties+=$GOPLS_SETTINGS[0]`
 	cmd := exec.Command("jq", "--slurpfile", "GOPLS_SETTINGS", newSettings, prog, inFile)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

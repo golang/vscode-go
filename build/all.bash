@@ -51,7 +51,7 @@ run_test() {
   npm run lint
 
   echo "**** Run settings generator ****"
-  go run tools/generate.go -w=false
+  go run tools/generate.go -w=false -gopls=true
 
   echo "**** Check if vsce works ****"
   vsce package

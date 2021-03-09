@@ -26,7 +26,7 @@ COPY --from=gobuilder /usr/local/go /usr/local/go
 ENV PATH /workspace/vscodego/go/bin:/go/bin:/usr/local/go/bin:${PATH}
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get -qq update && apt-get install -qq -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0 > /dev/null
+RUN apt-get -qq update && apt-get install -qq -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0 jq > /dev/null
 RUN npm install -g typescript vsce
 
 WORKDIR /workspace
