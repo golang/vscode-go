@@ -13,7 +13,7 @@ import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
-import { getGoConfig } from './config';
+import { getGoConfig, IsInCloudIDE } from './config';
 import { toolInstallationEnvironment } from './goEnv';
 import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
@@ -538,6 +538,9 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion() {
+	if (IsInCloudIDE) {
+		return;
+	}
 	const goConfig = getGoConfig();
 	const checkForUpdate = getCheckForToolsUpdatesConfig(goConfig);
 	if (checkForUpdate === 'off' || checkForUpdate === 'local') {

@@ -2,9 +2,14 @@
 // Licensed under the MIT License.
 // See LICENSE in the project root for license information.
 
-// Command generate is used to generate documentation from the package.json.
-// To run:
-// go run tools/generate.go -w
+// Command generate is used to update package.json based on
+// the gopls's API and generate documentation from it.
+//
+// To update documentation based on the current package.json:
+//    go run tools/generate.go
+//
+// To update package.json and generate documentation.
+//    go run tools/generate.go -gopls
 package main
 
 import (
@@ -18,10 +23,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/golang/vscode-go/tools/goplssetting"
 )
 
 var (
-	writeFlag = flag.Bool("w", true, "Write new file contents to disk.")
+	writeFlag               = flag.Bool("w", true, "Write new file contents to disk.")
+	updateGoplsSettingsFlag = flag.Bool("gopls", false, "Update gopls settings in package.json. This is disabled by default because 'jq' tool is needed for generation.")
+
+	debugFlag = flag.Bool("debug", false, "If true, enable extra logging and skip deletion of intermediate files.")
 )
 
 type PackageJSON struct {
@@ -63,11 +73,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	packageJSONFile := filepath.Join(dir, "package.json")
+
 	// Find the package.json file.
-	data, err := ioutil.ReadFile(filepath.Join(dir, "package.json"))
+	data, err := ioutil.ReadFile(packageJSONFile)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if *updateGoplsSettingsFlag {
+		newData, err := updateGoplsSettings(data, packageJSONFile, *debugFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		data = newData
+	}
+
 	pkgJSON := &PackageJSON{}
 	if err := json.Unmarshal(data, pkgJSON); err != nil {
 		log.Fatal(err)
@@ -443,4 +465,25 @@ func gocommentToMarkdown(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func updateGoplsSettings(oldData []byte, packageJSONFile string, debug bool) (newData []byte, _ error) {
+	newData, err := goplssetting.Generate(packageJSONFile, debug)
+	if err != nil { // failed to compute up-to-date gopls settings.
+		return nil, err
+	}
+
+	if bytes.Equal(oldData, newData) {
+		return oldData, nil
+	}
+
+	if !*writeFlag {
+		fmt.Println(`gopls settings section in package.json needs update. To update the settings, run "go run tools/generate.go -w -gopls".`)
+		os.Exit(1) // causes CI to break.
+	}
+
+	if err := ioutil.WriteFile(packageJSONFile, newData, 0644); err != nil {
+		return nil, err
+	}
+	return newData, nil
 }

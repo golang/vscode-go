@@ -68,19 +68,6 @@ export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goV
 	}
 	return importPath;
 }
-/**
- * Returns boolean denoting if the import path for the given tool ends with `/...`
- * and if the version of Go supports installing wildcard paths in module mode.
- * @param tool  	Object of type `Tool` for the Go tool.
- * @param goVersion The current Go version.
- */
-export function disableModulesForWildcard(tool: Tool, goVersion: GoVersion): boolean {
-	const importPath = getImportPath(tool, goVersion);
-	const isWildcard = importPath.endsWith('...');
-
-	// Only Go >= 1.13 supports installing wildcards in module mode.
-	return isWildcard && goVersion.lt('1.13');
-}
 
 export function containsTool(tools: Tool[], tool: Tool): boolean {
 	return tools.indexOf(tool) > -1;
@@ -332,7 +319,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	},
 	'gotests': {
 		name: 'gotests',
-		importPath: 'github.com/cweill/gotests/...',
+		importPath: 'github.com/cweill/gotests/gotests',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Generate unit tests',
@@ -343,13 +330,13 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
 		replacedByGopls: false,
-		isImportant: true,
+		isImportant: false,
 		description: 'Linter',
 		minimumGoVersion: semver.coerce('1.9')
 	},
 	'staticcheck': {
 		name: 'staticcheck',
-		importPath: 'honnef.co/go/tools/...',
+		importPath: 'honnef.co/go/tools/cmd/staticcheck',
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter'

@@ -8,7 +8,6 @@
 // https://github.com/microsoft/vscode-extension-samples/tree/master/webview-sample
 
 import vscode = require('vscode');
-import { getGoConfig } from './config';
 import { extensionId } from './const';
 
 export class WelcomePanel {
@@ -110,7 +109,6 @@ export class WelcomePanel {
 		const scriptPathOnDisk = vscode.Uri.joinPath(this.dataroot, 'welcome.js');
 		const stylePath = vscode.Uri.joinPath(this.dataroot, 'welcome.css');
 		const gopherPath = vscode.Uri.joinPath(this.dataroot, 'go-logo-blue.png');
-		const announcePath = vscode.Uri.joinPath(this.dataroot, 'announce.png');
 		const goExtension = vscode.extensions.getExtension(extensionId)!;
 		const goExtensionVersion = goExtension.packageJSON.version;
 
@@ -118,18 +116,9 @@ export class WelcomePanel {
 		const scriptURI = webview.asWebviewUri(scriptPathOnDisk);
 		const stylesURI = webview.asWebviewUri(stylePath);
 		const gopherURI = webview.asWebviewUri(gopherPath);
-		const announceURI = webview.asWebviewUri(announcePath);
 
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
-
-		// Add an extra note if the user has already disabled gopls, asking
-		// them to enable it.
-		let alreadyDisabledGopls = '';
-		if (getGoConfig()?.get('useLanguageServer') === false) {
-			alreadyDisabledGopls = `If you previously disabled gopls through the "go.useLanguageServer"
-setting, we recommend removing that setting now.`;
-		}
 
 		return `<!DOCTYPE html>
 			<html lang="en">

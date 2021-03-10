@@ -51,7 +51,7 @@ run_test() {
   npm run lint
 
   echo "**** Run settings generator ****"
-  go run tools/generate.go -w=false
+  go run tools/generate.go -w=false -gopls=true
 
   echo "**** Check if vsce works ****"
   vsce package
@@ -115,7 +115,7 @@ install_dependencies() {
 	GO111MODULE=on go get github.com/sqs/goreturns
 	GO111MODULE=on go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
 	GO111MODULE=on go get github.com/zmb3/gogetdoc
-	GO111MODULE=on go get golang.org/x/lint/golint
+	GO111MODULE=on go get honnef.co/go/tools/...
 	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
 	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master
 }

@@ -920,8 +920,8 @@ const testAll = (isDlvDap: boolean) => {
 	// The file paths returned from delve use '/' not the native path
 	// separator, so we can replace any instances of '\' with '/', which
 	// allows the hitBreakpoint check to match.
-	const getBreakpointLocation = (FILE: string, LINE: number, useBackSlash = true) => {
-		return { path: useBackSlash ? FILE.replace(/\\/g, '/') : FILE, line: LINE };
+	const getBreakpointLocation = (FILE: string, LINE: number) => {
+		return { path: FILE.replace(/\\/g, '/'), line: LINE };
 	};
 
 	suite('setBreakpoints', () => {
@@ -1011,31 +1011,6 @@ const testAll = (isDlvDap: boolean) => {
 				breakpoints: [breakpointLocation]
 			});
 			assert.ok(breakpointsResult.success && breakpointsResult.body.breakpoints[0].verified);
-
-			// Calls the helloworld server to make the breakpoint hit.
-			await waitForBreakpoint(
-				() => http.get(`http://localhost:${server}`).on('error', (data) => console.log(data)),
-				breakpointLocation
-			);
-
-			await dc.disconnectRequest({ restart: false });
-			await killProcessTree(remoteProgram);
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
-		});
-
-		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
-			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
-			const BREAKPOINT_LINE = 29;
-			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
-
-			const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
-
-			// Setup attach with a breakpoint.
-			await setUpRemoteAttach(remoteAttachDebugConfig, [breakpointLocation]);
 
 			// Calls the helloworld server to make the breakpoint hit.
 			await waitForBreakpoint(
@@ -1646,7 +1621,7 @@ const testAll = (isDlvDap: boolean) => {
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
 				// Setup attach with a breakpoint.
 				remoteAttachDebugConfig.cwd = tmpDir;
 				remoteAttachDebugConfig.remotePath = '';
@@ -1675,7 +1650,7 @@ const testAll = (isDlvDap: boolean) => {
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
 
-				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE, false);
+				const breakpointLocation = getBreakpointLocation(FILE, BREAKPOINT_LINE);
 				// Setup attach with a breakpoint.
 				remoteAttachDebugConfig.cwd = helloWorldLocal;
 				remoteAttachDebugConfig.remotePath = helloWorldRemote;

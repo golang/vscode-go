@@ -22,6 +22,7 @@ import {
 	ConfigurationParams,
 	ConfigurationRequest,
 	ErrorAction,
+	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	Message,
@@ -31,7 +32,7 @@ import {
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { getGoConfig, getGoplsConfig } from './config';
+import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { extensionId } from './const';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
@@ -69,6 +70,8 @@ import {
 import { Mutex } from './utils/mutex';
 import { getToolFromToolPath } from './utils/pathUtils';
 import WebRequest = require('web-request');
+import { FoldingContext } from 'vscode';
+import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -173,6 +176,9 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
 function scheduleGoplsSuggestions() {
+	if (IsInCloudIDE) {
+		return;
+	}
 	// Some helper functions.
 	const usingGopls = (cfg: LanguageServerConfig): boolean => {
 		return cfg.enabled && cfg.serverName === 'gopls';
@@ -495,6 +501,32 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				}
 			},
 			middleware: {
+				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
+					try {
+						return await next(command, args);
+					} catch (e) {
+						const answer = await vscode.window.showErrorMessage(
+							`Command '${command}' failed: ${e}.`,
+							'Show Trace'
+						);
+						if (answer === 'Show Trace') {
+							serverOutputChannel.show();
+						}
+						return null;
+					}
+				},
+				provideFoldingRanges: async (
+					doc: vscode.TextDocument,
+					context: FoldingContext,
+					token: CancellationToken,
+					next: ProvideFoldingRangeSignature
+				) => {
+					const ranges = await next(doc, context, token);
+					if ((!ranges || ranges.length === 0) && doc.lineCount > 0) {
+						return undefined;
+					}
+					return ranges;
+				},
 				provideCodeLenses: async (
 					doc: vscode.TextDocument,
 					token: vscode.CancellationToken,
@@ -959,7 +991,7 @@ function allFoldersHaveSameGopath(): boolean {
 
 export async function shouldUpdateLanguageServer(tool: Tool, cfg: LanguageServerConfig): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off') {
+	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off' || IsInCloudIDE) {
 		return null;
 	}
 

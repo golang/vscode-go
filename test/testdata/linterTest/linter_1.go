@@ -1,12 +1,17 @@
 package linterTest
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func ExportedFunc() {
-	a := 10
-	func() {
-		a := 20
-	}()
-
-	fmt.Println("OUTER A: ", a)
+	x := compute()
+	if x == nil {
+		fmt.Println("nil pointer received")
+	}
+	// if x is nil, the next line will panic.
+	foo(*x)
 }
+
+func compute() **int { return nil }
+func foo(x *int)     { fmt.Println(*x) }

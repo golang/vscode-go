@@ -235,7 +235,7 @@ Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the langua
 Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
 Allowed Options: `gofmt`, `goimports`, `goreturns`, `goformat`, `gofumpt`, `gofumports`
 
-Default: `"goreturns"`
+Default: `"goimports"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
@@ -312,9 +312,9 @@ Default: `"package"`
 ### `go.lintTool`
 
 Specifies Lint tool name.<br/>
-Allowed Options: `golint`, `golangci-lint`, `revive`, `staticcheck`
+Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
 
-Default: `"golint"`
+Default: `"staticcheck"`
 ### `go.liveErrors`
 
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.
@@ -581,13 +581,13 @@ Example Usage:
 
 | Properties | Description |
 | --- | --- |
-| `gc_details` | gc_details controls calculation of gc annotations. <br/> <br/> Default: `false` |
-| `generate` | generate runs `go generate` for a given directory. <br/> <br/> Default: `true` |
-| `regenerate_cgo` | regenerate_cgo regenerates cgo definitions. <br/> <br/> Default: `true` |
-| `test` | test runs `go test` for a specific test function. <br/> <br/> Default: `false` |
-| `tidy` | tidy runs `go mod tidy` for a module. <br/> <br/> Default: `true` |
-| `upgrade_dependency` | upgrade_dependency upgrades a dependency. <br/> <br/> Default: `true` |
-| `vendor` | vendor runs `go mod vendor` for a module. <br/> <br/> Default: `true` |
+| `gc_details` | Toggle the calculation of gc annotations. <br/> Default: `false` |
+| `generate` | Runs `go generate` for a given directory. <br/> Default: `true` |
+| `regenerate_cgo` | Regenerates cgo definitions. <br/> Default: `true` |
+| `test` | Runs `go test` for a specific set of test or benchmark functions. <br/> Default: `false` |
+| `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
+| `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
+| `vendor` | Runs `go mod vendor` for a module. <br/> Default: `true` |
 ### `ui.completion.completionBudget`
 
 (For Debugging) completionBudget is the soft latency goal for completion requests. Most

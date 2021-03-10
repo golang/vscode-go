@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.23.0",
+  "version": "0.23.1",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -53,11 +53,11 @@
     "moment": "^2.24.0",
     "semver": "^7.3.2",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.42.1",
-    "vscode-debugadapter-testsupport": "^1.42.0",
-    "vscode-debugprotocol": "^1.42.0",
-    "vscode-languageclient": "^7.0.0-next.12",
-    "vscode-languageserver-protocol": "^3.16.0-next.7",
+    "vscode-debugadapter": "^1.44.0",
+    "vscode-debugadapter-testsupport": "^1.44.0",
+    "vscode-debugprotocol": "^1.44.0",
+    "vscode-languageclient": "^7.0.0",
+    "vscode-languageserver-protocol": "^3.16.0",
     "web-request": "^1.0.7"
   },
   "devDependencies": {
@@ -69,7 +69,7 @@
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.41.0",
+    "@types/vscode": "^1.52.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
@@ -87,7 +87,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.46.0"
+    "vscode": "^1.52.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
@@ -967,14 +967,14 @@
         },
         "go.lintTool": {
           "type": "string",
-          "default": "golint",
+          "default": "staticcheck",
           "description": "Specifies Lint tool name.",
           "scope": "resource",
           "enum": [
+            "staticcheck",
             "golint",
             "golangci-lint",
-            "revive",
-            "staticcheck"
+            "revive"
           ]
         },
         "go.lintFlags": {
@@ -1008,7 +1008,7 @@
         },
         "go.formatTool": {
           "type": "string",
-          "default": "goreturns",
+          "default": "goimports",
           "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
           "scope": "resource",
           "enum": [
@@ -1841,37 +1841,37 @@
               "properties": {
                 "gc_details": {
                   "type": "boolean",
-                  "markdownDescription": "gc_details controls calculation of gc annotations.\n",
+                  "markdownDescription": "Toggle the calculation of gc annotations.",
                   "default": false
                 },
                 "generate": {
                   "type": "boolean",
-                  "markdownDescription": "generate runs `go generate` for a given directory.\n",
+                  "markdownDescription": "Runs `go generate` for a given directory.",
                   "default": true
                 },
                 "regenerate_cgo": {
                   "type": "boolean",
-                  "markdownDescription": "regenerate_cgo regenerates cgo definitions.\n",
+                  "markdownDescription": "Regenerates cgo definitions.",
                   "default": true
                 },
                 "test": {
                   "type": "boolean",
-                  "markdownDescription": "test runs `go test` for a specific test function.\n",
+                  "markdownDescription": "Runs `go test` for a specific set of test or benchmark functions.",
                   "default": false
                 },
                 "tidy": {
                   "type": "boolean",
-                  "markdownDescription": "tidy runs `go mod tidy` for a module.\n",
+                  "markdownDescription": "Runs `go mod tidy` for a module.",
                   "default": true
                 },
                 "upgrade_dependency": {
                   "type": "boolean",
-                  "markdownDescription": "upgrade_dependency upgrades a dependency.\n",
+                  "markdownDescription": "Upgrades a dependency in the go.mod file for a module.",
                   "default": true
                 },
                 "vendor": {
                   "type": "boolean",
-                  "markdownDescription": "vendor runs `go mod vendor` for a module.\n",
+                  "markdownDescription": "Runs `go mod vendor` for a module.",
                   "default": true
                 }
               }

@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE in the project root for license information.
 
-package main
+package goplssetting
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ func TestRun(t *testing.T) {
 		t.Skipf("jq is not found (%v), skipping...", err)
 	}
 	testfile := filepath.Join("..", "..", "package.json")
-	got, err := run(testfile)
+	got, err := Generate(testfile, false)
 	if err != nil {
 		t.Fatalf("run failed: %v", err)
 	}
