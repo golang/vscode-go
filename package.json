@@ -1018,7 +1018,7 @@
         },
         "go.formatTool": {
           "type": "string",
-          "default": "goreturns",
+          "default": "goimports",
           "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
           "scope": "resource",
           "enum": [

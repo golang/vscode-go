@@ -116,11 +116,11 @@ It can also be used to provide the [go to definition](features.md#go-to-definiti
 
 * [`gogetdoc`], [`godef`], [`godoc`]: these are documentation tools used for the [go to definition](features.md#go-to-definition), [signature help](features.md#signature-help), and [quick info on hover](features.md#quick-info-on-hover) in the legacy mode. [`guru`](#guru) can also be used, but only for the [go to definition](features.md#go-to-definition) behavior. Configure this via the [`"go.docsTool"`](settings.md#go.docsTool) setting.
 
-* [`goreturns`], [`gofmt`], [`goimports`]: Formatting tools are used by the [formatting and import organization](features.md#format-and-organize-imports) features. [`goreturns`] is used by default in the legacy mode. It formats the file according to the industry standard [`gofmt`] style, organizes imports, and fills in default return values for functions. Other tools can be used for formatting instead; this can be configured with the [`"go.go.formatTool"`](settings.md#formatTool) setting. Note that [`goreturns`] does not have support for Go modules.
+* [`goimports`], [`gofmt`]: Formatting tools are used by the [formatting and import organization](features.md#format-and-organize-imports) features. [`goreturns`] is used by default in the legacy mode. It formats the file according to the industry standard [`gofmt`] style, organizes imports, and fills in default return values for functions. Other tools can be used for formatting instead; this can be configured with the [`"go.go.formatTool"`](settings.md#formatTool) setting.
 
-  * [`goimports`], which applies the default `gofmt` style and organizes imports, but without the behavior of filling in default return values
   * [`gofmt`] only formats the file, without import organization or filling in return values
   * [`goformat`] is a configurable version of [`gofmt`]
+  * [`goreturns`] fills in default return values for functions, in addition to applying `goimports`-style formatting. This tool does not have support for Go modules.
 
 * Diagnostics tools: By default, [`gotype-live`], [`go vet`], and [`golint`] are used to provide [build](features.md#build-errors), [vet](features.md#vet-errors), and [lint](features.md#lint-errors) errors. [`gotype-live`] provides build errors as you type, while `go build` can be used to show build errors only on save. [`gotype-live`] does not work with modules.
 

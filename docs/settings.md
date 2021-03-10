@@ -235,7 +235,7 @@ Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the langua
 Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
 Allowed Options: `gofmt`, `goimports`, `goreturns`, `goformat`, `gofumpt`, `gofumports`
 
-Default: `"goreturns"`
+Default: `"goimports"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
