@@ -21,7 +21,6 @@ import { restartLanguageServer } from './goMain';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
-	disableModulesForWildcard,
 	getConfiguredTools,
 	getImportPath,
 	getImportPathWithVersion,
@@ -158,8 +157,7 @@ export async function installTools(
 
 	const toInstall: Promise<{ tool: Tool; reason: string }>[] = [];
 	for (const tool of missing) {
-		// Disable modules for tools which are installed with the "..." wildcard.
-		const modulesOffForTool = modulesOff || disableModulesForWildcard(tool, goVersion);
+		const modulesOffForTool = modulesOff;
 
 		const reason = installTool(tool, goVersion, envForTools, !modulesOffForTool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
