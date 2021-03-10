@@ -22,6 +22,7 @@ import {
 	ConfigurationParams,
 	ConfigurationRequest,
 	ErrorAction,
+	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	Message,
@@ -500,6 +501,20 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				}
 			},
 			middleware: {
+				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
+					try {
+						return await next(command, args);
+					} catch (e) {
+						const answer = await vscode.window.showErrorMessage(
+							`Command '${command}' failed: ${e}.`,
+							'Show Trace'
+						);
+						if (answer === 'Show Trace') {
+							serverOutputChannel.show();
+						}
+						return null;
+					}
+				},
 				provideFoldingRanges: async (
 					doc: vscode.TextDocument,
 					context: FoldingContext,
