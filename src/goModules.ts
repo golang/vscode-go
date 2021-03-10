@@ -74,7 +74,7 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 			);
 		}
 
-		if (goConfig['useLanguageServer'] === false && goConfig['formatTool'] !== 'goreturns') {
+		if (goConfig['useLanguageServer'] === false && goConfig['formatTool'] === 'goreturns') {
 			const promptFormatToolMsg =
 				'The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".';
 			promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);
