@@ -8,7 +8,14 @@ import vscode = require('vscode');
 import { getFromWorkspaceState, updateWorkspaceState } from './stateUtils';
 
 const WORKSPACE_IS_TRUSTED_KEY = 'WORKSPACE_IS_TRUSTED_KEY';
-const SECURITY_SENSITIVE_CONFIG: string[] = ['goroot', 'gopath', 'toolsGopath', 'alternateTools', 'inferGopath'];
+const SECURITY_SENSITIVE_CONFIG: string[] = [
+	'alternateTools',
+	'gopath',
+	'goroot',
+	'inferGopath',
+	'toolsGopath',
+	'toolsEnvVars'
+];
 
 // Initialize the singleton defaultConfig and register related commands.
 // Prompt if workspace configuration was found but had to be ignored until
