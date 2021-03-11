@@ -13,7 +13,7 @@ import fs = require('fs');
 import path = require('path');
 import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
-import { getGoConfig } from './config';
+import { getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
@@ -51,7 +51,7 @@ const declinedInstalls: Tool[] = [];
 
 export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
-	let allTools = getConfiguredTools(goVersion, getGoConfig());
+	let allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 
 	// exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
@@ -551,7 +551,7 @@ export async function offerToInstallTools() {
 }
 
 function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
-	const keys = getConfiguredTools(goVersion, getGoConfig());
+	const keys = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 	return Promise.all<Tool>(
 		keys.map(
 			(tool) =>

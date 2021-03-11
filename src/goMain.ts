@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, initConfig, IsInCloudIDE } from './config';
+import { getGoConfig, getGoplsConfig, initConfig, IsInCloudIDE } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -925,7 +925,7 @@ async function getConfiguredGoToolsCommand() {
 	outputChannel.appendLine('');
 
 	const goVersion = await getGoVersion();
-	const allTools = getConfiguredTools(goVersion, getGoConfig());
+	const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 
 	allTools.forEach((tool) => {
 		const toolPath = getBinPath(tool.name);

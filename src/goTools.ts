@@ -109,7 +109,11 @@ export function isGocode(tool: Tool): boolean {
 	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
-export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: string]: any }): Tool[] {
+export function getConfiguredTools(
+	goVersion: GoVersion,
+	goConfig: { [key: string]: any },
+	goplsConfig: { [key: string]: any }
+): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
@@ -172,8 +176,12 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 		maybeAddTool(getFormatTool(goConfig));
 	}
 
-	// Add the linter that was chosen by the user.
-	maybeAddTool(goConfig['lintTool']);
+	// Add the linter that was chosen by the user, but don't add staticcheck
+	// if it is enabled via gopls.
+	const goplsStaticheckEnabled = useLanguageServer && goplsStaticcheckEnabled(goConfig, goplsConfig);
+	if (goConfig['lintTool'] !== 'staticcheck' || !goplsStaticheckEnabled) {
+		maybeAddTool(goConfig['lintTool']);
+	}
 
 	// Add the language server if the user has chosen to do so.
 	// Even though we arranged this to run after the first attempt to start gopls
@@ -187,6 +195,17 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 	}
 
 	return tools;
+}
+
+export function goplsStaticcheckEnabled(
+	goConfig: { [key: string]: any },
+	goplsConfig: { [key: string]: any }
+): boolean {
+	if (goConfig['useLanguageServer'] !== true || goplsConfig['ui.diagnostic.staticcheck'] !== true) {
+		return false;
+	}
+	const features = goConfig['languageServerExperimentalFeatures'];
+	return !features || features['diagnostics'] === true;
 }
 
 export const allToolsInformation: { [key: string]: Tool } = {

@@ -5,10 +5,11 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { getGoConfig } from './config';
+import { getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
+import { goplsStaticcheckEnabled } from './goTools';
 import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
 /**
  * Runs linter on the current file, package or workspace.
@@ -28,12 +29,13 @@ export function lintCode(scope?: string) {
 
 	const documentUri = editor ? editor.document.uri : null;
 	const goConfig = getGoConfig(documentUri);
+	const goplsConfig = getGoplsConfig(documentUri);
 
 	outputChannel.clear(); // Ensures stale output from lint on save is cleared
 	diagnosticsStatusBarItem.show();
 	diagnosticsStatusBarItem.text = 'Linting...';
 
-	goLint(documentUri, goConfig, scope)
+	goLint(documentUri, goConfig, goplsConfig, scope)
 		.then((warnings) => {
 			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection, 'go-lint');
 			diagnosticsStatusBarItem.hide();
@@ -54,8 +56,14 @@ export function lintCode(scope?: string) {
 export function goLint(
 	fileUri: vscode.Uri,
 	goConfig: vscode.WorkspaceConfiguration,
+	goplsConfig: vscode.WorkspaceConfiguration,
 	scope?: string
 ): Promise<ICheckResult[]> {
+	const lintTool = goConfig['lintTool'] || 'staticcheck';
+	if (lintTool === 'staticcheck' && goplsStaticcheckEnabled(goConfig, goplsConfig)) {
+		return;
+	}
+
 	epoch++;
 	const closureEpoch = epoch;
 	if (tokenSource) {
@@ -74,7 +82,6 @@ export function goLint(
 		return Promise.resolve([]);
 	}
 
-	const lintTool = goConfig['lintTool'] || 'staticcheck';
 	const lintFlags: string[] = goConfig['lintFlags'] || [];
 	const lintEnv = toolExecutionEnvironment();
 	const args: string[] = [];

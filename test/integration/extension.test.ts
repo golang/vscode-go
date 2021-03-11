@@ -12,7 +12,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
-import { getGoConfig } from '../../src/config';
+import { getGoConfig, getGoplsConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
 import { GoDefinitionProvider } from '../../src/goDeclaration';
@@ -399,10 +399,11 @@ It returns the number of bytes written and any write error encountered.
 			lintTool: { value: process.platform !== 'win32' ? 'sleep' : 'timeout' },
 			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', '2'] }
 		});
+		const goplsConfig = Object.create(getGoplsConfig(), {});
 
 		const results = await Promise.all([
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')), config),
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config)
+			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')), config, goplsConfig),
+			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config, goplsConfig)
 		]);
 		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
 		assert.equal(
@@ -431,6 +432,7 @@ It returns the number of bytes written and any write error encountered.
 				// but this test depends on ST1003 (MixedCaps package name) presented in both files
 				// in the same package. So, enable that.
 			}),
+			Object.create(getGoplsConfig(), {}),
 			'package'
 		);
 
