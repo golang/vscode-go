@@ -552,15 +552,10 @@
                   "test",
                   "exec",
                   "replay",
-                  "coredump"
+                  "record"
                 ],
-                "description": "One of `auto`, `debug`, `test`, `exec`, `remote`, `replay`, `coredump`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
+                "description": "One of `auto`, `debug`, `test`, `exec`, `remote`, `replay`, `record`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
                 "default": "auto"
-              },
-              "traceProgram": {
-                "type": "string",
-                "description": "Compiled program to be targeted. For use on 'replay' mode only",
-                "default": ""
               },
               "traceDirectory": {
                 "type": "string",
@@ -569,7 +564,7 @@
               },
               "coreDumpPath": {
                 "type": "string",
-                "description": "Path to the core dump file to open. For use on 'coredump' mode only",
+                "description": "Path to the core dump file to open. For use on 'replay' mode only",
                 "default": ""
               },
               "stopOnEntry": {
@@ -673,7 +668,7 @@
                   "default",
                   "native",
                   "lldb",
-                  "coredump",
+                  "core",
                   "rr"
                 ],
                 "description": "Backend used by delve. Maps to `dlv`'s `--backend` flag."
