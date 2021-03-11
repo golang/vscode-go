@@ -1525,6 +1525,126 @@ const testAll = (isDlvDap: boolean) => {
 		});
 	});
 
+	suite('switch goroutine', () => {
+		async function runSwitchGoroutineTest(stepFunction: string) {
+			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 14;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			// Clear breakpoints to make sure they do not interrupt the stepping.
+			const breakpointsResult = await dc.setBreakpointsRequest({
+				source: { path: FILE },
+				breakpoints: []
+			});
+			assert.ok(breakpointsResult.success);
+
+			const threadsResponse = await dc.threadsRequest();
+			assert.ok(threadsResponse.success);
+			const run1Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
+			const run2Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
+
+			// runStepFunction runs the necessary step function and resolves if it succeeded.
+			async function runStepFunction(
+				args: { threadId: number },
+				resolve: (value: void | PromiseLike<void>) => void,
+				reject: (reason?: any) => void
+			) {
+				const callback = (resp: any) => {
+					assert.ok(resp.success);
+					resolve();
+				};
+				switch (stepFunction) {
+					case 'next':
+						callback(await dc.nextRequest(args));
+						break;
+					case 'step in':
+						callback(await dc.stepInRequest(args));
+						break;
+					case 'step out':
+						// TODO(suzmue): write a test for step out.
+						reject(new Error('step out will never complete on this program'));
+						break;
+					default:
+						reject(new Error(`not a valid step function ${stepFunction}`));
+				}
+			}
+
+			// The program is currently stopped on the goroutine in main.run2.
+			// Test switching go routines by stepping in:
+			//   1. main.run2
+			//   2. main.run1 (switch routine)
+			//   3. main.run1
+			//   4. main.run2 (switch routine)
+
+			// Next on the goroutine in main.run2
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run2Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run2Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run1
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run1Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run1Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run1
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run1Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run1Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run2
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run2Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run2Goroutine.id);
+				})
+			]);
+		}
+
+		test.skip('next', async () => {
+			// neither debug adapter implements this behavior
+			await runSwitchGoroutineTest('next');
+		});
+
+		test.skip('step in', async () => {
+			// neither debug adapter implements this behavior
+			await runSwitchGoroutineTest('step in');
+		});
+	});
+
 	suite('substitute path', () => {
 		// TODO(suzmue): add unit tests for substitutePath.
 		let tmpDir: string;
