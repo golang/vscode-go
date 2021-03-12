@@ -1,3 +1,9 @@
+## v0.23.2 - 12th Mar, 2021
+
+### Fixes
+
+* Updated the gopls version requirement. v0.23.1 requires v0.6.6+. ([Issue 1300](https://github.com/golang/vscode-go/issues/1300))
+
 ## v0.23.1 - 11th Mar, 2021
 
 🎉 &nbsp;&nbsp;We use [`staticcheck`](https://staticcheck.io/)
