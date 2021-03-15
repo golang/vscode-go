@@ -243,7 +243,7 @@ Allowed Options:
 * `gofumports`: Applies gofumpt formatting and organizes imports.
 
 
-Default: `""`
+Default: `"default"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
