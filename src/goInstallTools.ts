@@ -441,6 +441,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
 		cp.execFile(
 			goRuntimePath,
+			// -json is supported since go1.9
 			['env', '-json', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
 			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
 			(err, stdout, stderr) => {
