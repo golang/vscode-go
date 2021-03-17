@@ -8,6 +8,7 @@
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';
+import { logVerbose } from './goLogging';
 
 // toolInstallationEnvironment returns the environment in which tools should
 // be installed. It always returns a new object.
@@ -58,6 +59,12 @@ export function toolExecutionEnvironment(uri?: vscode.Uri): NodeJS.Dict<string> 
 	const gopath = getCurrentGoPath(uri);
 	if (gopath) {
 		env['GOPATH'] = gopath;
+	}
+
+	// Remove json flag (-json or --json=<any>) from GOFLAGS because it will effect to result format of the execution
+	if (env['GOFLAGS'] && env['GOFLAGS'].includes('-json')) {
+		env['GOFLAGS'] = env['GOFLAGS'].replace(/-?-json[^\s]*\s*/g, '');
+		logVerbose(`removed -json from GOFLAGS: ${env['GOFLAGS']}`);
 	}
 	return env;
 }
