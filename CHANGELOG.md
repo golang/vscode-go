@@ -1,3 +1,42 @@
+## v0.23.3 - 19th Mar, 2021
+
+### Enhancements
+
+* Always check the gopls version before activating automated issue reporter regardless of the gopls update settings.
+* Updated the hard-coded latest gopls version to v0.6.8 and the gopls settings.
+
+## v0.23.2 - 12th Mar, 2021
+
+### Fixes
+
+* Updated the gopls version requirement. v0.23.1 requires v0.6.6+. ([Issue 1300](https://github.com/golang/vscode-go/issues/1300))
+
+## v0.23.1 - 11th Mar, 2021
+
+🎉 &nbsp;&nbsp;We use [`staticcheck`](https://staticcheck.io/)
+as the default lint tool. We also changed to use `goimports` for formatting when not using `gopls`.
+
+This version requires VS Code 1.52 or newer.
+
+A list of all issues and changes can be found in the
+[v0.23.1 milestone](https://github.com/golang/vscode-go/milestone/24?closed=1)
+and the [changes since v0.22.1](https://github.com/golang/vscode-go/compare/v0.23.0...v0.23.1)
+
+### Enhancements
+
+* Changed the default lint/format tools. ([Issue 189](https://github.com/golang/vscode-go/issues/189), [192](https://github.com/golang/vscode-go/issues/192))
+* Enhanced `dlv-dap` start logic ([Issue 1270](https://github.com/golang/vscode-go/issues/1270)) and improved output/error message forwarding. ([CL 296930](https://go-review.googlesource.com/c/vscode-go/+/296930))
+
+### Fixes
+
+* Fixed the spurious popup message about the use of `goreturns`. ([CL 300430](https://go-review.googlesource.com/c/vscode-go/+/300430))
+* Fixed orphaned progress notification after restarting `gopls`. ([Issue 1153](https://github.com/golang/vscode-go/issues/1153))
+* Fixed cryptic error messages that appear when `gopls` commands fail. ([Issue 1237](https://github.com/golang/vscode-go/issues/1237))
+* Fixed incomplete folding range info issue caused by parse errors. Complete fix requires `gopls` v0.6.7+ ([Issue 1224](https://github.com/golang/vscode-go/issues/1224))
+
+### Code Health
+* Updated LSP to 3.16.0 (stable), and DAP to 1.44.0.
+
 ## v0.23.0 - 4th Mar, 2021
 
 Delve DAP is a new debug adapter embedded in `dlv`, the Go debugger.
