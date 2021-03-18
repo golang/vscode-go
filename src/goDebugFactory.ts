@@ -193,7 +193,8 @@ function parseProgramArgSync(
 	return { program, dirname, programIsDirectory };
 }
 
-function appendToDebugConsole(msg: string) {
+// appendToDebugConsole is declared as an exported const rather than a function, so it can be stubbbed in testing.
+export const appendToDebugConsole = (msg: string) => {
 	// TODO(hyangah): use color distinguishable from the color used from print.
 	vscode.debug.activeDebugConsole.append(msg);
-}
+};

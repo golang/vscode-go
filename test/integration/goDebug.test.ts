@@ -10,6 +10,7 @@ import * as http from 'http';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import * as sinon from 'sinon';
+import * as factory from '../../src/goDebugFactory';
 import { DebugConfiguration } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -315,6 +316,11 @@ const testAll = (isDlvDap: boolean) => {
 
 			// Launching delve may take longer than the default timeout of 5000.
 			dc.defaultTimeout = 20_000;
+
+			// Change the output to be printed to the console.
+			sinon.stub(factory, 'appendToDebugConsole').callsFake((msg: string) => {
+				console.log(msg);
+			});
 			return;
 		}
 
@@ -325,7 +331,10 @@ const testAll = (isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(async () => await dc.stop());
+	teardown(async () => {
+		await dc.stop();
+		sinon.restore();
+	});
 
 	/**
 	 * This function sets up a server that returns helloworld on serverPort.
@@ -1142,7 +1151,6 @@ const testAll = (isDlvDap: boolean) => {
 					.then(() => {
 						return dc.configurationDoneRequest();
 					}),
-
 				dc.launch(debugConfig),
 
 				dc.assertStoppedLocation('breakpoint', location)
@@ -1672,6 +1680,11 @@ const testAll = (isDlvDap: boolean) => {
 	});
 
 	async function initializeDebugConfig(config: DebugConfiguration) {
+		if (isDlvDap) {
+			config['logOutput'] = 'dap';
+			config['showLog'] = true;
+		}
+
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
 			const { port } = await startDapServer(debugConfig);
