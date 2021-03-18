@@ -448,7 +448,8 @@ export function updateGoVarsFromConfig(): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
 		cp.execFile(
 			goRuntimePath,
-			['env', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
+			// -json is supported since go1.9
+			['env', '-json', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
 			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
 			(err, stdout, stderr) => {
 				if (err) {
@@ -469,21 +470,15 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					outputChannel.show();
 				}
 				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
-				const envOutput = stdout.split('\n');
-				if (!process.env['GOPATH'] && envOutput[0].trim()) {
-					process.env['GOPATH'] = envOutput[0].trim();
+				const envOutput = JSON.parse(stdout);
+				if (envOutput.GOROOT && envOutput.GOROOT.trim()) {
+					setCurrentGoRoot(envOutput.GOROOT.trim());
+					delete envOutput.GOROOT;
 				}
-				if (envOutput[1] && envOutput[1].trim()) {
-					setCurrentGoRoot(envOutput[1].trim());
-				}
-				if (!process.env['GOPROXY'] && envOutput[2] && envOutput[2].trim()) {
-					process.env['GOPROXY'] = envOutput[2].trim();
-				}
-				if (!process.env['GOBIN'] && envOutput[3] && envOutput[3].trim()) {
-					process.env['GOBIN'] = envOutput[3].trim();
-				}
-				if (!process.env['GOMODCACHE'] && envOutput[4] && envOutput[4].trim()) {
-					process.env['GOMODCACHE'] = envOutput[4].trim();
+				for (const envName in envOutput) {
+					if (!process.env[envName] && envOutput[envName] && envOutput[envName].trim()) {
+						process.env[envName] = envOutput[envName].trim();
+					}
 				}
 
 				// cgo, gopls, and other underlying tools will inherit the environment and attempt
