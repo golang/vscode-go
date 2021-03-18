@@ -1,3 +1,10 @@
+## v0.23.3 - 19th Mar, 2021
+
+### Enhancements
+
+* Always check the gopls version before activating automated issue reporter regardless of the gopls update settings.
+* Updated the hard-coded latest gopls version to v0.6.8 and the gopls settings.
+
 ## v0.23.2 - 12th Mar, 2021
 
 ### Fixes
