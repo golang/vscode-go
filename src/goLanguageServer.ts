@@ -1008,9 +1008,13 @@ function allFoldersHaveSameGopath(): boolean {
 	return vscode.workspace.workspaceFolders.find((x) => tempGopath !== getCurrentGoPath(x.uri)) ? false : true;
 }
 
-export async function shouldUpdateLanguageServer(tool: Tool, cfg: LanguageServerConfig): Promise<semver.SemVer> {
+export async function shouldUpdateLanguageServer(
+	tool: Tool,
+	cfg: LanguageServerConfig,
+	mustCheck?: boolean
+): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls' || cfg.checkForUpdates === 'off' || IsInCloudIDE) {
+	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || IsInCloudIDE))) {
 		return null;
 	}
 
@@ -1488,7 +1492,7 @@ async function suggestGoplsIssueReport(
 	// just prompt them to update, not file an issue.
 	const tool = getTool('gopls');
 	if (tool) {
-		const versionToUpdate = await shouldUpdateLanguageServer(tool, latestConfig);
+		const versionToUpdate = await shouldUpdateLanguageServer(tool, latestConfig, true);
 		if (versionToUpdate) {
 			promptForUpdatingTool(tool.name, versionToUpdate, true);
 			return;
@@ -1567,6 +1571,7 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 				// Get the user's version in case the update prompt above failed.
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
 				const extInfo = getExtensionInfo();
+				const goVersion = await getGoVersion();
 				const settings = latestConfig.flags.join(' ');
 				const title = `gopls: automated issue report (${errKind})`;
 				const goplsLog = sanitizedLog
@@ -1583,7 +1588,9 @@ Failed to auto-collect gopls trace: ${failureReason}.
 				const body = `
 gopls version: ${usersGoplsVersion}
 gopls flags: ${settings}
+update flags: ${latestConfig.checkForUpdates}
 extension version: ${extInfo.version}
+go version: ${goVersion?.format(true)}
 environment: ${extInfo.appName} ${process.platform}
 initialization error: ${initializationError}
 manual restart count: ${manualRestartCount}

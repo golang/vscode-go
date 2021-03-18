@@ -277,8 +277,7 @@ export async function installTool(
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goBinary, args, opts);
 		output = `${stdout} ${stderr}`;
-		logVerbose('install: %s %s\n%s%s', goBinary, args.join(' '), stdout, stderr);
-
+		logVerbose(`install: ${goBinary} ${args.join(' ')}\n${stdout}${stderr}`);
 		if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
 			// Actual installation of the -gomod tool and dlv-dap is done by running go build.
 			const gopath = env['GOBIN'] || env['GOPATH'];
