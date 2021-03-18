@@ -63,7 +63,7 @@ export function toolExecutionEnvironment(uri?: vscode.Uri): NodeJS.Dict<string> 
 
 	// Remove json flag (-json or --json=<any>) from GOFLAGS because it will effect to result format of the execution
 	if (env['GOFLAGS'] && env['GOFLAGS'].includes('-json')) {
-		env['GOFLAGS'] = env['GOFLAGS'].replace(/-?-json[^\s]*\s*/g, '');
+		env['GOFLAGS'] = env['GOFLAGS'].replace(/(^|\s+)-?-json[^\s]*/g, '');
 		logVerbose(`removed -json from GOFLAGS: ${env['GOFLAGS']}`);
 	}
 	return env;
