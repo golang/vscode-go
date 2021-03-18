@@ -187,7 +187,7 @@ suite('gopls update tests', () => {
 	});
 });
 
-suite.only('version comparison', () => {
+suite('version comparison', () => {
 	const tool = getTool('dlv-dap');
 	const latestVersion = tool.latestVersion;
 
@@ -197,34 +197,35 @@ suite.only('version comparison', () => {
 
 	async function testShouldUpdateTool(expected: boolean, moduleVersion?: string) {
 		sinon.stub(goInstallTools, 'inspectGoToolVersion').returns(Promise.resolve({ moduleVersion }));
+		const got = await goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv-dap');
 		assert.strictEqual(
 			expected,
-			goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv-dap'),
+			got,
 			`hard-coded minimum: ${tool.latestVersion.toString()} vs localVersion: ${moduleVersion}`
 		);
 	}
 
 	test('local delve is old', async () => {
-		testShouldUpdateTool(true, 'v1.6.0');
+		await testShouldUpdateTool(true, 'v1.6.0');
 	});
 
 	test('local delve is the minimum required version', async () => {
-		testShouldUpdateTool(false, 'v' + latestVersion.toString());
+		await testShouldUpdateTool(false, 'v' + latestVersion.toString());
 	});
 
 	test('local delve is newer', async () => {
-		testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
+		await testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
 	});
 
 	test('local delve is slightly older', async () => {
-		testShouldUpdateTool(
+		await testShouldUpdateTool(
 			true,
-			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
+			`v${latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
 		);
 	});
 
 	test('local delve is slightly newer', async () => {
-		testShouldUpdateTool(
+		await testShouldUpdateTool(
 			false,
 			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.30211231000000-5360c6286949`
 		);
@@ -232,16 +233,16 @@ suite.only('version comparison', () => {
 
 	test('local delve version is unknown', async () => {
 		// maybe a wrapper shellscript?
-		testShouldUpdateTool(false, undefined);
+		await testShouldUpdateTool(false, undefined);
 	});
 
 	test('local delve version is non-sense', async () => {
 		// maybe a wrapper shellscript?
-		testShouldUpdateTool(false, 'hello');
+		await testShouldUpdateTool(false, 'hello');
 	});
 
 	test('local delve version is non-sense again', async () => {
 		// maybe a wrapper shellscript?
-		testShouldUpdateTool(false, '');
+		await testShouldUpdateTool(false, '');
 	});
 });

@@ -629,15 +629,28 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 
 // inspectGoToolVersion reads the go version and module version
 // of the given go tool using `go version -m` command.
-export async function inspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
+export const inspectGoToolVersion = defaultInspectGoToolVersion;
+async function defaultInspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
 	const goCmd = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
 	try {
 		const { stdout } = await execFile(goCmd, ['version', '-m', binPath]);
-		/* The output format will look like this:
+		/* The output format will look like this
+
+		   if the binary was built in module mode.
 			/Users/hakim/go/bin/gopls: go1.16
 			path    golang.org/x/tools/gopls
 			mod     golang.org/x/tools/gopls        v0.6.6  h1:GmCsAKZMEb1BD1BTWnQrMyx4FmNThlEsmuFiJbLBXio=
+			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+
+		   if the binary was built in GOPATH mode => the following code will throw an error which will be handled.
+		    /Users/hakim/go/bin/gopls: go1.16
+
+		   if the binary was built in dev branch, in module mode => the following code will not throw an error,
+		   and return (devel) as the moduleVersion.
+		    /Users/hakim/go/bin/gopls: go1.16
+			path    golang.org/x/tools/gopls
+			mod     golang.org/x/tools/gopls        (devel)
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 		*/
 		const lines = stdout.split('\n', 3);
@@ -667,6 +680,10 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 		return false; // failed to inspect the tool version.
 	}
 	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
+	if (!localVersion) {
+		// local version can't be determined. e.g. (devel)
+		return false;
+	}
 	return semver.lt(localVersion, tool.latestVersion);
 	// update only if the local version is older than the desired version.
 
