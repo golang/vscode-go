@@ -209,7 +209,7 @@ function scheduleGoplsSuggestions() {
 		if (!usingGopls(cfg)) {
 			// This shouldn't happen, but if the user has a non-gopls language
 			// server enabled, we shouldn't prompt them to change.
-			if (cfg.serverName !== '') {
+			if (cfg.serverName !== '' && cfg.serverName !== 'gopls') {
 				return;
 			}
 			// Prompt the user to enable gopls and record what actions they took.
@@ -232,7 +232,6 @@ function scheduleGoplsSuggestions() {
 		}
 		maybePromptForGoplsSurvey();
 	};
-
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
 }
@@ -313,10 +312,18 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	if (!s) {
 		return cfg;
 	}
+	let goplsVersion = await getLocalGoplsVersion(latestConfig);
+	if (!goplsVersion) {
+		goplsVersion = 'not found';
+	}
 	switch (s.title) {
 		case 'Yes':
 			cfg.prompt = false;
-			await vscode.env.openExternal(vscode.Uri.parse('https://forms.gle/hwC8CncV7Cyc2yBN6'));
+			await vscode.env.openExternal(
+				vscode.Uri.parse(
+					`https://docs.google.com/forms/d/e/1FAIpQLSdeqOas92JBD3Qkr-XyIiCuPeZvjmUuL07vu3WFNeaZZvrJDQ/viewform?entry.1049591455=${goplsVersion}&resourcekey=0-VmBGvZtiC8z9qytyA8ThnA`
+				)
+			);
 			break;
 		case 'No':
 			break;
@@ -446,7 +453,6 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	if (isInPreviewMode()) {
 		documentSelector.push({ language: 'tmpl', scheme: 'file' }, { language: 'tmpl', scheme: 'untitled' });
 	}
-
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
@@ -935,10 +941,6 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig)
 	};
-	// Don't look for the path if the server is not enabled.
-	if (!cfg.enabled) {
-		return cfg;
-	}
 	const languageServerPath = getLanguageServerToolPath();
 	if (!languageServerPath) {
 		// Assume the getLanguageServerToolPath will show the relevant
@@ -948,6 +950,10 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 	}
 	cfg.path = languageServerPath;
 	cfg.serverName = getToolFromToolPath(cfg.path);
+
+	if (!cfg.enabled) {
+		return cfg;
+	}
 
 	// Get the mtime of the language server binary so that we always pick up
 	// the right version.
@@ -1015,6 +1021,9 @@ export async function shouldUpdateLanguageServer(
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
 	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || IsInCloudIDE))) {
+		return null;
+	}
+	if (!cfg.enabled) {
 		return null;
 	}
 
