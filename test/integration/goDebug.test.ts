@@ -295,6 +295,7 @@ const testAll = (isDlvDap: boolean) => {
 	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
+	let dlvDapProcess: cp.ChildProcess;
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'testdata');
@@ -333,6 +334,10 @@ const testAll = (isDlvDap: boolean) => {
 
 	teardown(async () => {
 		await dc.stop();
+		if (dlvDapProcess) {
+			await killProcessTree(dlvDapProcess);
+			dlvDapProcess = null;
+		}
 		sinon.restore();
 	});
 
@@ -1687,7 +1692,8 @@ const testAll = (isDlvDap: boolean) => {
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			const { port } = await startDapServer(debugConfig);
+			const { port, dlvDapServer } = await startDapServer(debugConfig);
+			dlvDapProcess = dlvDapServer;
 			await dc.start(port);
 		}
 		return debugConfig;
