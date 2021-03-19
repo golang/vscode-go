@@ -304,11 +304,18 @@ export async function installTool(
 	return result;
 }
 
+export function declinedToolInstall(toolName: string) {
+	const tool = getTool(toolName);
+
+	// If user has declined to install this tool, don't prompt for it.
+	return !!containsTool(declinedInstalls, tool)
+}
+
 export async function promptForMissingTool(toolName: string) {
 	const tool = getTool(toolName);
 
 	// If user has declined to install this tool, don't prompt for it.
-	if (containsTool(declinedInstalls, tool)) {
+	if (declinedToolInstall(toolName)) {
 		return;
 	}
 
@@ -338,7 +345,9 @@ export async function promptForMissingTool(toolName: string) {
 	const installOptions = ['Install'];
 	let missing = await getMissingTools(goVersion);
 	if (!containsTool(missing, tool)) {
-		return;
+		// If this function has been called, we want to display the prompt whether
+		// it appears in missing or not.
+		missing.push(tool);
 	}
 	missing = missing.filter((x) => x === tool || tool.isImportant);
 	if (missing.length > 1) {
@@ -558,6 +567,17 @@ function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 			(tool) =>
 				new Promise<Tool>((resolve, reject) => {
 					const toolPath = getBinPath(tool.name);
+					if (tool.name === 'dlv-dap') {
+						// Check if user already has dlv-dap binary.
+						// If so, it's likely the user may be interested in updating the tool,
+						// so we should mark it as important and return as a missing tool.
+						if (path.isAbsolute(toolPath)) {
+							tool.isImportant = true;
+							resolve(tool);
+							return;
+						}
+						tool.isImportant = false;
+					}
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
 		)

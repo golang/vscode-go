@@ -158,6 +158,7 @@ export function getConfiguredTools(
 	// families are 64-bit, so just try to install it and hope for the best.
 	if (process.arch.match(/^(arm64|mips|mipsel|ppc64|s390|s390x|x64)$/)) {
 		maybeAddTool('dlv');
+		maybeAddTool('dlv-dap');
 	}
 
 	// gocode-gomod needed in go 1.11 & higher

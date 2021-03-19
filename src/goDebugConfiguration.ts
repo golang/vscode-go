@@ -11,9 +11,9 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
+import { declinedToolInstall, promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
-import { getToolAtVersion } from './goTools';
+import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, resolvePath } from './util';
@@ -233,8 +233,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
 		const dlvToolPath = getBinPath(debugAdapter);
 		if (!path.isAbsolute(dlvToolPath)) {
-			await promptForMissingTool(debugAdapter);
-			return;
+			const tool = getTool(debugAdapter);
+
+			// If user has not already declined to install this tool,
+			// prompt for it. Otherwise continue and have the lack of
+			// dlv binary be caught later.
+			if (!declinedToolInstall(debugAdapter)) {
+				await promptForMissingTool(debugAdapter);
+				return;
+			}
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
