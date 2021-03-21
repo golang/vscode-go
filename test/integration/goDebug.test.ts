@@ -10,7 +10,7 @@ import * as http from 'http';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import * as sinon from 'sinon';
-import * as factory from '../../src/goDebugFactory';
+import * as proxy from '../../src/goDebugFactory';
 import { DebugConfiguration } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -25,7 +25,6 @@ import {
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
-import { startDapServer } from '../../src/goDebugFactory';
 import getPort = require('get-port');
 import util = require('util');
 
@@ -319,7 +318,7 @@ const testAll = (isDlvDap: boolean) => {
 			dc.defaultTimeout = 20_000;
 
 			// Change the output to be printed to the console.
-			sinon.stub(factory, 'appendToDebugConsole').callsFake((msg: string) => {
+			sinon.stub(proxy, 'appendToDebugConsole').callsFake((msg: string) => {
 				console.log(msg);
 			});
 			return;
@@ -1692,7 +1691,7 @@ const testAll = (isDlvDap: boolean) => {
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			const { port, dlvDapServer } = await startDapServer(debugConfig);
+			const { port, dlvDapServer } = await proxy.startDapServer(debugConfig);
 			dlvDapProcess = dlvDapServer;
 			await dc.start(port);
 		}
