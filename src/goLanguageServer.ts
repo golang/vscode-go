@@ -314,14 +314,21 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	}
 	let goplsVersion = await getLocalGoplsVersion(latestConfig);
 	if (!goplsVersion) {
-		goplsVersion = 'not found';
+		goplsVersion = 'no gopls version found';
 	}
+	goplsVersion = `gopls/${goplsVersion}`;
+	const goV = await getGoVersion();
+	let goVersion = 'no go version found';
+	if (goV) {
+		goVersion = `go${goV.format(true)}`;
+	}
+	const version = [goplsVersion, goVersion, process.platform].join(';');
 	switch (s.title) {
 		case 'Yes':
 			cfg.prompt = false;
 			await vscode.env.openExternal(
 				vscode.Uri.parse(
-					`https://docs.google.com/forms/d/e/1FAIpQLSdeqOas92JBD3Qkr-XyIiCuPeZvjmUuL07vu3WFNeaZZvrJDQ/viewform?entry.1049591455=${goplsVersion}&resourcekey=0-VmBGvZtiC8z9qytyA8ThnA`
+					`https://docs.google.com/forms/d/e/1FAIpQLScITGOe2VdQnaXigSIiD19VxN_2KLwjMszZOMZp9TgYvTOw5g/viewform?entry.1049591455=${version}&gxids=7826`
 				)
 			);
 			break;
