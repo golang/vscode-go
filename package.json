@@ -668,7 +668,6 @@
                   "default",
                   "native",
                   "lldb",
-                  "core",
                   "rr"
                 ],
                 "description": "Backend used by delve. Maps to `dlv`'s `--backend` flag."
