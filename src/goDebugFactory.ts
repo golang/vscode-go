@@ -13,6 +13,7 @@ import getPort = require('get-port');
 import path = require('path');
 import * as fs from 'fs';
 import * as net from 'net';
+import { getTool } from './goTools';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	public createDebugAdapterDescriptor(
@@ -272,12 +273,7 @@ async function spawnDlvDapServerProcess(
 	const launchArgsEnv = launchArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
 
-	// Let users override direct path to delve by setting it in the env
-	// map in launch.json; if unspecified, fall back to dlvToolPath.
-	let dlvPath = launchArgsEnv['dlvPath'];
-	if (!dlvPath) {
-		dlvPath = launchArgs.dlvToolPath;
-	}
+	const dlvPath = launchArgs.dlvToolPath ?? getTool('dlv');
 
 	if (!fs.existsSync(dlvPath)) {
 		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
