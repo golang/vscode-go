@@ -551,19 +551,12 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 					if (!codeLens || codeLens.length === 0) {
 						return codeLens;
 					}
-					const goplsEnabledLens = (getGoConfig().get('overwriteGoplsMiddleware') as any)?.codelens ?? {};
 					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
-								if (goplsEnabledLens.test) {
-									return [...lenses, lens];
-								}
 								return [...lenses, ...createTestCodeLens(lens)];
 							}
 							case 'run benchmark': {
-								if (goplsEnabledLens.bench) {
-									return [...lenses, lens];
-								}
 								return [...lenses, ...createBenchmarkCodeLens(lens)];
 							}
 							default: {
