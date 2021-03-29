@@ -254,6 +254,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			dlvDAPVersionCurrent = true;
 		}
 
+		if (debugAdapter === 'dlv-dap' && debugConfiguration['cwd']) {
+			// dlv dap expects 'wd' not 'cwd'
+			debugConfiguration['wd'] = debugConfiguration['cwd'];
+		}
+
 		if (debugConfiguration['mode'] === 'auto') {
 			debugConfiguration['mode'] =
 				activeEditor && activeEditor.document.fileName.endsWith('_test.go') ? 'test' : 'debug';

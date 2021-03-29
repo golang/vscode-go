@@ -692,11 +692,7 @@ const testAll = (isDlvDap: boolean) => {
 	});
 
 	suite('set current working directory', () => {
-		test('should debug program with cwd set', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Fixed in https://github.com/go-delve/delve/pull/2360
-			}
-
+		test('should debug program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 			const FILE = path.join(PROGRAM, 'main.go');
@@ -735,11 +731,7 @@ const testAll = (isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should debug file program with cwd set', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Fixed in https://github.com/go-delve/delve/pull/2360
-			}
-
+		test('should debug file program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 			const FILE = PROGRAM;
@@ -1805,6 +1797,8 @@ const testAll = (isDlvDap: boolean) => {
 
 	async function initializeDebugConfig(config: DebugConfiguration) {
 		if (isDlvDap) {
+			config['debugAdapter'] = 'dlv-dap';
+			// Log the output for easier test debugging.
 			config['logOutput'] = 'dap';
 			config['showLog'] = true;
 		}

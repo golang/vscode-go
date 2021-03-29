@@ -308,7 +308,7 @@ export function declinedToolInstall(toolName: string) {
 	const tool = getTool(toolName);
 
 	// If user has declined to install this tool, don't prompt for it.
-	return !!containsTool(declinedInstalls, tool)
+	return !!containsTool(declinedInstalls, tool);
 }
 
 export async function promptForMissingTool(toolName: string) {
