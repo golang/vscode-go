@@ -244,29 +244,28 @@ export async function startDapServer(
 	log?: (msg: string) => void,
 	logErr?: (msg: string) => void
 ): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
-	if (!configuration.host) {
-		configuration.host = '127.0.0.1';
-	}
+	const host = configuration.host || '127.0.0.1';
 
 	if (configuration.port) {
 		// If a port has been specified, assume there is an already
 		// running dap server to connect to.
-		return { port: configuration.port, host: configuration.host };
-	} else {
-		configuration.port = await getPort();
+		return { port: configuration.port, host };
 	}
+	const port = await getPort();
 	if (!log) {
 		log = appendToDebugConsole;
 	}
 	if (!logErr) {
 		logErr = appendToDebugConsole;
 	}
-	const dlvDapServer = await spawnDlvDapServerProcess(configuration, log, logErr);
-	return { dlvDapServer, port: configuration.port, host: configuration.host };
+	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr);
+	return { dlvDapServer, port, host };
 }
 
 async function spawnDlvDapServerProcess(
 	launchArgs: vscode.DebugConfiguration,
+	host: string,
+	port: number,
 	log: (msg: string) => void,
 	logErr: (msg: string) => void
 ): Promise<ChildProcess> {
@@ -293,7 +292,7 @@ async function spawnDlvDapServerProcess(
 	if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
 		dlvArgs.push(...launchArgs.dlvFlags);
 	}
-	dlvArgs.push(`--listen=${launchArgs.host}:${launchArgs.port}`);
+	dlvArgs.push(`--listen=${host}:${port}`);
 	if (launchArgs.showLog) {
 		dlvArgs.push('--log=' + launchArgs.showLog.toString());
 	}

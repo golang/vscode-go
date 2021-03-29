@@ -1807,6 +1807,7 @@ const testAll = (isDlvDap: boolean) => {
 		if (isDlvDap) {
 			const { port, dlvDapServer } = await proxy.startDapServer(debugConfig);
 			dlvDapProcess = dlvDapServer;
+			debugConfig.port = port; // let the debug test client connect to our dap server.
 			await dc.start(port);
 		}
 		return debugConfig;
