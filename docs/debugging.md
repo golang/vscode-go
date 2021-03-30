@@ -2,6 +2,8 @@
 
 This document explains how to debug your Go programs in VS Code. The Go debugger is [Delve]. You can read more about it in the [Delve documentation](https://github.com/go-delve/delve/tree/master/Documentation).
 
+📣 Integration with the [Delve's native DAP implementation](https://github.com/golang/vscode-go/tree/master/docs/dlv-dap.md) is available for preview. Please give it a try and provide feedback!
+
 ## Overview
 
 * [Set up](#set-up)

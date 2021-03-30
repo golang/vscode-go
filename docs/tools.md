@@ -35,6 +35,8 @@ This extension uses Delve for its debug/test functionalities. The extension curr
 
 For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
 
+### [`dlv-dap`](https://github.com/go-delve/delve)
+This extension requires an unstable version of [`dlv`](#dlv) when users opt in to use Delve's native DAP implementation. `dlv-dap` is a `dlv` built from the master, which includes unreleased features. Please see the documentation about [Dlv DAP - Delve's Native DAP implementation](./dlv-dap.md) for details.
 
 ### [`gopkgs`](https://pkg.go.dev/github.com/uudashr/gopkgs?tab=overview)
 
