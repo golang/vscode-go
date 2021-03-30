@@ -10,6 +10,7 @@ import * as http from 'http';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import * as sinon from 'sinon';
+import * as proxy from '../../src/goDebugFactory';
 import { DebugConfiguration } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -24,7 +25,6 @@ import {
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
-import { startDapServer } from '../../src/goDebugFactory';
 import getPort = require('get-port');
 import util = require('util');
 
@@ -294,6 +294,7 @@ const testAll = (isDlvDap: boolean) => {
 	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
+	let dlvDapProcess: cp.ChildProcess;
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'testdata');
@@ -315,6 +316,11 @@ const testAll = (isDlvDap: boolean) => {
 
 			// Launching delve may take longer than the default timeout of 5000.
 			dc.defaultTimeout = 20_000;
+
+			// Change the output to be printed to the console.
+			sinon.stub(proxy, 'appendToDebugConsole').callsFake((msg: string) => {
+				console.log(msg);
+			});
 			return;
 		}
 
@@ -325,7 +331,14 @@ const testAll = (isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(async () => await dc.stop());
+	teardown(async () => {
+		await dc.stop();
+		if (dlvDapProcess) {
+			await killProcessTree(dlvDapProcess);
+			dlvDapProcess = null;
+		}
+		sinon.restore();
+	});
 
 	/**
 	 * This function sets up a server that returns helloworld on serverPort.
@@ -679,11 +692,7 @@ const testAll = (isDlvDap: boolean) => {
 	});
 
 	suite('set current working directory', () => {
-		test('should debug program with cwd set', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Fixed in https://github.com/go-delve/delve/pull/2360
-			}
-
+		test('should debug program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 			const FILE = path.join(PROGRAM, 'main.go');
@@ -722,11 +731,7 @@ const testAll = (isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should debug file program with cwd set', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Fixed in https://github.com/go-delve/delve/pull/2360
-			}
-
+		test('should debug file program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 			const FILE = PROGRAM;
@@ -1142,7 +1147,6 @@ const testAll = (isDlvDap: boolean) => {
 					.then(() => {
 						return dc.configurationDoneRequest();
 					}),
-
 				dc.launch(debugConfig),
 
 				dc.assertStoppedLocation('breakpoint', location)
@@ -1513,6 +1517,126 @@ const testAll = (isDlvDap: boolean) => {
 		});
 	});
 
+	suite('switch goroutine', () => {
+		async function runSwitchGoroutineTest(stepFunction: string) {
+			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 14;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			// Clear breakpoints to make sure they do not interrupt the stepping.
+			const breakpointsResult = await dc.setBreakpointsRequest({
+				source: { path: FILE },
+				breakpoints: []
+			});
+			assert.ok(breakpointsResult.success);
+
+			const threadsResponse = await dc.threadsRequest();
+			assert.ok(threadsResponse.success);
+			const run1Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
+			const run2Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
+
+			// runStepFunction runs the necessary step function and resolves if it succeeded.
+			async function runStepFunction(
+				args: { threadId: number },
+				resolve: (value: void | PromiseLike<void>) => void,
+				reject: (reason?: any) => void
+			) {
+				const callback = (resp: any) => {
+					assert.ok(resp.success);
+					resolve();
+				};
+				switch (stepFunction) {
+					case 'next':
+						callback(await dc.nextRequest(args));
+						break;
+					case 'step in':
+						callback(await dc.stepInRequest(args));
+						break;
+					case 'step out':
+						// TODO(suzmue): write a test for step out.
+						reject(new Error('step out will never complete on this program'));
+						break;
+					default:
+						reject(new Error(`not a valid step function ${stepFunction}`));
+				}
+			}
+
+			// The program is currently stopped on the goroutine in main.run2.
+			// Test switching go routines by stepping in:
+			//   1. main.run2
+			//   2. main.run1 (switch routine)
+			//   3. main.run1
+			//   4. main.run2 (switch routine)
+
+			// Next on the goroutine in main.run2
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run2Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run2Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run1
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run1Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run1Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run1
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run1Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run1Goroutine.id);
+				})
+			]);
+
+			// Next on the goroutine in main.run2
+			await Promise.all([
+				new Promise<void>((resolve, reject) => {
+					const args = { threadId: run2Goroutine.id };
+					return runStepFunction(args, resolve, reject);
+				}),
+				dc.waitForEvent('stopped').then((event) => {
+					assert.strictEqual(event.body.reason, 'step');
+					assert.strictEqual(event.body.threadId, run2Goroutine.id);
+				})
+			]);
+		}
+
+		test.skip('next', async () => {
+			// neither debug adapter implements this behavior
+			await runSwitchGoroutineTest('next');
+		});
+
+		test.skip('step in', async () => {
+			// neither debug adapter implements this behavior
+			await runSwitchGoroutineTest('step in');
+		});
+	});
+
 	suite('substitute path', () => {
 		// TODO(suzmue): add unit tests for substitutePath.
 		let tmpDir: string;
@@ -1672,9 +1796,18 @@ const testAll = (isDlvDap: boolean) => {
 	});
 
 	async function initializeDebugConfig(config: DebugConfiguration) {
+		if (isDlvDap) {
+			config['debugAdapter'] = 'dlv-dap';
+			// Log the output for easier test debugging.
+			config['logOutput'] = 'dap';
+			config['showLog'] = true;
+		}
+
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			const { port } = await startDapServer(debugConfig);
+			const { port, dlvDapServer } = await proxy.startDapServer(debugConfig);
+			dlvDapProcess = dlvDapServer;
+			debugConfig.port = port; // let the debug test client connect to our dap server.
 			await dc.start(port);
 		}
 		return debugConfig;

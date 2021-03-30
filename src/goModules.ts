@@ -9,6 +9,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
+import { getFormatTool } from './goFormat';
 import { installTools } from './goInstallTools';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
@@ -74,7 +75,7 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 			);
 		}
 
-		if (goConfig['useLanguageServer'] === false && goConfig['formatTool'] === 'goreturns') {
+		if (goConfig['useLanguageServer'] === false && getFormatTool(goConfig) === 'goreturns') {
 			const promptFormatToolMsg =
 				'The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".';
 			promptToUpdateToolForModules('switchFormatToolToGoimports', promptFormatToolMsg, goConfig);

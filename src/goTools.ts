@@ -11,15 +11,26 @@ import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
 import util = require('util');
+import { getFormatTool, usingCustomFormatTool } from './goFormat';
 import { goLiveErrorsEnabled } from './goLiveErrors';
 import { getBinPath, GoVersion } from './util';
 
 export interface Tool {
 	name: string;
 	importPath: string;
+	modulePath: string;
 	isImportant: boolean;
 	replacedByGopls?: boolean;
 	description: string;
+
+	// If true, consider prerelease version in preview mode
+	// (nightly & dev)
+	usePrereleaseInPreviewMode?: boolean;
+	// If set, this string will be used when installing the tool
+	// instead of the default 'latest'. It can be used when
+	// we need to pin a tool version (`deadbeaf`) or to use
+	// a dev version available in a branch (e.g. `master`).
+	defaultVersion?: string;
 
 	// latestVersion and latestVersionTimestamp are hardcoded default values
 	// for the last known version of the given tool. We also hardcode values
@@ -61,10 +72,18 @@ export function getImportPath(tool: Tool, goVersion: GoVersion): string {
 	return tool.importPath;
 }
 
-export function getImportPathWithVersion(tool: Tool, version: semver.SemVer, goVersion: GoVersion): string {
+export function getImportPathWithVersion(
+	tool: Tool,
+	version: semver.SemVer | string | undefined,
+	goVersion: GoVersion
+): string {
 	const importPath = getImportPath(tool, goVersion);
 	if (version) {
-		return importPath + '@v' + version;
+		if (version instanceof semver.SemVer) {
+			return importPath + '@v' + version;
+		} else {
+			return importPath + '@' + version;
+		}
 	}
 	return importPath;
 }
@@ -95,7 +114,11 @@ export function isGocode(tool: Tool): boolean {
 	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
-export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: string]: any }): Tool[] {
+export function getConfiguredTools(
+	goVersion: GoVersion,
+	goConfig: { [key: string]: any },
+	goplsConfig: { [key: string]: any }
+): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
@@ -135,6 +158,7 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 	// families are 64-bit, so just try to install it and hope for the best.
 	if (process.arch.match(/^(arm64|mips|mipsel|ppc64|s390|s390x|x64)$/)) {
 		maybeAddTool('dlv');
+		maybeAddTool('dlv-dap');
 	}
 
 	// gocode-gomod needed in go 1.11 & higher
@@ -152,11 +176,18 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 			break;
 	}
 
-	// Add the format tool that was chosen by the user.
-	maybeAddTool(goConfig['formatTool']);
+	// Only add format tools if the language server is disabled and the
+	// format tool is known to us.
+	if (goConfig['useLanguageServer'] === false && !usingCustomFormatTool(goConfig)) {
+		maybeAddTool(getFormatTool(goConfig));
+	}
 
-	// Add the linter that was chosen by the user.
-	maybeAddTool(goConfig['lintTool']);
+	// Add the linter that was chosen by the user, but don't add staticcheck
+	// if it is enabled via gopls.
+	const goplsStaticheckEnabled = useLanguageServer && goplsStaticcheckEnabled(goConfig, goplsConfig);
+	if (goConfig['lintTool'] !== 'staticcheck' || !goplsStaticheckEnabled) {
+		maybeAddTool(goConfig['lintTool']);
+	}
 
 	// Add the language server if the user has chosen to do so.
 	// Even though we arranged this to run after the first attempt to start gopls
@@ -172,10 +203,22 @@ export function getConfiguredTools(goVersion: GoVersion, goConfig: { [key: strin
 	return tools;
 }
 
+export function goplsStaticcheckEnabled(
+	goConfig: { [key: string]: any },
+	goplsConfig: { [key: string]: any }
+): boolean {
+	if (goConfig['useLanguageServer'] !== true || goplsConfig['ui.diagnostic.staticcheck'] !== true) {
+		return false;
+	}
+	const features = goConfig['languageServerExperimentalFeatures'];
+	return !features || features['diagnostics'] === true;
+}
+
 export const allToolsInformation: { [key: string]: Tool } = {
 	'gocode': {
 		name: 'gocode',
 		importPath: 'github.com/mdempsky/gocode',
+		modulePath: 'github.com/mdempsky/gocode',
 		isImportant: true,
 		replacedByGopls: true,
 		description: 'Auto-completion, does not work with modules',
@@ -200,6 +243,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gocode-gomod': {
 		name: 'gocode-gomod',
 		importPath: 'github.com/stamblerre/gocode',
+		modulePath: 'github.com/stamblerre/gocode',
 		isImportant: true,
 		replacedByGopls: true,
 		description: 'Auto-completion, works with modules',
@@ -208,6 +252,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gopkgs': {
 		name: 'gopkgs',
 		importPath: 'github.com/uudashr/gopkgs/v2/cmd/gopkgs',
+		modulePath: 'github.com/uudashr/gopkgs/v2',
 		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/258): disable Add Import command.
 		isImportant: true,
 		description: 'Auto-completion of unimported packages & Add Import feature'
@@ -215,6 +260,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'go-outline': {
 		name: 'go-outline',
 		importPath: 'github.com/ramya-rao-a/go-outline',
+		modulePath: 'github.com/ramya-rao-a/go-outline',
 		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/1020): replace with Gopls.
 		isImportant: true,
 		description: 'Go to symbol in file' // GoDocumentSymbolProvider, used by 'run test' codelens
@@ -222,6 +268,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'go-symbols': {
 		name: 'go-symbols',
 		importPath: 'github.com/acroca/go-symbols',
+		modulePath: 'github.com/acroca/go-symbols',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Go to symbol in workspace'
@@ -229,6 +276,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'guru': {
 		name: 'guru',
 		importPath: 'golang.org/x/tools/cmd/guru',
+		modulePath: 'golang.org/x/tools',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Find all references and Go to implementation of symbols'
@@ -236,6 +284,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gorename': {
 		name: 'gorename',
 		importPath: 'golang.org/x/tools/cmd/gorename',
+		modulePath: 'golang.org/x/tools',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Rename symbols'
@@ -243,6 +292,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gomodifytags': {
 		name: 'gomodifytags',
 		importPath: 'github.com/fatih/gomodifytags',
+		modulePath: 'github.com/fatih/gomodifytags',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Modify tags on structs'
@@ -250,6 +300,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'goplay': {
 		name: 'goplay',
 		importPath: 'github.com/haya14busa/goplay/cmd/goplay',
+		modulePath: 'github.com/haya14busa/goplay',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'The Go playground'
@@ -257,6 +308,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'impl': {
 		name: 'impl',
 		importPath: 'github.com/josharian/impl',
+		modulePath: 'github.com/josharian/impl',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Stubs for interfaces'
@@ -264,6 +316,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gotype-live': {
 		name: 'gotype-live',
 		importPath: 'github.com/tylerb/gotype-live',
+		modulePath: 'github.com/tylerb/gotype-live',
 		replacedByGopls: true, // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
 		isImportant: false,
 		description: 'Show errors as you type'
@@ -271,6 +324,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'godef': {
 		name: 'godef',
 		importPath: 'github.com/rogpeppe/godef',
+		modulePath: 'github.com/rogpeppe/godef',
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to definition'
@@ -278,6 +332,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gogetdoc': {
 		name: 'gogetdoc',
 		importPath: 'github.com/zmb3/gogetdoc',
+		modulePath: 'github.com/zmb3/gogetdoc',
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to definition & text shown on hover'
@@ -285,6 +340,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gofumports': {
 		name: 'gofumports',
 		importPath: 'mvdan.cc/gofumpt/gofumports',
+		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
@@ -292,6 +348,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gofumpt': {
 		name: 'gofumpt',
 		importPath: 'mvdan.cc/gofumpt',
+		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
@@ -299,6 +356,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'goimports': {
 		name: 'goimports',
 		importPath: 'golang.org/x/tools/cmd/goimports',
+		modulePath: 'golang.org/x/tools',
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Formatter'
@@ -306,6 +364,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'goreturns': {
 		name: 'goreturns',
 		importPath: 'github.com/sqs/goreturns',
+		modulePath: 'github.com/sqs/goreturns',
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Formatter'
@@ -313,6 +372,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'goformat': {
 		name: 'goformat',
 		importPath: 'winterdrache.de/goformat/goformat',
+		modulePath: 'winterdrache.de/goformat/goformat',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter'
@@ -320,6 +380,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'gotests': {
 		name: 'gotests',
 		importPath: 'github.com/cweill/gotests/gotests',
+		modulePath: 'github.com/cweill/gotests',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Generate unit tests',
@@ -329,6 +390,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'golint': {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
+		modulePath: 'golang.org/x/lint',
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Linter',
@@ -337,6 +399,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'staticcheck': {
 		name: 'staticcheck',
 		importPath: 'honnef.co/go/tools/cmd/staticcheck',
+		modulePath: 'honnef.co/go/tools',
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter'
@@ -344,6 +407,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'golangci-lint': {
 		name: 'golangci-lint',
 		importPath: 'github.com/golangci/golangci-lint/cmd/golangci-lint',
+		modulePath: 'github.com/golangci/golangci-lint',
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter'
@@ -351,15 +415,18 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'revive': {
 		name: 'revive',
 		importPath: 'github.com/mgechev/revive',
+		modulePath: 'github.com/mgechev/revive',
 		isImportant: true,
 		description: 'Linter'
 	},
 	'gopls': {
 		name: 'gopls',
 		importPath: 'golang.org/x/tools/gopls',
+		modulePath: 'golang.org/x/tools/gopls',
 		replacedByGopls: false, // lol
 		isImportant: true,
 		description: 'Language Server from Google',
+		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.12'),
 		latestVersion: semver.coerce('0.6.8'),
 		latestVersionTimestamp: moment('2021-03-17', 'YYYY-MM-DD'),
@@ -369,13 +436,27 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'dlv': {
 		name: 'dlv',
 		importPath: 'github.com/go-delve/delve/cmd/dlv',
+		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Debugging'
+		description: 'Go debugger (Delve)'
+	},
+	'dlv-dap': {
+		name: 'dlv-dap',
+		importPath: 'github.com/go-delve/delve/cmd/dlv',
+		modulePath: 'github.com/go-delve/delve',
+		replacedByGopls: false,
+		isImportant: false,
+		description: 'Go debugger (Delve built for DAP experiment)',
+		defaultVersion: 'master', // Always build from the master.
+		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
+		latestVersion: semver.parse('v1.6.1-0.20210325164530-b120b11cc383'),
+		latestVersionTimestamp: moment('2021-03-25', 'YYYY-MM-DD')
 	},
 	'fillstruct': {
 		name: 'fillstruct',
 		importPath: 'github.com/davidrjenni/reftools/cmd/fillstruct',
+		modulePath: 'github.com/davidrjenni/reftools',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Fill structs with defaults'
@@ -383,6 +464,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 	'godoctor': {
 		name: 'godoctor',
 		importPath: 'github.com/godoctor/godoctor',
+		modulePath: 'github.com/godoctor/godoctor',
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Extract to functions and variables'

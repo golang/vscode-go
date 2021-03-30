@@ -10,6 +10,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
+import * as goInstallTools from '../../src/goInstallTools';
 import { getTool, Tool } from '../../src/goTools';
 import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';
 import moment = require('moment');
@@ -153,7 +154,7 @@ suite('gopls update tests', () => {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
 				return usersVersion;
 			});
-			sinon.replace(lsp, 'getLatestGoplsVersion', async () => {
+			sinon.replace(goInstallTools, 'latestToolVersion', async () => {
 				if (acceptPrerelease) {
 					return latestPrereleaseVersion;
 				}
@@ -183,5 +184,65 @@ suite('gopls update tests', () => {
 			assert.deepEqual(got, want, `${name}: failed (got: '${got}' ${typeof got} want: '${want}' ${typeof want})`);
 			sinon.restore();
 		}
+	});
+});
+
+suite('version comparison', () => {
+	const tool = getTool('dlv-dap');
+	const latestVersion = tool.latestVersion;
+
+	teardown(() => {
+		sinon.restore();
+	});
+
+	async function testShouldUpdateTool(expected: boolean, moduleVersion?: string) {
+		sinon.stub(goInstallTools, 'inspectGoToolVersion').returns(Promise.resolve({ moduleVersion }));
+		const got = await goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv-dap');
+		assert.strictEqual(
+			expected,
+			got,
+			`hard-coded minimum: ${tool.latestVersion.toString()} vs localVersion: ${moduleVersion}`
+		);
+	}
+
+	test('local delve is old', async () => {
+		await testShouldUpdateTool(true, 'v1.6.0');
+	});
+
+	test('local delve is the minimum required version', async () => {
+		await testShouldUpdateTool(false, 'v' + latestVersion.toString());
+	});
+
+	test('local delve is newer', async () => {
+		await testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
+	});
+
+	test('local delve is slightly older', async () => {
+		await testShouldUpdateTool(
+			true,
+			`v${latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
+		);
+	});
+
+	test('local delve is slightly newer', async () => {
+		await testShouldUpdateTool(
+			false,
+			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.30211231000000-5360c6286949`
+		);
+	});
+
+	test('local delve version is unknown', async () => {
+		// maybe a wrapper shellscript?
+		await testShouldUpdateTool(false, undefined);
+	});
+
+	test('local delve version is non-sense', async () => {
+		// maybe a wrapper shellscript?
+		await testShouldUpdateTool(false, 'hello');
+	});
+
+	test('local delve version is non-sense again', async () => {
+		// maybe a wrapper shellscript?
+		await testShouldUpdateTool(false, '');
 	});
 });

@@ -117,7 +117,8 @@ install_dependencies() {
 	GO111MODULE=on go get github.com/zmb3/gogetdoc
 	GO111MODULE=on go get honnef.co/go/tools/...
 	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
-	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master
+
+	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master && cp "${TARGET}/dlv" "${TARGET}/dlv-dap"
 }
 
 main() {

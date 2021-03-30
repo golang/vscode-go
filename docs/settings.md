@@ -233,9 +233,17 @@ Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the langua
 ### `go.formatTool`
 
 Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
-Allowed Options: `gofmt`, `goimports`, `goreturns`, `goformat`, `gofumpt`, `gofumports`
+Allowed Options:
 
-Default: `"goimports"`
+* `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
+* `gofmt`: Formats the file according to the standard Go style.
+* `goimports`: Organizes imports and formats the file with gofmt.
+* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
+* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt.
+* `gofumports`: Applies gofumpt formatting and organizes imports.
+
+
+Default: `"default"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
@@ -336,14 +344,6 @@ The logging level the extension logs at, defaults to 'error'<br/>
 Allowed Options: `off`, `error`, `info`, `verbose`
 
 Default: `"error"`
-### `go.overwriteGoplsMiddleware (deprecated)`
-
-This option is deprecated.
-This option provides a set of flags which determine if vscode-go should intercept certain commands from gopls. These flags assume the `gopls` settings, which enable codelens from gopls, are also present.
-| Properties | Description |
-| --- | --- |
-| `codelens` |  |
-| `default` |  |
 ### `go.playground`
 
 The flags configured here will be passed through to command `goplay`

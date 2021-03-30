@@ -11,12 +11,15 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
+import { declinedToolInstall, promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
+import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
+
+let dlvDAPVersionCurrent = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') {}
@@ -227,10 +230,33 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		debugConfiguration['dlvToolPath'] = getBinPath('dlv');
-		if (!path.isAbsolute(debugConfiguration['dlvToolPath'])) {
-			promptForMissingTool('dlv');
-			return;
+		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
+		const dlvToolPath = getBinPath(debugAdapter);
+		if (!path.isAbsolute(dlvToolPath)) {
+			const tool = getTool(debugAdapter);
+
+			// If user has not already declined to install this tool,
+			// prompt for it. Otherwise continue and have the lack of
+			// dlv binary be caught later.
+			if (!declinedToolInstall(debugAdapter)) {
+				await promptForMissingTool(debugAdapter);
+				return;
+			}
+		}
+		debugConfiguration['dlvToolPath'] = dlvToolPath;
+
+		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
+			const tool = getToolAtVersion('dlv-dap');
+			if (await shouldUpdateTool(tool, dlvToolPath)) {
+				promptForUpdatingTool('dlv-dap');
+				return;
+			}
+			dlvDAPVersionCurrent = true;
+		}
+
+		if (debugAdapter === 'dlv-dap' && debugConfiguration['cwd']) {
+			// dlv dap expects 'wd' not 'cwd'
+			debugConfiguration['wd'] = debugConfiguration['cwd'];
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {

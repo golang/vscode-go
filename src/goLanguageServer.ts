@@ -28,6 +28,7 @@ import {
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
+	ProvideDocumentFormattingEditsSignature,
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -38,9 +39,9 @@ import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
 import { GoHoverProvider } from './goExtraInfo';
-import { GoDocumentFormattingEditProvider } from './goFormat';
+import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './goFormat';
 import { GoImplementationProvider } from './goImplementations';
-import { installTools, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
+import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { parseLiveFile } from './goLiveErrors';
 import {
 	buildDiagnosticCollection,
@@ -83,6 +84,7 @@ export interface LanguageServerConfig {
 	env: any;
 	features: {
 		diagnostics: boolean;
+		formatter?: GoDocumentFormattingEditProvider;
 	};
 	checkForUpdates: string;
 }
@@ -92,7 +94,7 @@ export interface LanguageServerConfig {
 // new configurations.
 export let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
-let latestConfig: LanguageServerConfig;
+export let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
 
@@ -207,7 +209,7 @@ function scheduleGoplsSuggestions() {
 		if (!usingGopls(cfg)) {
 			// This shouldn't happen, but if the user has a non-gopls language
 			// server enabled, we shouldn't prompt them to change.
-			if (cfg.serverName !== '') {
+			if (cfg.serverName !== '' && cfg.serverName !== 'gopls') {
 				return;
 			}
 			// Prompt the user to enable gopls and record what actions they took.
@@ -230,7 +232,6 @@ function scheduleGoplsSuggestions() {
 		}
 		maybePromptForGoplsSurvey();
 	};
-
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
 }
@@ -311,10 +312,25 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	if (!s) {
 		return cfg;
 	}
+	let goplsVersion = await getLocalGoplsVersion(latestConfig);
+	if (!goplsVersion) {
+		goplsVersion = 'no gopls version found';
+	}
+	goplsVersion = `gopls/${goplsVersion}`;
+	const goV = await getGoVersion();
+	let goVersion = 'no go version found';
+	if (goV) {
+		goVersion = `go${goV.format(true)}`;
+	}
+	const version = [goplsVersion, goVersion, process.platform].join(';');
 	switch (s.title) {
 		case 'Yes':
 			cfg.prompt = false;
-			await vscode.env.openExternal(vscode.Uri.parse('https://forms.gle/hwC8CncV7Cyc2yBN6'));
+			await vscode.env.openExternal(
+				vscode.Uri.parse(
+					`https://docs.google.com/forms/d/e/1FAIpQLScITGOe2VdQnaXigSIiD19VxN_2KLwjMszZOMZp9TgYvTOw5g/viewform?entry.1049591455=${version}&gxids=7826`
+				)
+			);
 			break;
 		case 'No':
 			break;
@@ -444,7 +460,6 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	if (isInPreviewMode()) {
 		documentSelector.push({ language: 'tmpl', scheme: 'file' }, { language: 'tmpl', scheme: 'untitled' });
 	}
-
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
@@ -536,19 +551,12 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 					if (!codeLens || codeLens.length === 0) {
 						return codeLens;
 					}
-					const goplsEnabledLens = (getGoConfig().get('overwriteGoplsMiddleware') as any)?.codelens ?? {};
 					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
 						switch (lens.command.title) {
 							case 'run test': {
-								if (goplsEnabledLens.test) {
-									return [...lenses, lens];
-								}
 								return [...lenses, ...createTestCodeLens(lens)];
 							}
 							case 'run benchmark': {
-								if (goplsEnabledLens.bench) {
-									return [...lenses, lens];
-								}
 								return [...lenses, ...createBenchmarkCodeLens(lens)];
 							}
 							default: {
@@ -556,6 +564,17 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							}
 						}
 					}, []);
+				},
+				provideDocumentFormattingEdits: async (
+					document: vscode.TextDocument,
+					options: vscode.FormattingOptions,
+					token: vscode.CancellationToken,
+					next: ProvideDocumentFormattingEditsSignature
+				) => {
+					if (cfg.features.formatter) {
+						return cfg.features.formatter.provideDocumentFormattingEdits(document, options, token);
+					}
+					return next(document, options, token);
 				},
 				handleDiagnostics: (
 					uri: vscode.Uri,
@@ -889,7 +908,8 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 		e.affectsConfiguration('go.languageServerFlags') ||
 		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
 		e.affectsConfiguration('go.alternateTools') ||
-		e.affectsConfiguration('go.toolsEnvVars')
+		e.affectsConfiguration('go.toolsEnvVars') ||
+		e.affectsConfiguration('go.formatTool')
 		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer();
@@ -901,6 +921,10 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 }
 
 export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
+	let formatter: GoDocumentFormattingEditProvider;
+	if (usingCustomFormatTool(goConfig)) {
+		formatter = new GoDocumentFormattingEditProvider();
+	}
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
@@ -911,15 +935,12 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		features: {
 			// TODO: We should have configs that match these names.
 			// Ultimately, we should have a centralized language server config rather than separate fields.
-			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics']
+			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
+			formatter: formatter
 		},
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig)
 	};
-	// Don't look for the path if the server is not enabled.
-	if (!cfg.enabled) {
-		return cfg;
-	}
 	const languageServerPath = getLanguageServerToolPath();
 	if (!languageServerPath) {
 		// Assume the getLanguageServerToolPath will show the relevant
@@ -929,6 +950,10 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 	}
 	cfg.path = languageServerPath;
 	cfg.serverName = getToolFromToolPath(cfg.path);
+
+	if (!cfg.enabled) {
+		return cfg;
+	}
 
 	// Get the mtime of the language server binary so that we always pick up
 	// the right version.
@@ -998,6 +1023,9 @@ export async function shouldUpdateLanguageServer(
 	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || IsInCloudIDE))) {
 		return null;
 	}
+	if (!cfg.enabled) {
+		return null;
+	}
 
 	// First, run the "gopls version" command and parse its results.
 	// TODO(rstambler): Confirm that the gopls binary's modtime matches the
@@ -1010,7 +1038,8 @@ export async function shouldUpdateLanguageServer(
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion = cfg.checkForUpdates === 'local' ? tool.latestVersion : await getLatestGoplsVersion(tool);
+	let latestVersion =
+		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, isInPreviewMode());
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -1128,39 +1157,6 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	}
 	const time = moment(data['Time']);
 	return time;
-};
-
-const acceptGoplsPrerelease = isInPreviewMode();
-
-export const getLatestGoplsVersion = async (tool: Tool) => {
-	// If the user has a version of gopls that we understand,
-	// ask the proxy for the latest version, and if the user's version is older,
-	// prompt them to update.
-	const data = await goProxyRequest(tool, 'list');
-	if (!data) {
-		return null;
-	}
-	// Coerce the versions into SemVers so that they can be sorted correctly.
-	const versions = [];
-	for (const version of data.trim().split('\n')) {
-		const parsed = semver.parse(version, {
-			includePrerelease: true,
-			loose: true
-		});
-		if (parsed) {
-			versions.push(parsed);
-		}
-	}
-	if (versions.length === 0) {
-		return null;
-	}
-	versions.sort(semver.rcompare);
-
-	if (acceptGoplsPrerelease) {
-		return versions[0]; // The first one (newest one).
-	}
-	// The first version in the sorted list without a prerelease tag.
-	return versions.find((version) => !version.prerelease || !version.prerelease.length);
 };
 
 // getLocalGoplsVersion returns the version of gopls that is currently
