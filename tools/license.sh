@@ -45,6 +45,7 @@ NG=$(echo "${ALL_LICENSES}" | jq '
   "(MIT AND BSD-3-Clause)": 1,
   "(BSD-2-Clause OR MIT OR Apache-2.0)": 1,
   "CC-BY-3.0": 1,
+  "CC-BY-4.0": 1,
   "CC0-1.0": 1,
   "(MIT OR CC0-1.0)": 1,
 } as $allowed_licenses |
