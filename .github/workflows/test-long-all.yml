@@ -79,4 +79,4 @@ jobs:
 
       - name: Lint check
         run: npm run lint
-        if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.version }} == 'stable' && !contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.version == 'stable' }}
