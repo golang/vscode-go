@@ -8,10 +8,11 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
 import { tmpdir } from 'os';
+import * as net from 'net';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as proxy from '../../src/goDebugFactory';
-import { DebugConfiguration } from 'vscode';
+import { DebugConfiguration, DebugProtocolMessage } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
 import { DebugProtocol } from 'vscode-debugprotocol';
@@ -289,12 +290,11 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-const testAll = (isDlvDap: boolean) => {
+const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
 	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
-	let dlvDapProcess: cp.ChildProcess;
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'testdata');
@@ -309,18 +309,17 @@ const testAll = (isDlvDap: boolean) => {
 	};
 
 	let dc: DebugClient;
+	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
 
 	setup(async () => {
 		if (isDlvDap) {
 			dc = new DebugClient('dlv', 'dap', 'go');
+			// dc.start will be called in initializeDebugConfig call,
+			// which creates a thin adapter for delve dap mode,
+			// runs it on a network port, and gets wired with this dc.
 
 			// Launching delve may take longer than the default timeout of 5000.
 			dc.defaultTimeout = 20_000;
-
-			// Change the output to be printed to the console.
-			sinon.stub(proxy, 'appendToDebugConsole').callsFake((msg: string) => {
-				console.log(msg);
-			});
 			return;
 		}
 
@@ -333,9 +332,14 @@ const testAll = (isDlvDap: boolean) => {
 
 	teardown(async () => {
 		await dc.stop();
-		if (dlvDapProcess) {
-			await killProcessTree(dlvDapProcess);
-			dlvDapProcess = null;
+		if (dlvDapAdapter) {
+			const d = dlvDapAdapter;
+			dlvDapAdapter = null;
+			if (ctx.currentTest?.state === 'failed') {
+				console.log(`${ctx.currentTest?.title} FAILED: DAP Trace`);
+				d.printLog();
+			}
+			await d.dispose();
 		}
 		sinon.restore();
 	});
@@ -1812,10 +1816,9 @@ const testAll = (isDlvDap: boolean) => {
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			const { port, dlvDapServer } = await proxy.startDapServer(debugConfig);
-			dlvDapProcess = dlvDapServer;
-			debugConfig.port = port; // let the debug test client connect to our dap server.
-			await dc.start(port);
+			dlvDapAdapter = new DelveDAPDebugAdapterOnSocket(debugConfig);
+			const port = await dlvDapAdapter.serve();
+			await dc.start(port); // This will connect to the adapter's port.
 		}
 		return debugConfig;
 	}
@@ -1823,10 +1826,134 @@ const testAll = (isDlvDap: boolean) => {
 
 suite('Go Debug Adapter Tests (legacy)', function () {
 	this.timeout(60_000);
-	testAll(false);
+	testAll(this.ctx, false);
 });
 
 suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	this.timeout(60_000);
-	testAll(true);
+	testAll(this.ctx, true);
 });
+
+// DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
+// over a network socket. This allows tests to instantiate
+// the thin adapter for Delve DAP and the debug test support's
+// DebugClient to communicate with the adapter over a network socket.
+class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
+	constructor(config: DebugConfiguration) {
+		super(config, false);
+	}
+
+	private static TWO_CRLF = '\r\n\r\n';
+	private _rawData: Buffer;
+	private _contentLength: number;
+	private _writableStream: NodeJS.WritableStream;
+	private _server: net.Server;
+	private _port: number; // port for the thin adapter.
+
+	public serve(): Promise<number> {
+		return new Promise(async (resolve, reject) => {
+			this._port = await getPort();
+			this._server = net.createServer((c) => {
+				this.log('>> accepted connection from client');
+				c.on('end', () => {
+					this.log('>> client disconnected');
+					this.dispose();
+				});
+				this.run(c, c);
+			});
+			this._server.on('error', (err) => reject(err));
+			this._server.listen(this._port, () => resolve(this._port));
+		});
+	}
+
+	private run(inStream: NodeJS.ReadableStream, outStream: NodeJS.WritableStream): void {
+		this._writableStream = outStream;
+		this._rawData = Buffer.alloc(0);
+
+		// forward to DelveDAPDebugAdapter, which will forward to dlv dap.
+		inStream.on('data', (data: Buffer) => this._handleData(data));
+		// handle data from DelveDAPDebugAdapter, that's from dlv dap.
+		this.onDidSendMessage((m) => this._send(m));
+
+		inStream.resume();
+	}
+
+	private _disposed = false;
+	public async dispose() {
+		if (this._disposed) {
+			return;
+		}
+		this._disposed = true;
+		this.log('adapter disposed');
+		await this._server.close();
+		await super.dispose();
+	}
+
+	// Code from
+	// https://github.com/microsoft/vscode-debugadapter-node/blob/2235a2227d1a439372be578cd3f55e15211851b7/testSupport/src/protocolClient.ts#L96-L97
+	private _send(message: DebugProtocolMessage): void {
+		if (this._writableStream) {
+			const json = JSON.stringify(message);
+			this.log(`<- server: ${json}`);
+			if (!this._writableStream.writable) {
+				this.log('socket closed already');
+				return;
+			}
+			this._writableStream.write(
+				`Content-Length: ${Buffer.byteLength(json, 'utf8')}${DelveDAPDebugAdapterOnSocket.TWO_CRLF}${json}`,
+				'utf8'
+			);
+		}
+	}
+
+	// Code from
+	// https://github.com/microsoft/vscode-debugadapter-node/blob/2235a2227d1a439372be578cd3f55e15211851b7/testSupport/src/protocolClient.ts#L100-L132
+	private _handleData(data: Buffer): void {
+		this._rawData = Buffer.concat([this._rawData, data]);
+
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			if (this._contentLength >= 0) {
+				if (this._rawData.length >= this._contentLength) {
+					const message = this._rawData.toString('utf8', 0, this._contentLength);
+					this._rawData = this._rawData.slice(this._contentLength);
+					this._contentLength = -1;
+					if (message.length > 0) {
+						try {
+							this.log(`-> server: ${message}`);
+							const msg: DebugProtocol.ProtocolMessage = JSON.parse(message);
+							this.handleMessage(msg);
+						} catch (e) {
+							throw new Error('Error handling data: ' + (e && e.message));
+						}
+					}
+					continue; // there may be more complete messages to process
+				}
+			} else {
+				const idx = this._rawData.indexOf(DelveDAPDebugAdapterOnSocket.TWO_CRLF);
+				if (idx !== -1) {
+					const header = this._rawData.toString('utf8', 0, idx);
+					const lines = header.split('\r\n');
+					for (let i = 0; i < lines.length; i++) {
+						const pair = lines[i].split(/: +/);
+						if (pair[0] === 'Content-Length') {
+							this._contentLength = +pair[1];
+						}
+					}
+					this._rawData = this._rawData.slice(idx + DelveDAPDebugAdapterOnSocket.TWO_CRLF.length);
+					continue;
+				}
+			}
+			break;
+		}
+	}
+
+	/* --- accumulate log messages so we can output when the test fails --- */
+	private _log = [] as string[];
+	private log(msg: string) {
+		this._log.push(msg);
+	}
+	public printLog() {
+		this._log.forEach((msg) => console.log(msg));
+	}
+}
