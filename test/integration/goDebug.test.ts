@@ -1104,15 +1104,22 @@ const testAll = (isDlvDap: boolean) => {
 			]);
 		}
 
-		test('should set breakpoints during next', async () => {
-			setBreakpointsDuringStep(async () => {
+		test('should set breakpoints during next', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+			}
+			await setBreakpointsDuringStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
 		});
 
-		test('should set breakpoints during step out', async () => {
-			setBreakpointsDuringStep(async () => {
+		test('should set breakpoints during step out', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+			}
+
+			await setBreakpointsDuringStep(async () => {
 				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
 				assert.ok(stepOutResponse.success);
 			});
