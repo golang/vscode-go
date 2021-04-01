@@ -667,8 +667,7 @@
                 "enum": [
                   "default",
                   "native",
-                  "lldb",
-                  "rr"
+                  "lldb"
                 ],
                 "description": "Backend used by delve. Maps to `dlv`'s `--backend` flag."
               },
