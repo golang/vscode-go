@@ -568,17 +568,6 @@ function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 			(tool) =>
 				new Promise<Tool>((resolve, reject) => {
 					const toolPath = getBinPath(tool.name);
-					if (tool.name === 'dlv-dap') {
-						// Check if user already has dlv-dap binary.
-						// If so, it's likely the user may be interested in updating the tool,
-						// so we should mark it as important and return as a missing tool.
-						if (path.isAbsolute(toolPath)) {
-							tool.isImportant = true;
-							resolve(tool);
-							return;
-						}
-						tool.isImportant = false;
-					}
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
 		)
