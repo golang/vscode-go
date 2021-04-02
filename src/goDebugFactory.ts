@@ -275,12 +275,12 @@ async function spawnDlvDapServerProcess(
 	const launchArgsEnv = launchArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
 
-	const dlvPath = launchArgs.dlvToolPath ?? getTool('dlv');
+	const dlvPath = launchArgs.dlvToolPath ?? getTool('dlv-dap');
 
 	if (!fs.existsSync(dlvPath)) {
 		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
 		logErr(
-			`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
+			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}`
 		);
