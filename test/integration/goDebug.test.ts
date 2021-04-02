@@ -1637,7 +1637,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		}
 
-		test.only('next', async function () {
+		test('next', async function () {
 			if (!isDlvDap) {
 				// Not implemented in the legacy adapter.
 				this.skip();
