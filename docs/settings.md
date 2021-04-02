@@ -143,6 +143,7 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | Properties | Description |
 | --- | --- |
 | `apiVersion` | Delve Api Version to use. Default value is 2. <br/> Allowed Options: `1`, `2` <br/> Default: `2` |
+| `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"legacy"` |
 | `dlvLoadConfig` | LoadConfig describes to delve, how to load values from target's memory <br/> Default: ``` { <pre>"followPointers" :	true,<br/>"maxArrayValues" :	64,<br/>"maxStringLen" :	64,<br/>"maxStructFields" :	-1,<br/>"maxVariableRecurse" :	1,</pre>} ``` |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not. <br/> Default: `false` |
 
@@ -150,6 +151,7 @@ Default:
 ```
 {
 	"apiVersion" :	2,
+	"debugAdapter" :	"legacy",
 	"dlvLoadConfig" :		{
 		"followPointers" :	true,
 		"maxArrayValues" :	64,

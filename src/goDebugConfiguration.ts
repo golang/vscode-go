@@ -196,6 +196,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail
 			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
 		}
+		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
+			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
+		}
 
 		// Remove any '--gcflags' entries and show a warning
 		if (debugConfiguration['buildFlags']) {

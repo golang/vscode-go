@@ -1700,6 +1700,15 @@
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "debugAdapter": {
+              "type": "string",
+              "enum": [
+                "legacy",
+                "dlv-dap"
+              ],
+              "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
+              "default": "legacy"
             }
           },
           "default": {
@@ -1711,7 +1720,8 @@
               "maxStructFields": -1
             },
             "apiVersion": 2,
-            "showGlobalVariables": false
+            "showGlobalVariables": false,
+            "debugAdapter": "legacy"
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
