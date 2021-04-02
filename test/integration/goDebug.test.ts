@@ -1637,12 +1637,19 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		}
 
-		test.skip('next', async () => {
-			// neither debug adapter implements this behavior
+		test.only('next', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
 			await runSwitchGoroutineTest('next');
 		});
 
-		test.skip('step in', async () => {
+		test('step in', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
 			// neither debug adapter implements this behavior
 			await runSwitchGoroutineTest('step in');
 		});
