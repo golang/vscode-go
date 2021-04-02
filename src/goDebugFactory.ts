@@ -186,6 +186,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		this.connected = undefined;
 		const dlvDapServer = this.dlvDapServer;
 		if (dlvDapServer.exitCode !== null) {
+			console.log(`dlv dap process(${dlvDapServer.pid}) exited ${dlvDapServer.exitCode}`);
 			return;
 		}
 		await new Promise<void>((resolve) => {
@@ -195,6 +196,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 				resolve();
 			}, 1_000);
 			dlvDapServer.on('exit', () => {
+				console.log(`dlv dap process(${dlvDapServer.pid}) exited`);
 				clearTimeout(exitTimeoutToken);
 				resolve();
 			});
@@ -204,8 +206,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private async startAndConnectToServer() {
 		const { port, host, dlvDapServer } = await startDapServer(
 			this.config,
-			(msg) => this.stdoutEvent(msg),
-			(msg) => this.stderrEvent(msg)
+			(msg) => this.outputEvent('stdout', msg),
+			(msg) => this.outputEvent('stderr', msg),
+			(msg) => this.outputEvent('console', msg)
 		);
 		const socket = await new Promise<net.Socket>((resolve, reject) => {
 			// eslint-disable-next-line prefer-const
@@ -226,17 +229,10 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		this.start(this.socket, this.socket);
 	}
 
-	stdoutEvent(output: string, data?: any) {
+	private outputEvent(dest: string, output: string, data?: any) {
 		this.sendMessageToClient(new OutputEvent(output, 'stdout', data));
 		if (this.outputToConsole) {
 			console.log(output);
-		}
-	}
-
-	stderrEvent(output: string, data?: any) {
-		this.sendMessageToClient(new OutputEvent(output, 'stderr', data));
-		if (this.outputToConsole) {
-			console.error(output);
 		}
 	}
 }
@@ -244,7 +240,8 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 export async function startDapServer(
 	configuration: vscode.DebugConfiguration,
 	log?: (msg: string) => void,
-	logErr?: (msg: string) => void
+	logErr?: (msg: string) => void,
+	logConsole?: (msg: string) => void
 ): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
 	const host = configuration.host || '127.0.0.1';
 
@@ -260,7 +257,10 @@ export async function startDapServer(
 	if (!logErr) {
 		logErr = appendToDebugConsole;
 	}
-	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr);
+	if (!logConsole) {
+		logConsole = appendToDebugConsole;
+	}
+	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
 	return { dlvDapServer, port, host };
 }
 
@@ -269,7 +269,8 @@ async function spawnDlvDapServerProcess(
 	host: string,
 	port: number,
 	log: (msg: string) => void,
-	logErr: (msg: string) => void
+	logErr: (msg: string) => void,
+	logConsole: (msg: string) => void
 ): Promise<ChildProcess> {
 	const launchArgsEnv = launchArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
@@ -301,7 +302,7 @@ async function spawnDlvDapServerProcess(
 	if (launchArgs.logOutput) {
 		dlvArgs.push('--log-output=' + launchArgs.logOutput);
 	}
-	log(`Running: ${dlvPath} ${dlvArgs.join(' ')}`);
+	logConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}\n`);
 
 	const dir = parseProgramArgSync(launchArgs).dirname;
 	// TODO(hyangah): determine the directories:
