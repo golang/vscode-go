@@ -559,7 +559,7 @@
               },
               "traceDirectory": {
                 "type": "string",
-                "description": "Directory in which the record trace is located. For use on 'replay' and 'record' modes",
+                "description": "Directory in which the record trace is located or to be created for a new output trace. For use on 'replay' and 'record' modes",
                 "default": ""
               },
               "coreDumpPath": {
