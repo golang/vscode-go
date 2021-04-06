@@ -1,3 +1,31 @@
+## v0.24.0 - 6th Apr, 2021
+
+🧪 We re-enabled the option to use `dlv dap` (Delve's native DAP implementation) instead of the old debug
+adapter when debugging go code. See [the documentation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#how-to-use-dlv-dap)
+to learn more about Delve's native DAP implementation, and how to choose `dlv dap`.
+
+Full list of issues and changes can be found in the [v0.24.0 milestone](https://github.com/golang/vscode-go/milestone/25) and the [changes since v0.23.3](https://github.com/golang/vscode-go/compare/v0.23.3...release).
+
+### Enhancements
+* Supports custom format tools when gopls is enabled. ([Issue 1238](https://github.com/golang/vscode-go/issues/1238))
+* Allows to use `dlv dap` for debugging.
+
+### Fixes
+* Do not lint with `staticcheck` if it is enabled in `gopls`. ([CL 301053](https://go-review.googlesource.com/c/vscode-go/+/301053))
+* Use `go list` to check availability of newly released gopls. ([CL 295418](https://go-review.googlesource.com/c/vscode-go/+/295418))
+* Use `go env -json` to query go env variables. ([CL 301730](https://go-review.googlesource.com/c/vscode-go/+/301730))
+* Include gopls, go versions and OS info to the opt-out survey.
+
+### Code Health
+
+* npm audit fix
+* Removed the deprecated `go.overwriteGoplsMiddleware` setting.
+* Added more testing for debug features using dlv-dap.
+
+### Thanks
+
+Thanks for the contributions, @hoanggc, @suzmue, @rstambler, @polinasok!
+
 ## v0.23.3 - 19th Mar, 2021
 
 ### Enhancements
