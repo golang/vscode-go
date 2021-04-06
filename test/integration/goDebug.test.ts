@@ -1293,6 +1293,59 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				dc.assertStoppedLocation('panic', {})
 			]);
 		});
+
+		test('should stop on runtime error during continue', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+
+			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'runtimeError');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM_WITH_EXCEPTION
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('stopped').then((event) => {
+					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+				})
+			]);
+		});
+
+		test('should stop on runtime error during next', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+
+			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'runtimeError');
+			const FILE = path.join(PROGRAM_WITH_EXCEPTION, 'oops.go');
+			const BREAKPOINT_LINE = 5;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM_WITH_EXCEPTION
+			};
+			const debugConfig = await initializeDebugConfig(config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await Promise.all([
+				dc.nextRequest({ threadId: 1 }),
+				dc.waitForEvent('stopped').then((event) => {
+					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+				})
+			]);
+		});
 	});
 
 	suite('disconnect', () => {
