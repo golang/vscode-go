@@ -45,38 +45,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				}
 			},
 			{
-				label: 'Go: Launch File',
-				description: 'Debug the file in the program attribute',
-				config: {
-					name: 'Launch file',
-					type: 'go',
-					request: 'launch',
-					mode: 'debug',
-					program: '${file}'
-				}
-			},
-			{
-				label: 'Go: Launch test function',
-				description: 'Debug the test function in the args, ensure program attributes points to right package',
-				config: {
-					name: 'Launch test function',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${fileDirname}',
-					args: ['-test.run', 'MyTestFunction']
-				},
-				fill: async (config: vscode.DebugConfiguration) => {
-					const testFunc = await vscode.window.showInputBox({
-						placeHolder: 'MyTestFunction',
-						prompt: 'Name of the function to test'
-					});
-					if (testFunc) {
-						config.args = ['-test.run', testFunc];
-					}
-				}
-			},
-			{
 				label: 'Go: Attach to local process',
 				description: 'Attach to an existing process by process ID',
 				config: {
