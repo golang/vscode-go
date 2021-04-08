@@ -174,7 +174,7 @@ Below are the available sample configurations:
 
 #### Debug the current file (`Go: Launch file`)
 
-Recall that `${file}` refers to the currently opened file (see [Using VS Code Variables](#using-vs-code-variables)).
+Recall that `${file}` refers to the currently opened file (see [Using VS Code Variables](#using-vs-code-variables)). For debugging a package that consists with multiple files, use `${fileDirname}` instead.
 
 ```json5
 {
@@ -206,7 +206,8 @@ Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS 
 
 #### Debug all tests in the given package (`Go: Launch test package`)
 
-Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS Code Variables](#using-vs-code-variables)).
+A package is a collection of source files in the same directory that are compiled together.
+Recall that `${fileDirname}` refers to the directory of the open file (see [Using VS Code Variables](#using-vs-code-variables)).
 
 ```json5
 {

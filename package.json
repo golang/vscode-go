@@ -438,12 +438,12 @@
         "configurationSnippets": [
           {
             "label": "Go: Launch package",
-            "description": "Debug the package in the program attribute",
+            "description": "Debug/test the package in the program attribute",
             "body": {
               "name": "${2:Launch Package}",
               "type": "go",
               "request": "launch",
-              "mode": "debug",
+              "mode": "auto",
               "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
@@ -456,17 +456,6 @@
               "request": "launch",
               "mode": "debug",
               "program": "^\"${1:\\${file\\}}\""
-            }
-          },
-          {
-            "label": "Go: Launch test package",
-            "description": "Debug the test package in the program attribute",
-            "body": {
-              "name": "${2:Launch test package}",
-              "type": "go",
-              "request": "launch",
-              "mode": "test",
-              "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
           {

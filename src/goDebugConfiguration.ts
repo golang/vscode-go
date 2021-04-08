@@ -34,18 +34,18 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	public async pickConfiguration(): Promise<vscode.DebugConfiguration[]> {
 		const debugConfigurations = [
 			{
-				label: 'Go: Launch package',
-				description: 'Debug the package in the program attribute',
+				label: 'Go: Launch Package',
+				description: 'Debug/test the package of the open file',
 				config: {
 					name: 'Launch Package',
 					type: this.defaultDebugAdapterType,
 					request: 'launch',
-					mode: 'debug',
-					program: '${workspaceFolder}'
+					mode: 'auto',
+					program: '${fileDirname}'
 				}
 			},
 			{
-				label: 'Go: Launch file',
+				label: 'Go: Launch File',
 				description: 'Debug the file in the program attribute',
 				config: {
 					name: 'Launch file',
@@ -56,17 +56,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				}
 			},
 			{
-				label: 'Go: Launch test package',
-				description: 'Debug the test package in the program attribute',
-				config: {
-					name: 'Launch test package',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${workspaceFolder}'
-				}
-			},
-			{
 				label: 'Go: Launch test function',
 				description: 'Debug the test function in the args, ensure program attributes points to right package',
 				config: {
@@ -74,7 +63,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					type: 'go',
 					request: 'launch',
 					mode: 'test',
-					program: '${workspaceFolder}',
+					program: '${fileDirname}',
 					args: ['-test.run', 'MyTestFunction']
 				},
 				fill: async (config: vscode.DebugConfiguration) => {
