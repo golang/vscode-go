@@ -230,7 +230,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	}
 
 	private outputEvent(dest: string, output: string, data?: any) {
-		this.sendMessageToClient(new OutputEvent(output, 'stdout', data));
+		this.sendMessageToClient(new OutputEvent(output, dest, data));
 		if (this.outputToConsole) {
 			console.log(output);
 		}
