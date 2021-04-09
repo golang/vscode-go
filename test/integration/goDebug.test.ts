@@ -775,11 +775,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should run program with cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -793,19 +789,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Hello, World!\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Hello, World!\n';
+			}
 		});
 
-		test('should run program without cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -818,19 +810,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Goodbye, World.\n';
+			}
 		});
 
-		test('should run file program with cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run file program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -844,19 +832,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Hello, World!\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Hello, World!\n';
+			}
 		});
 
-		test('should run file program without cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -869,12 +853,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Goodbye, World.\n';
+			}
 		});
 	});
 
