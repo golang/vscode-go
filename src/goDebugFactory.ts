@@ -173,8 +173,19 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		if (!this.connected) {
 			this.connected = this.startAndConnectToServer();
 		}
-		await this.connected;
-		super.sendMessageToServer(message);
+		try {
+			await this.connected;
+			super.sendMessageToServer(message);
+		} catch (err) {
+			// If there was an error connecting, show an error message
+			// and send a terminated event, since we cannot start.
+			if (err) {
+				const errMsg = `connect to server error: ${err}`;
+				this.sendMessageToClient(new OutputEvent(errMsg));
+				vscode.window.showErrorMessage(errMsg);
+			}
+			this.sendMessageToClient(new TerminatedEvent());
+		}
 	}
 
 	async dispose() {
@@ -185,6 +196,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		}
 		this.connected = undefined;
 		const dlvDapServer = this.dlvDapServer;
+		if (!dlvDapServer) {
+			return;
+		}
 		if (dlvDapServer.exitCode !== null) {
 			console.log(`dlv dap process(${dlvDapServer.pid}) exited ${dlvDapServer.exitCode}`);
 			return;
