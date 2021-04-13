@@ -14,7 +14,7 @@ Please see the [Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-
 
 ## Getting Started
 
-You can choose which debug adapter to use with the `"debugAdapter"` field in [your `launch.json` configuration](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#snippets). Most settings will continue to work with in this new `"dlv-dap"` mode except [a few caveats](#features-and-caveats).
+You can select the default debug adapter to use in all launch configurations and codelenses through the `"debugAdapter"` field in the [`"go.delveConfig"`](settings.md#go.delveConfig) setting. You can choose which debug adapter to use for individual launch configurations with the `"debugAdapter"` field in [your `launch.json` configuration](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#snippets). Most settings will continue to work with in this new `"dlv-dap"` mode except [a few caveats](#features-and-caveats).
 If you do not already have a `launch.json`, select `create a launch.json file` from the debug pane and choose an initial Go debug configuration.
 
 <div style="text-align: center;"><img src="images/createlaunchjson.png" width=200 alt="The debug pane with the option to create launch.json"> </div>
