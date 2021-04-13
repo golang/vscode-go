@@ -600,6 +600,13 @@ results. Zero means unlimited.
 
 
 Default: `"100ms"`
+### `ui.completion.experimentalPostfixCompletions`
+
+(Experimental) experimentalPostfixCompletions enables artifical method snippets
+such as "someSlice.sort!".
+
+
+Default: `false`
 ### `ui.completion.matcher`
 
 (Advanced) matcher sets the algorithm that is used when calculating completion

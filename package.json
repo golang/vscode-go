@@ -1870,6 +1870,12 @@
               "default": "100ms",
               "scope": "resource"
             },
+            "ui.completion.experimentalPostfixCompletions": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
+              "default": false,
+              "scope": "resource"
+            },
             "ui.completion.matcher": {
               "type": "string",
               "markdownDescription": "(Advanced) matcher sets the algorithm that is used when calculating completion\ncandidates.\n",
