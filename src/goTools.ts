@@ -450,8 +450,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Go debugger (Delve built for DAP experiment)',
 		defaultVersion: 'master', // Always build from the master.
 		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
-		latestVersion: semver.parse('v1.6.1-0.20210402163444-c223ef656da3'),
-		latestVersionTimestamp: moment('2021-04-02', 'YYYY-MM-DD')
+		latestVersion: semver.parse('1.6.1-0.20210414072240-747f03788315'),
+		latestVersionTimestamp: moment('2021-04-14', 'YYYY-MM-DD')
 	},
 	'fillstruct': {
 		name: 'fillstruct',
