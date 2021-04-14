@@ -11,12 +11,18 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { declinedToolInstall, promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
+import {
+	declinedToolInstall,
+	installTools,
+	promptForMissingTool,
+	promptForUpdatingTool,
+	shouldUpdateTool
+} from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, resolvePath } from './util';
+import { getBinPath, getGoVersion, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 
 let dlvDAPVersionCurrent = false;
@@ -208,8 +214,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
 			const tool = getToolAtVersion('dlv-dap');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
-				promptForUpdatingTool('dlv-dap');
-				return;
+				// If the user has opted in to automatic tool updates, we can update
+				// without prompting.
+				const toolsManagementConfig = getGoConfig()['toolsManagement'];
+				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+					const goVersion = await getGoVersion();
+					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
+					await installTools([toolVersion], goVersion, true);
+				} else {
+					// If we are prompting the user to update, we do not want to continue
+					// with this debug session.
+					promptForUpdatingTool(tool.name);
+					return;
+				}
 			}
 			dlvDAPVersionCurrent = true;
 		}

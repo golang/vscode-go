@@ -406,6 +406,9 @@ export async function promptForUpdatingTool(
 	if (toolName === 'gopls') {
 		choices = ['Always Update', 'Update Once', 'Release Notes'];
 	}
+	if (toolName === 'dlv-dap') {
+		choices = ['Always Update', 'Update Once'];
+	}
 
 	const goVersion = await getGoVersion();
 
