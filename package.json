@@ -233,6 +233,11 @@
         "description": "Re-runs the last executed test."
       },
       {
+        "command": "go.debug.previous",
+        "title": "Go: Debug Previous",
+        "description": "Re-runs the last debugged test run through a codelens or \"Go: Debug Test at Cursor\" command."
+      },
+      {
         "command": "go.test.coverage",
         "title": "Go: Toggle Test Coverage In Current Package",
         "description": "Displays test coverage in the current package."

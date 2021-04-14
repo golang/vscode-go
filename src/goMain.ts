@@ -64,6 +64,7 @@ import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import {
+	debugPrevious,
 	subTestAtCursor,
 	testAtCursor,
 	testCurrentFile,
@@ -372,6 +373,12 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.test.previous', () => {
 			testPrevious();
+		})
+	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.debug.previous', () => {
+			debugPrevious();
 		})
 	);
 
