@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -428,12 +428,12 @@
         "configurationSnippets": [
           {
             "label": "Go: Launch package",
-            "description": "Debug the package in the program attribute",
+            "description": "Debug/test the package in the program attribute",
             "body": {
               "name": "${2:Launch Package}",
               "type": "go",
               "request": "launch",
-              "mode": "debug",
+              "mode": "auto",
               "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
@@ -446,17 +446,6 @@
               "request": "launch",
               "mode": "debug",
               "program": "^\"${1:\\${file\\}}\""
-            }
-          },
-          {
-            "label": "Go: Launch test package",
-            "description": "Debug the test package in the program attribute",
-            "body": {
-              "name": "${2:Launch test package}",
-              "type": "go",
-              "request": "launch",
-              "mode": "test",
-              "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
           {
@@ -1701,6 +1690,15 @@
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "debugAdapter": {
+              "type": "string",
+              "enum": [
+                "legacy",
+                "dlv-dap"
+              ],
+              "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
+              "default": "legacy"
             }
           },
           "default": {
@@ -1712,7 +1710,8 @@
               "maxStructFields": -1
             },
             "apiVersion": 2,
-            "showGlobalVariables": false
+            "showGlobalVariables": false,
+            "debugAdapter": "legacy"
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
@@ -1859,6 +1858,12 @@
               "type": "string",
               "markdownDescription": "(For Debugging) completionBudget is the soft latency goal for completion requests. Most\nrequests finish in a couple milliseconds, but in some cases deep\ncompletions can take much longer. As we use up our budget we\ndynamically reduce the search scope to ensure we return timely\nresults. Zero means unlimited.\n",
               "default": "100ms",
+              "scope": "resource"
+            },
+            "ui.completion.experimentalPostfixCompletions": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
+              "default": false,
               "scope": "resource"
             },
             "ui.completion.matcher": {

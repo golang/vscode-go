@@ -2,6 +2,8 @@
 
 This document explains how to debug your Go programs in VS Code. The Go debugger is [Delve]. You can read more about it in the [Delve documentation](https://github.com/go-delve/delve/tree/master/Documentation).
 
+📣 Integration with the [Delve's native DAP implementation](https://github.com/golang/vscode-go/tree/master/docs/dlv-dap.md) is available for preview. Please give it a try and provide feedback!
+
 ## Overview
 
 * [Set up](#set-up)
@@ -172,7 +174,7 @@ Below are the available sample configurations:
 
 #### Debug the current file (`Go: Launch file`)
 
-Recall that `${file}` refers to the currently opened file (see [Using VS Code Variables](#using-vs-code-variables)).
+Recall that `${file}` refers to the currently opened file (see [Using VS Code Variables](#using-vs-code-variables)). For debugging a package that consists with multiple files, use `${fileDirname}` instead.
 
 ```json5
 {
@@ -204,7 +206,8 @@ Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS 
 
 #### Debug all tests in the given package (`Go: Launch test package`)
 
-Recall that `${workspaceFolder}` refers to the current workspace (see [Using VS Code Variables](#using-vs-code-variables)).
+A package is a collection of source files in the same directory that are compiled together.
+Recall that `${fileDirname}` refers to the directory of the open file (see [Using VS Code Variables](#using-vs-code-variables)).
 
 ```json5
 {

@@ -34,57 +34,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	public async pickConfiguration(): Promise<vscode.DebugConfiguration[]> {
 		const debugConfigurations = [
 			{
-				label: 'Go: Launch package',
-				description: 'Debug the package in the program attribute',
+				label: 'Go: Launch Package',
+				description: 'Debug/test the package of the open file',
 				config: {
 					name: 'Launch Package',
 					type: this.defaultDebugAdapterType,
 					request: 'launch',
-					mode: 'debug',
-					program: '${workspaceFolder}'
-				}
-			},
-			{
-				label: 'Go: Launch file',
-				description: 'Debug the file in the program attribute',
-				config: {
-					name: 'Launch file',
-					type: 'go',
-					request: 'launch',
-					mode: 'debug',
-					program: '${file}'
-				}
-			},
-			{
-				label: 'Go: Launch test package',
-				description: 'Debug the test package in the program attribute',
-				config: {
-					name: 'Launch test package',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${workspaceFolder}'
-				}
-			},
-			{
-				label: 'Go: Launch test function',
-				description: 'Debug the test function in the args, ensure program attributes points to right package',
-				config: {
-					name: 'Launch test function',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${workspaceFolder}',
-					args: ['-test.run', 'MyTestFunction']
-				},
-				fill: async (config: vscode.DebugConfiguration) => {
-					const testFunc = await vscode.window.showInputBox({
-						placeHolder: 'MyTestFunction',
-						prompt: 'Name of the function to test'
-					});
-					if (testFunc) {
-						config.args = ['-test.run', testFunc];
-					}
+					mode: 'auto',
+					program: '${fileDirname}'
 				}
 			},
 			{
@@ -206,6 +163,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration['cwd']) {
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail
 			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
+		}
+		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
+			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
 		}
 
 		// Remove any '--gcflags' entries and show a warning

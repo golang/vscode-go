@@ -32,9 +32,14 @@ statusBarItem.text = '$(x) Cancel Running Tests';
  */
 const runningTestProcesses: cp.ChildProcess[] = [];
 
-const testFuncRegex = /^Test.*|^Example.*/;
-const testMethodRegex = /^\(([^)]+)\)\.(Test.*)$/;
-const benchmarkRegex = /^Benchmark.*/;
+// https://github.com/golang/go/blob/117b1c84d3678a586c168a5f7f2f0a750c27f0c2/src/cmd/go/internal/load/test.go#L487
+// uses !unicode.isLower to find test/example/benchmark functions.
+// There could be slight difference between \P{Ll} (not lowercase letter)
+// & go unicode package's uppercase detection. But hopefully
+// these will be replaced by gopls's codelens computation soon.
+const testFuncRegex = /^Test\P{Ll}.*|^Example\P{Ll}.*/u;
+const testMethodRegex = /^\(([^)]+)\)\.(Test\P{Ll}.*)$/u;
+const benchmarkRegex = /^Benchmark\P{Ll}.*/u;
 
 /**
  * Input to goTest.

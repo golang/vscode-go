@@ -8,10 +8,11 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
 import { tmpdir } from 'os';
+import * as net from 'net';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as proxy from '../../src/goDebugFactory';
-import { DebugConfiguration } from 'vscode';
+import { DebugConfiguration, DebugProtocolMessage } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
 import { DebugProtocol } from 'vscode-debugprotocol';
@@ -289,12 +290,11 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-const testAll = (isDlvDap: boolean) => {
+const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
 	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
-	let dlvDapProcess: cp.ChildProcess;
 
 	const PROJECT_ROOT = path.normalize(path.join(__dirname, '..', '..', '..'));
 	const DATA_ROOT = path.join(PROJECT_ROOT, 'test', 'testdata');
@@ -309,18 +309,17 @@ const testAll = (isDlvDap: boolean) => {
 	};
 
 	let dc: DebugClient;
+	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
 
 	setup(async () => {
 		if (isDlvDap) {
 			dc = new DebugClient('dlv', 'dap', 'go');
+			// dc.start will be called in initializeDebugConfig call,
+			// which creates a thin adapter for delve dap mode,
+			// runs it on a network port, and gets wired with this dc.
 
 			// Launching delve may take longer than the default timeout of 5000.
 			dc.defaultTimeout = 20_000;
-
-			// Change the output to be printed to the console.
-			sinon.stub(proxy, 'appendToDebugConsole').callsFake((msg: string) => {
-				console.log(msg);
-			});
 			return;
 		}
 
@@ -333,9 +332,14 @@ const testAll = (isDlvDap: boolean) => {
 
 	teardown(async () => {
 		await dc.stop();
-		if (dlvDapProcess) {
-			await killProcessTree(dlvDapProcess);
-			dlvDapProcess = null;
+		if (dlvDapAdapter) {
+			const d = dlvDapAdapter;
+			dlvDapAdapter = null;
+			if (ctx.currentTest?.state === 'failed') {
+				console.log(`${ctx.currentTest?.title} FAILED: DAP Trace`);
+				d.printLog();
+			}
+			await d.dispose();
 		}
 		sinon.restore();
 	});
@@ -771,11 +775,7 @@ const testAll = (isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		test('should run program with cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -789,19 +789,15 @@ const testAll = (isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Hello, World!\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Hello, World!\n';
+			}
 		});
 
-		test('should run program without cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
 
@@ -814,19 +810,15 @@ const testAll = (isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Goodbye, World.\n';
+			}
 		});
 
-		test('should run file program with cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run file program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -840,19 +832,15 @@ const testAll = (isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Hello, World!\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Hello, World!\n';
+			}
 		});
 
-		test('should run file program without cwd set (noDebug)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // OutputEvents not implemented
-			}
-
+		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
 
@@ -865,12 +853,12 @@ const testAll = (isDlvDap: boolean) => {
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await Promise.all([
-				dc.launch(debugConfig),
-				dc.waitForEvent('output').then((event) => {
-					assert.strictEqual(event.body.output, 'Goodbye, World.\n');
-				})
-			]);
+			dc.launch(debugConfig);
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				found = event.body.output === 'Goodbye, World.\n';
+			}
 		});
 	});
 
@@ -1104,15 +1092,22 @@ const testAll = (isDlvDap: boolean) => {
 			]);
 		}
 
-		test('should set breakpoints during next', async () => {
-			setBreakpointsDuringStep(async () => {
+		test('should set breakpoints during next', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+			}
+			await setBreakpointsDuringStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
 		});
 
-		test('should set breakpoints during step out', async () => {
-			setBreakpointsDuringStep(async () => {
+		test('should set breakpoints during step out', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+			}
+
+			await setBreakpointsDuringStep(async () => {
 				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
 				assert.ok(stepOutResponse.success);
 			});
@@ -1280,6 +1275,59 @@ const testAll = (isDlvDap: boolean) => {
 				dc.launch(debugConfig),
 
 				dc.assertStoppedLocation('panic', {})
+			]);
+		});
+
+		test('should stop on runtime error during continue', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+
+			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'runtimeError');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM_WITH_EXCEPTION
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([
+				dc.configurationSequence(),
+				dc.launch(debugConfig),
+				dc.waitForEvent('stopped').then((event) => {
+					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+				})
+			]);
+		});
+
+		test('should stop on runtime error during next', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+
+			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'runtimeError');
+			const FILE = path.join(PROGRAM_WITH_EXCEPTION, 'oops.go');
+			const BREAKPOINT_LINE = 5;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: PROGRAM_WITH_EXCEPTION
+			};
+			const debugConfig = await initializeDebugConfig(config);
+
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await Promise.all([
+				dc.nextRequest({ threadId: 1 }),
+				dc.waitForEvent('stopped').then((event) => {
+					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+				})
 			]);
 		});
 	});
@@ -1626,12 +1674,19 @@ const testAll = (isDlvDap: boolean) => {
 			]);
 		}
 
-		test.skip('next', async () => {
-			// neither debug adapter implements this behavior
+		test('next', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
 			await runSwitchGoroutineTest('next');
 		});
 
-		test.skip('step in', async () => {
+		test('step in', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
 			// neither debug adapter implements this behavior
 			await runSwitchGoroutineTest('step in');
 		});
@@ -1805,10 +1860,9 @@ const testAll = (isDlvDap: boolean) => {
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			const { port, dlvDapServer } = await proxy.startDapServer(debugConfig);
-			dlvDapProcess = dlvDapServer;
-			debugConfig.port = port; // let the debug test client connect to our dap server.
-			await dc.start(port);
+			dlvDapAdapter = new DelveDAPDebugAdapterOnSocket(debugConfig);
+			const port = await dlvDapAdapter.serve();
+			await dc.start(port); // This will connect to the adapter's port.
 		}
 		return debugConfig;
 	}
@@ -1816,10 +1870,134 @@ const testAll = (isDlvDap: boolean) => {
 
 suite('Go Debug Adapter Tests (legacy)', function () {
 	this.timeout(60_000);
-	testAll(false);
+	testAll(this.ctx, false);
 });
 
 suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	this.timeout(60_000);
-	testAll(true);
+	testAll(this.ctx, true);
 });
+
+// DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
+// over a network socket. This allows tests to instantiate
+// the thin adapter for Delve DAP and the debug test support's
+// DebugClient to communicate with the adapter over a network socket.
+class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
+	constructor(config: DebugConfiguration) {
+		super(config, false);
+	}
+
+	private static TWO_CRLF = '\r\n\r\n';
+	private _rawData: Buffer;
+	private _contentLength: number;
+	private _writableStream: NodeJS.WritableStream;
+	private _server: net.Server;
+	private _port: number; // port for the thin adapter.
+
+	public serve(): Promise<number> {
+		return new Promise(async (resolve, reject) => {
+			this._port = await getPort();
+			this._server = net.createServer((c) => {
+				this.log('>> accepted connection from client');
+				c.on('end', () => {
+					this.log('>> client disconnected');
+					this.dispose();
+				});
+				this.run(c, c);
+			});
+			this._server.on('error', (err) => reject(err));
+			this._server.listen(this._port, () => resolve(this._port));
+		});
+	}
+
+	private run(inStream: NodeJS.ReadableStream, outStream: NodeJS.WritableStream): void {
+		this._writableStream = outStream;
+		this._rawData = Buffer.alloc(0);
+
+		// forward to DelveDAPDebugAdapter, which will forward to dlv dap.
+		inStream.on('data', (data: Buffer) => this._handleData(data));
+		// handle data from DelveDAPDebugAdapter, that's from dlv dap.
+		this.onDidSendMessage((m) => this._send(m));
+
+		inStream.resume();
+	}
+
+	private _disposed = false;
+	public async dispose() {
+		if (this._disposed) {
+			return;
+		}
+		this._disposed = true;
+		this.log('adapter disposed');
+		await this._server.close();
+		await super.dispose();
+	}
+
+	// Code from
+	// https://github.com/microsoft/vscode-debugadapter-node/blob/2235a2227d1a439372be578cd3f55e15211851b7/testSupport/src/protocolClient.ts#L96-L97
+	private _send(message: DebugProtocolMessage): void {
+		if (this._writableStream) {
+			const json = JSON.stringify(message);
+			this.log(`<- server: ${json}`);
+			if (!this._writableStream.writable) {
+				this.log('socket closed already');
+				return;
+			}
+			this._writableStream.write(
+				`Content-Length: ${Buffer.byteLength(json, 'utf8')}${DelveDAPDebugAdapterOnSocket.TWO_CRLF}${json}`,
+				'utf8'
+			);
+		}
+	}
+
+	// Code from
+	// https://github.com/microsoft/vscode-debugadapter-node/blob/2235a2227d1a439372be578cd3f55e15211851b7/testSupport/src/protocolClient.ts#L100-L132
+	private _handleData(data: Buffer): void {
+		this._rawData = Buffer.concat([this._rawData, data]);
+
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			if (this._contentLength >= 0) {
+				if (this._rawData.length >= this._contentLength) {
+					const message = this._rawData.toString('utf8', 0, this._contentLength);
+					this._rawData = this._rawData.slice(this._contentLength);
+					this._contentLength = -1;
+					if (message.length > 0) {
+						try {
+							this.log(`-> server: ${message}`);
+							const msg: DebugProtocol.ProtocolMessage = JSON.parse(message);
+							this.handleMessage(msg);
+						} catch (e) {
+							throw new Error('Error handling data: ' + (e && e.message));
+						}
+					}
+					continue; // there may be more complete messages to process
+				}
+			} else {
+				const idx = this._rawData.indexOf(DelveDAPDebugAdapterOnSocket.TWO_CRLF);
+				if (idx !== -1) {
+					const header = this._rawData.toString('utf8', 0, idx);
+					const lines = header.split('\r\n');
+					for (let i = 0; i < lines.length; i++) {
+						const pair = lines[i].split(/: +/);
+						if (pair[0] === 'Content-Length') {
+							this._contentLength = +pair[1];
+						}
+					}
+					this._rawData = this._rawData.slice(idx + DelveDAPDebugAdapterOnSocket.TWO_CRLF.length);
+					continue;
+				}
+			}
+			break;
+		}
+	}
+
+	/* --- accumulate log messages so we can output when the test fails --- */
+	private _log = [] as string[];
+	private log(msg: string) {
+		this._log.push(msg);
+	}
+	public printLog() {
+		this._log.forEach((msg) => console.log(msg));
+	}
+}

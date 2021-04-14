@@ -76,4 +76,4 @@ jobs:
       
       - name: Lint check
         run: npm run lint
-        if: ${{ matrix.os }} == 'ubuntu-latest'
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.version == 'stable' }}

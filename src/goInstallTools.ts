@@ -355,8 +355,12 @@ export async function promptForMissingTool(toolName: string) {
 		// Offer the option to install all tools.
 		installOptions.push('Install All');
 	}
-	const msg = `The "${tool.name}" command is not available.
+	let msg = `The "${tool.name}" command is not available.
 Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
+	if (tool.name === 'dlv-dap') {
+		msg = `The ["${tool.name}"](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) command is not available.
+Please select "Install", or follow the installation instructions [here](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#updating-dlv-dap).`;
+	}
 	const selected = await vscode.window.showErrorMessage(msg, ...installOptions);
 	switch (selected) {
 		case 'Install':
