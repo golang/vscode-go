@@ -1,3 +1,18 @@
+## v0.24.1 - 15 Apr, 2021
+
+### Enhancements
+- Cleaned up launch configuration snippets for easier debug setup
+- To use `dlv-dap` by default for all launch configurations (including codelenses), set the `debugAdapter` field in the `go.delveConfig` setting ([Issue 1293](https://github.com/golang/vscode-go/issues/1293))
+- The list of debugging features only available with `dlv-dap` is now available [here](https://github.com/golang/vscode-go/issues?q=is%3Aissue+label%3Afixedindlvdaponly)
+- Updated extension settings to match gopls v0.6.10
+
+### Fixes
+- Tightened the test function detection regex for codelenses ([Issue 1417](https://github.com/golang/vscode-go/issues/1417))
+- Show error message when dlv-dap fails to launch ([Issue 1413](https://github.com/golang/vscode-go/issues/1413))
+- Corrected install instructions for dlv-dap in popup ([Issue 1395](https://github.com/golang/vscode-go/issues/1395))
+
+## Code Health
+- Updated latest version of dlv-dap and gopls (v0.6.10)
 ## v0.24.0 - 6th Apr, 2021
 
 🧪 We re-enabled the option to use `dlv dap` (Delve's native DAP implementation) instead of the old debug
