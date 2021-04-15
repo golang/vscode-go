@@ -168,6 +168,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private dlvDapServer: ChildProcess;
 	private port: number;
 	private socket: net.Socket;
+	private terminatedOnError = false;
 
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
 		if (!this.connected) {
@@ -177,14 +178,19 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			await this.connected;
 			super.sendMessageToServer(message);
 		} catch (err) {
+			if (this.terminatedOnError) {
+				return;
+			}
+			this.terminatedOnError = true;
 			// If there was an error connecting, show an error message
 			// and send a terminated event, since we cannot start.
 			if (err) {
-				const errMsg = `connect to server error: ${err}`;
-				this.sendMessageToClient(new OutputEvent(errMsg));
+				const errMsg = `Debug Error: ${err}`;
+				this.outputEvent(errMsg, 'stderr');
 				vscode.window.showErrorMessage(errMsg);
 			}
 			this.sendMessageToClient(new TerminatedEvent());
+			return;
 		}
 	}
 
