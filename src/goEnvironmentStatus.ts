@@ -32,7 +32,7 @@ import {
 	fixDriveCasingInWindows,
 	getBinPathFromEnvVar,
 	getCurrentGoRoot,
-	pathExists
+	dirExists
 } from './utils/pathUtils';
 import vscode = require('vscode');
 import WebRequest = require('web-request');
@@ -63,6 +63,22 @@ export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariable
 const CLEAR_SELECTION = '$(clear-all) Clear selection';
 const CHOOSE_FROM_FILE_BROWSER = '$(folder) Choose from file browser';
 
+function canChooseGoEnvironment() {
+	// if there is no workspace, show GOROOT with message
+	if (!vscode.workspace.name) {
+		return { ok: false, reason: 'Switching Go version is not yet supported in single-file mode.' };
+	}
+
+	if (getGoConfig().get('goroot')) {
+		return { ok: false, reason: 'Switching Go version when "go.goroot" is set is unsupported.' };
+	}
+
+	if (process.env['GOROOT']) {
+		return { ok: false, reason: 'Switching Go version when process.env["GOROOT"] is set is unsupported.' };
+	}
+
+	return { ok: true };
+}
 /**
  * Present a command palette menu to the user to select their go binary
  */
@@ -70,12 +86,9 @@ export async function chooseGoEnvironment() {
 	if (!goEnvStatusbarItem) {
 		return;
 	}
-
-	// if there is no workspace, show GOROOT with message
-	if (!vscode.workspace.name) {
-		vscode.window.showInformationMessage(
-			`GOROOT: ${getCurrentGoRoot()}. Switching Go version is not yet supported in single-file mode.`
-		);
+	const { ok, reason } = canChooseGoEnvironment();
+	if (!ok) {
+		vscode.window.showInformationMessage(`GOROOT: ${getCurrentGoRoot()}. ${reason}`);
 		return;
 	}
 
@@ -265,7 +278,7 @@ async function downloadGo(goOption: GoEnvironmentOption) {
 
 			outputChannel.appendLine('Finding newly downloaded Go');
 			const sdkPath = path.join(os.homedir(), 'sdk');
-			if (!(await pathExists(sdkPath))) {
+			if (!(await dirExists(sdkPath))) {
 				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
 			}
@@ -343,9 +356,10 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			for (const term of vscode.window.terminals) {
 				updateIntegratedTerminal(term);
 			}
-			if (!terminalCreationListener) {
-				terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
+			if (terminalCreationListener) {
+				terminalCreationListener.dispose();
 			}
+			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
 		} else {
 			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
 		}
@@ -439,7 +453,7 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	// get list of Go versions
 	const sdkPath = path.join(os.homedir(), 'sdk');
 
-	if (!(await pathExists(sdkPath))) {
+	if (!(await dirExists(sdkPath))) {
 		return [];
 	}
 	const readdir = promisify(fs.readdir);

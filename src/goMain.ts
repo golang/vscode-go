@@ -96,7 +96,7 @@ import {
 	isGoPathSet,
 	resolvePath
 } from './util';
-import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, setCurrentGoRoot } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
@@ -151,8 +151,11 @@ export async function activate(ctx: vscode.ExtensionContext) {
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (configGOROOT) {
-		logVerbose(`go.goroot = '${configGOROOT}'`);
-		setCurrentGoRoot(resolvePath(configGOROOT));
+		const goroot = resolvePath(configGOROOT);
+		if (dirExists(goroot)) {
+			logVerbose(`setting GOROOT = ${goroot} because "go.goroot": "${configGOROOT}"`);
+			process.env['GOROOT'] = goroot;
+		}
 	}
 
 	// Present a warning about the deprecation of the go.documentLink setting.
@@ -443,6 +446,17 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 			const updatedGoConfig = getGoConfig();
 
+			if (e.affectsConfiguration('go.goroot')) {
+				const configGOROOT = updatedGoConfig['goroot'];
+				if (configGOROOT) {
+					const goroot = resolvePath(configGOROOT);
+					const oldGoroot = process.env['GOROOT'];
+					if (oldGoroot !== goroot && dirExists(goroot)) {
+						logVerbose(`setting GOROOT = ${goroot} because "go.goroot": "${configGOROOT}"`);
+						process.env['GOROOT'] = goroot;
+					}
+				}
+			}
 			if (
 				e.affectsConfiguration('go.goroot') ||
 				e.affectsConfiguration('go.alternateTools') ||

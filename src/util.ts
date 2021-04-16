@@ -509,15 +509,17 @@ export function getBinPathWithExplanation(tool: string, useCache = true): { binP
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
+	const gorootInSetting = resolvePath(cfg.get('goroot'));
+
 	let selectedGoPath: string | undefined;
-	if (tool === 'go') {
+	if (tool === 'go' && !gorootInSetting) {
 		selectedGoPath = getFromWorkspaceState('selectedGo')?.binpath;
 	}
 
 	return getBinPathWithPreferredGopathGorootWithExplanation(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
-		tool === 'go' && cfg.get('goroot') ? resolvePath(cfg.get('goroot')) : undefined,
+		tool === 'go' ? gorootInSetting : undefined,
 		selectedGoPath ?? resolvePath(alternateToolPath),
 		useCache
 	);
