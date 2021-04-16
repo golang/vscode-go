@@ -34,6 +34,7 @@ import {
 	getBinPath,
 	getBinPathWithExplanation,
 	getCheckForToolsUpdatesConfig,
+	getCurrentGoPath,
 	getGoVersion,
 	getTempFilePath,
 	getWorkspaceFolderPath,
@@ -281,12 +282,16 @@ export async function installTool(
 		logVerbose(`install: ${goBinary} ${args.join(' ')}\n${stdout}${stderr}`);
 		if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
 			// Actual installation of the -gomod tool and dlv-dap is done by running go build.
-			const gopath = env['GOBIN'] || env['GOPATH'];
-			if (!gopath) {
+			let destDir = env['GOBIN'];
+			if (!destDir) {
+				const gopath0 = env['GOPATH']?.split(path.delimiter)[0];
+				destDir = gopath0 ? path.join(gopath0, 'bin') : undefined;
+			}
+			if (!destDir) {
 				throw new Error('GOBIN/GOPATH not configured in environment');
 			}
-			const destDir = gopath.split(path.delimiter)[0];
-			const outputFile = path.join(destDir, 'bin', process.platform === 'win32' ? `${tool.name}.exe` : tool.name);
+			const outputFile = path.join(destDir, correctBinname(tool.name));
+
 			// go build does not take @version suffix yet.
 			const importPath = getImportPath(tool, goVersion);
 			await execFile(goBinary, ['build', '-o', outputFile, importPath], opts);

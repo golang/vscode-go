@@ -7,7 +7,6 @@
 import AdmZip = require('adm-zip');
 import * as assert from 'assert';
 import * as config from '../../src/config';
-import { toolInstallationEnvironment } from '../../src/goEnv';
 import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
 import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
@@ -39,7 +38,7 @@ suite('Installation Tests', function () {
 	let tmpToolsGopath: string;
 	let tmpToolsGopath2: string;
 	let sandbox: sinon.SinonSandbox;
-	let toolsGopathStub: sinon.SinonStub;
+	let toolsGopath: string;
 
 	setup(() => {
 		// Create a temporary directory in which to install tools.
@@ -48,11 +47,9 @@ suite('Installation Tests', function () {
 		// a temporary directory to be used as the second GOPATH element.
 		tmpToolsGopath2 = fs.mkdtempSync(path.join(os.tmpdir(), 'install-test2'));
 
-		const toolsGopath = tmpToolsGopath + path.delimiter + tmpToolsGopath2;
+		toolsGopath = tmpToolsGopath + path.delimiter + tmpToolsGopath2;
 
 		sandbox = sinon.createSandbox();
-		const utils = require('../../src/util');
-		toolsGopathStub = sandbox.stub(utils, 'getToolsGopath').returns(toolsGopath);
 	});
 
 	teardown(async () => {
@@ -74,7 +71,10 @@ suite('Installation Tests', function () {
 
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
-	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean) {
+	// If withGOBIN is true, the test will set GOBIN env var.
+	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean, withGOBIN?: boolean) {
+		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
+
 		let proxyDir: string;
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
@@ -83,14 +83,21 @@ suite('Installation Tests', function () {
 				toolsEnvVars: {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),
-						GOSUMDB: 'off'
+						GOSUMDB: 'off',
+						GOBIN: gobin
 					}
-				}
+				},
+				gopath: { value: toolsGopath }
 			});
 			configStub = sandbox.stub(config, 'getGoConfig').returns(goConfig);
 		} else {
-			const env = toolInstallationEnvironment();
-			console.log(`Installing tools using GOPROXY=${env['GOPROXY']}`);
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+				toolsEnvVars: {
+					value: { GOBIN: gobin }
+				},
+				gopath: { value: toolsGopath }
+			});
+			configStub = sandbox.stub(config, 'getGoConfig').returns(goConfig);
 		}
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
@@ -104,7 +111,9 @@ suite('Installation Tests', function () {
 			checks.push(
 				new Promise<void>(async (resolve) => {
 					// Check that the expect tool has been installed to $GOPATH/bin.
-					const bin = path.join(tmpToolsGopath, 'bin', correctBinname(tc.name));
+					const bin = gobin
+						? path.join(gobin, correctBinname(tc.name))
+						: path.join(tmpToolsGopath, 'bin', correctBinname(tc.name));
 					const ok = await exists(bin);
 					if (!ok) {
 						assert.fail(`expected ${bin}, not found`);
@@ -123,8 +132,6 @@ suite('Installation Tests', function () {
 			);
 		}
 		await Promise.all(checks);
-
-		sandbox.assert.calledWith(toolsGopathStub);
 
 		if (withLocalProxy) {
 			sandbox.assert.calledWith(configStub);
@@ -157,6 +164,22 @@ suite('Installation Tests', function () {
 				}
 			],
 			true
+		);
+	});
+
+	test('Install multiple tools with a local proxy & GOBIN', async () => {
+		await runTest(
+			[
+				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
+				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
+				{
+					name: 'dlv-dap',
+					versions: ['v1.0.0', 'master'],
+					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
+				}
+			],
+			true, // LOCAL PROXY
+			true // GOBIN
 		);
 	});
 
