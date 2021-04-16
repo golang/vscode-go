@@ -23,7 +23,7 @@ import {
 	updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
-import { GoDebugAdapterDescriptorFactory } from './goDebugFactory';
+import { GoDebugAdapterDescriptorFactory, GoDebugAdapterTrackerFactory } from './goDebugFactory';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -238,6 +238,14 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
+	}
+
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	ctx.subscriptions.push(debugOutputChannel);
+	const tracker = new GoDebugAdapterTrackerFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('go', tracker));
+	if ('dispose' in tracker) {
+		ctx.subscriptions.push(tracker);
 	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');

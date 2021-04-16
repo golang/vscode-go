@@ -14,6 +14,7 @@ import path = require('path');
 import * as fs from 'fs';
 import * as net from 'net';
 import { getTool } from './goTools';
+import { TimestampedLogger } from './goLogging';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	public createDebugAdapterDescriptor(
@@ -41,8 +42,27 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	}
 }
 
-// TODO(hyangah): Code below needs refactoring to avoid using vscode API
-// so we can use from a separate debug adapter executable in testing.
+export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+	constructor(private outputChannel: vscode.OutputChannel) {}
+
+	createDebugAdapterTracker(session: vscode.DebugSession) {
+		const level = session.configuration?.trace;
+		if (!level || level === 'off') {
+			return null;
+		}
+		const logger = new TimestampedLogger(session.configuration?.trace || 'off', this.outputChannel);
+		return {
+			onWillStartSession: () =>
+				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
+			onWillReceiveMessage: (message: any) => logger.trace(`client -> ${JSON.stringify(message)}\n`),
+			onDidSendMessage: (message: any) => logger.trace(`client <- ${JSON.stringify(message)}\n`),
+			onError: (error: Error) => logger.error(`error: ${error}\n`),
+			onWillStopSession: () => logger.debug(`session ${session.id} will stop\n`),
+			onExit: (code: number | undefined, signal: string | undefined) =>
+				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})\n`)
+		};
+	}
+}
 
 const TWO_CRLF = '\r\n\r\n';
 
