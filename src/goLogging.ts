@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,76 +5,100 @@
 
 'use strict';
 
-// Our log level.
-enum LogLevel {
-	Off = 100,
-	Error = 50,
-	Info = 30,
-	Verbose = 20
-	// TODO: Trace, Warn level
+type LogLevel = 'off' | 'error' | 'info' | 'trace' | 'verbose';
+
+const levels: { [key in LogLevel]: number } = {
+	off: -1,
+	error: 0,
+	info: 1,
+	trace: 2,
+	verbose: 3
+};
+// TODO: consider 'warning' level.
+
+function levelToString(level: number) {
+	switch (level) {
+		case levels.error:
+			return 'Error';
+		case levels.info:
+			return 'Info';
+		case levels.trace:
+			return 'Trace';
+		case levels.verbose:
+			return 'Verbose';
+	}
+	return '';
 }
 
-let currentLogLevel: LogLevel = LogLevel.Error;
+interface outputChannelType {
+	appendLine: (msg: string) => void;
+}
+// Logger outputs messages of the specified log levels to the vscode output channel or console.
+export class Logger {
+	protected minLevel: number;
 
-const levelMap: { [k: string]: LogLevel } = {
-	off: LogLevel.Off,
-	error: LogLevel.Error,
-	info: LogLevel.Info,
-	verbose: LogLevel.Verbose
-};
+	constructor(levelName: LogLevel, private outputChannel?: outputChannelType, private logToConsole?: boolean) {
+		this.minLevel = levels[levelName] || levels.error;
+	}
 
-function levelPrefix(l: LogLevel): string {
-	switch (l) {
-		case LogLevel.Off:
-			return 'Go[O]:';
-		case LogLevel.Error:
-			return 'Go[E]:';
-		case LogLevel.Info:
-			return 'Go[I]:';
-		case LogLevel.Verbose:
-			return 'Go[V]:';
-		default:
-			return 'Go[?]:';
+	protected log(msgLevel: number, msg: string) {
+		if (this.minLevel < 0) {
+			return; // logging is off.
+		}
+		if (this.minLevel < msgLevel) {
+			return;
+		}
+		this.outputChannel?.appendLine(msg);
+		if (this.logToConsole) console.log(msg);
+	}
+
+	error(msg: string) {
+		this.log(levels.error, msg);
+	}
+	info(msg: string) {
+		this.log(levels.info, msg);
+	}
+	trace(msg: string) {
+		this.log(levels.trace, msg);
+	}
+	debug(msg: string) {
+		this.log(levels.verbose, msg);
+	}
+}
+
+// TimestampedLogger is a logger that prepends the timestamp to every log message.
+export class TimestampedLogger extends Logger {
+	log(msgLevel: number, msg: string) {
+		const ts = new Date();
+		const hhmmss = ts.toLocaleTimeString([], {
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: false
+		});
+		const msec = ts.getMilliseconds();
+		super.log(msgLevel, `[${levelToString(msgLevel)} - ${hhmmss}.${msec}] ${msg}`);
 	}
 }
 
 export interface LogConfig {
-	level: string;
+	level: LogLevel;
 }
+
+let defaultLogger: Logger;
 
 export function setLogConfig(cfg: LogConfig) {
-	const logLevel = cfg?.level || 'error';
-	const l = levelMap[logLevel];
-	if (l) {
-		currentLogLevel = l;
-		return;
-	}
-	logError(`setLogLevel requested with invalid log level ${logLevel}, ignoring...`);
+	defaultLogger = new Logger(cfg.level);
 }
 
-// tslint:disable-next-line:no-any
-function log(logLevel: LogLevel, ...args: any[]) {
-	if (logLevel < currentLogLevel) {
-		return;
-	}
-	const p = levelPrefix(logLevel);
-	const a = Array.from(args);
-	a.unshift(p);
-	console.log(...a);
-	// TODO: support logging in vscode output channel.
+export function logVerbose(msg: string) {
+	defaultLogger?.debug(msg);
 }
 
-// tslint:disable-next-line:no-any
-export function logVerbose(...args: any[]) {
-	log(LogLevel.Verbose, ...args);
+export function logError(msg: string) {
+	defaultLogger?.error(msg);
 }
 
-// tslint:disable-next-line:no-any
-export function logError(...args: any[]) {
-	log(LogLevel.Error, ...args);
-}
-
-// tslint:disable-next-line:no-any
-export function logInfo(...args: any[]) {
-	log(LogLevel.Info, ...args);
+export function logInfo(msg: string) {
+	defaultLogger?.info(msg);
 }
