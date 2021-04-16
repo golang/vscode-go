@@ -1884,7 +1884,7 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 // DebugClient to communicate with the adapter over a network socket.
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	constructor(config: DebugConfiguration) {
-		super(config, false);
+		super(config);
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';

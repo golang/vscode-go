@@ -234,14 +234,15 @@ If you would like additional configuration for diagnostics from gopls, please se
 		)
 	);
 
-	const factory = new GoDebugAdapterDescriptorFactory();
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	ctx.subscriptions.push(debugOutputChannel);
+
+	const factory = new GoDebugAdapterDescriptorFactory(debugOutputChannel);
 	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
 	}
 
-	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
-	ctx.subscriptions.push(debugOutputChannel);
 	const tracker = new GoDebugAdapterTrackerFactory(debugOutputChannel);
 	ctx.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('go', tracker));
 	if ('dispose' in tracker) {
