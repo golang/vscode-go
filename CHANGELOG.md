@@ -1,3 +1,16 @@
+## v0.24.2 - 19 Apr, 2021
+A list of all issues and changes can be found in the
+[v0.24.2 milestone](https://github.com/golang/vscode-go/issues?q=is%3Aissue+milestone%3Av0.24.2+is%3Aclosed).
+
+### Fixes
+- Fixed regression in the `lintOnSave` feature. ([Issue 1429](https://github.com/golang/vscode-go/issues/1429))
+- Fixed `dlv-dap` installation to correcly use `GOBIN` environment variable. ([Issue 1430](https://github.com/golang/vscode-go/issues/1430))
+- Fixed duplicate error notifications when missing `dlv-dap`. ([Issue 1426](https://github.com/golang/vscode-go/issues/1426))
+
+## Enhancements
+- Updated the minimum required dlv-dap version. The new version includes support for
+[`substitutePath`](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#launch-configurations) and shadowed variable annotation.
+
 ## v0.24.1 - 15 Apr, 2021
 
 ### Enhancements
@@ -13,6 +26,7 @@
 
 ## Code Health
 - Updated latest version of dlv-dap and gopls (v0.6.10)
+
 ## v0.24.0 - 6th Apr, 2021
 
 🧪 We re-enabled the option to use `dlv dap` (Delve's native DAP implementation) instead of the old debug
