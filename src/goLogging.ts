@@ -5,21 +5,23 @@
 
 'use strict';
 
-type LogLevel = 'off' | 'error' | 'info' | 'trace' | 'verbose';
+type LogLevel = 'off' | 'error' | 'warn' | 'info' | 'trace' | 'verbose';
 
 const levels: { [key in LogLevel]: number } = {
 	off: -1,
 	error: 0,
-	info: 1,
-	trace: 2,
-	verbose: 3
+	warn: 1,
+	info: 2,
+	trace: 3,
+	verbose: 4
 };
-// TODO: consider 'warning' level.
 
 function levelToString(level: number) {
 	switch (level) {
 		case levels.error:
 			return 'Error';
+		case levels.warn:
+			return 'Warn';
 		case levels.info:
 			return 'Info';
 		case levels.trace:
@@ -54,6 +56,9 @@ export class Logger {
 
 	error(msg: string) {
 		this.log(levels.error, msg);
+	}
+	warn(msg: string) {
+		this.log(levels.warn, msg);
 	}
 	info(msg: string) {
 		this.log(levels.info, msg);
@@ -91,14 +96,22 @@ export function setLogConfig(cfg: LogConfig) {
 	defaultLogger = new Logger(cfg.level);
 }
 
-export function logVerbose(msg: string) {
-	defaultLogger?.debug(msg);
-}
-
 export function logError(msg: string) {
 	defaultLogger?.error(msg);
 }
 
+export function logWarn(msg: string) {
+	defaultLogger?.warn(msg);
+}
+
 export function logInfo(msg: string) {
 	defaultLogger?.info(msg);
+}
+
+export function logTrace(msg: string) {
+	defaultLogger?.trace(msg);
+}
+
+export function logVerbose(msg: string) {
+	defaultLogger?.debug(msg);
 }

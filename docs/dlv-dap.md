@@ -106,7 +106,7 @@ For simple launch cases, build the delve binary, and configure `"go.alternateToo
 }
 ```
 
-Set `logOutput` and `showLog` attributes in `launch.json` to enable logging and DAP message tracing.
+Set `logOutput` and `showLog` attributes in `launch.json` to enable `dlv'-side logging and DAP message tracing.
 ```json5
 {
     "name": "Launch file",
@@ -114,6 +114,19 @@ Set `logOutput` and `showLog` attributes in `launch.json` to enable logging and 
     "debugAdapter": "dlv-dap",
     "showLog": true,
     "logOutput": "dap",
+    ...
+}
+```
+
+Set `trace` attribute to control the verbosity of debug extension's logging.
+The logging will appear in the `Go Debug` output channel (Command Palette -> "View: Toggle Output" -> Select "Go Debug" from the dropdown menu).
+
+```json5
+{
+    "name": "Launch file",
+    "type": "go",
+    "debugAdapter": "dlv-dap",
+    "trace": "verbose",
     ...
 }
 ```

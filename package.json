@@ -616,12 +616,15 @@
               "trace": {
                 "type": "string",
                 "enum": [
-                  "log",
                   "verbose",
+                  "trace",
+                  "log",
+                  "info",
+                  "warn",
                   "error"
                 ],
                 "default": "error",
-                "description": "Various levels of logging shown in the debug console. When set to 'log' or 'verbose', the logs will also be written to a file."
+                "description": "Various levels of the debug console & 'Go Debug' output channel. When using the `legacy` debug adapter, the logs will also be written to a file if it is set to a value other than `error`."
               },
               "envFile": {
                 "type": [

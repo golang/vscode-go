@@ -281,7 +281,12 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	host?: string;
 	buildFlags?: string;
 	init?: string;
-	trace?: 'verbose' | 'log' | 'error';
+	// trace, info, warn are to match goLogging.
+	// In practice, this adapter handles only verbose, log, and error
+	//  verbose === trace,
+	//  log === info === warn,
+	//  error
+	trace?: 'verbose' | 'trace' | 'info' | 'log' | 'warn' | 'error';
 	backend?: string;
 	output?: string;
 	substitutePath?: { from: string; to: string }[];
@@ -315,7 +320,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	remotePath?: string;
 	port?: number;
 	host?: string;
-	trace?: 'verbose' | 'log' | 'error';
+	trace?: 'verbose' | 'trace' | 'info' | 'log' | 'warn' | 'error';
 	backend?: string;
 	substitutePath?: { from: string; to: string }[];
 	/** Delve LoadConfig parameters */
@@ -1954,9 +1959,9 @@ export class GoDebugSession extends LoggingDebugSession {
 		args: LaunchRequestArguments | AttachRequestArguments
 	) {
 		this.logLevel =
-			args.trace === 'verbose'
+			args.trace === 'verbose' || args.trace === 'trace'
 				? Logger.LogLevel.Verbose
-				: args.trace === 'log'
+				: args.trace === 'log' || args.trace === 'info' || args.trace === 'warn'
 				? Logger.LogLevel.Log
 				: Logger.LogLevel.Error;
 		const logPath =

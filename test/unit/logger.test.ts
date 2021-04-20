@@ -22,6 +22,7 @@ suite('Logger Tests', () => {
 		const appendLine = sandbox.fake();
 		const logger = new Logger(level, { appendLine });
 		logger.error('error');
+		logger.warn('warn');
 		logger.info('info');
 		logger.debug('debug');
 		logger.trace('trace');
@@ -29,9 +30,10 @@ suite('Logger Tests', () => {
 	}
 	test('logger level = off', () => runTest('off', 0));
 	test('logger level = error', () => runTest('error', 1));
-	test('logger level = info', () => runTest('info', 2));
-	test('logger level = trace', () => runTest('trace', 3));
-	test('logger level = verbose', () => runTest('verbose', 4));
+	test('logger level = warning', () => runTest('warn', 2));
+	test('logger level = info', () => runTest('info', 3));
+	test('logger level = trace', () => runTest('trace', 4));
+	test('logger level = verbose', () => runTest('verbose', 5));
 	test('logger level = undefined', () => runTest(undefined, 1));
 	test('logger level = ""', () => runTest('', 1));
 	test('logger level = object', () => runTest({}, 1));
