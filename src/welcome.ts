@@ -8,8 +8,8 @@
 // https://github.com/microsoft/vscode-extension-samples/tree/master/webview-sample
 
 import vscode = require('vscode');
+import path = require('path');
 import { extensionId } from './const';
-
 export class WelcomePanel {
 	public static currentPanel: WelcomePanel | undefined;
 
@@ -34,10 +34,10 @@ export class WelcomePanel {
 				enableScripts: true,
 
 				// And restrict the webview to only loading content from our extension's directory.
-				localResourceRoots: [vscode.Uri.joinPath(extensionUri)]
+				localResourceRoots: [joinPath(extensionUri)]
 			}
 		);
-		panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'go-logo-blue.png');
+		panel.iconPath = joinPath(extensionUri, 'media', 'go-logo-blue.png');
 
 		WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri);
 	}
@@ -46,15 +46,15 @@ export class WelcomePanel {
 		WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri);
 	}
 
+	public readonly dataroot: vscode.Uri; // exported for testing.
 	private readonly panel: vscode.WebviewPanel;
 	private readonly extensionUri: vscode.Uri;
-	private readonly dataroot: vscode.Uri;
 	private disposables: vscode.Disposable[] = [];
 
 	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
 		this.panel = panel;
 		this.extensionUri = extensionUri;
-		this.dataroot = vscode.Uri.joinPath(this.extensionUri, 'media');
+		this.dataroot = joinPath(this.extensionUri, 'media');
 
 		// Set the webview's initial html content
 		this.update();
@@ -72,7 +72,7 @@ export class WelcomePanel {
 						vscode.window.showErrorMessage(message.text);
 						return;
 					case 'openDocument':
-						const uri = vscode.Uri.joinPath(this.extensionUri, message.document);
+						const uri = joinPath(this.extensionUri, message.document);
 						vscode.commands.executeCommand('markdown.showPreviewToSide', uri);
 						return;
 					case 'openSetting':
@@ -106,9 +106,9 @@ export class WelcomePanel {
 
 	private getHtmlForWebview(webview: vscode.Webview) {
 		// Local path to css styles and images
-		const scriptPathOnDisk = vscode.Uri.joinPath(this.dataroot, 'welcome.js');
-		const stylePath = vscode.Uri.joinPath(this.dataroot, 'welcome.css');
-		const gopherPath = vscode.Uri.joinPath(this.dataroot, 'go-logo-blue.png');
+		const scriptPathOnDisk = joinPath(this.dataroot, 'welcome.js');
+		const stylePath = joinPath(this.dataroot, 'welcome.css');
+		const gopherPath = joinPath(this.dataroot, 'go-logo-blue.png');
 		const goExtension = vscode.extensions.getExtension(extensionId)!;
 		const goExtensionVersion = goExtension.packageJSON.version;
 
@@ -193,4 +193,14 @@ function getNonce() {
 		text += possible.charAt(Math.floor(Math.random() * possible.length));
 	}
 	return text;
+}
+
+function joinPath(uri: vscode.Uri, ...pathFragment: string[]): vscode.Uri {
+	// Reimplementation of
+	// https://github.com/microsoft/vscode/blob/b251bd952b84a3bdf68dad0141c37137dac55d64/src/vs/base/common/uri.ts#L346-L357
+	// with Node.JS path. This is a temporary workaround for https://github.com/eclipse-theia/theia/issues/8752.
+	if (!uri.path) {
+		throw new Error('[UriError]: cannot call joinPaths on URI without path');
+	}
+	return uri.with({ path: vscode.Uri.file(path.join(uri.fsPath, ...pathFragment)).path });
 }
