@@ -179,6 +179,10 @@ Build the current workspace.
 
 Install the current package.
 
+### `Go: Initialize go.mod`
+
+Run `go mod init` in the workspace folder.
+
 ### `Go: Cancel Running Tests`
 
 Cancels running tests.

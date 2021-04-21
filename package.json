@@ -97,6 +97,7 @@
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
+    "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
@@ -366,6 +367,11 @@
         "command": "go.install.package",
         "title": "Go: Install Current Package",
         "description": "Install the current package."
+      },
+      {
+        "command": "go.run.modinit",
+        "title": "Go: Initialize go.mod",
+        "description": "Run `go mod init` in the workspace folder."
       },
       {
         "command": "go.test.cancel",
