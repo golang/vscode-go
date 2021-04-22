@@ -531,7 +531,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -544,7 +544,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -569,7 +569,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 
@@ -616,7 +616,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
@@ -641,7 +641,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -665,7 +665,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -685,7 +685,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				dlvFlags: ['--listen=127.0.0.1:80']
 			};
@@ -934,7 +934,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1029,7 +1029,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1059,7 +1059,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1123,7 +1123,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1159,7 +1159,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1199,7 +1199,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1254,7 +1254,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1288,7 +1288,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1315,7 +1315,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1382,7 +1382,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1403,7 +1403,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1428,7 +1428,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -1455,7 +1455,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1479,7 +1479,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1505,7 +1505,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1526,7 +1526,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -1548,7 +1548,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
