@@ -22,8 +22,9 @@ import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion, resolvePath } from './util';
+import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
+import { resolveHomeDir } from './utils/pathUtils';
 
 let dlvDAPVersionCurrent = false;
 
@@ -168,7 +169,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		if (debugConfiguration['cwd']) {
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail
-			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
+			debugConfiguration['cwd'] = resolveHomeDir(debugConfiguration['cwd']);
 		}
 		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
 			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];

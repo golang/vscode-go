@@ -390,3 +390,36 @@ suite('Debug Configuration Modify User Config', () => {
 		});
 	});
 });
+
+suite('Debug Configuration Resolve Paths', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test('resolve ~ in cwd', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '${fileDirname}',
+			cwd: '~/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.notStrictEqual(config.cwd, '~/main.go');
+	});
+
+	test('do not resolve workspaceFolder or fileDirname', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '${fileDirname}',
+			cwd: '${workspaceFolder}'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+		assert.strictEqual(config.cwd, '${workspaceFolder}');
+		assert.strictEqual(config.program, '${fileDirname}');
+	});
+});
