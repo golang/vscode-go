@@ -706,7 +706,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD
 			};
@@ -726,7 +726,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -745,7 +745,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD
 			};
@@ -765,7 +765,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -775,6 +775,21 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
+		async function waitForHelloGoodbyeOutput(dc: DebugClient, wantHello: boolean) {
+			let found = false;
+			while (!found) {
+				const event = await dc.waitForEvent('output');
+				if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
+					if (wantHello) {
+						assert.strictEqual(event.body.output, 'Hello, World!\n');
+					} else {
+						assert.strictEqual(event.body.output, 'Goodbye, World.\n');
+					}
+					found = true;
+				}
+			}
+		}
+
 		test('should run program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
@@ -783,18 +798,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Hello, World!\n';
-			}
+			await waitForHelloGoodbyeOutput(dc, true);
 		});
 
 		test('should run program without cwd set (noDebug)', async () => {
@@ -805,17 +816,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Goodbye, World.\n';
-			}
+			await waitForHelloGoodbyeOutput(dc, false);
 		});
 
 		test('should run file program with cwd set (noDebug)', async () => {
@@ -826,20 +833,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Hello, World!\n';
-			}
+			await waitForHelloGoodbyeOutput(dc, true);
 		});
-
 		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
@@ -848,17 +850,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Goodbye, World.\n';
-			}
+			await waitForHelloGoodbyeOutput(dc, false);
 		});
 	});
 
