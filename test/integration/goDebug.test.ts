@@ -28,6 +28,10 @@ import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
+import { TimestampedLogger } from '../../src/goLogging';
+
+// For debugging test and streaming the trace instead of buffering, set this.
+const PRINT_TO_CONSOLE = false;
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -1690,6 +1694,71 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
+	suite('logDest attribute tests', () => {
+		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+		let tmpDir: string;
+		suiteSetup(() => {
+			tmpDir = fs.mkdtempSync(path.join(tmpdir(), 'logDestTest'));
+		});
+		suiteTeardown(() => {
+			rmdirRecursive(tmpDir);
+		});
+
+		test('logs are written to logDest file', async function () {
+			if (!isDlvDap) {
+				this.skip();
+			}
+			const DELVE_LOG = path.join(tmpDir, 'delve.log');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				logDest: DELVE_LOG
+			};
+
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
+			assert(
+				dapLog.includes('DAP server listening at') &&
+					dapLog.includes('"command":"initialize"') &&
+					dapLog.includes('"event":"terminated"'),
+				dapLog
+			);
+		});
+
+		async function testWithInvalidLogDest(logDest: any, wantedErrorMessage: string) {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				logDest
+			};
+
+			try {
+				await initializeDebugConfig(config);
+			} catch (error) {
+				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
+				return;
+			}
+			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
+		}
+		test('relative path as logDest triggers an error', async function () {
+			if (!isDlvDap) this.skip();
+			await testWithInvalidLogDest('delve.log', 'relative path');
+		});
+
+		test('number as logDest triggers an error', async function () {
+			if (!isDlvDap) this.skip();
+			await testWithInvalidLogDest(3, 'file descriptor');
+		});
+	});
+
 	suite('substitute path', () => {
 		// TODO(suzmue): add unit tests for substitutePath.
 		let tmpDir: string;
@@ -1854,6 +1923,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			// Log the output for easier test debugging.
 			config['logOutput'] = 'dap';
 			config['showLog'] = true;
+			config['trace'] = 'verbose';
 		}
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
@@ -1888,7 +1958,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private constructor(config: DebugConfiguration) {
-		super(config);
+		super(config, new TimestampedLogger('error', undefined, PRINT_TO_CONSOLE));
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';
@@ -1995,11 +2065,13 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 			break;
 		}
 	}
-
 	/* --- accumulate log messages so we can output when the test fails --- */
 	private _log = [] as string[];
 	private log(msg: string) {
 		this._log.push(msg);
+		if (PRINT_TO_CONSOLE) {
+			console.log(msg);
+		}
 	}
 	public printLog() {
 		this._log.forEach((msg) => console.log(msg));
