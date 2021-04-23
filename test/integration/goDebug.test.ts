@@ -1858,7 +1858,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			dlvDapAdapter = new DelveDAPDebugAdapterOnSocket(debugConfig);
+			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig);
 			const port = await dlvDapAdapter.serve();
 			await dc.start(port); // This will connect to the adapter's port.
 		}
@@ -1881,7 +1881,13 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 // the thin adapter for Delve DAP and the debug test support's
 // DebugClient to communicate with the adapter over a network socket.
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
-	constructor(config: DebugConfiguration) {
+	static async create(config: DebugConfiguration) {
+		const d = new DelveDAPDebugAdapterOnSocket(config);
+		await d.startAndConnectToServer();
+		return d;
+	}
+
+	private constructor(config: DebugConfiguration) {
 		super(config);
 	}
 

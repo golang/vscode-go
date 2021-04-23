@@ -33,14 +33,15 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		console.log('GoDebugAdapterDescriptorFactory.dispose');
 	}
 
-	private createDebugAdapterDescriptorDlvDap(
+	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
-	): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
 		if (configuration.port) {
 			return new vscode.DebugAdapterServer(configuration.port, configuration.host ?? '127.0.0.1');
 		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
+		await d.startAndConnectToServer();
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
 }
@@ -195,45 +196,22 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		super(logger);
 	}
 
-	private connected: Promise<void>;
 	private dlvDapServer: ChildProcess;
 	private port: number;
 	private socket: net.Socket;
-	private terminatedOnError = false;
 
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
-		if (!this.connected) {
-			this.connected = this.startAndConnectToServer();
-		}
-		try {
-			await this.connected;
-			super.sendMessageToServer(message);
-		} catch (err) {
-			if (this.terminatedOnError) {
-				return;
-			}
-			this.terminatedOnError = true;
-			// If there was an error connecting, show an error message
-			// and send a terminated event, since we cannot start.
-			if (err) {
-				const errMsg = `Debug Error: ${err}`;
-				this.outputEvent(errMsg, 'stderr');
-				vscode.window.showErrorMessage(errMsg);
-			}
-			this.sendMessageToClient(new TerminatedEvent());
-			return;
-		}
+		super.sendMessageToServer(message);
 	}
 
 	async dispose() {
 		// NOTE: OutputEvents from here may not show up in DEBUG CONSOLE
 		// because the debug session is terminating.
 		await super.dispose();
-
-		if (this.connected === undefined) {
+		if (!this.dlvDapServer) {
 			return;
 		}
-		this.connected = undefined;
+
 		const dlvDapServer = this.dlvDapServer;
 		if (!dlvDapServer) {
 			return;
@@ -260,7 +238,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		});
 	}
 
-	private async startAndConnectToServer() {
+	public async startAndConnectToServer() {
 		const { port, host, dlvDapServer } = await startDapServer(
 			this.config,
 			(msg) => this.outputEvent('stdout', msg),
