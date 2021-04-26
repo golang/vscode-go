@@ -1567,7 +1567,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
-			const BREAKPOINT_LINE = 14;
+			const BREAKPOINT_LINE_MAIN_RUN1 = 6;
+			const BREAKPOINT_LINE_MAIN_RUN2 = 14;
 
 			const config = {
 				name: 'Launch',
@@ -1577,13 +1578,24 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
-			// Clear breakpoints to make sure they do not interrupt the stepping.
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN1));
+
+			// Set a breakpoint in run 2. By setting breakpoints in both goroutine, we can make sure that both goroutines
+			// are running before continuing.
+			const bp2 = getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN2);
 			const breakpointsResult = await dc.setBreakpointsRequest({
+				source: { path: bp2.path },
+				breakpoints: [{ line: bp2.line }]
+			});
+			assert.ok(breakpointsResult.success);
+			await Promise.all([dc.continueRequest({ threadId: 1 }), dc.assertStoppedLocation('breakpoint', bp2)]);
+
+			// Clear breakpoints to make sure they do not interrupt the stepping.
+			const clearBreakpointsResult = await dc.setBreakpointsRequest({
 				source: { path: FILE },
 				breakpoints: []
 			});
-			assert.ok(breakpointsResult.success);
+			assert.ok(clearBreakpointsResult.success);
 
 			const threadsResponse = await dc.threadsRequest();
 			assert.ok(threadsResponse.success);
