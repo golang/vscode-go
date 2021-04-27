@@ -226,11 +226,7 @@ function scheduleGoplsSuggestions() {
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 
-		const cfg = buildLanguageServerConfig(getGoConfig());
-		if (!usingGopls(cfg)) {
-			return;
-		}
-		maybePromptForGoplsSurvey();
+		maybePromptForSurvey();
 	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
@@ -1288,9 +1284,9 @@ export interface SurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-function maybePromptForGoplsSurvey() {
+function maybePromptForSurvey() {
 	const now = new Date();
-	let cfg = shouldPromptForGoplsSurvey(now, getSurveyConfig());
+	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
 	if (!cfg) {
 		return;
 	}
@@ -1315,7 +1311,7 @@ function maybePromptForGoplsSurvey() {
 	setTimeout(callback, ms);
 }
 
-export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): SurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: SurveyConfig): SurveyConfig {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -1375,8 +1371,8 @@ export function shouldPromptForGoplsSurvey(now: Date, cfg: SurveyConfig): Survey
 
 async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
 	const selected = await vscode.window.showInformationMessage(
-		`Looks like you're using gopls, the Go language server.
-Would you be willing to fill out a quick survey about your experience with gopls?`,
+		`Looks like you are using the Go extension for VS Code.
+Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
 		'Yes',
 		'Not now',
 		'Never'
@@ -1390,10 +1386,11 @@ Would you be willing to fill out a quick survey about your experience with gopls
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
+				const goplsEnabled = latestConfig.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
 				await vscode.env.openExternal(
 					vscode.Uri.parse(
-						`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?gopls=${usersGoplsVersion}&extid=${extensionId}`
+						`https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}`
 					)
 				);
 			}
@@ -1472,7 +1469,7 @@ export async function showSurveyConfig() {
 			promptForSurvey(getSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForGoplsSurvey();
+			maybePromptForSurvey();
 			break;
 		default:
 			break;

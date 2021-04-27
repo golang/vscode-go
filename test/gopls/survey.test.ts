@@ -70,7 +70,7 @@ suite('gopls survey tests', () => {
 			sinon.replace(Math, 'random', () => 0);
 
 			const now = new Date('2020-04-29');
-			const gotPrompt = goLanguageServer.shouldPromptForGoplsSurvey(now, testConfig);
+			const gotPrompt = goLanguageServer.shouldPromptForSurvey(now, testConfig);
 			if (wantPrompt) {
 				assert.ok(gotPrompt, `prompt determination failed for ${i}`);
 			} else {
