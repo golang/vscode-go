@@ -1131,6 +1131,11 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * Cache the result in remoteToLocalPathMapping.
 	 */
 	protected inferLocalPathFromRemotePath(remotePath: string): string | undefined {
+		// Don't try to infer a path for a file that does not exist
+		if (remotePath === '') {
+			return remotePath
+		}
+
 		if (this.remoteToLocalPathMapping.has(remotePath)) {
 			return this.remoteToLocalPathMapping.get(remotePath);
 		}
