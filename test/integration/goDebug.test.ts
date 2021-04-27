@@ -330,8 +330,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(async () => {
-		await dc.stop();
+	teardown(() => {
 		if (dlvDapAdapter) {
 			const d = dlvDapAdapter;
 			dlvDapAdapter = null;
@@ -339,7 +338,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				console.log(`${ctx.currentTest?.title} FAILED: DAP Trace`);
 				d.printLog();
 			}
-			await d.dispose();
+			d.dispose();
+		} else {
+			dc.stop();
 		}
 		sinon.restore();
 	});
