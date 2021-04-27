@@ -959,7 +959,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
+		test.skip('stopped for a breakpoint set during initialization (remote attach)', async function () {
 			if (isDlvDap && dlvDapSkipsEnabled) {
 				this.skip(); // not working in dlv-dap.
 			}
@@ -984,7 +984,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('stopped for a breakpoint set after initialization (remote attach)', async function () {
+		test.skip('stopped for a breakpoint set after initialization (remote attach)', async function () {
 			if (isDlvDap && dlvDapSkipsEnabled) {
 				this.skip(); // not working in dlv-dap.
 			}
