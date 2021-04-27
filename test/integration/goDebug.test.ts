@@ -877,8 +877,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
-	// Temporarily disabled to unblock nightly release. (https://github.com/golang/vscode-go/issues/1456)
-	suite.skip('remote attach', () => {
+	suite('remote attach', () => {
 		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
@@ -976,7 +975,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test.skip('stopped for a breakpoint set during initialization (remote attach)', async function () {
+		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
 			if (isDlvDap && dlvDapSkipsEnabled) {
 				this.skip(); // not working in dlv-dap.
 			}
@@ -1001,7 +1000,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test.skip('stopped for a breakpoint set after initialization (remote attach)', async function () {
+		test('stopped for a breakpoint set after initialization (remote attach)', async function () {
 			if (isDlvDap && dlvDapSkipsEnabled) {
 				this.skip(); // not working in dlv-dap.
 			}
