@@ -1579,9 +1579,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
+			// Set a breakpoint in run 1 and get the goroutine id.
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN1));
+			const threadsResponse1 = await dc.threadsRequest();
+			assert.ok(threadsResponse1.success);
+			const run1Goroutine = threadsResponse1.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
 
-			// Set a breakpoint in run 2. By setting breakpoints in both goroutine, we can make sure that both goroutines
+			// Set a breakpoint in run 2 and get the goroutine id.
+			// By setting breakpoints in both goroutine, we can make sure that both goroutines
 			// are running before continuing.
 			const bp2 = getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN2);
 			const breakpointsResult = await dc.setBreakpointsRequest({
@@ -1589,6 +1594,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				breakpoints: [{ line: bp2.line }]
 			});
 			assert.ok(breakpointsResult.success);
+			const threadsResponse2 = await dc.threadsRequest();
+			assert.ok(threadsResponse2.success);
+			const run2Goroutine = threadsResponse2.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
+
 			await Promise.all([dc.continueRequest({ threadId: 1 }), dc.assertStoppedLocation('breakpoint', bp2)]);
 
 			// Clear breakpoints to make sure they do not interrupt the stepping.
@@ -1597,11 +1606,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				breakpoints: []
 			});
 			assert.ok(clearBreakpointsResult.success);
-
-			const threadsResponse = await dc.threadsRequest();
-			assert.ok(threadsResponse.success);
-			const run1Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
-			const run2Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
 
 			// runStepFunction runs the necessary step function and resolves if it succeeded.
 			async function runStepFunction(
