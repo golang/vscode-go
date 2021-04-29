@@ -699,7 +699,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -883,7 +883,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -1693,7 +1693,7 @@
                   "default": -1
                 }
               },
-              "description": "LoadConfig describes to delve, how to load values from target's memory",
+              "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
               "default": {
                 "followPointers": true,
                 "maxVariableRecurse": 1,

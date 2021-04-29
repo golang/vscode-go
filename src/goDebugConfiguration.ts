@@ -143,6 +143,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
+
+		// Figure out which debugAdapter is being used first, so we can use this to send warnings
+		// for properties that don't apply.
+		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
+			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
+		}
+		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
+
 		let useApiV1 = false;
 		if (debugConfiguration.hasOwnProperty('useApiV1')) {
 			useApiV1 = debugConfiguration['useApiV1'] === true;
@@ -154,6 +162,17 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		if (!debugConfiguration.hasOwnProperty('apiVersion') && dlvConfig.hasOwnProperty('apiVersion')) {
 			debugConfiguration['apiVersion'] = dlvConfig['apiVersion'];
+		}
+		if (
+			debugAdapter === 'dlv-dap' &&
+			(debugConfiguration.hasOwnProperty('dlvLoadConfig') ||
+				goConfig.inspect('delveConfig.dlvLoadConfig').globalValue !== undefined ||
+				goConfig.inspect('delveConfig.dlvLoadConfig').workspaceValue !== undefined)
+		) {
+			this.showWarning(
+				'ignoreDebugDlvConfigWithDlvDapWarning',
+				"User specified 'dlvLoadConfig' setting will be ignored by debug adapter 'dlv-dap'."
+			);
 		}
 		if (!debugConfiguration.hasOwnProperty('dlvLoadConfig') && dlvConfig.hasOwnProperty('dlvLoadConfig')) {
 			debugConfiguration['dlvLoadConfig'] = dlvConfig['dlvLoadConfig'];
@@ -170,9 +189,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration['cwd']) {
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail
 			debugConfiguration['cwd'] = resolveHomeDir(debugConfiguration['cwd']);
-		}
-		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
-			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
 		}
 
 		// Remove any '--gcflags' entries and show a warning
@@ -197,7 +213,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
 		const dlvToolPath = getBinPath(debugAdapter);
 		if (!path.isAbsolute(dlvToolPath)) {
 			const tool = getTool(debugAdapter);
