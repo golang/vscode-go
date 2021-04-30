@@ -106,13 +106,13 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 				'utf8',
 				(err) => {
 					if (err) {
-						this.logger.error(`error sending message: ${err}`);
+						this.logger?.error(`error sending message: ${err}`);
 						this.sendMessageToClient(new TerminatedEvent());
 					}
 				}
 			);
 		} else {
-			this.logger.error(`stream is closed; dropping ${json}`);
+			this.logger?.error(`stream is closed; dropping ${json}`);
 		}
 	}
 
@@ -135,7 +135,7 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 			this.terminated = true;
 
 			if (err) {
-				this.logger.error(`connection error: ${err}`);
+				this.logger?.error(`connection error: ${err}`);
 				this.sendMessageToClient(new OutputEvent(`connection error: ${err}\n`, 'console'));
 			}
 			this.sendMessageToClient(new TerminatedEvent());
@@ -204,7 +204,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		super.sendMessageToServer(message);
 	}
 
-	async dispose() {
+	async dispose(timeoutMS?: number) {
 		// NOTE: OutputEvents from here may not show up in DEBUG CONSOLE
 		// because the debug session is terminating.
 		await super.dispose();
@@ -212,7 +212,11 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			return;
 		}
 
+		if (timeoutMS === undefined) {
+			timeoutMS = 1_000;
+		}
 		const dlvDapServer = this.dlvDapServer;
+		this.dlvDapServer = undefined;
 		if (!dlvDapServer) {
 			return;
 		}
@@ -225,9 +229,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		await new Promise<void>((resolve) => {
 			const exitTimeoutToken = setTimeout(() => {
 				this.logger?.error(`dlv dap process (${dlvDapServer.pid}) isn't responding. Killing...`);
-				killProcessTree(dlvDapServer);
+				dlvDapServer.kill('SIGINT'); // Don't use treekill but let dlv handle cleaning up the child processes.
 				resolve();
-			}, 1_000);
+			}, timeoutMS);
 			dlvDapServer.on('exit', (code, signal) => {
 				clearTimeout(exitTimeoutToken);
 				this.logger?.error(

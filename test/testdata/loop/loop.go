@@ -1,7 +1,7 @@
 package main
-
+import "time"
 func main() {
 	for {
-		print("Hello")
+		time.Sleep(10*time.Millisecond)
 	}
 }

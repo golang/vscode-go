@@ -340,7 +340,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 			d.dispose();
 		} else {
-			dc.stop();
+			dc?.stop();
 		}
 		sinon.restore();
 	});
@@ -1563,6 +1563,52 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
+
+		test('should cleanup when stopped', async function () {
+			if (!isDlvDap || !dlvDapSkipsEnabled) {
+				this.skip();
+			}
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+			const OUTPUT = path.join(PROGRAM, '_loop_output');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				stopOnEntry: false,
+				output: OUTPUT
+			};
+			const debugConfig = await initializeDebugConfig(config);
+
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
+
+			try {
+				const fsstat = util.promisify(fs.stat);
+				await fsstat(OUTPUT);
+			} catch (e) {
+				assert.fail(`debug output ${OUTPUT} wasn't built: ${e}`);
+			}
+
+			// It's possible dlv-dap doesn't respond. So, don't wait.
+			dc.disconnectRequest({ restart: false });
+			await sleep(10);
+			dlvDapAdapter.dispose(1);
+			dlvDapAdapter = undefined;
+			dc = undefined;
+			await sleep(100); // allow dlv to respond and finish cleanup.
+			let stat: fs.Stats = null;
+			try {
+				const fsstat = util.promisify(fs.stat);
+				stat = await fsstat(OUTPUT);
+				fs.unlinkSync(OUTPUT);
+			} catch (e) {
+				console.log(`output was cleaned ${OUTPUT} ${e}`);
+			}
+			assert.strictEqual(stat, null, `debug output ${OUTPUT} wasn't cleaned up. ${JSON.stringify(stat)}`);
+			console.log('finished');
+		});
 	});
 
 	suite('switch goroutine', () => {
@@ -1945,14 +1991,15 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private _disposed = false;
-	public async dispose() {
+	public async dispose(timeoutMS?: number) {
 		if (this._disposed) {
 			return;
 		}
 		this._disposed = true;
-		this.log('adapter disposed');
+		this.log('adapter disposing');
 		await this._server.close();
-		await super.dispose();
+		await super.dispose(timeoutMS);
+		this.log('adapter disposed');
 	}
 
 	// Code from
@@ -2022,4 +2069,8 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	public printLog() {
 		this._log.forEach((msg) => console.log(msg));
 	}
+}
+
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
