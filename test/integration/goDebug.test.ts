@@ -28,6 +28,8 @@ import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
+import { OutputEvent } from 'vscode-debugadapter';
+import { parseProgramArgSync } from '../../src/goDebugFactory';
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -1912,6 +1914,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
+	let testNumber = 0;
 	async function initializeDebugConfig(config: DebugConfiguration) {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
@@ -1919,6 +1922,17 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			config['logOutput'] = 'dap';
 			config['showLog'] = true;
 		}
+
+		// Give each test a distinct debug binary. If a previous test
+		// and a new test use the same binary location, it is possible
+		// that the second test could build the binary, and then the
+		// first test could delete that binary during cleanup before the
+		// second test has a chance to run it.
+		if (!config['output'] && config['mode'] !== 'remote') {
+			const dir = parseProgramArgSync(config).dirname;
+			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
+		}
+		testNumber++;
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {

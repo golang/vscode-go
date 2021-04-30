@@ -429,7 +429,7 @@ async function spawnDlvDapServerProcess(
 	});
 }
 
-function parseProgramArgSync(
+export function parseProgramArgSync(
 	launchArgs: vscode.DebugConfiguration
 ): { program: string; dirname: string; programIsDirectory: boolean } {
 	const program = launchArgs.program;
