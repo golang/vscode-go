@@ -47,11 +47,8 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
-	resetSurveyConfig,
 	showServerOutputChannel,
-	showSurveyConfig,
 	startLanguageServerWithFallback,
-	timeMinute,
 	watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
@@ -104,6 +101,7 @@ import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
+import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;

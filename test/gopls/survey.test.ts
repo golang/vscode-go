@@ -7,11 +7,12 @@ import * as assert from 'assert';
 import sinon = require('sinon');
 import vscode = require('vscode');
 import goLanguageServer = require('../../src/goLanguageServer');
+import goSurvey = require('../../src/goSurvey');
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goLanguageServer.SurveyConfig, boolean][] = [
+		const testCases: [goSurvey.SurveyConfig, boolean][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -70,7 +71,7 @@ suite('gopls survey tests', () => {
 			sinon.replace(Math, 'random', () => 0);
 
 			const now = new Date('2020-04-29');
-			const gotPrompt = goLanguageServer.shouldPromptForSurvey(now, testConfig);
+			const gotPrompt = goSurvey.shouldPromptForSurvey(now, testConfig);
 			if (wantPrompt) {
 				assert.ok(gotPrompt, `prompt determination failed for ${i}`);
 			} else {
