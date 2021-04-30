@@ -227,6 +227,16 @@ function scheduleGoplsSuggestions() {
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 
+		// Only prompt for the survey if the user is working on Go code.
+		let foundGo = false;
+		for (const doc of vscode.workspace.textDocuments) {
+			if (doc.languageId === 'go') {
+				foundGo = true;
+			}
+		}
+		if (!foundGo) {
+			return;
+		}
 		maybePromptForSurvey();
 	};
 	setTimeout(update, 10 * timeMinute);
