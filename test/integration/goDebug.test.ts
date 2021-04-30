@@ -781,19 +781,26 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
-		async function waitForHelloGoodbyeOutput(dc: DebugClient, wantHello: boolean) {
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
-					if (wantHello) {
-						assert.strictEqual(event.body.output, 'Hello, World!\n');
-					} else {
-						assert.strictEqual(event.body.output, 'Goodbye, World.\n');
-					}
-					found = true;
-				}
-			}
+		async function waitForHelloGoodbyeOutput(dc: DebugClient): Promise<DebugProtocol.Event> {
+			return await new Promise<DebugProtocol.Event>((resolve, reject) => {
+				const listen = () => {
+					dc.waitForEvent('output', 5_000)
+						.then((event) => {
+							// Run listen again to make sure we can get the next events.
+							listen();
+							if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
+								// Resolve when we have found the event that we want.
+								resolve(event);
+								return;
+							}
+						})
+						.catch((reason) => reject(reason));
+				};
+				// Start listening for an output event. Especially because
+				// logging is enabled in dlv-dap, there are many output events, and it is
+				// possible to miss them if we are not prepared to handle them.
+				listen();
+			});
 		}
 
 		test('should run program with cwd set (noDebug)', async () => {
@@ -811,7 +818,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			await waitForHelloGoodbyeOutput(dc, true);
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
 
 		test('should run program without cwd set (noDebug)', async () => {
@@ -828,7 +836,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			await waitForHelloGoodbyeOutput(dc, false);
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
 
 		test('should run file program with cwd set (noDebug)', async () => {
@@ -846,7 +855,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			await waitForHelloGoodbyeOutput(dc, true);
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
 		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
@@ -862,7 +872,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			await waitForHelloGoodbyeOutput(dc, false);
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
 	});
 
