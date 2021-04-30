@@ -428,8 +428,8 @@ export function formatGoVersion(version?: GoVersion): string {
 	const versionStr = version.format(true);
 	const versionWords = versionStr.split(' ');
 	if (versionWords.length > 1 && versionWords[0] === 'devel') {
-		// Go devel +hash
-		return `Go ${versionWords[1]}`;
+		// go devel +hash or go devel go1.17-hash
+		return versionWords[1].startsWith('go') ? `Go ${versionWords[1].slice(2)}` : `Go ${versionWords[1]}`;
 	} else {
 		return `Go ${versionWords[0]}`;
 	}

@@ -92,11 +92,11 @@ export class GoVersion {
 	public svString?: string;
 
 	public isDevel?: boolean;
-	private commit?: string;
+	private devVersion?: string;
 
 	constructor(public binaryPath: string, public version: string) {
 		const matchesRelease = /^go version go(\d\.\d+\S*)\s+/.exec(version);
-		const matchesDevel = /go version devel \+(.[a-zA-Z0-9]+).*/.exec(version);
+		const matchesDevel = /^go version devel (\S+)\s+/.exec(version);
 		if (matchesRelease) {
 			// note: semver.parse does not work with Go version string like go1.14.
 			const sv = semver.coerce(matchesRelease[1]);
@@ -106,7 +106,7 @@ export class GoVersion {
 			}
 		} else if (matchesDevel) {
 			this.isDevel = true;
-			this.commit = matchesDevel[1];
+			this.devVersion = matchesDevel[1];
 		}
 	}
 
@@ -122,7 +122,7 @@ export class GoVersion {
 			return this.sv.format();
 		}
 		if (this.isDevel) {
-			return `devel +${this.commit}`;
+			return `devel ${this.devVersion}`;
 		}
 		return 'unknown';
 	}
