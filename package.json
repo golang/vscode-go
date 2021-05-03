@@ -769,6 +769,11 @@
                 "description": "Indicates local or remote debugging. Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
               },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after attach.",
+                "default": false
+              },
               "dlvFlags": {
                 "type": "array",
                 "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
