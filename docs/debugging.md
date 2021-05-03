@@ -78,7 +78,7 @@ There are some common cases when you might want to tweak the Delve configuration
 
 ## Launch Configurations
 
-To get started debugging, run the command `Debug: Open launch.json`. If you did not already have a `launch.json` file for your project, this will create one for you. It will contain this default configuration, which can be used to debug the current package.
+To get started debugging, run the command `Debug: Open launch.json`. If you did not already have a `launch.json` file for your project, this will create one for you. It will contain this default configuration, which can be used to debug the current package. With mode `auto`, the file that is currently open will determine whether to debug the program as a test. If `program` is instead set to a Go file, that file will determine which mode to run in.
 
 ```json5
 {
@@ -437,7 +437,7 @@ Since the debugger and go compiler use the actual filenames, extra configuration
     "name": "Launch remote",
     "type": "go",
     "request": "launch",
-    "mode": "auto",
+    "mode": "debug",
     "program": "/path/to/hello",
     "substitutePath": [
 		{

@@ -423,3 +423,34 @@ suite('Debug Configuration Resolve Paths', () => {
 		assert.strictEqual(config.program, '${fileDirname}');
 	});
 });
+
+suite('Debug Configuration Auto Mode', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test('resolve auto to debug with non-test file', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.strictEqual(config.mode, 'debug');
+		assert.strictEqual(config.program, '/path/to/main.go');
+	});
+
+	test('resolve auto to debug with test file', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main_test.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.strictEqual(config.mode, 'test');
+		assert.strictEqual(config.program, '/path/to');
+	});
+});
