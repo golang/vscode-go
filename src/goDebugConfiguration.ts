@@ -265,6 +265,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		if (
+			debugAdapter !== 'dlv-dap' &&
 			debugConfiguration.request === 'attach' &&
 			debugConfiguration['mode'] === 'remote' &&
 			debugConfiguration['program']
