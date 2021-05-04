@@ -135,6 +135,15 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 				return;
 		}
 	}
+	const schemes = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.scheme);
+	if (schemes?.length > 0 && !schemes.includes('file') && !schemes.includes('untitled')) {
+		outputChannel.appendLine(
+			`None of the folders in this workspace ${schemes.join(
+				','
+			)} are the types the language server recognizes. Disabling the language features.`
+		);
+		return;
+	}
 
 	const goConfig = getGoConfig();
 	const cfg = buildLanguageServerConfig(goConfig);
