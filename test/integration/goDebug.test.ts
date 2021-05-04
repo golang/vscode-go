@@ -1786,6 +1786,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			await dc.stop();
+			dc = undefined;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
 			assert(
 				dapLog.includes('DAP server listening at') &&
