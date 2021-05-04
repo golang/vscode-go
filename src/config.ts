@@ -17,15 +17,29 @@ const SECURITY_SENSITIVE_CONFIG: string[] = [
 	'toolsEnvVars'
 ];
 
+// Set true only if the vscode is the recent version that has the workspace trust API AND
+// if the security.workspace.trust is enabled. Change of this configuration requires restart
+// of VSCode, so we don't need to set up the configuration change listener.
+// TODO(hyangah): remove this and Configuration & WrappedConfiguration when we update
+// our extension to require 2021 June VSCode engine.
+const isVscodeWorkspaceTrustAPIAvailable =
+	'boolean' === typeof (vscode.workspace as any).isTrusted &&
+	vscode.workspace.getConfiguration('security.workspace.trust')?.get('enabled') === true;
+
 // Initialize the singleton defaultConfig and register related commands.
 // Prompt if workspace configuration was found but had to be ignored until
 // the user has to explicitly opt in to trust the workspace.
 export async function initConfig(ctx: vscode.ExtensionContext) {
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted));
+
+	if (isVscodeWorkspaceTrustAPIAvailable) {
+		return; // let vscode handle configuration management.
+	}
+
 	const isTrusted = getFromWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, false);
 	if (isTrusted !== defaultConfig.workspaceIsTrusted()) {
 		defaultConfig.toggleWorkspaceIsTrusted();
 	}
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.workspace.isTrusted.toggle', toggleWorkspaceIsTrusted));
 
 	if (isTrusted) {
 		return;
@@ -65,6 +79,10 @@ function ignoredWorkspaceConfig(cfg: vscode.WorkspaceConfiguration, keys: string
 }
 
 async function toggleWorkspaceIsTrusted() {
+	if (isVscodeWorkspaceTrustAPIAvailable) {
+		vscode.commands.executeCommand('workbench.action.manageTrust');
+		return;
+	}
 	const v = defaultConfig.toggleWorkspaceIsTrusted();
 	await updateWorkspaceState(WORKSPACE_IS_TRUSTED_KEY, v);
 }
@@ -93,7 +111,19 @@ export class Configuration {
 	}
 }
 
-const defaultConfig = new Configuration();
+class vscodeConfiguration {
+	public toggleWorkspaceIsTrusted() {
+		/* no-op */
+	}
+	public get(section: string, uri?: vscode.Uri): vscode.WorkspaceConfiguration {
+		return vscode.workspace.getConfiguration(section, uri);
+	}
+	public workspaceIsTrusted(): boolean {
+		return !!(vscode.workspace as any).isTrusted;
+	}
+}
+
+const defaultConfig = isVscodeWorkspaceTrustAPIAvailable ? new vscodeConfiguration() : new Configuration();
 
 // Returns the workspace Configuration used by the extension.
 export function DefaultConfig() {

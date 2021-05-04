@@ -89,7 +89,6 @@
   "engines": {
     "vscode": "^1.52.0"
   },
-  "requiresWorkspaceTrust": "onStart",
   "activationEvents": [
     "workspaceContains:**/*.go",
     "onLanguage:go",
@@ -103,6 +102,19 @@
     "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "restrictedConfigurations": [
+        "go.alternateTools",
+        "go.gopath",
+        "go.goroot",
+        "go.inferGopath",
+        "go.toolsGopath",
+        "go.toolsEnvVars"
+      ]
+    }
+  },
   "contributes": {
     "languages": [
       {
