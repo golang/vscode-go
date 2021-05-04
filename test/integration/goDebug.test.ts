@@ -1601,7 +1601,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			dc.disconnectRequest({ restart: false });
 			await sleep(10);
 			dlvDapAdapter.dispose(1);
-			dlvDapAdapter = undefined;
 			dc = undefined;
 			await sleep(100); // allow dlv to respond and finish cleanup.
 			let stat: fs.Stats = null;
