@@ -234,9 +234,11 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			}, timeoutMS);
 			dlvDapServer.on('exit', (code, signal) => {
 				clearTimeout(exitTimeoutToken);
-				this.logger?.error(
-					`dlv dap process(${dlvDapServer.pid}) exited (exit code: ${code} signal: ${signal})`
-				);
+				if (code || signal) {
+					this.logger?.error(
+						`dlv dap process(${dlvDapServer.pid}) exited (exit code: ${code} signal: ${signal})`
+					);
+				}
 				resolve();
 			});
 		});
@@ -253,7 +255,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 				// may not appear in the DEBUG CONSOLE. For easier debugging, log
 				// the messages through the logger that prints to Go Debug output
 				// channel.
-				this.logger?.info(msg);
+				this.logger?.error(msg);
 			}
 		);
 		const socket = await new Promise<net.Socket>((resolve, reject) => {
@@ -345,17 +347,33 @@ async function spawnDlvDapServerProcess(
 	if (launchArgs.logOutput) {
 		dlvArgs.push('--log-output=' + launchArgs.logOutput);
 	}
+	dlvArgs.push('--log-dest=3');
+
+	const logDest = launchArgs.logDest;
+	if (typeof logDest === 'number') {
+		logErr('Using a file descriptor for `logDest` is not allowed.');
+		throw new Error('Using a file descriptor for `logDest` is not allowed.');
+	}
+	if (logDest && !path.isAbsolute(logDest)) {
+		logErr(
+			'Using a relative path for `logDest` is not allowed.\nSee [variables](https://code.visualstudio.com/docs/editor/variables-reference)'
+		);
+		throw new Error('Using a relative path for `logDest` is not allowed');
+	}
+	const logDestStream = logDest ? fs.createWriteStream(logDest) : undefined;
+
 	logConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}\n`);
 
 	const dir = parseProgramArgSync(launchArgs).dirname;
 	// TODO(hyangah): determine the directories:
 	//    run `dlv` => where dlv will create the default __debug_bin. (This won't work if the directory is not writable. Fix it)
 	//    build program => 'program' directory. (This won't work for multimodule workspace. Fix it)
-	//    run program => cwd or wd (If test, make sure to run in the package directory.)
+	//    run program => cwd (If test, make sure to run in the package directory.)
 	return await new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
-			env
+			env,
+			stdio: ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3
 		});
 		let started = false;
 		const timeoutToken: NodeJS.Timer = setTimeout(
@@ -367,6 +385,7 @@ async function spawnDlvDapServerProcess(
 			clearTimeout(timeoutToken);
 			started = true;
 			if (err) {
+				logConsole(`Failed to start 'dlv': ${err}\nKilling the dlv process...`);
 				killProcessTree(p); // We do not need to wait for p to actually be killed.
 				reject(new Error(err));
 			} else {
@@ -376,19 +395,7 @@ async function spawnDlvDapServerProcess(
 
 		p.stdout.on('data', (chunk) => {
 			if (!started) {
-				// TODO(hyangah): when --log-dest is specified, the following message
-				// will be written to the log dest file, not stdout/stderr.
-				// Either disable --log-dest, or take advantage of it, i.e.,
-				// always pass a file descriptor to --log-dest, watch the file
-				// descriptor to process the log output, and also swap os.Stdout/os.Stderr
-				// in dlv dap for launch requests to generate proper OutputEvents.
-				if (chunk.toString().startsWith('DAP server listening at:')) {
-					stopWaitingForServerToStart();
-				} else {
-					stopWaitingForServerToStart(
-						`Expected 'DAP server listening at:' from debug adapter got '${chunk.toString()}'`
-					);
-				}
+				stopWaitingForServerToStart(`Unexpected output from dlv dap on start: '${chunk.toString()}'`);
 			}
 			log(chunk.toString());
 		});
@@ -397,6 +404,29 @@ async function spawnDlvDapServerProcess(
 				stopWaitingForServerToStart(`Unexpected error from dlv dap on start: '${chunk.toString()}'`);
 			}
 			logErr(chunk.toString());
+		});
+		p.stdio[3].on('data', (chunk) => {
+			const msg = chunk.toString();
+			if (!started) {
+				if (msg.startsWith('DAP server listening at:')) {
+					stopWaitingForServerToStart();
+				} else {
+					stopWaitingForServerToStart(`Expected 'DAP server listening at:' from debug adapter got '${msg}'`);
+				}
+			}
+			if (logDestStream) {
+				// write to the specified file.
+				logDestStream?.write(chunk, (err) => {
+					if (err) {
+						logConsole(`Error writing to ${logDest}: ${err}, log may be incomplete.`);
+					}
+				});
+			} else {
+				logConsole(msg);
+			}
+		});
+		p.stdio[3].on('close', () => {
+			logDestStream?.end();
 		});
 		p.on('close', (code, signal) => {
 			// TODO: should we watch 'exit' instead?
