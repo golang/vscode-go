@@ -35,6 +35,12 @@ suite('utils Tests', () => {
 				'devel +a295d59d',
 				true
 			],
+			[
+				'go version devel go1.17-756fd56bbf Thu Apr 29 01:15:34 2021 +0000 darwin/amd64',
+				'devel go1.17-756fd56bbf',
+				'devel go1.17-756fd56bbf',
+				true
+			],
 			['go version go1.14 darwin/amd64', '1.14.0', '1.14', true],
 			['go version go1.14.1 linux/amd64', '1.14.1', '1.14.1', true],
 			['go version go1.15rc1 darwin/amd64', '1.15.0', '1.15rc1', true],

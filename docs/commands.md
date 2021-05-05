@@ -71,6 +71,10 @@ Runs all unit tests from all packages in the current workspace.
 
 Re-runs the last executed test.
 
+### `Go: Debug Previous`
+
+Re-runs the last debugged test run through a codelens or "Go: Debug Test at Cursor" command.
+
 ### `Go: Toggle Test Coverage In Current Package`
 
 Displays test coverage in the current package.
@@ -174,6 +178,10 @@ Build the current workspace.
 ### `Go: Install Current Package`
 
 Install the current package.
+
+### `Go: Initialize go.mod`
+
+Run `go mod init` in the workspace folder.
 
 ### `Go: Cancel Running Tests`
 

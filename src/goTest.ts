@@ -24,6 +24,11 @@ import {
 // the last test to be easily re-executed.
 let lastTestConfig: TestConfig;
 
+// lastDebugConfig holds a reference to the last executed DebugConfiguration which allows
+// the last test to be easily re-executed and debugged.
+let lastDebugConfig: vscode.DebugConfiguration;
+let lastDebugWorkspaceFolder: vscode.WorkspaceFolder;
+
 export type TestAtCursorCmd = 'debug' | 'test' | 'benchmark';
 
 /**
@@ -203,6 +208,8 @@ async function debugTestAtCursor(
 		args,
 		buildFlags: buildFlags.join(' ')
 	};
+	lastDebugConfig = debugConfig;
+	lastDebugWorkspaceFolder = workspaceFolder;
 	return await vscode.debug.startDebugging(workspaceFolder, debugConfig);
 }
 
@@ -326,4 +333,15 @@ export function testPrevious() {
 	goTest(lastTestConfig).then(null, (err) => {
 		console.error(err);
 	});
+}
+
+/**
+ * Runs the previously executed test.
+ */
+export function debugPrevious() {
+	if (!lastDebugConfig) {
+		vscode.window.showInformationMessage('No test has been recently debugged.');
+		return;
+	}
+	return vscode.debug.startDebugging(lastDebugWorkspaceFolder, lastDebugConfig);
 }

@@ -28,6 +28,11 @@ import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
+import { parseProgramArgSync } from '../../src/goDebugFactory';
+import { TimestampedLogger } from '../../src/goLogging';
+
+// For debugging test and streaming the trace instead of buffering, set this.
+const PRINT_TO_CONSOLE = false;
 
 suite('Path Manipulation Tests', () => {
 	test('escapeGoModPath works', () => {
@@ -330,8 +335,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(async () => {
-		await dc.stop();
+	teardown(() => {
 		if (dlvDapAdapter) {
 			const d = dlvDapAdapter;
 			dlvDapAdapter = null;
@@ -339,7 +343,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				console.log(`${ctx.currentTest?.title} FAILED: DAP Trace`);
 				d.printLog();
 			}
-			await d.dispose();
+			d.dispose();
+		} else {
+			dc?.stop();
 		}
 		sinon.restore();
 	});
@@ -531,7 +537,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -544,7 +550,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -569,7 +575,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 
@@ -616,7 +622,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
@@ -641,7 +647,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -665,7 +671,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -685,7 +691,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				dlvFlags: ['--listen=127.0.0.1:80']
 			};
@@ -706,7 +712,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD
 			};
@@ -726,7 +732,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -745,7 +751,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD
 			};
@@ -765,7 +771,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -775,6 +781,28 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await assertLocalVariableValue('strdat', '"Goodbye, World."');
 		});
 
+		async function waitForHelloGoodbyeOutput(dc: DebugClient): Promise<DebugProtocol.Event> {
+			return await new Promise<DebugProtocol.Event>((resolve, reject) => {
+				const listen = () => {
+					dc.waitForEvent('output', 5_000)
+						.then((event) => {
+							// Run listen again to make sure we can get the next events.
+							listen();
+							if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
+								// Resolve when we have found the event that we want.
+								resolve(event);
+								return;
+							}
+						})
+						.catch((reason) => reject(reason));
+				};
+				// Start listening for an output event. Especially because
+				// logging is enabled in dlv-dap, there are many output events, and it is
+				// possible to miss them if we are not prepared to handle them.
+				listen();
+			});
+		}
+
 		test('should run program with cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
@@ -783,18 +811,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Hello, World!\n';
-			}
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
 
 		test('should run program without cwd set (noDebug)', async () => {
@@ -805,17 +830,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Goodbye, World.\n';
-			}
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
 
 		test('should run file program with cwd set (noDebug)', async () => {
@@ -826,20 +848,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				cwd: WD,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Hello, World!\n';
-			}
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
-
 		test('should run file program without cwd set (noDebug)', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest', 'main.go');
@@ -848,17 +866,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			dc.launch(debugConfig);
-			let found = false;
-			while (!found) {
-				const event = await dc.waitForEvent('output');
-				found = event.body.output === 'Goodbye, World.\n';
-			}
+			const event = await waitForHelloGoodbyeOutput(dc);
+			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
 	});
 
@@ -936,7 +951,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1031,7 +1046,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1061,7 +1076,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch file',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1125,7 +1140,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1161,7 +1176,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1201,7 +1216,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1256,7 +1271,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1290,7 +1305,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1317,7 +1332,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM_WITH_EXCEPTION
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1384,7 +1399,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1405,7 +1420,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1430,7 +1445,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -1457,7 +1472,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: false
 			};
@@ -1481,7 +1496,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1507,7 +1522,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
@@ -1528,7 +1543,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -1550,7 +1565,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
-				mode: 'auto',
+				mode: 'debug',
 				program: PROGRAM,
 				stopOnEntry: true
 			};
@@ -1563,13 +1578,59 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
+
+		test('should cleanup when stopped', async function () {
+			if (!isDlvDap || !dlvDapSkipsEnabled) {
+				this.skip();
+			}
+			const PROGRAM = path.join(DATA_ROOT, 'loop');
+			const OUTPUT = path.join(PROGRAM, '_loop_output');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				stopOnEntry: false,
+				output: OUTPUT
+			};
+			const debugConfig = await initializeDebugConfig(config);
+
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
+
+			try {
+				const fsstat = util.promisify(fs.stat);
+				await fsstat(OUTPUT);
+			} catch (e) {
+				assert.fail(`debug output ${OUTPUT} wasn't built: ${e}`);
+			}
+
+			// It's possible dlv-dap doesn't respond. So, don't wait.
+			dc.disconnectRequest({ restart: false });
+			await sleep(10);
+			dlvDapAdapter.dispose(1);
+			dc = undefined;
+			await sleep(100); // allow dlv to respond and finish cleanup.
+			let stat: fs.Stats = null;
+			try {
+				const fsstat = util.promisify(fs.stat);
+				stat = await fsstat(OUTPUT);
+				fs.unlinkSync(OUTPUT);
+			} catch (e) {
+				console.log(`output was cleaned ${OUTPUT} ${e}`);
+			}
+			assert.strictEqual(stat, null, `debug output ${OUTPUT} wasn't cleaned up. ${JSON.stringify(stat)}`);
+			console.log('finished');
+		});
 	});
 
 	suite('switch goroutine', () => {
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
-			const BREAKPOINT_LINE = 14;
+			const BREAKPOINT_LINE_MAIN_RUN1 = 6;
+			const BREAKPOINT_LINE_MAIN_RUN2 = 14;
 
 			const config = {
 				name: 'Launch',
@@ -1579,18 +1640,33 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
-			// Clear breakpoints to make sure they do not interrupt the stepping.
+			// Set a breakpoint in run 1 and get the goroutine id.
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN1));
+			const threadsResponse1 = await dc.threadsRequest();
+			assert.ok(threadsResponse1.success);
+			const run1Goroutine = threadsResponse1.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
+
+			// Set a breakpoint in run 2 and get the goroutine id.
+			// By setting breakpoints in both goroutine, we can make sure that both goroutines
+			// are running before continuing.
+			const bp2 = getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN2);
 			const breakpointsResult = await dc.setBreakpointsRequest({
+				source: { path: bp2.path },
+				breakpoints: [{ line: bp2.line }]
+			});
+			assert.ok(breakpointsResult.success);
+			const threadsResponse2 = await dc.threadsRequest();
+			assert.ok(threadsResponse2.success);
+			const run2Goroutine = threadsResponse2.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
+
+			await Promise.all([dc.continueRequest({ threadId: 1 }), dc.assertStoppedLocation('breakpoint', bp2)]);
+
+			// Clear breakpoints to make sure they do not interrupt the stepping.
+			const clearBreakpointsResult = await dc.setBreakpointsRequest({
 				source: { path: FILE },
 				breakpoints: []
 			});
-			assert.ok(breakpointsResult.success);
-
-			const threadsResponse = await dc.threadsRequest();
-			assert.ok(threadsResponse.success);
-			const run1Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
-			const run2Goroutine = threadsResponse.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
+			assert.ok(clearBreakpointsResult.success);
 
 			// runStepFunction runs the necessary step function and resolves if it succeeded.
 			async function runStepFunction(
@@ -1689,6 +1765,73 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 			// neither debug adapter implements this behavior
 			await runSwitchGoroutineTest('step in');
+		});
+	});
+
+	suite('logDest attribute tests', () => {
+		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+		let tmpDir: string;
+		suiteSetup(() => {
+			tmpDir = fs.mkdtempSync(path.join(tmpdir(), 'logDestTest'));
+		});
+		suiteTeardown(() => {
+			rmdirRecursive(tmpDir);
+		});
+
+		test('logs are written to logDest file', async function () {
+			if (!isDlvDap || process.platform === 'win32') {
+				this.skip();
+			}
+			const DELVE_LOG = path.join(tmpDir, 'delve.log');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				logDest: DELVE_LOG
+			};
+
+			const debugConfig = await initializeDebugConfig(config);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			await dc.stop();
+			dc = undefined;
+			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
+			assert(
+				dapLog.includes('DAP server listening at') &&
+					dapLog.includes('"command":"initialize"') &&
+					dapLog.includes('"event":"terminated"'),
+				dapLog
+			);
+		});
+
+		async function testWithInvalidLogDest(logDest: any, wantedErrorMessage: string) {
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				logDest
+			};
+
+			try {
+				await initializeDebugConfig(config);
+			} catch (error) {
+				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
+				return;
+			}
+			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
+		}
+		test('relative path as logDest triggers an error', async function () {
+			if (!isDlvDap || process.platform === 'win32') this.skip();
+			await testWithInvalidLogDest('delve.log', 'relative path');
+		});
+
+		test('number as logDest triggers an error', async function () {
+			if (!isDlvDap || process.platform === 'win32') this.skip();
+			await testWithInvalidLogDest(3, 'file descriptor');
 		});
 	});
 
@@ -1850,17 +1993,30 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
+	let testNumber = 0;
 	async function initializeDebugConfig(config: DebugConfiguration) {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
 			// Log the output for easier test debugging.
 			config['logOutput'] = 'dap';
 			config['showLog'] = true;
+			config['trace'] = 'verbose';
 		}
+
+		// Give each test a distinct debug binary. If a previous test
+		// and a new test use the same binary location, it is possible
+		// that the second test could build the binary, and then the
+		// first test could delete that binary during cleanup before the
+		// second test has a chance to run it.
+		if (!config['output'] && config['mode'] !== 'remote') {
+			const dir = parseProgramArgSync(config).dirname;
+			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
+		}
+		testNumber++;
 
 		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		if (isDlvDap) {
-			dlvDapAdapter = new DelveDAPDebugAdapterOnSocket(debugConfig);
+			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig);
 			const port = await dlvDapAdapter.serve();
 			await dc.start(port); // This will connect to the adapter's port.
 		}
@@ -1883,8 +2039,14 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 // the thin adapter for Delve DAP and the debug test support's
 // DebugClient to communicate with the adapter over a network socket.
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
-	constructor(config: DebugConfiguration) {
-		super(config, false);
+	static async create(config: DebugConfiguration) {
+		const d = new DelveDAPDebugAdapterOnSocket(config);
+		await d.startAndConnectToServer();
+		return d;
+	}
+
+	private constructor(config: DebugConfiguration) {
+		super(config, new TimestampedLogger('error', undefined, PRINT_TO_CONSOLE));
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';
@@ -1923,14 +2085,15 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private _disposed = false;
-	public async dispose() {
+	public async dispose(timeoutMS?: number) {
 		if (this._disposed) {
 			return;
 		}
 		this._disposed = true;
-		this.log('adapter disposed');
+		this.log('adapter disposing');
 		await this._server.close();
-		await super.dispose();
+		await super.dispose(timeoutMS);
+		this.log('adapter disposed');
 	}
 
 	// Code from
@@ -1991,13 +2154,19 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 			break;
 		}
 	}
-
 	/* --- accumulate log messages so we can output when the test fails --- */
 	private _log = [] as string[];
 	private log(msg: string) {
 		this._log.push(msg);
+		if (PRINT_TO_CONSOLE) {
+			console.log(msg);
+		}
 	}
 	public printLog() {
 		this._log.forEach((msg) => console.log(msg));
 	}
+}
+
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }

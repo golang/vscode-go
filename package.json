@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.24.2",
+  "version": "0.25.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -96,6 +96,7 @@
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
+    "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
@@ -157,7 +158,8 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        }
+        },
+        "editor.suggest.snippetsPreventQuickSuggestions": false
       }
     },
     "commands": [
@@ -220,6 +222,11 @@
         "command": "go.test.previous",
         "title": "Go: Test Previous",
         "description": "Re-runs the last executed test."
+      },
+      {
+        "command": "go.debug.previous",
+        "title": "Go: Debug Previous",
+        "description": "Re-runs the last debugged test run through a codelens or \"Go: Debug Test at Cursor\" command."
       },
       {
         "command": "go.test.coverage",
@@ -350,6 +357,11 @@
         "command": "go.install.package",
         "title": "Go: Install Current Package",
         "description": "Install the current package."
+      },
+      {
+        "command": "go.run.modinit",
+        "title": "Go: Initialize go.mod",
+        "description": "Run `go mod init` in the workspace folder."
       },
       {
         "command": "go.test.cancel",
@@ -576,7 +588,7 @@
               },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -600,12 +612,15 @@
               "trace": {
                 "type": "string",
                 "enum": [
-                  "log",
                   "verbose",
+                  "trace",
+                  "log",
+                  "info",
+                  "warn",
                   "error"
                 ],
                 "default": "error",
-                "description": "Various levels of logging shown in the debug console. When set to 'log' or 'verbose', the logs will also be written to a file."
+                "description": "Various levels of the debug console & 'Go Debug' output channel. When using the `legacy` debug adapter, the logs will also be written to a file if it is set to a value other than `error`."
               },
               "envFile": {
                 "type": [
@@ -645,6 +660,10 @@
                 "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
+              "logDest": {
+                "type": "string",
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
+              },
               "dlvLoadConfig": {
                 "type": "object",
                 "properties": {
@@ -674,7 +693,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -744,9 +763,14 @@
                 "description": "Indicates local or remote debugging. Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
               },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after attach.",
+                "default": false
+              },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -829,6 +853,10 @@
                 "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
+              "logDest": {
+                "type": "string",
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
+              },
               "dlvLoadConfig": {
                 "type": "object",
                 "properties": {
@@ -858,7 +886,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -1668,7 +1696,7 @@
                   "default": -1
                 }
               },
-              "description": "LoadConfig describes to delve, how to load values from target's memory",
+              "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
               "default": {
                 "followPointers": true,
                 "maxVariableRecurse": 1,

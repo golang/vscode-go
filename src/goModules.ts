@@ -6,16 +6,17 @@
 
 import cp = require('child_process');
 import path = require('path');
+import util = require('util');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { getFormatTool } from './goFormat';
 import { installTools } from './goInstallTools';
+import { outputChannel } from './goStatus';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion, getModuleCache } from './util';
+import { getBinPath, getGoVersion, getModuleCache, getWorkspaceFolderPath } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
-
 export let GO111MODULE: string;
 
 async function runGoModEnv(folderPath: string): Promise<string> {
@@ -183,4 +184,26 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 			resolve(pkgs[0]);
 		});
 	});
+}
+
+export async function goModInit() {
+	outputChannel.clear();
+
+	const moduleName = await vscode.window.showInputBox({
+		prompt: 'Enter module name',
+		value: '',
+		placeHolder: 'example.com/m'
+	});
+
+	const goRuntimePath = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	try {
+		const env = toolExecutionEnvironment();
+		const cwd = getWorkspaceFolderPath();
+		await execFile(goRuntimePath, ['mod', 'init', moduleName], { env, cwd });
+	} catch (e) {
+		outputChannel.appendLine(e);
+		outputChannel.show();
+		vscode.window.showErrorMessage(`Error running 'go mod init ${moduleName}': See Go output channel for details`);
+	}
 }

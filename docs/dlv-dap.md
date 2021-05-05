@@ -56,6 +56,7 @@ $ mv /tmp/dlv $GOPATH/bin/dlv-dap
 🎉  The new debug adapter offers many improvements and fixes bugs that existed in the old adapter. [Here](https://github.com/golang/vscode-go/issues?q=is%3Aissue+label%3Afixedindlvdaponly) is a partial list of enhancement/fixes available only in the new adapter.
 
 * User-friendly inlined presentation of variables of all complex types (map, struct, pointer, array, slice, ...)
+* Auto-loading of nested variables without extra configuration. (See [delve PR/2455](https://github.com/go-delve/delve/pull/2455#issuecomment-827884652))
 * Fixed handling of maps with compound keys
 * Improved CALL STACK presentation
 * Fixed automated "Add to Watch" / "Copy as Expression" expressions.
@@ -69,11 +70,11 @@ Because it is native, we hope for improvement in speed and reliability.
 
 ⚒️ The following features are still under development. 
 
-* Stop/pause/restart while the debugged program is running does not work yet.
-* Cannot be used with `debug test` codelens.
-* Support for `"dlvFlags"` attributes in launch configuration is not available.
+* Pause/restart while the debugged program is running does not work yet.
+* Setting breakpoints while the debugged program is running does not work yet.
+* `SetVariable` does not work yet.
 * `dlvLoadConfig` to configure max string/bytes length in [`"go.delveConfig"`](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#configuration) does not work.
-* [Remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging) is not supported.
+* Traditional [remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging) is not supported.
 
 Follow along with [golang/vscode-go#23](https://github.com/golang/vscode-go/issues/23) and the [project dashboard](https://github.com/golang/vscode-go/projects/3) for updates on the implementation.
 
@@ -87,7 +88,7 @@ When you are having issues in `dlv-dap` mode, first check if the problems are re
 Please report issues in [our issue tracker](https://github.com/golang/vscode-go/issues) with the following information.
 
 * `go version`
-* `go version -m dlv-dap`
+* `go version -m <path/to/dlv-dap>`
 * VS Code and VS Code Go version.
 * Instruction to reproduce the issue (code snippets, your `launch.json`, screenshot)
 
@@ -106,7 +107,7 @@ For simple launch cases, build the delve binary, and configure `"go.alternateToo
 }
 ```
 
-Set `logOutput` and `showLog` attributes in `launch.json` to enable logging and DAP message tracing.
+Set `logOutput` and `showLog` attributes in `launch.json` to enable `dlv'-side logging and DAP message tracing.
 ```json5
 {
     "name": "Launch file",
@@ -114,6 +115,19 @@ Set `logOutput` and `showLog` attributes in `launch.json` to enable logging and 
     "debugAdapter": "dlv-dap",
     "showLog": true,
     "logOutput": "dap",
+    ...
+}
+```
+
+Set `trace` attribute to control the verbosity of debug extension's logging.
+The logging will appear in the `Go Debug` output channel (Command Palette -> "View: Toggle Output" -> Select "Go Debug" from the dropdown menu).
+
+```json5
+{
+    "name": "Launch file",
+    "type": "go",
+    "debugAdapter": "dlv-dap",
+    "trace": "verbose",
     ...
 }
 ```

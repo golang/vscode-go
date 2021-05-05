@@ -23,7 +23,7 @@ import {
 	updateCodeCoverageDecorators
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
-import { GoDebugAdapterDescriptorFactory } from './goDebugFactory';
+import { GoDebugAdapterDescriptorFactory, GoDebugAdapterTrackerFactory } from './goDebugFactory';
 import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -47,23 +47,21 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
-	resetSurveyConfig,
 	showServerOutputChannel,
-	showSurveyConfig,
 	startLanguageServerWithFallback,
-	timeMinute,
 	watchLanguageServerConfiguration
 } from './goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { addTags, removeTags } from './goModifytags';
-import { GO111MODULE, isModSupported } from './goModules';
+import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import {
+	debugPrevious,
 	subTestAtCursor,
 	testAtCursor,
 	testCurrentFile,
@@ -98,11 +96,12 @@ import {
 	isGoPathSet,
 	resolvePath
 } from './util';
-import { clearCacheForTools, fileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, setCurrentGoRoot } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
+import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -152,8 +151,11 @@ export async function activate(ctx: vscode.ExtensionContext) {
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (configGOROOT) {
-		logVerbose(`go.goroot = '${configGOROOT}'`);
-		setCurrentGoRoot(resolvePath(configGOROOT));
+		const goroot = resolvePath(configGOROOT);
+		if (dirExists(goroot)) {
+			logVerbose(`setting GOROOT = ${goroot} because "go.goroot": "${configGOROOT}"`);
+			process.env['GOROOT'] = goroot;
+		}
 	}
 
 	// Present a warning about the deprecation of the go.documentLink setting.
@@ -233,10 +235,19 @@ If you would like additional configuration for diagnostics from gopls, please se
 		)
 	);
 
-	const factory = new GoDebugAdapterDescriptorFactory();
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	ctx.subscriptions.push(debugOutputChannel);
+
+	const factory = new GoDebugAdapterDescriptorFactory(debugOutputChannel);
 	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
 	if ('dispose' in factory) {
 		ctx.subscriptions.push(factory);
+	}
+
+	const tracker = new GoDebugAdapterTrackerFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('go', tracker));
+	if ('dispose' in tracker) {
+		ctx.subscriptions.push(tracker);
 	}
 
 	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
@@ -376,6 +387,12 @@ If you would like additional configuration for diagnostics from gopls, please se
 	);
 
 	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.debug.previous', () => {
+			debugPrevious();
+		})
+	);
+
+	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.test.coverage', () => {
 			toggleCoverageCurrentPackage();
 		})
@@ -429,6 +446,17 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 			const updatedGoConfig = getGoConfig();
 
+			if (e.affectsConfiguration('go.goroot')) {
+				const configGOROOT = updatedGoConfig['goroot'];
+				if (configGOROOT) {
+					const goroot = resolvePath(configGOROOT);
+					const oldGoroot = process.env['GOROOT'];
+					if (oldGoroot !== goroot && dirExists(goroot)) {
+						logVerbose(`setting GOROOT = ${goroot} because "go.goroot": "${configGOROOT}"`);
+						process.env['GOROOT'] = goroot;
+					}
+				}
+			}
 			if (
 				e.affectsConfiguration('go.goroot') ||
 				e.affectsConfiguration('go.alternateTools') ||
@@ -569,6 +597,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.build.workspace', () => buildCode(true)));
 
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.install.package', installCurrentPackage));
+
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.run.modinit', goModInit));
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.extractServerChannel', () => {
