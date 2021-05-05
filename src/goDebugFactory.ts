@@ -255,7 +255,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 				// may not appear in the DEBUG CONSOLE. For easier debugging, log
 				// the messages through the logger that prints to Go Debug output
 				// channel.
-				this.logger?.error(msg);
+				this.logger?.info(msg);
 			}
 		);
 		const socket = await new Promise<net.Socket>((resolve, reject) => {
