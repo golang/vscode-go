@@ -28,7 +28,6 @@ import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
-import { OutputEvent } from 'vscode-debugadapter';
 import { parseProgramArgSync } from '../../src/goDebugFactory';
 import { TimestampedLogger } from '../../src/goLogging';
 
@@ -1771,7 +1770,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 
 		test('logs are written to logDest file', async function () {
-			if (!isDlvDap) {
+			if (!isDlvDap || process.platform === 'win32') {
 				this.skip();
 			}
 			const DELVE_LOG = path.join(tmpDir, 'delve.log');
@@ -1816,12 +1815,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 		}
 		test('relative path as logDest triggers an error', async function () {
-			if (!isDlvDap) this.skip();
+			if (!isDlvDap || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest('delve.log', 'relative path');
 		});
 
 		test('number as logDest triggers an error', async function () {
-			if (!isDlvDap) this.skip();
+			if (!isDlvDap || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest(3, 'file descriptor');
 		});
 	});

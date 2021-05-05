@@ -347,7 +347,12 @@ async function spawnDlvDapServerProcess(
 	if (launchArgs.logOutput) {
 		dlvArgs.push('--log-output=' + launchArgs.logOutput);
 	}
-	dlvArgs.push('--log-dest=3');
+
+	const onWindows = process.platform === 'win32';
+
+	if (!onWindows) {
+		dlvArgs.push('--log-dest=3');
+	}
 
 	const logDest = launchArgs.logDest;
 	if (typeof logDest === 'number') {
@@ -360,6 +365,13 @@ async function spawnDlvDapServerProcess(
 		);
 		throw new Error('Using a relative path for `logDest` is not allowed');
 	}
+	if (logDest && onWindows) {
+		logErr(
+			'Using `logDest` or `--log-dest` is not supported on windows yet. See https://github.com/golang/vscode-go/issues/1472.'
+		);
+		throw new Error('Using `logDest` on windows is not allowed');
+	}
+
 	const logDestStream = logDest ? fs.createWriteStream(logDest) : undefined;
 
 	logConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}\n`);
@@ -394,10 +406,15 @@ async function spawnDlvDapServerProcess(
 		};
 
 		p.stdout.on('data', (chunk) => {
+			const msg = chunk.toString();
 			if (!started) {
-				stopWaitingForServerToStart(`Unexpected output from dlv dap on start: '${chunk.toString()}'`);
+				if (msg.startsWith('DAP server listening at:')) {
+					stopWaitingForServerToStart();
+				} else {
+					stopWaitingForServerToStart(`Unexpected output from dlv dap on start: '${msg}'`);
+				}
 			}
-			log(chunk.toString());
+			log(msg);
 		});
 		p.stderr.on('data', (chunk) => {
 			if (!started) {
@@ -415,6 +432,7 @@ async function spawnDlvDapServerProcess(
 				}
 			}
 			if (logDestStream) {
+				// always false on windows.
 				// write to the specified file.
 				logDestStream?.write(chunk, (err) => {
 					if (err) {
@@ -426,6 +444,7 @@ async function spawnDlvDapServerProcess(
 			}
 		});
 		p.stdio[3].on('close', () => {
+			// always false on windows.
 			logDestStream?.end();
 		});
 		p.on('close', (code, signal) => {

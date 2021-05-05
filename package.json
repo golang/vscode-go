@@ -672,7 +672,7 @@
               },
               "logDest": {
                 "type": "string",
-                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in dlv-dap mode."
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
               },
               "dlvLoadConfig": {
                 "type": "object",
@@ -865,7 +865,7 @@
               },
               "logDest": {
                 "type": "string",
-                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in dlv-dap mode."
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
               },
               "dlvLoadConfig": {
                 "type": "object",
