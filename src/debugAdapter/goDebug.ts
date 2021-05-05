@@ -649,9 +649,6 @@ export class Delve {
 				if (launchArgs.buildFlags) {
 					dlvArgs.push('--build-flags=' + launchArgs.buildFlags);
 				}
-				if (launchArgs.init) {
-					dlvArgs.push('--init=' + launchArgs.init);
-				}
 				if (launchArgs.backend) {
 					dlvArgs.push('--backend=' + launchArgs.backend);
 				}
