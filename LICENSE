@@ -1242,7 +1242,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -----
 
-The following software may be included in this product: is-bigint. A copy of the source code may be downloaded from git+https://github.com/ljharb/is-bigint.git. This software contains the following license and notice below:
+The following software may be included in this product: is-bigint. A copy of the source code may be downloaded from git+https://github.com/inspect-js/is-bigint.git. This software contains the following license and notice below:
 
 MIT License
 
