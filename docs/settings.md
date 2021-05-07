@@ -508,8 +508,11 @@ the last filter that applies to a path controls whether it is included.
 The path prefix can be empty, so an initial `-` excludes everything.
 
 Examples:
+
 Exclude node_modules: `-node_modules`
+
 Include only project_a: `-` (exclude everything), `+project_a`
+
 Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
 ### `build.env`
@@ -546,6 +549,22 @@ for multi-module workspaces.
 
 
 Default: `false`
+### `build.memoryMode`
+
+(Experimental) memoryMode controls the tradeoff `gopls` makes between memory usage and
+correctness.
+
+Values other than `Normal` are untested and may break in surprising ways.
+<br/>
+Allowed Options:
+
+* `DegradeClosed`: `"DegradeClosed"`: In DegradeClosed mode, `gopls` will collect less information about
+packages without open files. As a result, features like Find
+References and Rename will miss results in such packages.
+* `Normal`
+
+
+Default: `"Normal"`
 ### `formatting.gofumpt`
 
 gofumpt indicates if we should run gofumpt formatting.
@@ -653,7 +672,7 @@ Example Usage:
 | `copylocks` | check for locks erroneously passed by value <br/> Inadvertently copying a value containing a lock, such as sync.Mutex or sync.WaitGroup, may cause both copies to malfunction. Generally such values should be referred to through a pointer. <br/> Default: `true` |
 | `deepequalerrors` | check for calls of reflect.DeepEqual on error values <br/> The deepequalerrors checker looks for calls of the form: <br/>     reflect.DeepEqual(err1, err2) <br/> where err1 and err2 are errors. Using reflect.DeepEqual to compare errors is discouraged. <br/> Default: `true` |
 | `errorsas` | report passing non-pointer or non-error values to errors.As <br/> The errorsas analysis reports calls to errors.As where the type of the second argument is not a pointer to a type implementing error. <br/> Default: `true` |
-| `fieldalignment` | find structs that would take less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to take less memory, and provides a suggested edit with the optimal order. <br/> <br/> Default: `false` |
+| `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the optimal order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> <br/> Default: `false` |
 | `fillreturns` | suggested fixes for "wrong number of return values (want %d, got %d)" <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre>will turn into <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> <br/> Default: `true` |
 | `fillstruct` | note incomplete struct initializations <br/> This analyzer provides diagnostics for any struct literals that do not have any fields initialized. Because the suggested fix for this analysis is expensive to compute, callers should compute it separately, using the SuggestedFix function below. <br/> <br/> Default: `true` |
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
