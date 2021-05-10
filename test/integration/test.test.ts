@@ -17,14 +17,14 @@ import sinon = require('sinon');
 import vscode = require('vscode');
 
 suite('Test Go Test Args', () => {
-	function runTest(param: {
+	async function runTest(param: {
 		expectedArgs: string;
 		expectedOutArgs: string;
 		flags?: string[];
 		functions?: string[];
 		isBenchmark?: boolean;
 	}) {
-		const { args, outArgs } = computeTestCommand(
+		const { args, outArgs } = await computeTestCommand(
 			{
 				dir: '',
 				goConfig: getGoConfig(),
@@ -40,57 +40,57 @@ suite('Test Go Test Args', () => {
 		assert.strictEqual(outArgs.join(' '), param.expectedOutArgs, 'displayed command');
 	}
 
-	test('default config', () => {
-		runTest({
+	test('default config', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s ./...',
 			expectedOutArgs: 'test -timeout 30s ./...'
 		});
 	});
-	test('user flag [-v] enables -json flag', () => {
-		runTest({
+	test('user flag [-v] enables -json flag', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s -json ./... -v',
 			expectedOutArgs: 'test -timeout 30s ./... -v',
 			flags: ['-v']
 		});
 	});
-	test('user flag [-json -v] prevents -json flag addition', () => {
-		runTest({
+	test('user flag [-json -v] prevents -json flag addition', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s ./... -json -v',
 			expectedOutArgs: 'test -timeout 30s ./... -json -v',
 			flags: ['-json', '-v']
 		});
 	});
-	test('user flag [-args] does not crash', () => {
-		runTest({
+	test('user flag [-args] does not crash', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s ./... -args',
 			expectedOutArgs: 'test -timeout 30s ./... -args',
 			flags: ['-args']
 		});
 	});
-	test('user flag [-args -v] does not enable -json flag', () => {
-		runTest({
+	test('user flag [-args -v] does not enable -json flag', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s ./... -args -v',
 			expectedOutArgs: 'test -timeout 30s ./... -args -v',
 			flags: ['-args', '-v']
 		});
 	});
-	test('specifying functions adds -run flags', () => {
-		runTest({
+	test('specifying functions adds -run flags', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s -run ^(TestA|TestB)$ ./...',
 			expectedOutArgs: 'test -timeout 30s -run ^(TestA|TestB)$ ./...',
 			functions: ['TestA', 'TestB']
 		});
 	});
-	test('functions & benchmark adds -bench flags and skips timeout', () => {
-		runTest({
+	test('functions & benchmark adds -bench flags and skips timeout', async () => {
+		await runTest({
 			expectedArgs: 'test -benchmem -run=^$ -bench ^(TestA|TestB)$ ./...',
 			expectedOutArgs: 'test -benchmem -run=^$ -bench ^(TestA|TestB)$ ./...',
 			functions: ['TestA', 'TestB'],
 			isBenchmark: true
 		});
 	});
-	test('user -run flag is ignored when functions are provided', () => {
-		runTest({
+	test('user -run flag is ignored when functions are provided', async () => {
+		await runTest({
 			expectedArgs: 'test -timeout 30s -run ^(TestA|TestB)$ ./...',
 			expectedOutArgs: 'test -timeout 30s -run ^(TestA|TestB)$ ./...',
 			functions: ['TestA', 'TestB'],

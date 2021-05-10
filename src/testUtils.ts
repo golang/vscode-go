@@ -43,6 +43,7 @@ const benchmarkRegex = /^Benchmark\P{Ll}.*/u;
 
 const checkPkg = '"gopkg.in/check.v1"';
 const testifyPkg = '"github.com/stretchr/testify/suite"';
+const allExternalPackages = [checkPkg, testifyPkg];
 
 /**
  * Input to goTest.
@@ -149,18 +150,17 @@ export async function getTestFunctions(
 	const children = symbol.children;
 
 	// include test functions and methods from 3rd party testing packages
-	let containsExternalPackages = false;
-	const allExternalPackages = [checkPkg, testifyPkg];
+	let containsExternal = false;
 	allExternalPackages.forEach((pkg) => {
 		const ext = children.some((sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === pkg);
 		if (ext) {
-			containsExternalPackages = ext;
+			containsExternal = ext;
 		}
 	});
 	return children.filter(
 		(sym) =>
 			sym.kind === vscode.SymbolKind.Function &&
-			(testFuncRegex.test(sym.name) || (containsExternalPackages && testMethodRegex.test(sym.name)))
+			(testFuncRegex.test(sym.name) || (containsExternal && testMethodRegex.test(sym.name)))
 	);
 }
 
@@ -184,22 +184,23 @@ export function extractInstanceTestName(symbolName: string): string {
  * @param testFunctionName The test function to get the debug args
  * @param testFunctions The test functions found in the document
  */
-export function getTestFunctionDebugArgs(
+export async function getTestFunctionDebugArgs(
 	document: vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[]
-): string[] {
+): Promise<string[]> {
 	if (benchmarkRegex.test(testFunctionName)) {
 		return ['-test.bench', '^' + testFunctionName + '$', '-test.run', 'a^'];
 	}
 	const instanceMethod = extractInstanceTestName(testFunctionName);
 	if (instanceMethod) {
-		if (containsThirdPartyTestPackages(document, null, [checkPkg])) {
+		if (await containsThirdPartyTestPackages(document, null, [checkPkg])) {
 			return ['-check.f', `^${instanceMethod}$`];
 		}
 
 		const testFns = findAllTestSuiteRuns(document, testFunctions);
 		const testSuiteRuns = ['-test.run', `^${testFns.map((t) => t.name).join('|')}$`];
+		const testSuiteTests = ['-testify.m', `^${instanceMethod}$`];
 		return [...testSuiteRuns, ...testSuiteTests];
 	} else {
 		return ['-test.run', `^${testFunctionName}$`];
@@ -294,7 +295,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 	const { targets, pkgMap, currentGoWorkspace } = await getTestTargetPackages(testconfig, outputChannel);
 
 	// generate full test args.
-	const { args, outArgs, tmpCoverPath, addJSONFlag } = computeTestCommand(testconfig, targets);
+	const { args, outArgs, tmpCoverPath, addJSONFlag } = await computeTestCommand(testconfig, targets);
 
 	outputChannel.appendLine(['Running tool:', goRuntimePath, ...outArgs].join(' '));
 	outputChannel.appendLine('');
@@ -401,15 +402,15 @@ async function getTestTargetPackages(testconfig: TestConfig, outputChannel: vsco
 // computeTestCommand returns the test command argument list and extra info necessary
 // to post process the test results.
 // Exported for testing.
-export function computeTestCommand(
+export async function computeTestCommand(
 	testconfig: TestConfig,
 	targets: string[]
-): {
+): Promise<{
 	args: Array<string>; // test command args.
 	outArgs: Array<string>; // compact test command args to show to user.
 	tmpCoverPath?: string; // coverage file path if coverage info is necessary.
 	addJSONFlag: boolean; // true if we add extra -json flag for stream processing.
-} {
+}> {
 	const args: Array<string> = ['test'];
 	// user-specified flags
 	const argsFlagIdx = testconfig.flags?.indexOf('-args') ?? -1;
@@ -451,7 +452,7 @@ export function computeTestCommand(
 	}
 
 	// all other test run/benchmark flags
-	args.push(...targetArgs(testconfig));
+	args.push(...(await targetArgs(testconfig)));
 
 	const outArgs = args.slice(0); // command to show
 
@@ -574,7 +575,7 @@ export function cancelRunningTests(): Thenable<boolean> {
  *
  * @param testconfig Configuration for the Go extension.
  */
-function targetArgs(testconfig: TestConfig): Array<string> {
+async function targetArgs(testconfig: TestConfig): Promise<Array<string>> {
 	let params: string[] = [];
 
 	if (testconfig.functions) {
@@ -610,9 +611,9 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 				}
 			}
 			if (testMethods.length > 0) {
-				if (containsThirdPartyTestPackages(editor.document, null, [checkPkg])) {
+				if (await containsThirdPartyTestPackages(editor.document, null, [checkPkg])) {
 					params = params.concat(['-check.f', util.format('^(%s)$', testMethods.join('|'))]);
-				} else if (containsThirdPartyTestPackages(editor.document, null, [testifyPkg])) {
+				} else if (await containsThirdPartyTestPackages(editor.document, null, [testifyPkg])) {
 					params = params.concat(['-testify.m', util.format('^(%s)$', testMethods.join('|'))]);
 				}
 			}
@@ -647,7 +648,7 @@ export async function containsThirdPartyTestPackages(
 				(sym) =>
 					sym.kind === vscode.SymbolKind.Namespace &&
 					pkgs.some((pkg) => {
-						sym.name === pkg;
+						return sym.name === pkg;
 					})
 			);
 		});

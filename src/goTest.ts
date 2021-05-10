@@ -180,7 +180,7 @@ async function debugTestAtCursor(
 	testFunctions: vscode.DocumentSymbol[],
 	goConfig: vscode.WorkspaceConfiguration
 ) {
-	const args = getTestFunctionDebugArgs(editor.document, testFunctionName, testFunctions);
+	const args = await getTestFunctionDebugArgs(editor.document, testFunctionName, testFunctions);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);
