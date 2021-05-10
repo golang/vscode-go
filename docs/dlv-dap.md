@@ -135,7 +135,7 @@ The logging will appear in the `Go Debug` output channel (Command Palette -> "Vi
 If you are having issues with seeing logs and or suspect problems in extension's integration, you can start Delve DAP server from a separate terminal and configure the extension to directly connect to it.
 
 ```
-$ dlv-dap dap --listen=:12345 --log-output=dap
+$ dlv-dap dap --listen=:12345 --log --log-output=dap
 ```
 
 ```json5
