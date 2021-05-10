@@ -41,6 +41,9 @@ const testFuncRegex = /^Test\P{Ll}.*|^Example\P{Ll}.*/u;
 const testMethodRegex = /^\(([^)]+)\)\.(Test\P{Ll}.*)$/u;
 const benchmarkRegex = /^Benchmark\P{Ll}.*/u;
 
+const checkPkg = '"gopkg.in/check.v1"'
+const testifyPkg = '"github.com/stretchr/testify/suite"'
+
 /**
  * Input to goTest.
  */
@@ -144,13 +147,22 @@ export async function getTestFunctions(
 		return;
 	}
 	const children = symbol.children;
-	const testify = children.some(
-		(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
-	);
+
+    // include test functions and methods from 3rd party testing packages
+    let containsExternalPackages = false;
+    const allExternalPackages = [checkPkg, testifyPkg];
+    allExternalPackages.forEach((pkg) => {
+        const ext = children.some(
+            (sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === pkg
+        );
+        if (ext) {
+            containsExternalPackages = ext;
+        }
+    });
 	return children.filter(
 		(sym) =>
 			sym.kind === vscode.SymbolKind.Function &&
-			(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+			(testFuncRegex.test(sym.name) || (containsExternalPackages && testMethodRegex.test(sym.name)))
 	);
 }
 
@@ -184,9 +196,12 @@ export function getTestFunctionDebugArgs(
 	}
 	const instanceMethod = extractInstanceTestName(testFunctionName);
 	if (instanceMethod) {
+        if (containsThirdPartyTestPackages(document, null, [checkPkg])) {
+		    return ['-check.f', `^${instanceMethod}$`];
+        }
+
 		const testFns = findAllTestSuiteRuns(document, testFunctions);
 		const testSuiteRuns = ['-test.run', `^${testFns.map((t) => t.name).join('|')}$`];
-		const testSuiteTests = ['-testify.m', `^${instanceMethod}$`];
 		return [...testSuiteRuns, ...testSuiteTests];
 	} else {
 		return ['-test.run', `^${testFunctionName}$`];
@@ -568,17 +583,27 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 		if (testconfig.isBenchmark) {
 			params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
 		} else {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showInformationMessage('No editor is active.');
+                return;
+            }
+            if (!editor.document.fileName.endsWith('_test.go')) {
+                vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
+                return;
+            }
+
 			let testFunctions = testconfig.functions;
-			let testifyMethods = testFunctions.filter((fn) => testMethodRegex.test(fn));
-			if (testifyMethods.length > 0) {
-				// filter out testify methods
+			let testMethods = testFunctions.filter((fn) => testMethodRegex.test(fn));
+			if (testMethods.length > 0) {
+				// filter out methods
 				testFunctions = testFunctions.filter((fn) => !testMethodRegex.test(fn));
-				testifyMethods = testifyMethods.map(extractInstanceTestName);
+				testMethods = testMethods.map(extractInstanceTestName);
 			}
 
-			// we might skip the '-run' param when running only testify methods, which will result
-			// in running all the test methods, but one of them should call testify's `suite.Run(...)`
-			// which will result in the correct thing to happen
+			// we might skip the '-run' param when running only external test package methods, which will
+			// result in running all the test methods, but in the case of testify, one of them should call
+            // testify's `suite.Run(...)`, which will cause the correct thing to happen
 			if (testFunctions.length > 0) {
 				if (testFunctions.length === 1) {
 					params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
@@ -586,8 +611,12 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
 				}
 			}
-			if (testifyMethods.length > 0) {
-				params = params.concat(['-testify.m', util.format('^(%s)$', testifyMethods.join('|'))]);
+			if (testMethods.length > 0) {
+                if (containsThirdPartyTestPackages(editor.document, null, [checkPkg])) {
+                    params = params.concat(['-check.f', util.format('^(%s)$', testMethods.join('|'))]);
+                } else if (containsThirdPartyTestPackages(editor.document, null, [testifyPkg])) {
+                    params = params.concat(['-testify.m', util.format('^(%s)$', testMethods.join('|'))]);
+                }
 			}
 		}
 		return params;
@@ -604,4 +633,17 @@ function removeRunFlag(flags: string[]): void {
 	if (index !== -1) {
 		flags.splice(index, 2);
 	}
+}
+
+export async function containsThirdPartyTestPackages(doc: vscode.TextDocument, token: vscode.CancellationToken, pkgs: string[]): Promise<boolean> {
+    const documentSymbolProvider = new GoDocumentSymbolProvider(true);
+    const allPackages = await documentSymbolProvider
+        .provideDocumentSymbols(doc, token)
+        .then(symbols => symbols[0].children)
+        .then(symbols => {
+            return symbols.filter(sym => sym.kind === vscode.SymbolKind.Namespace && pkgs.some((pkg) => {
+                sym.name === pkg;
+            }));
+        });
+    return allPackages.length > 0;
 }
