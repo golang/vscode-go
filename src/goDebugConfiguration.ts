@@ -183,6 +183,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			debugConfiguration['showGlobalVariables'] = dlvConfig['showGlobalVariables'];
 		}
+		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
+			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
+		}
 		if (debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
 		}

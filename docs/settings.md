@@ -146,6 +146,7 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"legacy"` |
 | `dlvLoadConfig` | LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'. <br/> Default: ``` { <pre>"followPointers" :	true,<br/>"maxArrayValues" :	64,<br/>"maxStringLen" :	64,<br/>"maxStructFields" :	-1,<br/>"maxVariableRecurse" :	1,</pre>} ``` |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not. <br/> Default: `false` |
+| `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath. |
 
 Default:
 ```
@@ -160,6 +161,7 @@ Default:
 		"maxVariableRecurse" :	1,
 	},
 	"showGlobalVariables" :	false,
+	"substitutePath" :	[],
 }
 ```
 ### `go.disableConcurrentTests`

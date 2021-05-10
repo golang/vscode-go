@@ -1737,6 +1737,26 @@
               ],
               "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
               "default": "legacy"
+            },
+            "substitutePath": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "description": "The absolute local path to be replaced when passing paths to the debugger",
+                    "default": ""
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "The absolute remote path to be replaced when passing paths back to the client",
+                    "default": ""
+                  }
+                }
+              },
+              "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath.",
+              "default": []
             }
           },
           "default": {
@@ -1749,7 +1769,8 @@
             },
             "apiVersion": 2,
             "showGlobalVariables": false,
-            "debugAdapter": "legacy"
+            "debugAdapter": "legacy",
+            "substitutePath": []
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
