@@ -783,23 +783,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 		async function waitForHelloGoodbyeOutput(dc: DebugClient): Promise<DebugProtocol.Event> {
 			return await new Promise<DebugProtocol.Event>((resolve, reject) => {
-				const listen = () => {
-					dc.waitForEvent('output', 5_000)
-						.then((event) => {
-							// Run listen again to make sure we can get the next events.
-							listen();
-							if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
-								// Resolve when we have found the event that we want.
-								resolve(event);
-								return;
-							}
-						})
-						.catch((reason) => reject(reason));
-				};
-				// Start listening for an output event. Especially because
-				// logging is enabled in dlv-dap, there are many output events, and it is
-				// possible to miss them if we are not prepared to handle them.
-				listen();
+				dc.on('output', (event) => {
+					if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
+						// Resolve when we have found the event that we want.
+						resolve(event);
+						return;
+					}
+				});
 			});
 		}
 
