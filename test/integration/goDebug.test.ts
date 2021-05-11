@@ -1598,7 +1598,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			// Skip the proper disconnect sequence started with a disconnect request.
 
-			dlvDapAdapter.dispose(1);
+			await dlvDapAdapter.dispose(1);
 			dc = undefined;
 			await sleep(100); // allow dlv to respond and finish cleanup.
 			let stat: fs.Stats = null;
