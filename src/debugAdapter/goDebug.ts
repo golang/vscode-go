@@ -356,8 +356,8 @@ function logError(...args: any[]) {
 	logger.error(logArgsToString(args));
 }
 
-function findPathSeparator(filePath: string) {
-	return filePath.includes('/') ? '/' : '\\';
+export function findPathSeparator(filePath: string) {
+	return filePath.includes('\\') ? '\\' : '/';
 }
 
 // Comparing two different file paths while ignoring any different path separators.
