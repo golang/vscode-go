@@ -1,4 +1,4 @@
-## v0.25.0 - 08 May, 2021
+## v0.25.0 - 12 May, 2021
 
 A list of all issues and changes can be found in the
 [v0.25.0 milestone](https://github.com/golang/vscode-go/issues?q=is%3Aissue+milestone%3Av0.25.0+is%3Aclosed).
@@ -8,7 +8,7 @@ If you have a feature requests for this extension, please file it through the gi
 ### Enhancements
 - Update to latest version of `dlv-dap`. Documentation of current features and limitations can be found in [the documentation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md)
 - Add debug previous command ([Issue 798](https://github.com/golang/vscode-go/issues/798))
-- Add command to run `go mod init` ([Issue 1449](https://github.com/golang/vscode-go/issues/1449))
+- Add `Go: Initialize go.mod` command to run `go mod init` in the current workspace folder ([Issue 1449](https://github.com/golang/vscode-go/issues/1449))
 - Use `program` in debug configuration to determine mode in `auto` ([Issue 1422](https://github.com/golang/vscode-go/issues/1422))
 - Auto update `dlv-dap` if autoUpdates enabled ([Issue 1404](https://github.com/golang/vscode-go/issues/1404))
 - Set `editor.suggest.snippetsPreventQuickSuggestions` to false by default to enable code completion and quick suggestions inside a snippet ([Issue 839](https://github.com/golang/vscode-go/issues/839))
