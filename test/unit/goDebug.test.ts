@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { normalizeSeparators } from '../../src/debugAdapter/goDebug';
+import { findPathSeparator, normalizeSeparators } from '../../src/debugAdapter/goDebug';
 
 suite('NormalizeSeparators Tests', () => {
 	test('fix separator', () => {
@@ -91,6 +91,44 @@ suite('NormalizeSeparators Tests', () => {
 
 		for (const tc of tt) {
 			const got = normalizeSeparators(tc.input);
+			assert.strictEqual(got, tc.want);
+		}
+	});
+
+	test('find path separator', () => {
+		const tt = [
+			{
+				input: '../path/to/file',
+				want: '/'
+			},
+			{
+				input: './path/to/file',
+				want: '/'
+			},
+			{
+				input: '..\\path\\to\\file',
+				want: '\\'
+			},
+			{
+				input: '.\\path\\to\\file',
+				want: '\\'
+			},
+			{
+				input: '/path/to/../file',
+				want: '/'
+			},
+			{
+				input: 'c:\\path\\to\\..\\file',
+				want: '\\'
+			},
+			{
+				input: '',
+				want: '/'
+			}
+		];
+
+		for (const tc of tt) {
+			const got = findPathSeparator(tc.input);
 			assert.strictEqual(got, tc.want);
 		}
 	});
