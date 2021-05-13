@@ -66,6 +66,8 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})\n`)
 		};
 	}
+
+	dispose() {}
 }
 
 const TWO_CRLF = '\r\n\r\n';

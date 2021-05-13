@@ -93,7 +93,7 @@ export interface LogConfig {
 let defaultLogger: Logger;
 
 export function setLogConfig(cfg: LogConfig) {
-	defaultLogger = new Logger(cfg.level);
+	defaultLogger = new Logger(cfg.level, undefined, true);
 }
 
 export function logError(msg: string) {
