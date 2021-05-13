@@ -188,6 +188,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		if (debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
+			if (vscode.workspace.workspaceFolders?.length > 1) {
+				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
+			}
 		}
 		if (debugConfiguration['cwd']) {
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail

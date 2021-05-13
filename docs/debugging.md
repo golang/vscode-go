@@ -69,6 +69,7 @@ You may not need to configure any settings to start debugging your programs, but
     * `maxStructFields`: Maximum number of fields read from a struct. A setting of `-1` indicates that all fields should be read (default: `-1`).
     * `maxVariableRecurse`: How far to recurse when evaluating nested types (default: `1`).
     * `followPointers`: Automatically dereference pointers (default: `true`).
+  * `showGlobalVariables`: Show global variables in the Debug view (default: `false`).
   * `debugAdapter`: Controls which debug adapter to use (default: `legacy`).
   * `substitutePath`: Path mappings to apply to get from a path in the editor to a path in the compiled program (default: `[]`).
 
@@ -117,7 +118,7 @@ buildFlags | Build flags to pass to the Go compiler. This corresponds to `dlv`'s
 dlvFlags   | Extra flags passed to `dlv`. See `dlv help` for the full list of supported flags. This is useful when users need to pass less commonly used or new flags such as `--only-same-user`, `--check-go-version`. Note that some flags such as `--log-output`, `--log`, `--log-dest`, `--api-version` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.
 remotePath | If remote debugging (`mode`: `remote`), this should be the absolute path to the package being debugged on the remote machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant. Becomes the first mapping in substitutePath.
 substitutePath | An array of mappings from an absolute local path to an absolute remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. The mappings are applied in order, and the first matching mapping is used. This can be used to map files that have moved since the program was built, different remote paths, and symlinked files or directories. This is intended to be equivalent to the [substitute-path](https://github.com/go-delve/delve/tree/master/Documentation/cli#config) configuration, and will eventually configure substitute-path in Delve directly.
-cwd | The working directory to be used in running the program. If remote debugging (`mode`: `remote`), this should be the absolute path to the working directory being debugged on the local machine. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
+cwd | The working directory to be used in running the program. If remote debugging (`mode`: `remote`), this should be the absolute path to the working directory being debugged on the local machine. The extension defaults to the workspace folder, or the workspace folder of the open file in multi root workspaces. See the section on [Remote Debugging](#remote-debugging) for further details. [golang/vscode-go#45](https://github.com/golang/vscode-go/issues/45) is also relevant.
 processId  | This is the process ID of the executable you want to debug. Applicable only when using the `attach` request in `local` mode. By setting this to the command name of the process, `${command:pickProcess}`, or`${command:pickGoProcess}` a quick pick menu will show a list of processes to choose from.
 
 ### Specifying [build tags](https://golang.org/pkg/go/build/#hdr-Build_Constraints)
@@ -162,7 +163,8 @@ Note that it is not recommended to debug optimized executables as Delve may not 
 
 Any property in the launch configuration that requires a file path can be specified in terms of [VS Code variables]. Here are some useful ones to know:
 
-* `${workspaceFolder}` refers to the root of the workspace opened in VS Code.
+* `${workspaceFolder}` refers to the root of the workspace opened in VS Code. If using a multi root workspace, you must specify the folder name `${workspaceFolder:folderName}`
+* `${fileWorkspaceFolder}` refers to the the current opened file's workspace folder.
 * `${file}` refers to the currently opened file.
 * `${fileDirname}` refers to the directory containing the currently opened file. This is typically also the name of the Go package containing this file, and as such, can be used to debug the currently opened package.
 
