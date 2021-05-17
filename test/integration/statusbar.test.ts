@@ -26,6 +26,7 @@ import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 import ourutil = require('../../src/util');
+import { setGOROOTEnvVar } from '../../src/goMain';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
@@ -49,6 +50,38 @@ describe('#initGoStatusBar()', function () {
 			label = label.substring(0, iconPos);
 		}
 		assert.equal(label, versionLabel, 'goroot version does not match status bar item text');
+	});
+});
+
+describe('#setGOROOTEnvVar', function () {
+	let origGOROOT = process.env['GOROOT'];
+
+	this.beforeEach(() => {
+		origGOROOT = process.env['GOROOT'];
+	});
+
+	this.afterEach(() => {
+		if (origGOROOT) {
+			process.env['GOROOT'] = origGOROOT;
+		} else {
+			delete process.env.GOROOT;
+		}
+	});
+
+	it('empty goroot does not change GOROOT', async () => {
+		await setGOROOTEnvVar('');
+		assert.strictEqual(process.env['GOROOT'], origGOROOT);
+	});
+
+	it('non-directory value is rejected', async () => {
+		await setGOROOTEnvVar(ourutil.getBinPath('go'));
+		assert.strictEqual(process.env['GOROOT'], origGOROOT);
+	});
+
+	it('directory value is accepted', async () => {
+		const goroot = path.join(path.dirname(ourutil.getBinPath('go')), '..');
+		await setGOROOTEnvVar(goroot);
+		assert.strictEqual(process.env['GOROOT'], goroot);
 	});
 });
 
