@@ -1760,7 +1760,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
-	suite('logDest attribute tests', () => {
+	suite.skip('logDest attribute tests', () => {
 		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
 		let tmpDir: string;
@@ -2033,7 +2033,6 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	static async create(config: DebugConfiguration) {
 		const d = new DelveDAPDebugAdapterOnSocket(config);
-		await d.startAndConnectToServer();
 		return d;
 	}
 

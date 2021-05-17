@@ -41,7 +41,6 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
-		await d.startAndConnectToServer();
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
 }
@@ -196,14 +195,33 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	constructor(private config: vscode.DebugConfiguration, logger?: Logger) {
 		super(logger);
+		this.connected = this.startAndConnectToServer();
 	}
 
+	private connected: Promise<void>;
 	private dlvDapServer: ChildProcess;
 	private port: number;
 	private socket: net.Socket;
+	private terminatedOnError = false;
 
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
-		super.sendMessageToServer(message);
+		try {
+			await this.connected;
+			super.sendMessageToServer(message);
+		} catch (err) {
+			if (this.terminatedOnError) {
+				return;
+			}
+			this.terminatedOnError = true;
+			// If there was an error connecting, show an error message and send a terminated event
+			// since we cannot start.
+			if (err) {
+				const errMsg = `Debug Error: ${err}`;
+				this.outputEvent('stderr', errMsg);
+				vscode.window.showErrorMessage(errMsg);
+			}
+			this.sendMessageToClient(new TerminatedEvent());
+		}
 	}
 
 	async dispose(timeoutMS?: number) {
@@ -213,6 +231,10 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		if (!this.dlvDapServer) {
 			return;
 		}
+		if (this.connected === undefined) {
+			return;
+		}
+		this.connected = undefined;
 
 		if (timeoutMS === undefined || timeoutMS < 0) {
 			timeoutMS = 1_000;
@@ -245,7 +267,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		});
 	}
 
-	public async startAndConnectToServer() {
+	private async startAndConnectToServer() {
 		const { port, host, dlvDapServer } = await startDapServer(
 			this.config,
 			(msg) => this.outputEvent('stdout', msg),
