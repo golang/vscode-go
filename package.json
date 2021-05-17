@@ -103,6 +103,7 @@
   ],
   "main": "./dist/goMain.js",
   "capabilities": {
+    "virtualWorkspaces": false,
     "untrustedWorkspaces": {
       "supported": "limited",
       "restrictedConfigurations": [
