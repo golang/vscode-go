@@ -1266,20 +1266,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			};
 			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([
-				dc
-					.waitForEvent('initialized')
-					.then(() => {
-						return dc.setExceptionBreakpointsRequest({
-							filters: ['all']
-						});
-					})
-					.then(() => {
-						return dc.configurationDoneRequest();
-					}),
-
+				dc.configurationSequence(),
 				dc.launch(debugConfig),
-
-				dc.assertStoppedLocation('panic', {})
+				dc.waitForEvent('stopped').then((event) => {
+					assert(
+						event.body.reason === 'runtime error' ||
+							event.body.reason === 'panic' ||
+							event.body.reason === 'exception'
+					);
+				})
 			]);
 		});
 
@@ -1303,7 +1298,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				dc.configurationSequence(),
 				dc.launch(debugConfig),
 				dc.waitForEvent('stopped').then((event) => {
-					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+					assert(
+						event.body.reason === 'runtime error' ||
+							event.body.reason === 'panic' ||
+							event.body.reason === 'exception'
+					);
 				})
 			]);
 		});
@@ -1331,7 +1330,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([
 				dc.nextRequest({ threadId: 1 }),
 				dc.waitForEvent('stopped').then((event) => {
-					assert(event.body.reason === 'runtime error' || event.body.reason === 'panic');
+					assert(
+						event.body.reason === 'runtime error' ||
+							event.body.reason === 'panic' ||
+							event.body.reason === 'exception'
+					);
 				})
 			]);
 		});
