@@ -7,7 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion, isInPreviewMode, lastUserAction, latestConfig } from './goLanguageServer';
+import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguageServer';
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
@@ -103,14 +103,12 @@ export function shouldPromptForSurvey(now: Date, cfg: SurveyConfig): SurveyConfi
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < probability, which varies
-	// depending on whether the default or the nightly is in use.
+	// the range [0, 1) and checking if it is < probability.
 	// We then randomly pick a day in the rest of the month on which to prompt
 	// the user.
-	let probability = 0.01; // lower probability for the regular extension
-	if (isInPreviewMode()) {
-		probability = 0.0275;
-	}
+	// Probability is set based on the # of responses received, and will be
+	// decreased if we begin receiving > 200 responses/month.
+	const probability = 0.03;
 	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
