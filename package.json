@@ -202,6 +202,11 @@
         "description": "Runs a unit test at the cursor."
       },
       {
+        "command": "go.test.cursorOrPrevious",
+        "title": "Go: Test Function At Cursor or Test Previous",
+        "description": "Runs a unit test at the cursor if one is found, otherwise re-runs the last executed test."
+      },
+      {
         "command": "go.subtest.cursor",
         "title": "Go: Subtest At Cursor",
         "description": "Runs a sub test at the cursor."

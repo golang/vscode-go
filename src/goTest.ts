@@ -31,13 +31,12 @@ let lastDebugWorkspaceFolder: vscode.WorkspaceFolder;
 
 export type TestAtCursorCmd = 'debug' | 'test' | 'benchmark';
 
-class InformationError extends Error {}
-class NotFoundError extends InformationError {}
+class NotFoundError extends Error {}
 
 async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
-		throw new InformationError('No editor is active.');
+		throw new NotFoundError('No editor is active.');
 	}
 	if (!editor.document.fileName.endsWith('_test.go')) {
 		throw new NotFoundError('No tests found. Current file is not a test file.');
@@ -75,8 +74,24 @@ async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
  */
 export function testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
 	_testAtCursor(goConfig, cmd, args).catch((err) => {
-		if (err instanceof InformationError) {
+		if (err instanceof NotFoundError) {
 			vscode.window.showInformationMessage(err.message);
+		} else {
+			console.error(err);
+		}
+	});
+}
+
+/**
+ * Executes the unit test at the primary cursor if found, otherwise re-runs the previous test.
+ * @param goConfig Configuration for the Go extension.
+ * @param cmd Whether the command is test, benchmark, or debug.
+ * @param args
+ */
+export function testAtCursorOrPrevious(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
+	_testAtCursor(goConfig, cmd, args).catch((err) => {
+		if (err instanceof NotFoundError) {
+			testPrevious();
 		} else {
 			console.error(err);
 		}
