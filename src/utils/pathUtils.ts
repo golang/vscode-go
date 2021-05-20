@@ -163,7 +163,7 @@ export function fileExists(filePath: string): boolean {
 	}
 }
 
-export async function pathExists(p: string): Promise<boolean> {
+export async function dirExists(p: string): Promise<boolean> {
 	try {
 		const stat = promisify(fs.stat);
 		return (await stat(p)).isDirectory();

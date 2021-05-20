@@ -11,13 +11,20 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { declinedToolInstall, promptForMissingTool, promptForUpdatingTool, shouldUpdateTool } from './goInstallTools';
+import {
+	declinedToolInstall,
+	installTools,
+	promptForMissingTool,
+	promptForUpdatingTool,
+	shouldUpdateTool
+} from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, resolvePath } from './util';
+import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
+import { resolveHomeDir } from './utils/pathUtils';
 
 let dlvDAPVersionCurrent = false;
 
@@ -34,57 +41,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	public async pickConfiguration(): Promise<vscode.DebugConfiguration[]> {
 		const debugConfigurations = [
 			{
-				label: 'Go: Launch package',
-				description: 'Debug the package in the program attribute',
+				label: 'Go: Launch Package',
+				description: 'Debug/test the package of the open file',
 				config: {
 					name: 'Launch Package',
 					type: this.defaultDebugAdapterType,
 					request: 'launch',
-					mode: 'debug',
-					program: '${workspaceFolder}'
-				}
-			},
-			{
-				label: 'Go: Launch file',
-				description: 'Debug the file in the program attribute',
-				config: {
-					name: 'Launch file',
-					type: 'go',
-					request: 'launch',
-					mode: 'debug',
-					program: '${file}'
-				}
-			},
-			{
-				label: 'Go: Launch test package',
-				description: 'Debug the test package in the program attribute',
-				config: {
-					name: 'Launch test package',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${workspaceFolder}'
-				}
-			},
-			{
-				label: 'Go: Launch test function',
-				description: 'Debug the test function in the args, ensure program attributes points to right package',
-				config: {
-					name: 'Launch test function',
-					type: 'go',
-					request: 'launch',
-					mode: 'test',
-					program: '${workspaceFolder}',
-					args: ['-test.run', 'MyTestFunction']
-				},
-				fill: async (config: vscode.DebugConfiguration) => {
-					const testFunc = await vscode.window.showInputBox({
-						placeHolder: 'MyTestFunction',
-						prompt: 'Name of the function to test'
-					});
-					if (testFunc) {
-						config.args = ['-test.run', testFunc];
-					}
+					mode: 'auto',
+					program: '${fileDirname}'
 				}
 			},
 			{
@@ -179,6 +143,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
+
+		// Figure out which debugAdapter is being used first, so we can use this to send warnings
+		// for properties that don't apply.
+		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
+			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
+		}
+		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
+
 		let useApiV1 = false;
 		if (debugConfiguration.hasOwnProperty('useApiV1')) {
 			useApiV1 = debugConfiguration['useApiV1'] === true;
@@ -191,6 +163,17 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (!debugConfiguration.hasOwnProperty('apiVersion') && dlvConfig.hasOwnProperty('apiVersion')) {
 			debugConfiguration['apiVersion'] = dlvConfig['apiVersion'];
 		}
+		if (
+			debugAdapter === 'dlv-dap' &&
+			(debugConfiguration.hasOwnProperty('dlvLoadConfig') ||
+				goConfig.inspect('delveConfig.dlvLoadConfig').globalValue !== undefined ||
+				goConfig.inspect('delveConfig.dlvLoadConfig').workspaceValue !== undefined)
+		) {
+			this.showWarning(
+				'ignoreDebugDlvConfigWithDlvDapWarning',
+				"User specified 'dlvLoadConfig' setting will be ignored by debug adapter 'dlv-dap'."
+			);
+		}
 		if (!debugConfiguration.hasOwnProperty('dlvLoadConfig') && dlvConfig.hasOwnProperty('dlvLoadConfig')) {
 			debugConfiguration['dlvLoadConfig'] = dlvConfig['dlvLoadConfig'];
 		}
@@ -200,12 +183,18 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			debugConfiguration['showGlobalVariables'] = dlvConfig['showGlobalVariables'];
 		}
+		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
+			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
+		}
 		if (debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
+			if (vscode.workspace.workspaceFolders?.length > 1) {
+				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
+			}
 		}
 		if (debugConfiguration['cwd']) {
 			// expand 'cwd' folder path containing '~', which would cause dlv to fail
-			debugConfiguration['cwd'] = resolvePath(debugConfiguration['cwd']);
+			debugConfiguration['cwd'] = resolveHomeDir(debugConfiguration['cwd']);
 		}
 
 		// Remove any '--gcflags' entries and show a warning
@@ -230,7 +219,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
 		const dlvToolPath = getBinPath(debugAdapter);
 		if (!path.isAbsolute(dlvToolPath)) {
 			const tool = getTool(debugAdapter);
@@ -248,8 +236,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
 			const tool = getToolAtVersion('dlv-dap');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
-				promptForUpdatingTool('dlv-dap');
-				return;
+				// If the user has opted in to automatic tool updates, we can update
+				// without prompting.
+				const toolsManagementConfig = getGoConfig()['toolsManagement'];
+				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+					const goVersion = await getGoVersion();
+					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
+					await installTools([toolVersion], goVersion, true);
+				} else {
+					// If we are prompting the user to update, we do not want to continue
+					// with this debug session.
+					promptForUpdatingTool(tool.name);
+					return;
+				}
 			}
 			dlvDAPVersionCurrent = true;
 		}
@@ -260,8 +259,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {
-			debugConfiguration['mode'] =
-				activeEditor && activeEditor.document.fileName.endsWith('_test.go') ? 'test' : 'debug';
+			let filename = activeEditor?.document?.fileName;
+			if (debugConfiguration['program'] && debugConfiguration['program'].endsWith('.go')) {
+				// If the 'program' attribute is a file, not a directory, then we will determine the mode from that
+				// file path instead of the currently active file.
+				filename = debugConfiguration['program'];
+			}
+			debugConfiguration['mode'] = filename.endsWith('_test.go') ? 'test' : 'debug';
+		}
+
+		if (debugConfiguration['mode'] === 'test' && debugConfiguration['program'].endsWith('_test.go')) {
+			// Running a test file in file mode does not make sense, so change the program
+			// to the directory.
+			debugConfiguration['program'] = path.dirname(debugConfiguration['program']);
 		}
 
 		if (debugConfiguration.request === 'launch' && debugConfiguration['mode'] === 'remote') {
@@ -272,6 +282,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		if (
+			debugAdapter !== 'dlv-dap' &&
 			debugConfiguration.request === 'attach' &&
 			debugConfiguration['mode'] === 'remote' &&
 			debugConfiguration['program']

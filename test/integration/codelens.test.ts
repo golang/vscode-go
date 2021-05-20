@@ -129,4 +129,21 @@ suite('Code lenses for testing and benchmarking', function () {
 			assert.equal(codeLenses[i].command.command, wantCommands[i]);
 		}
 	});
+
+	test('Test codelenses include only valid test function names', async () => {
+		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens2_test.go'));
+		const benchmarkDocument = await vscode.workspace.openTextDocument(uri);
+		const codeLenses = await codeLensProvider.provideCodeLenses(benchmarkDocument, cancellationTokenSource.token);
+		assert.equal(codeLenses.length, 12, JSON.stringify(codeLenses, null, 2));
+		const found = [] as string[];
+		for (let i = 0; i < codeLenses.length; i++) {
+			const lens = codeLenses[i];
+			if (lens.command.command === 'go.test.cursor') {
+				found.push(lens.command.arguments[0].functionName);
+			}
+		}
+		found.sort();
+		// Results should match `go test -list`.
+		assert.deepStrictEqual(found, ['Test1Function', 'TestFunction', 'Test_foobar', 'TestΣυνάρτηση', 'Test함수']);
+	});
 });

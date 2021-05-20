@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.24.0-dev",
+  "version": "0.26.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -89,7 +89,6 @@
   "engines": {
     "vscode": "^1.52.0"
   },
-  "requiresWorkspaceTrust": "onStart",
   "activationEvents": [
     "workspaceContains:**/*.go",
     "onLanguage:go",
@@ -97,11 +96,26 @@
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
+    "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "restrictedConfigurations": [
+        "go.alternateTools",
+        "go.gopath",
+        "go.goroot",
+        "go.inferGopath",
+        "go.toolsGopath",
+        "go.toolsEnvVars"
+      ]
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -167,7 +181,8 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        }
+        },
+        "editor.suggest.snippetsPreventQuickSuggestions": false
       }
     },
     "commands": [
@@ -230,6 +245,11 @@
         "command": "go.test.previous",
         "title": "Go: Test Previous",
         "description": "Re-runs the last executed test."
+      },
+      {
+        "command": "go.debug.previous",
+        "title": "Go: Debug Previous",
+        "description": "Re-runs the last debugged test run through a codelens or \"Go: Debug Test at Cursor\" command."
       },
       {
         "command": "go.test.coverage",
@@ -362,6 +382,11 @@
         "description": "Install the current package."
       },
       {
+        "command": "go.run.modinit",
+        "title": "Go: Initialize go.mod",
+        "description": "Run `go mod init` in the workspace folder."
+      },
+      {
         "command": "go.test.cancel",
         "title": "Go: Cancel Running Tests",
         "description": "Cancels running tests."
@@ -438,12 +463,12 @@
         "configurationSnippets": [
           {
             "label": "Go: Launch package",
-            "description": "Debug the package in the program attribute",
+            "description": "Debug/test the package in the program attribute",
             "body": {
               "name": "${2:Launch Package}",
               "type": "go",
               "request": "launch",
-              "mode": "debug",
+              "mode": "auto",
               "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
@@ -456,17 +481,6 @@
               "request": "launch",
               "mode": "debug",
               "program": "^\"${1:\\${file\\}}\""
-            }
-          },
-          {
-            "label": "Go: Launch test package",
-            "description": "Debug the test package in the program attribute",
-            "body": {
-              "name": "${2:Launch test package}",
-              "type": "go",
-              "request": "launch",
-              "mode": "test",
-              "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
           {
@@ -590,14 +604,9 @@
                 "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
                 "default": ""
               },
-              "init": {
-                "type": "string",
-                "description": "Init file, executed by the terminal client. Maps to dlv's `--init` flag.",
-                "default": ""
-              },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -621,12 +630,15 @@
               "trace": {
                 "type": "string",
                 "enum": [
-                  "log",
                   "verbose",
+                  "trace",
+                  "log",
+                  "info",
+                  "warn",
                   "error"
                 ],
                 "default": "error",
-                "description": "Various levels of logging shown in the debug console. When set to 'log' or 'verbose', the logs will also be written to a file."
+                "description": "Various levels of the debug console & 'Go Debug' output channel. When using the `legacy` debug adapter, the logs will also be written to a file if it is set to a value other than `error`."
               },
               "envFile": {
                 "type": [
@@ -666,6 +678,10 @@
                 "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
+              "logDest": {
+                "type": "string",
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
+              },
               "dlvLoadConfig": {
                 "type": "object",
                 "properties": {
@@ -695,7 +711,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -765,9 +781,14 @@
                 "description": "Indicates local or remote debugging. Local maps to the dlv 'attach' command, remote maps to 'connect'.",
                 "default": "local"
               },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after attach.",
+                "default": false
+              },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output` and `--log` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -850,6 +871,10 @@
                 "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
                 "default": "debugger"
               },
+              "logDest": {
+                "type": "string",
+                "description": "dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only on Linux and Mac OS in dlv-dap mode."
+              },
               "dlvLoadConfig": {
                 "type": "object",
                 "properties": {
@@ -879,7 +904,7 @@
                     "default": -1
                   }
                 },
-                "description": "LoadConfig describes to delve, how to load values from target's memory",
+                "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
                 "default": {
                   "followPointers": true,
                   "maxVariableRecurse": 1,
@@ -1689,7 +1714,7 @@
                   "default": -1
                 }
               },
-              "description": "LoadConfig describes to delve, how to load values from target's memory",
+              "description": "LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'.",
               "default": {
                 "followPointers": true,
                 "maxVariableRecurse": 1,
@@ -1711,6 +1736,35 @@
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "debugAdapter": {
+              "type": "string",
+              "enum": [
+                "legacy",
+                "dlv-dap"
+              ],
+              "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
+              "default": "legacy"
+            },
+            "substitutePath": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "description": "The absolute local path to be replaced when passing paths to the debugger",
+                    "default": ""
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "The absolute remote path to be replaced when passing paths back to the client",
+                    "default": ""
+                  }
+                }
+              },
+              "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath.",
+              "default": []
             }
           },
           "default": {
@@ -1722,7 +1776,9 @@
               "maxStructFields": -1
             },
             "apiVersion": 2,
-            "showGlobalVariables": false
+            "showGlobalVariables": false,
+            "debugAdapter": "legacy",
+            "substitutePath": []
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
@@ -1785,7 +1841,7 @@
             },
             "build.directoryFilters": {
               "type": "array",
-              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\nExclude node_modules: `-node_modules`\nInclude only project_a: `-` (exclude everything), `+project_a`\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
               "scope": "resource"
             },
             "build.env": {
@@ -1809,6 +1865,20 @@
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
               "default": false,
+              "scope": "resource"
+            },
+            "build.memoryMode": {
+              "type": "string",
+              "markdownDescription": "(Experimental) memoryMode controls the tradeoff `gopls` makes between memory usage and\ncorrectness.\n\nValues other than `Normal` are untested and may break in surprising ways.\n",
+              "enum": [
+                "DegradeClosed",
+                "Normal"
+              ],
+              "markdownEnumDescriptions": [
+                "`\"DegradeClosed\"`: In DegradeClosed mode, `gopls` will collect less information about\npackages without open files. As a result, features like Find\nReferences and Rename will miss results in such packages.\n",
+                ""
+              ],
+              "default": "Normal",
               "scope": "resource"
             },
             "formatting.gofumpt": {
@@ -1869,6 +1939,12 @@
               "type": "string",
               "markdownDescription": "(For Debugging) completionBudget is the soft latency goal for completion requests. Most\nrequests finish in a couple milliseconds, but in some cases deep\ncompletions can take much longer. As we use up our budget we\ndynamically reduce the search scope to ensure we return timely\nresults. Zero means unlimited.\n",
               "default": "100ms",
+              "scope": "resource"
+            },
+            "ui.completion.experimentalPostfixCompletions": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
+              "default": false,
               "scope": "resource"
             },
             "ui.completion.matcher": {
@@ -1955,7 +2031,7 @@
                 },
                 "fieldalignment": {
                   "type": "boolean",
-                  "markdownDescription": "find structs that would take less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to take less memory, and provides\na suggested edit with the optimal order.\n",
+                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the optimal order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n",
                   "default": false
                 },
                 "fillreturns": {

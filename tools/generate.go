@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -28,8 +29,9 @@ import (
 )
 
 var (
-	writeFlag               = flag.Bool("w", true, "Write new file contents to disk.")
-	updateGoplsSettingsFlag = flag.Bool("gopls", false, "Update gopls settings in package.json. This is disabled by default because 'jq' tool is needed for generation.")
+	writeFlag                    = flag.Bool("w", true, "Write new file contents to disk.")
+	updateGoplsSettingsFlag      = flag.Bool("gopls", false, "Update gopls settings in package.json. This is disabled by default because 'jq' tool is needed for generation.")
+	updateLatestToolVersionsFlag = flag.Bool("tools", false, "Update the latest versions of tools in src/src/goToolsInformation.ts. This is disabled by default because the latest versions may change frequently and should not block a release.")
 
 	debugFlag = flag.Bool("debug", false, "If true, enable extra logging and skip deletion of intermediate files.")
 )
@@ -63,6 +65,13 @@ type Property struct {
 	Enum                       []interface{}          `json:"enum,omitempty"`
 	EnumDescriptions           []string               `json:"enumDescriptions,omitempty"`
 	MarkdownEnumDescriptions   []string               `json:"markdownEnumDescriptions,omitempty"`
+}
+
+type moduleVersion struct {
+	Path     string   `json:",omitempty"`
+	Version  string   `json:",omitempty"`
+	Time     string   `json:",omitempty"`
+	Versions []string `json:",omitempty"`
 }
 
 func main() {
@@ -105,11 +114,21 @@ func main() {
 		if len(split) == 1 {
 			log.Fatalf("expected to find %q in %s, not found", gen, filename)
 		}
-		s := bytes.Join([][]byte{
-			bytes.TrimSpace(split[0]),
-			gen,
-			toAdd,
-		}, []byte("\n\n"))
+		var s []byte
+		if strings.HasSuffix(filename, ".ts") {
+			s = bytes.Join([][]byte{
+				split[0],
+				gen,
+				[]byte("\n\n"),
+				toAdd,
+			}, []byte{})
+		} else {
+			s = bytes.Join([][]byte{
+				bytes.TrimSpace(split[0]),
+				gen,
+				toAdd,
+			}, []byte("\n\n"))
+		}
 		newContent := append(s, '\n')
 
 		// Return early if the contents are unchanged.
@@ -177,6 +196,85 @@ To update the settings, run "go run tools/generate.go -w".
 	writeGoplsSettingsSection(b, goplsProperty)
 
 	rewrite(filepath.Join(dir, "docs", "settings.md"), b.Bytes())
+
+	// Only update the latest tool versions if the flag is set.
+	if !*updateLatestToolVersionsFlag {
+		return
+	}
+
+	// Clear so that we can rewrite src/goToolsInformation.ts.
+	b.Reset()
+
+	// Check for latest dlv-dap version.
+	dlvVersion, err := listModuleVersion("github.com/go-delve/delve@master")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Check for the latest gopls version.
+	versions, err := listAllModuleVersions("golang.org/x/tools/gopls")
+	if err != nil {
+		log.Fatal(err)
+	}
+	latestIndex := len(versions.Versions) - 1
+	latestPre := versions.Versions[latestIndex]
+	// We need to find the last version that was not a pre-release.
+	var latest string
+	for latest = versions.Versions[latestIndex]; latestIndex >= 0; latestIndex-- {
+		if !strings.Contains(latest, "pre") {
+			break
+		}
+	}
+
+	goplsVersion, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latest))
+	if err != nil {
+		log.Fatal(err)
+	}
+	goplsVersionPre, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latestPre))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	allToolsFile := filepath.Join(dir, "tools", "allTools.ts.in")
+
+	// Find the package.json file.
+	data, err = ioutil.ReadFile(allToolsFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO(suzmue): change input to json and avoid magic string printing.
+	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")], dlvVersion.Version, dlvVersion.Time[:len("YYYY-MM-DD")])
+
+	// Write tools section.
+	b.WriteString(toolsString)
+	rewrite(filepath.Join(dir, "src", "goToolsInformation.ts"), b.Bytes())
+}
+
+func listModuleVersion(path string) (moduleVersion, error) {
+	output, err := exec.Command("go", "list", "-m", "-json", path).Output()
+	if err != nil {
+		return moduleVersion{}, err
+	}
+	var version moduleVersion
+	err = json.Unmarshal(output, &version)
+	if err != nil {
+		return moduleVersion{}, err
+	}
+	return version, nil
+}
+
+func listAllModuleVersions(path string) (moduleVersion, error) {
+	output, err := exec.Command("go", "list", "-m", "-json", "-versions", path).Output()
+	if err != nil {
+		return moduleVersion{}, err
+	}
+	var version moduleVersion
+	err = json.Unmarshal(output, &version)
+	if err != nil {
+		return moduleVersion{}, err
+	}
+	return version, nil
 }
 
 func writeProperty(b *bytes.Buffer, heading string, p Property) {

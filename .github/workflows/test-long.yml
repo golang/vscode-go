@@ -58,8 +58,10 @@ jobs:
             go get github.com/cweill/gotests/...
             go get github.com/rogpeppe/godef
             go get github.com/ramya-rao-a/go-outline
+            # Install two versions of dlv (one as dlv-dap)
             go get github.com/go-delve/delve/cmd/dlv@master
-            cp "${HOME}/go/bin/dlv${{env.EXT}}" "${HOME}/go/bin/dlv-dap${{env.EXT}}"
+            mv "${HOME}/go/bin/dlv${{env.EXT}}" "${HOME}/go/bin/dlv-dap${{env.EXT}}"
+            go get github.com/go-delve/delve/cmd/dlv@latest
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"

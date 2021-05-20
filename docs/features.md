@@ -187,7 +187,7 @@ The vet tool used is the one provided by the `go` command: [`go vet`](https://go
 
 Much like vet errors, lint errors can also be shown on save. This behavior is configurable through the [`"go.lintOnSave"`](settings.md#go.lintOnSave) setting.
 
-The default lint tool is the one provided by the `go` command: `go lint`. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting. [`staticcheck`], [`golangci-lint`], and [`revive`] are supported.
+The default lint tool is [`staticcheck`]. However, custom lint tools can be easily used instead by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting. [`golint`], [`golangci-lint`], and [`revive`] are also supported.
 
 For a complete overview of linter options, see the [documentation for diagnostic tools](tools.md#diagnostics).
 
@@ -221,5 +221,6 @@ Export your current file to the [Go Playground](https://play.golang.org) via the
 
 [`gopls`]: gopls.md
 [`staticcheck`]: https://staticcheck.io/
+[`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
 [`golangci-lint`]: https://golangci-lint.run/
 [`revive`]: https://github.com/mgechev/revive

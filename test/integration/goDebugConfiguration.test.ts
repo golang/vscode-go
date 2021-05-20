@@ -200,6 +200,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(filledResult.dlvToolPath, emptyResult.dlvToolPath);
 			assert.strictEqual(filledResult.apiVersion, emptyResult.apiVersion);
 			assert.strictEqual(filledResult.showGlobalVariables, emptyResult.showGlobalVariables);
+			assert.strictEqual(filledResult.debugAdapter, emptyResult.debugAdapter);
+			assert.strictEqual(filledResult.substitutePath, emptyResult.substitutePath);
 		});
 
 		test('delve config in settings.json is added to debug config', async () => {
@@ -219,7 +221,9 @@ suite('Debug Configuration Merge User Settings', () => {
 							maxStructFields: 5
 						},
 						apiVersion: 1,
-						showGlobalVariables: true
+						showGlobalVariables: true,
+						debugAdapter: 'dlv-dap',
+						substitutePath: [{ from: 'hello', to: 'goodbye' }]
 					}
 				}
 			}) as vscode.WorkspaceConfiguration;
@@ -236,6 +240,10 @@ suite('Debug Configuration Merge User Settings', () => {
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 1);
 			assert.strictEqual(result.showGlobalVariables, true);
+			assert.strictEqual(result.debugAdapter, 'dlv-dap');
+			assert.strictEqual(result.substitutePath.length, 1);
+			assert.strictEqual(result.substitutePath[0].from, 'hello');
+			assert.strictEqual(result.substitutePath[0].to, 'goodbye');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, false);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 3);
@@ -261,13 +269,15 @@ suite('Debug Configuration Merge User Settings', () => {
 							maxStructFields: 5
 						},
 						apiVersion: 1,
-						showGlobalVariables: true
+						showGlobalVariables: true,
+						debugAdapter: 'dlv-dap',
+						substitutePath: [{ from: 'hello', to: 'goodbye' }]
 					}
 				}
 			}) as vscode.WorkspaceConfiguration;
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
-			const cfg = {
+			const cfg: vscode.DebugConfiguration = {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
@@ -281,12 +291,16 @@ suite('Debug Configuration Merge User Settings', () => {
 					maxStringLen: 128,
 					maxArrayValues: 128,
 					maxStructFields: -1
-				}
+				},
+				debugAdapter: 'legacy',
+				substitutePath: []
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 2);
 			assert.strictEqual(result.showGlobalVariables, false);
+			assert.strictEqual(result.debugAdapter, 'legacy');
+			assert.strictEqual(result.substitutePath.length, 0);
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 6);
@@ -388,5 +402,69 @@ suite('Debug Configuration Modify User Config', () => {
 
 			assert.strictEqual(config.env.GOFLAGS, '-race -mod=mod');
 		});
+	});
+});
+
+suite('Debug Configuration Resolve Paths', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test('resolve ~ in cwd', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '${fileDirname}',
+			cwd: '~/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.notStrictEqual(config.cwd, '~/main.go');
+	});
+
+	test('do not resolve workspaceFolder or fileDirname', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '${fileDirname}',
+			cwd: '${workspaceFolder}'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+
+		assert.strictEqual(config.cwd, '${workspaceFolder}');
+		assert.strictEqual(config.program, '${fileDirname}');
+	});
+});
+
+suite('Debug Configuration Auto Mode', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test('resolve auto to debug with non-test file', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.strictEqual(config.mode, 'debug');
+		assert.strictEqual(config.program, '/path/to/main.go');
+	});
+
+	test('resolve auto to debug with test file', () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main_test.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		assert.strictEqual(config.mode, 'test');
+		assert.strictEqual(config.program, '/path/to');
 	});
 });

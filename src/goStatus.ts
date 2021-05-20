@@ -19,7 +19,7 @@ import {
 } from './goLanguageServer';
 import { isGoFile } from './goMode';
 import { getModFolderPath, isModSupported } from './goModules';
-import { allToolsInformation } from './goTools';
+import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
 
 export const outputChannel = vscode.window.createOutputChannel('Go');

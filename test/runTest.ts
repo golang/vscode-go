@@ -27,7 +27,7 @@ async function main() {
 			extensionTestsPath,
 			launchArgs: [
 				'--disable-extensions',
-				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
+				`--user-data-dir=${extensionDevelopmentPath}/.user-data-dir-test`,
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
 			]
@@ -48,7 +48,7 @@ async function main() {
 			extensionTestsPath: path.resolve(__dirname, './gopls/index'),
 			launchArgs: [
 				'--disable-extensions', // disable all other extensions
-				'--user-data-dir=${workspaceFolder}/.user-data-dir-test',
+				`--user-data-dir=${extensionDevelopmentPath}/.user-data-dir-test`,
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
 			]

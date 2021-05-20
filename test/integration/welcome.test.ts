@@ -3,8 +3,11 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
+import vscode = require('vscode');
 import * as assert from 'assert';
 import { shouldShowGoWelcomePage } from '../../src/goMain';
+import { extensionId } from '../../src/const';
+import { WelcomePanel } from '../../src/welcome';
 
 suite('WelcomePanel Tests', () => {
 	// 0:showVersions, 1:newVersion, 2:oldVersion, 3:expected
@@ -53,5 +56,15 @@ suite('WelcomePanel Tests', () => {
 		test(`shouldShowGoWelcomePage(${JSON.stringify(showVersions)}, ${newVersion}, ${oldVersion})`, () => {
 			assert.strictEqual(shouldShowGoWelcomePage(showVersions, newVersion, oldVersion), expected);
 		});
+	});
+});
+
+suite('joinPath Tests', () => {
+	test('WelcomePanel dataroot is set as expected', () => {
+		const uri = vscode.extensions.getExtension(extensionId).extensionUri;
+		WelcomePanel.createOrShow(uri);
+		const got = WelcomePanel.currentPanel.dataroot;
+		const want = vscode.Uri.joinPath(uri, 'media');
+		assert.strictEqual(got.toString(), want.toString());
 	});
 });
