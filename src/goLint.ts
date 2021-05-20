@@ -61,7 +61,7 @@ export function goLint(
 ): Promise<ICheckResult[]> {
 	const lintTool = goConfig['lintTool'] || 'staticcheck';
 	if (lintTool === 'staticcheck' && goplsStaticcheckEnabled(goConfig, goplsConfig)) {
-		return;
+		return Promise.resolve([]);
 	}
 
 	epoch++;
