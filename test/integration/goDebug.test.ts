@@ -1760,7 +1760,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 	});
 
-	suite.skip('logDest attribute tests', () => {
+	suite('logDest attribute tests', () => {
 		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
 		let tmpDir: string;
@@ -1808,13 +1808,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				logDest
 			};
 
+			await initializeDebugConfig(config);
 			try {
-				await initializeDebugConfig(config);
+				await dc.initializeRequest();
+				assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 			} catch (error) {
 				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
-				return;
 			}
-			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 		}
 		test('relative path as logDest triggers an error', async function () {
 			if (!isDlvDap || process.platform === 'win32') this.skip();
