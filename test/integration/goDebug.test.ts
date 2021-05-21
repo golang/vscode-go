@@ -1990,7 +1990,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
 			// Log the output for easier test debugging.
-			config['logOutput'] = 'dap';
+			config['logOutput'] = 'dap,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
 		}
