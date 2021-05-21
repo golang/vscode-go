@@ -16,15 +16,17 @@ import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePa
  */
 export function lintCode(scope?: string) {
 	const editor = vscode.window.activeTextEditor;
-	if (!editor && scope !== 'workspace') {
-		vscode.window.showInformationMessage('No editor is active, cannot find current package to lint');
-		return;
-	}
-	if (editor.document.languageId !== 'go' && scope !== 'workspace') {
-		vscode.window.showInformationMessage(
-			'File in the active editor is not a Go file, cannot find current package to lint'
-		);
-		return;
+	if (scope !== 'workspace') {
+		if (!editor) {
+			vscode.window.showInformationMessage('No editor is active, cannot find current package to lint');
+			return;
+		}
+		if (editor.document.languageId !== 'go') {
+			vscode.window.showInformationMessage(
+				'File in the active editor is not a Go file, cannot find current package to lint'
+			);
+			return;
+		}
 	}
 
 	const documentUri = editor ? editor.document.uri : null;
@@ -37,7 +39,7 @@ export function lintCode(scope?: string) {
 
 	goLint(documentUri, goConfig, goplsConfig, scope)
 		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection, 'go-lint');
+			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
 		})
 		.catch((err) => {
