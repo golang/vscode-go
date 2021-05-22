@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as net from 'net';
 import { getTool } from './goTools';
 import { Logger, TimestampedLogger } from './goLogging';
+import { DebugProtocol } from 'vscode-debugprotocol';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
@@ -41,7 +42,6 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
-		await d.startAndConnectToServer();
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
 }
@@ -196,14 +196,38 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	constructor(private config: vscode.DebugConfiguration, logger?: Logger) {
 		super(logger);
+		this.connected = this.startAndConnectToServer();
 	}
 
+	private connected: Promise<{ connected: boolean; reason?: any }>;
 	private dlvDapServer: ChildProcess;
 	private port: number;
 	private socket: net.Socket;
+	private terminatedOnError = false;
 
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
-		super.sendMessageToServer(message);
+		const { connected, reason } = await this.connected;
+		if (connected) {
+			super.sendMessageToServer(message);
+			return;
+		}
+		const errMsg = `Couldn't start dlv dap:\n${reason}`;
+		if (this.terminatedOnError) {
+			this.terminatedOnError = true;
+			this.outputEvent('stderr', errMsg);
+			this.sendMessageToClient(new TerminatedEvent());
+		}
+		if ((message as any).type === 'request') {
+			const req = message as DebugProtocol.Request;
+			this.sendMessageToClient({
+				seq: 0,
+				type: 'response',
+				request_seq: req.seq,
+				success: false,
+				command: req.command,
+				message: errMsg
+			});
+		}
 	}
 
 	async dispose(timeoutMS?: number) {
@@ -213,6 +237,10 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		if (!this.dlvDapServer) {
 			return;
 		}
+		if (this.connected === undefined) {
+			return;
+		}
+		this.connected = undefined;
 
 		if (timeoutMS === undefined || timeoutMS < 0) {
 			timeoutMS = 1_000;
@@ -245,37 +273,43 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		});
 	}
 
-	public async startAndConnectToServer() {
-		const { port, host, dlvDapServer } = await startDapServer(
-			this.config,
-			(msg) => this.outputEvent('stdout', msg),
-			(msg) => this.outputEvent('stderr', msg),
-			(msg) => {
-				this.outputEvent('console', msg);
-				// Some log messages generated after vscode stops the debug session
-				// may not appear in the DEBUG CONSOLE. For easier debugging, log
-				// the messages through the logger that prints to Go Debug output
-				// channel.
-				this.logger?.info(msg);
-			}
-		);
-		const socket = await new Promise<net.Socket>((resolve, reject) => {
-			// eslint-disable-next-line prefer-const
-			let timer: NodeJS.Timeout;
-			const s = net.createConnection(port, host, () => {
-				clearTimeout(timer);
-				resolve(s);
+	private async startAndConnectToServer() {
+		try {
+			const { port, host, dlvDapServer } = await startDapServer(
+				this.config,
+				(msg) => this.outputEvent('stdout', msg),
+				(msg) => this.outputEvent('stderr', msg),
+				(msg) => {
+					this.outputEvent('console', msg);
+					// Some log messages generated after vscode stops the debug session
+					// may not appear in the DEBUG CONSOLE. For easier debugging, log
+					// the messages through the logger that prints to Go Debug output
+					// channel.
+					this.logger?.info(msg);
+				}
+			);
+			const socket = await new Promise<net.Socket>((resolve, reject) => {
+				// eslint-disable-next-line prefer-const
+				let timer: NodeJS.Timeout;
+				const s = net.createConnection(port, host, () => {
+					clearTimeout(timer);
+					resolve(s);
+				});
+				timer = setTimeout(() => {
+					reject('connection timeout');
+					s?.destroy();
+				}, 1000);
 			});
-			timer = setTimeout(() => {
-				reject('connection timeout');
-				s?.destroy();
-			}, 1000);
-		});
 
-		this.dlvDapServer = dlvDapServer;
-		this.port = port;
-		this.socket = socket;
-		this.start(this.socket, this.socket);
+			this.dlvDapServer = dlvDapServer;
+			this.port = port;
+			this.socket = socket;
+			this.start(this.socket, this.socket);
+		} catch (err) {
+			return { connected: false, reason: err };
+		}
+		this.logger?.debug(`Running dlv dap server: port=${this.port} pid=${this.dlvDapServer.pid}\n`);
+		return { connected: true };
 	}
 
 	private outputEvent(dest: string, output: string, data?: any) {
@@ -283,11 +317,11 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	}
 }
 
-export async function startDapServer(
+async function startDapServer(
 	configuration: vscode.DebugConfiguration,
-	log?: (msg: string) => void,
-	logErr?: (msg: string) => void,
-	logConsole?: (msg: string) => void
+	log: (msg: string) => void,
+	logErr: (msg: string) => void,
+	logConsole: (msg: string) => void
 ): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
 	const host = configuration.host || '127.0.0.1';
 
@@ -297,20 +331,11 @@ export async function startDapServer(
 		return { port: configuration.port, host };
 	}
 	const port = await getPort();
-	if (!log) {
-		log = appendToDebugConsole;
-	}
-	if (!logErr) {
-		logErr = appendToDebugConsole;
-	}
-	if (!logConsole) {
-		logConsole = appendToDebugConsole;
-	}
 	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
 	return { dlvDapServer, port, host };
 }
 
-async function spawnDlvDapServerProcess(
+function spawnDlvDapServerProcess(
 	launchArgs: vscode.DebugConfiguration,
 	host: string,
 	port: number,
@@ -328,12 +353,19 @@ async function spawnDlvDapServerProcess(
 		logErr(
 			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
-			} or ${envPath}`
+			} or ${envPath}\n` +
+				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#getting-started.\n'
 		);
-		throw new Error(
-			'Cannot find Delve debugger. Install from https://github.com/go-delve/delve & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".'
-		);
+		throw new Error('Cannot find Delve debugger (dlv dap)');
 	}
+	let dir = '';
+	try {
+		dir = parseProgramArgSync(launchArgs).dirname;
+	} catch (err) {
+		logErr(`Program arg: ${launchArgs.program}\n${err}\n`);
+		throw err; // rethrow so the caller knows it failed.
+	}
+
 	const dlvArgs = new Array<string>();
 	dlvArgs.push('dap');
 	// add user-specified dlv flags first. When duplicate flags are specified,
@@ -357,12 +389,12 @@ async function spawnDlvDapServerProcess(
 
 	const logDest = launchArgs.logDest;
 	if (typeof logDest === 'number') {
-		logErr('Using a file descriptor for `logDest` is not allowed.');
+		logErr(`Using a file descriptor for 'logDest' (${logDest}) is not allowed.\n`);
 		throw new Error('Using a file descriptor for `logDest` is not allowed.');
 	}
 	if (logDest && !path.isAbsolute(logDest)) {
 		logErr(
-			'Using a relative path for `logDest` is not allowed.\nSee [variables](https://code.visualstudio.com/docs/editor/variables-reference)'
+			`Using a relative path for 'logDest' (${logDest}) is not allowed.\nSee https://code.visualstudio.com/docs/editor/variables-reference if you want workspace-relative path.\n`
 		);
 		throw new Error('Using a relative path for `logDest` is not allowed');
 	}
@@ -375,14 +407,13 @@ async function spawnDlvDapServerProcess(
 
 	const logDestStream = logDest ? fs.createWriteStream(logDest) : undefined;
 
-	logConsole(`Running: ${dlvPath} ${dlvArgs.join(' ')}\n`);
+	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')}\n`);
 
-	const dir = parseProgramArgSync(launchArgs).dirname;
 	// TODO(hyangah): determine the directories:
 	//    run `dlv` => where dlv will create the default __debug_bin. (This won't work if the directory is not writable. Fix it)
 	//    build program => 'program' directory. (This won't work for multimodule workspace. Fix it)
 	//    run program => cwd (If test, make sure to run in the package directory.)
-	return await new Promise<ChildProcess>((resolve, reject) => {
+	return new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
 			env,
@@ -499,8 +530,3 @@ export function parseProgramArgSync(
 	const dirname = programIsDirectory ? program : path.dirname(program);
 	return { program, dirname, programIsDirectory };
 }
-
-// appendToDebugConsole is declared as an exported const rather than a function, so it can be stubbbed in testing.
-export const appendToDebugConsole = (msg: string) => {
-	console.error(msg);
-};

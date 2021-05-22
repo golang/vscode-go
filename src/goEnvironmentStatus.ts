@@ -621,8 +621,11 @@ export async function offerToInstallLatestGoVersion() {
 					neverAgain
 				)
 				.then((selection) => {
+					// TODO: should we removeGoStatus if user has closed the notification
+					// without any action? It's kind of a feature now - without selecting
+					// neverAgain, user can hide this statusbar item.
 					removeGoStatus();
-					selection.command();
+					selection?.command();
 				});
 		});
 	}

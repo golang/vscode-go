@@ -1808,13 +1808,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				logDest
 			};
 
+			await initializeDebugConfig(config);
 			try {
-				await initializeDebugConfig(config);
+				await dc.initializeRequest();
+				assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 			} catch (error) {
 				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
-				return;
 			}
-			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 		}
 		test('relative path as logDest triggers an error', async function () {
 			if (!isDlvDap || process.platform === 'win32') this.skip();
@@ -1990,7 +1990,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
 			// Log the output for easier test debugging.
-			config['logOutput'] = 'dap';
+			config['logOutput'] = 'dap,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
 		}
@@ -2033,7 +2033,6 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	static async create(config: DebugConfiguration) {
 		const d = new DelveDAPDebugAdapterOnSocket(config);
-		await d.startAndConnectToServer();
 		return d;
 	}
 
