@@ -297,7 +297,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
 				// The processId is not valid, offer a quickpick menu of all processes.
 				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
-			} else if (typeof debugConfiguration['processId'] === 'string') {
+			} else if (
+				typeof debugConfiguration['processId'] === 'string' &&
+				debugConfiguration['processId'] !== '${command:pickProcess}' &&
+				debugConfiguration['processId'] !== '${command:pickGoProcess}'
+			) {
 				debugConfiguration['processId'] = parseInt(
 					await pickProcessByName(debugConfiguration['processId']),
 					10
