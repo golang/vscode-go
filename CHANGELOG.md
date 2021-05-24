@@ -1,3 +1,18 @@
+## v0.25.1 - 24 May, 2021
+
+A list of all issues and changes can be found in the [v0.25.1 milestone](https://github.com/golang/vscode-go/issues?q=is%3Aissue+milestone%3Av0.25.1+is%3Aclosed).
+
+### Fixes
+- Change the default path separator to `/` when applying `substitutePath` debug configuration. ([Issue 1497](https://github.com/golang/vscode-go/issues/1497))
+- Warn users when `go.goroot` setting is used. ([Issue 1501](https://github.com/golang/vscode-go/issues/1501))
+
+### Enhancements
+- Update to latest version of `dlv-dap`. Some of newest additions to `dlv dap` include optimized function detection, exception info, pause, function breakpoints while running, evaluate over hover, set variables. Documentation of current features and limitations can be found in [the documentation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md).
+- Adjusted feedback survey prompt probability.
+
+### Thanks
+Thanks for the contribution, @suzmue, @fflewddur!
+
 ## v0.25.0 - 12 May, 2021
 
 A list of all issues and changes can be found in the
