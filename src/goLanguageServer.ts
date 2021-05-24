@@ -330,21 +330,19 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	}
 	let goplsVersion = await getLocalGoplsVersion(latestConfig);
 	if (!goplsVersion) {
-		goplsVersion = 'no gopls version found';
+		goplsVersion = 'na';
 	}
-	goplsVersion = `gopls/${goplsVersion}`;
 	const goV = await getGoVersion();
-	let goVersion = 'no go version found';
+	let goVersion = 'na';
 	if (goV) {
-		goVersion = `go${goV.format(true)}`;
+		goVersion = goV.format(true);
 	}
-	const version = [goplsVersion, goVersion, process.platform].join(';');
 	switch (s.title) {
 		case 'Yes':
 			cfg.prompt = false;
 			await vscode.env.openExternal(
 				vscode.Uri.parse(
-					`https://docs.google.com/forms/d/e/1FAIpQLScITGOe2VdQnaXigSIiD19VxN_2KLwjMszZOMZp9TgYvTOw5g/viewform?entry.1049591455=${version}&gxids=7826`
+					`https://google.qualtrics.com/jfe/form/SV_doId0RNgV3pHovc?gopls=${goplsVersion}&go=${goVersion}&os=${process.platform}`
 				)
 			);
 			break;
