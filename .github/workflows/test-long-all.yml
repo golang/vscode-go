@@ -63,6 +63,7 @@ jobs:
             go get github.com/go-delve/delve/cmd/dlv@master
             mv "${HOME}/go/bin/dlv${{env.EXT}}" "${HOME}/go/bin/dlv-dap${{env.EXT}}"
             go get github.com/go-delve/delve/cmd/dlv@latest
+        working-directory: ${{ runner.temp }}
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
