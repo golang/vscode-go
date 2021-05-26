@@ -39,6 +39,7 @@ jobs:
       - name: Compile
         run: npm run vscode:prepublish
 
+      # TODO: use `go install` when we all move to 1.16+ (see build/all.bash)
       - name: Install Go tools (Modules mode)
         run: |
             go version
