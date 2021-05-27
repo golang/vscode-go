@@ -64,6 +64,7 @@ import {
 	debugPrevious,
 	subTestAtCursor,
 	testAtCursor,
+	testAtCursorOrPrevious,
 	testCurrentFile,
 	testCurrentPackage,
 	testPrevious,
@@ -313,6 +314,13 @@ If you would like additional configuration for diagnostics from gopls, please se
 		vscode.commands.registerCommand('go.test.cursor', (args) => {
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'test', args);
+		})
+	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.test.cursorOrPrevious', (args) => {
+			const goConfig = getGoConfig();
+			testAtCursorOrPrevious(goConfig, 'test', args);
 		})
 	);
 

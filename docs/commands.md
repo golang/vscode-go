@@ -35,6 +35,10 @@ List all the Go tools being used by this extension along with their locations.
 
 Runs a unit test at the cursor.
 
+### `Go: Test Function At Cursor or Test Previous`
+
+Runs a unit test at the cursor if one is found, otherwise re-runs the last executed test.
+
 ### `Go: Subtest At Cursor`
 
 Runs a sub test at the cursor.
