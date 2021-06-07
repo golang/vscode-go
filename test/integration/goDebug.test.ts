@@ -308,7 +308,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		name: 'Attach',
 		type: 'go',
 		request: 'attach',
-		mode: 'remote',
+		mode: 'remote', // This implies debugAdapter = legacy.
 		host: '127.0.0.1',
 		port: 3456
 	};
@@ -475,10 +475,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			// fake config that will be used to initialize fixtures.
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 
 			try {
 				await dc.send('illegal_request');
@@ -491,10 +490,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 	suite('initialize', () => {
 		test('should return supported features', async () => {
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 			await dc.initializeRequest().then((response) => {
 				response.body = response.body || {};
 				assert.strictEqual(response.body.supportsConditionalBreakpoints, true);
@@ -511,10 +508,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 			try {
 				await dc.initializeRequest({
 					adapterID: 'mock',
@@ -1993,6 +1988,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			config['logOutput'] = 'dap,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
+		} else {
+			config['debugAdapter'] = 'legacy';
+			// be explicit and prevent resolveDebugConfiguration from picking
+			// a default debugAdapter for us.
 		}
 
 		// Give each test a distinct debug binary. If a previous test

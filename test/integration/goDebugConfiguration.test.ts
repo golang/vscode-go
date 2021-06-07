@@ -12,6 +12,7 @@ import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
+import { isInPreviewMode } from '../../src/goLanguageServer';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -466,5 +467,56 @@ suite('Debug Configuration Auto Mode', () => {
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		assert.strictEqual(config.mode, 'test');
 		assert.strictEqual(config.program, '/path/to');
+	});
+});
+
+suite('Debug Configuration Default DebugAdapter', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test(`default debugAdapter when isInPreviewMode=${isInPreviewMode()} should be 'dlv-dap'`, () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		const want = isInPreviewMode() ? 'dlv-dap' : 'legacy';
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+	});
+
+	test("default debugAdapter for remote mode should be always 'legacy'", () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const want = 'legacy'; // remote mode works only with legacy mode.
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+	});
+
+	test('debugAdapter=dlv-dap should be ignored for remote mode', () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			debugAdapter: 'dlv-dap',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const want = 'legacy'; // remote mode works only with legacy mode.
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 });
