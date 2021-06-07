@@ -1,5 +1,7 @@
 name: Release (golang.go-nightly)
 
+# TODO(hyangah): Reenable to use 'insiders' after golang/vscode-go#1543 is fixed.
+
 # Daily release on 15:00 UTC, monday-thursday.
 # Or, force to release by triggering repository_dispatch events by using
 #   curl -v -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/golang/vscode-go/dispatches -d '{ "event_type": "force-release" }'
@@ -79,7 +81,6 @@ jobs:
         with:
           run: npm run test
         env:
-          CODE_VERSION: 'insiders'
           VSCODEGO_BEFORE_RELEASE_TESTS: true
 
       - name: Publish
