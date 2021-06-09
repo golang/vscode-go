@@ -439,6 +439,112 @@ suite('Debug Configuration Resolve Paths', () => {
 	});
 });
 
+suite('Debug Configuration Converts Relative Paths', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	function debugConfig(adapter: string) {
+		return {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			debugAdapter: adapter,
+			program: path.join('foo', 'bar.go'),
+			cwd: '.',
+			output: 'debug'
+		};
+	}
+
+	test('resolve relative paths with workspace root in dlv-dap mode', () => {
+		const config = debugConfig('dlv-dap');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join(os.tmpdir(), 'foo/bar.go'),
+				cwd: os.tmpdir(),
+				output: path.join(os.tmpdir(), 'debug')
+			}
+		);
+	});
+
+	test('empty, undefined paths are not affected', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = undefined;
+		config.cwd = '';
+		delete config.output;
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: undefined,
+				cwd: '',
+				output: undefined
+			}
+		);
+	});
+
+	test('disallow relative paths with no workspace root', () => {
+		const config = debugConfig('dlv-dap');
+		const got = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config);
+		assert.strictEqual(got, null);
+	});
+
+	test('do not affect relative paths (workspace) in legacy mode', () => {
+		const config = debugConfig('legacy');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join('foo', 'bar.go'),
+				cwd: '.',
+				output: 'debug'
+			}
+		);
+	});
+
+	test('do not affect relative paths (no workspace) in legacy mode', () => {
+		const config = debugConfig('legacy');
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			undefined,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join('foo', 'bar.go'),
+				cwd: '.',
+				output: 'debug'
+			}
+		);
+	});
+});
+
 suite('Debug Configuration Auto Mode', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	test('resolve auto to debug with non-test file', () => {

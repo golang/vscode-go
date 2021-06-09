@@ -23,7 +23,7 @@ import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion } from './util';
+import { getBinPath, getGoVersion, getWorkspaceFolderPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
@@ -389,6 +389,22 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
 		debugConfiguration['envFile'] = undefined; // unset, since we already processed.
 
+		const entriesWithRelativePaths = ['cwd', 'output', 'program'].filter(
+			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
+		);
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && entriesWithRelativePaths.length > 0) {
+			const workspaceRoot = folder?.uri.fsPath;
+			if (!workspaceRoot) {
+				this.showWarning(
+					'relativePathsWithoutWorkspaceFolder',
+					'Relative paths without a workspace folder for `cwd`, `program`, or `output` are not allowed.'
+				);
+				return null;
+			}
+			entriesWithRelativePaths.forEach((attr) => {
+				debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
+			});
+		}
 		return debugConfiguration;
 	}
 

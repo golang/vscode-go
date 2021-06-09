@@ -576,8 +576,8 @@
               },
               "cwd": {
                 "type": "string",
-                "description": "Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.",
-                "default": "."
+                "description": "Workspace relative or absolute path to the working directory of the program being debugged if a non-empty value is specified. The 'program' folder is used as the working directory if it is omitted or empty.",
+                "default": ""
               },
               "env": {
                 "type": "object",

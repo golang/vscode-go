@@ -412,10 +412,10 @@ function spawnDlvDapServerProcess(
 
 	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')}\n`);
 
-	// TODO(hyangah): determine the directories:
-	//    run `dlv` => where dlv will create the default __debug_bin. (This won't work if the directory is not writable. Fix it)
-	//    build program => 'program' directory. (This won't work for multimodule workspace. Fix it)
-	//    run program => cwd (If test, make sure to run in the package directory.)
+	// TODO(hyangah): In module-module workspace mode, the program should be build in the super module directory
+	// where go.work (gopls.mod) file is present. Where dlv runs determines the build directory currently. Two options:
+	//  1) launch dlv in the super-module module directory and adjust launchArgs.cwd (--wd).
+	//  2) introduce a new buildDir launch attribute.
 	return new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
