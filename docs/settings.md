@@ -544,6 +544,13 @@ comprehensively test.
 
 
 Default: `true`
+### `build.experimentalTemplateSupport`
+
+(Experimental) experimentalTemplateSupport opts into the experimental support
+for template files.
+
+
+Default: `false`
 ### `build.experimentalWorkspaceModule`
 
 (Experimental) experimentalWorkspaceModule opts a user into the experimental support
@@ -627,7 +634,7 @@ Default: `"100ms"`
 such as "someSlice.sort!".
 
 
-Default: `false`
+Default: `true`
 ### `ui.completion.matcher`
 
 (Advanced) matcher sets the algorithm that is used when calculating completion

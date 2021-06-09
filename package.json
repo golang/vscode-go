@@ -1866,6 +1866,12 @@
               "default": true,
               "scope": "resource"
             },
+            "build.experimentalTemplateSupport": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalTemplateSupport opts into the experimental support\nfor template files.\n",
+              "default": false,
+              "scope": "resource"
+            },
             "build.experimentalWorkspaceModule": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
@@ -1949,7 +1955,7 @@
             "ui.completion.experimentalPostfixCompletions": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
-              "default": false,
+              "default": true,
               "scope": "resource"
             },
             "ui.completion.matcher": {
