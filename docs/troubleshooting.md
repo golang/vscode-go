@@ -46,9 +46,7 @@ Errors may also be logged to the Developer Tools console. These errors may be mo
 
 ## Collect `gopls` information
 
-The gopls log can be found by navigating to `View` -> `Output`. There will be a drop-down menu titled `Tasks` in the top-right corner. Select the `gopls (server)` item, which will contain the `gopls` logs.
-
-To increase the level of detail in your logs, add the following to your settings:
+Enable `gopls` tracing by adding the following to your settings:
 
 ```json5
 "go.languageServerFlags": [
@@ -56,6 +54,15 @@ To increase the level of detail in your logs, add the following to your settings
 ]
 ```
 
+The gopls log can be found by navigating to `View` -> `Output`. There will be a drop-down menu titled `Tasks` in the top-right corner. Select the `gopls (server)` item, which will contain the `gopls` logs.
+
+In special cases, you may want to increase the verbosity further:
+
+```json5
+"gopls": {
+  "verboseOutput": true
+}
+```
 ## File an issue
 
 We can't diagnose a problem from just a description. When filing an issue, please include as much as possible of the following information:
@@ -66,6 +73,6 @@ We can't diagnose a problem from just a description. When filing an issue, pleas
 1. Your Go extension version: `Extensions: Show Installed Extensions`
 1. Your Go environment: `go env` in the workspace folder
 1. Relevant VS Code settings: run `Preferences: Open Settings (JSON)` and include anything in a `[go]` block, and anything that starts with `go.` or `gopls.`
-1. Extension and `gopls` logs as seems appropriate for the bug.
+1. Extension and `gopls` logs as seems appropriate for the bug. (Include from the beginning of the logs if possible.)
 
 Once you've collected that information, [file your issue](https://github.com/golang/vscode-go/issues/new/choose).
