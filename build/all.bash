@@ -99,26 +99,27 @@ install_dependencies() {
 	local TARGET="${GOBIN}"
 	if [[ -z "${GOBIN}" ]]; then TARGET="${GOPATHS%%:*}/bin" ; fi
 
-	GO111MODULE=on go get golang.org/x/tools/gopls
-	GO111MODULE=on go get github.com/acroca/go-symbols
-	GO111MODULE=on go get github.com/cweill/gotests/...
-	GO111MODULE=on go get github.com/davidrjenni/reftools/cmd/fillstruct
-	GO111MODULE=on go get github.com/haya14busa/goplay/cmd/goplay
+	GO111MODULE=on go install golang.org/x/tools/gopls@latest
+	GO111MODULE=on go install github.com/acroca/go-symbols@latest
+	GO111MODULE=on go install github.com/cweill/gotests/gotests@latest
+	GO111MODULE=on go install github.com/davidrjenni/reftools/cmd/fillstruct@latest
+	GO111MODULE=on go install github.com/haya14busa/goplay/cmd/goplay@latest
 
 	# We install two versions of gocode, one for module mode (gocode-gomod)
 	# and another for GOPATH mode (gocode).
-	GO111MODULE=on go get github.com/stamblerre/gocode && mv "${TARGET}/gocode" "${TARGET}/gocode-gomod"
-	GO111MODULE=on go get github.com/mdempsky/gocode
+	GO111MODULE=on go install github.com/stamblerre/gocode@latest && mv "${TARGET}/gocode" "${TARGET}/gocode-gomod"
+	GO111MODULE=on go install github.com/mdempsky/gocode@latest
 
-	GO111MODULE=on go get github.com/ramya-rao-a/go-outline
-	GO111MODULE=on go get github.com/rogpeppe/godef
-	GO111MODULE=on go get github.com/sqs/goreturns
-	GO111MODULE=on go get github.com/uudashr/gopkgs/v2/cmd/gopkgs
-	GO111MODULE=on go get github.com/zmb3/gogetdoc
-	GO111MODULE=on go get honnef.co/go/tools/...
-	GO111MODULE=on go get golang.org/x/tools/cmd/gorename
+	GO111MODULE=on go install github.com/ramya-rao-a/go-outline@latest
+	GO111MODULE=on go install github.com/rogpeppe/godef@latest
+	GO111MODULE=on go install github.com/sqs/goreturns@latest
+	GO111MODULE=on go install github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest
+	GO111MODULE=on go install github.com/zmb3/gogetdoc@latest
+	GO111MODULE=on go install honnef.co/go/tools/cmd/staticcheck@latest
+	GO111MODULE=on go install golang.org/x/tools/cmd/gorename@latest
 
-	GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@master && cp "${TARGET}/dlv" "${TARGET}/dlv-dap"
+	GO111MODULE=on go install github.com/go-delve/delve/cmd/dlv@master && cp "${TARGET}/dlv" "${TARGET}/dlv-dap"
+	GO111MODULE=on go install github.com/go-delve/delve/cmd/dlv@latest
 }
 
 main() {

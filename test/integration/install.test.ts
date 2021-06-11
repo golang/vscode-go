@@ -8,7 +8,7 @@ import AdmZip = require('adm-zip');
 import * as assert from 'assert';
 import * as config from '../../src/config';
 import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
-import { allToolsInformation, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
+import { getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
 import cp = require('child_process');
@@ -20,6 +20,7 @@ import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
 import { isInPreviewMode } from '../../src/goLanguageServer';
+import { allToolsInformation } from '../../src/goToolsInformation';
 
 interface installationTestCase {
 	name: string;

@@ -200,10 +200,15 @@ export async function goModInit() {
 	try {
 		const env = toolExecutionEnvironment();
 		const cwd = getWorkspaceFolderPath();
+		outputChannel.appendLine(`Running "${goRuntimePath} mod init ${moduleName}"`);
 		await execFile(goRuntimePath, ['mod', 'init', moduleName], { env, cwd });
+		outputChannel.appendLine('Module successfully initialized. You are ready to Go :)');
+		vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(cwd, 'go.mod')));
 	} catch (e) {
 		outputChannel.appendLine(e);
 		outputChannel.show();
-		vscode.window.showErrorMessage(`Error running 'go mod init ${moduleName}': See Go output channel for details`);
+		vscode.window.showErrorMessage(
+			`Error running "${goRuntimePath} mod init ${moduleName}": See Go output channel for details`
+		);
 	}
 }

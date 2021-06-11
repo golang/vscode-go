@@ -9,7 +9,7 @@
 
 import * as assert from 'assert';
 import { Configuration } from '../../src/config';
-import vscode = require('vscode');
+import { MockCfg } from '../mocks/MockCfg';
 
 suite('GoConfiguration Tests', () => {
 	function check(trusted: boolean, workspaceConfig: { [key: string]: any }, key: string, expected: any) {
@@ -68,48 +68,3 @@ suite('GoConfiguration Tests', () => {
 		checkGopls(false, { env: { GOBIN: 'foo' } }, 'env', { GOBIN: 'foo' });
 	});
 });
-
-// tslint:disable: no-any
-class MockCfg implements vscode.WorkspaceConfiguration {
-	private map: Map<string, any>;
-	private wrapped: vscode.WorkspaceConfiguration;
-
-	constructor(workspaceSettings: { [key: string]: any } = {}) {
-		// getter
-		Object.defineProperties(this, Object.getOwnPropertyDescriptors(workspaceSettings));
-		this.map = new Map<string, any>(Object.entries(workspaceSettings));
-		this.wrapped = vscode.workspace.getConfiguration('go'); // intentionally using vscode API directly.
-	}
-
-	// tslint:disable: no-any
-	public get(section: string, defaultValue?: any): any {
-		if (this.map.has(section)) {
-			return this.map.get(section);
-		}
-		return this.wrapped.get(section, defaultValue);
-	}
-
-	public has(section: string): boolean {
-		if (this.map.has(section)) {
-			return true;
-		}
-		return this.wrapped.has(section);
-	}
-
-	public inspect<T>(section: string) {
-		const i = this.wrapped.inspect<T>(section);
-		if (this.map.has(section)) {
-			i.workspaceValue = this.map.get(section);
-		}
-		return i;
-	}
-
-	public update(
-		section: string,
-		value: any,
-		configurationTarget?: boolean | vscode.ConfigurationTarget,
-		overrideInLanguage?: boolean
-	): Thenable<void> {
-		throw new Error('Method not implemented.');
-	}
-}

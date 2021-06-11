@@ -12,6 +12,8 @@ import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
+import { isInPreviewMode } from '../../src/goLanguageServer';
+import { MockCfg } from '../mocks/MockCfg';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -200,6 +202,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(filledResult.dlvToolPath, emptyResult.dlvToolPath);
 			assert.strictEqual(filledResult.apiVersion, emptyResult.apiVersion);
 			assert.strictEqual(filledResult.showGlobalVariables, emptyResult.showGlobalVariables);
+			assert.strictEqual(filledResult.debugAdapter, emptyResult.debugAdapter);
+			assert.strictEqual(filledResult.substitutePath, emptyResult.substitutePath);
 		});
 
 		test('delve config in settings.json is added to debug config', async () => {
@@ -208,21 +212,21 @@ suite('Debug Configuration Merge User Settings', () => {
 			// When this expected behavior changes, this test can be updated.
 
 			// Run resolveDebugConfiguration with the default workspace settings.
-			const goConfig = Object.create(getGoConfig(), {
+			const goConfig = new MockCfg({
 				delveConfig: {
-					value: {
-						dlvLoadConfig: {
-							followPointers: false,
-							maxVariableRecurse: 3,
-							maxStringLen: 32,
-							maxArrayValues: 32,
-							maxStructFields: 5
-						},
-						apiVersion: 1,
-						showGlobalVariables: true
-					}
+					dlvLoadConfig: {
+						followPointers: false,
+						maxVariableRecurse: 3,
+						maxStringLen: 32,
+						maxArrayValues: 32,
+						maxStructFields: 5
+					},
+					apiVersion: 1,
+					showGlobalVariables: true,
+					debugAdapter: 'dlv-dap',
+					substitutePath: [{ from: 'hello', to: 'goodbye' }]
 				}
-			}) as vscode.WorkspaceConfiguration;
+			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg = {
@@ -236,6 +240,10 @@ suite('Debug Configuration Merge User Settings', () => {
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 1);
 			assert.strictEqual(result.showGlobalVariables, true);
+			assert.strictEqual(result.debugAdapter, 'dlv-dap');
+			assert.strictEqual(result.substitutePath.length, 1);
+			assert.strictEqual(result.substitutePath[0].from, 'hello');
+			assert.strictEqual(result.substitutePath[0].to, 'goodbye');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, false);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 3);
@@ -250,24 +258,24 @@ suite('Debug Configuration Merge User Settings', () => {
 			// When this expected behavior changes, this test can be updated.
 
 			// Run resolveDebugConfiguration with the default workspace settings.
-			const goConfig = Object.create(getGoConfig(), {
+			const goConfig = new MockCfg({
 				delveConfig: {
-					value: {
-						dlvLoadConfig: {
-							followPointers: false,
-							maxVariableRecurse: 3,
-							maxStringLen: 32,
-							maxArrayValues: 32,
-							maxStructFields: 5
-						},
-						apiVersion: 1,
-						showGlobalVariables: true
-					}
+					dlvLoadConfig: {
+						followPointers: false,
+						maxVariableRecurse: 3,
+						maxStringLen: 32,
+						maxArrayValues: 32,
+						maxStructFields: 5
+					},
+					apiVersion: 1,
+					showGlobalVariables: true,
+					debugAdapter: 'dlv-dap',
+					substitutePath: [{ from: 'hello', to: 'goodbye' }]
 				}
-			}) as vscode.WorkspaceConfiguration;
+			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
-			const cfg = {
+			const cfg: vscode.DebugConfiguration = {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
@@ -281,12 +289,16 @@ suite('Debug Configuration Merge User Settings', () => {
 					maxStringLen: 128,
 					maxArrayValues: 128,
 					maxStructFields: -1
-				}
+				},
+				debugAdapter: 'legacy',
+				substitutePath: []
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 2);
 			assert.strictEqual(result.showGlobalVariables, false);
+			assert.strictEqual(result.debugAdapter, 'legacy');
+			assert.strictEqual(result.substitutePath.length, 0);
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 6);
@@ -424,6 +436,112 @@ suite('Debug Configuration Resolve Paths', () => {
 	});
 });
 
+suite('Debug Configuration Converts Relative Paths', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	function debugConfig(adapter: string) {
+		return {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			debugAdapter: adapter,
+			program: path.join('foo', 'bar.go'),
+			cwd: '.',
+			output: 'debug'
+		};
+	}
+
+	test('resolve relative paths with workspace root in dlv-dap mode', () => {
+		const config = debugConfig('dlv-dap');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join(os.tmpdir(), 'foo/bar.go'),
+				cwd: os.tmpdir(),
+				output: path.join(os.tmpdir(), 'debug')
+			}
+		);
+	});
+
+	test('empty, undefined paths are not affected', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = undefined;
+		config.cwd = '';
+		delete config.output;
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: undefined,
+				cwd: '',
+				output: undefined
+			}
+		);
+	});
+
+	test('disallow relative paths with no workspace root', () => {
+		const config = debugConfig('dlv-dap');
+		const got = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config);
+		assert.strictEqual(got, null);
+	});
+
+	test('do not affect relative paths (workspace) in legacy mode', () => {
+		const config = debugConfig('legacy');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join('foo', 'bar.go'),
+				cwd: '.',
+				output: 'debug'
+			}
+		);
+	});
+
+	test('do not affect relative paths (no workspace) in legacy mode', () => {
+		const config = debugConfig('legacy');
+		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			undefined,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, output },
+			{
+				program: path.join('foo', 'bar.go'),
+				cwd: '.',
+				output: 'debug'
+			}
+		);
+	});
+});
+
 suite('Debug Configuration Auto Mode', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	test('resolve auto to debug with non-test file', () => {
@@ -452,5 +570,56 @@ suite('Debug Configuration Auto Mode', () => {
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		assert.strictEqual(config.mode, 'test');
 		assert.strictEqual(config.program, '/path/to');
+	});
+});
+
+suite('Debug Configuration Default DebugAdapter', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test(`default debugAdapter when isInPreviewMode=${isInPreviewMode()} should be 'dlv-dap'`, () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		const want = isInPreviewMode() ? 'dlv-dap' : 'legacy';
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+	});
+
+	test("default debugAdapter for remote mode should be always 'legacy'", () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const want = 'legacy'; // remote mode works only with legacy mode.
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+	});
+
+	test('debugAdapter=dlv-dap should be ignored for remote mode', () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			debugAdapter: 'dlv-dap',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const want = 'legacy'; // remote mode works only with legacy mode.
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 });

@@ -330,21 +330,19 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	}
 	let goplsVersion = await getLocalGoplsVersion(latestConfig);
 	if (!goplsVersion) {
-		goplsVersion = 'no gopls version found';
+		goplsVersion = 'na';
 	}
-	goplsVersion = `gopls/${goplsVersion}`;
 	const goV = await getGoVersion();
-	let goVersion = 'no go version found';
+	let goVersion = 'na';
 	if (goV) {
-		goVersion = `go${goV.format(true)}`;
+		goVersion = goV.format(true);
 	}
-	const version = [goplsVersion, goVersion, process.platform].join(';');
 	switch (s.title) {
 		case 'Yes':
 			cfg.prompt = false;
 			await vscode.env.openExternal(
 				vscode.Uri.parse(
-					`https://docs.google.com/forms/d/e/1FAIpQLScITGOe2VdQnaXigSIiD19VxN_2KLwjMszZOMZp9TgYvTOw5g/viewform?entry.1049591455=${version}&gxids=7826`
+					`https://google.qualtrics.com/jfe/form/SV_doId0RNgV3pHovc?gopls=${goplsVersion}&go=${goVersion}&os=${process.platform}`
 				)
 			);
 			break;
@@ -459,22 +457,15 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
-		// Filter out unsupported document types, e.g. vsls, git, ssh.
-		// https://docs.microsoft.com/en-us/visualstudio/liveshare/reference/extensions#visual-studio-code-1
-		//
-		// - files
+		// gopls handles only file URIs.
 		{ language: 'go', scheme: 'file' },
 		{ language: 'go.mod', scheme: 'file' },
-		{ language: 'go.sum', scheme: 'file' },
-		// - unsaved files
-		{ language: 'go', scheme: 'untitled' },
-		{ language: 'go.mod', scheme: 'untitled' },
-		{ language: 'go.sum', scheme: 'untitled' }
+		{ language: 'go.sum', scheme: 'file' }
 	];
 
 	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
 	if (isInPreviewMode()) {
-		documentSelector.push({ language: 'tmpl', scheme: 'file' }, { language: 'tmpl', scheme: 'untitled' });
+		documentSelector.push({ language: 'tmpl', scheme: 'file' });
 	}
 	const c = new LanguageClient(
 		'go', // id

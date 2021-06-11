@@ -308,7 +308,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		name: 'Attach',
 		type: 'go',
 		request: 'attach',
-		mode: 'remote',
+		mode: 'remote', // This implies debugAdapter = legacy.
 		host: '127.0.0.1',
 		port: 3456
 	};
@@ -475,10 +475,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			// fake config that will be used to initialize fixtures.
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 
 			try {
 				await dc.send('illegal_request');
@@ -491,10 +490,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 	suite('initialize', () => {
 		test('should return supported features', async () => {
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 			await dc.initializeRequest().then((response) => {
 				response.body = response.body || {};
 				assert.strictEqual(response.body.supportsConditionalBreakpoints, true);
@@ -511,10 +508,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
-			if (isDlvDap) {
-				const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
-				await initializeDebugConfig(config);
-			}
+			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
+			await initializeDebugConfig(config);
 			try {
 				await dc.initializeRequest({
 					adapterID: 'mock',
@@ -1599,10 +1594,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				assert.fail(`debug output ${OUTPUT} wasn't built: ${e}`);
 			}
 
-			// It's possible dlv-dap doesn't respond. So, don't wait.
-			dc.disconnectRequest({ restart: false });
-			await sleep(10);
-			dlvDapAdapter.dispose(1);
+			// Skip the proper disconnect sequence started with a disconnect request.
+
+			await dlvDapAdapter.dispose(1);
 			dc = undefined;
 			await sleep(100); // allow dlv to respond and finish cleanup.
 			let stat: fs.Stats = null;
@@ -1809,13 +1803,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				logDest
 			};
 
+			await initializeDebugConfig(config);
 			try {
-				await initializeDebugConfig(config);
+				await dc.initializeRequest();
+				assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 			} catch (error) {
 				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
-				return;
 			}
-			assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 		}
 		test('relative path as logDest triggers an error', async function () {
 			if (!isDlvDap || process.platform === 'win32') this.skip();
@@ -1991,9 +1985,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
 			// Log the output for easier test debugging.
-			config['logOutput'] = 'dap';
+			config['logOutput'] = 'dap,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
+		} else {
+			config['debugAdapter'] = 'legacy';
+			// be explicit and prevent resolveDebugConfiguration from picking
+			// a default debugAdapter for us.
 		}
 
 		// Give each test a distinct debug binary. If a previous test
@@ -2034,7 +2032,6 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	static async create(config: DebugConfiguration) {
 		const d = new DelveDAPDebugAdapterOnSocket(config);
-		await d.startAndConnectToServer();
 		return d;
 	}
 

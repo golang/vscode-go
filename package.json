@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -88,7 +88,6 @@
   "engines": {
     "vscode": "^1.52.0"
   },
-  "requiresWorkspaceTrust": "onStart",
   "activationEvents": [
     "workspaceContains:**/*.go",
     "onLanguage:go",
@@ -102,6 +101,20 @@
     "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "restrictedConfigurations": [
+        "go.alternateTools",
+        "go.gopath",
+        "go.goroot",
+        "go.inferGopath",
+        "go.toolsGopath",
+        "go.toolsEnvVars"
+      ]
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -177,6 +190,11 @@
         "command": "go.test.cursor",
         "title": "Go: Test Function At Cursor",
         "description": "Runs a unit test at the cursor."
+      },
+      {
+        "command": "go.test.cursorOrPrevious",
+        "title": "Go: Test Function At Cursor or Test Previous",
+        "description": "Runs a unit test at the cursor if one is found, otherwise re-runs the last executed test."
       },
       {
         "command": "go.subtest.cursor",
@@ -548,8 +566,8 @@
               },
               "cwd": {
                 "type": "string",
-                "description": "Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.",
-                "default": "."
+                "description": "Workspace relative or absolute path to the working directory of the program being debugged if a non-empty value is specified. The 'program' folder is used as the working directory if it is omitted or empty.",
+                "default": ""
               },
               "env": {
                 "type": "object",
@@ -581,14 +599,9 @@
                 "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
                 "default": ""
               },
-              "init": {
-                "type": "string",
-                "description": "Init file, executed by the terminal client. Maps to dlv's `--init` flag.",
-                "default": ""
-              },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -770,7 +783,7 @@
               },
               "dlvFlags": {
                 "type": "array",
-                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--init`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+                "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
                 "items": {
                   "type": "string"
                 },
@@ -1727,6 +1740,26 @@
               ],
               "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
               "default": "legacy"
+            },
+            "substitutePath": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "description": "The absolute local path to be replaced when passing paths to the debugger",
+                    "default": ""
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "The absolute remote path to be replaced when passing paths back to the client",
+                    "default": ""
+                  }
+                }
+              },
+              "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath.",
+              "default": []
             }
           },
           "default": {
@@ -1739,7 +1772,8 @@
             },
             "apiVersion": 2,
             "showGlobalVariables": false,
-            "debugAdapter": "legacy"
+            "debugAdapter": "legacy",
+            "substitutePath": []
           },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
@@ -1820,6 +1854,12 @@
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key\nfor package type information to increase cache hits. This setting removes\nthe user's environment, build flags, and working directory from the cache\nkey, which should be a safe change as all relevant inputs into the type\nchecking pass are already hashed into the key. This is temporarily guarded\nby an experiment because caching behavior is subtle and difficult to\ncomprehensively test.\n",
               "default": true,
+              "scope": "resource"
+            },
+            "build.experimentalTemplateSupport": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalTemplateSupport opts into the experimental support\nfor template files.\n",
+              "default": false,
               "scope": "resource"
             },
             "build.experimentalWorkspaceModule": {
@@ -1905,7 +1945,7 @@
             "ui.completion.experimentalPostfixCompletions": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
-              "default": false,
+              "default": true,
               "scope": "resource"
             },
             "ui.completion.matcher": {
