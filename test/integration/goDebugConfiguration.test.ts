@@ -13,6 +13,7 @@ import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
 import { isInPreviewMode } from '../../src/goLanguageServer';
+import { MockCfg } from '../mocks/MockCfg';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -211,23 +212,21 @@ suite('Debug Configuration Merge User Settings', () => {
 			// When this expected behavior changes, this test can be updated.
 
 			// Run resolveDebugConfiguration with the default workspace settings.
-			const goConfig = Object.create(getGoConfig(), {
+			const goConfig = new MockCfg({
 				delveConfig: {
-					value: {
-						dlvLoadConfig: {
-							followPointers: false,
-							maxVariableRecurse: 3,
-							maxStringLen: 32,
-							maxArrayValues: 32,
-							maxStructFields: 5
-						},
-						apiVersion: 1,
-						showGlobalVariables: true,
-						debugAdapter: 'dlv-dap',
-						substitutePath: [{ from: 'hello', to: 'goodbye' }]
-					}
+					dlvLoadConfig: {
+						followPointers: false,
+						maxVariableRecurse: 3,
+						maxStringLen: 32,
+						maxArrayValues: 32,
+						maxStructFields: 5
+					},
+					apiVersion: 1,
+					showGlobalVariables: true,
+					debugAdapter: 'dlv-dap',
+					substitutePath: [{ from: 'hello', to: 'goodbye' }]
 				}
-			}) as vscode.WorkspaceConfiguration;
+			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg = {
@@ -259,23 +258,21 @@ suite('Debug Configuration Merge User Settings', () => {
 			// When this expected behavior changes, this test can be updated.
 
 			// Run resolveDebugConfiguration with the default workspace settings.
-			const goConfig = Object.create(getGoConfig(), {
+			const goConfig = new MockCfg({
 				delveConfig: {
-					value: {
-						dlvLoadConfig: {
-							followPointers: false,
-							maxVariableRecurse: 3,
-							maxStringLen: 32,
-							maxArrayValues: 32,
-							maxStructFields: 5
-						},
-						apiVersion: 1,
-						showGlobalVariables: true,
-						debugAdapter: 'dlv-dap',
-						substitutePath: [{ from: 'hello', to: 'goodbye' }]
-					}
+					dlvLoadConfig: {
+						followPointers: false,
+						maxVariableRecurse: 3,
+						maxStringLen: 32,
+						maxArrayValues: 32,
+						maxStructFields: 5
+					},
+					apiVersion: 1,
+					showGlobalVariables: true,
+					debugAdapter: 'dlv-dap',
+					substitutePath: [{ from: 'hello', to: 'goodbye' }]
 				}
-			}) as vscode.WorkspaceConfiguration;
+			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
 
 			const cfg: vscode.DebugConfiguration = {
