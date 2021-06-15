@@ -40,7 +40,7 @@ type PackageJSON struct {
 	Contributes struct {
 		Commands      []Command `json:"commands,omitempty"`
 		Configuration struct {
-			Properties map[string]Property `json:"properties,omitempty"`
+			Properties map[string]*Property `json:"properties,omitempty"`
 		} `json:"configuration,omitempty"`
 	} `json:"contributes,omitempty"`
 }
@@ -55,16 +55,18 @@ type Property struct {
 	name string `json:"name,omitempty"` // Set by us.
 
 	// Below are defined in package.json
-	Properties                 map[string]interface{} `json:"properties,omitempty"`
-	Default                    interface{}            `json:"default,omitempty"`
-	MarkdownDescription        string                 `json:"markdownDescription,omitempty"`
-	Description                string                 `json:"description,omitempty"`
-	MarkdownDeprecationMessage string                 `json:"markdownDeprecationMessage,omitempty"`
-	DeprecationMessage         string                 `json:"deprecationMessage,omitempty"`
-	Type                       interface{}            `json:"type,omitempty"`
-	Enum                       []interface{}          `json:"enum,omitempty"`
-	EnumDescriptions           []string               `json:"enumDescriptions,omitempty"`
-	MarkdownEnumDescriptions   []string               `json:"markdownEnumDescriptions,omitempty"`
+	Properties                 map[string]*Property `json:"properties,omitempty"`
+	AnyOf                      []Property           `json:"anyOf,omitempty"`
+	Default                    interface{}          `json:"default,omitempty"`
+	MarkdownDescription        string               `json:"markdownDescription,omitempty"`
+	Description                string               `json:"description,omitempty"`
+	MarkdownDeprecationMessage string               `json:"markdownDeprecationMessage,omitempty"`
+	DeprecationMessage         string               `json:"deprecationMessage,omitempty"`
+	Type                       interface{}          `json:"type,omitempty"`
+	Enum                       []interface{}        `json:"enum,omitempty"`
+	EnumDescriptions           []string             `json:"enumDescriptions,omitempty"`
+	MarkdownEnumDescriptions   []string             `json:"markdownEnumDescriptions,omitempty"`
+	Items                      *Property            `json:"items,omitempty"`
 }
 
 type moduleVersion struct {
@@ -162,8 +164,8 @@ To update the settings, run "go run tools/generate.go -w".
 	// Clear so that we can rewrite settings.md.
 	b.Reset()
 
-	var properties []Property
-	var goplsProperty Property
+	var properties []*Property
+	var goplsProperty *Property
 	for name, p := range pkgJSON.Contributes.Configuration.Properties {
 		p.name = name
 		if name == "gopls" {
@@ -277,7 +279,7 @@ func listAllModuleVersions(path string) (moduleVersion, error) {
 	return version, nil
 }
 
-func writeProperty(b *bytes.Buffer, heading string, p Property) {
+func writeProperty(b *bytes.Buffer, heading string, p *Property) {
 	desc := p.Description
 	if p.MarkdownDescription != "" {
 		desc = p.MarkdownDescription
@@ -313,7 +315,7 @@ func writeProperty(b *bytes.Buffer, heading string, p Property) {
 	}
 }
 
-func defaultDescriptionSnippet(p Property) string {
+func defaultDescriptionSnippet(p *Property) string {
 	if p.Default == nil {
 		return ""
 	}
@@ -367,7 +369,7 @@ func writeMapObject(b *bytes.Buffer, indent string, obj map[string]interface{}) 
 	fmt.Fprintf(b, "%v}", indent)
 }
 
-func writeGoplsSettingsSection(b *bytes.Buffer, goplsProperty Property) {
+func writeGoplsSettingsSection(b *bytes.Buffer, goplsProperty *Property) {
 	desc := goplsProperty.MarkdownDescription
 	b.WriteString(desc)
 	b.WriteString("\n\n")
@@ -380,58 +382,14 @@ func writeGoplsSettingsSection(b *bytes.Buffer, goplsProperty Property) {
 	sort.Strings(names)
 
 	for _, name := range names {
-		pdata, ok := properties[name].(map[string]interface{})
-		if !ok {
-			fmt.Fprintf(b, "### `%s`\n", name)
-			continue
-		}
-		p := mapToProperty(name, pdata)
+		p := properties[name]
+		p.name = name
 		writeProperty(b, "###", p)
 		b.WriteString("\n")
 	}
 }
 
-func mapToProperty(name string, pdata map[string]interface{}) Property {
-	p := Property{name: name}
-
-	if v, ok := pdata["properties"].(map[string]interface{}); ok {
-		p.Properties = v
-	}
-	if v, ok := pdata["markdownDescription"].(string); ok {
-		p.MarkdownDescription = v
-	}
-	if v, ok := pdata["description"].(string); ok {
-		p.Description = v
-	}
-	if v, ok := pdata["markdownDeprecationMessage"].(string); ok {
-		p.MarkdownDescription = v
-	}
-	if v, ok := pdata["deprecationMessage"].(string); ok {
-		p.DeprecationMessage = v
-	}
-	if v, ok := pdata["type"].(string); ok {
-		p.Type = v
-	}
-	if v, ok := pdata["enum"].([]interface{}); ok {
-		p.Enum = v
-	}
-	if v, ok := pdata["enumDescriptions"].([]interface{}); ok {
-		for _, d := range v {
-			p.EnumDescriptions = append(p.EnumDescriptions, d.(string))
-		}
-	}
-	if v, ok := pdata["markdownEnumDescriptions"].([]interface{}); ok {
-		for _, d := range v {
-			p.MarkdownEnumDescriptions = append(p.MarkdownEnumDescriptions, d.(string))
-		}
-	}
-	if v, ok := pdata["default"]; ok {
-		p.Default = v
-	}
-	return p
-}
-
-func writeSettingsObjectProperties(b *bytes.Buffer, properties map[string]interface{}) {
+func writeSettingsObjectProperties(b *bytes.Buffer, properties map[string]*Property) {
 	if len(properties) == 0 {
 		return
 	}
@@ -449,12 +407,8 @@ func writeSettingsObjectProperties(b *bytes.Buffer, properties map[string]interf
 		if i == len(names)-1 {
 			ending = ""
 		}
-		pdata, ok := properties[name].(map[string]interface{})
-		if !ok {
-			fmt.Fprintf(b, "| `%s` |   |%v", name, ending)
-			continue
-		}
-		p := mapToProperty(name, pdata)
+		p := properties[name]
+		p.name = name
 
 		desc := p.Description
 		if p.MarkdownDescription != "" {
@@ -487,7 +441,7 @@ func writeSettingsObjectProperties(b *bytes.Buffer, properties map[string]interf
 }
 
 // enumDescriptionsSnippet returns the snippet for the allowed values.
-func enumDescriptionsSnippet(p Property) string {
+func enumDescriptionsSnippet(p *Property) string {
 	b := &bytes.Buffer{}
 	if len(p.Enum) == 0 {
 		return ""
