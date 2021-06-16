@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,12 +37,34 @@ var (
 	debugFlag = flag.Bool("debug", false, "If true, enable extra logging and skip deletion of intermediate files.")
 )
 
+func checkAndWrite(filename string, oldContent, newContent []byte) {
+	// Return early if the contents are unchanged.
+	if bytes.Equal(oldContent, newContent) {
+		return
+	}
+
+	// Either write out new contents or report an error (if in CI).
+	if *writeFlag {
+		if err := ioutil.WriteFile(filename, newContent, 0644); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("updated %s\n", filename)
+	} else {
+		base := filepath.Join("docs", filepath.Base(filename))
+		fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
+To update the settings, run "go run tools/generate.go -w".
+`, strings.TrimSuffix(base, ".md"), base)
+		os.Exit(1) // causes CI to break.
+	}
+}
+
 type PackageJSON struct {
 	Contributes struct {
 		Commands      []Command `json:"commands,omitempty"`
 		Configuration struct {
 			Properties map[string]*Property `json:"properties,omitempty"`
 		} `json:"configuration,omitempty"`
+		Debuggers []Debugger `json:"debuggers,omitempty"`
 	} `json:"contributes,omitempty"`
 }
 
@@ -67,6 +90,19 @@ type Property struct {
 	EnumDescriptions           []string             `json:"enumDescriptions,omitempty"`
 	MarkdownEnumDescriptions   []string             `json:"markdownEnumDescriptions,omitempty"`
 	Items                      *Property            `json:"items,omitempty"`
+}
+
+type Debugger struct {
+	Type                    string `json:"type,omitempty"`
+	Label                   string `json:"label,omitempty"`
+	ConfigurationAttributes struct {
+		Launch Configuration
+		Attach Configuration
+	} `json:"configurationAttributes,omitempty"`
+}
+
+type Configuration struct {
+	Properties map[string]*Property `json:"properties,omitempty"`
 }
 
 type moduleVersion struct {
@@ -132,26 +168,9 @@ func main() {
 			}, []byte("\n\n"))
 		}
 		newContent := append(s, '\n')
-
-		// Return early if the contents are unchanged.
-		if bytes.Equal(oldContent, newContent) {
-			return
-		}
-
-		// Either write out new contents or report an error (if in CI).
-		if *writeFlag {
-			if err := ioutil.WriteFile(filename, newContent, 0644); err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("updated %s\n", filename)
-		} else {
-			base := filepath.Join("docs", filepath.Base(filename))
-			fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
-To update the settings, run "go run tools/generate.go -w".
-`, strings.TrimSuffix(base, ".md"), base)
-			os.Exit(1) // causes CI to break.
-		}
+		checkAndWrite(filename, oldContent, newContent)
 	}
+
 	b := &bytes.Buffer{}
 	for i, c := range pkgJSON.Contributes.Commands {
 		fmt.Fprintf(b, "### `%s`\n\n%s", c.Title, c.Description)
@@ -198,6 +217,10 @@ To update the settings, run "go run tools/generate.go -w".
 	writeGoplsSettingsSection(b, goplsProperty)
 
 	rewrite(filepath.Join(dir, "docs", "settings.md"), b.Bytes())
+
+	b.Reset()
+	generateDebugConfigTable(b, pkgJSON)
+	rewriteDebugDoc(filepath.Join(dir, "docs", "dlv-dap.md"), b.Bytes())
 
 	// Only update the latest tool versions if the flag is set.
 	if !*updateLatestToolVersionsFlag {
@@ -336,11 +359,7 @@ func defaultDescriptionSnippet(p *Property) string {
 			fmt.Fprintf(b, "%v", p.Default)
 		}
 	default:
-		if _, ok := p.Type.([]interface{}); ok {
-			fmt.Fprintf(b, "%v", p.Default)
-			break
-		}
-		log.Fatalf("implement default when p.Type is %q in %#v %T", p.Type, p, p.Default)
+		fmt.Fprintf(b, "%v", p.Default)
 	}
 	return b.String()
 }
@@ -538,4 +557,123 @@ func updateGoplsSettings(oldData []byte, packageJSONFile string, debug bool) (ne
 		return nil, err
 	}
 	return newData, nil
+}
+
+func rewriteDebugDoc(filename string, toAdd []byte) {
+	oldContent, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	startSep := []byte(`<!-- SETTINGS BEGIN -->`)
+	endSep := []byte(`<!-- SETTINGS END -->`)
+	startIdx := bytes.Index(oldContent, startSep)
+	endIdx := bytes.Index(oldContent, endSep)
+	if startIdx <= 0 || endIdx <= startIdx {
+		log.Fatalf("Missing valid SETTINGS BEGIN/END markers in %v", filename)
+	}
+	part1 := oldContent[:startIdx+len(startSep)+1]
+	part3 := oldContent[endIdx:]
+
+	newContent := bytes.Join([][]byte{
+		part1,
+		toAdd,
+		part3,
+	}, []byte{})
+	checkAndWrite(filename, oldContent, newContent)
+}
+
+func generateDebugConfigTable(w io.Writer, pkgJSON *PackageJSON) {
+	for _, d := range pkgJSON.Contributes.Debuggers {
+		table := map[string]bool{}
+
+		for k := range d.ConfigurationAttributes.Attach.Properties {
+			table[k] = true
+		}
+		for k := range d.ConfigurationAttributes.Launch.Properties {
+			table[k] = true
+		}
+
+		keys := make([]string, 0, len(table))
+		for k := range table {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		fmt.Fprintln(w, "| Property | Launch | Attach |")
+		fmt.Fprintln(w, "| --- | --- | --- |")
+
+		for _, k := range keys {
+			launch := describeDebugProperty(d.ConfigurationAttributes.Launch.Properties[k])
+			attach := describeDebugProperty(d.ConfigurationAttributes.Attach.Properties[k])
+
+			if launch != "" && attach != "" {
+				if launch != attach {
+					fmt.Fprintf(w, "| `%v` | %v | %v |\n", k, launch, attach)
+				} else {
+					fmt.Fprintf(w, "| `%v` | %v | <center>_same as Launch_</center>|\n", k, launch)
+				}
+			} else if launch != "" {
+				fmt.Fprintf(w, "| `%v` | %v | <center>_n/a_</center> |\n", k, launch)
+			} else if attach != "" {
+				fmt.Fprintf(w, "| `%v` | <center>_n/a_</center> | %v |\n", k, attach)
+			}
+		}
+	}
+}
+
+func describeDebugProperty(p *Property) string {
+	if p == nil {
+		return ""
+	}
+	b := &bytes.Buffer{}
+
+	desc := p.Description
+	if p.MarkdownDescription != "" {
+		desc = p.MarkdownDescription
+	}
+	if p == nil || strings.Contains(desc, "Not applicable when using `dlv-dap` mode.") {
+		return ""
+	}
+
+	deprecation := p.DeprecationMessage
+	if p.MarkdownDeprecationMessage != "" {
+		deprecation = p.MarkdownDeprecationMessage
+	}
+
+	if deprecation != "" {
+		fmt.Fprintf(b, "(Deprecated) *%v*<br/>", deprecation)
+	}
+	fmt.Fprintf(b, "%v<br/>", desc)
+
+	if len(p.AnyOf) > 0 {
+		for i, a := range p.AnyOf {
+			fmt.Fprintf(b, "<p><b>Option %d:</b> %v<br/>", i+1, describeDebugProperty(&a))
+		}
+	}
+
+	if len(p.Enum) > 0 {
+		var enums []string
+		for _, i := range p.Enum {
+			enums = append(enums, fmt.Sprintf("`%#v`", i))
+		}
+		fmt.Fprintf(b, "<p>Allowed Values: %v<br/>", strings.Join(enums, ", "))
+	}
+
+	if p.Type == "object" && len(p.Properties) > 0 {
+		fmt.Fprintf(b, "<ul>")
+		for k, v := range p.Properties {
+			fmt.Fprintf(b, "<li>`%q`: %v</li>", k, describeDebugProperty(v))
+		}
+		fmt.Fprintf(b, "</ul>")
+	}
+
+	if p.Type == "array" && p.Items != nil && p.Items.Type == "object" {
+		fmt.Fprintf(b, "<p>%v<br/>", describeDebugProperty(p.Items))
+	}
+
+	// Default
+	if d := defaultDescriptionSnippet(p); d != "" {
+		fmt.Fprintf(b, "(Default: `%v`)<br/>", d)
+	}
+	return b.String()
 }
