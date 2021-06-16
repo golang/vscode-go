@@ -1,3 +1,29 @@
+## V0.26.0 - 17 Jun, 2021
+
+📣 [`Delve`'s native DAP implementation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) is now available for use. In order to use this new debug adapter (`dlv-dap`) when debugging Go programs, add the following settings in your `settings.json`:
+
+```json5
+    "go.delveConfig": {
+        "debugAdapter": "dlv-dap",
+    },
+```
+
+Please learn more about [the new adapter's features and configuration parameters](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md), and share your feedback and report the issues in our issue tracker.
+
+A list of all issues and changes can be found in the [v0.26.0 milestone](https://github.com/golang/vscode-go/milestone/30?closed=1) and [commit history](https://github.com/golang/vscode-go/compare/v0.25.1...v0.26.0).
+
+### Enhancements
+- `dlv-dap` is ready for use in local debugging.
+- Added the new `"Go: Test Function At Cursor or Test Previous"` command. ([PR 1509](https://github.com/golang/vscode-go/pull/1509))
+- `"Go: Add Imports"` command uses `gopls` instead of `gopkg`. This requires `gopls@v0.7.0` or newer. ([Go Issue 43351](https://github.com/golang/go/issues/43351))
+
+### Fixes
+- Fixed `"Go: Lint Workspace"` that failed no editor is active. ([Issue 1520](https://github.com/golang/vscode-go/issues/1520))
+- Fixed `gopls` crash caused by Untitled files. ([Issue 1559](https://github.com/golang/vscode-go/issues/1559))
+
+### Thanks
+Thanks for your contributions, @mislav, @marwan-at-work, @findleyr, @lggomez, @fflewddur, @suzmue, @hyangah!
+
 ## v0.25.1 - 24 May, 2021
 
 A list of all issues and changes can be found in the [v0.25.1 milestone](https://github.com/golang/vscode-go/issues?q=is%3Aissue+milestone%3Av0.25.1+is%3Aclosed).
