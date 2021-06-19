@@ -9,8 +9,10 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { ExecuteCommandRequest, ExecuteCommandParams } from 'vscode-languageserver-protocol';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
+import { languageClient } from './goLanguageServer';
 import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
 import { getImportablePackages } from './goPackages';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
@@ -39,6 +41,31 @@ export async function listPackages(excludeImportedPkgs = false): Promise<string[
 	return [...stdLibs.sort(), ...nonStdLibs.sort()];
 }
 
+async function golist(): Promise<string[]> {
+	if (languageClient) {
+		try {
+			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
+				vscode.window.activeTextEditor.document
+			).uri;
+			const params: ExecuteCommandParams = {
+				command: 'gopls.list_known_packages',
+				arguments: [
+					{
+						URI: uri
+					}
+				]
+			};
+			const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, params);
+			return resp.Packages;
+		} catch (e) {
+			console.log(`error with gopls.list_known_packages: ${e}`);
+		}
+	}
+
+	// fallback to calling listPackages
+	return listPackages(true);
+}
+
 /**
  * Returns the imported packages in the given file
  *
@@ -64,7 +91,7 @@ async function getImports(document: vscode.TextDocument): Promise<string[]> {
 
 async function askUserForImport(): Promise<string | undefined> {
 	try {
-		const packages = await listPackages(true);
+		const packages = await golist();
 		return vscode.window.showQuickPick(packages);
 	} catch (err) {
 		if (typeof err === 'string' && err.startsWith(missingToolMsg)) {
@@ -123,17 +150,40 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 	}
 }
 
-export function addImport(arg: { importPath: string; from: string }) {
+export function addImport(arg: { importPath: string }) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found to add imports.');
 		return;
 	}
 	const p = arg && arg.importPath ? Promise.resolve(arg.importPath) : askUserForImport();
-	p.then((imp) => {
+	p.then(async (imp) => {
 		if (!imp) {
 			return;
 		}
+
+		if (languageClient) {
+			try {
+				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
+					vscode.window.activeTextEditor.document
+				).uri;
+				const params: ExecuteCommandParams = {
+					command: 'gopls.add_import',
+					arguments: [
+						{
+							ImportPath: imp,
+							URI: uri
+						}
+					]
+				};
+				await languageClient.sendRequest(ExecuteCommandRequest.type, params);
+				return;
+			} catch (e) {
+				console.log(`error executing gopls.add_import: ${e}`);
+			}
+		}
+
+		// fallback to adding imports directly from client
 		const edits = getTextEditForAddImport(imp);
 		if (edits && edits.length > 0) {
 			const edit = new vscode.WorkspaceEdit();

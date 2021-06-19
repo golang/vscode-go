@@ -202,10 +202,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.12'),
-		latestVersion: semver.parse('v0.6.11'),
-		latestVersionTimestamp: moment('2021-05-04', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.6.11'),
-		latestPrereleaseVersionTimestamp: moment('2021-05-04', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.7.0'),
+		latestVersionTimestamp: moment('2021-06-08', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.7.0'),
+		latestPrereleaseVersionTimestamp: moment('2021-06-08', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
@@ -224,8 +224,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Go debugger (Delve built for DAP experiment)',
 		defaultVersion: 'master', // Always build from the master.
 		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
-		latestVersion: semver.parse('v1.6.2-0.20210521082917-a25d95bd236e'),
-		latestVersionTimestamp: moment('2021-05-21', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v1.6.2-0.20210611174649-688f94a4f838'),
+		latestVersionTimestamp: moment('2021-06-11', 'YYYY-MM-DD')
 	},
 	'fillstruct': {
 		name: 'fillstruct',

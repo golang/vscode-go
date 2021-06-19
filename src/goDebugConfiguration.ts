@@ -18,11 +18,12 @@ import {
 	promptForUpdatingTool,
 	shouldUpdateTool
 } from './goInstallTools';
+import { isInPreviewMode } from './goLanguageServer';
 import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion } from './util';
+import { getBinPath, getGoVersion, getWorkspaceFolderPath, resolvePath } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
@@ -147,8 +148,26 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
 		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
-			debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
+			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter');
+			// user configured the default debug adapter through settings.json.
+			if (globalValue !== undefined || workspaceValue !== undefined) {
+				debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
+			}
 		}
+		if (!debugConfiguration['debugAdapter']) {
+			// for nightly/dev mode, default to dlv-dap.
+			// TODO(hyangah): when we switch the stable version's default to 'dlv-dap', adjust this.
+			debugConfiguration['debugAdapter'] =
+				isInPreviewMode() && debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+		}
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
+			this.showWarning(
+				'ignoreDlvDAPInRemoteModeWarning',
+				"debugAdapter type of 'dlv-dap' with mode 'remote' is unsupported. Fall back to the 'legacy' debugAdapter for 'remote' mode."
+			);
+			debugConfiguration['debugAdapter'] = 'legacy';
+		}
+
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
 
 		let useApiV1 = false;
@@ -186,7 +205,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
 			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
 		}
-		if (debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
+		if (
+			debugAdapter !== 'dlv-dap' &&
+			debugConfiguration.request === 'attach' &&
+			debugConfiguration.mode === 'remote' &&
+			!debugConfiguration['cwd']
+		) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
 			if (vscode.workspace.workspaceFolders?.length > 1) {
 				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
@@ -265,7 +289,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				// file path instead of the currently active file.
 				filename = debugConfiguration['program'];
 			}
-			debugConfiguration['mode'] = filename.endsWith('_test.go') ? 'test' : 'debug';
+			debugConfiguration['mode'] = filename?.endsWith('_test.go') ? 'test' : 'debug';
 		}
 
 		if (debugConfiguration['mode'] === 'test' && debugConfiguration['program'].endsWith('_test.go')) {
@@ -297,7 +321,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
 				// The processId is not valid, offer a quickpick menu of all processes.
 				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
-			} else if (typeof debugConfiguration['processId'] === 'string') {
+			} else if (
+				typeof debugConfiguration['processId'] === 'string' &&
+				debugConfiguration['processId'] !== '${command:pickProcess}' &&
+				debugConfiguration['processId'] !== '${command:pickGoProcess}'
+			) {
 				debugConfiguration['processId'] = parseInt(
 					await pickProcessByName(debugConfiguration['processId']),
 					10
@@ -361,6 +389,22 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
 		debugConfiguration['envFile'] = undefined; // unset, since we already processed.
 
+		const entriesWithRelativePaths = ['cwd', 'output', 'program'].filter(
+			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
+		);
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && entriesWithRelativePaths.length > 0) {
+			const workspaceRoot = folder?.uri.fsPath;
+			if (!workspaceRoot) {
+				this.showWarning(
+					'relativePathsWithoutWorkspaceFolder',
+					'Relative paths without a workspace folder for `cwd`, `program`, or `output` are not allowed.'
+				);
+				return null;
+			}
+			entriesWithRelativePaths.forEach((attr) => {
+				debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
+			});
+		}
 		return debugConfiguration;
 	}
 

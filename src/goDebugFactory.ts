@@ -16,6 +16,7 @@ import * as net from 'net';
 import { getTool } from './goTools';
 import { Logger, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
+import { getWorkspaceFolderPath } from './util';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
@@ -194,7 +195,7 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 // VSCode and a dlv dap process spawned and managed by this adapter.
 // It turns the process's stdout/stderrr into OutputEvent.
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
-	constructor(private config: vscode.DebugConfiguration, logger?: Logger) {
+	constructor(private configuration: vscode.DebugConfiguration, logger?: Logger) {
 		super(logger);
 		this.connected = this.startAndConnectToServer();
 	}
@@ -276,7 +277,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private async startAndConnectToServer() {
 		try {
 			const { port, host, dlvDapServer } = await startDapServer(
-				this.config,
+				this.configuration,
 				(msg) => this.outputEvent('stdout', msg),
 				(msg) => this.outputEvent('stderr', msg),
 				(msg) => {
@@ -336,17 +337,17 @@ async function startDapServer(
 }
 
 function spawnDlvDapServerProcess(
-	launchArgs: vscode.DebugConfiguration,
+	launchAttachArgs: vscode.DebugConfiguration,
 	host: string,
 	port: number,
 	log: (msg: string) => void,
 	logErr: (msg: string) => void,
 	logConsole: (msg: string) => void
 ): Promise<ChildProcess> {
-	const launchArgsEnv = launchArgs.env || {};
+	const launchArgsEnv = launchAttachArgs.env || {};
 	const env = Object.assign({}, process.env, launchArgsEnv);
 
-	const dlvPath = launchArgs.dlvToolPath ?? getTool('dlv-dap');
+	const dlvPath = launchAttachArgs.dlvToolPath ?? getTool('dlv-dap');
 
 	if (!fs.existsSync(dlvPath)) {
 		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
@@ -358,27 +359,29 @@ function spawnDlvDapServerProcess(
 		);
 		throw new Error('Cannot find Delve debugger (dlv dap)');
 	}
-	let dir = '';
-	try {
-		dir = parseProgramArgSync(launchArgs).dirname;
-	} catch (err) {
-		logErr(`Program arg: ${launchArgs.program}\n${err}\n`);
-		throw err; // rethrow so the caller knows it failed.
+	let dir = getWorkspaceFolderPath();
+	if (launchAttachArgs.request === 'launch') {
+		try {
+			dir = parseProgramArgSync(launchAttachArgs).dirname;
+		} catch (err) {
+			logErr(`Program arg: ${launchAttachArgs.program}\n${err}\n`);
+			throw err; // rethrow so the caller knows it failed.
+		}
 	}
 
 	const dlvArgs = new Array<string>();
 	dlvArgs.push('dap');
 	// add user-specified dlv flags first. When duplicate flags are specified,
 	// dlv doesn't mind but accepts the last flag value.
-	if (launchArgs.dlvFlags && launchArgs.dlvFlags.length > 0) {
-		dlvArgs.push(...launchArgs.dlvFlags);
+	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
+		dlvArgs.push(...launchAttachArgs.dlvFlags);
 	}
 	dlvArgs.push(`--listen=${host}:${port}`);
-	if (launchArgs.showLog) {
-		dlvArgs.push('--log=' + launchArgs.showLog.toString());
+	if (launchAttachArgs.showLog) {
+		dlvArgs.push('--log=' + launchAttachArgs.showLog.toString());
 	}
-	if (launchArgs.logOutput) {
-		dlvArgs.push('--log-output=' + launchArgs.logOutput);
+	if (launchAttachArgs.logOutput) {
+		dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
 	}
 
 	const onWindows = process.platform === 'win32';
@@ -387,7 +390,7 @@ function spawnDlvDapServerProcess(
 		dlvArgs.push('--log-dest=3');
 	}
 
-	const logDest = launchArgs.logDest;
+	const logDest = launchAttachArgs.logDest;
 	if (typeof logDest === 'number') {
 		logErr(`Using a file descriptor for 'logDest' (${logDest}) is not allowed.\n`);
 		throw new Error('Using a file descriptor for `logDest` is not allowed.');
@@ -409,10 +412,10 @@ function spawnDlvDapServerProcess(
 
 	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')}\n`);
 
-	// TODO(hyangah): determine the directories:
-	//    run `dlv` => where dlv will create the default __debug_bin. (This won't work if the directory is not writable. Fix it)
-	//    build program => 'program' directory. (This won't work for multimodule workspace. Fix it)
-	//    run program => cwd (If test, make sure to run in the package directory.)
+	// TODO(hyangah): In module-module workspace mode, the program should be build in the super module directory
+	// where go.work (gopls.mod) file is present. Where dlv runs determines the build directory currently. Two options:
+	//  1) launch dlv in the super-module module directory and adjust launchArgs.cwd (--wd).
+	//  2) introduce a new buildDir launch attribute.
 	return new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
@@ -511,9 +514,9 @@ function spawnDlvDapServerProcess(
 }
 
 export function parseProgramArgSync(
-	launchArgs: vscode.DebugConfiguration
+	launchAttachArgs: vscode.DebugConfiguration
 ): { program: string; dirname: string; programIsDirectory: boolean } {
-	const program = launchArgs.program;
+	const program = launchAttachArgs.program;
 	if (!program) {
 		throw new Error('The program attribute is missing in the debug configuration in launch.json');
 	}
@@ -524,7 +527,7 @@ export function parseProgramArgSync(
 		// TODO(hyangah): why can't the program be a package name?
 		throw new Error('The program attribute must point to valid directory, .go file or executable.');
 	}
-	if (!programIsDirectory && launchArgs.mode !== 'exec' && path.extname(program) !== '.go') {
+	if (!programIsDirectory && launchAttachArgs.mode !== 'exec' && path.extname(program) !== '.go') {
 		throw new Error('The program attribute must be a directory or .go file in debug and test mode');
 	}
 	const dirname = programIsDirectory ? program : path.dirname(program);
