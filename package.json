@@ -552,9 +552,10 @@
                   "test",
                   "exec",
                   "replay",
-                  "record"
+                  "record",
+                  "core"
                 ],
-                "description": "One of `auto`, `debug`, `test`, `exec`, `remote`, `replay`, `record`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
+                "description": "One of `auto`, `debug`, `test`, `exec`, `remote`, `replay`, `record`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
                 "default": "auto"
               },
               "traceDirectory": {
