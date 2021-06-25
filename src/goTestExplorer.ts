@@ -9,19 +9,37 @@ import {
 	DocumentSymbol,
 	SymbolKind,
 	FileType,
-	WorkspaceFolder
+	WorkspaceFolder,
+	TestRunRequest,
+	CancellationToken,
+	window,
+	OutputChannel,
+	TestResultState,
+	TestRun
 } from 'vscode';
 import path = require('path');
-import { getModFolderPath } from './goModules';
+import { getModFolderPath, isModSupported } from './goModules';
 import { getCurrentGoPath } from './util';
 import { GoDocumentSymbolProvider } from './goOutline';
+import { testAtCursor } from './goTest';
+import { getGoConfig } from './config';
+import { gocodeClose } from './goTools';
+import { getTestFlags, getTestFunctionDebugArgs, getTestTags, goTest, TestConfig } from './testUtils';
+import { resolve } from 'path';
+
+// We could use TestItem.data, but that may be removed
+const symbols = new WeakMap<TestItem, DocumentSymbol>();
 
 export function setupTestExplorer(context: ExtensionContext) {
 	const ctrl = test.createTestController('go');
 	context.subscriptions.push(ctrl);
 	ctrl.root.label = 'Go';
 	ctrl.root.canResolveChildren = true;
-	ctrl.resolveChildrenHandler = (item) => resolveChildren(ctrl, item);
+	ctrl.resolveChildrenHandler = (...args) => resolveChildren(ctrl, ...args);
+	ctrl.runHandler = (request, token) => {
+		// TODO handle cancelation
+		runTest(ctrl, request);
+	};
 
 	context.subscriptions.push(
 		workspace.onDidOpenTextDocument((e) => documentUpdate(ctrl, e).catch((err) => console.log(err)))
@@ -107,7 +125,6 @@ function createItem(
 		return existing;
 	}
 
-	console.log(`Creating ${id}`);
 	return ctrl.createTestItem(id, label, parent, uri);
 }
 
@@ -144,6 +161,7 @@ async function getModule(ctrl: TestController, uri: Uri): Promise<TestItem> {
 	const match = modLine.match(/^module (?<name>.*?)(?:\s|\/\/|$)/);
 	const item = createItem(ctrl, ctrl.root, match.groups.name, uri, 'module');
 	item.canResolveChildren = true;
+	item.runnable = true;
 	return item;
 }
 
@@ -156,6 +174,7 @@ async function getWorkspace(ctrl: TestController, ws: WorkspaceFolder): Promise<
 	// Use the workspace folder name as the label
 	const item = createItem(ctrl, ctrl.root, ws.name, ws.uri, 'workspace');
 	item.canResolveChildren = true;
+	item.runnable = true;
 	return item;
 }
 
@@ -204,6 +223,7 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 	}
 
 	item.canResolveChildren = true;
+	item.runnable = true;
 	return item;
 }
 
@@ -218,6 +238,7 @@ async function getFile(ctrl: TestController, uri: Uri): Promise<TestItem> {
 	const label = path.basename(uri.path);
 	const item = createItem(ctrl, pkg, label, uri, 'file');
 	item.canResolveChildren = true;
+	item.runnable = true;
 	return item;
 }
 
@@ -255,7 +276,8 @@ async function processSymbol(
 	const item = createItem(ctrl, file, symbol.name, uri, kind, symbol.name);
 	item.range = symbol.range;
 	item.runnable = true;
-	item.debuggable = true;
+	// item.debuggable = true;
+	symbols.set(item, symbol);
 }
 
 async function loadFileTests(ctrl: TestController, doc: TextDocument) {
@@ -376,6 +398,19 @@ async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<any>) {
 	});
 }
 
+async function documentUpdate(ctrl: TestController, doc: TextDocument) {
+	if (!doc.uri.path.endsWith('_test.go')) {
+		return;
+	}
+
+	if (doc.uri.scheme === 'git') {
+		// TODO(firelizzard18): When a workspace is reopened, VSCode passes us git: URIs. Why?
+		return;
+	}
+
+	await loadFileTests(ctrl, doc);
+}
+
 async function resolveChildren(ctrl: TestController, item: TestItem) {
 	if (!item.parent) {
 		// Dispose of package entries at the root if they are now part of a workspace folder
@@ -438,15 +473,99 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 	}
 }
 
-async function documentUpdate(ctrl: TestController, doc: TextDocument) {
-	if (!doc.uri.path.endsWith('_test.go')) {
+async function collectTests(
+	ctrl: TestController,
+	item: TestItem,
+	excluded: TestItem[],
+	functions: Map<string, TestItem[]>,
+	docs: Set<Uri>
+) {
+	for (let i = item; i.parent; i = i.parent) {
+		if (excluded.indexOf(i) >= 0) {
+			return;
+		}
+	}
+
+	const uri = Uri.parse(item.id);
+	if (!uri.fragment) {
+		if (!item.children.size) {
+			await resolveChildren(ctrl, item);
+		}
+
+		for (const child of item.children.values()) {
+			await collectTests(ctrl, child, excluded, functions, docs);
+		}
 		return;
 	}
 
-	if (doc.uri.scheme === 'git') {
-		// TODO(firelizzard18): When a workspace is reopened, VSCode passes us git: URIs. Why?
-		return;
+	const file = uri.with({ query: '', fragment: '' });
+	docs.add(file);
+
+	const dir = file.with({ path: path.dirname(uri.path) }).toString();
+	if (functions.has(dir)) {
+		functions.get(dir).push(item);
+	} else {
+		functions.set(dir, [item]);
+	}
+	return;
+}
+
+class TestRunOutput implements OutputChannel {
+	constructor(private run: TestRun<any>, private tests: TestItem[]) {}
+
+	get name() {
+		return 'Go Test API';
 	}
 
-	await loadFileTests(ctrl, doc);
+	append(value: string) {
+		this.run.appendOutput(value);
+	}
+
+	appendLine(value: string) {
+		this.run.appendOutput(value + '\n');
+	}
+
+	clear() {}
+	show(...args: any[]) {}
+	hide() {}
+	dispose() {}
+}
+
+async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
+	const functions = new Map<string, TestItem[]>();
+	const docs = new Set<Uri>();
+	for (const item of request.tests) {
+		await collectTests(ctrl, item, request.exclude, functions, docs);
+	}
+
+	// Ensure `go test` has the latest changes
+	await Promise.all(
+		Array.from(docs).map((uri) => {
+			workspace.openTextDocument(uri).then((doc) => doc.save());
+		})
+	);
+
+	const run = ctrl.createTestRun(request);
+	const goConfig = getGoConfig();
+	for (const [dir, tests] of functions.entries()) {
+		const functions = tests.map((test) => Uri.parse(test.id).fragment);
+
+		// TODO this should be more granular
+		tests.forEach((test) => run.setState(test, TestResultState.Running));
+
+		const uri = Uri.parse(dir);
+		const result = await goTest({
+			goConfig,
+			dir: uri.fsPath,
+			functions,
+			flags: getTestFlags(goConfig),
+			isMod: await isModSupported(uri, true),
+			outputChannel: new TestRunOutput(run, tests),
+			applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
+		});
+
+		tests.forEach((test) => run.setState(test, result ? TestResultState.Passed : TestResultState.Failed));
+	}
+
+	run.end();
 }
