@@ -11,8 +11,6 @@ import {
 	FileType,
 	WorkspaceFolder,
 	TestRunRequest,
-	CancellationToken,
-	window,
 	OutputChannel,
 	TestResultState,
 	TestRun
@@ -21,11 +19,8 @@ import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
 import { getCurrentGoPath } from './util';
 import { GoDocumentSymbolProvider } from './goOutline';
-import { testAtCursor } from './goTest';
 import { getGoConfig } from './config';
-import { gocodeClose } from './goTools';
-import { getTestFlags, getTestFunctionDebugArgs, getTestTags, goTest, TestConfig } from './testUtils';
-import { resolve } from 'path';
+import { getTestFlags, goTest } from './testUtils';
 
 // We could use TestItem.data, but that may be removed
 const symbols = new WeakMap<TestItem, DocumentSymbol>();
