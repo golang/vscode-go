@@ -13,14 +13,16 @@ import {
 	TestRunRequest,
 	OutputChannel,
 	TestResultState,
-	TestRun
+	TestRun,
+	TestMessageSeverity,
+	Location
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
 import { getCurrentGoPath } from './util';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getGoConfig } from './config';
-import { getTestFlags, goTest } from './testUtils';
+import { getTestFlags, goTest, GoTestOutput } from './testUtils';
 
 // We could use TestItem.data, but that may be removed
 const symbols = new WeakMap<TestItem, DocumentSymbol>();
@@ -51,7 +53,7 @@ export function setupTestExplorer(context: ExtensionContext) {
 		const id = testID(e, 'file');
 		function find(parent: TestItem): TestItem {
 			for (const item of parent.children.values()) {
-				if (item.id == id) {
+				if (item.id === id) {
 					return item;
 				}
 
@@ -79,7 +81,7 @@ export function setupTestExplorer(context: ExtensionContext) {
 			const items = Array.from(ctrl.root.children.values());
 			for (const item of items) {
 				const uri = Uri.parse(item.id);
-				if (uri.query == 'package') {
+				if (uri.query === 'package') {
 					continue;
 				}
 
@@ -120,7 +122,21 @@ function createItem(
 		return existing;
 	}
 
-	return ctrl.createTestItem(id, label, parent, uri);
+	return ctrl.createTestItem(id, label, parent, uri.with({ query: '', fragment: '' }));
+}
+
+function createSubItem(ctrl: TestController, item: TestItem, name: string): TestItem {
+	let uri = Uri.parse(item.id);
+	uri = uri.with({ fragment: `${uri.fragment}/${name}` });
+	const existing = item.children.get(uri.toString());
+	if (existing) {
+		return existing;
+	}
+
+	const sub = ctrl.createTestItem(uri.toString(), name, item, item.uri);
+	sub.runnable = false;
+	sub.range = item.range;
+	return sub;
 }
 
 function removeIfEmpty(item: TestItem) {
@@ -131,7 +147,7 @@ function removeIfEmpty(item: TestItem) {
 
 	// Don't dispose of empty modules
 	const uri = Uri.parse(item.id);
-	if (uri.query == 'module') {
+	if (uri.query === 'module') {
 		return;
 	}
 
@@ -187,7 +203,7 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 			return existing;
 		}
 
-		if (uri.path == modUri.path) {
+		if (uri.path === modUri.path) {
 			return module;
 		}
 
@@ -318,7 +334,7 @@ async function walk(
 
 			// Scan the directory
 			inner: for (const [file, type] of await workspace.fs.readDirectory(uri)) {
-				if ((skipFiles && type == FileType.File) || (skipDirs && type == FileType.Directory)) {
+				if ((skipFiles && type === FileType.File) || (skipDirs && type === FileType.Directory)) {
 					continue;
 				}
 
@@ -327,7 +343,7 @@ async function walk(
 					continue;
 				}
 
-				if (type == FileType.Directory) {
+				if (type === FileType.Directory) {
 					dirs2.push(Uri.joinPath(uri, file));
 				}
 
@@ -368,11 +384,11 @@ async function walk(
 async function walkWorkspaces(uri: Uri) {
 	const found = new Map<string, boolean>();
 	await walk(uri, async (dir, file, type) => {
-		if (type != FileType.File) {
+		if (type !== FileType.File) {
 			return;
 		}
 
-		if (file == 'go.mod') {
+		if (file === 'go.mod') {
 			found.set(dir.toString(), true);
 			return WalkStop.Current;
 		}
@@ -443,14 +459,14 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 	}
 
 	const uri = Uri.parse(item.id);
-	if (uri.query == 'module' || uri.query == 'workspace') {
+	if (uri.query === 'module' || uri.query === 'workspace') {
 		// Create entries for all packages in the module or workspace
 		await walkPackages(uri, async (uri) => {
 			await getPackage(ctrl, uri);
 		});
 	}
 
-	if (uri.query == 'module' || uri.query == 'package') {
+	if (uri.query === 'module' || uri.query === 'package') {
 		// Create entries for all test files in the package
 		for (const [file, type] of await workspace.fs.readDirectory(uri)) {
 			if (type !== FileType.File || !file.endsWith('_test.go')) {
@@ -461,9 +477,9 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 		}
 	}
 
-	if (uri.query == 'file') {
+	if (uri.query === 'file') {
 		// Create entries for all test functions in a file
-		const doc = await workspace.openTextDocument(uri);
+		const doc = await workspace.openTextDocument(uri.with({ query: '', fragment: '' }));
 		await loadFileTests(ctrl, doc);
 	}
 }
@@ -505,11 +521,10 @@ async function collectTests(
 	return;
 }
 
-class TestRunOutput implements OutputChannel {
-	constructor(private run: TestRun<any>, private tests: TestItem[]) {}
-
-	get name() {
-		return 'Go Test API';
+class TestRunOutput<T> implements OutputChannel {
+	readonly name: string;
+	constructor(private run: TestRun<T>) {
+		this.name = `Test run at ${new Date()}`;
 	}
 
 	append(value: string) {
@@ -517,7 +532,7 @@ class TestRunOutput implements OutputChannel {
 	}
 
 	appendLine(value: string) {
-		this.run.appendOutput(value + '\n');
+		this.run.appendOutput(value + '\r\n');
 	}
 
 	clear() {}
@@ -526,11 +541,109 @@ class TestRunOutput implements OutputChannel {
 	dispose() {}
 }
 
+function resolveTestName(ctrl: TestController, tests: Record<string, TestItem>, name: string): TestItem | undefined {
+	if (!name) {
+		return;
+	}
+
+	const parts = name.split(/\/|#/);
+	let test = tests[parts[0]];
+	if (!test) {
+		return;
+	}
+
+	for (const part of parts.slice(1)) {
+		test = createSubItem(ctrl, test, part);
+	}
+	return test;
+}
+
+function consumeGoBenchmarkEvent<T>(
+	ctrl: TestController,
+	run: TestRun<T>,
+	benchmarks: Record<string, TestItem>,
+	failed: Set<string>,
+	e: GoTestOutput
+) {
+	if (e.Test) {
+		const test = benchmarks[e.Test];
+		if (!test) {
+			return;
+		}
+
+		if (e.Action === 'fail') {
+			run.setState(test, TestResultState.Failed);
+			failed.add(e.Test);
+		}
+
+		return;
+	}
+
+	if (!e.Output) {
+		// console.log(e);
+		return;
+	}
+
+	const [name, rest] = e.Output.trim().split(/-|\s/);
+	const test = resolveTestName(ctrl, benchmarks, name);
+	if (!test) {
+		return;
+	}
+
+	if (!rest) {
+		run.setState(test, TestResultState.Running);
+		return;
+	}
+
+	run.appendMessage(test, {
+		message: e.Output,
+		severity: TestMessageSeverity.Information,
+		location: new Location(test.uri, test.range)
+	});
+}
+
+function consumeGoTestEvent<T>(
+	ctrl: TestController,
+	run: TestRun<T>,
+	tests: Record<string, TestItem>,
+	e: GoTestOutput
+) {
+	const test = resolveTestName(ctrl, tests, e.Test);
+	if (!test) {
+		return;
+	}
+
+	switch (e.Action) {
+		case 'run':
+			run.setState(test, TestResultState.Running);
+			break;
+		case 'pass':
+			run.setState(test, TestResultState.Passed, e.Elapsed * 1000);
+			break;
+		case 'fail':
+			run.setState(test, TestResultState.Failed, e.Elapsed * 1000);
+			break;
+		case 'skip':
+			run.setState(test, TestResultState.Skipped);
+			break;
+		case 'output':
+			run.appendMessage(test, {
+				message: e.Output,
+				severity: TestMessageSeverity.Information,
+				location: new Location(test.uri, test.range)
+			});
+			break;
+		default:
+			console.log(e);
+			break;
+	}
+}
+
 async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
-	const functions = new Map<string, TestItem[]>();
+	const collected = new Map<string, TestItem[]>();
 	const docs = new Set<Uri>();
 	for (const item of request.tests) {
-		await collectTests(ctrl, item, request.exclude, functions, docs);
+		await collectTests(ctrl, item, request.exclude, collected, docs);
 	}
 
 	// Ensure `go test` has the latest changes
@@ -541,25 +654,63 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 	);
 
 	const run = ctrl.createTestRun(request);
+	const outputChannel = new TestRunOutput(run);
 	const goConfig = getGoConfig();
-	for (const [dir, tests] of functions.entries()) {
-		const functions = tests.map((test) => Uri.parse(test.id).fragment);
-
-		// TODO this should be more granular
-		tests.forEach((test) => run.setState(test, TestResultState.Running));
-
+	for (const [dir, items] of collected.entries()) {
 		const uri = Uri.parse(dir);
-		const result = await goTest({
-			goConfig,
-			dir: uri.fsPath,
-			functions,
-			flags: getTestFlags(goConfig),
-			isMod: await isModSupported(uri, true),
-			outputChannel: new TestRunOutput(run, tests),
-			applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
-		});
+		const isMod = await isModSupported(uri, true);
+		const flags = getTestFlags(goConfig);
 
-		tests.forEach((test) => run.setState(test, result ? TestResultState.Passed : TestResultState.Failed));
+		const tests: Record<string, TestItem> = {};
+		const benchmarks: Record<string, TestItem> = {};
+		for (const item of items) {
+			run.setState(item, TestResultState.Queued);
+
+			// Remove any subtests
+			Array.from(item.children.values()).forEach((x) => x.dispose());
+
+			const uri = Uri.parse(item.id);
+			if (uri.query === 'benchmark') {
+				benchmarks[uri.fragment] = item;
+			} else {
+				tests[uri.fragment] = item;
+			}
+		}
+
+		const testFns = Object.keys(tests);
+		const benchmarkFns = Object.keys(benchmarks);
+
+		if (testFns.length) {
+			await goTest({
+				goConfig,
+				flags,
+				isMod,
+				outputChannel,
+				dir: uri.fsPath,
+				functions: testFns,
+				goTestOutputConsumer: (e) => consumeGoTestEvent(ctrl, run, tests, e)
+			});
+		}
+
+		if (benchmarkFns.length) {
+			const failed = new Set<string>();
+			await goTest({
+				goConfig,
+				flags,
+				isMod,
+				outputChannel,
+				dir: uri.fsPath,
+				functions: benchmarkFns,
+				isBenchmark: true,
+				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(ctrl, run, benchmarks, failed, e)
+			});
+
+			for (const name in benchmarks) {
+				if (!failed.has(name)) {
+					run.setState(benchmarks[name], TestResultState.Passed);
+				}
+			}
+		}
 	}
 
 	run.end();
