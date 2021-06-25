@@ -114,6 +114,7 @@ import { getFormatTool } from './goFormat';
 import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
+import { setupTestExplorer } from './goTestExplorer';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -225,6 +226,9 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
+
+	// testing
+	setupTestExplorer(ctx);
 
 	// debug
 	ctx.subscriptions.push(
