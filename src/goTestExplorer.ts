@@ -15,7 +15,8 @@ import {
 	TestResultState,
 	TestRun,
 	TestMessageSeverity,
-	Location
+	Location,
+	Position
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
@@ -133,6 +134,7 @@ function createSubItem(ctrl: TestController, item: TestItem, name: string): Test
 		return existing;
 	}
 
+	item.canResolveChildren = true;
 	const sub = ctrl.createTestItem(uri.toString(), name, item, item.uri);
 	sub.runnable = false;
 	sub.range = item.range;
@@ -546,7 +548,7 @@ function resolveTestName(ctrl: TestController, tests: Record<string, TestItem>, 
 		return;
 	}
 
-	const parts = name.split(/\/|#/);
+	const parts = name.split(/[#\/]+/);
 	let test = tests[parts[0]];
 	if (!test) {
 		return;
@@ -562,50 +564,79 @@ function consumeGoBenchmarkEvent<T>(
 	ctrl: TestController,
 	run: TestRun<T>,
 	benchmarks: Record<string, TestItem>,
-	failed: Set<string>,
+	complete: Set<TestItem>,
 	e: GoTestOutput
 ) {
 	if (e.Test) {
-		const test = benchmarks[e.Test];
+		const test = resolveTestName(ctrl, benchmarks, e.Test);
 		if (!test) {
 			return;
 		}
 
-		if (e.Action === 'fail') {
-			run.setState(test, TestResultState.Failed);
-			failed.add(e.Test);
+		switch (e.Action) {
+			case 'fail':
+				run.setState(test, TestResultState.Failed);
+				complete.add(test);
+				break;
+
+			case 'skip':
+				run.setState(test, TestResultState.Skipped);
+				complete.add(test);
+				break;
 		}
 
 		return;
 	}
 
 	if (!e.Output) {
-		// console.log(e);
 		return;
 	}
 
-	const [name, rest] = e.Output.trim().split(/-|\s/);
-	const test = resolveTestName(ctrl, benchmarks, name);
+	// Started: "BenchmarkFooBar"
+	// Completed: "BenchmarkFooBar-4    123456    123.4 ns/op    123 B/op    12 allocs/op"
+	const m = e.Output.match(/^(?<name>Benchmark[\/\w]+)(?:-(?<procs>\d+)\s+(?<result>.*))?(?:$|\n)/);
+	if (!m) {
+		return;
+	}
+
+	const test = resolveTestName(ctrl, benchmarks, m.groups.name);
 	if (!test) {
 		return;
 	}
 
-	if (!rest) {
+	if (m.groups.result) {
+		run.appendMessage(test, {
+			message: m.groups.result,
+			severity: TestMessageSeverity.Information,
+			location: new Location(test.uri, test.range.start)
+		});
+		run.setState(test, TestResultState.Passed);
+		complete.add(test);
+	} else {
 		run.setState(test, TestResultState.Running);
-		return;
+	}
+}
+
+function passBenchmarks<T>(run: TestRun<T>, items: Record<string, TestItem>, complete: Set<TestItem>) {
+	function pass(item: TestItem) {
+		if (!complete.has(item)) {
+			run.setState(item, TestResultState.Passed);
+		}
+		for (const child of item.children.values()) {
+			pass(child);
+		}
 	}
 
-	run.appendMessage(test, {
-		message: e.Output,
-		severity: TestMessageSeverity.Information,
-		location: new Location(test.uri, test.range)
-	});
+	for (const name in items) {
+		pass(items[name]);
+	}
 }
 
 function consumeGoTestEvent<T>(
 	ctrl: TestController,
 	run: TestRun<T>,
 	tests: Record<string, TestItem>,
+	record: Map<TestItem, string[]>,
 	e: GoTestOutput
 ) {
 	const test = resolveTestName(ctrl, tests, e.Test);
@@ -616,26 +647,74 @@ function consumeGoTestEvent<T>(
 	switch (e.Action) {
 		case 'run':
 			run.setState(test, TestResultState.Running);
-			break;
+			return;
+
 		case 'pass':
 			run.setState(test, TestResultState.Passed, e.Elapsed * 1000);
-			break;
+			return;
+
 		case 'fail':
 			run.setState(test, TestResultState.Failed, e.Elapsed * 1000);
-			break;
+			return;
+
 		case 'skip':
 			run.setState(test, TestResultState.Skipped);
-			break;
+			return;
+
 		case 'output':
-			run.appendMessage(test, {
-				message: e.Output,
-				severity: TestMessageSeverity.Information,
-				location: new Location(test.uri, test.range)
-			});
-			break;
+			if (/^(=== RUN|\s*--- (FAIL|PASS): )/.test(e.Output)) {
+				return;
+			}
+
+			if (record.has(test)) record.get(test).push(e.Output);
+			else record.set(test, [e.Output]);
+			return;
+
 		default:
 			console.log(e);
-			break;
+			return;
+	}
+}
+
+function processRecordedOutput<T>(run: TestRun<T>, test: TestItem, output: string[]) {
+	// mostly copy and pasted from https://gitlab.com/firelizzard/vscode-go-test-adapter/-/blob/733443d229df68c90145a5ae7ed78ca64dec6f43/src/tests.ts
+	type message = { all: string; error?: string };
+	const parsed = new Map<string, message>();
+	let current: message | undefined;
+
+	for (const item of output) {
+		const fileAndLine = item.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
+		if (fileAndLine) {
+			current = { all: fileAndLine.groups.message };
+			parsed.set(`${fileAndLine.groups.file}:${fileAndLine.groups.line}`, current);
+			continue;
+		}
+
+		if (!current) continue;
+
+		const entry = item.match(/^\s*(?:(?<name>[^:]+): *| +)\t(?<message>.*\n)$/);
+		if (!entry) continue;
+
+		current.all += entry.groups.message;
+		if (entry.groups.name == 'Error') {
+			current.error = entry.groups.message;
+		} else if (!entry.groups.name && current.error) current.error += entry.groups.message;
+	}
+
+	const dir = Uri.joinPath(test.uri, '..');
+	for (const [location, { all, error }] of parsed.entries()) {
+		const hover = (error || all).trim();
+		const message = hover.split('\n')[0].replace(/:\s+$/, '');
+
+		const i = location.lastIndexOf(':');
+		const file = location.substring(0, i);
+		const line = Number(location.substring(i + 1)) - 1;
+
+		run.appendMessage(test, {
+			message,
+			severity: error ? TestMessageSeverity.Error : TestMessageSeverity.Information,
+			location: new Location(Uri.joinPath(dir, file), new Position(line, 0))
+		});
 	}
 }
 
@@ -667,6 +746,7 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 			run.setState(item, TestResultState.Queued);
 
 			// Remove any subtests
+			item.canResolveChildren = false;
 			Array.from(item.children.values()).forEach((x) => x.dispose());
 
 			const uri = Uri.parse(item.id);
@@ -677,6 +757,7 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 			}
 		}
 
+		const record = new Map<TestItem, string[]>();
 		const testFns = Object.keys(tests);
 		const benchmarkFns = Object.keys(benchmarks);
 
@@ -688,12 +769,12 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 				outputChannel,
 				dir: uri.fsPath,
 				functions: testFns,
-				goTestOutputConsumer: (e) => consumeGoTestEvent(ctrl, run, tests, e)
+				goTestOutputConsumer: (e) => consumeGoTestEvent(ctrl, run, tests, record, e)
 			});
 		}
 
 		if (benchmarkFns.length) {
-			const failed = new Set<string>();
+			const complete = new Set<TestItem>();
 			await goTest({
 				goConfig,
 				flags,
@@ -702,14 +783,14 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 				dir: uri.fsPath,
 				functions: benchmarkFns,
 				isBenchmark: true,
-				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(ctrl, run, benchmarks, failed, e)
+				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(ctrl, run, benchmarks, complete, e)
 			});
 
-			for (const name in benchmarks) {
-				if (!failed.has(name)) {
-					run.setState(benchmarks[name], TestResultState.Passed);
-				}
-			}
+			passBenchmarks(run, benchmarks, complete);
+		}
+
+		for (const [test, output] of record.entries()) {
+			processRecordedOutput(run, test, output);
 		}
 	}
 
