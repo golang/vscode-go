@@ -8,7 +8,8 @@ import {
 	Uri,
 	DocumentSymbol,
 	SymbolKind,
-	FileType
+	FileType,
+	WorkspaceFolder
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath } from './goModules';
@@ -28,6 +29,57 @@ export function setupTestExplorer(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		workspace.onDidChangeTextDocument((e) => documentUpdate(ctrl, e.document).catch((err) => console.log(err)))
+	);
+
+	const watcher = workspace.createFileSystemWatcher('**/*_test.go', false, true, false);
+	context.subscriptions.push(watcher);
+	watcher.onDidCreate(async (e) => await documentUpdate(ctrl, await workspace.openTextDocument(e)));
+	watcher.onDidDelete(async (e) => {
+		const id = testID(e, 'file');
+		function find(parent: TestItem): TestItem {
+			for (const item of parent.children.values()) {
+				if (item.id == id) {
+					return item;
+				}
+
+				const uri = Uri.parse(item.id);
+				if (!e.path.startsWith(uri.path)) {
+					continue;
+				}
+
+				const found = find(item);
+				if (found) {
+					return found;
+				}
+			}
+		}
+
+		const found = find(ctrl.root);
+		if (found) {
+			found.dispose();
+			removeIfEmpty(found.parent);
+		}
+	});
+
+	context.subscriptions.push(
+		workspace.onDidChangeWorkspaceFolders(async (e) => {
+			const items = Array.from(ctrl.root.children.values());
+			for (const item of items) {
+				const uri = Uri.parse(item.id);
+				if (uri.query == 'package') {
+					continue;
+				}
+
+				const ws = workspace.getWorkspaceFolder(uri);
+				if (!ws) {
+					item.dispose();
+				}
+			}
+
+			if (e.added) {
+				await resolveChildren(ctrl, ctrl.root);
+			}
+		})
 	);
 }
 
@@ -95,10 +147,52 @@ async function getModule(ctrl: TestController, uri: Uri): Promise<TestItem> {
 	return item;
 }
 
+async function getWorkspace(ctrl: TestController, ws: WorkspaceFolder): Promise<TestItem> {
+	const existing = getItem(ctrl.root, ws.uri, 'workspace');
+	if (existing) {
+		return existing;
+	}
+
+	// Use the workspace folder name as the label
+	const item = createItem(ctrl, ctrl.root, ws.name, ws.uri, 'workspace');
+	item.canResolveChildren = true;
+	return item;
+}
+
 async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
-	// If the package is not in a module, add it as a child of the root
+	let item: TestItem;
+
 	const modDir = await getModFolderPath(uri, true);
-	if (!modDir) {
+	const wsfolder = workspace.getWorkspaceFolder(uri);
+	if (modDir) {
+		// If the package is in a module, add it as a child of the module
+		const modUri = uri.with({ path: modDir });
+		const module = await getModule(ctrl, modUri);
+		const existing = getItem(module, uri, 'package');
+		if (existing) {
+			return existing;
+		}
+
+		if (uri.path == modUri.path) {
+			return module;
+		}
+
+		const label = uri.path.startsWith(modUri.path) ? uri.path.substring(modUri.path.length + 1) : uri.path;
+		item = createItem(ctrl, module, label, uri, 'package');
+	} else if (wsfolder) {
+		// If the package is in a workspace folder, add it as a child of the workspace
+		const workspace = await getWorkspace(ctrl, wsfolder);
+		const existing = getItem(workspace, uri, 'package');
+		if (existing) {
+			return existing;
+		}
+
+		const label = uri.path.startsWith(wsfolder.uri.path)
+			? uri.path.substring(wsfolder.uri.path.length + 1)
+			: uri.path;
+		item = createItem(ctrl, workspace, label, uri, 'package');
+	} else {
+		// Otherwise, add it directly to the root
 		const existing = getItem(ctrl.root, uri, 'package');
 		if (existing) {
 			return existing;
@@ -106,21 +200,9 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 
 		const srcPath = path.join(getCurrentGoPath(uri), 'src');
 		const label = uri.path.startsWith(srcPath) ? uri.path.substring(srcPath.length + 1) : uri.path;
-		const item = createItem(ctrl, ctrl.root, label, uri, 'package');
-		item.canResolveChildren = true;
-		return item;
+		item = createItem(ctrl, ctrl.root, label, uri, 'package');
 	}
 
-	// Otherwise, add it as a child of the module
-	const modUri = uri.with({ path: modDir });
-	const module = await getModule(ctrl, modUri);
-	const existing = getItem(module, uri, 'package');
-	if (existing) {
-		return existing;
-	}
-
-	const label = uri.path.startsWith(modUri.path) ? uri.path.substring(modUri.path.length + 1) : uri.path;
-	const item = createItem(ctrl, module, label, uri, 'package');
 	item.canResolveChildren = true;
 	return item;
 }
@@ -192,80 +274,167 @@ async function loadFileTests(ctrl: TestController, doc: TextDocument) {
 	removeIfEmpty(item);
 }
 
-async function containsGoFiles(uri: Uri): Promise<boolean> {
-	for (const [file, type] of await workspace.fs.readDirectory(uri)) {
-		if (file.startsWith('.')) {
-			continue;
-		}
+enum WalkStop {
+	None = 0,
+	Abort,
+	Current,
+	Files,
+	Directories
+}
 
-		switch (type) {
-			case FileType.File:
-				if (file.endsWith('.go')) {
-					return true;
-				}
-				break;
+// Recursively walk a directory, breadth first
+async function walk(
+	uri: Uri,
+	cb: (dir: Uri, file: string, type: FileType) => Promise<WalkStop | undefined>
+): Promise<void> {
+	let dirs = [uri];
 
-			case FileType.Directory:
-				if (await containsGoFiles(Uri.joinPath(uri, file))) {
-					return true;
+	// While there are directories to be scanned
+	while (dirs.length) {
+		const d = dirs;
+		dirs = [];
+
+		outer: for (const uri of d) {
+			const dirs2 = [];
+			let skipFiles = false,
+				skipDirs = false;
+
+			// Scan the directory
+			inner: for (const [file, type] of await workspace.fs.readDirectory(uri)) {
+				if ((skipFiles && type == FileType.File) || (skipDirs && type == FileType.Directory)) {
+					continue;
 				}
-				break;
+
+				// Ignore all dotfiles
+				if (file.startsWith('.')) {
+					continue;
+				}
+
+				if (type == FileType.Directory) {
+					dirs2.push(Uri.joinPath(uri, file));
+				}
+
+				const s = await cb(uri, file, type);
+				switch (s) {
+					case WalkStop.Abort:
+						// Immediately abort the entire walk
+						return;
+
+					case WalkStop.Current:
+						// Immediately abort the current directory
+						continue outer;
+
+					case WalkStop.Files:
+						// Skip all subsequent files in the current directory
+						skipFiles = true;
+						if (skipFiles && skipDirs) {
+							break inner;
+						}
+						break;
+
+					case WalkStop.Directories:
+						// Skip all subsequent directories in the current directory
+						skipDirs = true;
+						if (skipFiles && skipDirs) {
+							break inner;
+						}
+						break;
+				}
+			}
+
+			// Add subdirectories to the recursion list
+			dirs.push(...dirs2);
 		}
 	}
 }
 
+async function walkWorkspaces(uri: Uri) {
+	const found = new Map<string, boolean>();
+	await walk(uri, async (dir, file, type) => {
+		if (type != FileType.File) {
+			return;
+		}
+
+		if (file == 'go.mod') {
+			found.set(dir.toString(), true);
+			return WalkStop.Current;
+		}
+
+		if (file.endsWith('.go')) {
+			found.set(dir.toString(), false);
+		}
+	});
+	return found;
+}
+
 async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<any>) {
-	let called = false;
-	for (const [file, type] of await workspace.fs.readDirectory(uri)) {
-		if (file.startsWith('.')) {
-			continue;
+	await walk(uri, async (dir, file, type) => {
+		if (file.endsWith('_test.go')) {
+			await cb(dir);
+			return WalkStop.Files;
 		}
-
-		switch (type) {
-			case FileType.File:
-				if (!called && file.endsWith('_test.go')) {
-					called = true;
-					await cb(uri);
-				}
-				break;
-
-			case FileType.Directory:
-				await walkPackages(Uri.joinPath(uri, file), cb);
-				break;
-		}
-	}
+	});
 }
 
 async function resolveChildren(ctrl: TestController, item: TestItem) {
 	if (!item.parent) {
+		// Dispose of package entries at the root if they are now part of a workspace folder
+		const items = Array.from(ctrl.root.children.values());
+		for (const item of items) {
+			const uri = Uri.parse(item.id);
+			if (uri.query !== 'package') {
+				continue;
+			}
+
+			if (workspace.getWorkspaceFolder(uri)) {
+				item.dispose();
+			}
+		}
+
+		// Create entries for all modules and workspaces
 		for (const folder of workspace.workspaceFolders || []) {
-			if (await containsGoFiles(folder.uri)) {
-				await getModule(ctrl, folder.uri);
+			const found = await walkWorkspaces(folder.uri);
+			let needWorkspace = false;
+			for (const [uri, isMod] of found.entries()) {
+				if (!isMod) {
+					needWorkspace = true;
+					continue;
+				}
+
+				await getModule(ctrl, Uri.parse(uri));
+			}
+
+			// If the workspace folder contains any Go files not in a module, create a workspace entry
+			if (needWorkspace) {
+				await getWorkspace(ctrl, folder);
 			}
 		}
 		return;
 	}
 
 	const uri = Uri.parse(item.id);
-	switch (uri.query) {
-		case 'module':
-			await walkPackages(uri, (uri) => getPackage(ctrl, uri));
-			break;
+	if (uri.query == 'module' || uri.query == 'workspace') {
+		// Create entries for all packages in the module or workspace
+		await walkPackages(uri, async (uri) => {
+			await getPackage(ctrl, uri);
+		});
+	}
 
-		case 'package':
-			for (const [file, type] of await workspace.fs.readDirectory(uri)) {
-				if (type !== FileType.File || !file.endsWith('_test.go')) {
-					continue;
-				}
-
-				await getFile(ctrl, Uri.joinPath(uri, file));
+	if (uri.query == 'module' || uri.query == 'package') {
+		// Create entries for all test files in the package
+		for (const [file, type] of await workspace.fs.readDirectory(uri)) {
+			if (type !== FileType.File || !file.endsWith('_test.go')) {
+				continue;
 			}
-			break;
 
-		case 'file':
-			const doc = await workspace.openTextDocument(uri);
-			await loadFileTests(ctrl, doc);
-			break;
+			await getFile(ctrl, Uri.joinPath(uri, file));
+		}
+	}
+
+	if (uri.query == 'file') {
+		// Create entries for all test functions in a file
+		const doc = await workspace.openTextDocument(uri);
+		await loadFileTests(ctrl, doc);
 	}
 }
 
