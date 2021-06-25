@@ -66,6 +66,7 @@
     "@types/deep-equal": "^1.0.1",
     "@types/fs-extra": "^8.1.0",
     "@types/glob": "^7.1.1",
+    "@types/lodash": "^4.14.170",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",

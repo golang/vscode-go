@@ -12,10 +12,22 @@ import { dirname } from 'path';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
+import * as lodash from 'lodash';
 import vscode = require('vscode');
 
-// Supports only passing interface, see TODO in implCursor to finish
-const inputRegex = /^(\w+\ \*?\w+\ )?([\w./]+)$/;
+class InterfaceItem implements vscode.QuickPickItem {
+	public label: string;
+	public name: string;
+	public package: string;
+	public location: vscode.Location;
+
+	constructor(public symbol: vscode.SymbolInformation) {
+		this.label = symbol.name + ' ' + symbol.containerName;
+		this.name = symbol.name;
+		this.package = symbol.containerName;
+		this.location = symbol.location;
+	}
+}
 
 export function implCursor() {
 	const editor = vscode.window.activeTextEditor;
@@ -24,27 +36,46 @@ export function implCursor() {
 		return;
 	}
 	const cursor = editor.selection;
-	return vscode.window
-		.showInputBox({
-			placeHolder: 'f *File io.Closer',
-			prompt: 'Enter receiver and interface to implement.'
-		})
-		.then((implInput) => {
-			if (typeof implInput === 'undefined') {
-				return;
-			}
-			const matches = implInput.match(inputRegex);
-			if (!matches) {
-				vscode.window.showInformationMessage(`Not parsable input: ${implInput}`);
-				return;
-			}
+	const quickPick = vscode.window.createQuickPick();
+	quickPick.placeholder = 'Input interface name (e.g. client)';
 
-			// TODO: automatically detect type name at cursor
-			// if matches[1] is undefined then detect receiver type
-			// take first character and use as receiver name
+	const search = function (keyword: string) {
+		console.debug('got: ', keyword);
+		quickPick.busy = true;
+		vscode.commands
+			.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', keyword)
+			.then((symbols) => {
+				if (symbols === undefined) {
+					return;
+				}
 
-			runGoImpl([matches[1], matches[2]], cursor.start, editor);
-		});
+				quickPick.items = symbols
+					.filter((symbol) => symbol.kind === vscode.SymbolKind.Interface)
+					.map((symbol) => {
+						return new InterfaceItem(symbol);
+					});
+			});
+
+		quickPick.busy = false;
+	};
+
+	quickPick.onDidChangeValue(lodash.debounce(search, 250));
+
+	quickPick.onDidChangeSelection((selections: vscode.QuickPickItem[]) => {
+		if (typeof selections === 'undefined') {
+			return;
+		}
+		console.debug('onDidChangeSelection ', selections);
+		const item = selections[0];
+		if (item instanceof InterfaceItem) {
+			console.debug(item);
+			runGoImpl(['ReceiverName__ *Receiver__', item.package + '.' + item.name], cursor.start, editor);
+		}
+	});
+
+	quickPick.show();
+
+	return;
 }
 
 function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor) {
@@ -64,9 +95,14 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 				return;
 			}
 
-			editor.edit((editBuilder) => {
-				editBuilder.insert(insertPos, stdout);
-			});
+			// replace ReceiverName_ and Receiver__ with placeholders
+			let stub = '\n' + stdout + '\n';
+			stub = stub.replace('(ReceiverName__ *Receiver__)', '($0 *$1)');
+			stub = stub.replace(new RegExp('ReceiverName__', 'g'), '${0:r}');
+			stub = stub.replace(new RegExp('Receiver__', 'g'), '${1:receiver}');
+
+			const snippet = new vscode.SnippetString(stub);
+			editor.insertSnippet(snippet, insertPos);
 		}
 	);
 	if (p.pid) {
