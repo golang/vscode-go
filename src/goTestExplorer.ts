@@ -34,7 +34,7 @@ export function setupTestExplorer(context: ExtensionContext) {
 	ctrl.root.label = 'Go';
 	ctrl.root.canResolveChildren = true;
 	ctrl.resolveChildrenHandler = (...args) => resolveChildren(ctrl, ...args);
-	ctrl.runHandler = (request, token) => {
+	ctrl.runHandler = (request) => {
 		// TODO handle cancelation
 		runTest(ctrl, request);
 	};
@@ -402,8 +402,8 @@ async function walkWorkspaces(uri: Uri) {
 	return found;
 }
 
-async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<any>) {
-	await walk(uri, async (dir, file, type) => {
+async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
+	await walk(uri, async (dir, file) => {
 		if (file.endsWith('_test.go')) {
 			await cb(dir);
 			return WalkStop.Files;
@@ -538,7 +538,8 @@ class TestRunOutput<T> implements OutputChannel {
 	}
 
 	clear() {}
-	show(...args: any[]) {}
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	show(...args: unknown[]) {}
 	hide() {}
 	dispose() {}
 }
@@ -548,7 +549,7 @@ function resolveTestName(ctrl: TestController, tests: Record<string, TestItem>, 
 		return;
 	}
 
-	const parts = name.split(/[#\/]+/);
+	const parts = name.split(/[#/]+/);
 	let test = tests[parts[0]];
 	if (!test) {
 		return;
@@ -594,7 +595,7 @@ function consumeGoBenchmarkEvent<T>(
 
 	// Started: "BenchmarkFooBar"
 	// Completed: "BenchmarkFooBar-4    123456    123.4 ns/op    123 B/op    12 allocs/op"
-	const m = e.Output.match(/^(?<name>Benchmark[\/\w]+)(?:-(?<procs>\d+)\s+(?<result>.*))?(?:$|\n)/);
+	const m = e.Output.match(/^(?<name>Benchmark[/\w]+)(?:-(?<procs>\d+)\s+(?<result>.*))?(?:$|\n)/);
 	if (!m) {
 		return;
 	}
@@ -696,7 +697,7 @@ function processRecordedOutput<T>(run: TestRun<T>, test: TestItem, output: strin
 		if (!entry) continue;
 
 		current.all += entry.groups.message;
-		if (entry.groups.name == 'Error') {
+		if (entry.groups.name === 'Error') {
 			current.error = entry.groups.message;
 		} else if (!entry.groups.name && current.error) current.error += entry.groups.message;
 	}

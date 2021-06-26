@@ -36,10 +36,8 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 				return resolve('');
 			}
 			const [goMod] = stdout.split('\n');
-			if (goMod == '/dev/null' || goMod == 'NUL')
-				resolve('');
-			else
-				resolve(goMod);
+			if (goMod === '/dev/null' || goMod === 'NUL') resolve('');
+			else resolve(goMod);
 		});
 	});
 }
