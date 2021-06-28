@@ -69,7 +69,7 @@ We can't diagnose a problem from just a description. When filing an issue, pleas
 
 1. Your Go version: `go version`
 1. Your `gopls` version: `gopls -v version`
-1. Your vscode version: `code -v`
+1. Your vscode version: `code -v` (The minimum required VS Code version is in the ["engines"](https://github.com/golang/vscode-go/blob/master/package.json#L89) attribute in the package.json file.)
 1. Your Go extension version: `Extensions: Show Installed Extensions`
 1. Your Go environment: `go env` in the workspace folder
 1. Relevant VS Code settings: run `Preferences: Open Settings (JSON)` and include anything in a `[go]` block, and anything that starts with `go.` or `gopls.`
