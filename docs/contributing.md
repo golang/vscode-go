@@ -34,7 +34,7 @@ Please note that extra configuration is required to build and run the [Debug Ada
 
 ### Setup
 
-1) Install [node](https://nodejs.org/en/).
+1) Install [node](https://nodejs.org/en/). Note: make sure that you are using `npm v7` or higher. The file format for `package-lock.json` (changed significantly)[https://docs.npmjs.com/cli/v7/configuring-npm/package-lock-json#file-format] in `npm v7`.
 2) Clone the repository, run `npm install`, and open VS Code:
 
     ```bash
