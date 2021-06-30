@@ -503,11 +503,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			});
 		});
 
-		test("should produce error for invalid 'pathFormat'", async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test("should produce error for invalid 'pathFormat'", async () => {
 			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
 			await initializeDebugConfig(config);
 			try {
@@ -1873,11 +1869,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				return { program: wd, output };
 			}
 
-			test('should stop on a breakpoint set in file with substituted path', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
-				}
-
+			test('should stop on a breakpoint set in file with substituted path', async () => {
 				const { program, output } = await copyBuildDelete('baseTest');
 				const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
 				const BREAKPOINT_LINE = 11;
