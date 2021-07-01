@@ -1031,8 +1031,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should set breakpoints during continue', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
+		test('should set breakpoints during continue (legacy)', async function () {
+			if (isDlvDap) {
 				this.skip(); // not working in dlv-dap.
 			}
 
@@ -1060,6 +1060,82 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				}),
 				dc.assertStoppedLocation('breakpoint', helloLocation)
 			]);
+		});
+
+		async function setBreakpointsWhileRunning(resumeFunc: () => void) {
+			const PROGRAM = path.join(DATA_ROOT, 'sleep');
+
+			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
+			const SLEEP_LINE = 11;
+			const setupBreakpoint = getBreakpointLocation(FILE, SLEEP_LINE);
+
+			const HELLO_LINE = 10;
+			const resumeBreakpoint = getBreakpointLocation(FILE, HELLO_LINE);
+
+			const config = {
+				name: 'Launch file',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, setupBreakpoint);
+
+			// The program is now stopped at the line containing time.Sleep().
+			// Issue a next request, followed by a setBreakpointsRequest.
+			resumeFunc();
+
+			// Note: the current behavior of setting a breakpoint during a next
+			// request will cause the step to be interrupted, so it may not be
+			// stopped on the next line.
+			await Promise.all([
+				dc.setBreakpointsRequest({
+					lines: [resumeBreakpoint.line],
+					breakpoints: [{ line: resumeBreakpoint.line, column: 0 }],
+					source: { path: resumeBreakpoint.path }
+				}),
+				dc.assertStoppedLocation('pause', {})
+			]);
+
+			// Once the 'step' has completed, continue the program and
+			// make sure the breakpoint set while the program was nexting
+			// is succesfully hit.
+			await Promise.all([
+				dc.continueRequest({ threadId: 1 }),
+				dc.assertStoppedLocation('breakpoint', resumeBreakpoint)
+			]);
+		}
+
+		test('should set breakpoints during continue', async function () {
+			if (!isDlvDap) {
+				this.skip();
+			}
+			await setBreakpointsWhileRunning(async () => {
+				const nextResponse = await dc.continueRequest({ threadId: 1 });
+				assert.ok(nextResponse.success);
+			});
+		});
+
+		test('should set breakpoints during next', async function () {
+			if (!isDlvDap) {
+				this.skip();
+			}
+			await setBreakpointsWhileRunning(async () => {
+				const nextResponse = await dc.nextRequest({ threadId: 1 });
+				assert.ok(nextResponse.success);
+			});
+		});
+
+		test('should set breakpoints during step out', async function () {
+			if (!isDlvDap) {
+				this.skip();
+			}
+
+			await setBreakpointsWhileRunning(async () => {
+				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
+				assert.ok(stepOutResponse.success);
+			});
 		});
 
 		async function setBreakpointsDuringStep(nextFunc: () => void) {
@@ -1107,9 +1183,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		}
 
-		test('should set breakpoints during next', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+		test('should set breakpoints during next (legacy)', async function () {
+			if (isDlvDap) {
+				this.skip();
 			}
 			await setBreakpointsDuringStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
@@ -1117,9 +1193,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			});
 		});
 
-		test('should set breakpoints during step out', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // Skipped due to github.com/golang/vscode-go/issues/1390
+		test('should set breakpoints during step out (legacy)', async function () {
+			if (isDlvDap) {
+				this.skip();
 			}
 
 			await setBreakpointsDuringStep(async () => {
