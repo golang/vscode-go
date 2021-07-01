@@ -603,9 +603,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 		});
 
-		test('invalid flags are passed to dlv but should be caught by dlv', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
+		test('invalid flags are passed to dlv but should be caught by dlv (legacy)', async function () {
+			if (isDlvDap) {
+				this.skip();
 			}
 
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
@@ -629,6 +629,29 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 					dc.launchRequest(debugConfig as any);
 				})
 			]);
+		});
+
+		test('invalid flags are passed to dlv but should be caught by dlv', async function () {
+			if (!isDlvDap) {
+				this.skip(); // not working in dlv-dap.
+			}
+
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				dlvFlags: ['--invalid']
+			};
+			try {
+				await initializeDebugConfig(config);
+				await dc.initializeRequest();
+			} catch (err) {
+				return;
+			}
+			throw new Error('does not report error on invalid delve flag');
 		});
 
 		test('should handle threads request after initialization', async () => {
@@ -672,11 +695,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			assert.ok(response.success);
 		});
 
-		test('user-specified --listen flag should be ignored', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('user-specified --listen flag should be ignored', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
