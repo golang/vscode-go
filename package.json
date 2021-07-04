@@ -554,7 +554,7 @@
                   "replay",
                   "core"
                 ],
-                "description": "One of `auto`, `debug`, `test`, `exec`, `remote`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
+                "description": "One of `auto`, `debug`, `test`, `exec`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
                 "default": "auto"
               },
               "traceDirPath": {
