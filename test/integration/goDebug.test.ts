@@ -1483,11 +1483,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should disconnect while continuing on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while continuing on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1504,11 +1500,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect with multiple disconnectRequests', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect with multiple disconnectRequests', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1524,16 +1516,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			await Promise.all([
-				dc.disconnectRequest({ restart: false }).then(() => dc.disconnectRequest({ restart: false })),
+				new Promise<void>((resolve) => {
+					dc.disconnectRequest({ restart: false });
+					dc.disconnectRequest({ restart: false });
+					resolve();
+				}),
 				dc.waitForEvent('terminated')
 			]);
 		});
 
-		test('should disconnect after continue', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect after continue', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1553,11 +1545,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while nexting', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while nexting', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
 			const BREAKPOINT_LINE = 11;
@@ -1580,11 +1568,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on pause', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on pause', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1604,11 +1588,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on breakpoint', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 			const FILE = path.join(PROGRAM, 'loop.go');
 			const BREAKPOINT_LINE = 5;
@@ -1627,11 +1607,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1649,11 +1625,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on next', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on next', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
