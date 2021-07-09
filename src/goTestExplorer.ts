@@ -16,7 +16,10 @@ import {
 	TestRun,
 	TestMessageSeverity,
 	Location,
-	Position
+	Position,
+	TextDocumentChangeEvent,
+	WorkspaceFoldersChangeEvent,
+	CancellationToken
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
@@ -28,30 +31,83 @@ import { getTestFlags, goTest, GoTestOutput } from './testUtils';
 // We could use TestItem.data, but that may be removed
 const symbols = new WeakMap<TestItem, DocumentSymbol>();
 
-export function setupTestExplorer(context: ExtensionContext) {
-	const ctrl = test.createTestController('go');
-	context.subscriptions.push(ctrl);
-	ctrl.root.label = 'Go';
-	ctrl.root.canResolveChildren = true;
-	ctrl.resolveChildrenHandler = (...args) => resolveChildren(ctrl, ...args);
-	ctrl.runHandler = (request) => {
-		// TODO handle cancelation
-		runTest(ctrl, request);
-	};
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace TestExplorer {
+	// exported for tests
 
-	context.subscriptions.push(
-		workspace.onDidOpenTextDocument((e) => documentUpdate(ctrl, e).catch((err) => console.log(err)))
-	);
+	export interface FileSystem {
+		readFile(uri: Uri): Thenable<Uint8Array>;
+		readDirectory(uri: Uri): Thenable<[string, FileType][]>;
+	}
 
-	context.subscriptions.push(
-		workspace.onDidChangeTextDocument((e) => documentUpdate(ctrl, e.document).catch((err) => console.log(err)))
-	);
+	export interface Workspace {
+		readonly fs: FileSystem;
+		readonly workspaceFolders: readonly WorkspaceFolder[] | undefined;
 
-	const watcher = workspace.createFileSystemWatcher('**/*_test.go', false, true, false);
-	context.subscriptions.push(watcher);
-	watcher.onDidCreate(async (e) => await documentUpdate(ctrl, await workspace.openTextDocument(e)));
-	watcher.onDidDelete(async (e) => {
-		const id = testID(e, 'file');
+		openTextDocument(uri: Uri): Thenable<TextDocument>;
+		getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined;
+	}
+}
+
+export class TestExplorer {
+	static setup(context: ExtensionContext) {
+		const ctrl = test.createTestController('go');
+		const inst = new this(
+			ctrl,
+			workspace,
+			(e) => console.log(e),
+			new GoDocumentSymbolProvider().provideDocumentSymbols
+		);
+
+		context.subscriptions.push(workspace.onDidOpenTextDocument((x) => inst.didOpenTextDocument(x)));
+		context.subscriptions.push(workspace.onDidChangeTextDocument((x) => inst.didChangeTextDocument(x)));
+		context.subscriptions.push(workspace.onDidChangeWorkspaceFolders((x) => inst.didChangeWorkspaceFolders(x)));
+
+		const watcher = workspace.createFileSystemWatcher('**/*_test.go', false, true, false);
+		context.subscriptions.push(watcher);
+		context.subscriptions.push(watcher.onDidCreate((x) => inst.didCreateFile(x)));
+		context.subscriptions.push(watcher.onDidDelete((x) => inst.didDeleteFile(x)));
+	}
+
+	constructor(
+		public ctrl: TestController,
+		public ws: TestExplorer.Workspace,
+		public errored: (e: unknown) => void,
+		public provideDocumentSymbols: (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>
+	) {
+		// TODO handle cancelation of test runs
+		ctrl.root.label = 'Go';
+		ctrl.root.canResolveChildren = true;
+		ctrl.resolveChildrenHandler = (...args) => resolveChildren(this, ...args);
+		ctrl.runHandler = (request) => runTest(this, request);
+	}
+
+	async didOpenTextDocument(doc: TextDocument) {
+		try {
+			await documentUpdate(this, doc);
+		} catch (e) {
+			this.errored(e);
+		}
+	}
+
+	async didChangeTextDocument(e: TextDocumentChangeEvent) {
+		try {
+			await documentUpdate(this, e.document);
+		} catch (e) {
+			this.errored(e);
+		}
+	}
+
+	async didCreateFile(file: Uri) {
+		try {
+			await documentUpdate(this, await this.ws.openTextDocument(file));
+		} catch (e) {
+			this.errored(e);
+		}
+	}
+
+	async didDeleteFile(file: Uri) {
+		const id = testID(file, 'file');
 		function find(parent: TestItem): TestItem {
 			for (const item of parent.children.values()) {
 				if (item.id === id) {
@@ -59,7 +115,7 @@ export function setupTestExplorer(context: ExtensionContext) {
 				}
 
 				const uri = Uri.parse(item.id);
-				if (!e.path.startsWith(uri.path)) {
+				if (!file.path.startsWith(uri.path)) {
 					continue;
 				}
 
@@ -70,33 +126,31 @@ export function setupTestExplorer(context: ExtensionContext) {
 			}
 		}
 
-		const found = find(ctrl.root);
+		const found = find(this.ctrl.root);
 		if (found) {
 			found.dispose();
 			disposeIfEmpty(found.parent);
 		}
-	});
+	}
 
-	context.subscriptions.push(
-		workspace.onDidChangeWorkspaceFolders(async (e) => {
-			const items = Array.from(ctrl.root.children.values());
-			for (const item of items) {
-				const uri = Uri.parse(item.id);
-				if (uri.query === 'package') {
-					continue;
-				}
-
-				const ws = workspace.getWorkspaceFolder(uri);
-				if (!ws) {
-					item.dispose();
-				}
+	async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
+		const items = Array.from(this.ctrl.root.children.values());
+		for (const item of items) {
+			const uri = Uri.parse(item.id);
+			if (uri.query === 'package') {
+				continue;
 			}
 
-			if (e.added) {
-				await resolveChildren(ctrl, ctrl.root);
+			const ws = this.ws.getWorkspaceFolder(uri);
+			if (!ws) {
+				item.dispose();
 			}
-		})
-	);
+		}
+
+		if (e.added) {
+			await resolveChildren(this, this.ctrl.root);
+		}
+	}
 }
 
 // Construct an ID for an item.
@@ -119,7 +173,7 @@ function getItem(parent: TestItem, uri: Uri, kind: string, name?: string): TestI
 
 // Create or Retrieve a child item.
 function getOrCreateItem(
-	ctrl: TestController,
+	{ ctrl }: TestExplorer,
 	parent: TestItem,
 	label: string,
 	uri: Uri,
@@ -137,7 +191,7 @@ function getOrCreateItem(
 
 // Create or Retrieve a sub test or benchmark. The ID will be of the form:
 //     file:///path/to/mod/file.go?test#TestXxx/A/B/C
-function getOrCreateSubTest(ctrl: TestController, item: TestItem, name: string): TestItem {
+function getOrCreateSubTest({ ctrl }: TestExplorer, item: TestItem, name: string): TestItem {
 	let uri = Uri.parse(item.id);
 	uri = uri.with({ fragment: `${uri.fragment}/${name}` });
 	const existing = item.children.get(uri.toString());
@@ -175,47 +229,47 @@ function disposeIfEmpty(item: TestItem) {
 }
 
 // Retrieve or create an item for a Go module.
-async function getModule(ctrl: TestController, uri: Uri): Promise<TestItem> {
-	const existing = getItem(ctrl.root, uri, 'module');
+async function getModule(expl: TestExplorer, uri: Uri): Promise<TestItem> {
+	const existing = getItem(expl.ctrl.root, uri, 'module');
 	if (existing) {
 		return existing;
 	}
 
 	// Use the module name as the label
 	const goMod = Uri.joinPath(uri, 'go.mod');
-	const contents = await workspace.fs.readFile(goMod);
+	const contents = await expl.ws.fs.readFile(goMod);
 	const modLine = contents.toString().split('\n', 2)[0];
 	const match = modLine.match(/^module (?<name>.*?)(?:\s|\/\/|$)/);
-	const item = getOrCreateItem(ctrl, ctrl.root, match.groups.name, uri, 'module');
+	const item = getOrCreateItem(expl, expl.ctrl.root, match.groups.name, uri, 'module');
 	item.canResolveChildren = true;
 	item.runnable = true;
 	return item;
 }
 
 // Retrieve or create an item for a workspace folder that is not a module.
-async function getWorkspace(ctrl: TestController, ws: WorkspaceFolder): Promise<TestItem> {
-	const existing = getItem(ctrl.root, ws.uri, 'workspace');
+async function getWorkspace(expl: TestExplorer, ws: WorkspaceFolder): Promise<TestItem> {
+	const existing = getItem(expl.ctrl.root, ws.uri, 'workspace');
 	if (existing) {
 		return existing;
 	}
 
 	// Use the workspace folder name as the label
-	const item = getOrCreateItem(ctrl, ctrl.root, ws.name, ws.uri, 'workspace');
+	const item = getOrCreateItem(expl, expl.ctrl.root, ws.name, ws.uri, 'workspace');
 	item.canResolveChildren = true;
 	item.runnable = true;
 	return item;
 }
 
 // Retrieve or create an item for a Go package.
-async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
+async function getPackage(expl: TestExplorer, uri: Uri): Promise<TestItem> {
 	let item: TestItem;
 
 	const modDir = await getModFolderPath(uri, true);
 	const wsfolder = workspace.getWorkspaceFolder(uri);
 	if (modDir) {
 		// If the package is in a module, add it as a child of the module
-		const modUri = uri.with({ path: modDir });
-		const module = await getModule(ctrl, modUri);
+		const modUri = uri.with({ path: modDir, query: '', fragment: '' });
+		const module = await getModule(expl, modUri);
 		const existing = getItem(module, uri, 'package');
 		if (existing) {
 			return existing;
@@ -226,10 +280,10 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 		}
 
 		const label = uri.path.startsWith(modUri.path) ? uri.path.substring(modUri.path.length + 1) : uri.path;
-		item = getOrCreateItem(ctrl, module, label, uri, 'package');
+		item = getOrCreateItem(expl, module, label, uri, 'package');
 	} else if (wsfolder) {
 		// If the package is in a workspace folder, add it as a child of the workspace
-		const workspace = await getWorkspace(ctrl, wsfolder);
+		const workspace = await getWorkspace(expl, wsfolder);
 		const existing = getItem(workspace, uri, 'package');
 		if (existing) {
 			return existing;
@@ -238,17 +292,17 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 		const label = uri.path.startsWith(wsfolder.uri.path)
 			? uri.path.substring(wsfolder.uri.path.length + 1)
 			: uri.path;
-		item = getOrCreateItem(ctrl, workspace, label, uri, 'package');
+		item = getOrCreateItem(expl, workspace, label, uri, 'package');
 	} else {
 		// Otherwise, add it directly to the root
-		const existing = getItem(ctrl.root, uri, 'package');
+		const existing = getItem(expl.ctrl.root, uri, 'package');
 		if (existing) {
 			return existing;
 		}
 
 		const srcPath = path.join(getCurrentGoPath(uri), 'src');
 		const label = uri.path.startsWith(srcPath) ? uri.path.substring(srcPath.length + 1) : uri.path;
-		item = getOrCreateItem(ctrl, ctrl.root, label, uri, 'package');
+		item = getOrCreateItem(expl, expl.ctrl.root, label, uri, 'package');
 	}
 
 	item.canResolveChildren = true;
@@ -257,16 +311,16 @@ async function getPackage(ctrl: TestController, uri: Uri): Promise<TestItem> {
 }
 
 // Retrieve or create an item for a Go file.
-async function getFile(ctrl: TestController, uri: Uri): Promise<TestItem> {
+async function getFile(expl: TestExplorer, uri: Uri): Promise<TestItem> {
 	const dir = path.dirname(uri.path);
-	const pkg = await getPackage(ctrl, uri.with({ path: dir }));
+	const pkg = await getPackage(expl, uri.with({ path: dir, query: '', fragment: '' }));
 	const existing = getItem(pkg, uri, 'file');
 	if (existing) {
 		return existing;
 	}
 
 	const label = path.basename(uri.path);
-	const item = getOrCreateItem(ctrl, pkg, label, uri, 'file');
+	const item = getOrCreateItem(expl, pkg, label, uri, 'file');
 	item.canResolveChildren = true;
 	item.runnable = true;
 	return item;
@@ -276,13 +330,7 @@ async function getFile(ctrl: TestController, uri: Uri): Promise<TestItem> {
 // benchmark, or example function, a test item will be created for it, if one
 // does not already exist. If the symbol is not a function and contains
 // children, those children will be processed recursively.
-async function processSymbol(
-	ctrl: TestController,
-	uri: Uri,
-	file: TestItem,
-	seen: Set<string>,
-	symbol: DocumentSymbol
-) {
+async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen: Set<string>, symbol: DocumentSymbol) {
 	// Skip TestMain(*testing.M) - allow TestMain(*testing.T)
 	if (symbol.name === 'TestMain' && /\*testing.M\)/.test(symbol.detail)) {
 		return;
@@ -290,7 +338,7 @@ async function processSymbol(
 
 	// Recursively process symbols that are nested
 	if (symbol.kind !== SymbolKind.Function) {
-		for (const sym of symbol.children) await processSymbol(ctrl, uri, file, seen, sym);
+		for (const sym of symbol.children) await processSymbol(expl, uri, file, seen, sym);
 		return;
 	}
 
@@ -307,7 +355,7 @@ async function processSymbol(
 		return existing;
 	}
 
-	const item = getOrCreateItem(ctrl, file, symbol.name, uri, kind, symbol.name);
+	const item = getOrCreateItem(expl, file, symbol.name, uri, kind, symbol.name);
 	item.range = symbol.range;
 	item.runnable = true;
 	// item.debuggable = true;
@@ -320,11 +368,11 @@ async function processSymbol(
 // Any previously existing tests that no longer have a corresponding symbol in
 // the file will be disposed. If the document contains no tests, it will be
 // disposed.
-async function processDocument(ctrl: TestController, doc: TextDocument) {
+async function processDocument(expl: TestExplorer, doc: TextDocument) {
 	const seen = new Set<string>();
-	const item = await getFile(ctrl, doc.uri);
-	const symbols = await new GoDocumentSymbolProvider().provideDocumentSymbols(doc, null);
-	for (const symbol of symbols) await processSymbol(ctrl, doc.uri, item, seen, symbol);
+	const item = await getFile(expl, doc.uri);
+	const symbols = await expl.provideDocumentSymbols(doc, null);
+	for (const symbol of symbols) await processSymbol(expl, doc.uri, item, seen, symbol);
 
 	for (const child of item.children.values()) {
 		const uri = Uri.parse(child.id);
@@ -347,6 +395,7 @@ enum WalkStop {
 
 // Recursively walk a directory, breadth first.
 async function walk(
+	fs: TestExplorer.FileSystem,
 	uri: Uri,
 	cb: (dir: Uri, file: string, type: FileType) => Promise<WalkStop | undefined>
 ): Promise<void> {
@@ -363,7 +412,7 @@ async function walk(
 				skipDirs = false;
 
 			// Scan the directory
-			inner: for (const [file, type] of await workspace.fs.readDirectory(uri)) {
+			inner: for (const [file, type] of await fs.readDirectory(uri)) {
 				if ((skipFiles && type === FileType.File) || (skipDirs && type === FileType.Directory)) {
 					continue;
 				}
@@ -414,9 +463,9 @@ async function walk(
 // Walk the workspace, looking for Go modules. Returns a map indicating paths
 // that are modules (value == true) and paths that are not modules but contain
 // Go files (value == false).
-async function walkWorkspaces(uri: Uri): Promise<Map<string, boolean>> {
+async function walkWorkspaces(fs: TestExplorer.FileSystem, uri: Uri): Promise<Map<string, boolean>> {
 	const found = new Map<string, boolean>();
-	await walk(uri, async (dir, file, type) => {
+	await walk(fs, uri, async (dir, file, type) => {
 		if (type !== FileType.File) {
 			return;
 		}
@@ -435,8 +484,8 @@ async function walkWorkspaces(uri: Uri): Promise<Map<string, boolean>> {
 
 // Walk the workspace, calling the callback for any directory that contains a Go
 // test file.
-async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
-	await walk(uri, async (dir, file) => {
+async function walkPackages(fs: TestExplorer.FileSystem, uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
+	await walk(fs, uri, async (dir, file) => {
 		if (file.endsWith('_test.go')) {
 			await cb(dir);
 			return WalkStop.Files;
@@ -445,7 +494,7 @@ async function walkPackages(uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
 }
 
 // Handle opened documents, document changes, and file creation.
-async function documentUpdate(ctrl: TestController, doc: TextDocument) {
+async function documentUpdate(expl: TestExplorer, doc: TextDocument) {
 	if (!doc.uri.path.endsWith('_test.go')) {
 		return;
 	}
@@ -455,29 +504,29 @@ async function documentUpdate(ctrl: TestController, doc: TextDocument) {
 		return;
 	}
 
-	await processDocument(ctrl, doc);
+	await processDocument(expl, doc);
 }
 
 // TestController.resolveChildrenHandler callback
-async function resolveChildren(ctrl: TestController, item: TestItem) {
+async function resolveChildren(expl: TestExplorer, item: TestItem) {
 	// The user expanded the root item - find all modules and workspaces
 	if (!item.parent) {
 		// Dispose of package entries at the root if they are now part of a workspace folder
-		const items = Array.from(ctrl.root.children.values());
+		const items = Array.from(expl.ctrl.root.children.values());
 		for (const item of items) {
 			const uri = Uri.parse(item.id);
 			if (uri.query !== 'package') {
 				continue;
 			}
 
-			if (workspace.getWorkspaceFolder(uri)) {
+			if (expl.ws.getWorkspaceFolder(uri)) {
 				item.dispose();
 			}
 		}
 
 		// Create entries for all modules and workspaces
-		for (const folder of workspace.workspaceFolders || []) {
-			const found = await walkWorkspaces(folder.uri);
+		for (const folder of expl.ws.workspaceFolders || []) {
+			const found = await walkWorkspaces(expl.ws.fs, folder.uri);
 			let needWorkspace = false;
 			for (const [uri, isMod] of found.entries()) {
 				if (!isMod) {
@@ -485,12 +534,12 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 					continue;
 				}
 
-				await getModule(ctrl, Uri.parse(uri));
+				await getModule(expl, Uri.parse(uri));
 			}
 
 			// If the workspace folder contains any Go files not in a module, create a workspace entry
 			if (needWorkspace) {
-				await getWorkspace(ctrl, folder);
+				await getWorkspace(expl, folder);
 			}
 		}
 		return;
@@ -500,26 +549,26 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 
 	// The user expanded a module or workspace - find all packages
 	if (uri.query === 'module' || uri.query === 'workspace') {
-		await walkPackages(uri, async (uri) => {
-			await getPackage(ctrl, uri);
+		await walkPackages(expl.ws.fs, uri, async (uri) => {
+			await getPackage(expl, uri);
 		});
 	}
 
 	// The user expanded a module or package - find all files
 	if (uri.query === 'module' || uri.query === 'package') {
-		for (const [file, type] of await workspace.fs.readDirectory(uri)) {
+		for (const [file, type] of await expl.ws.fs.readDirectory(uri)) {
 			if (type !== FileType.File || !file.endsWith('_test.go')) {
 				continue;
 			}
 
-			await getFile(ctrl, Uri.joinPath(uri, file));
+			await getFile(expl, Uri.joinPath(uri, file));
 		}
 	}
 
 	// The user expanded a file - find all functions
 	if (uri.query === 'file') {
-		const doc = await workspace.openTextDocument(uri.with({ query: '', fragment: '' }));
-		await processDocument(ctrl, doc);
+		const doc = await expl.ws.openTextDocument(uri.with({ query: '', fragment: '' }));
+		await processDocument(expl, doc);
 	}
 
 	// TODO(firelizzard18): If uri.query is test or benchmark, this is where we
@@ -530,7 +579,7 @@ async function resolveChildren(ctrl: TestController, item: TestItem) {
 // module/package/etc, minus exclusions. Map tests to the package they are
 // defined in, and track files.
 async function collectTests(
-	ctrl: TestController,
+	expl: TestExplorer,
 	item: TestItem,
 	excluded: TestItem[],
 	functions: Map<string, TestItem[]>,
@@ -545,11 +594,11 @@ async function collectTests(
 	const uri = Uri.parse(item.id);
 	if (!uri.fragment) {
 		if (!item.children.size) {
-			await resolveChildren(ctrl, item);
+			await resolveChildren(expl, item);
 		}
 
 		for (const child of item.children.values()) {
-			await collectTests(ctrl, child, excluded, functions, docs);
+			await collectTests(expl, child, excluded, functions, docs);
 		}
 		return;
 	}
@@ -592,7 +641,7 @@ class TestRunOutput<T> implements OutputChannel {
 // Resolve a test name to a test item. If the test name is TestXxx/Foo, Foo is
 // created as a child of TestXxx. The same is true for TestXxx#Foo and
 // TestXxx/#Foo.
-function resolveTestName(ctrl: TestController, tests: Record<string, TestItem>, name: string): TestItem | undefined {
+function resolveTestName(expl: TestExplorer, tests: Record<string, TestItem>, name: string): TestItem | undefined {
 	if (!name) {
 		return;
 	}
@@ -604,14 +653,14 @@ function resolveTestName(ctrl: TestController, tests: Record<string, TestItem>, 
 	}
 
 	for (const part of parts.slice(1)) {
-		test = getOrCreateSubTest(ctrl, test, part);
+		test = getOrCreateSubTest(expl, test, part);
 	}
 	return test;
 }
 
 // Process benchmark events (see test_events.md)
 function consumeGoBenchmarkEvent<T>(
-	ctrl: TestController,
+	expl: TestExplorer,
 	run: TestRun<T>,
 	benchmarks: Record<string, TestItem>,
 	complete: Set<TestItem>,
@@ -619,7 +668,7 @@ function consumeGoBenchmarkEvent<T>(
 ) {
 	if (e.Test) {
 		// Find (or create) the (sub)benchmark
-		const test = resolveTestName(ctrl, benchmarks, e.Test);
+		const test = resolveTestName(expl, benchmarks, e.Test);
 		if (!test) {
 			return;
 		}
@@ -655,7 +704,7 @@ function consumeGoBenchmarkEvent<T>(
 	}
 
 	// Find (or create) the (sub)benchmark
-	const test = resolveTestName(ctrl, benchmarks, m.groups.name);
+	const test = resolveTestName(expl, benchmarks, m.groups.name);
 	if (!test) {
 		return;
 	}
@@ -693,13 +742,13 @@ function passBenchmarks<T>(run: TestRun<T>, items: Record<string, TestItem>, com
 
 // Process test events (see test_events.md)
 function consumeGoTestEvent<T>(
-	ctrl: TestController,
+	expl: TestExplorer,
 	run: TestRun<T>,
 	tests: Record<string, TestItem>,
 	record: Map<TestItem, string[]>,
 	e: GoTestOutput
 ) {
-	const test = resolveTestName(ctrl, tests, e.Test);
+	const test = resolveTestName(expl, tests, e.Test);
 	if (!test) {
 		return;
 	}
@@ -781,22 +830,22 @@ function processRecordedOutput<T>(run: TestRun<T>, test: TestItem, output: strin
 }
 
 // Execute tests - TestController.runTest callback
-async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
+async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 	const collected = new Map<string, TestItem[]>();
 	const docs = new Set<Uri>();
 	for (const item of request.tests) {
-		await collectTests(ctrl, item, request.exclude, collected, docs);
+		await collectTests(expl, item, request.exclude, collected, docs);
 	}
 
 	// Save all documents that contain a test we're about to run, to ensure `go
 	// test` has the latest changes
 	await Promise.all(
 		Array.from(docs).map((uri) => {
-			workspace.openTextDocument(uri).then((doc) => doc.save());
+			expl.ws.openTextDocument(uri).then((doc) => doc.save());
 		})
 	);
 
-	const run = ctrl.createTestRun(request);
+	const run = expl.ctrl.createTestRun(request);
 	const outputChannel = new TestRunOutput(run);
 	const goConfig = getGoConfig();
 	for (const [dir, items] of collected.entries()) {
@@ -835,7 +884,7 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 				outputChannel,
 				dir: uri.fsPath,
 				functions: testFns,
-				goTestOutputConsumer: (e) => consumeGoTestEvent(ctrl, run, tests, record, e)
+				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, e)
 			});
 		}
 
@@ -850,7 +899,7 @@ async function runTest<T>(ctrl: TestController, request: TestRunRequest<T>) {
 				dir: uri.fsPath,
 				functions: benchmarkFns,
 				isBenchmark: true,
-				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(ctrl, run, benchmarks, complete, e)
+				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(expl, run, benchmarks, complete, e)
 			});
 
 			// Explicitly pass any incomplete benchmarks (see test_events.md)
