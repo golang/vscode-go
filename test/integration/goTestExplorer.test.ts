@@ -1,17 +1,25 @@
 import assert = require('assert');
 import path = require('path');
-import { DocumentSymbol, FileType, TestItem, Uri, TextDocument, SymbolKind, Range, Position } from 'vscode';
+import {
+	DocumentSymbol,
+	FileType,
+	TestItem,
+	Uri,
+	TextDocument,
+	SymbolKind,
+	Range,
+	Position,
+	TextDocumentContentChangeEvent
+} from 'vscode';
 import { packagePathToGoModPathMap as pkg2mod } from '../../src/goModules';
 import { TestExplorer } from '../../src/goTestExplorer';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
-interface ResolveChildrenTestCase {
+interface TestCase {
 	workspace: string[];
 	files: Files;
-	item?: [string, string][];
-	expect: string[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,7 +52,7 @@ function setup(folders: string[], files: Files) {
 				modpath = dir.path;
 			}
 		}
-		pkg2mod[dir.path] = modpath;
+		pkg2mod[dir.path] = modpath || '';
 		for (const dir of dirs) {
 			walk(dir, modpath);
 		}
@@ -52,29 +60,31 @@ function setup(folders: string[], files: Files) {
 
 	// prevent getModFolderPath from actually doing anything;
 	for (const pkg in pkg2mod) delete pkg2mod[pkg];
-	for (const dir of folders) walk(Uri.file(dir));
+	walk(Uri.file('/'));
 
-	return { ctrl, expl };
+	return { ctrl, expl, ws };
 }
 
-async function testResolveChildren(tc: ResolveChildrenTestCase) {
-	const { workspace, files, expect } = tc;
-	const { ctrl } = setup(workspace, files);
-
-	let item: TestItem = ctrl.root;
-	for (const [id, label] of tc.item || []) {
-		const uri = Uri.parse(id).with({ query: '' });
-		item = ctrl.createTestItem(id, label, item, uri);
+function assertTestItems(root: TestItem, expect: string[]) {
+	const actual: string[] = [];
+	function walk(item: TestItem) {
+		for (const child of item.children.values()) {
+			actual.push(child.id);
+			walk(child);
+		}
 	}
-	await ctrl.resolveChildrenHandler(item);
-
-	const actual = Array.from(item.children.values()).map((x) => x.id);
+	walk(root);
 	assert.deepStrictEqual(actual, expect);
 }
 
 suite('Test Explorer', () => {
 	suite('Items', () => {
-		const cases: Record<string, Record<string, ResolveChildrenTestCase>> = {
+		interface TC extends TestCase {
+			item?: [string, string][];
+			expect: string[];
+		}
+
+		const cases: Record<string, Record<string, TC>> = {
 			Root: {
 				'Basic module': {
 					workspace: ['/src/proj'],
@@ -193,6 +203,18 @@ suite('Test Explorer', () => {
 				}
 			},
 			File: {
+				'Empty': {
+					workspace: ['/src/proj'],
+					files: {
+						'/src/proj/go.mod': 'module test',
+						'/src/proj/main_test.go': 'package main'
+					},
+					item: [
+						['file:///src/proj?module', 'test'],
+						['file:///src/proj/main_test.go?file', 'main_test.go']
+					],
+					expect: []
+				},
 				'One of each': {
 					workspace: ['/src/proj'],
 					files: {
@@ -204,7 +226,7 @@ suite('Test Explorer', () => {
 							func TestFoo(*testing.T) {}
 							func BenchmarkBar(*testing.B) {}
 							func ExampleBaz() {}
-						`.replace(/^\s+/gm, '')
+						`
 					},
 					item: [
 						['file:///src/proj?module', 'test'],
@@ -222,9 +244,145 @@ suite('Test Explorer', () => {
 		for (const n in cases) {
 			suite(n, () => {
 				for (const m in cases[n]) {
-					test(m, () => testResolveChildren(cases[n][m]));
+					test(m, async () => {
+						const { workspace, files, expect, item: itemData = [] } = cases[n][m];
+						const { ctrl } = setup(workspace, files);
+
+						let item: TestItem = ctrl.root;
+						for (const [id, label] of itemData) {
+							const uri = Uri.parse(id).with({ query: '' });
+							item = ctrl.createTestItem(id, label, item, uri);
+						}
+						await ctrl.resolveChildrenHandler(item);
+
+						const actual = Array.from(item.children.values()).map((x) => x.id);
+						assert.deepStrictEqual(actual, expect);
+					});
 				}
 			});
 		}
+	});
+
+	suite('Events', () => {
+		suite('Document opened', () => {
+			interface TC extends TestCase {
+				open: string;
+				expect: string[];
+			}
+
+			const cases: Record<string, TC> = {
+				'In workspace': {
+					workspace: ['/src/proj'],
+					files: {
+						'/src/proj/go.mod': 'module test',
+						'/src/proj/foo_test.go': 'package main\nfunc TestFoo(*testing.T) {}',
+						'/src/proj/bar_test.go': 'package main\nfunc TestBar(*testing.T) {}',
+						'/src/proj/baz/main_test.go': 'package main\nfunc TestBaz(*testing.T) {}'
+					},
+					open: 'file:///src/proj/foo_test.go',
+					expect: [
+						'file:///src/proj?module',
+						'file:///src/proj/foo_test.go?file',
+						'file:///src/proj/foo_test.go?test#TestFoo'
+					]
+				},
+				'Outside workspace': {
+					workspace: [],
+					files: {
+						'/src/proj/go.mod': 'module test',
+						'/src/proj/foo_test.go': 'package main\nfunc TestFoo(*testing.T) {}'
+					},
+					open: 'file:///src/proj/foo_test.go',
+					expect: [
+						'file:///src/proj?module',
+						'file:///src/proj/foo_test.go?file',
+						'file:///src/proj/foo_test.go?test#TestFoo'
+					]
+				}
+			};
+
+			for (const name in cases) {
+				test(name, async () => {
+					const { workspace, files, open, expect } = cases[name];
+					const { ctrl, expl, ws } = setup(workspace, files);
+
+					await expl.didOpenTextDocument(ws.fs.files.get(open));
+
+					assertTestItems(ctrl.root, expect);
+				});
+			}
+		});
+
+		suite('Document edited', async () => {
+			interface TC extends TestCase {
+				open: string;
+				changes: [string, string][];
+				expect: {
+					before: string[];
+					after: string[];
+				};
+			}
+
+			const cases: Record<string, TC> = {
+				'Add test': {
+					workspace: ['/src/proj'],
+					files: {
+						'/src/proj/go.mod': 'module test',
+						'/src/proj/foo_test.go': 'package main'
+					},
+					open: 'file:///src/proj/foo_test.go',
+					changes: [['file:///src/proj/foo_test.go', 'package main\nfunc TestFoo(*testing.T) {}']],
+					expect: {
+						before: ['file:///src/proj?module'],
+						after: [
+							'file:///src/proj?module',
+							'file:///src/proj/foo_test.go?file',
+							'file:///src/proj/foo_test.go?test#TestFoo'
+						]
+					}
+				},
+				'Remove test': {
+					workspace: ['/src/proj'],
+					files: {
+						'/src/proj/go.mod': 'module test',
+						'/src/proj/foo_test.go': 'package main\nfunc TestFoo(*testing.T) {}'
+					},
+					open: 'file:///src/proj/foo_test.go',
+					changes: [['file:///src/proj/foo_test.go', 'package main']],
+					expect: {
+						before: [
+							'file:///src/proj?module',
+							'file:///src/proj/foo_test.go?file',
+							'file:///src/proj/foo_test.go?test#TestFoo'
+						],
+						after: ['file:///src/proj?module']
+					}
+				}
+			};
+
+			for (const name in cases) {
+				test(name, async () => {
+					const { workspace, files, open, changes, expect } = cases[name];
+					const { ctrl, expl, ws } = setup(workspace, files);
+
+					await expl.didOpenTextDocument(ws.fs.files.get(open));
+
+					assertTestItems(ctrl.root, expect.before);
+
+					for (const [file, contents] of changes) {
+						const doc = ws.fs.files.get(file);
+						doc.contents = contents;
+						await expl.didChangeTextDocument({
+							document: doc,
+							get contentChanges(): TextDocumentContentChangeEvent[] {
+								throw new Error('not implemented');
+							}
+						});
+					}
+
+					assertTestItems(ctrl.root, expect.after);
+				});
+			}
+		});
 	});
 });

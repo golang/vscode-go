@@ -19,7 +19,9 @@ import {
 	Position,
 	TextDocumentChangeEvent,
 	WorkspaceFoldersChangeEvent,
-	CancellationToken
+	CancellationToken,
+	FileSystem as vsFileSystem,
+	workspace as vsWorkspace
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
@@ -35,17 +37,12 @@ const symbols = new WeakMap<TestItem, DocumentSymbol>();
 export namespace TestExplorer {
 	// exported for tests
 
-	export interface FileSystem {
-		readFile(uri: Uri): Thenable<Uint8Array>;
-		readDirectory(uri: Uri): Thenable<[string, FileType][]>;
-	}
+	export type FileSystem = Pick<vsFileSystem, 'readFile' | 'readDirectory'>;
 
-	export interface Workspace {
-		readonly fs: FileSystem;
-		readonly workspaceFolders: readonly WorkspaceFolder[] | undefined;
+	export interface Workspace extends Pick<typeof vsWorkspace, 'workspaceFolders' | 'getWorkspaceFolder'> {
+		readonly fs: FileSystem; // custom FS type
 
-		openTextDocument(uri: Uri): Thenable<TextDocument>;
-		getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined;
+		openTextDocument(uri: Uri): Thenable<TextDocument>; // only one overload
 	}
 }
 
@@ -98,6 +95,25 @@ export class TestExplorer {
 		}
 	}
 
+	async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
+		const items = Array.from(this.ctrl.root.children.values());
+		for (const item of items) {
+			const uri = Uri.parse(item.id);
+			if (uri.query === 'package') {
+				continue;
+			}
+
+			const ws = this.ws.getWorkspaceFolder(uri);
+			if (!ws) {
+				item.dispose();
+			}
+		}
+
+		if (e.added) {
+			await resolveChildren(this, this.ctrl.root);
+		}
+	}
+
 	async didCreateFile(file: Uri) {
 		try {
 			await documentUpdate(this, await this.ws.openTextDocument(file));
@@ -130,25 +146,6 @@ export class TestExplorer {
 		if (found) {
 			found.dispose();
 			disposeIfEmpty(found.parent);
-		}
-	}
-
-	async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
-		const items = Array.from(this.ctrl.root.children.values());
-		for (const item of items) {
-			const uri = Uri.parse(item.id);
-			if (uri.query === 'package') {
-				continue;
-			}
-
-			const ws = this.ws.getWorkspaceFolder(uri);
-			if (!ws) {
-				item.dispose();
-			}
-		}
-
-		if (e.added) {
-			await resolveChildren(this, this.ctrl.root);
 		}
 	}
 }

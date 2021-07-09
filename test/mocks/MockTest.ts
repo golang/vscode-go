@@ -79,7 +79,7 @@ export class MockTestController implements TestController<void> {
 type DirEntry = [string, FileType];
 
 export class MockTestFileSystem implements TestExplorer.FileSystem {
-	constructor(public dirs: Map<string, DirEntry[]>, public files: Map<string, TextDocument>) {}
+	constructor(public dirs: Map<string, DirEntry[]>, public files: Map<string, MockTestDocument>) {}
 
 	readDirectory(uri: Uri): Thenable<[string, FileType][]> {
 		const k = uri.with({ query: '', fragment: '' }).toString();
@@ -93,11 +93,25 @@ export class MockTestFileSystem implements TestExplorer.FileSystem {
 	}
 }
 
+function unindent(s: string): string {
+	let lines = s.split('\n');
+	if (/^\s*$/.test(lines[0])) lines = lines.slice(1);
+
+	const m = lines[0].match(/^\s+/);
+	if (!m) return s;
+	if (!lines.every((l) => /^\s*$/.test(l) || l.startsWith(m[0]))) return s;
+
+	for (const i in lines) {
+		lines[i] = lines[i].substring(m[0].length);
+	}
+	return lines.join('\n');
+}
+
 export class MockTestWorkspace implements TestExplorer.Workspace {
 	static from(folders: string[], contents: Record<string, string | { contents: string; language: string }>) {
 		const wsdirs: WorkspaceFolder[] = [];
 		const dirs = new Map<string, DirEntry[]>();
-		const files = new Map<string, TextDocument>();
+		const files = new Map<string, MockTestDocument>();
 
 		for (const i in folders) {
 			const uri = Uri.parse(folders[i]);
@@ -122,13 +136,13 @@ export class MockTestWorkspace implements TestExplorer.Workspace {
 			const uri = Uri.parse(k);
 			const entry = contents[k];
 
-			let doc: TextDocument;
+			let doc: MockTestDocument;
 			if (typeof entry === 'object') {
-				doc = new MockTestDocument(uri, entry.contents, entry.language);
+				doc = new MockTestDocument(uri, unindent(entry.contents), entry.language);
 			} else if (path.basename(uri.path) === 'go.mod') {
-				doc = new MockTestDocument(uri, entry, 'go.mod');
+				doc = new MockTestDocument(uri, unindent(entry), 'go.mod');
 			} else {
-				doc = new MockTestDocument(uri, entry);
+				doc = new MockTestDocument(uri, unindent(entry));
 			}
 
 			files.set(uri.toString(), doc);
@@ -152,17 +166,21 @@ export class MockTestWorkspace implements TestExplorer.Workspace {
 export class MockTestDocument implements TextDocument {
 	constructor(
 		public uri: Uri,
-		private contents: string,
+		private _contents: string,
 		public languageId: string = 'go',
 		public isUntitled: boolean = false,
 		public isDirty: boolean = false
 	) {}
 
+	set contents(s: string) {
+		this._contents = s;
+	}
+
 	readonly version: number = 1;
 	readonly eol: EndOfLine = EndOfLine.LF;
 
 	get lineCount() {
-		return this.contents.split('\n').length;
+		return this._contents.split('\n').length;
 	}
 
 	get fileName() {
@@ -200,7 +218,7 @@ export class MockTestDocument implements TextDocument {
 		if (range) {
 			throw new Error('Method not implemented.');
 		}
-		return this.contents;
+		return this._contents;
 	}
 
 	getWordRangeAtPosition(position: Position, regex?: RegExp): Range {
