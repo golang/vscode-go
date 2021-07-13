@@ -9,6 +9,7 @@ import * as Mocha from 'mocha';
 import * as path from 'path';
 export function run(): Promise<void> {
 	const mocha = new Mocha({
+		grep: process.env.MOCHA_GREP,
 		ui: 'tdd'
 	});
 

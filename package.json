@@ -10,6 +10,7 @@
   },
   "license": "MIT",
   "icon": "media/go-logo-blue.png",
+  "enableProposedApi": true,
   "categories": [
     "Programming Languages",
     "Snippets",
@@ -70,7 +71,7 @@
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.52.0",
+    "@types/vscode": "^1.57.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
