@@ -4,7 +4,7 @@ The Go extension allows you to launch or attach to Go programs for debugging. Yo
 
 These debugging features are possible by using [Delve](https://github.com/go-delve/delve), the Go debugger. The Go extension has been communicating with Delve through a custom debug adapter program. As the new [`Delve`'s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) becomes available, the Go extension is now transitioning to skip the legacy debug adapter and directly communicate with Delve.
 
-> 📣We are happy to announce that now this new mode of Delve integration (`dlv-dap` mode) is ready for use in local debugging! We plan to make it default sometime in 2021 H2.
+> 📣 We are happy to announce that now this new mode of Delve integration (`dlv-dap` mode) is ready for use in local debugging! We plan to make it default sometime in 2021 H2.
 
 In this document, we assume you are using the new Delve's native debug adapter implementation (`dlv-dap`).
 
@@ -20,37 +20,35 @@ To opt in to use this new adapter (`dlv-dap`), add the following in your VSCode 
     }
 ```
 
-If you want to use `dlv-dap` for only a subset of your launch configurations, you can use 
-[the `debugAdapter` attribute](#launchjson-attributes) to switch between `“dlv-dap”` and `“legacy”` mode. If you are using [the Nightly version of this extension](https://github.com/golang/vscode-go/blob/master/docs/nightly.md#go-nightly), `dlv-dap` is already the default debug adapter for local debugging scenarios, so the above setting is unnecessary.
+If you want to use `dlv-dap` for only a subset of your launch configurations, you can use [the `debugAdapter` attribute](#launchjson-attributes) to switch between `“dlv-dap”` and `“legacy”` mode. If you are using [the Nightly version of this extension](https://github.com/golang/vscode-go/blob/master/docs/nightly.md#go-nightly), `dlv-dap` is already the default debug adapter for local debugging scenarios, so the above setting is unnecessary.
 
 ### Start Debugging
 
 Open a file to debug (either `package main` source file or the test file) in the editor, and select the `Run and Debug` button from [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view). Alternatively, you can start debugging using `Start Debugging (F5)` command from [the Run menu](https://code.visualstudio.com/docs/editor/debugging#_run-menu) or from [the Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) (Linux/Windows: Ctrl+Shift+P, Mac: ⇧+⌘+P).
 
-When no configuration is configured yet (no `.vscode/launch.json` file), the extension will choose a default configuration based on the file open in the editor. 
+When no configuration is configured yet (no `.vscode/launch.json` file), the extension will choose a default configuration based on the file open in the editor.
 
-If you already have launch configurations for the project (`.vscode/launch.json`), the Run view will display the configuration list you can choose from.
+If you already have launch configurations for the project (`.vscode/launch.json`), the Run view will display the configuration list to choose from.
 
 <p align="center">
-<img src="images/dlvdap-install.gif" alt="Delve DAP Install" width="75%"> 
+<img src="images/dlvdap-install.gif" alt="Delve DAP Install" width="75%">
 <br/>
-<em>❗When you start debugging in `dlv-dap` mode for the first time, the extension will ask to install the Delve built from the head (`dlv-dap`). Please follow the instructions, and start the debugging session again (i.e. selecting the source file, pressing F5 or click the codelens).</em>
+<em>❗ When you start debugging in `dlv-dap` mode for the first time, the extension will ask to install  Delve built from head (`dlv-dap`). Please follow the instructions to install, and then start the debugging session again (i.e. selecting the source file, pressing F5 or click the codelens).</em>
 </p>
 
 <div style="text-align: center;"></div>
 
 Watch [“Go: Writing and debugging fast, reliable, and efficient software”](https://www.youtube.com/watch?v=6r08zGi38Tk&list=PLj6YeMhvp2S40Q-TEPEKOeypLvTVd5uME&index=1) to learn more about debugging features.
 
-Please review 
-[the Features section](#features) that provides an overview of the debug UI and available features.
+Please review [the Features section](#features) that provides an overview of the debug UI and available features.
 
 ### Staying Up-To-Date
 
-[Delve’s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) is under active development, so take advantage of the most recent features and bug fixes by using Delve built from its master branch. The Go extension maintains this newest version of Delve separately from the officially released version of ‘dlv’ and installs it with the name `dlv-dap`.
+[Delve’s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) is under active development, so take advantage of the most recent features and bug fixes by using Delve built from its master branch. The Go extension maintains this newest version of Delve separately from the officially released version of `dlv` and installs it with the name `dlv-dap`.
 
 The easiest way to update `dlv-dap` on demand is to use the `"Go: Install/Update Tools"` command from the Command Palette (Linux/Windows: Ctrl+Shift+P, Mac: ⇧+⌘+P). The command will show `dlv-dap` in the tool list. Select `dlv-dap`, and the extension will build the tool at master.
 
-Once `dlv-dap` is installed on your system, the extension will prompt you for update whenever installing a newer version is necessary (usually after the Go extension upgrade). You can set the ``go.toolsManagement.autoUpdate`` setting so the extension can update `dlv-dap` automatically for you.
+Once `dlv-dap` is installed on your system, the extension will prompt you for update whenever installing a newer version is necessary (usually after the Go extension upgrade). You can set the `go.toolsManagement.autoUpdate` setting so the extension can update `dlv-dap` automatically for you.
 
 If you need to install `dlv-dap` manually outside of VS Code (for example, you are building a dev container with necessary tools preinstalled), please see the [Manual Installation](#bookmark=id.xuaxofprncd5) section.
 
@@ -60,7 +58,7 @@ For general debugging features such as inspecting variables, setting breakpoints
 
 ### Configure
 
-When you need more than the default debugging setup, you can create a launch configuration file for the project by clicking the “create a launch.json file” link in [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view). Then, choose  from the debug configuration drop-down menu. Then VS Code will create a `launch.json` file in a .vscode folder in your workspace (project root folder) or in your [user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration) or [workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
+When you need more than the default debugging setup, you can create a launch configuration file for the project by clicking the “create a launch.json file” link in [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view). Then, choose from the debug configuration drop-down menu. VS Code will create a `launch.json` file in a .vscode folder in your workspace (project root folder) or in your [user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration) or [workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
 
 If you already have a `launch.json` for your project, you can open it using `Open launch.json`.
 
@@ -95,7 +93,7 @@ You can debug an already running program using the `attach` request type configu
 <img src="images/attach.gif" alt="Attach to a running process" width="75%">
 </p>
 
-When you end the debug session, the debug UI allows you to choose either
+When you end the debug session, the debug UI allows you to choose to either
 
 *   Disconnect: detach and leave the process running. (default)
 *   Terminate: terminate the attached process.
@@ -125,7 +123,7 @@ Once a debug session starts, the Debug toolbar will appear on the top of the edi
 
 ### Breakpoints
 
-See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) to get familiar with VS Code’s UI. Go debugger supports multiple ways to configure breakpoints.
+See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) to get familiar with VS Code’s UI. The Go debugger supports multiple ways to configure breakpoints.
 
 *   **Breakpoints**: you can set breakpoints by clicking on the editor margin or using F9 on the current line. If the breakpoints can’t be set by Delve, VS Code will show the failure reason and grey out the dot.
 
@@ -135,20 +133,19 @@ See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.c
 
 *   **Conditional breakpoints**: you can specify breakpoint conditions (similar to Delve’s [`condition` command](https://github.com/go-delve/delve/tree/master/Documentation/cli#condition)).
     *   Expression condition: takes a boolean expression.
-    *   Hit count: supports comparison operators (`>`, `>=`, `<`, `<=`, `==`, `!=`) and `%n` form means we should stop at the breakpoint when the hitcount is a multiple of `n`.
+    *   Hit count: supports comparison operators (`>`, `>=`, `<`, `<=`, `==`, `!=`) with an integer value. `% n` form means we should stop at the breakpoint when the hitcount is a multiple of `n`.
 
 <p align="center">
 <img src="images/conditional-breakpoint.gif" alt="Conditional Breakpoint" width="50%">
 </p>
 
 *   **Function Breakpoints**: breakpoints can be set based on function names.  Press the + button in the BREAKPOINTS section header and enter the location in the form of `<function>[:<line>]`. This sets the breakpoint in the `line` inside the `function`. The full syntax for `function` is `<package>.(*<receiver type>).<function_name>` as specified in [Delve’s location spec](https://github.com/go-delve/delve/blob/master/Documentation/cli/locspec.md#location-specifiers). Function breakpoints are shown with a red triangle in the BREAKPOINTS section.
-   
+
 <p align="center">
 <img src="images/function-breakpoint.gif" alt="Function breakpoint" width="75%">
-</p> 
+</p>
 
 *   Logpoint (WIP)
-
 
 ### Data Inspection
 
@@ -158,7 +155,7 @@ By default, the VARIABLES section hides global variables, and shows only local v
 
 When you select a variable and right click from the VARIABLES section, the context menu will  present shortcuts to features such as:
 
-*   Set Value: you can set/modify simple string, numeric, pointer values. Using composite literals, or memory allocation  
+*   Set Value: you can set/modify simple string, numeric, pointer values. Using composite literals, or memory allocation is not supported.
 *   Copy Value: this copies the value in clipboard.
 *   Copy as Expression: this is useful when you need to query from the REPL in the DEBUG CONSOLE panel.
 *   Add to Watch: this will automatically add the expression to the WATCH section.
@@ -173,21 +170,18 @@ Shadowed variables will be marked with `()`.
 
 You can inspect variables and evaluate expressions from the DEBUG CONSOLE panel too. Acceptable expressions are either
 
-
-
-*   A valid [Delve’s expression](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md), or
+*   A valid [Delve expression](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md), or
 *   `call <function_call_expression>` to call functions.
-     
+
 <p align="center">
 <img src="images/debug-console.png" alt="Debug Console" width="50%">
 </p>
 
-
 Variables and expressions accepted in DEBUG CONSOLE can be also registered in the Run view’s WATCH section, so they can be evaluated automatically as you debug. The “Add to Watch” feature from the VARIABLES section is convenient when you want to register interesting variables.
 
-⚠️ Funcion call feature is highly EXPERIMENTAL due to the limitation in Go runtime. Registering function calls in the WATCH section can be often problematic. Pause, stop, disconnect will not work while a function call is running.
+⚠️ Function call feature is highly EXPERIMENTAL due to the limitation in Go runtime. Registering function calls in the WATCH section can often be problematic. Pause, stop, and disconnect will not work while a function call is running.
 
-Hover over variables in editors during debugging shows the value of the variable. For this feature, VS Code extracts the variable expression and requests the debugger to evaluate the expression. Delve evaluates the expression relative to the highlighted stack frame chosen in the CALL STACK. By default, that is the current top-most frame.
+Hover over variables in editors during debugging shows the value of the variable. For this feature, VS Code extracts the variable expression and makes a request to the debugger to evaluate the expression. Delve evaluates the expression relative to the highlighted stack frame chosen in the CALL STACK. By default, that is the current top-most frame.
 
 <p align="center"><img src="images/variable-hover.png" alt="Hover over Variable in Source Code" width="50%">
  </p>
@@ -198,13 +192,12 @@ Hover over variables in editors during debugging shows the value of the variable
 
 ### Call Stack
 
-You can inspect all goroutines and their stacks in the CALL STACK section. The CALL STACK section UI allows switching between goroutines or selecting a different stack frame. As a different stack frame or different goroutine is selected, the scope shown in the VARIABLE section will be updated for the newly selected stack frame, and the expressions in the WATCH section will be reevaluated relative to the newly selected stack frame automatically. 
+You can inspect all goroutines and their stacks in the CALL STACK section. The CALL STACK section UI allows switching between goroutines or selecting a different stack frame. As a different stack frame or different goroutine is selected, the scope shown in the VARIABLE section will be updated for the newly selected stack frame, and the expressions in the WATCH section will be automatically reevaluated relative to the newly selected stack frame.
 
 <p align="center"><img src="images/callstack-section-annotated.gif" alt="Call Stack Section Overview" width="75%"> </p>
 
-
 1. Goroutine stacks are annotated with their internal goroutine IDs.
-2. Current goroutine (that hit breakpoint) is marked with `*`. If multiple goroutines hit breakpoints concurrently, Delve will pick one randomly. There might not be a current goroutine (e.g. deadlock, pause or internal breakpoint hit by a system thread not running a goroutine)
+2. The current goroutine is marked with `*`. If multiple goroutines stop (e.g. hit breakpoints) concurrently, Delve will pick one randomly. There also might not be a current goroutine (e.g. deadlock, pause or internal breakpoint hit by a system thread not running a goroutine).
 3. If you click a goroutine call stack from the CALL STACK section, the goroutine is _selected_.
 4. You can select a frame of the selected goroutine. The VARIABLE and WATCH sections will be updated accordingly and the cursor in the editor will be moved to the corresponding location in the source code.
 5. Runtime stack frames are deemphasized (greyed out or collapsed).
@@ -212,7 +205,7 @@ You can inspect all goroutines and their stacks in the CALL STACK section. The C
 7. Stop reason. It’s possible that there are multiple reasons goroutines were stopped, but currently only one reason is presented.
 8. File name and line number of the frame.
 9. You can trigger a debug action with the selected goroutine. Note: Resuming or stopping only a single goroutine (Go Issue [25578](https://github.com/golang/go/issues/25578), [31132](https://github.com/golang/go/issues/31132)) is currently not supported, so the action will cause all the goroutines to get activated or paused.
-10. Function name of the frame.  
+10. Function name of the frame.
 
 When the program stops due to exception, panic, or bad access error, the CALL STACK shows the stop reason and the editor highlights the source location with more details.
 
@@ -259,8 +252,7 @@ Here is the list of attributes specific to Go debugging.
 | `trace` | Various levels of logging shown in the debug console & 'Go Debug' output channel. When using the `legacy` debug adapter, the logs will also be written to a file if it is set to a value other than `error`.<br/><p>Allowed Values: `"verbose"`, `"trace"`, `"log"`, `"info"`, `"warn"`, `"error"`<br/>(Default: `"error"`)<br/> | <center>_same as Launch_</center>|
 <!-- SETTINGS END -->
 
-⚠️ `dlv-dap` needs file or directory values in the launch configuration to be absolute paths. When configuring those values, use [the VS Code variables substitution](https://code.visualstudio.com/docs/editor/variables-reference) - VS Code will resolve the variables inside strings in `launch.json` before passing the configuration to the Go extension and `dlv-dap`. For example, `${workspaceFolder}` will be replaced with the absolute path to the workspace root folder. When appropriate, the Go extension will resolve relative paths or home directory (~) before using the configuration to `dlv-dap`.
-
+⚠️ `dlv-dap` needs file or directory values in the launch configuration to be absolute paths. When configuring those values, use [the VS Code variables substitution](https://code.visualstudio.com/docs/editor/variables-reference) - VS Code will resolve the variables inside strings in `launch.json` before passing the configuration to the Go extension and `dlv-dap`. For example, `${workspaceFolder}` will be replaced with the absolute path to the workspace root folder. When appropriate, the Go extension will resolve relative paths or home directory (~) before sending the configuration to `dlv-dap`.
 
 ### **Debugging symlink directories**
 
@@ -290,14 +282,14 @@ TODO: auto-generate from package.json. -->
 
 ### Settings
 
-You can adjust the default value of the following configuration properties using `go.delveConfig` settings. These default values are useful when you choose to run a debug session without the launch configuration set in `launch.json`. For example, debug sessions start using the `Debug Test` code lenses use the adjusted values from these settings.
+You can adjust the default value of the following configuration properties using `go.delveConfig` settings. These default values are useful when you choose to run a debug session without the launch configuration set in `launch.json`. For example, debug sessions started using the `Debug Test` code lenses use the adjusted values from these settings.
 
 *   [`go.delveConfig`](settings.md#go.delveConfig)
     *   `debugAdapter`: Controls which debug adapter to use (default: `legacy`). Select ‘dlv-dap’.
     *   `showGlobalVariables`: Show global variables in the Debug view (default: `false`).
     *   `substitutePath`: Path mappings to apply to get from a path in the editor to a path in the compiled program (default: `[]`).
 
-⚠️ where is the `dlvLoadConfig` setting? Delve debugger imposes variable loading limits to avoid loading too many variables at once and negatively impacting debugging latency. The legacy adapter supported `dlvLoadConfig` to adjust these limits for the duration of the session. The user therefore had to come up with a one-size-fits-all limit if the default behavior was not satisfactory. `dlv-dap` mode uses a different approach as described in [the Data Inspection section](#data-inspection). If this setting is configured and `dlv-dap` mode is used, the extension will show a warning prompt now. If the current variable loading behavior and internal limits are not working for you, please open an issue and share your feedback.
+⚠️ Where is the `dlvLoadConfig` setting? Delve debugger imposes variable loading limits to avoid loading too many variables at once and negatively impacting debugging latency. The legacy adapter supported `dlvLoadConfig` to adjust these limits for the duration of the session. The user therefore had to come up with a one-size-fits-all limit if the default behavior was not satisfactory. `dlv-dap` mode uses a different approach as described in [the Data Inspection section](#data-inspection). If this setting is configured and `dlv-dap` mode is used, the extension will show a warning prompt now. If the current variable loading behavior and internal limits are not working for you, please open an issue and share your feedback.
 
 <p align="center"><img src="images/dlv-load-config-warning.png" alt="dlvLoadConfig is invalid" width="50%"> </p>
 
@@ -306,18 +298,17 @@ You can adjust the default value of the following configuration properties using
 
 ### Go Debug Extension Architecture Overview
 
-VS Code implements a generic, language-agnostic debugger UI based on [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/) (DAP), an abstract protocol for communicating with debugger backend.  Previously, the Go extension was using an intermediary typescript program (legacy debug adapter) to launch Delve and adapt Delve to DAP. With [the new, native DAP implementation in Delve](https://github.com/go-delve/delve/tree/master/service/dap), the intermediary program is no longer necessary and efficient and tight integration with Delve becomes possible.
+VS Code implements a generic, language-agnostic debugger UI based on [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/) (DAP), an abstract protocol for communicating with debugger backend. Previously, the Go extension used an intermediary typescript program (legacy debug adapter) to launch Delve and adapt Delve to DAP. With [the new, native DAP implementation in Delve](https://github.com/go-delve/delve/tree/master/service/dap), the intermediary program is no longer necessary, and efficient and tight integration with Delve becomes possible.
 
 <p align="center"><img src="images/vscode-go-debug-arch.png" alt="vscode-go debug architecture"> </p>
 
-For the information on debugging using the legacy debug adapter, please see the old [Debugging Documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging.md). Note that many new or enhanced features discussed in this document may not be available with the legacy debug adapter.
+For information on debugging using the legacy debug adapter, please see the old [Debugging Documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging.md). Note that many new or enhanced features discussed in this document may not be available with the legacy debug adapter.
 
 ### Manually installing `dlv-dap`
 
 On rare occasions, you may want to install `dlv-dap` by yourself instead of letting the extension handle its installation.
 
 First, find where the Go extension finds tools. Like [other tools the extension uses](https://github.com/golang/vscode-go/blob/master/docs/tools.md#tools), the Go extension searches the `dlv-dap` executable from `${GOPATH}/bin`, `${GOBIN}` and `${PATH}`  (or `Path` in Windows). So, install `dlv-dap` in the directory. The easiest way to check the tool installation location the Go extension uses is currently by running the `Go: Locate Configured Go Tools` command from the command palette (⇧+⌘+P or Ctrl+Shift+P).
-
 
 The following commands download the source of Delve from the master branch, build & store as `dlv-dap` in `~/go/bin/` directory assuming the directory is the place you found from the first step.
 
@@ -329,7 +320,6 @@ $ mv /tmp/dlv $GOPATH/bin/dlv-dap
 ```
 
 If your Go version is older than 1.16:
-
 
 ```
 $ cd $(mktemp -d)
@@ -381,11 +371,11 @@ When seeing the `”port”` attribute being used in the launch request, Go exte
 
 ⚠️ Limitations
 *   Unlike `dlv <debug|exec|attach> --headless` commands traditionally used for remote debugging scenarios, Delve’s new `dap` sub command does not launch or attach to the debuggee process until it receives a Launch/Attach request. We understand this limitation, and we are currently working on addressing this limitation.
-*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs. 
+*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs.
 *   When using `”attach”` requests, you will need to specify the `processId` since
 [the processId resolution feature](#attach) cannot gather process information running remotely.
 *   Delve DAP does not support `--allow-multiclient` or `--continue` flags yet, which means after a debug session ends, the dlv-dap process will exit.
-*   If you want to use `debug` or `test` mode `launch` requests, that involves Delve to build the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
+*   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
 
 ### Running Debugee Externally
 
@@ -407,7 +397,7 @@ Please report issues in [our issue tracker](https://github.com/golang/vscode-go/
 *   `go version`
 *   `go version -m <path/to/dlv-dap>`
 *   VS Code and VS Code Go version.
-*   Instruction to reproduce the issue (code snippets, your `launch.json`, screenshot)
+*   Instructions to reproduce the issue (code snippets, your `launch.json`, screenshot)
 
 ## Developing
 
@@ -442,8 +432,6 @@ Set `logOutput` and `showLog` attributes in `launch.json` to enable Delve-side l
 
 Set `trace` attribute to control the verbosity of Go extension's side logging (client-side).
 
-
-
 ```json5
 {
     "name": "Launch file",
@@ -454,10 +442,10 @@ Set `trace` attribute to control the verbosity of Go extension's side logging (c
 }
 ```
 
-The logging will appear in the `Go Debug` output channel (Command Palette -> "View: Toggle Output" -> Select "Go Debug" from the dropdown menu). 
+The logging will appear in the `Go Debug` output channel (Command Palette -> "View: Toggle Output" -> Select "Go Debug" from the dropdown menu).
 
 <p align="center"><img src="images/debug-output.png" alt="Go Debug output channel" width="100%"></p>
-If you are having issues with seeing logs and or suspect problems in extension's integration, you can start the Delve DAP server from a separate terminal and configure the extension to directly connect to it. Please remember to file an issue if you encounter such logging-related issues.
+If you are having issues with seeing logs and/or suspect problems in the extension's integration, you can start the Delve DAP server from a separate terminal and configure the extension to directly connect to it. Please remember to file an issue if you encounter any logging-related issues.
 
 ```
 $ dlv-dap dap --listen=:12345 --log --log-output=dap
