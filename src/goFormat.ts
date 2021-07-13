@@ -48,6 +48,10 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			formatFlags.push('-style=indent=' + options.tabSize);
 		}
 
+		if (usingCustomFormatTool(goConfig)) {
+			formatFlags.push(filename)
+		}
+
 		return this.runFormatter(formatTool, formatFlags, document, token).then(
 			(edits) => edits,
 			(err) => {
