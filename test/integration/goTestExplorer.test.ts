@@ -9,11 +9,11 @@ import {
 	SymbolKind,
 	Range,
 	Position,
-	TextDocumentContentChangeEvent
+	TestItemCollection
 } from 'vscode';
 import { packagePathToGoModPathMap as pkg2mod } from '../../src/goModules';
-import { TestExplorer } from '../../src/goTestExplorer';
-import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
+import { TestExplorer, testID } from '../../src/goTestExplorer';
+import { MockTestController, MockTestItem, MockTestWorkspace } from '../mocks/MockTest';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -42,6 +42,12 @@ function setup(folders: string[], files: Files) {
 	const ctrl = new MockTestController();
 	const expl = new TestExplorer(ctrl, ws, rethrow, symbols);
 
+	// Override TestExplorer.createItem so we can control the TestItem implementation
+	expl.createItem = (label: string, uri: Uri, kind: string, name?: string) => {
+		const id = testID(uri, kind, name);
+		return new MockTestItem(id, label, uri, ctrl);
+	};
+
 	function walk(dir: Uri, modpath?: string) {
 		const dirs: Uri[] = [];
 		for (const [name, type] of ws.fs.dirs.get(dir.toString())) {
@@ -65,22 +71,22 @@ function setup(folders: string[], files: Files) {
 	return { ctrl, expl, ws };
 }
 
-function assertTestItems(root: TestItem, expect: string[]) {
+function assertTestItems(items: TestItemCollection, expect: string[]) {
 	const actual: string[] = [];
-	function walk(item: TestItem) {
-		for (const child of item.children.values()) {
+	function walk(items: TestItemCollection) {
+		for (const child of items.all) {
 			actual.push(child.id);
-			walk(child);
+			walk(child.children);
 		}
 	}
-	walk(root);
+	walk(items);
 	assert.deepStrictEqual(actual, expect);
 }
 
 suite('Test Explorer', () => {
 	suite('Items', () => {
 		interface TC extends TestCase {
-			item?: [string, string][];
+			item?: ([string, string, string] | [string, string, string, string])[];
 			expect: string[];
 		}
 
@@ -125,7 +131,7 @@ suite('Test Explorer', () => {
 						'/src/proj/go.mod': 'module test',
 						'/src/proj/main.go': 'package main'
 					},
-					item: [['file:///src/proj?module', 'test']],
+					item: [['test', '/src/proj', 'module']],
 					expect: []
 				},
 				'Root package': {
@@ -134,7 +140,7 @@ suite('Test Explorer', () => {
 						'/src/proj/go.mod': 'module test',
 						'/src/proj/main_test.go': 'package main'
 					},
-					item: [['file:///src/proj?module', 'test']],
+					item: [['test', '/src/proj', 'module']],
 					expect: ['file:///src/proj/main_test.go?file']
 				},
 				'Sub packages': {
@@ -144,7 +150,7 @@ suite('Test Explorer', () => {
 						'/src/proj/foo/main_test.go': 'package main',
 						'/src/proj/bar/main_test.go': 'package main'
 					},
-					item: [['file:///src/proj?module', 'test']],
+					item: [['test', '/src/proj', 'module']],
 					expect: ['file:///src/proj/foo?package', 'file:///src/proj/bar?package']
 				},
 				'Nested packages': {
@@ -155,7 +161,7 @@ suite('Test Explorer', () => {
 						'/src/proj/foo/main_test.go': 'package main',
 						'/src/proj/foo/bar/main_test.go': 'package main'
 					},
-					item: [['file:///src/proj?module', 'test']],
+					item: [['test', '/src/proj', 'module']],
 					expect: [
 						'file:///src/proj/foo?package',
 						'file:///src/proj/foo/bar?package',
@@ -171,8 +177,8 @@ suite('Test Explorer', () => {
 						'/src/proj/pkg/main.go': 'package main'
 					},
 					item: [
-						['file:///src/proj?module', 'test'],
-						['file:///src/proj/pkg?package', 'pkg']
+						['test', '/src/proj', 'module'],
+						['pkg', '/src/proj/pkg', 'package']
 					],
 					expect: []
 				},
@@ -184,8 +190,8 @@ suite('Test Explorer', () => {
 						'/src/proj/pkg/sub/main_test.go': 'package main'
 					},
 					item: [
-						['file:///src/proj?module', 'test'],
-						['file:///src/proj/pkg?package', 'pkg']
+						['test', '/src/proj', 'module'],
+						['pkg', '/src/proj/pkg', 'package']
 					],
 					expect: ['file:///src/proj/pkg/main_test.go?file']
 				},
@@ -196,8 +202,8 @@ suite('Test Explorer', () => {
 						'/src/proj/pkg/sub/main_test.go': 'package main'
 					},
 					item: [
-						['file:///src/proj?module', 'test'],
-						['file:///src/proj/pkg?package', 'pkg']
+						['test', '/src/proj', 'module'],
+						['pkg', '/src/proj/pkg', 'package']
 					],
 					expect: []
 				}
@@ -210,8 +216,8 @@ suite('Test Explorer', () => {
 						'/src/proj/main_test.go': 'package main'
 					},
 					item: [
-						['file:///src/proj?module', 'test'],
-						['file:///src/proj/main_test.go?file', 'main_test.go']
+						['test', '/src/proj', 'module'],
+						['main_test.go', '/src/proj/main_test.go', 'file']
 					],
 					expect: []
 				},
@@ -229,8 +235,8 @@ suite('Test Explorer', () => {
 						`
 					},
 					item: [
-						['file:///src/proj?module', 'test'],
-						['file:///src/proj/main_test.go?file', 'main_test.go']
+						['test', '/src/proj', 'module'],
+						['main_test.go', '/src/proj/main_test.go', 'file']
 					],
 					expect: [
 						'file:///src/proj/main_test.go?test#TestFoo',
@@ -246,16 +252,17 @@ suite('Test Explorer', () => {
 				for (const m in cases[n]) {
 					test(m, async () => {
 						const { workspace, files, expect, item: itemData = [] } = cases[n][m];
-						const { ctrl } = setup(workspace, files);
+						const { expl, ctrl } = setup(workspace, files);
 
-						let item: TestItem = ctrl.root;
-						for (const [id, label] of itemData) {
-							const uri = Uri.parse(id).with({ query: '' });
-							item = ctrl.createTestItem(id, label, item, uri);
+						let item: TestItem | undefined;
+						for (const [label, uri, kind, name] of itemData) {
+							const child = expl.createItem(label, Uri.parse(uri), kind, name);
+							(item?.children || ctrl.items).add(child);
+							item = child;
 						}
 						await ctrl.resolveChildrenHandler(item);
 
-						const actual = Array.from(item.children.values()).map((x) => x.id);
+						const actual = (item?.children || ctrl.items).all.map((x) => x.id);
 						assert.deepStrictEqual(actual, expect);
 					});
 				}
@@ -308,7 +315,7 @@ suite('Test Explorer', () => {
 
 					await expl.didOpenTextDocument(ws.fs.files.get(open));
 
-					assertTestItems(ctrl.root, expect);
+					assertTestItems(ctrl.items, expect);
 				});
 			}
 		});
@@ -367,20 +374,18 @@ suite('Test Explorer', () => {
 
 					await expl.didOpenTextDocument(ws.fs.files.get(open));
 
-					assertTestItems(ctrl.root, expect.before);
+					assertTestItems(ctrl.items, expect.before);
 
 					for (const [file, contents] of changes) {
 						const doc = ws.fs.files.get(file);
 						doc.contents = contents;
 						await expl.didChangeTextDocument({
 							document: doc,
-							get contentChanges(): TextDocumentContentChangeEvent[] {
-								throw new Error('not implemented');
-							}
+							contentChanges: []
 						});
 					}
 
-					assertTestItems(ctrl.root, expect.after);
+					assertTestItems(ctrl.items, expect.after);
 				});
 			}
 		});

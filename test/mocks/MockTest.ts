@@ -2,16 +2,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path = require('path');
 import {
-	CancellationToken,
 	EndOfLine,
-	FileSystem,
 	FileType,
 	MarkdownString,
 	Position,
 	Range,
 	TestController,
 	TestItem,
+	TestItemCollection,
 	TestRun,
+	TestRunConfiguration,
+	TestRunConfigurationGroup,
+	TestRunHandler,
 	TestRunRequest,
 	TextDocument,
 	TextLine,
@@ -20,15 +22,48 @@ import {
 } from 'vscode';
 import { TestExplorer } from '../../src/goTestExplorer';
 
-export class MockTestItem<T = any> implements TestItem<T> {
-	constructor(
-		public id: string,
-		public label: string,
-		public parent: TestItem<any> | undefined,
-		public uri: Uri | undefined,
-		public data: T
-	) {}
+class MockTestCollection implements TestItemCollection {
+	constructor(private item: MockTestItem | MockTestController) {}
 
+	private m = new Map<string, MockTestItem>();
+
+	get all(): TestItem[] {
+		return Array.from(this.m.values());
+	}
+
+	add(item: TestItem): void {
+		if (this.m.has(item.id)) {
+			throw new Error(`Test item ${item.id} already exists`);
+		}
+
+		if (!(item instanceof MockTestItem)) {
+			throw new Error('not a mock');
+		} else if (this.item instanceof MockTestItem) {
+			item.parent = this.item;
+		}
+
+		this.m.set(item.id, item);
+	}
+
+	remove(id: string): void {
+		this.m.delete(id);
+	}
+
+	get(id: string): TestItem {
+		return this.m.get(id);
+	}
+}
+
+export class MockTestItem implements TestItem {
+	private static idNum = 0;
+	private idNum: number;
+
+	constructor(public id: string, public label: string, public uri: Uri | undefined, public ctrl: MockTestController) {
+		this.idNum = MockTestItem.idNum;
+		MockTestItem.idNum++;
+	}
+
+	parent: TestItem | undefined;
 	canResolveChildren: boolean;
 	busy: boolean;
 	description?: string;
@@ -37,40 +72,47 @@ export class MockTestItem<T = any> implements TestItem<T> {
 	runnable: boolean;
 	debuggable: boolean;
 
-	children = new Map<string, MockTestItem>();
+	children: MockTestCollection = new MockTestCollection(this);
 
-	invalidate(): void {}
+	invalidateResults(): void {}
 
 	dispose(): void {
 		if (this.parent instanceof MockTestItem) {
-			this.parent.children.delete(this.id);
+			this.parent.children.remove(this.id);
 		}
 	}
 }
 
-export class MockTestController implements TestController<void> {
-	root = new MockTestItem('Go', 'Go', void 0, void 0, void 0);
+class MockTestRunConfiguration implements TestRunConfiguration {
+	constructor(
+		public label: string,
+		public group: TestRunConfigurationGroup,
+		public runHandler: TestRunHandler,
+		public isDefault: boolean
+	) {}
 
-	resolveChildrenHandler?: (item: TestItem<void>) => void | Thenable<void>;
-	runHandler?: (request: TestRunRequest<void>, token: CancellationToken) => void | Thenable<void>;
+	configureHandler?: () => void;
+	dispose(): void {}
+}
 
-	createTestItem<TChild = any>(
-		id: string,
-		label: string,
-		parent: TestItem<void>,
-		uri?: Uri,
-		data?: TChild
-	): TestItem<TChild> {
-		if (parent.children.has(id)) {
-			throw new Error(`Test item ${id} already exists`);
-		}
-		const item = new MockTestItem<TChild>(id, label, parent, uri, data);
-		(<MockTestItem>parent).children.set(id, item);
-		return item;
+export class MockTestController implements TestController {
+	id = 'go';
+	label = 'Go';
+	items = new MockTestCollection(this);
+
+	resolveChildrenHandler?: (item: TestItem) => void | Thenable<void>;
+
+	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
+		throw new Error('Method not implemented.');
 	}
 
-	createTestRun<T>(request: TestRunRequest<T>, name?: string, persist?: boolean): TestRun<T> {
-		throw new Error('Method not implemented.');
+	createRunConfiguration(
+		label: string,
+		group: TestRunConfigurationGroup,
+		runHandler: TestRunHandler,
+		isDefault?: boolean
+	): TestRunConfiguration {
+		return new MockTestRunConfiguration(label, group, runHandler, isDefault);
 	}
 
 	dispose(): void {}
@@ -78,7 +120,7 @@ export class MockTestController implements TestController<void> {
 
 type DirEntry = [string, FileType];
 
-export class MockTestFileSystem implements TestExplorer.FileSystem {
+class MockTestFileSystem implements TestExplorer.FileSystem {
 	constructor(public dirs: Map<string, DirEntry[]>, public files: Map<string, MockTestDocument>) {}
 
 	readDirectory(uri: Uri): Thenable<[string, FileType][]> {
@@ -163,7 +205,7 @@ export class MockTestWorkspace implements TestExplorer.Workspace {
 	}
 }
 
-export class MockTestDocument implements TextDocument {
+class MockTestDocument implements TextDocument {
 	constructor(
 		public uri: Uri,
 		private _contents: string,

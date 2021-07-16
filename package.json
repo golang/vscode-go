@@ -234,6 +234,13 @@
         "description": "Runs all unit tests in the package of the current file."
       },
       {
+        "command": "go.test.refresh",
+        "title": "Go Test: Refresh",
+        "description": "Refresh a test in the test explorer",
+        "category": "Test",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "go.benchmark.package",
         "title": "Go: Benchmark Package",
         "description": "Runs all benchmarks in the package of the current file."
@@ -2370,6 +2377,12 @@
       }
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "go.test.refresh",
+          "when": "false"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.toggleTestFile && resourceLangId == go",
@@ -2450,6 +2463,13 @@
           "when": "editorTextFocus && resourceLangId == go",
           "command": "go.show.commands",
           "group": "Go group 2"
+        }
+      ],
+      "testing/item/context": [
+        {
+          "command": "go.test.refresh",
+          "when": "testId =~ /_test\\.go/",
+          "group": "inline"
         }
       ]
     }
