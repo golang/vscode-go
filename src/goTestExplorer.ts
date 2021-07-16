@@ -56,6 +56,8 @@ export class TestExplorer {
 			new GoDocumentSymbolProvider().provideDocumentSymbols
 		);
 
+		context.subscriptions.push(workspace.onDidChangeConfiguration((x) => inst.didChangeConfiguration(x)));
+
 		context.subscriptions.push(workspace.onDidOpenTextDocument((x) => inst.didOpenTextDocument(x)));
 		context.subscriptions.push(workspace.onDidChangeTextDocument((x) => inst.didChangeTextDocument(x)));
 		context.subscriptions.push(workspace.onDidChangeWorkspaceFolders((x) => inst.didChangeWorkspaceFolders(x)));
@@ -150,6 +152,20 @@ export class TestExplorer {
 		if (found) {
 			found.dispose();
 			disposeIfEmpty(found.parent);
+		}
+	}
+
+	async didChangeConfiguration(e: ConfigurationChangeEvent) {
+		let update = false;
+		for (const item of this.ctrl.root.children.values()) {
+			if (e.affectsConfiguration('go.testExplorerPackages', item.uri)) {
+				item.dispose();
+				update = true;
+			}
+		}
+
+		if (update) {
+			resolveChildren(this, this.ctrl.root);
 		}
 	}
 }
@@ -282,23 +298,27 @@ async function getWorkspace(expl: TestExplorer, ws: WorkspaceFolder): Promise<Te
 async function getPackage(expl: TestExplorer, uri: Uri): Promise<TestItem> {
 	let item: TestItem;
 
+	const nested = getGoConfig(uri).get('testExplorerPackages') === 'nested';
 	const modDir = await getModFolderPath(uri, true);
 	const wsfolder = workspace.getWorkspaceFolder(uri);
 	if (modDir) {
 		// If the package is in a module, add it as a child of the module
-		const modUri = uri.with({ path: modDir, query: '', fragment: '' });
-		const module = await getModule(expl, modUri);
-		const existing = getItem(module, uri, 'package');
-		if (existing) {
-			return existing;
+		let parent = await getModule(expl, uri.with({ path: modDir, query: '', fragment: '' }));
+		if (uri.path === parent.uri.path) {
+			return parent;
 		}
 
-		if (uri.path === modUri.path) {
-			return module;
+		if (nested) {
+			const bits = path.relative(parent.uri.path, uri.path).split(path.sep);
+			while (bits.length > 1) {
+				const dir = bits.shift();
+				const dirUri = uri.with({ path: path.join(parent.uri.path, dir), query: '', fragment: '' });
+				parent = getOrCreateItem(expl, parent, dir, dirUri, 'package');
+			}
 		}
 
-		const label = uri.path.startsWith(modUri.path) ? uri.path.substring(modUri.path.length + 1) : uri.path;
-		item = getOrCreateItem(expl, module, label, uri, 'package');
+		const label = uri.path.startsWith(parent.uri.path) ? uri.path.substring(parent.uri.path.length + 1) : uri.path;
+		item = getOrCreateItem(expl, parent, label, uri, 'package');
 	} else if (wsfolder) {
 		// If the package is in a workspace folder, add it as a child of the workspace
 		const workspace = await getWorkspace(expl, wsfolder);

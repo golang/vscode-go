@@ -1283,6 +1283,13 @@
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
+        "go.testExplorerPackages": {
+          "type": "string",
+          "enum": ["flat", "nested"],
+          "default": "flat",
+          "description": "Control whether packages are presented flat or nested",
+          "scope": "resource"
+        },
         "go.testExplorerRunBenchmarks": {
           "type": "boolean",
           "default": false,
