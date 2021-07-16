@@ -654,6 +654,22 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			throw new Error('does not report error on invalid delve flag');
 		});
 
+		test('should run program with showLog=false and logOutput specified', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				showLog: false,
+				logOutput: 'dap'
+			};
+			const debugConfig = await initializeDebugConfig(config, true);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+		});
+
 		test('should handle threads request after initialization', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -2068,13 +2084,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	});
 
 	let testNumber = 0;
-	async function initializeDebugConfig(config: DebugConfiguration) {
+	async function initializeDebugConfig(config: DebugConfiguration, keepUserLog?: boolean) {
 		if (isDlvDap) {
 			config['debugAdapter'] = 'dlv-dap';
-			// Log the output for easier test debugging.
-			config['logOutput'] = 'dap,debugger';
-			config['showLog'] = true;
-			config['trace'] = 'verbose';
+			if (!keepUserLog) {
+				// Log the output for easier test debugging.
+				config['logOutput'] = 'dap,debugger';
+				config['showLog'] = true;
+				config['trace'] = 'verbose';
+			}
 		} else {
 			config['debugAdapter'] = 'legacy';
 			// be explicit and prevent resolveDebugConfiguration from picking

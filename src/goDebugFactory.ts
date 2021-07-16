@@ -379,9 +379,11 @@ function spawnDlvDapServerProcess(
 	dlvArgs.push(`--listen=${host}:${port}`);
 	if (launchAttachArgs.showLog) {
 		dlvArgs.push('--log=' + launchAttachArgs.showLog.toString());
-	}
-	if (launchAttachArgs.logOutput) {
-		dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
+		// Only add the log output flag if we have already added the log flag.
+		// Otherwise, delve complains.
+		if (launchAttachArgs.logOutput) {
+			dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
+		}
 	}
 
 	const onWindows = process.platform === 'win32';
