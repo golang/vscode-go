@@ -1283,6 +1283,12 @@
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
+        "go.testExplorerRunBenchmarks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include benchmarks when running all tests in a group",
+          "scope": "resource"
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {

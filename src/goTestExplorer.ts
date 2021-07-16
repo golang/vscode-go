@@ -624,7 +624,10 @@ async function collectTests(
 			await resolveChildren(expl, item);
 		}
 
+		const runBench = getGoConfig(item.uri).get('testExplorerRunBenchmarks');
 		for (const child of item.children.values()) {
+			const uri = Uri.parse(child.id);
+			if (uri.query === 'benchmark' && !runBench) continue;
 			await collectTests(expl, child, excluded, functions, docs);
 		}
 		return;
