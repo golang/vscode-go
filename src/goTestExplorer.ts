@@ -21,7 +21,10 @@ import {
 	WorkspaceFoldersChangeEvent,
 	CancellationToken,
 	FileSystem as vsFileSystem,
-	workspace as vsWorkspace
+	workspace as vsWorkspace,
+	ConfigurationChangeEvent,
+	TestMessage,
+	Range
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
@@ -669,6 +672,8 @@ async function collectTests(
 // console.
 class TestRunOutput<T> implements OutputChannel {
 	readonly name: string;
+	readonly lines: string[] = [];
+
 	constructor(private run: TestRun<T>) {
 		this.name = `Test run at ${new Date()}`;
 	}
@@ -678,6 +683,7 @@ class TestRunOutput<T> implements OutputChannel {
 	}
 
 	appendLine(value: string) {
+		this.lines.push(value);
 		this.run.appendOutput(value + '\r\n');
 	}
 
@@ -892,6 +898,17 @@ function processRecordedOutput<T>(run: TestRun<T>, test: TestItem, output: strin
 	}
 }
 
+function checkForBuildFailure<T>(run: TestRun<T>, tests: Record<string, TestItem>, output: string[]) {
+	const rePkg = /^# (?<pkg>[\w/.-]+)(?: \[(?<test>[\w/.-]+).test\])?/;
+
+	// TODO(firelizzard18): Add more sophisticated check for build failures?
+	if (!output.some((x) => rePkg.test(x))) return;
+
+	for (const name in tests) {
+		run.setState(tests[name], TestResultState.Errored);
+	}
+}
+
 // Execute tests - TestController.runTest callback
 async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 	const collected = new Map<string, TestItem[]>();
@@ -939,7 +956,7 @@ async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 
 		// Run tests
 		if (testFns.length > 0) {
-			await goTest({
+			const success = await goTest({
 				goConfig,
 				flags,
 				isMod,
@@ -948,12 +965,15 @@ async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 				functions: testFns,
 				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, e)
 			});
+			if (!success) {
+				checkForBuildFailure(run, tests, outputChannel.lines);
+			}
 		}
 
 		// Run benchmarks
 		if (benchmarkFns.length > 0) {
 			const complete = new Set<TestItem>();
-			await goTest({
+			const success = await goTest({
 				goConfig,
 				flags,
 				isMod,
@@ -964,8 +984,12 @@ async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(expl, run, benchmarks, complete, e)
 			});
 
-			// Explicitly pass any incomplete benchmarks (see test_events.md)
-			passBenchmarks(run, benchmarks, complete);
+			if (success || complete.size > 0) {
+				// Explicitly pass any incomplete benchmarks (see test_events.md)
+				passBenchmarks(run, benchmarks, complete);
+			} else {
+				checkForBuildFailure(run, benchmarks, outputChannel.lines);
+			}
 		}
 
 		// Create test messages
