@@ -843,6 +843,19 @@ function processRecordedOutput<T>(run: TestRun<T>, test: TestItem, output: strin
 	const parsed = new Map<string, message>();
 	let current: message | undefined;
 
+	const uri = Uri.parse(test.id);
+	const gotI = output.indexOf('got:\n');
+	const wantI = output.indexOf('want:\n');
+	if (uri.query === 'example' && gotI >= 0 && wantI >= 0) {
+		const got = output.slice(gotI + 1, wantI).join('');
+		const want = output.slice(wantI + 1).join('');
+		const message = TestMessage.diff('Output does not match', want, got);
+		message.severity = TestMessageSeverity.Error;
+		message.location = new Location(test.uri, test.range.start);
+		run.appendMessage(test, message);
+		output = output.slice(0, gotI);
+	}
+
 	for (const item of output) {
 		const fileAndLine = item.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
 		if (fileAndLine) {
