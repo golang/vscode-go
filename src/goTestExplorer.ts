@@ -89,7 +89,11 @@ export class TestExplorer {
 
 	async didChangeTextDocument(e: TextDocumentChangeEvent) {
 		try {
-			await documentUpdate(this, e.document);
+			await documentUpdate(
+				this,
+				e.document,
+				e.contentChanges.map((x) => x.range)
+			);
 		} catch (e) {
 			this.errored(e);
 		}
@@ -225,6 +229,23 @@ function disposeIfEmpty(item: TestItem) {
 	disposeIfEmpty(item.parent);
 }
 
+// Dispose of the children of a test. Sub-tests and sub-benchmarks are
+// discovered emperically (from test output) not semantically (from code), so
+// there are situations where they must be discarded.
+function discardChildren(item: TestItem) {
+	item.canResolveChildren = false;
+	Array.from(item.children.values()).forEach((x) => x.dispose());
+}
+
+// If a test/benchmark with children is relocated, update the children's
+// location.
+function relocateChildren(item: TestItem) {
+	for (const child of item.children.values()) {
+		child.range = item.range;
+		relocateChildren(child);
+	}
+}
+
 // Retrieve or create an item for a Go module.
 async function getModule(expl: TestExplorer, uri: Uri): Promise<TestItem> {
 	const existing = getItem(expl.ctrl.root, uri, 'module');
@@ -349,6 +370,10 @@ async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen:
 	const kind = match.groups.type.toLowerCase();
 	const existing = getItem(file, uri, kind, symbol.name);
 	if (existing) {
+		if (!existing.range.isEqual(symbol.range)) {
+			existing.range = symbol.range;
+			relocateChildren(existing);
+		}
 		return existing;
 	}
 
@@ -365,7 +390,7 @@ async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen:
 // Any previously existing tests that no longer have a corresponding symbol in
 // the file will be disposed. If the document contains no tests, it will be
 // disposed.
-async function processDocument(expl: TestExplorer, doc: TextDocument) {
+async function processDocument(expl: TestExplorer, doc: TextDocument, ranges?: Range[]) {
 	const seen = new Set<string>();
 	const item = await getFile(expl, doc.uri);
 	const symbols = await expl.provideDocumentSymbols(doc, null);
@@ -375,6 +400,11 @@ async function processDocument(expl: TestExplorer, doc: TextDocument) {
 		const uri = Uri.parse(child.id);
 		if (!seen.has(uri.fragment)) {
 			child.dispose();
+			continue;
+		}
+
+		if (ranges?.some((r) => !!child.range.intersection(r))) {
+			discardChildren(child);
 		}
 	}
 
@@ -491,7 +521,7 @@ async function walkPackages(fs: TestExplorer.FileSystem, uri: Uri, cb: (uri: Uri
 }
 
 // Handle opened documents, document changes, and file creation.
-async function documentUpdate(expl: TestExplorer, doc: TextDocument) {
+async function documentUpdate(expl: TestExplorer, doc: TextDocument, ranges?: Range[]) {
 	if (!doc.uri.path.endsWith('_test.go')) {
 		return;
 	}
@@ -501,7 +531,7 @@ async function documentUpdate(expl: TestExplorer, doc: TextDocument) {
 		return;
 	}
 
-	await processDocument(expl, doc);
+	await processDocument(expl, doc, ranges);
 }
 
 // TestController.resolveChildrenHandler callback
@@ -857,8 +887,7 @@ async function runTest<T>(expl: TestExplorer, request: TestRunRequest<T>) {
 		for (const item of items) {
 			run.setState(item, TestResultState.Queued);
 
-			item.canResolveChildren = false;
-			Array.from(item.children.values()).forEach((x) => x.dispose());
+			discardChildren(item);
 
 			const uri = Uri.parse(item.id);
 			if (uri.query === 'benchmark') {
