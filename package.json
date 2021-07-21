@@ -1303,6 +1303,12 @@
           "description": "Include benchmarks when running all tests in a group",
           "scope": "resource"
         },
+        "go.testExplorerConcatenateMessages": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, test log messages associated with a given location will be shown as a single message",
+          "scope": "resource"
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {
