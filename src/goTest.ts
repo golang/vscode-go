@@ -175,12 +175,22 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 			}
 		}
 
+		let subtest: string;
 		if (!simpleMatch) {
-			vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
-			return;
+			const input = await vscode.window.showInputBox({
+				prompt: 'Enter sub test name'
+			});
+			if (input) {
+				subtest = input;
+			} else {
+				vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
+				return;
+			}
+		} else {
+			subtest = simpleMatch[1];
 		}
 
-		const subTestName = testFunctionName + '/' + simpleMatch[1];
+		const subTestName = testFunctionName + '/' + subtest;
 
 		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
 	} catch (err) {
