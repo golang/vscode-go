@@ -323,6 +323,10 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	if (!newGoRuntimeBase) {
 		return;
 	}
+	const goCfg = getGoConfig();
+	if (!goCfg.get('terminal.activateEnvironment')) {
+		return;
+	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
 		logVerbose("couldn't find PATH property in process.env");
