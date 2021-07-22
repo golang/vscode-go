@@ -74,10 +74,10 @@ function setup(folders: string[], files: Files) {
 function assertTestItems(items: TestItemCollection, expect: string[]) {
 	const actual: string[] = [];
 	function walk(items: TestItemCollection) {
-		for (const child of items.all) {
-			actual.push(child.id);
-			walk(child.children);
-		}
+		items.forEach((item) => {
+			actual.push(item.id);
+			walk(item.children);
+		});
 	}
 	walk(items);
 	assert.deepStrictEqual(actual, expect);
@@ -260,9 +260,10 @@ suite('Test Explorer', () => {
 							(item?.children || ctrl.items).add(child);
 							item = child;
 						}
-						await ctrl.resolveChildrenHandler(item);
+						await ctrl.resolveHandler(item);
 
-						const actual = (item?.children || ctrl.items).all.map((x) => x.id);
+						const actual: string[] = [];
+						(item?.children || ctrl.items).forEach((x) => actual.push(x.id));
 						assert.deepStrictEqual(actual, expect);
 					});
 				}

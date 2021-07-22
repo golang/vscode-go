@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path = require('path');
 import {
+	CancellationToken,
 	EndOfLine,
 	FileType,
 	MarkdownString,
@@ -11,9 +12,8 @@ import {
 	TestItem,
 	TestItemCollection,
 	TestRun,
-	TestRunConfiguration,
-	TestRunConfigurationGroup,
-	TestRunHandler,
+	TestRunProfile,
+	TestRunProfileKind,
 	TestRunRequest,
 	TextDocument,
 	TextLine,
@@ -22,13 +22,19 @@ import {
 } from 'vscode';
 import { TestExplorer } from '../../src/goTestExplorer';
 
+type TestRunHandler = (request: TestRunRequest, token: CancellationToken) => Thenable<void> | void;
+
 class MockTestCollection implements TestItemCollection {
 	constructor(private item: MockTestItem | MockTestController) {}
 
-	private m = new Map<string, MockTestItem>();
+	private readonly m = new Map<string, MockTestItem>();
 
-	get all(): TestItem[] {
-		return Array.from(this.m.values());
+	get size() {
+		return this.m.size;
+	}
+
+	forEach(fn: (item: TestItem, coll: TestItemCollection) => unknown) {
+		for (const item of this.m.values()) fn(item, this);
 	}
 
 	add(item: TestItem): void {
@@ -45,12 +51,16 @@ class MockTestCollection implements TestItemCollection {
 		this.m.set(item.id, item);
 	}
 
-	remove(id: string): void {
+	delete(id: string): void {
 		this.m.delete(id);
 	}
 
 	get(id: string): TestItem {
 		return this.m.get(id);
+	}
+
+	replace(items: readonly TestItem[]): void {
+		throw new Error('not impelemented');
 	}
 }
 
@@ -78,15 +88,15 @@ export class MockTestItem implements TestItem {
 
 	dispose(): void {
 		if (this.parent instanceof MockTestItem) {
-			this.parent.children.remove(this.id);
+			this.parent.children.delete(this.id);
 		}
 	}
 }
 
-class MockTestRunConfiguration implements TestRunConfiguration {
+class MockTestRunProfile implements TestRunProfile {
 	constructor(
 		public label: string,
-		public group: TestRunConfigurationGroup,
+		public kind: TestRunProfileKind,
 		public runHandler: TestRunHandler,
 		public isDefault: boolean
 	) {}
@@ -100,19 +110,23 @@ export class MockTestController implements TestController {
 	label = 'Go';
 	items = new MockTestCollection(this);
 
-	resolveChildrenHandler?: (item: TestItem) => void | Thenable<void>;
+	resolveHandler?: (item: TestItem) => void | Thenable<void>;
 
 	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
 		throw new Error('Method not implemented.');
 	}
 
-	createRunConfiguration(
+	createRunProfile(
 		label: string,
-		group: TestRunConfigurationGroup,
+		kind: TestRunProfileKind,
 		runHandler: TestRunHandler,
 		isDefault?: boolean
-	): TestRunConfiguration {
-		return new MockTestRunConfiguration(label, group, runHandler, isDefault);
+	): TestRunProfile {
+		return new MockTestRunProfile(label, kind, runHandler, isDefault);
+	}
+
+	createTestItem(id: string, label: string, uri?: Uri): TestItem {
+		return new MockTestItem(id, label, uri, this);
 	}
 
 	dispose(): void {}

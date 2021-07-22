@@ -1,33 +1,31 @@
 import {
-	test,
-	workspace,
+	tests,
+	window,
+	workspace as vsWorkspace,
+	CancellationToken,
+	ConfigurationChangeEvent,
+	DocumentSymbol,
 	ExtensionContext,
+	FileSystem as vsFileSystem,
+	FileType,
+	Location,
+	OutputChannel,
+	Position,
+	Range,
+	SymbolKind,
 	TestController,
 	TestItem,
-	TextDocument,
-	Uri,
-	DocumentSymbol,
-	SymbolKind,
-	FileType,
-	WorkspaceFolder,
-	TestRunRequest,
-	OutputChannel,
-	TestResultState,
-	TestRun,
-	TestMessageSeverity,
-	Location,
-	Position,
-	TextDocumentChangeEvent,
-	WorkspaceFoldersChangeEvent,
-	CancellationToken,
-	FileSystem as vsFileSystem,
-	workspace as vsWorkspace,
-	ConfigurationChangeEvent,
-	TestMessage,
-	Range,
 	TestItemCollection,
-	TestRunConfigurationGroup,
-	window
+	TestMessage,
+	TestRun,
+	TestRunProfileKind,
+	TestRunRequest,
+	TextDocument,
+	TextDocumentChangeEvent,
+	Uri,
+	workspace,
+	WorkspaceFolder,
+	WorkspaceFoldersChangeEvent
 } from 'vscode';
 import path = require('path');
 import { getModFolderPath, isModSupported } from './goModules';
@@ -54,14 +52,14 @@ export namespace TestExplorer {
 
 export class TestExplorer {
 	static setup(context: ExtensionContext): TestExplorer {
-		const ctrl = test.createTestController('go', 'Go');
+		const ctrl = tests.createTestController('go', 'Go');
 		const inst = new this(
 			ctrl,
 			workspace,
 			(e) => console.log(e),
 			new GoDocumentSymbolProvider().provideDocumentSymbols
 		);
-		resolveChildren(inst);
+		resolve(inst);
 
 		context.subscriptions.push(workspace.onDidChangeConfiguration((x) => inst.didChangeConfiguration(x)));
 
@@ -84,13 +82,13 @@ export class TestExplorer {
 		public provideDocumentSymbols: (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>
 	) {
 		// TODO handle cancelation of test runs
-		ctrl.resolveChildrenHandler = (...args) => resolveChildren(this, ...args);
-		ctrl.createRunConfiguration('Go [Run]', TestRunConfigurationGroup.Run, (rq) => runTest(this, rq), true);
+		ctrl.resolveHandler = (...args) => resolve(this, ...args);
+		ctrl.createRunProfile('Go [Run]', TestRunProfileKind.Run, (rq) => runTest(this, rq), true);
 	}
 
 	// Create an item.
 	createItem(label: string, uri: Uri, kind: string, name?: string): TestItem {
-		return test.createTestItem(testID(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
+		return this.ctrl.createTestItem(testID(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
 	}
 
 	// Retrieve an item.
@@ -124,7 +122,7 @@ export class TestExplorer {
 	}
 
 	resolve(item?: TestItem) {
-		resolveChildren(this, item);
+		resolve(this, item);
 	}
 
 	async didOpenTextDocument(doc: TextDocument) {
@@ -148,7 +146,7 @@ export class TestExplorer {
 	}
 
 	async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
-		for (const item of this.ctrl.items.all) {
+		for (const item of collect(this.ctrl.items)) {
 			const uri = Uri.parse(item.id);
 			if (uri.query === 'package') {
 				continue;
@@ -161,7 +159,7 @@ export class TestExplorer {
 		}
 
 		if (e.added) {
-			await resolveChildren(this);
+			await resolve(this);
 		}
 	}
 
@@ -176,7 +174,7 @@ export class TestExplorer {
 	async didDeleteFile(file: Uri) {
 		const id = testID(file, 'file');
 		function find(children: TestItemCollection): TestItem {
-			for (const item of children.all) {
+			for (const item of collect(children)) {
 				if (item.id === id) {
 					return item;
 				}
@@ -202,7 +200,7 @@ export class TestExplorer {
 
 	async didChangeConfiguration(e: ConfigurationChangeEvent) {
 		let update = false;
-		for (const item of this.ctrl.items.all) {
+		for (const item of collect(this.ctrl.items)) {
 			if (e.affectsConfiguration('go.testExplorerPackages', item.uri)) {
 				dispose(item);
 				update = true;
@@ -210,7 +208,7 @@ export class TestExplorer {
 		}
 
 		if (update) {
-			resolveChildren(this);
+			resolve(this);
 		}
 	}
 }
@@ -228,6 +226,12 @@ export function testID(uri: Uri, kind: string, name?: string): string {
 	return uri.toString();
 }
 
+function collect(items: TestItemCollection): TestItem[] {
+	const r: TestItem[] = [];
+	items.forEach((i) => r.push(i));
+	return r;
+}
+
 function getChildren(parent: TestItem | TestItemCollection): TestItemCollection {
 	if ('children' in parent) {
 		return parent.children;
@@ -236,7 +240,7 @@ function getChildren(parent: TestItem | TestItemCollection): TestItemCollection 
 }
 
 function dispose(item: TestItem) {
-	item.parent.children.remove(item.id);
+	item.parent.children.delete(item.id);
 }
 
 // Dispose of the item if it has no children, recursively. This facilitates
@@ -248,7 +252,7 @@ function disposeIfEmpty(item: TestItem) {
 		return;
 	}
 
-	if (item.children.all.length > 0) {
+	if (item.children.size > 0) {
 		return;
 	}
 
@@ -261,13 +265,13 @@ function disposeIfEmpty(item: TestItem) {
 // there are situations where they must be discarded.
 function discardChildren(item: TestItem) {
 	item.canResolveChildren = false;
-	item.children.all.forEach(dispose);
+	item.children.forEach(dispose);
 }
 
 // If a test/benchmark with children is relocated, update the children's
 // location.
 function relocateChildren(item: TestItem) {
-	for (const child of item.children.all) {
+	for (const child of collect(item.children)) {
 		child.range = item.range;
 		relocateChildren(child);
 	}
@@ -421,7 +425,7 @@ async function processDocument(expl: TestExplorer, doc: TextDocument, ranges?: R
 	const symbols = await expl.provideDocumentSymbols(doc, null);
 	for (const symbol of symbols) await processSymbol(expl, doc.uri, item, seen, symbol);
 
-	for (const child of item.children.all) {
+	for (const child of collect(item.children)) {
 		const uri = Uri.parse(child.id);
 		if (!seen.has(uri.fragment)) {
 			dispose(child);
@@ -560,11 +564,11 @@ async function documentUpdate(expl: TestExplorer, doc: TextDocument, ranges?: Ra
 }
 
 // TestController.resolveChildrenHandler callback
-async function resolveChildren(expl: TestExplorer, item?: TestItem) {
+async function resolve(expl: TestExplorer, item?: TestItem) {
 	// Expand the root item - find all modules and workspaces
 	if (!item) {
 		// Dispose of package entries at the root if they are now part of a workspace folder
-		for (const item of expl.ctrl.items.all) {
+		for (const item of collect(expl.ctrl.items)) {
 			const uri = Uri.parse(item.id);
 			if (uri.query !== 'package') {
 				continue;
@@ -644,12 +648,12 @@ async function collectTests(
 
 	const uri = Uri.parse(item.id);
 	if (!uri.fragment) {
-		if (item.children.all.length === 0) {
-			await resolveChildren(expl, item);
+		if (item.children.size === 0) {
+			await resolve(expl, item);
 		}
 
 		const runBench = getGoConfig(item.uri).get('testExplorerRunBenchmarks');
-		for (const child of item.children.all) {
+		for (const child of collect(item.children)) {
 			const uri = Uri.parse(child.id);
 			if (uri.query === 'benchmark' && !runBench) continue;
 			await collectTests(expl, child, excluded, functions, docs);
@@ -732,12 +736,12 @@ function consumeGoBenchmarkEvent(
 
 		switch (e.Action) {
 			case 'fail': // Failed
-				run.setState(test, TestResultState.Failed);
+				run.failed(test, { message: 'Failed' });
 				complete.add(test);
 				break;
 
 			case 'skip': // Skipped
-				run.setState(test, TestResultState.Skipped);
+				run.skipped(test);
 				complete.add(test);
 				break;
 		}
@@ -769,15 +773,10 @@ function consumeGoBenchmarkEvent(
 	// If output includes benchmark results, the benchmark passed. If output
 	// only includes the benchmark name, the benchmark is running.
 	if (m.groups.result) {
-		run.appendMessage(test, {
-			message: m.groups.result,
-			severity: TestMessageSeverity.Information,
-			location: new Location(test.uri, test.range.start)
-		});
-		run.setState(test, TestResultState.Passed);
+		run.passed(test);
 		complete.add(test);
 	} else {
-		run.setState(test, TestResultState.Running);
+		run.started(test);
 	}
 }
 
@@ -785,9 +784,9 @@ function consumeGoBenchmarkEvent(
 function passBenchmarks(run: TestRun, items: Record<string, TestItem>, complete: Set<TestItem>) {
 	function pass(item: TestItem) {
 		if (!complete.has(item)) {
-			run.setState(item, TestResultState.Passed);
+			run.passed(item);
 		}
-		for (const child of item.children.all) {
+		for (const child of collect(item.children)) {
 			pass(child);
 		}
 	}
@@ -803,6 +802,7 @@ function consumeGoTestEvent(
 	run: TestRun,
 	tests: Record<string, TestItem>,
 	record: Map<TestItem, string[]>,
+	concat: boolean,
 	e: GoTestOutput
 ) {
 	const test = resolveTestName(expl, tests, e.Test);
@@ -811,44 +811,61 @@ function consumeGoTestEvent(
 	}
 
 	switch (e.Action) {
+		case 'cont':
+			// ignore
+			break;
+
 		case 'run':
-			run.setState(test, TestResultState.Running);
-			return;
+			run.started(test);
+			break;
 
 		case 'pass':
-			run.setState(test, TestResultState.Passed, e.Elapsed * 1000);
-			return;
+			run.passed(test, e.Elapsed * 1000);
+			break;
 
-		case 'fail':
-			run.setState(test, TestResultState.Failed, e.Elapsed * 1000);
-			return;
+		case 'fail': {
+			const messages = parseOutput(run, test, record.get(test) || []);
+
+			if (!concat) {
+				run.failed(test, messages, e.Elapsed * 1000);
+				break;
+			}
+
+			const merged = new Map<string, TestMessage>();
+			for (const { message, location } of messages) {
+				const loc = `${location.uri}:${location.range.start.line}`;
+				if (merged.has(loc)) {
+					merged.get(loc).message += '\n' + message;
+				} else {
+					merged.set(loc, { message, location });
+				}
+			}
+
+			run.failed(test, Array.from(merged.values()), e.Elapsed * 1000);
+			break;
+		}
 
 		case 'skip':
-			run.setState(test, TestResultState.Skipped);
-			return;
+			run.skipped(test);
+			break;
 
 		case 'output':
 			if (/^(=== RUN|\s*--- (FAIL|PASS): )/.test(e.Output)) {
-				return;
+				break;
 			}
 
 			if (record.has(test)) record.get(test).push(e.Output);
 			else record.set(test, [e.Output]);
-			return;
+			break;
 
 		default:
 			console.log(e);
-			return;
+			break;
 	}
 }
 
-// Search recorded test output for `file.go:123: Foo bar` and attach a message
-// to the corresponding location.
-function processRecordedOutput(run: TestRun, test: TestItem, output: string[], concat: boolean) {
-	// mostly copy and pasted from https://gitlab.com/firelizzard/vscode-go-test-adapter/-/blob/733443d229df68c90145a5ae7ed78ca64dec6f43/src/tests.ts
-	type message = { all: string; error?: string };
-	const parsed = new Map<string, message[]>();
-	let current: message | undefined;
+function parseOutput(run: TestRun, test: TestItem, output: string[]): TestMessage[] {
+	const messages: TestMessage[] = [];
 
 	const uri = Uri.parse(test.id);
 	const gotI = output.indexOf('got:\n');
@@ -857,71 +874,26 @@ function processRecordedOutput(run: TestRun, test: TestItem, output: string[], c
 		const got = output.slice(gotI + 1, wantI).join('');
 		const want = output.slice(wantI + 1).join('');
 		const message = TestMessage.diff('Output does not match', want, got);
-		message.severity = TestMessageSeverity.Error;
 		message.location = new Location(test.uri, test.range.start);
-		run.appendMessage(test, message);
+		messages.push(message);
 		output = output.slice(0, gotI);
 	}
 
-	for (const item of output) {
-		const fileAndLine = item.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
-		if (fileAndLine) {
-			current = { all: fileAndLine.groups.message };
-			const key = `${fileAndLine.groups.file}:${fileAndLine.groups.line}`;
-			if (parsed.has(key)) parsed.get(key).push(current);
-			else parsed.set(key, [current]);
-			continue;
-		}
-
-		if (!current) continue;
-
-		const entry = item.match(/^\s*(?:(?<name>[^:]+): *| +)\t(?<message>.*\n)$/);
-		if (!entry) continue;
-
-		current.all += entry.groups.message;
-		if (entry.groups.name === 'Error') {
-			current.error = entry.groups.message;
-		} else if (!entry.groups.name && current.error) current.error += entry.groups.message;
-	}
-
-	let append: (dir: Uri, file: string, line: number, severity: TestMessageSeverity, messages: string[]) => void;
-	if (concat) {
-		append = (dir, file, line, severity, messages) => {
-			const location = new Location(Uri.joinPath(dir, file), new Position(line, 0));
-			const message = messages.join('\n');
-			run.appendMessage(test, { severity, message, location });
-		};
-	} else {
-		append = (dir, file, line, severity, messages) => {
-			const location = new Location(Uri.joinPath(dir, file), new Position(line, 0));
-			if (messages.length > 100) {
-				window.showWarningMessage(
-					`Only the first 100 messages generated by ${test.label} at ${file}:${line} are shown, for performance reasons`
-				);
-				messages.splice(100);
-			}
-
-			for (const message of messages) {
-				run.appendMessage(test, { severity, message, location });
-			}
-		};
-	}
-
+	let current: Location;
 	const dir = Uri.joinPath(test.uri, '..');
-	for (const [location, entries] of parsed.entries()) {
-		const i = location.lastIndexOf(':');
-		const file = location.substring(0, i);
-		const line = Number(location.substring(i + 1)) - 1;
-
-		let severity = TestMessageSeverity.Information;
-		const messages = entries.map(({ all, error }) => {
-			if (error) severity = TestMessageSeverity.Error;
-			const hover = (error || all).trim();
-			return hover.split('\n')[0].replace(/:\s+$/, '');
-		});
-
-		append(dir, file, line, severity, messages);
+	for (const line of output) {
+		const m = line.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
+		if (m) {
+			const file = Uri.joinPath(dir, m.groups.file);
+			const ln = Number(m.groups.line) - 1; // VSCode uses 0-based line numbering (internally)
+			current = new Location(file, new Position(ln, 0));
+			messages.push({ message: m.groups.message, location: current });
+		} else if (current) {
+			messages.push({ message: line, location: current });
+		}
 	}
+
+	return messages;
 }
 
 function checkForBuildFailure(run: TestRun, tests: Record<string, TestItem>, output: string[]) {
@@ -931,7 +903,8 @@ function checkForBuildFailure(run: TestRun, tests: Record<string, TestItem>, out
 	if (!output.some((x) => rePkg.test(x))) return;
 
 	for (const name in tests) {
-		run.setState(tests[name], TestResultState.Errored);
+		// TODO(firelizzard18): Previously, there was an Errored state that differed from Failed.
+		run.failed(tests[name], { message: 'Compilation failed' });
 	}
 }
 
@@ -971,7 +944,7 @@ async function runTest(expl: TestExplorer, request: TestRunRequest) {
 				continue;
 			}
 
-			run.setState(item, TestResultState.Queued);
+			run.enqueued(item);
 			discardChildren(item);
 
 			if (uri.query === 'benchmark') {
@@ -984,6 +957,7 @@ async function runTest(expl: TestExplorer, request: TestRunRequest) {
 		const record = new Map<TestItem, string[]>();
 		const testFns = Object.keys(tests);
 		const benchmarkFns = Object.keys(benchmarks);
+		const concat = goConfig.get<boolean>('testExplorerConcatenateMessages');
 
 		// Run tests
 		if (testFns.length > 0) {
@@ -994,7 +968,7 @@ async function runTest(expl: TestExplorer, request: TestRunRequest) {
 				outputChannel,
 				dir: uri.fsPath,
 				functions: testFns,
-				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, e)
+				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, concat, e)
 			});
 			if (!success) {
 				checkForBuildFailure(run, tests, outputChannel.lines);
@@ -1021,12 +995,6 @@ async function runTest(expl: TestExplorer, request: TestRunRequest) {
 			} else {
 				checkForBuildFailure(run, benchmarks, outputChannel.lines);
 			}
-		}
-
-		// Create test messages
-		const concat = goConfig.get<boolean>('testExplorerConcatenateMessages');
-		for (const [test, output] of record.entries()) {
-			processRecordedOutput(run, test, output, concat);
 		}
 	}
 
