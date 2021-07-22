@@ -112,6 +112,8 @@ import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
 import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
+import { ExtensionAPI } from './export';
+import extensionAPI from './extensionAPI';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -124,7 +126,7 @@ export let restartLanguageServer = () => {
 	return;
 };
 
-export async function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// Make sure this does not run when running in test.
 		return;
@@ -705,6 +707,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
 	});
+
+	return extensionAPI;
 }
 
 function showGoWelcomePage(ctx: vscode.ExtensionContext) {
