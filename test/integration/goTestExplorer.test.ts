@@ -9,11 +9,12 @@ import {
 	SymbolKind,
 	Range,
 	Position,
-	TestItemCollection
+	TestItemCollection,
+	TextDocumentChangeEvent
 } from 'vscode';
 import { packagePathToGoModPathMap as pkg2mod } from '../../src/goModules';
 import { TestExplorer, testID } from '../../src/goTestExplorer';
-import { MockTestController, MockTestItem, MockTestWorkspace } from '../mocks/MockTest';
+import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -33,20 +34,18 @@ function symbols(doc: TextDocument, token: unknown): Thenable<DocumentSymbol[]> 
 	return Promise.resolve(syms);
 }
 
-function rethrow(e: unknown) {
-	throw e;
+function setup(folders: string[], files: Files) {
+	return setupCtor(folders, files, TestExplorer);
 }
 
-function setup(folders: string[], files: Files) {
+function setupCtor<T extends TestExplorer>(
+	folders: string[],
+	files: Files,
+	ctor: new (...args: ConstructorParameters<typeof TestExplorer>) => T
+) {
 	const ws = MockTestWorkspace.from(folders, files);
 	const ctrl = new MockTestController();
-	const expl = new TestExplorer(ctrl, ws, rethrow, symbols);
-
-	// Override TestExplorer.createItem so we can control the TestItem implementation
-	expl.createItem = (label: string, uri: Uri, kind: string, name?: string) => {
-		const id = testID(uri, kind, name);
-		return new MockTestItem(id, label, uri, ctrl);
-	};
+	const expl = new ctor(ctrl, ws, symbols);
 
 	function walk(dir: Uri, modpath?: string) {
 		const dirs: Uri[] = [];
@@ -252,11 +251,12 @@ suite('Test Explorer', () => {
 				for (const m in cases[n]) {
 					test(m, async () => {
 						const { workspace, files, expect, item: itemData = [] } = cases[n][m];
-						const { expl, ctrl } = setup(workspace, files);
+						const { ctrl } = setup(workspace, files);
 
 						let item: TestItem | undefined;
 						for (const [label, uri, kind, name] of itemData) {
-							const child = expl.createItem(label, Uri.parse(uri), kind, name);
+							const u = Uri.parse(uri);
+							const child = ctrl.createTestItem(testID(u, kind, name), label, u);
 							(item?.children || ctrl.items).add(child);
 							item = child;
 						}
@@ -273,6 +273,12 @@ suite('Test Explorer', () => {
 
 	suite('Events', () => {
 		suite('Document opened', () => {
+			class DUT extends TestExplorer {
+				async _didOpen(doc: TextDocument) {
+					await this.didOpenTextDocument(doc);
+				}
+			}
+
 			interface TC extends TestCase {
 				open: string;
 				expect: string[];
@@ -312,9 +318,9 @@ suite('Test Explorer', () => {
 			for (const name in cases) {
 				test(name, async () => {
 					const { workspace, files, open, expect } = cases[name];
-					const { ctrl, expl, ws } = setup(workspace, files);
+					const { ctrl, expl, ws } = setupCtor(workspace, files, DUT);
 
-					await expl.didOpenTextDocument(ws.fs.files.get(open));
+					await expl._didOpen(ws.fs.files.get(open));
 
 					assertTestItems(ctrl.items, expect);
 				});
@@ -322,6 +328,16 @@ suite('Test Explorer', () => {
 		});
 
 		suite('Document edited', async () => {
+			class DUT extends TestExplorer {
+				async _didOpen(doc: TextDocument) {
+					await this.didOpenTextDocument(doc);
+				}
+
+				async _didChange(e: TextDocumentChangeEvent) {
+					await this.didChangeTextDocument(e);
+				}
+			}
+
 			interface TC extends TestCase {
 				open: string;
 				changes: [string, string][];
@@ -371,16 +387,16 @@ suite('Test Explorer', () => {
 			for (const name in cases) {
 				test(name, async () => {
 					const { workspace, files, open, changes, expect } = cases[name];
-					const { ctrl, expl, ws } = setup(workspace, files);
+					const { ctrl, expl, ws } = setupCtor(workspace, files, DUT);
 
-					await expl.didOpenTextDocument(ws.fs.files.get(open));
+					await expl._didOpen(ws.fs.files.get(open));
 
 					assertTestItems(ctrl.items, expect.before);
 
 					for (const [file, contents] of changes) {
 						const doc = ws.fs.files.get(file);
 						doc.contents = contents;
-						await expl.didChangeTextDocument({
+						await expl._didChange({
 							document: doc,
 							contentChanges: []
 						});

@@ -409,6 +409,18 @@ The Go build tags to use for when running tests. If null, then buildTags will be
 Specifies the timeout for go test in ParseDuration format.
 
 Default: `"30s"`
+### `go.testExplorerPackages`
+Present packages in the test explorer as a flat list or as nested trees.
+
+Default: `flat`
+### `go.testExplorerRunBenchmarks`
+Include benchmarks when running a group of tests.
+
+Default: `false`
+### `go.testExplorerConcatenateMessages`
+Concatenate test log messages for a given location instead of presenting them individually.
+
+Default: `true`
 ### `go.toolsEnvVars`
 
 Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)

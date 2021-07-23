@@ -30,9 +30,7 @@ import { getCurrentGoPath } from './util';
 import { GoDocumentSymbolProvider } from './goOutline';
 import { getGoConfig } from './config';
 import { getTestFlags, goTest, GoTestOutput } from './testUtils';
-
-// We could use TestItem.data, but that may be removed
-const symbols = new WeakMap<TestItem, DocumentSymbol>();
+import { outputChannel } from './goStatus';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace TestExplorer {
@@ -47,27 +45,68 @@ export namespace TestExplorer {
 	}
 }
 
+async function doSafe<T>(context: string, p: Thenable<T> | (() => T | Thenable<T>), onError?: T): Promise<T> {
+	try {
+		if (typeof p === 'function') {
+			return await p();
+		} else {
+			return await p;
+		}
+	} catch (error) {
+		if (process.env.VSCODE_GO_IN_TEST === '1') {
+			throw error;
+		}
+
+		// TODO internationalization?
+		if (context === 'resolveHandler') {
+			const m = 'Failed to resolve tests';
+			outputChannel.appendLine(`${m}: ${error}`);
+			await vscode.window.showErrorMessage(m);
+		} else if (context === 'runHandler') {
+			const m = 'Failed to execute tests';
+			outputChannel.appendLine(`${m}: ${error}`);
+			await vscode.window.showErrorMessage(m);
+		} else if (/^did/.test(context)) {
+			outputChannel.appendLine(`Failed while handling '${context}': ${error}`);
+		} else {
+			const m = 'An unknown error occured';
+			outputChannel.appendLine(`${m}: ${error}`);
+			await vscode.window.showErrorMessage(m);
+		}
+		return onError;
+	}
+}
+
 export class TestExplorer {
 	static setup(context: ExtensionContext): TestExplorer {
 		const ctrl = vscode.tests.createTestController('go', 'Go');
-		const inst = new this(
-			ctrl,
-			workspace,
-			(e) => console.log(e),
-			new GoDocumentSymbolProvider().provideDocumentSymbols
+		const getSym = new GoDocumentSymbolProvider().provideDocumentSymbols;
+		const inst = new this(ctrl, workspace, getSym);
+
+		context.subscriptions.push(
+			workspace.onDidChangeConfiguration((x) =>
+				doSafe('onDidChangeConfiguration', inst.didChangeConfiguration(x))
+			)
 		);
-		resolve(inst);
 
-		context.subscriptions.push(workspace.onDidChangeConfiguration((x) => inst.didChangeConfiguration(x)));
+		context.subscriptions.push(
+			workspace.onDidOpenTextDocument((x) => doSafe('onDidOpenTextDocument', inst.didOpenTextDocument(x)))
+		);
 
-		context.subscriptions.push(workspace.onDidOpenTextDocument((x) => inst.didOpenTextDocument(x)));
-		context.subscriptions.push(workspace.onDidChangeTextDocument((x) => inst.didChangeTextDocument(x)));
-		context.subscriptions.push(workspace.onDidChangeWorkspaceFolders((x) => inst.didChangeWorkspaceFolders(x)));
+		context.subscriptions.push(
+			workspace.onDidChangeTextDocument((x) => doSafe('onDidChangeTextDocument', inst.didChangeTextDocument(x)))
+		);
+
+		context.subscriptions.push(
+			workspace.onDidChangeWorkspaceFolders((x) =>
+				doSafe('onDidChangeWorkspaceFolders', inst.didChangeWorkspaceFolders(x))
+			)
+		);
 
 		const watcher = workspace.createFileSystemWatcher('**/*_test.go', false, true, false);
 		context.subscriptions.push(watcher);
-		context.subscriptions.push(watcher.onDidCreate((x) => inst.didCreateFile(x)));
-		context.subscriptions.push(watcher.onDidDelete((x) => inst.didDeleteFile(x)));
+		context.subscriptions.push(watcher.onDidCreate((x) => doSafe('onDidCreate', inst.didCreateFile(x))));
+		context.subscriptions.push(watcher.onDidDelete((x) => doSafe('onDidDelete', inst.didDeleteFile(x))));
 
 		return inst;
 	}
@@ -75,13 +114,24 @@ export class TestExplorer {
 	constructor(
 		public ctrl: TestController,
 		public ws: TestExplorer.Workspace,
-		public errored: (e: unknown) => void,
 		public provideDocumentSymbols: (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>
 	) {
 		// TODO handle cancelation of test runs
-		ctrl.resolveHandler = (...args) => resolve(this, ...args);
-		ctrl.createRunProfile('Go [Run]', TestRunProfileKind.Run, (rq) => runTest(this, rq), true);
+		ctrl.resolveHandler = (item) => this.resolve(item);
+		ctrl.createRunProfile('go test', TestRunProfileKind.Run, (rq) => this.run(rq), true);
 	}
+
+	/* ***** Interface (external) ***** */
+
+	resolve(item?: TestItem) {
+		return doSafe('resolveHandler', resolve(this, item));
+	}
+
+	run(request: TestRunRequest) {
+		return doSafe('runHandler', runTests(this, request));
+	}
+
+	/* ***** Interface (internal) ***** */
 
 	// Create an item.
 	createItem(label: string, uri: Uri, kind: string, name?: string): TestItem {
@@ -118,31 +168,21 @@ export class TestExplorer {
 		return sub;
 	}
 
-	resolve(item?: TestItem) {
-		resolve(this, item);
+	/* ***** Listeners ***** */
+
+	protected async didOpenTextDocument(doc: TextDocument) {
+		await documentUpdate(this, doc);
 	}
 
-	async didOpenTextDocument(doc: TextDocument) {
-		try {
-			await documentUpdate(this, doc);
-		} catch (e) {
-			this.errored(e);
-		}
+	protected async didChangeTextDocument(e: TextDocumentChangeEvent) {
+		await documentUpdate(
+			this,
+			e.document,
+			e.contentChanges.map((x) => x.range)
+		);
 	}
 
-	async didChangeTextDocument(e: TextDocumentChangeEvent) {
-		try {
-			await documentUpdate(
-				this,
-				e.document,
-				e.contentChanges.map((x) => x.range)
-			);
-		} catch (e) {
-			this.errored(e);
-		}
-	}
-
-	async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
+	protected async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
 		for (const item of collect(this.ctrl.items)) {
 			const uri = Uri.parse(item.id);
 			if (uri.query === 'package') {
@@ -160,15 +200,11 @@ export class TestExplorer {
 		}
 	}
 
-	async didCreateFile(file: Uri) {
-		try {
-			await documentUpdate(this, await this.ws.openTextDocument(file));
-		} catch (e) {
-			this.errored(e);
-		}
+	protected async didCreateFile(file: Uri) {
+		await documentUpdate(this, await this.ws.openTextDocument(file));
 	}
 
-	async didDeleteFile(file: Uri) {
+	protected async didDeleteFile(file: Uri) {
 		const id = testID(file, 'file');
 		function find(children: TestItemCollection): TestItem {
 			for (const item of collect(children)) {
@@ -195,7 +231,7 @@ export class TestExplorer {
 		}
 	}
 
-	async didChangeConfiguration(e: ConfigurationChangeEvent) {
+	protected async didChangeConfiguration(e: ConfigurationChangeEvent) {
 		let update = false;
 		for (const item of collect(this.ctrl.items)) {
 			if (e.affectsConfiguration('go.testExplorerPackages', item.uri)) {
@@ -407,7 +443,6 @@ async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen:
 
 	const item = expl.getOrCreateItem(file, symbol.name, uri, kind, symbol.name);
 	item.range = symbol.range;
-	symbols.set(item, symbol);
 }
 
 // Processes a Go document, calling processSymbol for each symbol in the
@@ -524,6 +559,7 @@ async function walkWorkspaces(fs: TestExplorer.FileSystem, uri: Uri): Promise<Ma
 		}
 
 		if (file === 'go.mod') {
+			// BUG(firelizard18): This ignores modules within a module
 			found.set(dir.toString(), true);
 			return WalkStop.Current;
 		}
@@ -901,17 +937,18 @@ function checkForBuildFailure(run: TestRun, tests: Record<string, TestItem>, out
 	if (!output.some((x) => rePkg.test(x))) return;
 
 	for (const name in tests) {
-		// TODO(firelizzard18): Previously, there was an Errored state that differed from Failed.
+		// TODO(firelizzard18): Use `run.errored` when that is added back
+		tests[name].error = 'Compilation failed';
 		run.failed(tests[name], { message: 'Compilation failed' });
 	}
 }
 
 // Execute tests - TestController.runTest callback
-async function runTest(expl: TestExplorer, request: TestRunRequest) {
+async function runTests(expl: TestExplorer, request: TestRunRequest) {
 	const collected = new Map<string, CollectedTest[]>();
 	const docs = new Set<Uri>();
 	for (const item of request.include) {
-		await collectTests(expl, item, true, request.exclude, collected, docs);
+		await collectTests(expl, item, true, request.exclude || [], collected, docs);
 	}
 
 	// Save all documents that contain a test we're about to run, to ensure `go
@@ -957,6 +994,7 @@ async function runTest(expl: TestExplorer, request: TestRunRequest) {
 				continue;
 			}
 
+			item.error = null;
 			run.enqueued(item);
 			discardChildren(item);
 

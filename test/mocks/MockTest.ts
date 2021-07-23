@@ -64,7 +64,7 @@ class MockTestCollection implements TestItemCollection {
 	}
 }
 
-export class MockTestItem implements TestItem {
+class MockTestItem implements TestItem {
 	private static idNum = 0;
 	private idNum: number;
 
