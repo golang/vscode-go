@@ -116,9 +116,8 @@ export class TestExplorer {
 		public ws: TestExplorer.Workspace,
 		public provideDocumentSymbols: (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>
 	) {
-		// TODO handle cancelation of test runs
 		ctrl.resolveHandler = (item) => this.resolve(item);
-		ctrl.createRunProfile('go test', TestRunProfileKind.Run, (rq) => this.run(rq), true);
+		ctrl.createRunProfile('go test', TestRunProfileKind.Run, (rq, tok) => this.run(rq, tok), true);
 	}
 
 	/* ***** Interface (external) ***** */
@@ -127,8 +126,8 @@ export class TestExplorer {
 		return doSafe('resolveHandler', resolve(this, item));
 	}
 
-	run(request: TestRunRequest) {
-		return doSafe('runHandler', runTests(this, request));
+	run(request: TestRunRequest, token: CancellationToken) {
+		return doSafe('runHandler', runTests(this, request, token));
 	}
 
 	/* ***** Interface (internal) ***** */
@@ -815,18 +814,18 @@ function consumeGoBenchmarkEvent(
 }
 
 // Pass any incomplete benchmarks (see test_events.md)
-function passBenchmarks(run: TestRun, items: Record<string, TestItem>, complete: Set<TestItem>) {
-	function pass(item: TestItem) {
+function markComplete(items: Record<string, TestItem>, complete: Set<TestItem>, fn: (item: TestItem) => void) {
+	function mark(item: TestItem) {
 		if (!complete.has(item)) {
-			run.passed(item);
+			fn(item);
 		}
 		for (const child of collect(item.children)) {
-			pass(child);
+			mark(child);
 		}
 	}
 
 	for (const name in items) {
-		pass(items[name]);
+		mark(items[name]);
 	}
 }
 
@@ -836,6 +835,7 @@ function consumeGoTestEvent(
 	run: TestRun,
 	tests: Record<string, TestItem>,
 	record: Map<TestItem, string[]>,
+	complete: Set<TestItem>,
 	concat: boolean,
 	e: GoTestOutput
 ) {
@@ -854,10 +854,12 @@ function consumeGoTestEvent(
 			break;
 
 		case 'pass':
+			complete.add(test);
 			run.passed(test, e.Elapsed * 1000);
 			break;
 
 		case 'fail': {
+			complete.add(test);
 			const messages = parseOutput(run, test, record.get(test) || []);
 
 			if (!concat) {
@@ -880,6 +882,7 @@ function consumeGoTestEvent(
 		}
 
 		case 'skip':
+			complete.add(test);
 			run.skipped(test);
 			break;
 
@@ -930,21 +933,15 @@ function parseOutput(run: TestRun, test: TestItem, output: string[]): TestMessag
 	return messages;
 }
 
-function checkForBuildFailure(run: TestRun, tests: Record<string, TestItem>, output: string[]) {
+function isBuildFailure(output: string[]): boolean {
 	const rePkg = /^# (?<pkg>[\w/.-]+)(?: \[(?<test>[\w/.-]+).test\])?/;
 
 	// TODO(firelizzard18): Add more sophisticated check for build failures?
-	if (!output.some((x) => rePkg.test(x))) return;
-
-	for (const name in tests) {
-		// TODO(firelizzard18): Use `run.errored` when that is added back
-		tests[name].error = 'Compilation failed';
-		run.failed(tests[name], { message: 'Compilation failed' });
-	}
+	return output.some((x) => rePkg.test(x));
 }
 
 // Execute tests - TestController.runTest callback
-async function runTests(expl: TestExplorer, request: TestRunRequest) {
+async function runTests(expl: TestExplorer, request: TestRunRequest, token: CancellationToken) {
 	const collected = new Map<string, CollectedTest[]>();
 	const docs = new Set<Uri>();
 	for (const item of request.include) {
@@ -1012,6 +1009,7 @@ async function runTests(expl: TestExplorer, request: TestRunRequest) {
 
 		// Run tests
 		if (testFns.length > 0) {
+			const complete = new Set<TestItem>();
 			const success = await goTest({
 				goConfig,
 				flags,
@@ -1019,10 +1017,19 @@ async function runTests(expl: TestExplorer, request: TestRunRequest) {
 				outputChannel,
 				dir: uri.fsPath,
 				functions: testFns,
-				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, concat, e)
+				cancel: token,
+				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, complete, concat, e)
 			});
 			if (!success) {
-				checkForBuildFailure(run, tests, outputChannel.lines);
+				if (isBuildFailure(outputChannel.lines)) {
+					markComplete(benchmarks, new Set(), (item) => {
+						// TODO change to errored when that is added back
+						run.failed(item, { message: 'Compilation failed' });
+						item.error = 'Compilation failed';
+					});
+				} else {
+					markComplete(benchmarks, complete, (x) => run.skipped(x));
+				}
 			}
 		}
 
@@ -1037,14 +1044,21 @@ async function runTests(expl: TestExplorer, request: TestRunRequest) {
 				dir: uri.fsPath,
 				functions: benchmarkFns,
 				isBenchmark: true,
+				cancel: token,
 				goTestOutputConsumer: (e) => consumeGoBenchmarkEvent(expl, run, benchmarks, complete, e)
 			});
 
-			if (success || complete.size > 0) {
-				// Explicitly pass any incomplete benchmarks (see test_events.md)
-				passBenchmarks(run, benchmarks, complete);
+			// Explicitly complete any incomplete benchmarks (see test_events.md)
+			if (success) {
+				markComplete(benchmarks, complete, (x) => run.passed(x));
+			} else if (isBuildFailure(outputChannel.lines)) {
+				markComplete(benchmarks, new Set(), (item) => {
+					// TODO change to errored when that is added back
+					run.failed(item, { message: 'Compilation failed' });
+					item.error = 'Compilation failed';
+				});
 			} else {
-				checkForBuildFailure(run, benchmarks, outputChannel.lines);
+				markComplete(benchmarks, complete, (x) => run.skipped(x));
 			}
 		}
 	}

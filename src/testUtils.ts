@@ -11,6 +11,7 @@ import cp = require('child_process');
 import path = require('path');
 import util = require('util');
 import vscode = require('vscode');
+import { CancellationToken } from 'vscode-languageserver-protocol';
 
 import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
@@ -85,6 +86,10 @@ export interface TestConfig {
 	 * Output channel for test output.
 	 */
 	outputChannel?: vscode.OutputChannel;
+	/**
+	 * Can be used to terminate the test process.
+	 */
+	cancel?: CancellationToken;
 	/**
 	 * Output channel for JSON test output.
 	 */
@@ -299,6 +304,8 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const tp = cp.spawn(goRuntimePath, args, { env: testEnvVars, cwd: testconfig.dir });
 			const outBuf = new LineBuffer();
 			const errBuf = new LineBuffer();
+
+			testconfig.cancel?.onCancellationRequested(() => tp.kill());
 
 			const testResultLines: string[] = [];
 			const processTestResultLine = addJSONFlag
