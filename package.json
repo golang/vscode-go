@@ -1820,6 +1820,12 @@
           },
           "additionalProperties": true
         },
+        "go.terminal.activateEnvironment": {
+          "default": true,
+          "description": "Apply the Go & PATH environment variables used by the extension to all integrated terminals.",
+          "scope": "resource",
+          "type": "boolean"
+        },
         "gopls": {
           "type": "object",
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",

@@ -382,6 +382,11 @@ Default:
 	"tags" :	"",
 }
 ```
+### `go.terminal.activateEnvironment`
+
+Apply the Go & PATH environment variables used by the extension to all integrated terminals.
+
+Default: `true`
 ### `go.testEnvFile`
 
 Absolute path to a file containing environment variables definitions. File contents should be of the form key=value.

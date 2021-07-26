@@ -194,4 +194,5 @@ function getConfig(section: string, uri?: vscode.Uri) {
 }
 
 // True if the extension is running in known cloud-based IDEs.
-export const IsInCloudIDE = process.env.CLOUD_SHELL === 'true' || process.env.CODESPACES === 'true';
+export const IsInCloudIDE =
+	process.env.CLOUD_SHELL === 'true' || process.env.CODESPACES === 'true' || !!process.env.GITPOD_WORKSPACE_ID;

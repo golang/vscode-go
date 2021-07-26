@@ -660,8 +660,16 @@ func describeDebugProperty(p *Property) string {
 	}
 
 	if p.Type == "object" && len(p.Properties) > 0 {
+
+		var keys []string
+		for k := range p.Properties {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		fmt.Fprintf(b, "<ul>")
-		for k, v := range p.Properties {
+
+		for _, k := range keys {
+			v := p.Properties[k]
 			fmt.Fprintf(b, "<li>`%q`: %v</li>", k, describeDebugProperty(v))
 		}
 		fmt.Fprintf(b, "</ul>")

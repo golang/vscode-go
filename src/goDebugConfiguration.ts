@@ -205,12 +205,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
 			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
 		}
-		if (
-			debugAdapter !== 'dlv-dap' &&
-			debugConfiguration.request === 'attach' &&
-			debugConfiguration.mode === 'remote' &&
-			!debugConfiguration['cwd']
-		) {
+		if (debugAdapter !== 'dlv-dap' && debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
 			if (vscode.workspace.workspaceFolders?.length > 1) {
 				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
