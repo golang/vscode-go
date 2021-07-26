@@ -20,6 +20,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/stamblerre/work-stats/generic"
+	"github.com/stamblerre/work-stats/golang"
 	"golang.org/x/build/maintner"
 	"golang.org/x/build/maintner/godata"
 )
@@ -32,33 +34,6 @@ var (
 	mdMode     = flag.Bool("md", false, "write MD output")
 	exclFile   = flag.String("exclude-from", "", "optional path to changelog MD file. If specified, any 'CL NNNN' occurence in the content will cause that CL to be excluded from this tool's output.")
 )
-
-// change is a change that has occurred since the last release.
-type change struct {
-	CL     *maintner.GerritCL
-	Note   string // the part after RELNOTE=
-	Issues []*issue
-	pkg    string
-}
-
-func (c change) TextLine() string {
-	subj := c.CL.Subject()
-	subj = c.Note + ": " + subj
-	return fmt.Sprintf("https://golang.org/cl/%d: %s", c.CL.Number, subj)
-}
-
-type issue struct {
-	*maintner.GitHubIssue
-	repo  string
-	owner string
-}
-
-func (i *issue) link() string {
-	if i.owner == "golang" && i.repo == "go" {
-		return fmt.Sprintf("https://golang.org/issue/%v", i.Number)
-	}
-	return fmt.Sprintf("https://github.com/%s/%s/issues/%v", i.owner, i.repo, i.Number)
-}
 
 func main() {
 	flag.Parse()
@@ -110,7 +85,7 @@ func main() {
 		return nil
 	})
 
-	var changes []*change
+	var changes []*generic.Changelist
 	authors := map[*maintner.GitPerson]bool{}
 	ger.ForeachProjectUnsorted(func(gp *maintner.GerritProject) error {
 		if gp.Server() != "go.googlesource.com" || gp.Project() != *project {
@@ -149,29 +124,7 @@ func main() {
 					return nil
 				}
 			}
-
-			// try to determine type from issue labels
-			var issues []*issue
-			for _, ref := range cl.GitHubIssueRefs {
-				i := ref.Repo.Issue(ref.Number)
-				// Don't include pull requests.
-				if i.PullRequest {
-					continue
-				}
-				issues = append(issues, &issue{
-					repo:        ref.Repo.ID().Repo,
-					owner:       ref.Repo.ID().Owner,
-					GitHubIssue: i,
-				})
-			}
-
-			changes = append(changes, &change{
-				Note:   clRelNote(cl),
-				CL:     cl,
-				Issues: issues,
-				pkg:    clPackage(cl),
-			})
-
+			changes = append(changes, golang.GerritToGenericCL(cl))
 			authors[cl.Owner()] = true
 			return nil
 		})
@@ -179,7 +132,7 @@ func main() {
 	})
 
 	sort.Slice(changes, func(i, j int) bool {
-		return changes[i].CL.Number < changes[j].CL.Number
+		return changes[i].Number < changes[j].Number
 	})
 
 	if *mdMode {
@@ -196,40 +149,40 @@ func main() {
 		mdPrintContributors(authors)
 	} else {
 		for _, change := range changes {
-			fmt.Printf("  %s\n", change.TextLine())
+			fmt.Printf("  %s\n", change.Subject)
 		}
 	}
 }
 
-func mdPrintChanges(changes []*change, byPackage bool) {
-	printChange := func(change *change) {
+func mdPrintChanges(changes []*generic.Changelist, byCategory bool) {
+	printChange := func(change *generic.Changelist) {
 		fmt.Printf("- ")
-		content := change.CL.Subject()
-		if change.Note != "" && change.Note != "yes" && change.Note != "y" {
-			// Note contains content
-			content = change.Note
+		content := change.Subject
+		note := releaseNote(change)
+		if note != "" && note != "yes" && note != "y" {
+			// The release note contains content.
+			content = note
 		}
 
 		fmt.Printf("%s", content)
-		if len(change.CL.GitHubIssueRefs) > 0 {
+		if len(change.AssociatedIssues) > 0 {
 			fmt.Printf(" (")
-			for i, ref := range change.CL.GitHubIssueRefs {
-
+			for i, issue := range change.AssociatedIssues {
 				if i == 0 {
-					fmt.Printf("[Issue %d](https://github.com/%s/issues/%d)", ref.Number, ref.Repo.ID().String(), ref.Number)
+					fmt.Printf("[Issue %d](%s)", issue.Number, issue.Link)
 				} else {
-					fmt.Printf(", [%d](https://github.com/%s/issues/%d)", ref.Number, ref.Repo.ID().String(), ref.Number)
+					fmt.Printf(", [%d](%s)", issue.Number, issue.Link)
 				}
 			}
 			fmt.Printf(")")
 		}
-		fmt.Printf(" <!-- CL %d -->\n", change.CL.Number)
+		fmt.Printf(" <!-- CL %d -->\n", change.Number)
 	}
-	// Group CLs by package or by number order.
-	if byPackage {
-		pkgMap := map[string][]*change{}
+	// Group CLs by category or by number order.
+	if byCategory {
+		pkgMap := map[string][]*generic.Changelist{}
 		for _, change := range changes {
-			pkgMap[change.pkg] = append(pkgMap[change.pkg], change)
+			pkgMap[change.Category()] = append(pkgMap[change.Category()], change)
 		}
 		for _, changes := range pkgMap {
 			for _, change := range changes {
@@ -243,19 +196,19 @@ func mdPrintChanges(changes []*change, byPackage bool) {
 	}
 }
 
-func mdPrintIssues(changes []*change, milestone string) {
-	var issues []*issue
+func mdPrintIssues(changes []*generic.Changelist, milestone string) {
+	var issues []*generic.Issue
 	for _, change := range changes {
-		issues = append(issues, change.Issues...)
+		issues = append(issues, change.AssociatedIssues...)
 	}
 	sort.Slice(issues, func(i, j int) bool {
-		return issues[i].Number < issues[j].Number
+		return issues[i].Link < issues[j].Link
 	})
 	for _, issue := range issues {
-		if !issue.Closed {
+		if !issue.Closed() {
 			continue
 		}
-		fmt.Printf("%s: %s\n", issue.link(), issue.Milestone.Title)
+		fmt.Printf("%s: %s\n", issue.Link, issue.Milestone)
 	}
 }
 
@@ -278,14 +231,13 @@ func parseRelNote(s string) string {
 	return ""
 }
 
-func clRelNote(cl *maintner.GerritCL) string {
-	msg := cl.Commit.Msg
-	if strings.Contains(msg, "RELNOTE") {
-		return parseRelNote(msg)
+func releaseNote(cl *generic.Changelist) string {
+	if strings.Contains(cl.Message, "RELNOTE") {
+		return parseRelNote(cl.Message)
 	}
-	for _, comment := range cl.Messages {
-		if strings.Contains(comment.Message, "RELNOTE") {
-			return parseRelNote(comment.Message)
+	for _, comment := range cl.Comments {
+		if strings.Contains(comment, "RELNOTE") {
+			return parseRelNote(comment)
 		}
 	}
 	return ""
@@ -294,6 +246,8 @@ func clRelNote(cl *maintner.GerritCL) string {
 func mdPrintContributors(authors map[*maintner.GitPerson]bool) {
 	var names []string
 	for author := range authors {
+		// It would be great to look up the GitHub username by using:
+		// https://pkg.go.dev/golang.org/x/build/internal/gophers#GetPerson.
 		names = append(names, author.Name())
 	}
 	sort.Strings(names)
