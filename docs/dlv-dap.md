@@ -386,10 +386,6 @@ Sometimes you’d like to launch the program for debugging outside VS Code (e.g.
 
 ## Reporting issues
 
-The VS Code Go maintainers are reachable via the issue tracker and the `#vscode` channel in [the Gophers Slack](https://invite.slack.golangbridge.org).
-
-Please reach out on Slack with questions, suggestions, or ideas. If you have trouble getting started on an issue, we'd be happy to provide pointers and advice.
-
 When you are having issues in `dlv-dap` mode, first check if the problems are reproducible after updating `dlv-dap`. It's possible that the problems are already fixed. Follow the instruction for [updating dlv-dap](#updating-dlv-dap)) and [updating extension](https://code.visualstudio.com/docs/editor/extension-gallery#\_extension-autoupdate).
 
 Please report issues in [our issue tracker](https://github.com/golang/vscode-go/issues) with the following information.

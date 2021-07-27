@@ -131,8 +131,7 @@ troubleshooting](docs/troubleshooting.md), and another specifically for
 If the troubleshooting guides did not resolve the issue, please reach out to us
 by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose),
 [starting a GitHub discussion](https://github.com/golang/vscode-go/discussions),
-or by asking a question in the [Gophers Slack]. We hang out in the `#vscode`
-channel!
+or by asking a question on [Stack Overflow].
 
 Also, you can take a look at [learn.go.dev](https://learn.go.dev) and
 [golang.org/help](https://golang.org/help) for more general guidance on using
@@ -162,7 +161,7 @@ conduct-related issue, please mail conduct@golang.org.
 
 [MIT](LICENSE)
 
-[Gophers Slack]: https://gophers.slack.com/
+[Stack Overflow]: https://stackoverflow.com/questions/tagged/go+visual-studio-code
 [`gopls`]: https://golang.org/s/gopls
 [`go`]: https://golang.org/cmd/go
 [Managing extensions in VS Code]: https://code.visualstudio.com/docs/editor/extension-gallery

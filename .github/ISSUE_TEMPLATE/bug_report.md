@@ -8,7 +8,8 @@ assignees: ''
 ---
 
 For asking questions, see:
-- [GitHub Discussions (Q&A)](https://github.com/golang/vscode-go/discussions/categories/q-a)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/go+visual-studio-code)
+- [GitHub Discussions (Help)](https://github.com/golang/vscode-go/discussions/categories/help)
 - [`#vscode` channel in Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode)
 
 Before filing an issue, please review our troubleshooting guides
