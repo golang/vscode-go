@@ -93,11 +93,20 @@ import {
 	getGoVersion,
 	getToolsGopath,
 	getWorkspaceFolderPath,
+	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
-	resolvePath
+	resolvePath,
+	runGoVersionM
 } from './util';
-import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, setCurrentGoRoot } from './utils/pathUtils';
+import {
+	clearCacheForTools,
+	fileExists,
+	getCurrentGoRoot,
+	dirExists,
+	setCurrentGoRoot,
+	envPath
+} from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
@@ -954,22 +963,40 @@ async function getConfiguredGoToolsCommand() {
 	outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
 	outputChannel.appendLine('gopath: ' + getCurrentGoPath());
 	outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
-	outputChannel.appendLine('PATH: ' + process.env['PATH']);
+	const currentEnvPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+	outputChannel.appendLine('PATH: ' + currentEnvPath);
+	if (currentEnvPath !== envPath) {
+		outputChannel.appendLine(`PATH (vscode launched with): ${envPath}`);
+	}
 	outputChannel.appendLine('');
 
 	const goVersion = await getGoVersion();
 	const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+	const goVersionTooOld = goVersion?.lt('1.12') || false;
 
-	allTools.forEach((tool) => {
-		const toolPath = getBinPath(tool.name);
-		// TODO(hyangah): print alternate tool info if set.
-		let msg = 'not installed';
-		if (path.isAbsolute(toolPath)) {
-			// getBinPath returns the absolute path is the tool exists.
-			// (See getBinPathWithPreferredGopath which is called underneath)
-			msg = 'installed';
-		}
-		outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
+	outputChannel.appendLine(`\tgo:\t${goVersion?.binaryPath}: ${goVersion?.version}`);
+	const toolsInfo = await Promise.all(
+		allTools.map(async (tool) => {
+			const toolPath = getBinPath(tool.name);
+			// TODO(hyangah): print alternate tool info if set.
+			if (!path.isAbsolute(toolPath)) {
+				// getBinPath returns the absolute path is the tool exists.
+				// (See getBinPathWithPreferredGopath which is called underneath)
+				return `\t${tool.name}:\tnot installed`;
+			}
+			if (goVersionTooOld) {
+				return `\t${tool.name}:\t${toolPath}: unknown version`;
+			}
+			try {
+				const out = await runGoVersionM(toolPath);
+				return `\t${tool.name}:${out.replace(/^/gm, '\t')}`;
+			} catch (e) {
+				return `\t${tool.name}:\t${toolPath}: go version -m failed: ${e}`;
+			}
+		})
+	);
+	toolsInfo.forEach((info) => {
+		outputChannel.appendLine(info);
 	});
 
 	let folders = vscode.workspace.workspaceFolders?.map((folder) => {
