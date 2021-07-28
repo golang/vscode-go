@@ -19,6 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as util from 'util';
 import {
+	ContinuedEvent,
 	DebugSession,
 	ErrorDestination,
 	Handles,
@@ -1779,6 +1780,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a next request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('NextResponse');
 	}
@@ -1802,6 +1805,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step in request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepInResponse');
 	}
@@ -1825,6 +1830,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step out request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepOutResponse');
 	}
