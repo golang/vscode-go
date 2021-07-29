@@ -349,7 +349,7 @@ When using the dlv-dap mode, the delve instance running remotely needs to be abl
 $ dlv-dap dap --listen=:12345
 ```
 
-Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`.
+Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`:
 
 ```json5
 {
@@ -367,7 +367,7 @@ Use the following `launch` configuration to tell `dlv-dap` to execute a binary p
 }
 ```
 
-Or have the binary compiled by dlv-dap by modifying the above configuration to use
+Or have the binary compiled by dlv-dap by modifying the above configuration to use:
 
 ```json5
   “mode”: “debug”,
