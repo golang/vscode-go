@@ -355,6 +355,7 @@ Use the following `launch` configuration to tell `dlv-dap` to execute a binary p
 {
   “name”: “Connect to server (DAP)”,
   “type”: “go”,
+  "debugAdapter": "dlv-dap",
   “request”: “launch”,
   “port”: 12345,
   “host”: “127.0.0.1”,
