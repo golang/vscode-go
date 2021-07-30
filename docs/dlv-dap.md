@@ -337,34 +337,42 @@ If you want to explicitly specify the location of the delve binary, use the `go.
 ### Remote Debugging
 
 
-> If you are able to use the [Remote Development](https://aka.ms/vscode-remote/download/extension) extensions and VS Code’s  universal [remote development capabilities](https://code.visualstudio.com/docs/remote/remote-overview), that is the recommended way to remote debug Go programs. Check out the [Getting started](https://code.visualstudio.com/docs/remote/remote-overview#_getting-started) section and [Remote tutorials](https://code.visualstudio.com/docs/remote/remote-overview#_remote-tutorials) to learn more.
+> If you are able to use the [Remote Development](https://aka.ms/vscode-remote/download/extension) extensions and VS Code’s  universal [remote development capabilities](https://code.visualstudio.com/docs/remote/remote-overview), that is the recommended way to debug Go programs remotely. Check out [Getting started](https://code.visualstudio.com/docs/remote/remote-overview#_getting-started) section and [Remote tutorials](https://code.visualstudio.com/docs/remote/remote-overview#_remote-tutorials) to learn more.
 
-Remote debugging is the debug mode where the debug target runs in a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. This section describes a current temporary workaround and its limitations. If the following workaround is not working for your case, please file an issue and help us understand remote debugging use cases better.
+Remote debugging is the debug mode intended to work with a debugger and target running on a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. This section describes a current temporary workaround and its limitations. If the following workaround is not working for your case, please file an issue and help us understand remote debugging use cases better.
 
 <p align="center"><img src="images/remote-debugging.png" alt="Remote Debugging"> </p>
 
-When using the dlv-dap mode, the delve instance running remotely needs to be able to process DAP, instead of the traditional Delve JSON-RPC. The following command starts a Delve DAP server on port 12345 and outputs `dap` specific events.
+When using the dlv-dap mode, the delve instance running remotely needs to be able to process DAP requests, instead of the traditional JSON-RPC, used with an external `dlv --headless` server. The following command starts a Delve DAP server on port 12345 that is ready to accept a request from an editor such as VS Code for launching or attaching to a target.
 
 ```
 $ dlv-dap dap --listen=:12345
 ```
 
-Then, use the following `launch` configuration:
+Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`:
 
 ```json5
 {
   “name”: “Connect to server (DAP)”,
   “type”: “go”,
+  "debugAdapter": "dlv-dap",
   “request”: “launch”,
   “port”: 12345,
   “host”: “127.0.0.1”,
   “mode”: “exec”,
-  “program”: “/path/to/remote/workspace/program/executable”,
+  “program”: “/absolute/path/to/remote/workspace/program/executable”,
   “substitutePath”: [
       { “from”: ${workspaceFolder}, “to”: “/path/to/remote/workspace” },
       ...
   ]
 }
+```
+
+Or have the binary compiled by dlv-dap by modifying the above configuration to use:
+
+```json5
+  “mode”: “debug”,
+  “program”: “/absolute/path/to/remote/workspace/package”,
 ```
 
 When seeing the `”port”` attribute being used in the launch request, Go extension will assume a Delve DAP server is started externally and accessible through the specified `host:port` and tell VS Code to connect to it directly. The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
