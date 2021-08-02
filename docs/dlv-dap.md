@@ -20,7 +20,7 @@ To opt in to use this new adapter (`dlv-dap`), add the following in your VSCode 
     }
 ```
 
-If you want to use `dlv-dap` for only a subset of your launch configurations, you can use [the `debugAdapter` attribute](#launchjson-attributes) to switch between `“dlv-dap”` and `“legacy”` mode. If you are using [the Nightly version of this extension](https://github.com/golang/vscode-go/blob/master/docs/nightly.md#go-nightly), `dlv-dap` is already the default debug adapter for local debugging scenarios, so the above setting is unnecessary.
+If you want to use `dlv-dap` for only a subset of your launch configurations, you can use [the `debugAdapter` attribute](#launchjson-attributes) to switch between `"dlv-dap"` and `"legacy"` mode. If you are using [the Nightly version of this extension](https://github.com/golang/vscode-go/blob/master/docs/nightly.md#go-nightly), `dlv-dap` is already the default debug adapter for local debugging scenarios, so the above setting is unnecessary.
 
 ### Start Debugging
 
@@ -38,7 +38,7 @@ If you already have launch configurations for the project (`.vscode/launch.json`
 
 <div style="text-align: center;"></div>
 
-Watch [“Go: Writing and debugging fast, reliable, and efficient software”](https://www.youtube.com/watch?v=6r08zGi38Tk&list=PLj6YeMhvp2S40Q-TEPEKOeypLvTVd5uME&index=1) to learn more about debugging features.
+Watch ["Go: Writing and debugging fast, reliable, and efficient software"](https://www.youtube.com/watch?v=6r08zGi38Tk&list=PLj6YeMhvp2S40Q-TEPEKOeypLvTVd5uME&index=1) to learn more about debugging features.
 
 Please review [the Features section](#features) that provides an overview of the debug UI and available features.
 
@@ -58,11 +58,11 @@ For general debugging features such as inspecting variables, setting breakpoints
 
 ### Configure
 
-When you need more than the default debugging setup, you can create a launch configuration file for the project by clicking the “create a launch.json file” link in [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view). Then, choose from the debug configuration drop-down menu. VS Code will create a `launch.json` file in a .vscode folder in your workspace (project root folder) or in your [user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration) or [workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
+When you need more than the default debugging setup, you can create a launch configuration file for the project by clicking the "create a launch.json file" link in [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view). Then, choose from the debug configuration drop-down menu. VS Code will create a `launch.json` file in a .vscode folder in your workspace (project root folder) or in your [user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration) or [workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
 
 If you already have a `launch.json` for your project, you can open it using `Open launch.json`.
 
-To add a new configuration to an existing `launch.json`, choose the “Add Configuration…” button to invoke the snippet IntelliSense.
+To add a new configuration to an existing `launch.json`, choose the "Add Configuration…" button to invoke the snippet IntelliSense.
 
 <p align="center">
 <img src="images/create-launch-json.gif" alt="Create launch.json" width="75%">
@@ -77,7 +77,7 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
 *   Supported modes
     *   `debug`: build and debug a main package
     *   `test`: build and debug a test
-    *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all=”-N -l”` flags to avoid stripping debugging information.
+    *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all="-N -l"` flags to avoid stripping debugging information.
     *   `auto`: automatically choose between `debug` and `test` depending on the open file.
 
 ### Attach
@@ -116,7 +116,7 @@ Once a debug session starts, the Debug toolbar will appear on the top of the edi
 *   Step Over (aka `next` in Delve) F10
 *   Step Into (aka `step` in Delve) F11
 *   Step Out (aka `stepout` in Delve) Shift+F11 or ⇧F11
-*   Restart (currently this is “Stop + Start”)  Ctrl+Shift+F5 or ⇧⌘F5
+*   Restart (currently this is "Stop + Start")  Ctrl+Shift+F5 or ⇧⌘F5
 *   Stop (terminate the debugee. Available in Launch request)  Shift+F5 or ⇧F5
 *   Disconnect (detach from the debugee. Available only in Attach request) Shift+F5 or ⇧F5
 *   Terminate (terminate the debugee. Available only in Attach request) Alt+Shift+F5 or ⌥⇧F5
@@ -177,7 +177,7 @@ You can inspect variables and evaluate expressions from the DEBUG CONSOLE panel 
 <img src="images/debug-console.png" alt="Debug Console" width="50%">
 </p>
 
-Variables and expressions accepted in DEBUG CONSOLE can be also registered in the Run view’s WATCH section, so they can be evaluated automatically as you debug. The “Add to Watch” feature from the VARIABLES section is convenient when you want to register interesting variables.
+Variables and expressions accepted in DEBUG CONSOLE can be also registered in the Run view’s WATCH section, so they can be evaluated automatically as you debug. The "Add to Watch" feature from the VARIABLES section is convenient when you want to register interesting variables.
 
 ⚠️ Function call feature is highly EXPERIMENTAL due to the limitation in Go runtime. Registering function calls in the WATCH section can often be problematic. Pause, stop, and disconnect will not work while a function call is running.
 
@@ -218,7 +218,7 @@ When the program stops due to exception, panic, or bad access error, the CALL ST
 There are many attributes that you can adjust in the launch and attach debug configuration. The following general attributes are mandatory for all launch configurations.
 
 *   `name`: the name of your configuration as it appears in the drop-down in the Run view.
-*   `type`: the debugging type VS Code uses to decide which debugging extension should be used. Always leave this set to `”go”`.
+*   `type`: the debugging type VS Code uses to decide which debugging extension should be used. Always leave this set to `"go"`.
 *   `request`: `launch` or `attach`.
 
 Here is the list of attributes specific to Go debugging.
@@ -274,7 +274,7 @@ Since the debugger and go compiler use the actual filenames, extra configuration
 }
 ```
 
-<!--### Options for “Add Configuration”
+<!--### Options for "Add Configuration"
 
 TODO: clean up the snippets in package.json
 
@@ -353,16 +353,16 @@ Use the following `launch` configuration to tell `dlv-dap` to execute a binary p
 
 ```json5
 {
-  “name”: “Connect to server (DAP)”,
-  “type”: “go”,
+  "name": "Connect to server (DAP)",
+  "type": "go",
   "debugAdapter": "dlv-dap",
-  “request”: “launch”,
-  “port”: 12345,
-  “host”: “127.0.0.1”,
-  “mode”: “exec”,
-  “program”: “/absolute/path/to/remote/workspace/program/executable”,
-  “substitutePath”: [
-      { “from”: ${workspaceFolder}, “to”: “/path/to/remote/workspace” },
+  "request": "launch",
+  "port": 12345,
+  "host": "127.0.0.1",
+  "mode": "exec",
+  "program": "/absolute/path/to/remote/workspace/program/executable",
+  "substitutePath": [
+      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
       ...
   ]
 }
@@ -371,16 +371,16 @@ Use the following `launch` configuration to tell `dlv-dap` to execute a binary p
 Or have the binary compiled by dlv-dap by modifying the above configuration to use:
 
 ```json5
-  “mode”: “debug”,
-  “program”: “/absolute/path/to/remote/workspace/package”,
+  "mode": "debug",
+  "program": "/absolute/path/to/remote/workspace/package",
 ```
 
-When seeing the `”port”` attribute being used in the launch request, Go extension will assume a Delve DAP server is started externally and accessible through the specified `host:port` and tell VS Code to connect to it directly. The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
+When seeing the `"port"` attribute being used in the launch request, Go extension will assume a Delve DAP server is started externally and accessible through the specified `host:port` and tell VS Code to connect to it directly. The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
 
 ⚠️ Limitations
 *   Unlike `dlv <debug|exec|attach> --headless` commands traditionally used for remote debugging scenarios, Delve’s new `dap` sub command does not launch or attach to the debuggee process until it receives a Launch/Attach request. We understand this limitation, and we are currently working on addressing this limitation.
 *   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs.
-*   When using `”attach”` requests, you will need to specify the `processId` since
+*   When using `"attach"` requests, you will need to specify the `processId` since
 [the processId resolution feature](#attach) cannot gather process information running remotely.
 *   Delve DAP does not support `--allow-multiclient` or `--continue` flags yet, which means after a debug session ends, the dlv-dap process will exit.
 *   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
@@ -389,8 +389,8 @@ When seeing the `”port”` attribute being used in the launch request, Go exte
 
 Sometimes you’d like to launch the program for debugging outside VS Code (e.g., as a workaround of the missing `console` support), there are currently two options.
 
-*   Compile and run the program from the external terminal and use [the “attach” configuration](#attach).
-*   Use [“Remote Debugging”](#remote-debugging); run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `”port”` attribute in your launch configuration.
+*   Compile and run the program from the external terminal and use [the "attach" configuration](#attach).
+*   Use ["Remote Debugging"](#remote-debugging); run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `"port"` attribute in your launch configuration.
 
 ## Reporting issues
 
