@@ -108,6 +108,7 @@ export class WelcomePanel {
 		// Local path to css styles and images
 		const scriptPathOnDisk = joinPath(this.dataroot, 'welcome.js');
 		const stylePath = joinPath(this.dataroot, 'welcome.css');
+		const announcePath = vscode.Uri.joinPath(this.dataroot, 'announce.png');
 		const gopherPath = joinPath(this.dataroot, 'go-logo-blue.png');
 		const goExtension = vscode.extensions.getExtension(extensionId)!;
 		const goExtensionVersion = goExtension.packageJSON.version;
@@ -116,6 +117,7 @@ export class WelcomePanel {
 		const scriptURI = webview.asWebviewUri(scriptPathOnDisk);
 		const stylesURI = webview.asWebviewUri(stylePath);
 		const gopherURI = webview.asWebviewUri(gopherPath);
+		const announceURI = webview.asWebviewUri(announcePath);
 
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
@@ -147,9 +149,22 @@ export class WelcomePanel {
 						-->
 						<li><a href="#" class="Command" data-command="openDocument" data-document="CHANGELOG.md">Release notes</a></li>
 						<li><a href="https://github.com/golang/vscode-go">GitHub</a></li>
+						<li><a href="https://stackoverflow.com/questions/tagged/go+visual-studio-code">Questions</a></li>
 						<li><a href="https://invite.slack.golangbridge.org/">Slack</a></li>
 					</ul>
 				</div>
+			</div>
+
+			<div class="Announcement">
+				<img src="${announceURI}" alt="announce" class="Announcement-image" />
+				<p>
+					Heads up!
+					The extension now uses Delve's native DAP implementation (<a href="https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md">dlv-dap</a>)
+					for local debugging. We updated the <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">
+					Documentation for Debugging</a> to show the new features available with dlv-dap.
+					This change does not apply to remote debugging yet. For remote debugging, keep following
+					the instruction in the <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md">old documentation</a>.
+				</p>
 			</div>
 
 			<div class="Cards">
