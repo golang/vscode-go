@@ -538,7 +538,7 @@
                   "dlv-dap"
                 ],
                 "description": "Select which debug adapter to use with this launch configuration.",
-                "default": "legacy"
+                "default": "dlv-dap"
               },
               "program": {
                 "type": "string",
@@ -749,7 +749,7 @@
                   "dlv-dap"
                 ],
                 "description": "Select which debug adapter to use with this launch configuration.",
-                "default": "legacy"
+                "default": "dlv-dap"
               },
               "processId": {
                 "anyOf": [
@@ -1746,7 +1746,7 @@
                 "dlv-dap"
               ],
               "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
-              "default": "legacy"
+              "default": "dlv-dap"
             },
             "substitutePath": {
               "type": "array",

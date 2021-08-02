@@ -355,7 +355,7 @@ function spawnDlvDapServerProcess(
 			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}\n` +
-				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#getting-started.\n'
+				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/debugging.md#getting-started.\n'
 		);
 		throw new Error('Cannot find Delve debugger (dlv dap)');
 	}

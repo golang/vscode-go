@@ -220,7 +220,7 @@ func main() {
 
 	b.Reset()
 	generateDebugConfigTable(b, pkgJSON)
-	rewriteDebugDoc(filepath.Join(dir, "docs", "dlv-dap.md"), b.Bytes())
+	rewriteDebugDoc(filepath.Join(dir, "docs", "debugging.md"), b.Bytes())
 
 	// Only update the latest tool versions if the flag is set.
 	if !*updateLatestToolVersionsFlag {

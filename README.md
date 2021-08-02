@@ -9,8 +9,7 @@ provides rich language support for the
 [Go programming language](https://golang.org/).
 
 
-> 📣 Debugging using [`Delve`'s native DAP implementation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) is now available for use.<br>
-> Please test it by following [the instruction to enable this new feature](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#getting-started) and share your feedback!
+> 📣 Debugging using [`Delve`'s native DAP implementation](https://github.com/golang/vscode-go/blob/master/docs/debugging.md) is enabled by default in v0.27.0.<br>
 
 ## Quick Start
 
