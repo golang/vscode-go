@@ -211,17 +211,18 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Go debugger (Delve)'
+		description: 'Go debugger (Delve)',
+		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
 	},
 	'dlv-dap': {
 		name: 'dlv-dap',
 		importPath: 'github.com/go-delve/delve/cmd/dlv',
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
-		isImportant: false,
-		description: 'Go debugger (Delve built for DAP experiment)',
-		defaultVersion: 'master', // Always build from the master.
-		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
+		isImportant: true,
+		description: 'Go debugger & debug adapter (Delve DAP)',
+		defaultVersion: '%s', // pinned version
+		minimumGoVersion: semver.coerce('1.12'), // dlv requires 1.12+ for build
 		latestVersion: semver.parse('%s'),
 		latestVersionTimestamp: moment('%s', 'YYYY-MM-DD')
 	},

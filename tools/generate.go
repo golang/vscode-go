@@ -269,7 +269,7 @@ func main() {
 	}
 
 	// TODO(suzmue): change input to json and avoid magic string printing.
-	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")], dlvVersion.Version, dlvVersion.Time[:len("YYYY-MM-DD")])
+	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")], dlvVersion.Version, dlvVersion.Version, dlvVersion.Time[:len("YYYY-MM-DD")])
 
 	// Write tools section.
 	b.WriteString(toolsString)

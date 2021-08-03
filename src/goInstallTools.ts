@@ -161,7 +161,6 @@ export async function installTools(
 	const toInstall: Promise<{ tool: Tool; reason: string }>[] = [];
 	for (const tool of missing) {
 		const modulesOffForTool = modulesOff;
-
 		const reason = installTool(tool, goVersion, envForTools, !modulesOffForTool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
