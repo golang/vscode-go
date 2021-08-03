@@ -63,7 +63,7 @@ jobs:
             go get github.com/cweill/gotests/...
             go get github.com/rogpeppe/godef
             go get github.com/ramya-rao-a/go-outline
-            go get github.com/go-delve/delve/cmd/dlv@master
+            go get github.com/go-delve/delve/cmd/dlv@89ed5a0b
             cp "${HOME}/go/bin/dlv${{env.EXT}}" "${HOME}/go/bin/dlv-dap${{env.EXT}}"
             go get github.com/go-delve/delve/cmd/dlv
         working-directory: ${{ runner.temp }}
