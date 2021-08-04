@@ -556,6 +556,15 @@ for template files.
 
 
 Default: `false`
+### `build.experimentalUseInvalidMetadata`
+
+(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
+package metadata to provide editor features if the go command fails to
+load packages for some reason (like an invalid go.mod file). This will
+eventually be the default behavior, and this setting will be removed.
+
+
+Default: `false`
 ### `build.experimentalWorkspaceModule`
 
 (Experimental) experimentalWorkspaceModule opts a user into the experimental support
@@ -727,9 +736,9 @@ that should be reported by the gc_details command.
 | `escape` | `"escape"` controls diagnostics about escape choices. <br/> <br/> Default: `true` |
 | `inline` | `"inline"` controls diagnostics about inlining choices. <br/> <br/> Default: `true` |
 | `nil` | `"nil"` controls nil checks. <br/> <br/> Default: `true` |
-### `ui.diagnostic.experimentalDiagnosticsDelay`
+### `ui.diagnostic.diagnosticsDelay`
 
-(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+(Advanced) diagnosticsDelay controls the amount of time that gopls waits
 after the most recent file modification before computing deep diagnostics.
 Simple diagnostics (parsing and type-checking) are always run immediately
 on recently modified packages.
@@ -738,6 +747,18 @@ This option must be set to a valid duration string, for example `"250ms"`.
 
 
 Default: `"250ms"`
+### `ui.diagnostic.experimentalWatchedFileDelay`
+
+(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits
+for additional workspace/didChangeWatchedFiles notifications to arrive,
+before processing all such notifications in a single batch. This is
+intended for use by LSP clients that don't support their own batching of
+file system notifications.
+
+This option must be set to a valid duration string, for example `"100ms"`.
+
+
+Default: `"0s"`
 ### `ui.diagnostic.staticcheck`
 
 (Experimental) staticcheck enables additional analyses from staticcheck.io.

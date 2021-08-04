@@ -1875,6 +1875,12 @@
               "default": false,
               "scope": "resource"
             },
+            "build.experimentalUseInvalidMetadata": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file). This will\neventually be the default behavior, and this setting will be removed.\n",
+              "default": false,
+              "scope": "resource"
+            },
             "build.experimentalWorkspaceModule": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
@@ -2222,10 +2228,16 @@
                 }
               }
             },
-            "ui.diagnostic.experimentalDiagnosticsDelay": {
+            "ui.diagnostic.diagnosticsDelay": {
               "type": "string",
-              "markdownDescription": "(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
+              "markdownDescription": "(Advanced) diagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
               "default": "250ms",
+              "scope": "resource"
+            },
+            "ui.diagnostic.experimentalWatchedFileDelay": {
+              "type": "string",
+              "markdownDescription": "(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits\nfor additional workspace/didChangeWatchedFiles notifications to arrive,\nbefore processing all such notifications in a single batch. This is\nintended for use by LSP clients that don't support their own batching of\nfile system notifications.\n\nThis option must be set to a valid duration string, for example `\"100ms\"`.\n",
+              "default": "0s",
               "scope": "resource"
             },
             "ui.diagnostic.staticcheck": {
