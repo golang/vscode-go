@@ -118,7 +118,7 @@ install_dependencies() {
 	GO111MODULE=on go install honnef.co/go/tools/cmd/staticcheck@latest
 	GO111MODULE=on go install golang.org/x/tools/cmd/gorename@latest
 
-	GO111MODULE=on go install github.com/go-delve/delve/cmd/dlv@89ed5a0b && cp "${TARGET}/dlv" "${TARGET}/dlv-dap"
+	GO111MODULE=on go install github.com/go-delve/delve/cmd/dlv@master && cp "${TARGET}/dlv" "${TARGET}/dlv-dap"
 	GO111MODULE=on go install github.com/go-delve/delve/cmd/dlv@latest
 }
 
