@@ -6,7 +6,7 @@ to show the new features available with dlv-dap. This change does not apply to r
 For remote debugging, keep following the instruction in the
 [legacy debug adapter documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
 
-A list of all issues and changes can be found in the [v0.27.0 milestone](https://github.com/golang/vscode-go/milestone/33?closed=1) and [commit history](A list of all issues and changes can be found in the [v0.26.0 milestone](https://github.com/golang/vscode-go/milestone/30?closed=1) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.0...v0.26.0).
+A list of all issues and changes can be found in the [v0.27.0 milestone](https://github.com/golang/vscode-go/milestone/33?closed=1) and [commit history](https://github.com/golang/vscode-go/compare/v0.26.0...v0.27.0).
 
 ### Enhancements
 - The new [`go.terminal.activateEnvironment`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#goterminalactivateenvironment)
