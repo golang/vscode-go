@@ -143,10 +143,10 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | Properties | Description |
 | --- | --- |
 | `apiVersion` | Delve Api Version to use. Default value is 2. <br/> Allowed Options: `1`, `2` <br/> Default: `2` |
-| `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"legacy"` |
+| `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"dlv-dap"` |
 | `dlvLoadConfig` | LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'. <br/> Default: ``` { <pre>"followPointers" :	true,<br/>"maxArrayValues" :	64,<br/>"maxStringLen" :	64,<br/>"maxStructFields" :	-1,<br/>"maxVariableRecurse" :	1,</pre>} ``` |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not. <br/> Default: `false` |
-| `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by remotePath. |
+| `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request). |
 
 Default:
 ```
@@ -382,6 +382,11 @@ Default:
 	"tags" :	"",
 }
 ```
+### `go.terminal.activateEnvironment`
+
+Apply the Go & PATH environment variables used by the extension to all integrated terminals.
+
+Default: `true`
 ### `go.testEnvFile`
 
 Absolute path to a file containing environment variables definitions. File contents should be of the form key=value.
@@ -548,6 +553,15 @@ Default: `true`
 
 (Experimental) experimentalTemplateSupport opts into the experimental support
 for template files.
+
+
+Default: `false`
+### `build.experimentalUseInvalidMetadata`
+
+(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
+package metadata to provide editor features if the go command fails to
+load packages for some reason (like an invalid go.mod file). This will
+eventually be the default behavior, and this setting will be removed.
 
 
 Default: `false`
@@ -722,9 +736,9 @@ that should be reported by the gc_details command.
 | `escape` | `"escape"` controls diagnostics about escape choices. <br/> <br/> Default: `true` |
 | `inline` | `"inline"` controls diagnostics about inlining choices. <br/> <br/> Default: `true` |
 | `nil` | `"nil"` controls nil checks. <br/> <br/> Default: `true` |
-### `ui.diagnostic.experimentalDiagnosticsDelay`
+### `ui.diagnostic.diagnosticsDelay`
 
-(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+(Advanced) diagnosticsDelay controls the amount of time that gopls waits
 after the most recent file modification before computing deep diagnostics.
 Simple diagnostics (parsing and type-checking) are always run immediately
 on recently modified packages.
@@ -733,6 +747,18 @@ This option must be set to a valid duration string, for example `"250ms"`.
 
 
 Default: `"250ms"`
+### `ui.diagnostic.experimentalWatchedFileDelay`
+
+(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits
+for additional workspace/didChangeWatchedFiles notifications to arrive,
+before processing all such notifications in a single batch. This is
+intended for use by LSP clients that don't support their own batching of
+file system notifications.
+
+This option must be set to a valid duration string, for example `"100ms"`.
+
+
+Default: `"0s"`
 ### `ui.diagnostic.staticcheck`
 
 (Experimental) staticcheck enables additional analyses from staticcheck.io.

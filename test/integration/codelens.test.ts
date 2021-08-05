@@ -85,8 +85,17 @@ suite('Code lenses for testing and benchmarking', function () {
 	test('Subtests - does nothing for a dynamically defined subtest', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(17, 4, 17, 4);
+		sinon.stub(vscode.window, 'showInputBox').onFirstCall().resolves(undefined);
 		const result = await subTestAtCursor(goConfig, []);
 		assert.equal(result, undefined);
+	});
+
+	test('Subtests - runs a test with curson on t.Run line and dynamic test name is passed in input box', async () => {
+		const editor = await vscode.window.showTextDocument(document);
+		editor.selection = new vscode.Selection(17, 4, 17, 4);
+		sinon.stub(vscode.window, 'showInputBox').onFirstCall().resolves('dynamic test name');
+		const result = await subTestAtCursor(goConfig, []);
+		assert.equal(result, false);
 	});
 
 	test('Subtests - does nothing when cursor outside of a test function', async () => {

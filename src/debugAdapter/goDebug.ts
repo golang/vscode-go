@@ -19,6 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as util from 'util';
 import {
+	ContinuedEvent,
 	DebugSession,
 	ErrorDestination,
 	Handles,
@@ -639,9 +640,11 @@ export class Delve {
 
 				if (launchArgs.showLog) {
 					dlvArgs.push('--log=' + launchArgs.showLog.toString());
-				}
-				if (launchArgs.logOutput) {
-					dlvArgs.push('--log-output=' + launchArgs.logOutput);
+					// Only add the log output flag if we have already added the log flag.
+					// Otherwise, delve complains.
+					if (launchArgs.logOutput) {
+						dlvArgs.push('--log-output=' + launchArgs.logOutput);
+					}
 				}
 				if (launchArgs.cwd) {
 					dlvArgs.push('--wd=' + launchArgs.cwd);
@@ -1777,6 +1780,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a next request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('NextResponse');
 	}
@@ -1800,6 +1805,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step in request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepInResponse');
 	}
@@ -1823,6 +1830,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step out request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepOutResponse');
 	}

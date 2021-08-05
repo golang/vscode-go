@@ -162,7 +162,6 @@ export async function installTools(
 	const toInstall: Promise<{ tool: Tool; reason: string }>[] = [];
 	for (const tool of missing) {
 		const modulesOffForTool = modulesOff;
-
 		const reason = installTool(tool, goVersion, envForTools, !modulesOffForTool);
 		toInstall.push(Promise.resolve({ tool, reason: await reason }));
 	}
@@ -363,9 +362,10 @@ export async function promptForMissingTool(toolName: string) {
 	let msg = `The "${tool.name}" command is not available.
 Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
 	if (tool.name === 'dlv-dap') {
-		msg = `The ["${tool.name}"](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) command is not available.
-Please select "Install", or follow the installation instructions [here](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#updating-dlv-dap).`;
+		msg = `The ["${tool.name}"](https://github.com/golang/vscode-go/blob/master/docs/debugging.md) command is not available.
+Please select "Install", or follow the installation instructions [here](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#updating-dlv-dap).`;
 	}
+
 	const selected = await vscode.window.showErrorMessage(msg, ...installOptions);
 	switch (selected) {
 		case 'Install':
@@ -592,9 +592,10 @@ let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
 	const msg =
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}).` +
+		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}). ` +
 		'Check PATH, or Install Go and reload the window. ' +
 		"If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971";
+
 	if (suggestedDownloadGo) {
 		vscode.window.showErrorMessage(msg);
 		return;
@@ -618,7 +619,9 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 	const goCmd = getBinPath('go');
 	const tmpDir = await tmpDirForToolInstallation();
 	const execFile = util.promisify(cp.execFile);
+
 	let ret: semver.SemVer | null = null;
+
 	try {
 		const env = toolInstallationEnvironment();
 		env['GO111MODULE'] = 'on';
@@ -691,10 +694,12 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 	if (checkForUpdates === 'off') {
 		return false;
 	}
+
 	const { moduleVersion } = await inspectGoToolVersion(toolPath);
 	if (!moduleVersion) {
 		return false; // failed to inspect the tool version.
 	}
+
 	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
 	if (!localVersion) {
 		// local version can't be determined. e.g. (devel)

@@ -1,4 +1,42 @@
-## V0.26.0 - 17 Jun, 2021
+## v0.27.0 - 8 Aug, 2021
+
+📣 Delve's native DAP implementation ([`dlv-dap`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md))
+is enabled by default for local debugging. We updated the [Documentation for Debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md)
+to show the new features available with dlv-dap. This change does not apply to remote debugging yet.
+For remote debugging, keep following the instruction in the
+[legacy debug adapter documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
+
+A list of all issues and changes can be found in the [v0.27.0 milestone](https://github.com/golang/vscode-go/milestone/33?closed=1) and [commit history](A list of all issues and changes can be found in the [v0.26.0 milestone](https://github.com/golang/vscode-go/milestone/30?closed=1) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.0...v0.26.0).
+
+### Enhancements
+- The new [`go.terminal.activateEnvironment`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#goterminalactivateenvironment)
+allows to prevent the extension from changing integrated terminal's environment variables. ([Issue 1558](https://github.com/golang/vscode-go/issues/1558), [1098](https://github.com/golang/vscode-go/issues/1098)) <!-- CL 336409 -->
+- The [`Go: Locate Configured Go Tools`](https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-locate-configured-go-tools)
+command prints the build information of detected tools. <!-- CL 337989 -->
+- Use `dlv-dap` as the default debug adapter for local debugging. The new debug adapter offers
+[many new features and improvements](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aclosed+label%3AFixedInDlvDAPOnly).
+- Added Gitpod to a recognized Cloud-based IDE, for which the extension will minimize the number of toast or notification messages. ([Issue 1616](https://github.com/golang/vscode-go/issues/1616)) 
+- The [`Go: Subtest At Cursor`](https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-subtest-at-cursor) command prompts for subtest name if there is no subtest at cursor ([Issue 1602](https://github.com/golang/vscode-go/issues/1602)). <!-- CL 333309 -->
+
+### Fixes
+- Debugging
+    - Setting the `logOutput` property without `showLog: true` does not break debugging any more. <!-- CL 335029 -->
+    - Fixed a bug in the legacy debug adapter that caused jumping at each step after upgrading to VS Code 1.58+. ([Issue 1617](https://github.com/golang/vscode-go/issues/1617), [1647](https://github.com/golang/vscode-go/issues/1647)) <!-- CL 338194 -->
+    - Fixed a bug that broke Attach mode debugging using the legacy debug adapter if `cwd` is not set. ([Issue 1608](https://github.com/golang/vscode-go/issues/1608)) <!-- CL 334111 --> 
+
+### Code Health
+- The version of `dlv-dap` is pinned to [v1.7.1-0.20210804080032-f95340ae1bf9](https://github.com/go-delve/delve/tree/f95340ae1bf9fed8740d5fd39f5758d41770d967) and `dlv-dap` is marked as a required tool.
+- Updated the hard-coded default gopls version string to v0.7.1.
+- Added `tools/relnotes`, a script to help generate CHANGELOG.md. <!-- CL 256579 -->
+- Added go1.17 RC to CI. ([Issue 1640](https://github.com/golang/vscode-go/issues/1640)) <!-- CL 336310 -->
+- Enabled tests that were skipped in dlv-dap mode since dlv-dap reached feature parity. <!-- CL 332109 -->
+- Use StackOverflow as the channel for Q&A.
+
+### Thanks
+
+Thank you for your contribution, Ahmed W, Hana, Michael Currin, Polina Sokolova, Rebecca Stambler, Suzy Mueller, and Sven Efftinge!
+
+## v0.26.0 - 17 Jun, 2021
 
 📣 [`Delve`'s native DAP implementation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) is now available for use. In order to use this new debug adapter (`dlv-dap`) when debugging Go programs, add the following settings in your `settings.json`:
 
