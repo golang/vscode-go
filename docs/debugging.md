@@ -245,12 +245,12 @@ Here is the list of attributes specific to Go debugging.
 | `dlvFlags` | Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.<br/> | <center>_same as Launch_</center>|
 | `env` | Environment variables passed to the program.<br/> | <center>_n/a_</center> |
 | `envFile` | Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths<br/>(Default: `${workspaceFolder}/.env`)<br/> | <center>_n/a_</center> |
-| `host` | The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.<br/>(Default: `"127.0.0.1"`)<br/> | <center>_same as Launch_</center>|
+| `host` | The host name of the machine the delve debugger will be listening on.<br/>(Default: `"127.0.0.1"`)<br/> | <center>_same as Launch_</center>|
 | `logDest` | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode, and on Linux and Mac OS.<br/> | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode and on Linux and Mac OS.<br/> |
 | `logOutput` | Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.<br/><p>Allowed Values: `"debugger"`, `"gdbwire"`, `"lldbout"`, `"debuglineerr"`, `"rpc"`, `"dap"`<br/>(Default: `"debugger"`)<br/> | <center>_same as Launch_</center>|
 | `mode` | One of `auto`, `debug`, `test`, `exec`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.<br/><p>Allowed Values: `"auto"`, `"debug"`, `"test"`, `"exec"`<br/>(Default: `auto`)<br/> | Indicates local or remote debugging. Local maps to the `dlv attach` command, remote maps to `connect`. `remote` is not supported in `dlv-dap` mode currently. Use `host` and `port` instead.<br/><p>Allowed Values: `"local"`, `"remote"`<br/>(Default: `local`)<br/> |
 | `output` | Output path for the binary of the debugee.<br/>(Default: `"debug"`)<br/> | <center>_n/a_</center> |
-| `port` | The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.<br/>(Default: `2345`)<br/> | <center>_same as Launch_</center>|
+| `port` | The port that the delve debugger will be listening on.<br/>(Default: `2345`)<br/> | <center>_same as Launch_</center>|
 | `processId` | <center>_n/a_</center> | <br/><p><b>Option 1:</b> Use process picker to select a process to attach, or Process ID as integer.<br/><p>Allowed Values: `"${command:pickProcess}"`, `"${command:pickGoProcess}"`<br/><br/><p><b>Option 2:</b> Attach to a process by name. If more than one process matches the name, use the process picker to select a process.<br/><br/><p><b>Option 3:</b> The numeric ID of the process to be debugged. If 0, use the process picker to select a process.<br/><br/>(Default: `0`)<br/> |
 | `program` | Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interpretes it as a workspace relative path.<br/>(Default: `"${workspaceFolder}"`)<br/> | <center>_n/a_</center> |
 | `remotePath` | <center>_n/a_</center> | (Deprecated) *Use `substitutePath` instead.*<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath.<br/>(Default: `""`)<br/> |
@@ -349,58 +349,14 @@ If you want to explicitly specify the location of the delve binary, use the `go.
 
 > If you are able to use the [Remote Development](https://aka.ms/vscode-remote/download/extension) extensions and VS Code’s  universal [remote development capabilities](https://code.visualstudio.com/docs/remote/remote-overview), that is the recommended way to debug Go programs remotely. Check out [Getting started](https://code.visualstudio.com/docs/remote/remote-overview#_getting-started) section and [Remote tutorials](https://code.visualstudio.com/docs/remote/remote-overview#_remote-tutorials) to learn more.
 
-Remote debugging is the debug mode intended to work with a debugger and target running on a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. This section describes a current temporary workaround and its limitations. If the following workaround is not working for your case, please file an issue and help us understand remote debugging use cases better.
-
-<p align="center"><img src="images/remote-debugging.png" alt="Remote Debugging"> </p>
-
-When using the dlv-dap mode, the delve instance running remotely needs to be able to process DAP requests, instead of the traditional JSON-RPC, used with an external `dlv --headless` server. The following command starts a Delve DAP server on port 12345 that is ready to accept a request from an editor such as VS Code for launching or attaching to a target.
-
-```
-$ dlv-dap dap --listen=:12345
-```
-
-Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`:
-
-```json5
-{
-  "name": "Connect to server (DAP)",
-  "type": "go",
-  "debugAdapter": "dlv-dap",
-  "request": "launch",
-  "port": 12345,
-  "host": "127.0.0.1",
-  "mode": "exec",
-  "program": "/absolute/path/to/remote/workspace/program/executable",
-  "substitutePath": [
-      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
-      ...
-  ]
-}
-```
-
-Or have the binary compiled by dlv-dap by modifying the above configuration to use:
-
-```json5
-  "mode": "debug",
-  "program": "/absolute/path/to/remote/workspace/package",
-```
-
-When seeing the `"port"` attribute being used in the launch request, Go extension will assume a Delve DAP server is started externally and accessible through the specified `host:port` and tell VS Code to connect to it directly. The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
-
-⚠️ Limitations
-*   Unlike `dlv <debug|exec|attach> --headless` commands traditionally used for remote debugging scenarios, Delve’s new `dap` sub command does not launch or attach to the debuggee process until it receives a Launch/Attach request. We understand this limitation, and we are currently working on addressing this limitation.
-*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs.
-*   When using `"attach"` requests, you will need to specify the `processId` since
-[the processId resolution feature](#attach) cannot gather process information running remotely.
-*   Delve DAP does not support `--allow-multiclient` or `--continue` flags yet, which means after a debug session ends, the dlv-dap process will exit.
-*   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
+🚧 Remote debugging is the debug mode intended to work with a debugger and target running on a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. Please fall back to the `legacy` debug adapter.
 
 ### Running Debugee Externally
 
 Sometimes you’d like to launch the program for debugging outside VS Code (e.g., as a workaround of the missing `console` support), there are currently two options.
 
 *   Compile and run the program from the external terminal and use [the "attach" configuration](#attach).
-*   Use ["Remote Debugging"](#remote-debugging); run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `"port"` attribute in your launch configuration.
+*   Launch the server externally; run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `"debugServer": <port>` attribute in your launch configuration.
 
 ## Reporting Issues
 
@@ -463,7 +419,7 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
     "request": "launch",
     "debugAdapter": "dlv-dap",
     ...
-    "port": 12345
+    "debugServer": 12345,
 }
 ```
 

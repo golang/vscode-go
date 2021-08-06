@@ -157,6 +157,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			// for local mode, default to dlv-dap.
 			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
 		}
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['port']) {
+			this.showWarning(
+				'ignorePortInDlvDapWarning',
+				"`port` is ignored with the 'dlv-dap' debugAdapter, which does not yet support remote debugging. Please file an issue if you have a use case that requires port."
+			);
+		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
 			this.showWarning(
 				'ignoreDlvDAPInRemoteModeWarning',

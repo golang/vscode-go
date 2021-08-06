@@ -38,9 +38,6 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		if (configuration.port) {
-			return new vscode.DebugAdapterServer(configuration.port, configuration.host ?? '127.0.0.1');
-		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
 		return new vscode.DebugAdapterInlineImplementation(d);
