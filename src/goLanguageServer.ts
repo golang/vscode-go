@@ -631,7 +631,9 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							// cause to reorder candiates, which is not ideal.
 							// Force to use non-empty `label`.
 							// https://github.com/golang/vscode-go/issues/441
-							hardcodedFilterText = items[0].label;
+							let { label } = items[0];
+							if (typeof label !== 'string') label = label.label;
+							hardcodedFilterText = label;
 						}
 						for (const item of items) {
 							item.filterText = hardcodedFilterText;
