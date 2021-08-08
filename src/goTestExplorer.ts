@@ -944,8 +944,17 @@ function isBuildFailure(output: string[]): boolean {
 async function runTests(expl: TestExplorer, request: TestRunRequest, token: CancellationToken) {
 	const collected = new Map<string, CollectedTest[]>();
 	const docs = new Set<Uri>();
-	for (const item of request.include) {
-		await collectTests(expl, item, true, request.exclude || [], collected, docs);
+	if (request.include) {
+		for (const item of request.include) {
+			await collectTests(expl, item, true, request.exclude || [], collected, docs);
+		}
+	} else {
+		const promises: Promise<unknown>[] = [];
+		expl.ctrl.items.forEach((item) => {
+			const p = collectTests(expl, item, true, request.exclude || [], collected, docs);
+			promises.push(p);
+		});
+		await Promise.all(promises);
 	}
 
 	// Save all documents that contain a test we're about to run, to ensure `go
