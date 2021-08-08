@@ -846,6 +846,7 @@ function consumeGoTestEvent(
 
 	switch (e.Action) {
 		case 'cont':
+		case 'pause':
 			// ignore
 			break;
 
@@ -854,13 +855,15 @@ function consumeGoTestEvent(
 			break;
 
 		case 'pass':
+			// TODO(firelizzard18): add messages on pass, once that capability
+			// is added.
 			complete.add(test);
 			run.passed(test, e.Elapsed * 1000);
 			break;
 
 		case 'fail': {
 			complete.add(test);
-			const messages = parseOutput(run, test, record.get(test) || []);
+			const messages = parseOutput(test, record.get(test) || []);
 
 			if (!concat) {
 				run.failed(test, messages, e.Elapsed * 1000);
@@ -894,14 +897,10 @@ function consumeGoTestEvent(
 			if (record.has(test)) record.get(test).push(e.Output);
 			else record.set(test, [e.Output]);
 			break;
-
-		default:
-			console.log(e);
-			break;
 	}
 }
 
-function parseOutput(run: TestRun, test: TestItem, output: string[]): TestMessage[] {
+function parseOutput(test: TestItem, output: string[]): TestMessage[] {
 	const messages: TestMessage[] = [];
 
 	const uri = Uri.parse(test.id);
