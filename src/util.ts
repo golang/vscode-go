@@ -518,8 +518,12 @@ export function getBinPath(tool: string, useCache = true): string {
 
 // getBinPathWithExplanation returns the path to the tool, and the explanation on why
 // the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
-export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string; why?: string } {
-	const cfg = getGoConfig();
+export function getBinPathWithExplanation(
+	tool: string,
+	useCache = true,
+	uri?: vscode.Uri
+): { binPath: string; why?: string } {
+	const cfg = getGoConfig(uri);
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 
