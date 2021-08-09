@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.27.0-dev",
+  "version": "0.28.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -87,7 +87,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.59.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
