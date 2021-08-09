@@ -1030,13 +1030,12 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 			});
 			if (!success) {
 				if (isBuildFailure(outputChannel.lines)) {
-					markComplete(benchmarks, new Set(), (item) => {
-						// TODO change to errored when that is added back
-						run.failed(item, { message: 'Compilation failed' });
+					markComplete(tests, new Set(), (item) => {
+						run.errored(item, { message: 'Compilation failed' });
 						item.error = 'Compilation failed';
 					});
 				} else {
-					markComplete(benchmarks, complete, (x) => run.skipped(x));
+					markComplete(tests, complete, (x) => run.skipped(x));
 				}
 			}
 		}
