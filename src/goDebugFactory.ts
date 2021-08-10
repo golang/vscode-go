@@ -492,10 +492,17 @@ export function parseProgramArgSync(
 	launchAttachArgs: vscode.DebugConfiguration
 ): { program: string; dirname: string; programIsDirectory: boolean } {
 	const program = launchAttachArgs.program;
+	let programIsDirectory = false;
+
+	if (launchAttachArgs.mode === 'replay') {
+		// Skip program parsing on modes that do not require a program
+		return { program: '', dirname: '', programIsDirectory: programIsDirectory };
+	}
+
 	if (!program) {
 		throw new Error('The program attribute is missing in the debug configuration in launch.json');
 	}
-	let programIsDirectory = false;
+
 	try {
 		programIsDirectory = fs.lstatSync(program).isDirectory();
 	} catch (e) {

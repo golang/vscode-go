@@ -541,10 +541,22 @@
                   "auto",
                   "debug",
                   "test",
-                  "exec"
+                  "exec",
+                  "replay",
+                  "core"
                 ],
-                "description": "One of `auto`, `debug`, `test`, `exec`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
+                "description": "One of `auto`, `debug`, `test`, `exec`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.",
                 "default": "auto"
+              },
+              "traceDirPath": {
+                "type": "string",
+                "description": "Directory in which the record trace is located or to be created for a new output trace. For use on 'replay' mode only",
+                "default": ""
+              },
+              "coreFilePath": {
+                "type": "string",
+                "description": "Path to the core dump file to open. For use on 'core' mode only",
+                "default": ""
               },
               "stopOnEntry": {
                 "type": "boolean",
