@@ -423,6 +423,12 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
 }
 ```
 
+## FAQs
+
+### Why does my debug session stop when I set breakpoints?
+
+To support being able to set breakpoints while the program is running, the debug adapter needs to stop the program. Due to the extra synchronization required to correctly resume the program, the debug adapter currently sends a stopped event. This means that if you are editing breakpoints while the program is running, you will need to hit continue to continue your debug session. We plan to change the behavior of the debug adapter for more seamless editing of breakpoints. You can track the progress [here](https://github.com/golang/vscode-go/issues/1676).
+
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
 [snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets
