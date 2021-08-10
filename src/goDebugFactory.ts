@@ -38,9 +38,6 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		if (configuration.port) {
-			return new vscode.DebugAdapterServer(configuration.port, configuration.host ?? '127.0.0.1');
-		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
 		return new vscode.DebugAdapterInlineImplementation(d);
@@ -355,7 +352,7 @@ function spawnDlvDapServerProcess(
 			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}\n` +
-				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#getting-started.\n'
+				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/debugging.md#getting-started.\n'
 		);
 		throw new Error('Cannot find Delve debugger (dlv dap)');
 	}
@@ -379,9 +376,11 @@ function spawnDlvDapServerProcess(
 	dlvArgs.push(`--listen=${host}:${port}`);
 	if (launchAttachArgs.showLog) {
 		dlvArgs.push('--log=' + launchAttachArgs.showLog.toString());
-	}
-	if (launchAttachArgs.logOutput) {
-		dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
+		// Only add the log output flag if we have already added the log flag.
+		// Otherwise, delve complains.
+		if (launchAttachArgs.logOutput) {
+			dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
+		}
 	}
 
 	const onWindows = process.platform === 'win32';

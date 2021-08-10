@@ -18,12 +18,11 @@ import {
 	promptForUpdatingTool,
 	shouldUpdateTool
 } from './goInstallTools';
-import { isInPreviewMode } from './goLanguageServer';
 import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion, getWorkspaceFolderPath, resolvePath } from './util';
+import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
@@ -155,10 +154,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		if (!debugConfiguration['debugAdapter']) {
-			// for nightly/dev mode, default to dlv-dap.
-			// TODO(hyangah): when we switch the stable version's default to 'dlv-dap', adjust this.
-			debugConfiguration['debugAdapter'] =
-				isInPreviewMode() && debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+			// for local mode, default to dlv-dap.
+			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+		}
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['port']) {
+			this.showWarning(
+				'ignorePortInDlvDapWarning',
+				"`port` is ignored with the 'dlv-dap' debugAdapter, which does not yet support remote debugging. Please file an issue if you have a use case that requires port."
+			);
 		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
 			this.showWarning(
@@ -270,11 +273,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				}
 			}
 			dlvDAPVersionCurrent = true;
-		}
-
-		if (debugAdapter === 'dlv-dap' && debugConfiguration['cwd']) {
-			// dlv dap expects 'wd' not 'cwd'
-			debugConfiguration['wd'] = debugConfiguration['cwd'];
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {

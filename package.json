@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.27.0-dev",
+  "version": "0.28.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -87,7 +87,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.59.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
@@ -474,7 +474,7 @@
               "type": "go",
               "request": "launch",
               "mode": "auto",
-              "program": "^\"\\${workspaceFolder}${1:}\""
+              "program": "^\"\\${fileDirname}${1:}\""
             }
           },
           {
@@ -538,7 +538,7 @@
                   "dlv-dap"
                 ],
                 "description": "Select which debug adapter to use with this launch configuration.",
-                "default": "legacy"
+                "default": "dlv-dap"
               },
               "program": {
                 "type": "string",
@@ -618,12 +618,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "The port that the delve debugger will be listening on.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "The host name of the machine the delve debugger will be listening on.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -749,7 +749,7 @@
                   "dlv-dap"
                 ],
                 "description": "Select which debug adapter to use with this launch configuration.",
-                "default": "legacy"
+                "default": "dlv-dap"
               },
               "processId": {
                 "anyOf": [
@@ -810,12 +810,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "The port that the delve debugger will be listening on.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "The host name of the machine the delve debugger will be listening on.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
@@ -1746,7 +1746,7 @@
                 "dlv-dap"
               ],
               "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
-              "default": "legacy"
+              "default": "dlv-dap"
             },
             "substitutePath": {
               "type": "array",
@@ -1819,6 +1819,12 @@
           },
           "additionalProperties": true
         },
+        "go.terminal.activateEnvironment": {
+          "default": true,
+          "description": "Apply the Go & PATH environment variables used by the extension to all integrated terminals.",
+          "scope": "resource",
+          "type": "boolean"
+        },
         "gopls": {
           "type": "object",
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
@@ -1866,6 +1872,12 @@
             "build.experimentalTemplateSupport": {
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalTemplateSupport opts into the experimental support\nfor template files.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "build.experimentalUseInvalidMetadata": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file). This will\neventually be the default behavior, and this setting will be removed.\n",
               "default": false,
               "scope": "resource"
             },
@@ -2216,10 +2228,16 @@
                 }
               }
             },
-            "ui.diagnostic.experimentalDiagnosticsDelay": {
+            "ui.diagnostic.diagnosticsDelay": {
               "type": "string",
-              "markdownDescription": "(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
+              "markdownDescription": "(Advanced) diagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
               "default": "250ms",
+              "scope": "resource"
+            },
+            "ui.diagnostic.experimentalWatchedFileDelay": {
+              "type": "string",
+              "markdownDescription": "(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits\nfor additional workspace/didChangeWatchedFiles notifications to arrive,\nbefore processing all such notifications in a single batch. This is\nintended for use by LSP clients that don't support their own batching of\nfile system notifications.\n\nThis option must be set to a valid duration string, for example `\"100ms\"`.\n",
+              "default": "0s",
               "scope": "resource"
             },
             "ui.diagnostic.staticcheck": {

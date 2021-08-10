@@ -575,7 +575,7 @@ suite('Debug Configuration Auto Mode', () => {
 
 suite('Debug Configuration Default DebugAdapter', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	test(`default debugAdapter when isInPreviewMode=${isInPreviewMode()} should be 'dlv-dap'`, () => {
+	test("default debugAdapter should be 'dlv-dap'", () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -586,8 +586,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
-		const want = isInPreviewMode() ? 'dlv-dap' : 'legacy';
-		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
 	test("default debugAdapter for remote mode should be always 'legacy'", () => {
