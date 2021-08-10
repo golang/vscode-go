@@ -20,7 +20,7 @@ import {
 } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
 import { getTool, getToolAtVersion } from './goTools';
-import { pickProcess, pickProcessByName } from './pickProcess';
+import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
@@ -313,16 +313,13 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
 			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
 				// The processId is not valid, offer a quickpick menu of all processes.
-				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
+				debugConfiguration['processId'] = await pickProcess();
 			} else if (
 				typeof debugConfiguration['processId'] === 'string' &&
 				debugConfiguration['processId'] !== '${command:pickProcess}' &&
 				debugConfiguration['processId'] !== '${command:pickGoProcess}'
 			) {
-				debugConfiguration['processId'] = parseInt(
-					await pickProcessByName(debugConfiguration['processId']),
-					10
-				);
+				debugConfiguration['processId'] = await pickProcessByName(debugConfiguration['processId']);
 			}
 		}
 		return debugConfiguration;
@@ -398,6 +395,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
 			});
 		}
+
+		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
+			// processId needs to be an int, but the substituted variables from pickGoProcess and pickProcess
+			// become a string. Convert any strings to integers.
+			if (typeof debugConfiguration['processId'] === 'string') {
+				debugConfiguration['processId'] = parseInt(debugConfiguration['processId'], 10);
+			}
+		}
+
 		return debugConfiguration;
 	}
 
