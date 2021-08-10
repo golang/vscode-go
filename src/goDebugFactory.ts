@@ -57,7 +57,7 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 			onWillStartSession: () =>
 				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
 			onWillReceiveMessage: (message: any) => logger.trace(`client -> ${JSON.stringify(message)}\n`),
-			onDidSendMessage: (message: any) => logger.trace(`client <- ${JSON.stringify(message)}\n`),
+			onDidSendMessage: (message: any) => logger.trace(`client  <- ${JSON.stringify(message)}\n`),
 			onError: (error: Error) => logger.error(`error: ${error}\n`),
 			onWillStopSession: () => logger.debug(`session ${session.id} will stop\n`),
 			onExit: (code: number | undefined, signal: string | undefined) =>
@@ -427,43 +427,26 @@ function spawnDlvDapServerProcess(
 			5_000
 		);
 
-		const stopWaitingForServerToStart = (err?: string) => {
+		const stopWaitingForServerToStart = () => {
 			clearTimeout(timeoutToken);
 			started = true;
-			if (err) {
-				logConsole(`Failed to start 'dlv': ${err}\nKilling the dlv process...`);
-				killProcessTree(p); // We do not need to wait for p to actually be killed.
-				reject(new Error(err));
-			} else {
-				resolve(p);
-			}
+			resolve(p);
 		};
 
 		p.stdout.on('data', (chunk) => {
 			const msg = chunk.toString();
-			if (!started) {
-				if (msg.startsWith('DAP server listening at:')) {
-					stopWaitingForServerToStart();
-				} else {
-					stopWaitingForServerToStart(`Unexpected output from dlv dap on start: '${msg}'`);
-				}
+			if (!started && msg.startsWith('DAP server listening at:')) {
+				stopWaitingForServerToStart();
 			}
 			log(msg);
 		});
 		p.stderr.on('data', (chunk) => {
-			if (!started) {
-				stopWaitingForServerToStart(`Unexpected error from dlv dap on start: '${chunk.toString()}'`);
-			}
 			logErr(chunk.toString());
 		});
 		p.stdio[3].on('data', (chunk) => {
 			const msg = chunk.toString();
-			if (!started) {
-				if (msg.startsWith('DAP server listening at:')) {
-					stopWaitingForServerToStart();
-				} else {
-					stopWaitingForServerToStart(`Expected 'DAP server listening at:' from debug adapter got '${msg}'`);
-				}
+			if (!started && msg.startsWith('DAP server listening at:')) {
+				stopWaitingForServerToStart();
 			}
 			if (logDestStream) {
 				// always false on windows.
@@ -489,9 +472,6 @@ function spawnDlvDapServerProcess(
 			// respond to disconnect on time. In that case, it's possible that the session
 			// is in the middle of teardown and DEBUG CONSOLE isn't accessible. Check
 			// Go Debug output channel.
-			if (!started) {
-				stopWaitingForServerToStart(`dlv dap terminated with code: ${code} signal: ${signal}\n`);
-			}
 			if (typeof code === 'number') {
 				// The process exited on its own.
 				logConsole(`dlv dap (${p.pid}) exited with code: ${code}\n`);
@@ -502,9 +482,6 @@ function spawnDlvDapServerProcess(
 			}
 		});
 		p.on('error', (err) => {
-			if (!started) {
-				stopWaitingForServerToStart(`Unexpected error from dlv dap on start: '${err}'`);
-			}
 			if (err) {
 				logConsole(`Error: ${err}\n`);
 			}
