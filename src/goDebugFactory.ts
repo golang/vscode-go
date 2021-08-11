@@ -8,7 +8,6 @@ import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from 'child_proce
 import stream = require('stream');
 import vscode = require('vscode');
 import { OutputEvent, TerminatedEvent } from 'vscode-debugadapter';
-import { killProcessTree } from './utils/processUtils';
 import getPort = require('get-port');
 import path = require('path');
 import * as fs from 'fs';

@@ -15,6 +15,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -235,6 +237,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Due to https://github.com/golang/vscode-go/issues/1682, we cannot use
+	// pseudo-version as the pinned version reliably.
+	dlvRevOrStable := dlvVersion.Version
+	if rev, err := pseudoVersionRev(dlvVersion.Version); err == nil { // pseudo-version
+		dlvRevOrStable = rev
+	}
 
 	// Check for the latest gopls version.
 	versions, err := listAllModuleVersions("golang.org/x/tools/gopls")
@@ -269,7 +277,7 @@ func main() {
 	}
 
 	// TODO(suzmue): change input to json and avoid magic string printing.
-	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")], dlvVersion.Version, dlvVersion.Version, dlvVersion.Time[:len("YYYY-MM-DD")])
+	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")], dlvRevOrStable, dlvVersion.Version, dlvVersion.Time[:len("YYYY-MM-DD")])
 
 	// Write tools section.
 	b.WriteString(toolsString)
@@ -684,4 +692,20 @@ func describeDebugProperty(p *Property) string {
 		fmt.Fprintf(b, "(Default: `%v`)<br/>", d)
 	}
 	return b.String()
+}
+
+// pseudoVersionRev extracts the revision info if the given version is pseudo version.
+// We wanted to use golang.org/x/mod/module.PseudoVersionRev, but couldn't due to
+// an error in the CI. This is a workaround.
+//
+// It assumes the version string came from the proxy, so a valid, canonical version
+// string. Thus, the check for pseudoversion is not as robust as golang.org/x/mod/module
+// offers.
+func pseudoVersionRev(ver string) (rev string, _ error) {
+	var pseudoVersionRE = regexp.MustCompile(`^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
+	if strings.Count(ver, "-") < 2 || !pseudoVersionRE.MatchString(ver) {
+		return "", errors.New("not a pseudo version")
+	}
+	j := strings.LastIndex(ver, "-")
+	return ver[j+1:], nil
 }
