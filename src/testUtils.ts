@@ -250,7 +250,7 @@ export interface GoTestOutput {
 	Output?: string;
 	Package?: string;
 	Test?: string;
-	Elapsed?: number;
+	Elapsed?: number; // seconds
 }
 
 /**
@@ -305,7 +305,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const outBuf = new LineBuffer();
 			const errBuf = new LineBuffer();
 
-			testconfig.cancel?.onCancellationRequested(() => tp.kill());
+			testconfig.cancel?.onCancellationRequested(() => killProcessTree(tp));
 
 			const testResultLines: string[] = [];
 			const processTestResultLine = addJSONFlag

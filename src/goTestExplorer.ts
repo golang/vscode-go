@@ -1,3 +1,7 @@
+/*---------------------------------------------------------
+ * Copyright 2020 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
 import {
 	CancellationToken,
 	ConfigurationChangeEvent,
@@ -69,7 +73,7 @@ async function doSafe<T>(context: string, p: Thenable<T> | (() => T | Thenable<T
 		} else if (/^did/.test(context)) {
 			outputChannel.appendLine(`Failed while handling '${context}': ${error}`);
 		} else {
-			const m = 'An unknown error occured';
+			const m = 'An unknown error occurred';
 			outputChannel.appendLine(`${m}: ${error}`);
 			await vscode.window.showErrorMessage(m);
 		}
@@ -182,15 +186,17 @@ export class TestExplorer {
 	}
 
 	protected async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
-		for (const item of collect(this.ctrl.items)) {
-			const uri = Uri.parse(item.id);
-			if (uri.query === 'package') {
-				continue;
-			}
+		if (e.removed.length > 0) {
+			for (const item of collect(this.ctrl.items)) {
+				const uri = Uri.parse(item.id);
+				if (uri.query === 'package') {
+					continue;
+				}
 
-			const ws = this.ws.getWorkspaceFolder(uri);
-			if (!ws) {
-				dispose(item);
+				const ws = this.ws.getWorkspaceFolder(uri);
+				if (!ws) {
+					dispose(item);
+				}
 			}
 		}
 
@@ -558,7 +564,10 @@ async function walkWorkspaces(fs: TestExplorer.FileSystem, uri: Uri): Promise<Ma
 		}
 
 		if (file === 'go.mod') {
-			// BUG(firelizard18): This ignores modules within a module
+			// BUG(firelizard18): This does not create a separate entry for
+			// modules within a module. Thus, tests in a module within another
+			// module will appear under the top-level module's tree. This may or
+			// may not be acceptable.
 			found.set(dir.toString(), true);
 			return WalkStop.Current;
 		}
@@ -995,6 +1004,14 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 				continue;
 			}
 
+			// When the user clicks the run button on a package, they expect all
+			// of the tests within that package to run - they probably don't
+			// want to run the benchmarks. So if a benchmark is not explicitly
+			// selected, don't run benchmarks. But the user may disagree, so
+			// behavior can be changed with `go.testExplorerRunBenchmarks`.
+			// However, if the user clicks the run button on a file or package
+			// that contains benchmarks and nothing else, they likely expect
+			// those benchmarks to run.
 			if (uri.query === 'benchmark' && !explicitlyIncluded && !includeBench && !(hasBench && !hasNonBench)) {
 				continue;
 			}

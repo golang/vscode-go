@@ -10,7 +10,6 @@
   },
   "license": "MIT",
   "icon": "media/go-logo-blue.png",
-  "enableProposedApi": true,
   "categories": [
     "Programming Languages",
     "Snippets",

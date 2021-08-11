@@ -227,9 +227,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 
-	// testing
-	const testExplorer = TestExplorer.setup(ctx);
-
 	// debug
 	ctx.subscriptions.push(
 		vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go'))
@@ -338,6 +335,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 			testAtCursorOrPrevious(goConfig, 'test', args);
 		})
 	);
+
+	const testExplorer = TestExplorer.setup(ctx);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.test.refresh', (args) => {

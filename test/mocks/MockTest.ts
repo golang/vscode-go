@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/*---------------------------------------------------------
+ * Copyright 2020 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
 import path = require('path');
 import {
 	CancellationToken,
