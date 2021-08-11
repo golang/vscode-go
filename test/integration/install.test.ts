@@ -213,14 +213,12 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 		fs.writeFileSync(path.join(dir, 'list'), `${versions.join('\n')}\n`);
 
 		versions.map((version) => {
-			if (version === 'master') {
-				// for dlv-dap that retrieves the version from master
+			if (!version.match(/^v\d+\.\d+\.\d+/)) {
+				// for dlv-dap that retrieves the version from a revision (commit hash)
 				const resolvedVersion = tool.latestVersion?.toString() || '1.0.0';
+				const infoPath = path.join(dir, `${version}.info`);
 				version = `v${resolvedVersion}`;
-				fs.writeFileSync(
-					path.join(dir, 'master.info'),
-					`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
-				);
+				fs.writeFileSync(infoPath, `{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `);
 			}
 
 			// Write the go.mod file.
