@@ -1,3 +1,24 @@
+📣 Delve's native DAP implementation ([`dlv-dap`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md))
+is enabled by default for local debugging. We updated the [Documentation for Debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md)
+to show the new features available with dlv-dap. This change does not apply to remote debugging yet.
+For remote debugging, keep following the instruction in the
+[legacy debug adapter documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
+
+## v0.27.1 - 12 Aug, 2021
+
+A list of all issues and changes can be found in the [v0.27.1 milestone](https://github.com/golang/vscode-go/milestone/35) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.0...v0.27.1).
+
+### Enhancement
+- Supports `replay` and `core` debug launch modes. ([PR 1268](https://github.com/golang/vscode-go/pull/1268))
+
+### Fixes
+- Fixed process pickers used in attach mode debugging. ([Issue 1679](https://github.com/golang/vscode-go/issues/1679))
+- Fixed the failure of debugging when `CGO_CFLAGS` is set. ([Issue 1678](https://github.com/golang/vscode-go/issues/1678))
+- Fixed the `dlv-dap` installation issue. ([Issue 1682](https://github.com/golang/vscode-go/issues/1682))
+
+### Thanks
+Thanks for your contributions, Luis Gabriel Gomez, Suzy Mueller, and Hana Kim!
+
 ## v0.27.0 - 9 Aug, 2021
 
 📣 Delve's native DAP implementation ([`dlv-dap`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md))
