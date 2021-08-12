@@ -1,5 +1,5 @@
 /*---------------------------------------------------------
- * Copyright 2020 The Go Authors. All rights reserved.
+ * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import {
@@ -42,10 +42,13 @@ export namespace TestExplorer {
 
 	export type FileSystem = Pick<vscode.FileSystem, 'readFile' | 'readDirectory'>;
 
-	export interface Workspace extends Pick<typeof vscode.workspace, 'workspaceFolders' | 'getWorkspaceFolder'> {
-		readonly fs: FileSystem; // custom FS type
+	export interface Workspace
+		extends Pick<typeof vscode.workspace, 'workspaceFolders' | 'getWorkspaceFolder' | 'textDocuments'> {
+		// use custom FS type
+		readonly fs: FileSystem;
 
-		openTextDocument(uri: Uri): Thenable<TextDocument>; // only one overload
+		// only include one overload
+		openTextDocument(uri: Uri): Thenable<TextDocument>;
 	}
 }
 
@@ -967,11 +970,7 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 
 	// Save all documents that contain a test we're about to run, to ensure `go
 	// test` has the latest changes
-	await Promise.all(
-		Array.from(docs).map((uri) => {
-			expl.ws.openTextDocument(uri).then((doc) => doc.save());
-		})
-	);
+	await Promise.all(expl.ws.textDocuments.filter((x) => docs.has(x.uri)).map((x) => x.save()));
 
 	let hasBench = false,
 		hasNonBench = false;

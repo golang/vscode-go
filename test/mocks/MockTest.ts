@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
- * Copyright 2020 The Go Authors. All rights reserved.
+ * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import path = require('path');
@@ -221,6 +221,8 @@ export class MockTestWorkspace implements TestExplorer.Workspace {
 	getWorkspaceFolder(uri: Uri): WorkspaceFolder {
 		return this.workspaceFolders.filter((x) => x.uri === uri)[0];
 	}
+
+	textDocuments: TextDocument[] = [];
 }
 
 class MockTestDocument implements TextDocument {

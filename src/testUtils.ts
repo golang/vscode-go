@@ -11,7 +11,6 @@ import cp = require('child_process');
 import path = require('path');
 import util = require('util');
 import vscode = require('vscode');
-import { CancellationToken } from 'vscode-languageserver-protocol';
 
 import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
@@ -89,7 +88,7 @@ export interface TestConfig {
 	/**
 	 * Can be used to terminate the test process.
 	 */
-	cancel?: CancellationToken;
+	cancel?: vscode.CancellationToken;
 	/**
 	 * Output channel for JSON test output.
 	 */
