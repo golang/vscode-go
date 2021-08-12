@@ -460,7 +460,8 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		// gopls handles only file URIs.
 		{ language: 'go', scheme: 'file' },
 		{ language: 'go.mod', scheme: 'file' },
-		{ language: 'go.sum', scheme: 'file' }
+		{ language: 'go.sum', scheme: 'file' },
+		{ language: 'go.work', scheme: 'file' }
 	];
 
 	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
