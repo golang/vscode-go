@@ -36,6 +36,11 @@ import { getGoConfig } from './config';
 import { getTestFlags, goTest, GoTestOutput } from './testUtils';
 import { outputChannel } from './goStatus';
 
+// Set true only if the Testing API is available (VSCode version >= 1.59).
+export const isVscodeTestingAPIAvailable =
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace TestExplorer {
 	// exported for tests
@@ -86,6 +91,8 @@ async function doSafe<T>(context: string, p: Thenable<T> | (() => T | Thenable<T
 
 export class TestExplorer {
 	static setup(context: ExtensionContext): TestExplorer {
+		if (!isVscodeTestingAPIAvailable) throw new Error('VSCode Testing API is unavailable');
+
 		const ctrl = vscode.tests.createTestController('go', 'Go');
 		const getSym = new GoDocumentSymbolProvider().provideDocumentSymbols;
 		const inst = new this(ctrl, workspace, getSym);

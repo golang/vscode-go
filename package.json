@@ -87,7 +87,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.59.0"
+    "vscode": "^1.58.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
@@ -1291,7 +1291,10 @@
         },
         "go.testExplorerPackages": {
           "type": "string",
-          "enum": ["flat", "nested"],
+          "enum": [
+            "flat",
+            "nested"
+          ],
           "default": "flat",
           "description": "Control whether packages are presented flat or nested",
           "scope": "resource"
