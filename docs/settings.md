@@ -393,6 +393,22 @@ Absolute path to a file containing environment variables definitions. File conte
 ### `go.testEnvVars`
 
 Environment variables that will be passed to the process that runs the Go tests
+### `go.testExplorerConcatenateMessages`
+
+If true, test log messages associated with a given location will be shown as a single message.
+
+Default: `true`
+### `go.testExplorerPackages`
+
+Control whether packages in the test explorer are presented flat or nested.<br/>
+Allowed Options: `flat`, `nested`
+
+Default: `"flat"`
+### `go.testExplorerRunBenchmarks`
+
+Include benchmarks when running all tests in a group.
+
+Default: `false`
 ### `go.testFlags`
 
 Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.
@@ -409,18 +425,6 @@ The Go build tags to use for when running tests. If null, then buildTags will be
 Specifies the timeout for go test in ParseDuration format.
 
 Default: `"30s"`
-### `go.testExplorerPackages`
-Present packages in the test explorer as a flat list or as nested trees.
-
-Default: `flat`
-### `go.testExplorerRunBenchmarks`
-Include benchmarks when running a group of tests.
-
-Default: `false`
-### `go.testExplorerConcatenateMessages`
-Concatenate test log messages for a given location instead of presenting them individually.
-
-Default: `true`
 ### `go.toolsEnvVars`
 
 Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)

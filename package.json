@@ -236,7 +236,7 @@
       {
         "command": "go.test.refresh",
         "title": "Go Test: Refresh",
-        "description": "Refresh a test in the test explorer",
+        "description": "Refresh a test in the test explorer. Only available as a context menu option in the test explorer.",
         "category": "Test",
         "icon": "$(refresh)"
       },
@@ -1297,19 +1297,19 @@
             "nested"
           ],
           "default": "flat",
-          "description": "Control whether packages are presented flat or nested",
+          "description": "Control whether packages in the test explorer are presented flat or nested.",
           "scope": "resource"
         },
         "go.testExplorerRunBenchmarks": {
           "type": "boolean",
           "default": false,
-          "description": "Include benchmarks when running all tests in a group",
+          "description": "Include benchmarks when running all tests in a group.",
           "scope": "resource"
         },
         "go.testExplorerConcatenateMessages": {
           "type": "boolean",
           "default": true,
-          "description": "If true, test log messages associated with a given location will be shown as a single message",
+          "description": "If true, test log messages associated with a given location will be shown as a single message.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {
