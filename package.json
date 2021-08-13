@@ -15,7 +15,8 @@
     "Snippets",
     "Linters",
     "Debuggers",
-    "Formatters"
+    "Formatters",
+    "Testing"
   ],
   "galleryBanner": {
     "color": "#F2F2F2",
