@@ -129,7 +129,7 @@
       },
       {
         "id": "go.mod",
-        "extensions": [
+        "filenames": [
           "go.mod",
           "gopls.mod",
           "go.work"
@@ -141,7 +141,7 @@
       },
       {
         "id": "go.sum",
-        "extensions": [
+        "filenames": [
           "go.sum"
         ],
         "aliases": [
@@ -150,8 +150,8 @@
       },
       {
         "id": "tmpl",
-        "extensions": [
-          ".tmpl"
+        "filenamePatterns": [
+          "*.*tmpl"
         ],
         "aliases": [
           "Go Template File"
