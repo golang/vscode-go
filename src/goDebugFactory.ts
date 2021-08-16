@@ -418,13 +418,13 @@ function spawnDlvDapServerProcess(
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
 			env,
-			stdio: ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3
+			stdio: onWindows ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3 if !onWindows.
 		});
 		let started = false;
-		const timeoutToken: NodeJS.Timer = setTimeout(
-			() => reject(new Error('timed out while waiting for DAP server to start')),
-			5_000
-		);
+		const timeoutToken: NodeJS.Timer = setTimeout(() => {
+			logConsole(`Delve DAP server (PID: ${p.pid}) is not responding`);
+			reject(new Error('timed out while waiting for DAP server to start'));
+		}, 30_000);
 
 		const stopWaitingForServerToStart = () => {
 			clearTimeout(timeoutToken);
