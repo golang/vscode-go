@@ -114,6 +114,7 @@ import { getFormatTool } from './goFormat';
 import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
+import { isVscodeTestingAPIAvailable, TestExplorer } from './goTestExplorer';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -334,6 +335,16 @@ If you would like additional configuration for diagnostics from gopls, please se
 			testAtCursorOrPrevious(goConfig, 'test', args);
 		})
 	);
+
+	if (isVscodeTestingAPIAvailable) {
+		const testExplorer = TestExplorer.setup(ctx);
+
+		ctx.subscriptions.push(
+			vscode.commands.registerCommand('go.test.refresh', (args) => {
+				if (args) testExplorer.resolve(args);
+			})
+		);
+	}
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {

@@ -15,7 +15,8 @@
     "Snippets",
     "Linters",
     "Debuggers",
-    "Formatters"
+    "Formatters",
+    "Testing"
   ],
   "galleryBanner": {
     "color": "#F2F2F2",
@@ -70,7 +71,7 @@
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.52.0",
+    "@types/vscode": "^1.59.0",
     "adm-zip": "^0.4.14",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
@@ -231,6 +232,13 @@
         "command": "go.test.package",
         "title": "Go: Test Package",
         "description": "Runs all unit tests in the package of the current file."
+      },
+      {
+        "command": "go.test.refresh",
+        "title": "Go Test: Refresh",
+        "description": "Refresh a test in the test explorer. Only available as a context menu option in the test explorer.",
+        "category": "Test",
+        "icon": "$(refresh)"
       },
       {
         "command": "go.benchmark.package",
@@ -1280,6 +1288,28 @@
           },
           "default": null,
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
+          "scope": "resource"
+        },
+        "go.testExplorerPackages": {
+          "type": "string",
+          "enum": [
+            "flat",
+            "nested"
+          ],
+          "default": "flat",
+          "description": "Control whether packages in the test explorer are presented flat or nested.",
+          "scope": "resource"
+        },
+        "go.testExplorerRunBenchmarks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include benchmarks when running all tests in a group.",
+          "scope": "resource"
+        },
+        "go.testExplorerConcatenateMessages": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, test log messages associated with a given location will be shown as a single message.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {
@@ -2356,6 +2386,12 @@
       }
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "go.test.refresh",
+          "when": "false"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.toggleTestFile && resourceLangId == go",
@@ -2436,6 +2472,13 @@
           "when": "editorTextFocus && resourceLangId == go",
           "command": "go.show.commands",
           "group": "Go group 2"
+        }
+      ],
+      "testing/item/context": [
+        {
+          "command": "go.test.refresh",
+          "when": "testId =~ /_test\\.go/",
+          "group": "inline"
         }
       ]
     }

@@ -85,6 +85,14 @@ export interface TestConfig {
 	 * Output channel for test output.
 	 */
 	outputChannel?: vscode.OutputChannel;
+	/**
+	 * Can be used to terminate the test process.
+	 */
+	cancel?: vscode.CancellationToken;
+	/**
+	 * Output channel for JSON test output.
+	 */
+	goTestOutputConsumer?: (_: GoTestOutput) => void;
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
@@ -236,10 +244,12 @@ export async function getBenchmarkFunctions(
  * which is a subset of https://golang.org/cmd/test2json/#hdr-Output_Format
  * and includes only the fields that we are using.
  */
-interface GoTestOutput {
+export interface GoTestOutput {
 	Action: string;
 	Output?: string;
 	Package?: string;
+	Test?: string;
+	Elapsed?: number; // seconds
 }
 
 /**
@@ -294,9 +304,16 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const outBuf = new LineBuffer();
 			const errBuf = new LineBuffer();
 
+			testconfig.cancel?.onCancellationRequested(() => killProcessTree(tp));
+
 			const testResultLines: string[] = [];
 			const processTestResultLine = addJSONFlag
-				? processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel)
+				? processTestResultLineInJSONMode(
+						pkgMap,
+						currentGoWorkspace,
+						outputChannel,
+						testconfig.goTestOutputConsumer
+				  )
 				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 			outBuf.onLine((line) => processTestResultLine(line));
@@ -443,7 +460,7 @@ export function computeTestCommand(
 	const outArgs = args.slice(0); // command to show
 
 	// if user set -v, set -json to emulate streaming test output
-	const addJSONFlag = userFlags.includes('-v') && !userFlags.includes('-json');
+	const addJSONFlag = (userFlags.includes('-v') || testconfig.goTestOutputConsumer) && !userFlags.includes('-json');
 	if (addJSONFlag) {
 		args.push('-json'); // this is not shown to the user.
 	}
@@ -478,11 +495,15 @@ export function computeTestCommand(
 function processTestResultLineInJSONMode(
 	pkgMap: Map<string, string>,
 	currentGoWorkspace: string,
-	outputChannel: vscode.OutputChannel
+	outputChannel: vscode.OutputChannel,
+	goTestOutputConsumer?: (_: GoTestOutput) => void
 ) {
 	return (line: string) => {
 		try {
 			const m = <GoTestOutput>JSON.parse(line);
+			if (goTestOutputConsumer) {
+				goTestOutputConsumer(m);
+			}
 			if (m.Action !== 'output' || !m.Output) {
 				return;
 			}
