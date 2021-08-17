@@ -88,7 +88,7 @@
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.58.0"
+    "vscode": "^1.59.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
