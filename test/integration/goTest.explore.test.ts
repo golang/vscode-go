@@ -5,11 +5,12 @@
 import assert = require('assert');
 import path = require('path');
 import fs = require('fs-extra');
-import { TextDocument, TestItemCollection, TextDocumentChangeEvent, ExtensionContext, workspace, Uri } from 'vscode';
+import { TextDocument, TestItemCollection, TextDocumentChangeEvent, workspace, Uri } from 'vscode';
 import { GoTestExplorer } from '../../src/goTest/explore';
 import { getCurrentGoPath } from '../../src/util';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
-import { getSymbols_Regex, populateModulePathCache } from './goTest.utils';
+import { forceDidOpenTextDocument, getSymbols_Regex, populateModulePathCache } from './goTest.utils';
+import { MockExtensionContext } from '../mocks/MockContext';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -179,49 +180,21 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('stretchr', () => {
-		let gopath: string;
-		let repoPath: string;
-		let fixturePath: string;
-		let fixtureSourcePath: string;
+		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
+		const ctx = MockExtensionContext.new();
+
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
-		const ctx: Partial<ExtensionContext> = {
-			subscriptions: []
-		};
-
 		suiteSetup(async () => {
-			gopath = getCurrentGoPath();
-			if (!gopath) {
-				assert.fail('Cannot run tests without a configured GOPATH');
-			}
-			console.log(`Using GOPATH: ${gopath}`);
+			testExplorer = GoTestExplorer.setup(ctx);
 
-			// Set up the test fixtures.
-			repoPath = path.join(gopath, 'src', 'test');
-			fixturePath = path.join(repoPath, 'testfixture');
-			fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
-
-			await fs.remove(repoPath);
-			await fs.copy(fixtureSourcePath, fixturePath, {
-				recursive: true
-			});
-
-			testExplorer = GoTestExplorer.setup(ctx as ExtensionContext);
-
-			const uri = Uri.file(path.join(fixturePath, 'suite_test.go'));
-			document = await workspace.openTextDocument(uri);
-
-			// Force didOpenTextDocument to fire. Without this, the test may run
-			// before the event is handled.
-			//
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await (testExplorer as any).didOpenTextDocument(document);
+			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
+			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
 		});
 
 		suiteTeardown(() => {
-			fs.removeSync(repoPath);
-			ctx.subscriptions.forEach((x) => x.dispose());
+			ctx.teardown();
 		});
 
 		test('discovery', () => {

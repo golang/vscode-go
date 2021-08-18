@@ -20,6 +20,7 @@ import { getGoConfig } from '../config';
 import { getTestFlags, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
+import { outputChannel } from '../goStatus';
 
 type CollectedTest = { item: TestItem; explicitlyIncluded?: boolean };
 
@@ -57,7 +58,7 @@ export class GoTestRunner {
 	) {}
 
 	// Execute tests - TestController.runTest callback
-	async run(request: TestRunRequest, token: CancellationToken) {
+	async run(request: TestRunRequest, token?: CancellationToken) {
 		const collected = new Map<TestItem, CollectedTest[]>();
 		const files = new Set<TestItem>();
 		if (request.include) {
@@ -96,7 +97,8 @@ export class GoTestRunner {
 		}
 
 		const run = this.ctrl.createTestRun(request);
-		const outputChannel = new TestRunOutput(run);
+		const testRunOutput = new TestRunOutput(run);
+		const subItems: string[] = [];
 		for (const [pkg, items] of collected.entries()) {
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
 			const goConfig = getGoConfig(pkg.uri);
@@ -123,11 +125,7 @@ export class GoTestRunner {
 			const benchmarks: Record<string, TestItem> = {};
 			for (const { item, explicitlyIncluded } of items) {
 				const { kind, name } = GoTest.parseId(item.id);
-				if (/[/#]/.test(name)) {
-					// running sub-tests is not currently supported
-					vscode.window.showErrorMessage(`Cannot run ${name} - running sub-tests is not supported`);
-					continue;
-				}
+				if (/[/#]/.test(name)) subItems.push(name);
 
 				// When the user clicks the run button on a package, they expect all
 				// of the tests within that package to run - they probably don't
@@ -163,6 +161,19 @@ export class GoTestRunner {
 			const benchmarkFns = Object.keys(benchmarks);
 			const concat = goConfig.get<boolean>('testExplorerConcatenateMessages');
 
+			// https://github.com/golang/go/issues/39904
+			if (subItems.length > 0 && testFns.length + benchmarkFns.length > 1) {
+				outputChannel.appendLine(
+					`The following tests in ${pkg.uri} failed to run, as go test will only run a sub-test or sub-benchmark if it is by itself:`
+				);
+				testFns.concat(benchmarkFns).forEach((x) => outputChannel.appendLine(x));
+				outputChannel.show();
+				vscode.window.showErrorMessage(
+					`Cannot run the selected tests in package ${pkg.label} - see the Go output panel for details`
+				);
+				continue;
+			}
+
 			// Run tests
 			if (testFns.length > 0) {
 				const complete = new Set<TestItem>();
@@ -170,14 +181,14 @@ export class GoTestRunner {
 					goConfig,
 					flags,
 					isMod,
-					outputChannel,
+					outputChannel: testRunOutput,
 					dir: pkg.uri.fsPath,
 					functions: testFns,
 					cancel: token,
 					goTestOutputConsumer: (e) => this.consumeGoTestEvent(run, tests, record, complete, concat, e)
 				});
 				if (!success) {
-					if (this.isBuildFailure(outputChannel.lines)) {
+					if (this.isBuildFailure(testRunOutput.lines)) {
 						this.markComplete(tests, new Set(), (item) => {
 							run.errored(item, { message: 'Compilation failed' });
 							item.error = 'Compilation failed';
@@ -195,7 +206,7 @@ export class GoTestRunner {
 					goConfig,
 					flags,
 					isMod,
-					outputChannel,
+					outputChannel: testRunOutput,
 					dir: pkg.uri.fsPath,
 					functions: benchmarkFns,
 					isBenchmark: true,
@@ -206,7 +217,7 @@ export class GoTestRunner {
 				// Explicitly complete any incomplete benchmarks (see test_events.md)
 				if (success) {
 					this.markComplete(benchmarks, complete, (x) => run.passed(x));
-				} else if (this.isBuildFailure(outputChannel.lines)) {
+				} else if (this.isBuildFailure(testRunOutput.lines)) {
 					this.markComplete(benchmarks, new Set(), (item) => {
 						// TODO change to errored when that is added back
 						run.failed(item, { message: 'Compilation failed' });
@@ -275,16 +286,24 @@ export class GoTestRunner {
 			return;
 		}
 
-		const parts = name.split(/[#/]+/);
-		let test = tests[parts[0]];
-		if (!test) {
-			return;
-		}
+		const re = /[#/]+/;
 
-		for (const part of parts.slice(1)) {
-			test = this.resolver.getOrCreateSubTest(test, part, true);
-		}
-		return test;
+		const resolve = (parent?: TestItem, start = 0, length = 0): TestItem | undefined => {
+			const pos = start + length;
+			const m = name.substring(pos).match(re);
+			if (!m) {
+				if (!parent) return tests[name];
+				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name);
+			}
+
+			const subName = name.substring(0, pos + m.index);
+			const test = parent
+				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + m.index), subName)
+				: tests[subName];
+			return resolve(test, pos + m.index, m[0].length);
+		};
+
+		return resolve();
 	}
 
 	// Process benchmark events (see test_events.md)

@@ -114,6 +114,7 @@ export class GoTestExplorer {
 	}
 
 	public readonly resolver: GoTestResolver;
+	public readonly runner: GoTestRunner;
 
 	constructor(
 		private readonly workspace: Workspace,
@@ -124,6 +125,7 @@ export class GoTestExplorer {
 		const runner = new GoTestRunner(workspace, ctrl, resolver);
 
 		this.resolver = resolver;
+		this.runner = runner;
 
 		ctrl.resolveHandler = async (item) => {
 			try {

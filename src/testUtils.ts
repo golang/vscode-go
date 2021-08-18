@@ -587,7 +587,11 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 
 	if (testconfig.functions) {
 		if (testconfig.isBenchmark) {
-			params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
+			if (testconfig.functions.length === 1) {
+				params = ['-bench', util.format('^%s$', testconfig.functions[0])];
+			} else {
+				params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
+			}
 		} else {
 			let testFunctions = testconfig.functions;
 			let testifyMethods = testFunctions.filter((fn) => testMethodRegex.test(fn));

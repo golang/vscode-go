@@ -138,9 +138,9 @@ export class GoTestResolver {
 	}
 
 	// Create or Retrieve a sub test or benchmark. The ID will be of the form:
-	//     file:///path/to/mod/file.go?test#TestXxx/A/B/C
-	getOrCreateSubTest(item: TestItem, name: string, dynamic?: boolean): TestItem {
-		const { kind, name: parentName } = GoTest.parseId(item.id);
+	//     file:///path/to/mod/file.go?test#TestXxx%2fA%2fB%2fC
+	getOrCreateSubTest(item: TestItem, label: string, name: string, dynamic?: boolean): TestItem {
+		const { kind } = GoTest.parseId(item.id);
 
 		let existing: TestItem | undefined;
 		item.children.forEach((child) => {
@@ -149,7 +149,7 @@ export class GoTestResolver {
 		if (existing) return existing;
 
 		item.canResolveChildren = true;
-		const sub = this.createItem(name, item.uri, kind, `${parentName}/${name}`);
+		const sub = this.createItem(label, item.uri, kind, name);
 		item.children.add(sub);
 
 		if (dynamic) {

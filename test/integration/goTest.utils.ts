@@ -5,6 +5,8 @@
 import path = require('path');
 import { DocumentSymbol, FileType, Uri, TextDocument, SymbolKind, Range, Position } from 'vscode';
 import { packagePathToGoModPathMap } from '../../src/goModules';
+import { GoTestExplorer } from '../../src/goTest/explore';
+import { Workspace } from '../../src/goTest/utils';
 import { MockTestWorkspace } from '../mocks/MockTest';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -40,4 +42,20 @@ export function populateModulePathCache(workspace: MockTestWorkspace) {
 		delete packagePathToGoModPathMap[pkg];
 	}
 	walk(Uri.file('/'));
+}
+
+export async function forceDidOpenTextDocument(
+	workspace: Workspace,
+	testExplorer: GoTestExplorer,
+	uri: Uri
+): Promise<TextDocument> {
+	const doc = await workspace.openTextDocument(uri);
+
+	// Force didOpenTextDocument to fire. Without this, the test may run
+	// before the event is handled.
+	//
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	await (testExplorer as any).didOpenTextDocument(doc);
+
+	return doc;
 }
