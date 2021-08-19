@@ -41,6 +41,15 @@ export const isVscodeTestingAPIAvailable =
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
 
+const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example)\P{Ll}.*)/u;
+const testMethodRegex = /^\(\*(?<type>[^)]+)\)\.(?<name>(?<kind>Test)\P{Ll}.*)$/u;
+const runTestSuiteRegex = /^\s*suite\.Run\(\w+,\s*(?:&?(?<type1>\w+)\{\}|new\((?<type2>\w+)\))\)/mu;
+
+interface TestSuite {
+	func?: TestItem;
+	methods: Set<TestItem>;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace TestExplorer {
 	// exported for tests
@@ -94,8 +103,10 @@ export class TestExplorer {
 		if (!isVscodeTestingAPIAvailable) throw new Error('VSCode Testing API is unavailable');
 
 		const ctrl = vscode.tests.createTestController('go', 'Go');
-		const getSym = new GoDocumentSymbolProvider().provideDocumentSymbols;
-		const inst = new this(ctrl, workspace, getSym);
+		const symProvider = new GoDocumentSymbolProvider(true);
+		const inst = new this(ctrl, workspace, (doc, token) => symProvider.provideDocumentSymbols(doc, token));
+
+		context.subscriptions.push(ctrl);
 
 		context.subscriptions.push(
 			workspace.onDidChangeConfiguration((x) =>
@@ -146,6 +157,42 @@ export class TestExplorer {
 
 	/* ***** Interface (internal) ***** */
 
+	readonly isDynamicSubtest = new WeakSet<TestItem>();
+	readonly isTestMethod = new WeakSet<TestItem>();
+	readonly isTestSuiteFunc = new WeakSet<TestItem>();
+	readonly testSuites = new Map<string, TestSuite>();
+
+	getTestSuite(type: string): TestSuite {
+		if (this.testSuites.has(type)) {
+			return this.testSuites.get(type);
+		}
+
+		const methods = new Set<TestItem>();
+		const suite = { methods };
+		this.testSuites.set(type, suite);
+		return suite;
+	}
+
+	find(uri: vscode.Uri): TestItem[] {
+		const findStr = uri.toString();
+		const found: TestItem[] = [];
+
+		function find(items: TestItemCollection) {
+			items.forEach((item) => {
+				const itemStr = item.uri.toString();
+				if (findStr === itemStr) {
+					found.push(item);
+					find(item.children);
+				} else if (findStr.startsWith(itemStr)) {
+					find(item.children);
+				}
+			});
+		}
+
+		find(this.ctrl.items);
+		return found;
+	}
+
 	// Create an item.
 	createItem(label: string, uri: Uri, kind: string, name?: string): TestItem {
 		return this.ctrl.createTestItem(testID(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
@@ -169,15 +216,16 @@ export class TestExplorer {
 
 	// Create or Retrieve a sub test or benchmark. The ID will be of the form:
 	//     file:///path/to/mod/file.go?test#TestXxx/A/B/C
-	getOrCreateSubTest(item: TestItem, name: string): TestItem {
+	getOrCreateSubTest(item: TestItem, name: string, dynamic?: boolean): TestItem {
 		const { fragment: parentName, query: kind } = Uri.parse(item.id);
-		const existing = this.getItem(item, item.uri, kind, `${parentName}/${name}`);
+		const existing = collect(item.children).find((child) => child.label === name);
 		if (existing) return existing;
 
 		item.canResolveChildren = true;
 		const sub = this.createItem(name, item.uri, kind, `${parentName}/${name}`);
 		item.children.add(sub);
 		sub.range = item.range;
+		if (dynamic) this.isDynamicSubtest.add(item);
 		return sub;
 	}
 
@@ -308,14 +356,6 @@ function disposeIfEmpty(item: TestItem) {
 	disposeIfEmpty(item.parent);
 }
 
-// Dispose of the children of a test. Sub-tests and sub-benchmarks are
-// discovered emperically (from test output) not semantically (from code), so
-// there are situations where they must be discarded.
-function discardChildren(item: TestItem) {
-	item.canResolveChildren = false;
-	item.children.forEach(dispose);
-}
-
 // If a test/benchmark with children is relocated, update the children's
 // location.
 function relocateChildren(item: TestItem) {
@@ -427,7 +467,14 @@ async function getFile(expl: TestExplorer, uri: Uri): Promise<TestItem> {
 // benchmark, or example function, a test item will be created for it, if one
 // does not already exist. If the symbol is not a function and contains
 // children, those children will be processed recursively.
-async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen: Set<string>, symbol: DocumentSymbol) {
+async function processSymbol(
+	expl: TestExplorer,
+	doc: TextDocument,
+	file: TestItem,
+	seen: Set<string>,
+	importsTestify: boolean,
+	symbol: DocumentSymbol
+) {
 	// Skip TestMain(*testing.M) - allow TestMain(*testing.T)
 	if (symbol.name === 'TestMain' && /\*testing.M\)/.test(symbol.detail)) {
 		return;
@@ -435,19 +482,23 @@ async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen:
 
 	// Recursively process symbols that are nested
 	if (symbol.kind !== SymbolKind.Function) {
-		for (const sym of symbol.children) await processSymbol(expl, uri, file, seen, sym);
+		for (const sym of symbol.children) await processSymbol(expl, doc, file, seen, importsTestify, sym);
 		return;
 	}
 
-	const match = symbol.name.match(/^(?<type>Test|Example|Benchmark)/);
+	const match = symbol.name.match(testFuncRegex) || (importsTestify && symbol.name.match(testMethodRegex));
 	if (!match) {
 		return;
 	}
 
 	seen.add(symbol.name);
 
-	const kind = match.groups.type.toLowerCase();
-	const existing = expl.getItem(file, uri, kind, symbol.name);
+	const kind = match.groups.kind.toLowerCase();
+	const suite = match.groups.type ? expl.getTestSuite(match.groups.type) : undefined;
+	const existing =
+		expl.getItem(file, doc.uri, kind, symbol.name) ||
+		(suite?.func && expl.getItem(suite?.func, doc.uri, kind, symbol.name));
+
 	if (existing) {
 		if (!existing.range.isEqual(symbol.range)) {
 			existing.range = symbol.range;
@@ -456,8 +507,44 @@ async function processSymbol(expl: TestExplorer, uri: Uri, file: TestItem, seen:
 		return existing;
 	}
 
-	const item = expl.getOrCreateItem(file, symbol.name, uri, kind, symbol.name);
+	const item = expl.getOrCreateItem(suite?.func || file, match.groups.name, doc.uri, kind, symbol.name);
 	item.range = symbol.range;
+
+	if (suite) {
+		expl.isTestMethod.add(item);
+		if (!suite.func) suite.methods.add(item);
+		return;
+	}
+
+	if (!importsTestify) {
+		return;
+	}
+
+	// Runs any suite
+	const text = doc.getText(symbol.range);
+	if (text.includes('suite.Run(')) {
+		expl.isTestSuiteFunc.add(item);
+	}
+
+	// Runs a specific suite
+	// - suite.Run(t, new(MySuite))
+	// - suite.Run(t, MySuite{})
+	// - suite.Run(t, &MySuite{})
+	const matchRunSuite = text.match(runTestSuiteRegex);
+	if (matchRunSuite) {
+		const g = matchRunSuite.groups;
+		const suite = expl.getTestSuite(g.type1 || g.type2);
+		suite.func = item;
+
+		for (const method of suite.methods) {
+			if (Uri.parse(method.parent.id).query !== 'file') {
+				continue;
+			}
+
+			method.parent.children.delete(method.id);
+			item.children.add(method);
+		}
+	}
 }
 
 // Processes a Go document, calling processSymbol for each symbol in the
@@ -470,7 +557,14 @@ async function processDocument(expl: TestExplorer, doc: TextDocument, ranges?: R
 	const seen = new Set<string>();
 	const item = await getFile(expl, doc.uri);
 	const symbols = await expl.provideDocumentSymbols(doc, null);
-	for (const symbol of symbols) await processSymbol(expl, doc.uri, item, seen, symbol);
+	const testify = symbols.some((s) =>
+		s.children.some(
+			(sym) => sym.kind === SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
+		)
+	);
+	for (const symbol of symbols) {
+		await processSymbol(expl, doc, item, seen, testify, symbol);
+	}
 
 	for (const child of collect(item.children)) {
 		const uri = Uri.parse(child.id);
@@ -480,7 +574,7 @@ async function processDocument(expl: TestExplorer, doc: TextDocument, ranges?: R
 		}
 
 		if (ranges?.some((r) => !!child.range.intersection(r))) {
-			discardChildren(child);
+			item.children.forEach(dispose);
 		}
 	}
 
@@ -682,7 +776,7 @@ async function resolve(expl: TestExplorer, item?: TestItem) {
 	// would discover sub tests or benchmarks, if that is feasible.
 }
 
-type CollectedTest = { item: TestItem; explicitlyIncluded: boolean };
+type CollectedTest = { item: TestItem; explicitlyIncluded?: boolean };
 
 // Recursively find all tests, benchmarks, and examples within a
 // module/package/etc, minus exclusions. Map tests to the package they are
@@ -692,8 +786,8 @@ async function collectTests(
 	item: TestItem,
 	explicitlyIncluded: boolean,
 	excluded: TestItem[],
-	functions: Map<string, CollectedTest[]>,
-	docs: Set<Uri>
+	functions: Map<TestItem, CollectedTest[]>,
+	files: Set<TestItem>
 ) {
 	for (let i = item; i.parent; i = i.parent) {
 		if (excluded.indexOf(i) >= 0) {
@@ -708,19 +802,25 @@ async function collectTests(
 		}
 
 		for (const child of collect(item.children)) {
-			await collectTests(expl, child, false, excluded, functions, docs);
+			await collectTests(expl, child, false, excluded, functions, files);
 		}
 		return;
 	}
 
-	const file = uri.with({ query: '', fragment: '' });
-	docs.add(file);
+	function getFile(item: TestItem): TestItem {
+		const uri = Uri.parse(item.id);
+		if (uri.query === 'file') return item;
+		return getFile(item.parent);
+	}
 
-	const dir = file.with({ path: path.dirname(uri.path) }).toString();
-	if (functions.has(dir)) {
-		functions.get(dir).push({ item, explicitlyIncluded });
+	const file = getFile(item);
+	files.add(file);
+
+	const pkg = file.parent;
+	if (functions.has(pkg)) {
+		functions.get(pkg).push({ item, explicitlyIncluded });
 	} else {
-		functions.set(dir, [{ item, explicitlyIncluded }]);
+		functions.set(pkg, [{ item, explicitlyIncluded }]);
 	}
 	return;
 }
@@ -766,7 +866,7 @@ function resolveTestName(expl: TestExplorer, tests: Record<string, TestItem>, na
 	}
 
 	for (const part of parts.slice(1)) {
-		test = expl.getOrCreateSubTest(test, part);
+		test = expl.getOrCreateSubTest(test, part, true);
 	}
 	return test;
 }
@@ -961,16 +1061,16 @@ function isBuildFailure(output: string[]): boolean {
 
 // Execute tests - TestController.runTest callback
 async function runTests(expl: TestExplorer, request: TestRunRequest, token: CancellationToken) {
-	const collected = new Map<string, CollectedTest[]>();
-	const docs = new Set<Uri>();
+	const collected = new Map<TestItem, CollectedTest[]>();
+	const files = new Set<TestItem>();
 	if (request.include) {
 		for (const item of request.include) {
-			await collectTests(expl, item, true, request.exclude || [], collected, docs);
+			await collectTests(expl, item, true, request.exclude || [], collected, files);
 		}
 	} else {
 		const promises: Promise<unknown>[] = [];
 		expl.ctrl.items.forEach((item) => {
-			const p = collectTests(expl, item, true, request.exclude || [], collected, docs);
+			const p = collectTests(expl, item, true, request.exclude || [], collected, files);
 			promises.push(p);
 		});
 		await Promise.all(promises);
@@ -978,7 +1078,8 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 
 	// Save all documents that contain a test we're about to run, to ensure `go
 	// test` has the latest changes
-	await Promise.all(expl.ws.textDocuments.filter((x) => docs.has(x.uri)).map((x) => x.save()));
+	const fileUris = new Set(Array.from(files).map((x) => x.uri));
+	await Promise.all(expl.ws.textDocuments.filter((x) => fileUris.has(x.uri)).map((x) => x.save()));
 
 	let hasBench = false,
 		hasNonBench = false;
@@ -990,14 +1091,34 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 		}
 	}
 
+	function isInMod(item: TestItem): boolean {
+		const uri = Uri.parse(item.id);
+		if (uri.query === 'module') return true;
+		if (!item.parent) return false;
+		return isInMod(item.parent);
+	}
+
 	const run = expl.ctrl.createTestRun(request);
 	const outputChannel = new TestRunOutput(run);
-	for (const [dir, items] of collected.entries()) {
-		const uri = Uri.parse(dir);
-		const isMod = await isModSupported(uri, true);
-		const goConfig = getGoConfig(uri);
+	for (const [pkg, items] of collected.entries()) {
+		const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
+		const goConfig = getGoConfig(pkg.uri);
 		const flags = getTestFlags(goConfig);
-		const includeBench = getGoConfig(uri).get('testExplorerRunBenchmarks');
+		const includeBench = getGoConfig(pkg.uri).get('testExplorerRunBenchmarks');
+
+		// If any of the tests are test suite methods, add all test functions that call `suite.Run`
+		const hasTestMethod = items.some(({ item }) => expl.isTestMethod.has(item));
+		if (hasTestMethod) {
+			const add: TestItem[] = [];
+			pkg.children.forEach((file) => {
+				file.children.forEach((test) => {
+					if (!expl.isTestSuiteFunc.has(test)) return;
+					if (items.some(({ item }) => item === test)) return;
+					add.push(test);
+				});
+			});
+			items.push(...add.map((item) => ({ item })));
+		}
 
 		// Separate tests and benchmarks and mark them as queued for execution.
 		// Clear any sub tests/benchmarks generated by a previous run.
@@ -1025,7 +1146,13 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 
 			item.error = null;
 			run.enqueued(item);
-			discardChildren(item);
+
+			// Remove subtests created dynamically from test output
+			item.children.forEach((child) => {
+				if (expl.isDynamicSubtest.has(child)) {
+					dispose(child);
+				}
+			});
 
 			if (uri.query === 'benchmark') {
 				benchmarks[uri.fragment] = item;
@@ -1047,7 +1174,7 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 				flags,
 				isMod,
 				outputChannel,
-				dir: uri.fsPath,
+				dir: pkg.uri.fsPath,
 				functions: testFns,
 				cancel: token,
 				goTestOutputConsumer: (e) => consumeGoTestEvent(expl, run, tests, record, complete, concat, e)
@@ -1072,7 +1199,7 @@ async function runTests(expl: TestExplorer, request: TestRunRequest, token: Canc
 				flags,
 				isMod,
 				outputChannel,
-				dir: uri.fsPath,
+				dir: pkg.uri.fsPath,
 				functions: benchmarkFns,
 				isBenchmark: true,
 				cancel: token,

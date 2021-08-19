@@ -4,21 +4,14 @@
  *--------------------------------------------------------*/
 import assert = require('assert');
 import path = require('path');
-import {
-	DocumentSymbol,
-	FileType,
-	TestItem,
-	Uri,
-	TextDocument,
-	SymbolKind,
-	Range,
-	Position,
-	TestItemCollection,
-	TextDocumentChangeEvent
-} from 'vscode';
+import fs = require('fs-extra');
+import vscode = require('vscode');
 import { packagePathToGoModPathMap as pkg2mod } from '../../src/goModules';
 import { TestExplorer, testID } from '../../src/goTestExplorer';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
+import { getCurrentGoPath } from '../../src/util';
+import { GoDocumentSymbolProvider } from '../../src/goOutline';
+import { getGoConfig } from '../../src/config';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -28,11 +21,11 @@ interface TestCase {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function symbols(doc: TextDocument, token: unknown): Thenable<DocumentSymbol[]> {
-	const syms: DocumentSymbol[] = [];
-	const range = new Range(new Position(0, 0), new Position(0, 0));
+function symbols(doc: vscode.TextDocument, token: unknown): Thenable<vscode.DocumentSymbol[]> {
+	const syms: vscode.DocumentSymbol[] = [];
+	const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
 	doc.getText().replace(/^func (Test|Benchmark|Example)([A-Z]\w+)(\(.*\))/gm, (m, type, name, details) => {
-		syms.push(new DocumentSymbol(type + name, details, SymbolKind.Function, range, range));
+		syms.push(new vscode.DocumentSymbol(type + name, details, vscode.SymbolKind.Function, range, range));
 		return m;
 	});
 	return Promise.resolve(syms);
@@ -51,11 +44,11 @@ function setupCtor<T extends TestExplorer>(
 	const ctrl = new MockTestController();
 	const expl = new ctor(ctrl, ws, symbols);
 
-	function walk(dir: Uri, modpath?: string) {
-		const dirs: Uri[] = [];
+	function walk(dir: vscode.Uri, modpath?: string) {
+		const dirs: vscode.Uri[] = [];
 		for (const [name, type] of ws.fs.dirs.get(dir.toString())) {
 			const uri = dir.with({ path: path.join(dir.path, name) });
-			if (type === FileType.Directory) {
+			if (type === vscode.FileType.Directory) {
 				dirs.push(uri);
 			} else if (name === 'go.mod') {
 				modpath = dir.path;
@@ -69,14 +62,14 @@ function setupCtor<T extends TestExplorer>(
 
 	// prevent getModFolderPath from actually doing anything;
 	for (const pkg in pkg2mod) delete pkg2mod[pkg];
-	walk(Uri.file('/'));
+	walk(vscode.Uri.file('/'));
 
 	return { ctrl, expl, ws };
 }
 
-function assertTestItems(items: TestItemCollection, expect: string[]) {
+function assertTestItems(items: vscode.TestItemCollection, expect: string[]) {
 	const actual: string[] = [];
-	function walk(items: TestItemCollection) {
+	function walk(items: vscode.TestItemCollection) {
 		items.forEach((item) => {
 			actual.push(item.id);
 			walk(item.children);
@@ -257,9 +250,9 @@ suite('Test Explorer', () => {
 						const { workspace, files, expect, item: itemData = [] } = cases[n][m];
 						const { ctrl } = setup(workspace, files);
 
-						let item: TestItem | undefined;
+						let item: vscode.TestItem | undefined;
 						for (const [label, uri, kind, name] of itemData) {
-							const u = Uri.parse(uri);
+							const u = vscode.Uri.parse(uri);
 							const child = ctrl.createTestItem(testID(u, kind, name), label, u);
 							(item?.children || ctrl.items).add(child);
 							item = child;
@@ -278,7 +271,7 @@ suite('Test Explorer', () => {
 	suite('Events', () => {
 		suite('Document opened', () => {
 			class DUT extends TestExplorer {
-				async _didOpen(doc: TextDocument) {
+				async _didOpen(doc: vscode.TextDocument) {
 					await this.didOpenTextDocument(doc);
 				}
 			}
@@ -333,11 +326,11 @@ suite('Test Explorer', () => {
 
 		suite('Document edited', async () => {
 			class DUT extends TestExplorer {
-				async _didOpen(doc: TextDocument) {
+				async _didOpen(doc: vscode.TextDocument) {
 					await this.didOpenTextDocument(doc);
 				}
 
-				async _didChange(e: TextDocumentChangeEvent) {
+				async _didChange(e: vscode.TextDocumentChangeEvent) {
 					await this.didChangeTextDocument(e);
 				}
 			}
@@ -409,6 +402,62 @@ suite('Test Explorer', () => {
 					assertTestItems(ctrl.items, expect.after);
 				});
 			}
+		});
+	});
+
+	suite('stretchr', () => {
+		let gopath: string;
+		let repoPath: string;
+		let fixturePath: string;
+		let fixtureSourcePath: string;
+		let document: vscode.TextDocument;
+		let testExplorer: TestExplorer;
+
+		const ctx: Partial<vscode.ExtensionContext> = {
+			subscriptions: []
+		};
+
+		suiteSetup(async () => {
+			gopath = getCurrentGoPath();
+			if (!gopath) {
+				assert.fail('Cannot run tests without a configured GOPATH');
+			}
+			console.log(`Using GOPATH: ${gopath}`);
+
+			// Set up the test fixtures.
+			repoPath = path.join(gopath, 'src', 'test');
+			fixturePath = path.join(repoPath, 'testfixture');
+			fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
+
+			fs.removeSync(repoPath);
+			fs.copySync(fixtureSourcePath, fixturePath, {
+				recursive: true
+			});
+
+			testExplorer = TestExplorer.setup(ctx as vscode.ExtensionContext);
+
+			const uri = vscode.Uri.file(path.join(fixturePath, 'suite_test.go'));
+			document = await vscode.workspace.openTextDocument(uri);
+
+			// Force didOpenTextDocument to fire. Without this, the test may run
+			// before the event is handled.
+			//
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await (testExplorer as any).didOpenTextDocument(document);
+		});
+
+		suiteTeardown(() => {
+			fs.removeSync(repoPath);
+			ctx.subscriptions.forEach((x) => x.dispose());
+		});
+
+		test('discovery', () => {
+			const tests = testExplorer.find(document.uri).map((x) => x.id);
+			assert.deepStrictEqual(tests.sort(), [
+				document.uri.with({ query: 'file' }).toString(),
+				document.uri.with({ query: 'test', fragment: '(*ExampleTestSuite).TestExample' }).toString(),
+				document.uri.with({ query: 'test', fragment: 'TestExampleTestSuite' }).toString()
+			]);
 		});
 	});
 });
