@@ -602,12 +602,13 @@ async function walkPackages(fs: TestExplorer.FileSystem, uri: Uri, cb: (uri: Uri
 
 // Handle opened documents, document changes, and file creation.
 async function documentUpdate(expl: TestExplorer, doc: TextDocument, ranges?: Range[]) {
-	if (!doc.uri.path.endsWith('_test.go')) {
-		return;
-	}
-
 	if (doc.uri.scheme === 'git') {
 		// TODO(firelizzard18): When a workspace is reopened, VSCode passes us git: URIs. Why?
+		const { path } = JSON.parse(doc.uri.query);
+		doc = await vscode.workspace.openTextDocument(path);
+	}
+
+	if (!doc.uri.path.endsWith('_test.go')) {
 		return;
 	}
 
