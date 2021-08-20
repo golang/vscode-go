@@ -24,7 +24,7 @@ import {
 	Uri,
 	WorkspaceFolder
 } from 'vscode';
-import { TestExplorer } from '../../src/goTestExplorer';
+import { FileSystem, Workspace } from '../../src/goTest/utils';
 
 type TestRunHandler = (request: TestRunRequest, token: CancellationToken) => Thenable<void> | void;
 
@@ -138,7 +138,7 @@ export class MockTestController implements TestController {
 
 type DirEntry = [string, FileType];
 
-class MockTestFileSystem implements TestExplorer.FileSystem {
+class MockTestFileSystem implements FileSystem {
 	constructor(public dirs: Map<string, DirEntry[]>, public files: Map<string, MockTestDocument>) {}
 
 	readDirectory(uri: Uri): Thenable<[string, FileType][]> {
@@ -167,7 +167,7 @@ function unindent(s: string): string {
 	return lines.join('\n');
 }
 
-export class MockTestWorkspace implements TestExplorer.Workspace {
+export class MockTestWorkspace implements Workspace {
 	static from(folders: string[], contents: Record<string, string | { contents: string; language: string }>) {
 		const wsdirs: WorkspaceFolder[] = [];
 		const dirs = new Map<string, DirEntry[]>();
