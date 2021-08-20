@@ -35,10 +35,11 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "webpack": "webpack --mode development",
-    "webpack-dev": "webpack --mode development --watch",
+    "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
+    "bundle-dev": "npm run bundle -- --sourcemap",
+    "bundle-watch": "npm run bundle -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
-    "compile": "webpack --mode production",
+    "compile": "npm run bundle -- --minify",
     "watch": "tsc -watch -p ./",
     "test": "npm run test-compile && node ./out/test/runTest.js",
     "lint": "gts lint src test",
@@ -73,6 +74,7 @@
     "@types/sinon": "^9.0.0",
     "@types/vscode": "^1.59.0",
     "adm-zip": "^0.4.14",
+    "esbuild": "^0.12.21",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
     "gts": "^3.1.0",
@@ -83,8 +85,6 @@
     "tslint": "^6.1.1",
     "typescript": "^3.8.3",
     "vscode-test": "^1.3.0",
-    "webpack": "^5.27.2",
-    "webpack-cli": "^4.5.0",
     "yarn": "^1.22.4"
   },
   "engines": {

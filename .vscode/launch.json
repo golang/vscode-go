@@ -25,7 +25,7 @@
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"smartStep": true,
-			"preLaunchTask": "npm: webpack",
+			"preLaunchTask": "npm: bundle-dev",
 			"env": {
 				"VSCODE_GO_IN_TEST": ""  // Enable code
 			},
@@ -44,7 +44,7 @@
 			],
 			"sourceMaps": true,
 			"smartStep": true,
-			"preLaunchTask": "npm: webpack"
+			"preLaunchTask": "npm: bundle-dev"
 		},
 		{
 			"name": "Launch Extension Tests",
