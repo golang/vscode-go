@@ -241,6 +241,18 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "go.test.showProfiles",
+        "title": "Go Test: Show Last Profile",
+        "description": "Show last captured profile",
+        "category": "Test"
+      },
+      {
+        "command": "go.test.captureProfile",
+        "title": "Go Test: Profile",
+        "description": "Run a test and capture a profile",
+        "category": "Test"
+      },
+      {
         "command": "go.benchmark.package",
         "title": "Go: Benchmark Package",
         "description": "Runs all benchmarks in the package of the current file."
@@ -2396,6 +2408,14 @@
         {
           "command": "go.test.refresh",
           "when": "false"
+        },
+        {
+          "command": "go.test.showProfiles",
+          "when": "false"
+        },
+        {
+          "command": "go.test.captureProfile",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -2483,8 +2503,18 @@
       "testing/item/context": [
         {
           "command": "go.test.refresh",
-          "when": "testId =~ /_test\\.go/",
+          "when": "testId in go.tests",
           "group": "inline"
+        },
+        {
+          "command": "go.test.showProfiles",
+          "when": "testId in go.profiledTests",
+          "group": "profile"
+        },
+        {
+          "command": "go.test.captureProfile",
+          "when": "testId in go.tests && testId =~ /\\?(test|benchmark)/",
+          "group": "profile"
         }
       ]
     }

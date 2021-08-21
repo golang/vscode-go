@@ -63,6 +63,14 @@ Runs all unit tests in the package of the current file.
 
 Refresh a test in the test explorer. Only available as a context menu option in the test explorer.
 
+### `Go Test: Show Last Profile`
+
+Show last captured profile
+
+### `Go Test: Profile`
+
+Run a test and capture a profile
+
 ### `Go: Benchmark Package`
 
 Runs all benchmarks in the package of the current file.

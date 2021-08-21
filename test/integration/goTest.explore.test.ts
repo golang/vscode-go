@@ -9,6 +9,7 @@ import { GoTestExplorer } from '../../src/goTest/explore';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 import { forceDidOpenTextDocument, getSymbols_Regex, populateModulePathCache } from './goTest.utils';
 import { MockExtensionContext } from '../mocks/MockContext';
+import { MockMemento } from '../mocks/MockMemento';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -24,7 +25,7 @@ function setupCtor<T extends GoTestExplorer>(
 ) {
 	const ws = MockTestWorkspace.from(folders, files);
 	const ctrl = new MockTestController();
-	const expl = new ctor(ws, ctrl, getSymbols_Regex);
+	const expl = new ctor(ws, ctrl, new MockMemento(), getSymbols_Regex);
 	populateModulePathCache(ws);
 	return { ctrl, expl, ws };
 }

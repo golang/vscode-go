@@ -17,10 +17,12 @@ import {
 	WorkspaceFolder
 } from 'vscode';
 import path = require('path');
+import vscode = require('vscode');
+import { outputChannel } from '../goStatus';
 import { getModFolderPath } from '../goModules';
 import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
-import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, Workspace } from './utils';
+import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, isInTest, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
 
 export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
@@ -44,7 +46,19 @@ export class GoTestResolver {
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
 		private readonly provideDocumentSymbols: ProvideSymbols
-	) {}
+	) {
+		ctrl.resolveHandler = async (item) => {
+			try {
+				await this.resolve(item);
+			} catch (error) {
+				if (isInTest()) throw error;
+
+				const m = 'Failed to resolve tests';
+				outputChannel.appendLine(`${m}: ${error}`);
+				await vscode.window.showErrorMessage(m);
+			}
+		};
+	}
 
 	get items() {
 		return this.ctrl.items;
@@ -135,6 +149,20 @@ export class GoTestResolver {
 
 		find(this.ctrl.items);
 		return found;
+	}
+
+	get allItems() {
+		function* it(coll: TestItemCollection): Generator<TestItem> {
+			const arr: TestItem[] = [];
+			coll.forEach((x) => arr.push(x));
+
+			for (const item of arr) {
+				yield item;
+				yield* it(item.children);
+			}
+		}
+
+		return it(this.items);
 	}
 
 	// Create or Retrieve a sub test or benchmark. The ID will be of the form:

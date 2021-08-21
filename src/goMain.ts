@@ -115,6 +115,7 @@ import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
+import { ProfileDocumentContentProvider } from './goToolPprof';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -337,14 +338,12 @@ If you would like additional configuration for diagnostics from gopls, please se
 	);
 
 	if (isVscodeTestingAPIAvailable) {
-		const testExplorer = GoTestExplorer.setup(ctx);
-
-		ctx.subscriptions.push(
-			vscode.commands.registerCommand('go.test.refresh', (args) => {
-				if (args) testExplorer.resolver.resolve(args);
-			})
-		);
+		GoTestExplorer.setup(ctx);
 	}
+
+	ctx.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider('go-tool-pprof', new ProfileDocumentContentProvider())
+	);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {

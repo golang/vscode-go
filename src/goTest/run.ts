@@ -11,18 +11,36 @@ import {
 	TestItem,
 	TestMessage,
 	TestRun,
+	TestRunProfileKind,
 	TestRunRequest,
-	Uri
+	Uri,
+	WorkspaceConfiguration
 } from 'vscode';
 import vscode = require('vscode');
+import { outputChannel } from '../goStatus';
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
 import { getTestFlags, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
-import { outputChannel } from '../goStatus';
+import { GoTestProfiler, ProfilingOptions } from './profile';
 
 type CollectedTest = { item: TestItem; explicitlyIncluded?: boolean };
+
+interface RunConfig {
+	goConfig: WorkspaceConfiguration;
+	flags: string[];
+	isMod: boolean;
+	isBenchmark?: boolean;
+	cancel: CancellationToken;
+
+	run: TestRun;
+	options: ProfilingOptions;
+	pkg: TestItem;
+	concat: boolean;
+	record: Map<TestItem, string[]>;
+	functions: Record<string, TestItem>;
+}
 
 // TestRunOutput is a fake OutputChannel that forwards all test output to the test API
 // console.
@@ -54,11 +72,48 @@ export class GoTestRunner {
 	constructor(
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
-		private readonly resolver: GoTestResolver
-	) {}
+		private readonly resolver: GoTestResolver,
+		private readonly profiler: GoTestProfiler
+	) {
+		ctrl.createRunProfile(
+			'Go',
+			TestRunProfileKind.Run,
+			async (request, token) => {
+				try {
+					await this.run(request, token);
+				} catch (error) {
+					const m = 'Failed to execute tests';
+					outputChannel.appendLine(`${m}: ${error}`);
+					await vscode.window.showErrorMessage(m);
+				}
+			},
+			true
+		);
+
+		const pprof = ctrl.createRunProfile(
+			'Go (Profile)',
+			TestRunProfileKind.Run,
+			async (request, token) => {
+				try {
+					await this.run(request, token, this.profiler.options);
+				} catch (error) {
+					const m = 'Failed to execute tests';
+					outputChannel.appendLine(`${m}: ${error}`);
+					await vscode.window.showErrorMessage(m);
+				}
+			},
+			false
+		);
+
+		pprof.configureHandler = async () => {
+			const state = await this.profiler.configure();
+			if (!state) return;
+			this.profiler.options = state;
+		};
+	}
 
 	// Execute tests - TestController.runTest callback
-	async run(request: TestRunRequest, token?: CancellationToken) {
+	async run(request: TestRunRequest, token?: CancellationToken, options: ProfilingOptions = {}): Promise<boolean> {
 		const collected = new Map<TestItem, CollectedTest[]>();
 		const files = new Set<TestItem>();
 		if (request.include) {
@@ -96,8 +151,8 @@ export class GoTestRunner {
 			return isInMod(item.parent);
 		}
 
+		let success = true;
 		const run = this.ctrl.createTestRun(request);
-		const testRunOutput = new TestRunOutput(run);
 		const subItems: string[] = [];
 		for (const [pkg, items] of collected.entries()) {
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
@@ -157,16 +212,16 @@ export class GoTestRunner {
 			}
 
 			const record = new Map<TestItem, string[]>();
-			const testFns = Object.keys(tests);
-			const benchmarkFns = Object.keys(benchmarks);
 			const concat = goConfig.get<boolean>('testExplorerConcatenateMessages');
 
 			// https://github.com/golang/go/issues/39904
-			if (subItems.length > 0 && testFns.length + benchmarkFns.length > 1) {
+			if (subItems.length > 0 && Object.keys(tests).length + Object.keys(benchmarks).length > 1) {
 				outputChannel.appendLine(
 					`The following tests in ${pkg.uri} failed to run, as go test will only run a sub-test or sub-benchmark if it is by itself:`
 				);
-				testFns.concat(benchmarkFns).forEach((x) => outputChannel.appendLine(x));
+				Object.keys(tests)
+					.concat(Object.keys(benchmarks))
+					.forEach((x) => outputChannel.appendLine(x));
 				outputChannel.show();
 				vscode.window.showErrorMessage(
 					`Cannot run the selected tests in package ${pkg.label} - see the Go output panel for details`
@@ -174,57 +229,42 @@ export class GoTestRunner {
 				continue;
 			}
 
+			const config = {
+				flags,
+				isMod,
+				goConfig,
+				cancel: token,
+
+				run,
+				options,
+				pkg,
+				record,
+				concat
+			};
+
 			// Run tests
-			if (testFns.length > 0) {
-				const complete = new Set<TestItem>();
-				const success = await goTest({
-					goConfig,
-					flags,
-					isMod,
-					outputChannel: testRunOutput,
-					dir: pkg.uri.fsPath,
-					functions: testFns,
-					cancel: token,
-					goTestOutputConsumer: (e) => this.consumeGoTestEvent(run, tests, record, complete, concat, e)
-				});
-				if (!success) {
-					if (this.isBuildFailure(testRunOutput.lines)) {
-						this.markComplete(tests, new Set(), (item) => {
-							run.errored(item, { message: 'Compilation failed' });
-							item.error = 'Compilation failed';
-						});
-					} else {
-						this.markComplete(tests, complete, (x) => run.skipped(x));
-					}
+			if (!options.kind) {
+				const r = await this.runGoTest({ ...config, functions: tests });
+				if (!r) success = false;
+			} else {
+				for (const name in tests) {
+					const r = await this.runGoTest({ ...config, functions: { [name]: tests[name] } });
+					if (!r) success = false;
 				}
 			}
 
 			// Run benchmarks
-			if (benchmarkFns.length > 0) {
-				const complete = new Set<TestItem>();
-				const success = await goTest({
-					goConfig,
-					flags,
-					isMod,
-					outputChannel: testRunOutput,
-					dir: pkg.uri.fsPath,
-					functions: benchmarkFns,
-					isBenchmark: true,
-					cancel: token,
-					goTestOutputConsumer: (e) => this.consumeGoBenchmarkEvent(run, benchmarks, complete, e)
-				});
-
-				// Explicitly complete any incomplete benchmarks (see test_events.md)
-				if (success) {
-					this.markComplete(benchmarks, complete, (x) => run.passed(x));
-				} else if (this.isBuildFailure(testRunOutput.lines)) {
-					this.markComplete(benchmarks, new Set(), (item) => {
-						// TODO change to errored when that is added back
-						run.failed(item, { message: 'Compilation failed' });
-						item.error = 'Compilation failed';
+			if (!options.kind) {
+				const r = await this.runGoTest({ ...config, isBenchmark: true, functions: benchmarks });
+				if (!r) success = false;
+			} else {
+				for (const name in benchmarks) {
+					const r = await this.runGoTest({
+						...config,
+						isBenchmark: true,
+						functions: { [name]: benchmarks[name] }
 					});
-				} else {
-					this.markComplete(benchmarks, complete, (x) => run.skipped(x));
+					if (!r) success = false;
 				}
 			}
 
@@ -234,6 +274,10 @@ export class GoTestRunner {
 		}
 
 		run.end();
+
+		this.profiler.postRun();
+
+		return success;
 	}
 
 	// Recursively find all tests, benchmarks, and examples within a
@@ -280,6 +324,41 @@ export class GoTestRunner {
 			functions.set(pkg, [{ item, explicitlyIncluded }]);
 		}
 		return;
+	}
+
+	private async runGoTest(config: RunConfig): Promise<boolean> {
+		const { run, options, pkg, functions, record, concat, flags, ...rest } = config;
+		if (Object.keys(functions).length === 0) return true;
+
+		const complete = new Set<TestItem>();
+		const outputChannel = new TestRunOutput(run);
+
+		const success = await goTest({
+			...rest,
+			flags: [...flags, ...this.profiler.preRun(options, Object.values(functions))],
+			outputChannel,
+			dir: pkg.uri.fsPath,
+			functions: Object.keys(functions),
+			goTestOutputConsumer: rest.isBenchmark
+				? (e) => this.consumeGoBenchmarkEvent(run, functions, complete, e)
+				: (e) => this.consumeGoTestEvent(run, functions, record, complete, concat, e)
+		});
+		if (success) {
+			if (rest.isBenchmark) {
+				this.markComplete(functions, complete, (x) => run.passed(x));
+			}
+			return true;
+		}
+
+		if (this.isBuildFailure(outputChannel.lines)) {
+			this.markComplete(functions, new Set(), (item) => {
+				run.errored(item, { message: 'Compilation failed' });
+				item.error = 'Compilation failed';
+			});
+		} else {
+			this.markComplete(functions, complete, (x) => run.skipped(x));
+		}
+		return false;
 	}
 
 	// Resolve a test name to a test item. If the test name is TestXxx/Foo, Foo is

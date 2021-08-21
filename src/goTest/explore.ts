@@ -5,11 +5,13 @@
 import {
 	ConfigurationChangeEvent,
 	ExtensionContext,
+	Memento,
 	Range,
 	TestController,
 	TestItem,
 	TestItemCollection,
 	TestRunProfileKind,
+	TestRunRequest,
 	TextDocument,
 	TextDocumentChangeEvent,
 	Uri,
@@ -19,19 +21,15 @@ import {
 import vscode = require('vscode');
 import { GoDocumentSymbolProvider } from '../goOutline';
 import { outputChannel } from '../goStatus';
-import { dispose, disposeIfEmpty, findItem, GoTest, Workspace } from './utils';
+import { dispose, disposeIfEmpty, findItem, GoTest, isInTest, Workspace } from './utils';
 import { GoTestResolver, ProvideSymbols } from './resolve';
 import { GoTestRunner } from './run';
+import { GoTestProfiler } from './profile';
 
 // Set true only if the Testing API is available (VSCode version >= 1.59).
 export const isVscodeTestingAPIAvailable =
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
-
-// Check whether the process is running as a test.
-function isInTest() {
-	return process.env.VSCODE_GO_IN_TEST === '1';
-}
 
 export class GoTestExplorer {
 	static setup(context: ExtensionContext): GoTestExplorer {
@@ -39,9 +37,72 @@ export class GoTestExplorer {
 
 		const ctrl = vscode.tests.createTestController('go', 'Go');
 		const symProvider = new GoDocumentSymbolProvider(true);
-		const inst = new this(workspace, ctrl, (doc, token) => symProvider.provideDocumentSymbols(doc, token));
+		const inst = new this(workspace, ctrl, context.workspaceState, (doc, token) =>
+			symProvider.provideDocumentSymbols(doc, token)
+		);
 
 		context.subscriptions.push(ctrl);
+
+		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.refresh', async (item) => {
+				if (!item) {
+					await vscode.window.showErrorMessage('No test selected');
+					return;
+				}
+
+				try {
+					await inst.resolver.resolve(item);
+					inst.updateGoTestContext();
+				} catch (error) {
+					const m = 'Failed to resolve tests';
+					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.show();
+					await vscode.window.showErrorMessage(m);
+				}
+			})
+		);
+
+		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.showProfiles', async (item) => {
+				if (!item) {
+					await vscode.window.showErrorMessage('No test selected');
+					return;
+				}
+
+				try {
+					await inst.profiler.showProfiles(item);
+				} catch (error) {
+					const m = 'Failed to open profiles';
+					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.show();
+					await vscode.window.showErrorMessage(m);
+				}
+			})
+		);
+
+		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.captureProfile', async (item) => {
+				if (!item) {
+					await vscode.window.showErrorMessage('No test selected');
+					return;
+				}
+
+				const options = await inst.profiler.configure();
+				if (!options) return;
+
+				try {
+					await inst.runner.run(new TestRunRequest([item]), null, options);
+				} catch (error) {
+					const m = 'Failed to execute tests';
+					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.show();
+					await vscode.window.showErrorMessage(m);
+					return;
+				}
+
+				await inst.profiler.showProfiles(item);
+			})
+		);
 
 		context.subscriptions.push(
 			workspace.onDidChangeConfiguration(async (x) => {
@@ -115,21 +176,21 @@ export class GoTestExplorer {
 
 	public readonly resolver: GoTestResolver;
 	public readonly runner: GoTestRunner;
+	public readonly profiler: GoTestProfiler;
 
 	constructor(
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
+		workspaceState: Memento,
 		provideDocumentSymbols: ProvideSymbols
 	) {
-		const resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
-		const runner = new GoTestRunner(workspace, ctrl, resolver);
-
-		this.resolver = resolver;
-		this.runner = runner;
+		this.resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
+		this.profiler = new GoTestProfiler(this.resolver, workspaceState);
+		this.runner = new GoTestRunner(workspace, ctrl, this.resolver, this.profiler);
 
 		ctrl.resolveHandler = async (item) => {
 			try {
-				await resolver.resolve(item);
+				await this.resolver.resolve(item);
 			} catch (error) {
 				if (isInTest()) throw error;
 
@@ -144,7 +205,7 @@ export class GoTestExplorer {
 			TestRunProfileKind.Run,
 			async (request, token) => {
 				try {
-					await runner.run(request, token);
+					await this.runner.run(request, token);
 				} catch (error) {
 					const m = 'Failed to execute tests';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -171,6 +232,7 @@ export class GoTestExplorer {
 	protected async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
 		if (e.added.length > 0) {
 			await this.resolver.resolve();
+			this.updateGoTestContext();
 		}
 
 		if (e.removed.length === 0) {
@@ -228,8 +290,11 @@ export class GoTestExplorer {
 
 		if (update) {
 			this.resolver.resolve();
+			this.updateGoTestContext();
 		}
 	}
+
+	/* ***** Private ***** */
 
 	// Handle opened documents, document changes, and file creation.
 	private async documentUpdate(doc: TextDocument, ranges?: Range[]) {
@@ -244,5 +309,14 @@ export class GoTestExplorer {
 		}
 
 		await this.resolver.processDocument(doc, ranges);
+		this.updateGoTestContext();
+	}
+
+	private updateGoTestContext() {
+		const items = [];
+		for (const item of this.resolver.allItems) {
+			items.push(item.id);
+		}
+		vscode.commands.executeCommand('setContext', 'go.tests', items);
 	}
 }
