@@ -10,6 +10,7 @@
 import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
+import { parseProgramArgSync } from './goDebugFactory';
 import { toolExecutionEnvironment } from './goEnv';
 import {
 	declinedToolInstall,
@@ -243,8 +244,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const dlvToolPath = getBinPath(debugAdapter);
 		if (!path.isAbsolute(dlvToolPath)) {
-			const tool = getTool(debugAdapter);
-
 			// If user has not already declined to install this tool,
 			// prompt for it. Otherwise continue and have the lack of
 			// dlv binary be caught later.
@@ -382,20 +381,42 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const entriesWithRelativePaths = ['cwd', 'output', 'program'].filter(
 			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
 		);
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && entriesWithRelativePaths.length > 0) {
-			const workspaceRoot = folder?.uri.fsPath;
-			if (!workspaceRoot) {
-				this.showWarning(
-					'relativePathsWithoutWorkspaceFolder',
-					'Relative paths without a workspace folder for `cwd`, `program`, or `output` are not allowed.'
-				);
-				return null;
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
+			// relative paths -> absolute paths
+			if (entriesWithRelativePaths.length > 0) {
+				const workspaceRoot = folder?.uri.fsPath;
+				if (workspaceRoot) {
+					entriesWithRelativePaths.forEach((attr) => {
+						debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
+					});
+				} else {
+					this.showWarning(
+						'relativePathsWithoutWorkspaceFolder',
+						'Behavior when using relative paths without a workspace folder for `cwd`, `program`, or `output` is undefined.'
+					);
+				}
 			}
-			entriesWithRelativePaths.forEach((attr) => {
-				debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
-			});
+			// compute build dir, and translate the dirname in program to a path relative to buildDir.
+			if (debugConfiguration.request === 'launch') {
+				const mode = debugConfiguration['mode'] || 'debug';
+				if (['debug', 'test', 'auto'].includes(mode)) {
+					// Massage config to build the target from the package directory
+					// with a relative path. (https://github.com/golang/vscode-go/issues/1713)
+					try {
+						const { program, dirname, programIsDirectory } = parseProgramArgSync(debugConfiguration);
+						if (dirname) {
+							debugConfiguration['__buildDir'] = dirname;
+							debugConfiguration['program'] = programIsDirectory
+								? '.'
+								: '.' + path.sep + path.relative(dirname, program);
+						}
+					} catch (e) {
+						this.showWarning('invalidProgramArg', `Invalid 'program': ${e}`);
+						// keep going - just in case dlv knows how to handle this better.
+					}
+				}
+			}
 		}
-
 		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
 			// processId needs to be an int, but the substituted variables from pickGoProcess and pickProcess
 			// become a string. Convert any strings to integers.
@@ -403,7 +424,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration['processId'] = parseInt(debugConfiguration['processId'], 10);
 			}
 		}
-
 		return debugConfiguration;
 	}
 

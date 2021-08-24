@@ -2053,6 +2053,41 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				await new Promise((resolve) => setTimeout(resolve, 2_000));
 			});
 		});
+
+		suite('substitutePath with symlink', () => {
+			let realPath: string;
+			let symlinkPath: string;
+
+			suiteSetup(() => {
+				realPath = copyDirectory('baseTest');
+				symlinkPath = path.join(tmpDir, 'symlinked');
+				fs.symlinkSync(realPath, symlinkPath, 'dir');
+			});
+			suiteTeardown(() => {
+				fs.unlinkSync(symlinkPath);
+				rmdirRecursive(realPath);
+			});
+			test('should stop on a breakpoint', async function () {
+				if (!isDlvDap) this.skip(); // BUG: the legacy adapter fails with 'breakpoint verification mismatch' error.
+				const FILE = path.join(symlinkPath, 'test.go');
+				const BREAKPOINT_LINE = 11;
+				const config = {
+					name: 'Launch',
+					type: 'go',
+					request: 'launch',
+					mode: 'debug',
+					program: FILE,
+					substitutePath: [
+						{
+							from: symlinkPath,
+							to: realPath
+						}
+					]
+				};
+				const debugConfig = await initializeDebugConfig(config);
+				await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			});
+		});
 	});
 
 	let testNumber = 0;
@@ -2082,7 +2117,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		}
 		testNumber++;
 
-		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		let debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		debugConfig = await debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			undefined,
+			debugConfig
+		);
+
 		if (isDlvDap) {
 			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig);
 			const port = await dlvDapAdapter.serve();
