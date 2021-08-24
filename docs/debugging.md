@@ -59,7 +59,7 @@ Note that the extension still uses the legacy debug adapter for remote debugging
 
 If you want to switch to `legacy` for only a subset of your launch configurations, you can use [the `debugAdapter` attribute](#launchjson-attributes) to switch between `"dlv-dap"` and `"legacy"` mode.
 
-If you chose to switch to legacy because of bugs in the new debug adapter,
+If you chose to switch to legacy because of bugs or limitations in the new debug adapter,
 please [open an issue](https://github.com/golang/vscode-go/issues/new)
 to help us improve the new debug adapter.
 ## Features
@@ -163,12 +163,12 @@ You can inspect variables in the VARIABLES section of the Run view or by hoverin
 
 By default, the VARIABLES section hides global variables, and shows only local variables and function arguments. However, you can still inspect global variables from the DEBUG CONSOLE panel. If you prefer to have the VARIABLES section show global variables, set the `showGlobalVariables` attribute in the `launch.json` configuration, or set it in the `go.delveConfig` setting.
 
-When you select a variable and right click from the VARIABLES section, the context menu will  present shortcuts to features such as:
+When you select a variable and right click from the VARIABLES section, the context menu will present shortcuts to features such as:
 
-*   Set Value: you can set/modify simple string, numeric, pointer values. Using composite literals, or memory allocation is not supported.
-*   Copy Value: this copies the value in clipboard.
-*   Copy as Expression: this is useful when you need to query from the REPL in the DEBUG CONSOLE panel.
-*   Add to Watch: this will automatically add the expression to the WATCH section.
+*   `Set Value`: you can set/modify simple string, numeric, pointer values. Using composite literals, or memory allocation is not supported.
+*   `Copy Value`: this copies the value in clipboard.
+*   `Copy as Expression`: this is useful when you need to query from the REPL in the DEBUG CONSOLE panel.
+*   `Add to Watch`: this will automatically add the expression to the WATCH section.
 
 Shadowed variables will be marked with `()`.
 
@@ -301,7 +301,7 @@ You can adjust the default value of the following configuration properties using
     *   `showGlobalVariables`: Show global variables in the Debug view (default: `false`).
     *   `substitutePath`: Path mappings to apply to get from a path in the editor to a path in the compiled program (default: `[]`).
 
-⚠️ Where is the `dlvLoadConfig` setting? Delve debugger imposes variable loading limits to avoid loading too many variables at once and negatively impacting debugging latency. The legacy adapter supported `dlvLoadConfig` to adjust these limits for the duration of the session. The user therefore had to come up with a one-size-fits-all limit if the default behavior was not satisfactory. `dlv-dap` mode uses a different approach as described in [the Data Inspection section](#data-inspection). If this setting is configured and `dlv-dap` mode is used, the extension will show a warning prompt now. If the current variable loading behavior and internal limits are not working for you, please open an issue and share your feedback.
+⚠️ Where is the `dlvLoadConfig` setting? Delve debugger imposes variable loading limits to avoid loading too many variables at once and negatively impacting debugging latency. The legacy adapter supported `dlvLoadConfig` to adjust these limits for the duration of the session. The user therefore had to come up with a one-size-fits-all limit if the default behavior was not satisfactory. `dlv-dap` mode uses a different approach as described in [the Data Inspection section](#data-inspection). If this setting is configured and `dlv-dap` mode is used, the extension will show a warning prompt now. If the current variable loading behavior and internal limits are not working for you, please [open an issue](https://github.com/golang/vscode-go/issues/new) and share your feedback.
 
 <p align="center"><img src="images/dlv-load-config-warning.png" alt="dlvLoadConfig is invalid" width="50%"> </p>
 
@@ -408,7 +408,7 @@ For simple launch cases, build the delve binary, and configure `"go.alternateToo
 ```
 
 <p align="center"><img src="images/debug-output.png" alt="Go Debug output channel" width="100%"></p>
-If you are having issues with seeing logs and/or suspect problems in the extension's integration, you can start the Delve DAP server from a separate terminal and configure the extension to directly connect to it. Please remember to file an issue if you encounter any logging-related issues.
+If you are having issues with seeing logs and/or suspect problems in the extension's integration, you can start the Delve DAP server from a separate terminal and configure the extension to directly connect to it. Please remember to [file an issue](https://github.com/golang/vscode-go/issues/new) if you encounter any logging-related problems.
 
 ```
 $ dlv-dap dap --listen=:12345 --log --log-output=dap
@@ -424,6 +424,22 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
     "debugServer": 12345,
 }
 ```
+
+## FAQs
+
+### Why does my debug session stop when I set breakpoints?
+
+To support being able to set breakpoints while the program is running, the debug adapter needs to stop the program. Due to the extra synchronization required to correctly resume the program, the debug adapter currently sends a stopped event. This means that if you are editing breakpoints while the program is running, you will need to hit continue to continue your debug session. We plan to change the behavior of the debug adapter for more seamless editing of breakpoints. You can track the progress [here](https://github.com/golang/vscode-go/issues/1676).
+
+### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
+
+The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
+
+*   Hover over the variable in the source code
+*   `Copy as Expression` to query the string via REPL in the DEBUG CONSOLE panel
+*   `Copy Value` to clipboard
+
+Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference

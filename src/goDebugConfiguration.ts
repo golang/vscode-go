@@ -193,7 +193,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			this.showWarning(
 				'ignoreDebugDlvConfigWithDlvDapWarning',
-				"User specified 'dlvLoadConfig' setting will be ignored by debug adapter 'dlv-dap'."
+				"'dlvLoadConfig' is deprecated with dlv-dap debug adapter.\n\nDlv-dap loads composite data on demand and uses increased string limits on source code hover, in Debug Console and via Copy Value. Please file an issue if these are not sufficient for your use case."
 			);
 		}
 		if (!debugConfiguration.hasOwnProperty('dlvLoadConfig') && dlvConfig.hasOwnProperty('dlvLoadConfig')) {
