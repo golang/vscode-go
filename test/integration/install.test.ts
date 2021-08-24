@@ -160,7 +160,7 @@ suite('Installation Tests', function () {
 				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
 				{
 					name: 'dlv-dap',
-					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
+					versions: ['v1.0.0', 'master'],
 					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
 				}
 			],
@@ -175,7 +175,7 @@ suite('Installation Tests', function () {
 				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
 				{
 					name: 'dlv-dap',
-					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
+					versions: ['v1.0.0', 'master'],
 					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
 				}
 			],
