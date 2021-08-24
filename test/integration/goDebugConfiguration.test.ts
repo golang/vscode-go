@@ -452,23 +452,50 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		};
 	}
 
-	test('resolve relative paths with workspace root in dlv-dap mode', () => {
+	test('resolve relative paths with workspace root in dlv-dap mode, exec mode does not set __buildDir', () => {
 		const config = debugConfig('dlv-dap');
+		config.mode = 'exec';
+		config.program = path.join('foo', 'bar.exe');
 		const workspaceFolder = {
 			uri: vscode.Uri.file(os.tmpdir()),
 			name: 'test',
 			index: 0
 		};
-		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
 		);
 		assert.deepStrictEqual(
-			{ program, cwd, output },
+			{ program, cwd, __buildDir },
 			{
-				program: path.join(os.tmpdir(), 'foo/bar.go'),
+				program: path.join(os.tmpdir(), 'foo', 'bar.exe'),
 				cwd: os.tmpdir(),
-				output: path.join(os.tmpdir(), 'debug')
+				__buildDir: undefined
+			}
+		);
+	});
+
+	test('program and __buildDir are updated while resolving debug configuration in dlv-dap mode', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = path.join('foo', 'bar', 'pkg');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const {
+			program,
+			cwd,
+			output,
+			__buildDir
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		assert.deepStrictEqual(
+			{ program, cwd, output, __buildDir },
+			{
+				program: '.',
+				cwd: os.tmpdir(),
+				output: path.join(os.tmpdir(), 'debug'),
+				__buildDir: path.join(os.tmpdir(), 'foo', 'bar', 'pkg')
 			}
 		);
 	});
@@ -498,10 +525,23 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		);
 	});
 
-	test('disallow relative paths with no workspace root', () => {
+	test('relative paths with no workspace root are not expanded', () => {
 		const config = debugConfig('dlv-dap');
-		const got = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config);
-		assert.strictEqual(got, null);
+		const {
+			program,
+			cwd,
+			output,
+			__buildDir
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config);
+		assert.deepStrictEqual(
+			{ program, cwd, output, __buildDir },
+			{
+				program: '.' + path.sep + 'bar.go',
+				cwd: '.',
+				output: 'debug',
+				__buildDir: 'foo'
+			}
+		);
 	});
 
 	test('do not affect relative paths (workspace) in legacy mode', () => {

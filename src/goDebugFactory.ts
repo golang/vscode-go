@@ -38,6 +38,7 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
+		logger.debug(`Config: ${JSON.stringify(configuration)}`);
 		const d = new DelveDAPOutputAdapter(configuration, logger);
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
@@ -356,13 +357,9 @@ function spawnDlvDapServerProcess(
 		throw new Error('Cannot find Delve debugger (dlv dap)');
 	}
 	let dir = getWorkspaceFolderPath();
-	if (launchAttachArgs.request === 'launch') {
-		try {
-			dir = parseProgramArgSync(launchAttachArgs).dirname;
-		} catch (err) {
-			logErr(`Program arg: ${launchAttachArgs.program}\n${err}\n`);
-			throw err; // rethrow so the caller knows it failed.
-		}
+	if (launchAttachArgs.request === 'launch' && launchAttachArgs['__buildDir']) {
+		// __buildDir is the directory determined during resolving debug config
+		dir = launchAttachArgs['__buildDir'];
 	}
 
 	const dlvArgs = new Array<string>();
@@ -408,7 +405,7 @@ function spawnDlvDapServerProcess(
 
 	const logDestStream = logDest ? fs.createWriteStream(logDest) : undefined;
 
-	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')}\n`);
+	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')} from ${dir}\n`);
 
 	// TODO(hyangah): In module-module workspace mode, the program should be build in the super module directory
 	// where go.work (gopls.mod) file is present. Where dlv runs determines the build directory currently. Two options:
@@ -491,27 +488,37 @@ function spawnDlvDapServerProcess(
 export function parseProgramArgSync(
 	launchAttachArgs: vscode.DebugConfiguration
 ): { program: string; dirname: string; programIsDirectory: boolean } {
-	const program = launchAttachArgs.program;
-	let programIsDirectory = false;
+	// attach request:
+	//   irrelevant
+	if (launchAttachArgs.request !== 'launch') return;
 
-	if (launchAttachArgs.mode === 'replay') {
-		// Skip program parsing on modes that do not require a program
-		return { program: '', dirname: '', programIsDirectory: programIsDirectory };
-	}
+	const mode = launchAttachArgs.mode || 'debug';
+	const program = launchAttachArgs.program;
 
 	if (!program) {
 		throw new Error('The program attribute is missing in the debug configuration in launch.json');
 	}
 
-	try {
-		programIsDirectory = fs.lstatSync(program).isDirectory();
-	} catch (e) {
-		// TODO(hyangah): why can't the program be a package name?
-		throw new Error('The program attribute must point to valid directory, .go file or executable.');
+	// debug, test, auto mode in launch request:
+	//   program ends with .go file -> file, otherwise -> programIsDirectory.
+	// exec mode
+	//   program should be executable.
+	// other modes:
+	//   not relevant
+	if (['debug', 'test', 'auto'].includes(mode)) {
+		// `auto` shouldn't happen other than in testing.
+		const ext = path.extname(program);
+		if (ext === '') {
+			// the last path element doesn't have . or the first char is .
+			// Treat this like a directory.
+			return { program, dirname: program, programIsDirectory: true };
+		}
+		if (ext === '.go') {
+			return { program, dirname: path.dirname(program), programIsDirectory: false };
+		} else {
+			throw new Error('The program attribute must be a directory or .go file in debug and test mode');
+		}
 	}
-	if (!programIsDirectory && launchAttachArgs.mode !== 'exec' && path.extname(program) !== '.go') {
-		throw new Error('The program attribute must be a directory or .go file in debug and test mode');
-	}
-	const dirname = programIsDirectory ? program : path.dirname(program);
-	return { program, dirname, programIsDirectory };
+	// Otherwise, let delve handle.
+	return { program, dirname: '', programIsDirectory: false };
 }
