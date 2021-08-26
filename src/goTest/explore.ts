@@ -176,12 +176,12 @@ export class GoTestExplorer {
 		}
 
 		this.ctrl.items.forEach((item) => {
-			const uri = Uri.parse(item.id);
-			if (uri.query === 'package') {
+			const { kind } = GoTest.parseId(item.id);
+			if (kind === 'package') {
 				return;
 			}
 
-			const ws = this.workspace.getWorkspaceFolder(uri);
+			const ws = this.workspace.getWorkspaceFolder(item.uri);
 			if (!ws) {
 				dispose(item);
 			}
@@ -200,8 +200,7 @@ export class GoTestExplorer {
 					return item;
 				}
 
-				const uri = Uri.parse(item.id);
-				if (!file.path.startsWith(uri.path)) {
+				if (!file.path.startsWith(item.uri.path)) {
 					return;
 				}
 

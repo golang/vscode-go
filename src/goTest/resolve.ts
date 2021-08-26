@@ -20,8 +20,9 @@ import path = require('path');
 import { getModFolderPath } from '../goModules';
 import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
-import { dispose, disposeIfEmpty, FileSystem, GoTest, Workspace } from './utils';
+import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
+import { goTest } from '../testUtils';
 
 export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
 
@@ -55,12 +56,12 @@ export class GoTestResolver {
 		if (!item) {
 			// Dispose of package entries at the root if they are now part of a workspace folder
 			this.ctrl.items.forEach((item) => {
-				const uri = Uri.parse(item.id);
-				if (uri.query !== 'package') {
+				const { kind } = GoTest.parseId(item.id);
+				if (kind !== 'package') {
 					return;
 				}
 
-				if (this.workspace.getWorkspaceFolder(uri)) {
+				if (this.workspace.getWorkspaceFolder(item.uri)) {
 					dispose(item);
 				}
 			});
@@ -86,29 +87,29 @@ export class GoTestResolver {
 			return;
 		}
 
-		const uri = Uri.parse(item.id);
+		const { kind } = GoTest.parseId(item.id);
 
 		// The user expanded a module or workspace - find all packages
-		if (uri.query === 'module' || uri.query === 'workspace') {
-			await walkPackages(this.workspace.fs, uri, async (uri) => {
+		if (kind === 'module' || kind === 'workspace') {
+			await walkPackages(this.workspace.fs, item.uri, async (uri) => {
 				await this.getPackage(uri);
 			});
 		}
 
 		// The user expanded a module or package - find all files
-		if (uri.query === 'module' || uri.query === 'package') {
-			for (const [file, type] of await this.workspace.fs.readDirectory(uri)) {
+		if (kind === 'module' || kind === 'package') {
+			for (const [file, type] of await this.workspace.fs.readDirectory(item.uri)) {
 				if (type !== FileType.File || !file.endsWith('_test.go')) {
 					continue;
 				}
 
-				await this.getFile(Uri.joinPath(uri, file));
+				await this.getFile(Uri.joinPath(item.uri, file));
 			}
 		}
 
 		// The user expanded a file - find all functions
-		if (uri.query === 'file') {
-			const doc = await this.workspace.openTextDocument(uri.with({ query: '', fragment: '' }));
+		if (kind === 'file') {
+			const doc = await this.workspace.openTextDocument(item.uri);
 			await this.processDocument(doc);
 		}
 
@@ -140,7 +141,7 @@ export class GoTestResolver {
 	// Create or Retrieve a sub test or benchmark. The ID will be of the form:
 	//     file:///path/to/mod/file.go?test#TestXxx/A/B/C
 	getOrCreateSubTest(item: TestItem, name: string, dynamic?: boolean): TestItem {
-		const { fragment: parentName, query: kind } = Uri.parse(item.id);
+		const { kind, name: parentName } = GoTest.parseId(item.id);
 
 		let existing: TestItem | undefined;
 		item.children.forEach((child) => {
@@ -176,8 +177,8 @@ export class GoTestResolver {
 		}
 
 		item.children.forEach((child) => {
-			const uri = Uri.parse(child.id);
-			if (!seen.has(uri.fragment)) {
+			const { name } = GoTest.parseId(child.id);
+			if (!seen.has(name)) {
 				dispose(child);
 				return;
 			}
@@ -193,12 +194,12 @@ export class GoTestResolver {
 	/* ***** Private ***** */
 
 	// Create an item.
-	private createItem(label: string, uri: Uri, kind: string, name?: string): TestItem {
+	private createItem(label: string, uri: Uri, kind: GoTestKind, name?: string): TestItem {
 		return this.ctrl.createTestItem(GoTest.id(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
 	}
 
 	// Retrieve an item.
-	private getItem(parent: TestItem | undefined, uri: Uri, kind: string, name?: string): TestItem {
+	private getItem(parent: TestItem | undefined, uri: Uri, kind: GoTestKind, name?: string): TestItem {
 		return (parent?.children || this.ctrl.items).get(GoTest.id(uri, kind, name));
 	}
 
@@ -207,7 +208,7 @@ export class GoTestResolver {
 		parent: TestItem | undefined,
 		label: string,
 		uri: Uri,
-		kind: string,
+		kind: GoTestKind,
 		name?: string
 	): TestItem {
 		const existing = this.getItem(parent, uri, kind, name);
@@ -367,7 +368,7 @@ export class GoTestResolver {
 
 		seen.add(symbol.name);
 
-		const kind = match.groups.kind.toLowerCase();
+		const kind = match.groups.kind.toLowerCase() as GoTestKind;
 		const suite = match.groups.type ? this.getTestSuite(match.groups.type) : undefined;
 		const existing =
 			this.getItem(file, doc.uri, kind, symbol.name) ||
@@ -411,7 +412,7 @@ export class GoTestResolver {
 			suite.func = item;
 
 			for (const method of suite.methods) {
-				if (Uri.parse(method.parent.id).query !== 'file') {
+				if (GoTest.parseId(method.parent.id).kind !== 'file') {
 					continue;
 				}
 

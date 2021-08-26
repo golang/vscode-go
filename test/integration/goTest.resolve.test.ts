@@ -5,7 +5,7 @@
 import assert = require('assert');
 import { TestItem, Uri } from 'vscode';
 import { GoTestResolver } from '../../src/goTest/resolve';
-import { GoTest } from '../../src/goTest/utils';
+import { GoTest, GoTestKind } from '../../src/goTest/utils';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 import { getSymbols_Regex, populateModulePathCache } from './goTest.utils';
 
@@ -26,7 +26,7 @@ function setup(folders: string[], files: Files) {
 
 suite('Go Test Resolver', () => {
 	interface TC extends TestCase {
-		item?: ([string, string, string] | [string, string, string, string])[];
+		item?: ([string, string, GoTestKind] | [string, string, GoTestKind, string])[];
 		expect: string[];
 	}
 

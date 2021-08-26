@@ -20,7 +20,7 @@ import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
 import { getTestFlags, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
-import { dispose, forEachAsync, Workspace } from './utils';
+import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 
 type CollectedTest = { item: TestItem; explicitlyIncluded?: boolean };
 
@@ -83,15 +83,15 @@ export class GoTestRunner {
 			hasNonBench = false;
 		for (const items of collected.values()) {
 			for (const { item } of items) {
-				const uri = Uri.parse(item.id);
-				if (uri.query === 'benchmark') hasBench = true;
+				const { kind } = GoTest.parseId(item.id);
+				if (kind === 'benchmark') hasBench = true;
 				else hasNonBench = true;
 			}
 		}
 
 		function isInMod(item: TestItem): boolean {
-			const uri = Uri.parse(item.id);
-			if (uri.query === 'module') return true;
+			const { kind } = GoTest.parseId(item.id);
+			if (kind === 'module') return true;
 			if (!item.parent) return false;
 			return isInMod(item.parent);
 		}
@@ -123,10 +123,10 @@ export class GoTestRunner {
 			const tests: Record<string, TestItem> = {};
 			const benchmarks: Record<string, TestItem> = {};
 			for (const { item, explicitlyIncluded } of items) {
-				const uri = Uri.parse(item.id);
-				if (/[/#]/.test(uri.fragment)) {
+				const { kind, name } = GoTest.parseId(item.id);
+				if (/[/#]/.test(name)) {
 					// running sub-tests is not currently supported
-					vscode.window.showErrorMessage(`Cannot run ${uri.fragment} - running sub-tests is not supported`);
+					vscode.window.showErrorMessage(`Cannot run ${name} - running sub-tests is not supported`);
 					continue;
 				}
 
@@ -138,7 +138,7 @@ export class GoTestRunner {
 				// However, if the user clicks the run button on a file or package
 				// that contains benchmarks and nothing else, they likely expect
 				// those benchmarks to run.
-				if (uri.query === 'benchmark' && !explicitlyIncluded && !includeBench && !(hasBench && !hasNonBench)) {
+				if (kind === 'benchmark' && !explicitlyIncluded && !includeBench && !(hasBench && !hasNonBench)) {
 					continue;
 				}
 
@@ -152,10 +152,10 @@ export class GoTestRunner {
 					}
 				});
 
-				if (uri.query === 'benchmark') {
-					benchmarks[uri.fragment] = item;
+				if (kind === 'benchmark') {
+					benchmarks[name] = item;
 				} else {
-					tests[uri.fragment] = item;
+					tests[name] = item;
 				}
 			}
 
@@ -238,8 +238,8 @@ export class GoTestRunner {
 			}
 		}
 
-		const uri = Uri.parse(item.id);
-		if (!uri.fragment) {
+		const { name } = GoTest.parseId(item.id);
+		if (!name) {
 			if (item.children.size === 0) {
 				await this.resolver.resolve(item);
 			}
@@ -251,8 +251,8 @@ export class GoTestRunner {
 		}
 
 		function getFile(item: TestItem): TestItem {
-			const uri = Uri.parse(item.id);
-			if (uri.query === 'file') return item;
+			const { kind } = GoTest.parseId(item.id);
+			if (kind === 'file') return item;
 			return getFile(item.parent);
 		}
 
@@ -436,10 +436,10 @@ export class GoTestRunner {
 	parseOutput(test: TestItem, output: string[]): TestMessage[] {
 		const messages: TestMessage[] = [];
 
-		const uri = Uri.parse(test.id);
+		const { kind } = GoTest.parseId(test.id);
 		const gotI = output.indexOf('got:\n');
 		const wantI = output.indexOf('want:\n');
-		if (uri.query === 'example' && gotI >= 0 && wantI >= 0) {
+		if (kind === 'example' && gotI >= 0 && wantI >= 0) {
 			const got = output.slice(gotI + 1, wantI).join('');
 			const want = output.slice(wantI + 1).join('');
 			const message = TestMessage.diff('Output does not match', want, got);
