@@ -22,7 +22,6 @@ import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
 import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
-import { goTest } from '../testUtils';
 
 export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
 

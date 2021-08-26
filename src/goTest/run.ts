@@ -15,7 +15,6 @@ import {
 	Uri
 } from 'vscode';
 import vscode = require('vscode');
-import path = require('path');
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
 import { getTestFlags, goTest, GoTestOutput } from '../testUtils';
