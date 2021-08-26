@@ -254,6 +254,13 @@
         "category": "Test"
       },
       {
+        "command": "go.test.deleteProfile",
+        "title": "Go Test: Delete Profile",
+        "shortTitle": "Delete",
+        "description": "Delete selected profile",
+        "category": "Test"
+      },
+      {
         "command": "go.benchmark.package",
         "title": "Go: Benchmark Package",
         "description": "Runs all benchmarks in the package of the current file."
@@ -2445,6 +2452,10 @@
         {
           "command": "go.test.captureProfile",
           "when": "false"
+        },
+        {
+          "command": "go.test.deleteProfile",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -2544,6 +2555,12 @@
           "command": "go.test.captureProfile",
           "when": "testId in go.tests && testId =~ /\\?(test|benchmark)/",
           "group": "profile"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "go.test.deleteProfile",
+          "when": "viewItem == go:test:file"
         }
       ]
     },

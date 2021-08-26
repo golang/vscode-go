@@ -56,7 +56,7 @@ suite('Go Test Runner', () => {
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
-			assert(stub.lastCall.args[0].flags.some((x) => x.startsWith('--cpuprofile=')));
+			assert(stub.lastCall.args[0].flags.some((x) => x === '--cpuprofile'));
 			assert(testExplorer.profiler.hasProfileFor(test.id), 'Did not create profile for test');
 		});
 

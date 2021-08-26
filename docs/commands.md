@@ -71,6 +71,10 @@ Show last captured profile
 
 Run a test and capture a profile
 
+### `Go Test: Delete Profile`
+
+Delete selected profile
+
 ### `Go: Benchmark Package`
 
 Runs all benchmarks in the package of the current file.

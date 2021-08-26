@@ -75,7 +75,7 @@ export class GoTestExplorer {
 				}
 
 				try {
-					await inst.profiler.showProfiles(item);
+					await inst.profiler.show(item);
 				} catch (error) {
 					const m = 'Failed to open profiles';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -105,7 +105,26 @@ export class GoTestExplorer {
 					return;
 				}
 
-				await inst.profiler.showProfiles(item);
+				await inst.profiler.show(item);
+			})
+		);
+
+		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.deleteProfile', async (file) => {
+				if (!file) {
+					await vscode.window.showErrorMessage('No profile selected');
+					return;
+				}
+
+				try {
+					await inst.profiler.delete(file);
+				} catch (error) {
+					const m = 'Failed to delete profile';
+					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.show();
+					await vscode.window.showErrorMessage(m);
+					return;
+				}
 			})
 		);
 
