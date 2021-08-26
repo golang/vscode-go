@@ -2,7 +2,17 @@
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-import { Memento, TestItem, Uri } from 'vscode';
+import {
+	EventEmitter,
+	Memento,
+	Range,
+	TestItem,
+	TextDocumentShowOptions,
+	TreeDataProvider,
+	TreeItem,
+	TreeItemCollapsibleState,
+	Uri
+} from 'vscode';
 import vscode = require('vscode');
 import { getTempFilePath } from '../util';
 import { GoTestResolver } from './resolve';
@@ -13,7 +23,10 @@ const optionsMemento = 'testProfilingOptions';
 const defaultOptions: ProfilingOptions = { kind: 'cpu' };
 
 export class GoTestProfiler {
-	private readonly lastRunFor = new Map<string, Run>();
+	public readonly view = new ProfileTreeDataProvider(this);
+
+	// Maps test IDs to profile files. See docs/test-explorer.md for details.
+	private readonly runs = new Map<string, File[]>();
 
 	constructor(private readonly resolver: GoTestResolver, private readonly workspaceState: Memento) {}
 
@@ -24,27 +37,28 @@ export class GoTestProfiler {
 		this.workspaceState.update(optionsMemento, v);
 	}
 
-	preRun(options: ProfilingOptions, items: TestItem[]): string[] {
+	preRun(options: ProfilingOptions, item: TestItem): string[] {
 		const kind = Kind.get(options.kind);
-		if (!kind) {
-			items.forEach((x) => this.lastRunFor.delete(x.id));
-			return [];
-		}
+		if (!kind) return [];
 
 		const flags = [];
-		const run = new Run(items, kind);
-		flags.push(run.file.flag);
-		items.forEach((x) => this.lastRunFor.set(x.id, run));
+		const run = new File(kind, item);
+		flags.push(run.flag);
+		if (this.runs.has(item.id)) this.runs.get(item.id).unshift(run);
+		else this.runs.set(item.id, [run]);
 		return flags;
 	}
 
 	postRun() {
 		// Update the list of tests that have profiles.
-		vscode.commands.executeCommand('setContext', 'go.profiledTests', Array.from(this.lastRunFor.keys()));
+		vscode.commands.executeCommand('setContext', 'go.profiledTests', Array.from(this.runs.keys()));
+		vscode.commands.executeCommand('setContext', 'go.hasProfiles', this.runs.size > 0);
+
+		this.view.didRun();
 	}
 
 	hasProfileFor(id: string): boolean {
-		return this.lastRunFor.has(id);
+		return this.runs.has(id);
 	}
 
 	async configure(): Promise<ProfilingOptions | undefined> {
@@ -68,13 +82,31 @@ export class GoTestProfiler {
 			return;
 		}
 
-		const run = this.lastRunFor.get(item.id);
-		if (!run) {
-			await vscode.window.showErrorMessage(`${name} was not profiled the last time it was run`);
+		const runs = this.runs.get(item.id);
+		if (!runs || runs.length === 0) {
+			await vscode.window.showErrorMessage(`${name} has not been profiled`);
 			return;
 		}
 
-		await run.file.show();
+		await runs[0].show();
+	}
+
+	// Tests that have been profiled
+	get tests() {
+		const items = Array.from(this.runs.keys());
+		items.sort((a: string, b: string) => {
+			const aWhen = this.runs.get(a)[0].when.getTime();
+			const bWhen = this.runs.get(b)[0].when.getTime();
+			return bWhen - aWhen;
+		});
+
+		// Filter out any tests that no longer exist
+		return items.map((x) => this.resolver.all.get(x)).filter((x) => x);
+	}
+
+	// Profiles associated with the given test
+	get(item: TestItem) {
+		return this.runs.get(item.id) || [];
 	}
 }
 
@@ -103,23 +135,20 @@ class Kind {
 	static readonly Block = new Kind('block', 'Block', '--blockprofile');
 }
 
-class Run {
+class File {
 	private static nextID = 0;
 
+	public readonly id = File.nextID++;
 	public readonly when = new Date();
-	public readonly id = Run.nextID++;
-	public readonly file: File;
 
-	constructor(public readonly targets: TestItem[], kind: Kind) {
-		this.file = new File(this, kind);
+	constructor(public readonly kind: Kind, public readonly target: TestItem) {}
+
+	get label() {
+		return `${this.kind.label} @ ${this.when.toTimeString()}`;
 	}
-}
-
-class File {
-	constructor(public readonly run: Run, public readonly kind: Kind) {}
 
 	get name() {
-		return `profile-${this.run.id}.${this.kind.id}.prof`;
+		return `profile-${this.id}.${this.kind.id}.prof`;
 	}
 
 	get flag(): string {
@@ -132,5 +161,50 @@ class File {
 
 	async show() {
 		await vscode.window.showTextDocument(this.uri);
+	}
+}
+
+type TreeElement = TestItem | File;
+
+class ProfileTreeDataProvider implements TreeDataProvider<TreeElement> {
+	private readonly didChangeTreeData = new EventEmitter<void | TreeElement>();
+	public readonly onDidChangeTreeData = this.didChangeTreeData.event;
+
+	constructor(private readonly profiler: GoTestProfiler) {}
+
+	didRun() {
+		this.didChangeTreeData.fire();
+	}
+
+	getTreeItem(element: TreeElement): TreeItem {
+		if (element instanceof File) {
+			const item = new TreeItem(element.label);
+			item.contextValue = 'file';
+			item.command = {
+				title: 'Open',
+				command: 'vscode.open',
+				arguments: [element.uri]
+			};
+			return item;
+		}
+
+		const item = new TreeItem(element.label, TreeItemCollapsibleState.Collapsed);
+		item.contextValue = 'test';
+		const options: TextDocumentShowOptions = {
+			preserveFocus: false,
+			selection: new Range(element.range.start, element.range.start)
+		};
+		item.command = {
+			title: 'Go to test',
+			command: 'vscode.open',
+			arguments: [element.uri, options]
+		};
+		return item;
+	}
+
+	getChildren(element?: TreeElement): TreeElement[] {
+		if (!element) return this.profiler.tests;
+		if (element instanceof File) return [];
+		return this.profiler.get(element);
 	}
 }

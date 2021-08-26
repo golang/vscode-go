@@ -200,7 +200,7 @@ export class GoTestRunner {
 				// Remove subtests created dynamically from test output
 				item.children.forEach((child) => {
 					if (this.resolver.isDynamicSubtest.has(child)) {
-						dispose(child);
+						dispose(this.resolver, child);
 					}
 				});
 
@@ -327,15 +327,21 @@ export class GoTestRunner {
 	}
 
 	private async runGoTest(config: RunConfig): Promise<boolean> {
-		const { run, options, pkg, functions, record, concat, flags, ...rest } = config;
+		const { run, options, pkg, functions, record, concat, ...rest } = config;
 		if (Object.keys(functions).length === 0) return true;
+
+		if (options.kind) {
+			if (Object.keys(functions).length > 1) {
+				throw new Error('Profiling more than one test at once is unsupported');
+			}
+			rest.flags.push(...this.profiler.preRun(options, Object.values(functions)[0]));
+		}
 
 		const complete = new Set<TestItem>();
 		const outputChannel = new TestRunOutput(run);
 
 		const success = await goTest({
 			...rest,
-			flags: [...flags, ...this.profiler.preRun(options, Object.values(functions))],
 			outputChannel,
 			dir: pkg.uri.fsPath,
 			functions: Object.keys(functions),

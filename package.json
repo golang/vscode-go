@@ -100,7 +100,8 @@
     "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
-    "onWebviewPanel:welcomeGo"
+    "onWebviewPanel:welcomeGo",
+    "onView:go.test.profile"
   ],
   "main": "./dist/goMain.js",
   "capabilities": {
@@ -2518,6 +2519,17 @@
           "command": "go.test.captureProfile",
           "when": "testId in go.tests && testId =~ /\\?(test|benchmark)/",
           "group": "profile"
+        }
+      ]
+    },
+    "views": {
+      "test": [
+        {
+          "id": "go.test.profile",
+          "name": "Profiles",
+          "contextualTitle": "Go",
+          "icon": "$(graph)",
+          "when": "go.hasProfiles"
         }
       ]
     }

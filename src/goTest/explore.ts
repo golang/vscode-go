@@ -41,6 +41,7 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(ctrl);
+		context.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
 
 		context.subscriptions.push(
 			vscode.commands.registerCommand('go.test.refresh', async (item) => {
@@ -219,7 +220,7 @@ export class GoTestExplorer {
 
 			const ws = this.workspace.getWorkspaceFolder(item.uri);
 			if (!ws) {
-				dispose(item);
+				dispose(this.resolver, item);
 			}
 		});
 	}
@@ -246,8 +247,8 @@ export class GoTestExplorer {
 
 		const found = find(this.ctrl.items);
 		if (found) {
-			dispose(found);
-			disposeIfEmpty(found.parent);
+			dispose(this.resolver, found);
+			disposeIfEmpty(this.resolver, found.parent);
 		}
 	}
 
@@ -255,7 +256,7 @@ export class GoTestExplorer {
 		let update = false;
 		this.ctrl.items.forEach((item) => {
 			if (e.affectsConfiguration('go.testExplorerPackages', item.uri)) {
-				dispose(item);
+				dispose(this.resolver, item);
 				update = true;
 			}
 		});
