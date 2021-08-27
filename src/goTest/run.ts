@@ -227,6 +227,10 @@ export class GoTestRunner {
 					this.markComplete(benchmarks, complete, (x) => run.skipped(x));
 				}
 			}
+
+			if (token?.isCancellationRequested) {
+				break;
+			}
 		}
 
 		run.end();
