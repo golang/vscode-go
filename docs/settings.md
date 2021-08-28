@@ -409,6 +409,11 @@ Default: `"flat"`
 Include benchmarks when running all tests in a group.
 
 Default: `false`
+### `go.testExplorerSetDynamicSubtestRange`
+
+If true, the source location of dynamically discovered subtests will be set to the source location of the containing function
+
+Default: `false`
 ### `go.testFlags`
 
 Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.

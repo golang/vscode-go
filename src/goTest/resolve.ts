@@ -151,8 +151,14 @@ export class GoTestResolver {
 		item.canResolveChildren = true;
 		const sub = this.createItem(name, item.uri, kind, `${parentName}/${name}`);
 		item.children.add(sub);
-		sub.range = item.range;
-		if (dynamic) this.isDynamicSubtest.add(item);
+
+		if (dynamic) {
+			this.isDynamicSubtest.add(sub);
+			if (this.shouldSetRange(item)) {
+				sub.range = item.range;
+			}
+		}
+
 		return sub;
 	}
 
@@ -192,6 +198,11 @@ export class GoTestResolver {
 
 	/* ***** Private ***** */
 
+	private shouldSetRange(item: TestItem): boolean {
+		const config = getGoConfig(item.uri);
+		return config.get<boolean>('testExplorerSetDynamicSubtestRange');
+	}
+
 	// Create an item.
 	private createItem(label: string, uri: Uri, kind: GoTestKind, name?: string): TestItem {
 		return this.ctrl.createTestItem(GoTest.id(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
@@ -222,6 +233,9 @@ export class GoTestResolver {
 	// location.
 	private relocateChildren(item: TestItem) {
 		item.children.forEach((child) => {
+			if (!this.isDynamicSubtest.has(child)) return;
+			if (!this.shouldSetRange(child)) return;
+
 			child.range = item.range;
 			this.relocateChildren(child);
 		});

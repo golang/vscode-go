@@ -1312,6 +1312,12 @@
           "description": "If true, test log messages associated with a given location will be shown as a single message.",
           "scope": "resource"
         },
+        "go.testExplorerSetDynamicSubtestRange": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the source location of dynamically discovered subtests will be set to the source location of the containing function",
+          "scope": "resource"
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {
