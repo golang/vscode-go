@@ -439,7 +439,7 @@ function spawnDlvDapServerProcess(
 		p.stderr.on('data', (chunk) => {
 			logErr(chunk.toString());
 		});
-		p.stdio[3].on('data', (chunk) => {
+		p.stdio[3]?.on('data', (chunk) => {
 			const msg = chunk.toString();
 			if (!started && msg.startsWith('DAP server listening at:')) {
 				stopWaitingForServerToStart();
@@ -456,10 +456,11 @@ function spawnDlvDapServerProcess(
 				logConsole(msg);
 			}
 		});
-		p.stdio[3].on('close', () => {
+		p.stdio[3]?.on('close', () => {
 			// always false on windows.
 			logDestStream?.end();
 		});
+
 		p.on('close', (code, signal) => {
 			// TODO: should we watch 'exit' instead?
 
