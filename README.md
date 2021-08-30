@@ -132,7 +132,7 @@ by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose),
 [starting a GitHub discussion](https://github.com/golang/vscode-go/discussions),
 or by asking a question on [Stack Overflow].
 
-Also, you can take a look at [learn.go.dev](https://learn.go.dev) and
+Also, you can take a look at [go.dev/learn](https://go.dev/learn) and
 [golang.org/help](https://golang.org/help) for more general guidance on using
 Go.
 
