@@ -4,12 +4,27 @@ to show the new features available with dlv-dap. This change does not apply to r
 For remote debugging, keep following the instruction in the
 [legacy debug adapter documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
 
+## v0.27.2 - 1st Sep, 2021
+
+A list of all issues and changes can be found in the [v0.27.2 milestone](https://github.com/golang/vscode-go/milestone/36) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.1...v0.27.2).
+
+### Enhancement
+- Supports `replay` and `core` debug launch modes. ([PR 1268](https://github.com/golang/vscode-go/pull/1268))
+- `gopls` now watches changes in `go.work` files to support [Go Proposal 45713](https://go.googlesource.com/proposal/+/master/design/45713-workspace.md).
+
+### Fixes
+- Fixed issues around building binaries for debugging when symlinks or case-insensitive file systems are involved. (Issues [1680](https://github.com/golang/vscode-go/issues/1680), [1677](https://github.com/golang/vscode-go/issues/1677), [1713](https://github.com/golang/vscode-go/issues/1713))
+- Clarified the `dlvLoadConfig` setting is no longer necessary with the new debug adapter (`dlv-dap`). ([CL 344370)(https://go-review.googlesource.com/c/vscode-go/+/344370))
+- Increased the timeout limit from 5sec to 30sec. If `dlv-dap` still fails to start, please check firewall/security settings do not prevent installation or execution of the `dlv-dap` (or `dlv-dap.exe`) binary. ([Issue 1693](https://github.com/golang/vscode-go/issues/1693))
+- `Go: Install/Update Tools` command picks the `dlv-dap` from the main branch.
+
+### Thanks
+Thanks for your contributions, Suzy Mueller, Luis Gabriel Gomez, Polina Sokolova, Julie Qiu, and Hana Kim!
+
 ## v0.27.1 - 12 Aug, 2021
 
 A list of all issues and changes can be found in the [v0.27.1 milestone](https://github.com/golang/vscode-go/milestone/35) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.0...v0.27.1).
 
-### Enhancement
-- Supports `replay` and `core` debug launch modes. ([PR 1268](https://github.com/golang/vscode-go/pull/1268))
 
 ### Fixes
 - Fixed process pickers used in attach mode debugging. ([Issue 1679](https://github.com/golang/vscode-go/issues/1679))
