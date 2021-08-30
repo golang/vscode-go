@@ -639,12 +639,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on.",
+                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on.",
+                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -831,12 +831,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on.",
+                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on.",
+                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
