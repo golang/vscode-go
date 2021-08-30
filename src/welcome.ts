@@ -181,7 +181,7 @@ export class WelcomePanel {
 					<div class="Card-inner">
 						<p class="Card-title">Learning Go</p>
 						<p class="Card-content">If you're new to the Go programming language,
-							<a href="https://learn.go.dev">learn.go.dev</a> is a great place to get started.</a>
+							<a href="https://go.dev/learn">go.dev/learn</a> is a great place to get started.</a>
 						</p>
 					</div>
 				</div>
