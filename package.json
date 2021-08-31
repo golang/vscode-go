@@ -639,12 +639,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -831,12 +831,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on. In `dlv-dap` mode, the extension will look for a delve DAP server running on the specified host:port so users are responsible for starting the server.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
