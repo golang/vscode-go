@@ -68,6 +68,7 @@ import {
 	testCurrentFile,
 	testCurrentPackage,
 	testPrevious,
+	testCurrentPackageWithRun,
 	testWorkspace
 } from './goTest';
 import { getConfiguredTools } from './goTools';
@@ -384,6 +385,14 @@ If you would like additional configuration for diagnostics from gopls, please se
 			const goConfig = getGoConfig();
 			const isBenchmark = true;
 			testCurrentPackage(goConfig, isBenchmark, args);
+		})
+	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.test.packageWithRun', (args) => {
+			const goConfig = getGoConfig();
+			const isBenchmark = false;
+			testCurrentPackageWithRun(goConfig, isBenchmark, args);
 		})
 	);
 

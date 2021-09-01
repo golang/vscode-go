@@ -60,7 +60,7 @@ export interface TestConfig {
 	/**
 	 * Specific function names to test.
 	 */
-	functions?: string[];
+	functions?: string[] | string;
 	/**
 	 * Test was not requested explicitly. The output should not appear in the UI.
 	 */
@@ -586,6 +586,9 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 	let params: string[] = [];
 
 	if (testconfig.functions) {
+		if (typeof testconfig.functions === 'string') {
+			return ['-run', testconfig.functions];
+		}
 		if (testconfig.isBenchmark) {
 			params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
 		} else {

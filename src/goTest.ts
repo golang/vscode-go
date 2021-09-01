@@ -373,3 +373,42 @@ export function debugPrevious() {
 	}
 	return vscode.debug.startDebugging(lastDebugWorkspaceFolder, lastDebugConfig);
 }
+
+/**
+ * Runs tests in the current package for custom -run flag.
+ *
+ * @param goConfig Configuration for the Go extension.
+ */
+export async function testCurrentPackageWithRun(
+	goConfig: vscode.WorkspaceConfiguration,
+	isBenchmark: boolean,
+	args: any
+) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showInformationMessage('No editor is active.');
+		return;
+	}
+
+	const customRunFlagArg = await vscode.window.showInputBox({
+		value: '',
+		prompt: 'Enter custom -run flag'
+	});
+	if (!customRunFlagArg) {
+		vscode.window.showInformationMessage('No custom -run flag provided.');
+		return;
+	}
+
+	const isMod = await isModSupported(editor.document.uri);
+	const testConfig: TestConfig = {
+		goConfig,
+		dir: path.dirname(editor.document.fileName),
+		flags: getTestFlags(goConfig, args),
+		isBenchmark,
+		functions: customRunFlagArg,
+		isMod
+	};
+	// Remember this config as the last executed test.
+	lastTestConfig = testConfig;
+	return goTest(testConfig);
+}
