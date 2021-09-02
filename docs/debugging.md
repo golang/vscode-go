@@ -485,6 +485,22 @@ The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to over
 
 Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
 
+### Why does my debug session have an `invalid command` error when I try to step?
+
+When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
+
+If you attempt to make another step request you will get an `invalid command` error.
+
+<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+
+Use `Continue` to resume program execution.
+
+If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
+
+<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
 [snippets]: https://code.visualstudio.com/docs/editor/userdefinedsnippets
