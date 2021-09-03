@@ -367,8 +367,11 @@ function spawnDlvDapServerProcess(
 
 	const dlvArgs = new Array<string>();
 	dlvArgs.push('dap');
-	// add user-specified dlv flags first. When duplicate flags are specified,
+	// When duplicate flags are specified,
 	// dlv doesn't mind but accepts the last flag value.
+	// Add user-specified dlv flags first except
+	//  --check-go-version that we want to disable by default but allow users to override.
+	dlvArgs.push('--check-go-version=false');
 	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
 		dlvArgs.push(...launchAttachArgs.dlvFlags);
 	}
