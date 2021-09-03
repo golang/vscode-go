@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, initConfig, IsInCloudIDE } from './config';
+import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -137,8 +137,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
-
-	await initConfig(ctx);
 
 	const cfg = getGoConfig();
 	setLogConfig(cfg['logging']);

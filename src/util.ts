@@ -12,7 +12,7 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
-import { DefaultConfig, getGoConfig } from './config';
+import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { languageClient } from './goLanguageServer';
@@ -495,7 +495,7 @@ function resolveToolsGopath(): string {
 		return toolsGopathForWorkspace;
 	}
 
-	if (DefaultConfig().workspaceIsTrusted() === false) {
+	if (!vscode.workspace.isTrusted) {
 		return toolsGopathForWorkspace;
 	}
 
