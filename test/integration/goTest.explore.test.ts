@@ -4,10 +4,8 @@
  *--------------------------------------------------------*/
 import assert = require('assert');
 import path = require('path');
-import fs = require('fs-extra');
 import { TextDocument, TestItemCollection, TextDocumentChangeEvent, workspace, Uri } from 'vscode';
 import { GoTestExplorer } from '../../src/goTest/explore';
-import { getCurrentGoPath } from '../../src/util';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 import { forceDidOpenTextDocument, getSymbols_Regex, populateModulePathCache } from './goTest.utils';
 import { MockExtensionContext } from '../mocks/MockContext';
