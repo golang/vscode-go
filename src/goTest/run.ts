@@ -158,7 +158,7 @@ export class GoTestRunner {
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
 			const goConfig = getGoConfig(pkg.uri);
 			const flags = getTestFlags(goConfig);
-			const includeBench = getGoConfig(pkg.uri).get('testExplorerRunBenchmarks');
+			const includeBench = getGoConfig(pkg.uri).get('testExplorer.alwaysRunBenchmarks');
 
 			// If any of the tests are test suite methods, add all test functions that call `suite.Run`
 			const hasTestMethod = items.some(({ item }) => this.resolver.isTestMethod.has(item));
@@ -212,7 +212,7 @@ export class GoTestRunner {
 			}
 
 			const record = new Map<TestItem, string[]>();
-			const concat = goConfig.get<boolean>('testExplorerConcatenateMessages');
+			const concat = goConfig.get<boolean>('testExplorer.concatenateMessages');
 
 			// https://github.com/golang/go/issues/39904
 			if (subItems.length > 0 && Object.keys(tests).length + Object.keys(benchmarks).length > 1) {
@@ -376,12 +376,12 @@ export class GoTestRunner {
 			const m = name.substring(pos).match(re);
 			if (!m) {
 				if (!parent) return tests[name];
-				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name);
+				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name, true);
 			}
 
 			const subName = name.substring(0, pos + m.index);
 			const test = parent
-				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + m.index), subName)
+				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + m.index), subName, true)
 				: tests[subName];
 			return resolve(test, pos + m.index, m[0].length);
 		};

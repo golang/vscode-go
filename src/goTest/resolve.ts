@@ -228,7 +228,7 @@ export class GoTestResolver {
 
 	private shouldSetRange(item: TestItem): boolean {
 		const config = getGoConfig(item.uri);
-		return config.get<boolean>('testExplorerSetDynamicSubtestRange');
+		return config.get<boolean>('testExplorer.showDynamicSubtestsInEditor');
 	}
 
 	// Create an item.
@@ -303,7 +303,7 @@ export class GoTestResolver {
 	private async getPackage(uri: Uri): Promise<TestItem> {
 		let item: TestItem;
 
-		const nested = getGoConfig(uri).get('testExplorerPackages') === 'nested';
+		const nested = getGoConfig(uri).get('testExplorer.packageDisplayMode') === 'nested';
 		const modDir = await getModFolderPath(uri, true);
 		const wsfolder = workspace.getWorkspaceFolder(uri);
 		if (modDir) {

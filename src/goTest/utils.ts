@@ -36,7 +36,7 @@ export class GoTest {
 	// - Example:   file:///path/to/mod/file.go?example#ExampleXxx
 	static id(uri: vscode.Uri, kind: GoTestKind, name?: string): string {
 		uri = uri.with({ query: kind });
-		if (name) uri = uri.with({ fragment: encodeURIComponent(name) });
+		if (name) uri = uri.with({ fragment: name });
 		return uri.toString();
 	}
 
@@ -47,7 +47,7 @@ export class GoTest {
 	static parseId(id: string): { kind: GoTestKind; name?: string } {
 		const u = vscode.Uri.parse(id);
 		const kind = u.query as GoTestKind;
-		const name = decodeURIComponent(u.fragment);
+		const name = u.fragment;
 		return { name, kind };
 	}
 }

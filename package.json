@@ -1302,32 +1302,32 @@
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
-        "go.testExplorerPackages": {
+        "go.testExplorer.packageDisplayMode": {
           "type": "string",
           "enum": [
             "flat",
             "nested"
           ],
           "default": "flat",
-          "description": "Control whether packages in the test explorer are presented flat or nested.",
+          "description": "Present packages in the test explorer flat or nested.",
           "scope": "resource"
         },
-        "go.testExplorerRunBenchmarks": {
+        "go.testExplorer.alwaysRunBenchmarks": {
           "type": "boolean",
           "default": false,
-          "description": "Include benchmarks when running all tests in a group.",
+          "description": "Run benchmarks when running all tests in a file or folder.",
           "scope": "resource"
         },
-        "go.testExplorerConcatenateMessages": {
+        "go.testExplorer.concatenateMessages": {
           "type": "boolean",
           "default": true,
-          "description": "If true, test log messages associated with a given location will be shown as a single message.",
+          "description": "Concatenate all test log messages for a given location into a single message.",
           "scope": "resource"
         },
-        "go.testExplorerSetDynamicSubtestRange": {
+        "go.testExplorer.showDynamicSubtestsInEditor": {
           "type": "boolean",
           "default": false,
-          "description": "If true, the source location of dynamically discovered subtests will be set to the source location of the containing function",
+          "description": "Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {

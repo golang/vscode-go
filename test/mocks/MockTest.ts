@@ -15,6 +15,7 @@ import {
 	TestController,
 	TestItem,
 	TestItemCollection,
+	TestMessage,
 	TestRun,
 	TestRunProfile,
 	TestRunProfileKind,
@@ -109,6 +110,24 @@ class MockTestRunProfile implements TestRunProfile {
 	dispose(): void {}
 }
 
+class MockTestRun implements TestRun {
+	name = 'test run';
+	isPersisted = false;
+
+	get token(): CancellationToken {
+		throw new Error('Method not implemented.');
+	}
+
+	enqueued(test: TestItem): void {}
+	started(test: TestItem): void {}
+	skipped(test: TestItem): void {}
+	failed(test: TestItem, message: TestMessage | readonly TestMessage[], duration?: number): void {}
+	errored(test: TestItem, message: TestMessage | readonly TestMessage[], duration?: number): void {}
+	passed(test: TestItem, duration?: number): void {}
+	appendOutput(output: string): void {}
+	end(): void {}
+}
+
 export class MockTestController implements TestController {
 	id = 'go';
 	label = 'Go';
@@ -117,7 +136,7 @@ export class MockTestController implements TestController {
 	resolveHandler?: (item: TestItem) => void | Thenable<void>;
 
 	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
-		throw new Error('Method not implemented.');
+		return new MockTestRun();
 	}
 
 	createRunProfile(

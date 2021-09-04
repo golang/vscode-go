@@ -393,25 +393,25 @@ Absolute path to a file containing environment variables definitions. File conte
 ### `go.testEnvVars`
 
 Environment variables that will be passed to the process that runs the Go tests
-### `go.testExplorerConcatenateMessages`
+### `go.testExplorer.alwaysRunBenchmarks`
 
-If true, test log messages associated with a given location will be shown as a single message.
+Run benchmarks when running all tests in a file or folder.
+
+Default: `false`
+### `go.testExplorer.concatenateMessages`
+
+Concatenate all test log messages for a given location into a single message.
 
 Default: `true`
-### `go.testExplorerPackages`
+### `go.testExplorer.packageDisplayMode`
 
-Control whether packages in the test explorer are presented flat or nested.<br/>
+Present packages in the test explorer flat or nested.<br/>
 Allowed Options: `flat`, `nested`
 
 Default: `"flat"`
-### `go.testExplorerRunBenchmarks`
+### `go.testExplorer.showDynamicSubtestsInEditor`
 
-Include benchmarks when running all tests in a group.
-
-Default: `false`
-### `go.testExplorerSetDynamicSubtestRange`
-
-If true, the source location of dynamically discovered subtests will be set to the source location of the containing function
+Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.
 
 Default: `false`
 ### `go.testFlags`
