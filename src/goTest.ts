@@ -395,7 +395,6 @@ export async function testCurrentPackageWithRun(
 		prompt: 'Enter custom -run flag'
 	});
 	if (!customRunFlagArg) {
-		vscode.window.showInformationMessage('No custom -run flag provided.');
 		return;
 	}
 
