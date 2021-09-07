@@ -10,7 +10,6 @@ import {
 	TestController,
 	TestItem,
 	TestItemCollection,
-	TestRunProfileKind,
 	TestRunRequest,
 	TextDocument,
 	TextDocumentChangeEvent,
@@ -187,33 +186,6 @@ export class GoTestExplorer {
 		this.resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
 		this.profiler = new GoTestProfiler(this.resolver, workspaceState);
 		this.runner = new GoTestRunner(workspace, ctrl, this.resolver, this.profiler);
-
-		ctrl.resolveHandler = async (item) => {
-			try {
-				await this.resolver.resolve(item);
-			} catch (error) {
-				if (isInTest()) throw error;
-
-				const m = 'Failed to resolve tests';
-				outputChannel.appendLine(`${m}: ${error}`);
-				await vscode.window.showErrorMessage(m);
-			}
-		};
-
-		ctrl.createRunProfile(
-			'go test',
-			TestRunProfileKind.Run,
-			async (request, token) => {
-				try {
-					await this.runner.run(request, token);
-				} catch (error) {
-					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
-					await vscode.window.showErrorMessage(m);
-				}
-			},
-			true
-		);
 	}
 
 	/* ***** Listeners ***** */
