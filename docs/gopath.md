@@ -8,7 +8,7 @@ directories. Your code is typically located in the `$GOPATH/src` directory.
 If you are not familiar with Go and `GOPATH`, please first read about [writing
 Go code with `GOPATH`](https://golang.org/doc/gopath_code.html#GOPATH).
 
-**If you are just starting out with Go, we recommend [using Go modules](https://blog.golang.org/using-go-modules) instead of GOPATH.**
+**If you are just starting out with Go, we recommend [using Go modules](https://go.dev/blog/using-go-modules) instead of GOPATH.**
 
 ## Overview
 
@@ -82,4 +82,4 @@ This can be done by setting [`"go.toolsGopath"`](settings.md#go.toolsGopath) to 
 
 The extension will fall back to your existing `GOPATH` if tools are not found in the [`go.toolsGopath`](settings.md#go.toolsGopath) directory.
 
-[Go modules]: https://blog.golang.org/using-go-modules
+[Go modules]: https://go.dev/blog/using-go-modules
