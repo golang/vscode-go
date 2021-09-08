@@ -207,14 +207,23 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 
 /**
  * Debugs the test at cursor.
+ * @param editorOrDocument The text document (or editor) that defines the test.
+ * @param testFunctionName The name of the test function.
+ * @param testFunctions All test function symbols defined by the document.
+ * @param goConfig Go configuration, i.e. flags, tags, environment, etc.
+ * @param sessionID If specified, `sessionID` is added to the debug
+ * configuration and can be used to identify the debug session.
+ * @returns Whether the debug session was successfully started.
  */
-async function debugTestAtCursor(
-	editor: vscode.TextEditor,
+export async function debugTestAtCursor(
+	editorOrDocument: vscode.TextEditor | vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
-	goConfig: vscode.WorkspaceConfiguration
+	goConfig: vscode.WorkspaceConfiguration,
+	sessionID?: string
 ) {
-	const args = getTestFunctionDebugArgs(editor.document, testFunctionName, testFunctions);
+	const doc = 'document' in editorOrDocument ? editorOrDocument.document : editorOrDocument;
+	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);
@@ -230,17 +239,18 @@ async function debugTestAtCursor(
 		}
 		buildFlags.push(x);
 	});
-	const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+	const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
 	const debugConfig: vscode.DebugConfiguration = {
 		name: 'Debug Test',
 		type: 'go',
 		request: 'launch',
 		mode: 'test',
-		program: path.dirname(editor.document.fileName),
+		program: path.dirname(doc.fileName),
 		env: goConfig.get('testEnvVars', {}),
 		envFile: goConfig.get('testEnvFile'),
 		args,
-		buildFlags: buildFlags.join(' ')
+		buildFlags: buildFlags.join(' '),
+		sessionID
 	};
 	lastDebugConfig = debugConfig;
 	lastDebugWorkspaceFolder = workspaceFolder;
