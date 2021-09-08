@@ -315,8 +315,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 	let dc: DebugClient;
 	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
+	let dapTraced = false;
 
 	setup(async () => {
+		dapTraced = false;
+
 		if (isDlvDap) {
 			dc = new DebugClient('dlv', 'dap', 'go');
 			// dc.start will be called in initializeDebugConfig call,
@@ -345,6 +348,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 			d.dispose();
 		} else {
+			if (ctx.currentTest?.state === 'failed' && dapTraced) {
+				console.log(`${ctx.currentTest?.title} FAILED: Debug Adapter Trace`);
+				try {
+					const buf = fs.readFileSync(path.join(tmpdir(), 'vscode-go-debug.txt'));
+					console.log(buf.toString());
+				} catch (e) {
+					console.log(`Failed to read trace: ${e}`);
+				}
+			}
 			dc?.stop();
 		}
 		sinon.restore();
@@ -2091,21 +2103,19 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	});
 
 	let testNumber = 0;
-	async function initializeDebugConfig(config: DebugConfiguration, keepUserLog?: boolean) {
-		if (isDlvDap) {
-			config['debugAdapter'] = 'dlv-dap';
-			if (!keepUserLog) {
-				// Log the output for easier test debugging.
-				config['logOutput'] = 'dap,debugger';
-				config['showLog'] = true;
-				config['trace'] = 'verbose';
-			}
-		} else {
-			config['debugAdapter'] = 'legacy';
-			// be explicit and prevent resolveDebugConfiguration from picking
-			// a default debugAdapter for us.
-		}
+	async function initializeDebugConfig(config: DebugConfiguration, keepUserLogSettings?: boolean) {
+		// be explicit and prevent resolveDebugConfiguration from picking
+		// a default debugAdapter for us.
+		config['debugAdapter'] = isDlvDap ? 'dlv-dap' : 'legacy';
 
+		if (!keepUserLogSettings) {
+			dapTraced = true;
+
+			// Log the output for easier test debugging.
+			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
+			config['showLog'] = true;
+			config['trace'] = 'verbose';
+		}
 		// Give each test a distinct debug binary. If a previous test
 		// and a new test use the same binary location, it is possible
 		// that the second test could build the binary, and then the
