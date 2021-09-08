@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as readline from 'readline';
 import * as http from 'http';
 import { tmpdir } from 'os';
 import * as net from 'net';
@@ -338,7 +339,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(() => {
+	teardown(async () => {
 		if (dlvDapAdapter) {
 			const d = dlvDapAdapter;
 			dlvDapAdapter = null;
@@ -351,8 +352,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			if (ctx.currentTest?.state === 'failed' && dapTraced) {
 				console.log(`${ctx.currentTest?.title} FAILED: Debug Adapter Trace`);
 				try {
-					const buf = fs.readFileSync(path.join(tmpdir(), 'vscode-go-debug.txt'));
-					console.log(buf.toString());
+					await new Promise<void>((resolve) => {
+						const rl = readline.createInterface({
+							input: fs.createReadStream(path.join(tmpdir(), 'vscode-go-debug.txt')),
+							crlfDelay: Infinity
+						});
+						rl.on('line', (line) => console.log(line));
+						rl.on('close', () => resolve());
+					});
 				} catch (e) {
 					console.log(`Failed to read trace: ${e}`);
 				}
