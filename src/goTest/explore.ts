@@ -40,6 +40,11 @@ export class GoTestExplorer {
 			symProvider.provideDocumentSymbols(doc, token)
 		);
 
+		// Process already open editors
+		vscode.window.visibleTextEditors.forEach((ed) => {
+			inst.documentUpdate(ed.document);
+		});
+
 		context.subscriptions.push(ctrl);
 		context.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
 
@@ -271,12 +276,6 @@ export class GoTestExplorer {
 
 	// Handle opened documents, document changes, and file creation.
 	private async documentUpdate(doc: TextDocument, ranges?: Range[]) {
-		if (doc.uri.scheme === 'git') {
-			// TODO(firelizzard18): When a workspace is reopened, VSCode passes us git: URIs. Why?
-			const { path } = JSON.parse(doc.uri.query);
-			doc = await vscode.workspace.openTextDocument(path);
-		}
-
 		if (!doc.uri.path.endsWith('_test.go')) {
 			return;
 		}
