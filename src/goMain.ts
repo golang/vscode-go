@@ -47,6 +47,7 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
+	RestartReason,
 	showServerOutputChannel,
 	startLanguageServerWithFallback,
 	watchLanguageServerConfiguration
@@ -124,7 +125,7 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // restartLanguageServer wraps all of the logic needed to restart the
 // language server. It can be used to enable, disable, or otherwise change
 // the configuration of the server.
-export let restartLanguageServer = () => {
+export let restartLanguageServer = (reason: RestartReason) => {
 	return;
 };
 
@@ -887,12 +888,12 @@ function configureLanguageServer(ctx: vscode.ExtensionContext) {
 	// Set the function that is used to restart the language server.
 	// This is necessary, even if the language server is not currently
 	// in use.
-	restartLanguageServer = async () => {
-		startLanguageServerWithFallback(ctx, false);
+	restartLanguageServer = async (reason: RestartReason) => {
+		startLanguageServerWithFallback(ctx, reason);
 	};
 
 	// Start the language server, or fallback to the default language providers.
-	return startLanguageServerWithFallback(ctx, true);
+	return startLanguageServerWithFallback(ctx, 'activation');
 }
 
 function getCurrentGoPathCommand() {
