@@ -33,7 +33,6 @@ import {
 	getBinPath,
 	getBinPathWithExplanation,
 	getCheckForToolsUpdatesConfig,
-	getCurrentGoPath,
 	getGoVersion,
 	getTempFilePath,
 	getWorkspaceFolderPath,
@@ -43,7 +42,7 @@ import {
 import { correctBinname, envPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
-import { isInPreviewMode } from './goLanguageServer';
+import { isInPreviewMode, RestartReason } from './goLanguageServer';
 
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
@@ -173,7 +172,7 @@ export async function installTools(
 		if (result.reason === '') {
 			// Restart the language server if a new binary has been installed.
 			if (result.tool.name === 'gopls') {
-				restartLanguageServer();
+				restartLanguageServer('installation');
 			}
 		} else {
 			failures.push(result);
