@@ -39,7 +39,7 @@
     "bundle-dev": "npm run bundle -- --sourcemap",
     "bundle-watch": "npm run bundle -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
-    "compile": "npm run bundle -- --minify",
+    "compile": "npm run bundle",
     "watch": "tsc -watch -p ./",
     "test": "npm run test-compile && node ./out/test/runTest.js",
     "lint": "gts lint src test",
