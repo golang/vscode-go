@@ -833,7 +833,7 @@ Default: `"Both"`
 
 (Advanced) symbolMatcher sets the algorithm that is used when finding workspace symbols.
 <br/>
-Allowed Options: `CaseInsensitive`, `CaseSensitive`, `Fuzzy`
+Allowed Options: `CaseInsensitive`, `CaseSensitive`, `FastFuzzy`, `Fuzzy`
 
 Default: `"Fuzzy"`
 ### `ui.navigation.symbolStyle`

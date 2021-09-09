@@ -2361,9 +2361,11 @@
               "enum": [
                 "CaseInsensitive",
                 "CaseSensitive",
+                "FastFuzzy",
                 "Fuzzy"
               ],
               "markdownEnumDescriptions": [
+                "",
                 "",
                 "",
                 ""
