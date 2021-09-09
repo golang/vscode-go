@@ -82,6 +82,19 @@ suite('GoDebugSession Tests', async () => {
 		assert.strictEqual(inferredPath, '/app/hello-world/main.go');
 	});
 
+	test('inferRemotePathFromLocalPath does not crash due to non-existing files', () => {
+		const sourceFileMapping = new Map<string, string[]>();
+		sourceFileMapping.set('main.go', ['/app/hello-world/main.go', '/app/main.go']);
+
+		remoteSourcesAndPackages.remoteSourceFilesNameGrouping = sourceFileMapping;
+
+		// Non-existing file.
+		const inferredPath = goDebugSession['inferRemotePathFromLocalPath'](
+			'C:\\Users\\Documents\\src\\hello-world\\main-copy.go'
+		);
+		assert.strictEqual(inferredPath, undefined);
+	});
+
 	test('inferLocalPathFromRemoteGoPackage works for package in workspaceFolder', () => {
 		const remotePath = '/src/hello-world/morestrings/morestrings.go';
 		const helloPackage: PackageBuildInfo = {
