@@ -5,7 +5,7 @@
  *--------------------------------------------------------*/
 
 import AdmZip = require('adm-zip');
-import * as assert from 'assert';
+import assert from 'assert';
 import * as config from '../../src/config';
 import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
 import { getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';

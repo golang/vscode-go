@@ -13,6 +13,7 @@
 		"alwaysStrict": true,
 		"strictBindCallApply": true,
 		"strictFunctionTypes": true,
+		"esModuleInterop": true,
 		//"strictNullChecks": true,
 		//"strictPropertyInitialization": true,
 	},
