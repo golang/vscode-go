@@ -352,10 +352,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
-			if (vscode.debug.activeDebugSession) {
-				vscode.window.showErrorMessage('Debug session has already been started');
-				return;
-			}
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'debug', args);
 		})
