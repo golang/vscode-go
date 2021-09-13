@@ -725,8 +725,8 @@ It returns the number of bytes written and any write error encountered.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
-		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
-		const vendorPkgsRelativePath = ['example.com/vendorpls'];
+		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example/vendorpls'];
+		const vendorPkgsRelativePath = ['example/vendorpls'];
 
 		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
 			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
@@ -785,7 +785,7 @@ It returns the number of bytes written and any write error encountered.
 		} // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
-		const vendorPkgs = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
+		const vendorPkgs = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 
 		const gopkgsPromise = new Promise<void>((resolve, reject) => {
 			const cmd = cp.spawn(getBinPath('gopkgs'), ['-format', '{{.ImportPath}}'], {
@@ -865,7 +865,7 @@ It returns the number of bytes written and any write error encountered.
 			configWithoutIgnoringFolders
 		).then((results) => {
 			assert.equal(results[0].name, 'SomethingStrange');
-			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example.com/vendorpls/lib.go'));
+			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example/vendorpls/lib.go'));
 		});
 		const withIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,

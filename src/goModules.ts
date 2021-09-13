@@ -193,7 +193,7 @@ export async function goModInit() {
 	const moduleName = await vscode.window.showInputBox({
 		prompt: 'Enter module name',
 		value: '',
-		placeHolder: 'example.com/m'
+		placeHolder: 'example/project'
 	});
 
 	const goRuntimePath = getBinPath('go');
