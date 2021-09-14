@@ -873,54 +873,10 @@ function checkToolExists(tool: string) {
 }
 
 async function suggestUpdates(ctx: vscode.ExtensionContext) {
-	const updateToolsCmdText = 'Update tools';
-	interface GoInfo {
-		goroot: string;
-		version: string;
+	// TODO(hyangah): this is to clean up the unused key. Delete this code in 2021 Dec.
+	if (ctx.globalState.get('toolsGoInfo')) {
+		ctx.globalState.update('toolsGoInfo', null);
 	}
-	const toolsGoInfo: { [id: string]: GoInfo } = ctx.globalState.get('toolsGoInfo') || {};
-	const toolsGopath = getToolsGopath() || getCurrentGoPath();
-	if (!toolsGoInfo[toolsGopath]) {
-		toolsGoInfo[toolsGopath] = { goroot: null, version: null };
-	}
-	const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-	const currentGoroot: string = getCurrentGoRoot().toLowerCase();
-	if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
-		vscode.window
-			.showInformationMessage(
-				`Your current goroot (${currentGoroot}) is different than before (${prevGoroot}), a few Go tools may need recompiling`,
-				updateToolsCmdText
-			)
-			.then((selected) => {
-				if (selected === updateToolsCmdText) {
-					installAllTools(true);
-				}
-			});
-	} else {
-		const currentVersion = await getGoVersion();
-		if (currentVersion) {
-			const prevVersion = toolsGoInfo[toolsGopath].version;
-			const currVersionString = currentVersion.format();
-
-			if (prevVersion !== currVersionString) {
-				if (prevVersion) {
-					vscode.window
-						.showInformationMessage(
-							'Your Go version is different than before, a few Go tools may need re-compiling',
-							updateToolsCmdText
-						)
-						.then((selected) => {
-							if (selected === updateToolsCmdText) {
-								installAllTools(true);
-							}
-						});
-				}
-				toolsGoInfo[toolsGopath].version = currVersionString;
-			}
-		}
-	}
-	toolsGoInfo[toolsGopath].goroot = currentGoroot;
-	ctx.globalState.update('toolsGoInfo', toolsGoInfo);
 }
 
 function configureLanguageServer(ctx: vscode.ExtensionContext) {
