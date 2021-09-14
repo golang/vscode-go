@@ -506,11 +506,6 @@ export class Delve {
 				log(`Using GOPATH: ${env['GOPATH']}`);
 				log(`Using GOROOT: ${this.goroot}`);
 				log(`Using PATH: ${env['PATH']}`);
-				if (launchArgs.trace === 'verbose') {
-					Object.keys(env).forEach((key) => {
-						log('  export ' + key + '="' + env[key] + '"');
-					});
-				}
 				if (launchArgs.noDebug) {
 					if (mode === 'debug') {
 						this.noDebug = true;
