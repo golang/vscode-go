@@ -372,12 +372,24 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
 	): vscode.DebugConfiguration {
-		// Reads debugConfiguration.envFile and
-		// combines the environment variables from all the env files and
-		// debugConfiguration.env, on top of the tools execution environment variables.
-		// It also unsets 'envFile' from the user-suppled debugConfiguration
+		const debugAdapter = debugConfiguration['debugAdapter'];
+		if (debugAdapter === '') {
+			return null;
+		}
+
+		// Read debugConfiguration.envFile and
+		// combine the environment variables from all the env files and
+		// debugConfiguration.env.
+		// We also unset 'envFile' from the user-suppled debugConfiguration
 		// because it is already applied.
-		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri); // also includes GOPATH: getCurrentGoPath().
+		//
+		// For legacy mode, we merge the environment variables on top of
+		// the tools execution environment variables and update the debugConfiguration
+		// because VS Code directly handles launch of the legacy debug adapter.
+		// For dlv-dap mode, we do not merge the tools execution environment
+		// variables here to reduce the number of environment variables passed
+		// as launch/attach parameters.
+		const goToolsEnvVars = debugAdapter === 'legacy' ? toolExecutionEnvironment(folder?.uri) : {};
 		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
 		const env = debugConfiguration['env'] || {};
 
@@ -387,7 +399,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const entriesWithRelativePaths = ['cwd', 'output', 'program'].filter(
 			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
 		);
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
+		if (debugAdapter === 'dlv-dap') {
 			// relative paths -> absolute paths
 			if (entriesWithRelativePaths.length > 0) {
 				const workspaceRoot = folder?.uri.fsPath;
