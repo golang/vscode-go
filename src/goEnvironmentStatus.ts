@@ -543,9 +543,11 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 			});
 		} catch (e) {
 			// hardcode the latest versions of Go in case golang.dl is unavailable
+			// TODO(hyangah): consider to remove these hardcoded versions and instead
+			// show error notification if necessary.
 			results = [
-				new GoEnvironmentOption('go get golang.org/dl/go1.15', 'Go 1.15'),
-				new GoEnvironmentOption('go get golang.org/dl/go1.14.7', 'Go 1.14.7')
+				new GoEnvironmentOption('go get golang.org/dl/go1.17.1', 'Go 1.17.1'),
+				new GoEnvironmentOption('go get golang.org/dl/go1.16.8', 'Go 1.16.8')
 			];
 		}
 	}
