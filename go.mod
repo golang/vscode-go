@@ -2,4 +2,7 @@ module github.com/golang/vscode-go
 
 go 1.16
 
-require golang.org/x/build v0.0.0-20210617174213-df58bbac082b
+require (
+	github.com/stamblerre/work-stats v0.0.0-20210726215650-a14fc877fae7
+	golang.org/x/build v0.0.0-20210722210716-65acb205e577
+)

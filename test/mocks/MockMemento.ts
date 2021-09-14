@@ -25,4 +25,8 @@ export class MockMemento implements Memento {
 	public clear() {
 		this._value = {};
 	}
+
+	keys(): readonly string[] {
+		return Object.keys(this._value);
+	}
 }

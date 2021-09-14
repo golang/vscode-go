@@ -393,6 +393,27 @@ Absolute path to a file containing environment variables definitions. File conte
 ### `go.testEnvVars`
 
 Environment variables that will be passed to the process that runs the Go tests
+### `go.testExplorer.alwaysRunBenchmarks`
+
+Run benchmarks when running all tests in a file or folder.
+
+Default: `false`
+### `go.testExplorer.concatenateMessages`
+
+Concatenate all test log messages for a given location into a single message.
+
+Default: `true`
+### `go.testExplorer.packageDisplayMode`
+
+Present packages in the test explorer flat or nested.<br/>
+Allowed Options: `flat`, `nested`
+
+Default: `"flat"`
+### `go.testExplorer.showDynamicSubtestsInEditor`
+
+Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.
+
+Default: `false`
 ### `go.testFlags`
 
 Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.
@@ -812,7 +833,7 @@ Default: `"Both"`
 
 (Advanced) symbolMatcher sets the algorithm that is used when finding workspace symbols.
 <br/>
-Allowed Options: `CaseInsensitive`, `CaseSensitive`, `Fuzzy`
+Allowed Options: `CaseInsensitive`, `CaseSensitive`, `FastFuzzy`, `Fuzzy`
 
 Default: `"Fuzzy"`
 ### `ui.navigation.symbolStyle`

@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.27.2",
+  "version": "0.28.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -14,7 +14,8 @@
     "Snippets",
     "Linters",
     "Debuggers",
-    "Formatters"
+    "Formatters",
+    "Testing"
   ],
   "galleryBanner": {
     "color": "#F2F2F2",
@@ -33,10 +34,11 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "webpack": "webpack --mode development",
-    "webpack-dev": "webpack --mode development --watch",
+    "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
+    "bundle-dev": "npm run bundle -- --sourcemap",
+    "bundle-watch": "npm run bundle -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
-    "compile": "webpack --mode production",
+    "compile": "npm run bundle",
     "watch": "tsc -watch -p ./",
     "test": "npm run test-compile && node ./out/test/runTest.js",
     "lint": "gts lint src test",
@@ -69,8 +71,9 @@
     "@types/node": "^13.11.1",
     "@types/semver": "^7.1.0",
     "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.52.0",
+    "@types/vscode": "^1.59.0",
     "adm-zip": "^0.4.14",
+    "esbuild": "^0.12.21",
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
     "gts": "^3.1.0",
@@ -81,12 +84,10 @@
     "tslint": "^6.1.1",
     "typescript": "^3.8.3",
     "vscode-test": "^1.3.0",
-    "webpack": "^5.27.2",
-    "webpack-cli": "^4.5.0",
     "yarn": "^1.22.4"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.59.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.go",
@@ -128,7 +129,7 @@
       },
       {
         "id": "go.mod",
-        "extensions": [
+        "filenames": [
           "go.mod",
           "gopls.mod",
           "go.work"
@@ -140,11 +141,20 @@
       },
       {
         "id": "go.sum",
-        "extensions": [
+        "filenames": [
           "go.sum"
         ],
         "aliases": [
           "Go Checksum File"
+        ]
+      },
+      {
+        "id": "tmpl",
+        "filenamePatterns": [
+          "*.*tmpl"
+        ],
+        "aliases": [
+          "Go Template File"
         ]
       }
     ],
@@ -221,6 +231,25 @@
         "command": "go.test.package",
         "title": "Go: Test Package",
         "description": "Runs all unit tests in the package of the current file."
+      },
+      {
+        "command": "go.test.refresh",
+        "title": "Go Test: Refresh",
+        "description": "Refresh a test in the test explorer. Only available as a context menu option in the test explorer.",
+        "category": "Test",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "go.test.showProfiles",
+        "title": "Go Test: Show Last Profile",
+        "description": "Show last captured profile",
+        "category": "Test"
+      },
+      {
+        "command": "go.test.captureProfile",
+        "title": "Go Test: Profile",
+        "description": "Run a test and capture a profile",
+        "category": "Test"
       },
       {
         "command": "go.benchmark.package",
@@ -621,12 +650,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -813,12 +842,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "The port that the delve debugger will be listening on.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "The host name of the machine the delve debugger will be listening on.",
+                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
@@ -1270,6 +1299,34 @@
           },
           "default": null,
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
+          "scope": "resource"
+        },
+        "go.testExplorer.packageDisplayMode": {
+          "type": "string",
+          "enum": [
+            "flat",
+            "nested"
+          ],
+          "default": "flat",
+          "description": "Present packages in the test explorer flat or nested.",
+          "scope": "resource"
+        },
+        "go.testExplorer.alwaysRunBenchmarks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run benchmarks when running all tests in a file or folder.",
+          "scope": "resource"
+        },
+        "go.testExplorer.concatenateMessages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Concatenate all test log messages for a given location into a single message.",
+          "scope": "resource"
+        },
+        "go.testExplorer.showDynamicSubtestsInEditor": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.",
           "scope": "resource"
         },
         "go.generateTestsFlags": {
@@ -2303,9 +2360,11 @@
               "enum": [
                 "CaseInsensitive",
                 "CaseSensitive",
+                "FastFuzzy",
                 "Fuzzy"
               ],
               "markdownEnumDescriptions": [
+                "",
                 "",
                 "",
                 ""
@@ -2346,6 +2405,20 @@
       }
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "go.test.refresh",
+          "when": "false"
+        },
+        {
+          "command": "go.test.showProfiles",
+          "when": "false"
+        },
+        {
+          "command": "go.test.captureProfile",
+          "when": "false"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.toggleTestFile && resourceLangId == go",
@@ -2426,6 +2499,23 @@
           "when": "editorTextFocus && resourceLangId == go",
           "command": "go.show.commands",
           "group": "Go group 2"
+        }
+      ],
+      "testing/item/context": [
+        {
+          "command": "go.test.refresh",
+          "when": "testId in go.tests",
+          "group": "inline"
+        },
+        {
+          "command": "go.test.showProfiles",
+          "when": "testId in go.profiledTests",
+          "group": "profile"
+        },
+        {
+          "command": "go.test.captureProfile",
+          "when": "testId in go.tests && testId =~ /\\?(test|benchmark)/",
+          "group": "profile"
         }
       ]
     }

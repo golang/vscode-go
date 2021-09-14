@@ -122,11 +122,14 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			return;
 		}
 
+		let { label } = item;
+		if (typeof label !== 'string') label = label.label;
+
 		return runGodoc(
 			path.dirname(item.fileName),
 			item.package || path.dirname(item.fileName),
 			item.receiver,
-			item.label,
+			label,
 			token
 		)
 			.then((doc) => {
@@ -358,7 +361,9 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 								areCompletionsForPackageSymbols = true;
 							}
 							if (suggest.class === 'package') {
-								const possiblePackageImportPaths = this.getPackageImportPath(item.label);
+								let { label } = item;
+								if (typeof label !== 'string') label = label.label;
+								const possiblePackageImportPaths = this.getPackageImportPath(label);
 								if (possiblePackageImportPaths.length === 1) {
 									item.detail = possiblePackageImportPaths[0];
 								}

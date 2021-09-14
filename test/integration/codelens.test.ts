@@ -143,7 +143,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens2_test.go'));
 		const benchmarkDocument = await vscode.workspace.openTextDocument(uri);
 		const codeLenses = await codeLensProvider.provideCodeLenses(benchmarkDocument, cancellationTokenSource.token);
-		assert.equal(codeLenses.length, 12, JSON.stringify(codeLenses, null, 2));
+		assert.equal(codeLenses.length, 18, JSON.stringify(codeLenses, null, 2));
 		const found = [] as string[];
 		for (let i = 0; i < codeLenses.length; i++) {
 			const lens = codeLenses[i];
@@ -153,6 +153,15 @@ suite('Code lenses for testing and benchmarking', function () {
 		}
 		found.sort();
 		// Results should match `go test -list`.
-		assert.deepStrictEqual(found, ['Test1Function', 'TestFunction', 'Test_foobar', 'TestΣυνάρτηση', 'Test함수']);
+		assert.deepStrictEqual(found, [
+			'Example',
+			'ExampleFunction',
+			'Test',
+			'Test1Function',
+			'TestFunction',
+			'Test_foobar',
+			'TestΣυνάρτηση',
+			'Test함수'
+		]);
 	});
 });

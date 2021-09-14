@@ -1,7 +1,7 @@
 package vendorpls
 
 func F() string {
-  return "vendor please"
+	return "vendor please"
 }
 
 func SomethingStrange() {

@@ -246,12 +246,12 @@ Here is the list of attributes specific to Go debugging.
 | `dlvFlags` | Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.<br/> | <center>_same as Launch_</center>|
 | `env` | Environment variables passed to the program.<br/> | <center>_n/a_</center> |
 | `envFile` | Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths<br/>(Default: `${workspaceFolder}/.env`)<br/> | <center>_n/a_</center> |
-| `host` | The host name of the machine the delve debugger will be listening on.<br/>(Default: `"127.0.0.1"`)<br/> | <center>_same as Launch_</center>|
+| `host` | In legacy mode, this will only apply to remote-attach configurations, which will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `"127.0.0.1"`)<br/> | <center>_same as Launch_</center>|
 | `logDest` | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode, and on Linux and Mac OS.<br/> | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode and on Linux and Mac OS.<br/> |
 | `logOutput` | Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.<br/><p>Allowed Values: `"debugger"`, `"gdbwire"`, `"lldbout"`, `"debuglineerr"`, `"rpc"`, `"dap"`<br/>(Default: `"debugger"`)<br/> | <center>_same as Launch_</center>|
 | `mode` | One of `auto`, `debug`, `test`, `exec`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.<br/><p>Allowed Values: `"auto"`, `"debug"`, `"test"`, `"exec"`, `"replay"`, `"core"`<br/>(Default: `auto`)<br/> | Indicates local or remote debugging. Local maps to the `dlv attach` command, remote maps to `connect`. `remote` is not supported in `dlv-dap` mode currently. Use `host` and `port` instead.<br/><p>Allowed Values: `"local"`, `"remote"`<br/>(Default: `local`)<br/> |
 | `output` | Output path for the binary of the debugee.<br/>(Default: `"debug"`)<br/> | <center>_n/a_</center> |
-| `port` | The port that the delve debugger will be listening on.<br/>(Default: `2345`)<br/> | <center>_same as Launch_</center>|
+| `port` | In legacy mode, this will only apply to remote-attach configurations, which will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> | <center>_same as Launch_</center>|
 | `processId` | <center>_n/a_</center> | <br/><p><b>Option 1:</b> Use process picker to select a process to attach, or Process ID as integer.<br/><p>Allowed Values: `"${command:pickProcess}"`, `"${command:pickGoProcess}"`<br/><br/><p><b>Option 2:</b> Attach to a process by name. If more than one process matches the name, use the process picker to select a process.<br/><br/><p><b>Option 3:</b> The numeric ID of the process to be debugged. If 0, use the process picker to select a process.<br/><br/>(Default: `0`)<br/> |
 | `program` | Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interpretes it as a workspace relative path.<br/>(Default: `"${workspaceFolder}"`)<br/> | <center>_n/a_</center> |
 | `remotePath` | <center>_n/a_</center> | (Deprecated) *Use `substitutePath` instead.*<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath.<br/>(Default: `""`)<br/> |
@@ -440,6 +440,22 @@ The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to over
 *   `Copy Value` to clipboard
 
 Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
+
+### Why does my debug session have an `invalid command` error when I try to step?
+
+When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
+
+If you attempt to make another step request you will get an `invalid command` error.
+
+<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+
+Use `Continue` to resume program execution.
+
+If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
+
+<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference

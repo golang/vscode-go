@@ -1038,7 +1038,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * files with the same base names as filePath.
 	 */
 	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string | undefined {
-		if (!potentialPaths.length) {
+		if (!potentialPaths?.length) {
 			return;
 		}
 

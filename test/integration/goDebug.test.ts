@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as readline from 'readline';
 import * as http from 'http';
 import { tmpdir } from 'os';
 import * as net from 'net';
@@ -79,6 +80,19 @@ suite('GoDebugSession Tests', async () => {
 			'C:\\Users\\Documents\\src\\hello-world\\main.go'
 		);
 		assert.strictEqual(inferredPath, '/app/hello-world/main.go');
+	});
+
+	test('inferRemotePathFromLocalPath does not crash due to non-existing files', () => {
+		const sourceFileMapping = new Map<string, string[]>();
+		sourceFileMapping.set('main.go', ['/app/hello-world/main.go', '/app/main.go']);
+
+		remoteSourcesAndPackages.remoteSourceFilesNameGrouping = sourceFileMapping;
+
+		// Non-existing file.
+		const inferredPath = goDebugSession['inferRemotePathFromLocalPath'](
+			'C:\\Users\\Documents\\src\\hello-world\\main-copy.go'
+		);
+		assert.strictEqual(inferredPath, undefined);
 	});
 
 	test('inferLocalPathFromRemoteGoPackage works for package in workspaceFolder', () => {
@@ -315,8 +329,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 	let dc: DebugClient;
 	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
+	let dapTraced = false;
 
 	setup(async () => {
+		dapTraced = false;
+
 		if (isDlvDap) {
 			dc = new DebugClient('dlv', 'dap', 'go');
 			// dc.start will be called in initializeDebugConfig call,
@@ -335,7 +352,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(() => {
+	teardown(async () => {
 		if (dlvDapAdapter) {
 			const d = dlvDapAdapter;
 			dlvDapAdapter = null;
@@ -345,6 +362,21 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 			d.dispose();
 		} else {
+			if (ctx.currentTest?.state === 'failed' && dapTraced) {
+				console.log(`${ctx.currentTest?.title} FAILED: Debug Adapter Trace`);
+				try {
+					await new Promise<void>((resolve) => {
+						const rl = readline.createInterface({
+							input: fs.createReadStream(path.join(tmpdir(), 'vscode-go-debug.txt')),
+							crlfDelay: Infinity
+						});
+						rl.on('line', (line) => console.log(line));
+						rl.on('close', () => resolve());
+					});
+				} catch (e) {
+					console.log(`Failed to read trace: ${e}`);
+				}
+			}
 			dc?.stop();
 		}
 		sinon.restore();
@@ -1483,11 +1515,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should disconnect while continuing on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while continuing on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1504,11 +1532,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect with multiple disconnectRequests', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect with multiple disconnectRequests', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1524,16 +1548,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			await Promise.all([
-				dc.disconnectRequest({ restart: false }).then(() => dc.disconnectRequest({ restart: false })),
+				new Promise<void>((resolve) => {
+					dc.disconnectRequest({ restart: false });
+					dc.disconnectRequest({ restart: false });
+					resolve();
+				}),
 				dc.waitForEvent('terminated')
 			]);
 		});
 
-		test('should disconnect after continue', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect after continue', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1553,11 +1577,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while nexting', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while nexting', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
 			const BREAKPOINT_LINE = 11;
@@ -1580,11 +1600,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on pause', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on pause', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1604,11 +1620,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on breakpoint', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 			const FILE = path.join(PROGRAM, 'loop.go');
 			const BREAKPOINT_LINE = 5;
@@ -1627,11 +1639,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1649,11 +1657,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on next', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on next', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -2119,21 +2123,19 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	});
 
 	let testNumber = 0;
-	async function initializeDebugConfig(config: DebugConfiguration, keepUserLog?: boolean) {
-		if (isDlvDap) {
-			config['debugAdapter'] = 'dlv-dap';
-			if (!keepUserLog) {
-				// Log the output for easier test debugging.
-				config['logOutput'] = 'dap,debugger';
-				config['showLog'] = true;
-				config['trace'] = 'verbose';
-			}
-		} else {
-			config['debugAdapter'] = 'legacy';
-			// be explicit and prevent resolveDebugConfiguration from picking
-			// a default debugAdapter for us.
-		}
+	async function initializeDebugConfig(config: DebugConfiguration, keepUserLogSettings?: boolean) {
+		// be explicit and prevent resolveDebugConfiguration from picking
+		// a default debugAdapter for us.
+		config['debugAdapter'] = isDlvDap ? 'dlv-dap' : 'legacy';
 
+		if (!keepUserLogSettings) {
+			dapTraced = true;
+
+			// Log the output for easier test debugging.
+			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
+			config['showLog'] = true;
+			config['trace'] = 'verbose';
+		}
 		// Give each test a distinct debug binary. If a previous test
 		// and a new test use the same binary location, it is possible
 		// that the second test could build the binary, and then the

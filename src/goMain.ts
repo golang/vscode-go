@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, initConfig, IsInCloudIDE } from './config';
+import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -112,6 +112,10 @@ import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
 import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
+import { ExtensionAPI } from './export';
+import extensionAPI from './extensionAPI';
+import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
+import { ProfileDocumentContentProvider } from './goToolPprof';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -124,7 +128,7 @@ export let restartLanguageServer = () => {
 	return;
 };
 
-export async function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// Make sure this does not run when running in test.
 		return;
@@ -133,8 +137,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
-
-	await initConfig(ctx);
 
 	const cfg = getGoConfig();
 	setLogConfig(cfg['logging']);
@@ -333,6 +335,14 @@ If you would like additional configuration for diagnostics from gopls, please se
 		})
 	);
 
+	if (isVscodeTestingAPIAvailable) {
+		GoTestExplorer.setup(ctx);
+	}
+
+	ctx.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider('go-tool-pprof', new ProfileDocumentContentProvider())
+	);
+
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
 			const goConfig = getGoConfig();
@@ -342,10 +352,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
-			if (vscode.debug.activeDebugSession) {
-				vscode.window.showErrorMessage('Debug session has already been started');
-				return;
-			}
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'debug', args);
 		})
@@ -705,6 +711,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
 	});
+
+	return extensionAPI;
 }
 
 function showGoWelcomePage(ctx: vscode.ExtensionContext) {
