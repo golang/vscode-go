@@ -45,6 +45,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	});
 
 	interface Input {
+		debugAdapter?: 'dlv-dap' | 'legacy';
 		env?: { [key: string]: any };
 		envFile?: string | string[];
 		toolsEnv?: { [key: string]: any };
@@ -57,7 +58,8 @@ suite('Debug Environment Variable Merge Test', () => {
 			name: 'Launch',
 			request: 'launch',
 			env: input.env,
-			envFile: input.envFile
+			envFile: input.envFile,
+			debugAdapter: input.debugAdapter
 		});
 
 		const actual = config.env;
@@ -68,18 +70,36 @@ suite('Debug Environment Variable Merge Test', () => {
 		runTest({}, {});
 	});
 
-	test('toolsEnvVars is propagated', () => {
+	test('toolsEnvVars is propagated (legacy)', () => {
+		const debugAdapter = 'legacy';
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			GOOS: 'valueFromToolsEnv'
 		};
 
 		runTest(
-			{ toolsEnv },
+			{
+				debugAdapter,
+				toolsEnv
+			},
 			{
 				GOPATH: '/gopath',
 				GOOS: 'valueFromToolsEnv'
 			}
+		);
+	});
+
+	test('toolsEnvVars is not propagated', () => {
+		const toolsEnv = {
+			GOPATH: '/gopath',
+			GOOS: 'valueFromToolsEnv'
+		};
+
+		runTest(
+			{
+				toolsEnv
+			},
+			{}
 		);
 	});
 
@@ -114,7 +134,26 @@ suite('Debug Environment Variable Merge Test', () => {
 		);
 	});
 
-	test('launchArgs.env overwrites toolsEnvVar', () => {
+	test('launchArgs.env overwrites toolsEnvVar (legacy)', () => {
+		const toolsEnv = {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromToolsEnvVar1',
+			SOMEVAR2: 'valueFromToolsEnvVar2'
+		};
+
+		const debugAdapter = 'legacy';
+		const env = { SOMEVAR1: 'valueFromEnv' };
+		runTest(
+			{ debugAdapter, env, toolsEnv },
+			{
+				GOPATH: '/gopath',
+				SOMEVAR1: 'valueFromEnv',
+				SOMEVAR2: 'valueFromToolsEnvVar2'
+			}
+		);
+	});
+
+	test('launchArgs.env is respected, toolsEnvVar is ignored (dlv-dap)', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromToolsEnvVar1',
@@ -125,14 +164,12 @@ suite('Debug Environment Variable Merge Test', () => {
 		runTest(
 			{ env, toolsEnv },
 			{
-				GOPATH: '/gopath',
-				SOMEVAR1: 'valueFromEnv',
-				SOMEVAR2: 'valueFromToolsEnvVar2'
+				SOMEVAR1: 'valueFromEnv'
 			}
 		);
 	});
 
-	test('launchArgs.envFile overwrites toolsEnvVar', () => {
+	test('launchArgs.envFile overwrites toolsEnvVar (legacy)', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromToolsEnvVar1',
@@ -141,11 +178,30 @@ suite('Debug Environment Variable Merge Test', () => {
 		const envFile = path.join(tmpDir, 'env');
 		fs.writeFileSync(envFile, ['SOMEVAR2=valueFromEnvFile2'].join('\n'));
 
+		const debugAdapter = 'legacy';
 		runTest(
-			{ toolsEnv, envFile },
+			{ debugAdapter, toolsEnv, envFile },
 			{
 				GOPATH: '/gopath',
 				SOMEVAR1: 'valueFromToolsEnvVar1',
+				SOMEVAR2: 'valueFromEnvFile2'
+			}
+		);
+	});
+
+	test('launchArgs.envFile is repected, and toolsEnvVar is ignored (dlv-dap)', () => {
+		const toolsEnv = {
+			GOPATH: '/gopath',
+			SOMEVAR1: 'valueFromToolsEnvVar1',
+			SOMEVAR2: 'valueFromToolsEnvVar2'
+		};
+		const envFile = path.join(tmpDir, 'env');
+		fs.writeFileSync(envFile, ['SOMEVAR2=valueFromEnvFile2'].join('\n'));
+
+		const debugAdapter = 'dlv-dap';
+		runTest(
+			{ debugAdapter, toolsEnv, envFile },
+			{
 				SOMEVAR2: 'valueFromEnvFile2'
 			}
 		);

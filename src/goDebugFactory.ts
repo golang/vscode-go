@@ -16,6 +16,7 @@ import { getTool } from './goTools';
 import { Logger, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
+import { toolExecutionEnvironment } from './goEnv';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
@@ -345,7 +346,9 @@ function spawnDlvDapServerProcess(
 	logConsole: (msg: string) => void
 ): Promise<ChildProcess> {
 	const launchArgsEnv = launchAttachArgs.env || {};
-	const env = Object.assign({}, process.env, launchArgsEnv);
+	const goToolsEnvVars = toolExecutionEnvironment();
+	// launchArgsEnv is user-requested env vars (envFiles + env).
+	const env = Object.assign(goToolsEnvVars, launchArgsEnv);
 
 	const dlvPath = launchAttachArgs.dlvToolPath ?? getTool('dlv-dap');
 

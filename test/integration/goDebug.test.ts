@@ -13,6 +13,7 @@ import * as net from 'net';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as proxy from '../../src/goDebugFactory';
+import * as vscode from 'vscode';
 import { DebugConfiguration, DebugProtocolMessage } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -24,6 +25,7 @@ import {
 	PackageBuildInfo,
 	RemoteSourcesAndPackages
 } from '../../src/debugAdapter/goDebug';
+import * as extConfig from '../../src/config';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
@@ -549,6 +551,70 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				return; // want error
 			}
 			throw new Error("does not report error on invalid 'pathFormat' attribute");
+		});
+	});
+
+	suite('env', () => {
+		let sandbox: sinon.SinonSandbox;
+
+		setup(() => {
+			sandbox = sinon.createSandbox();
+		});
+		teardown(async () => sandbox.restore());
+
+		test('env var from go.toolsEnvVars is respected', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'envTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 10;
+
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+				toolsEnvVars: {
+					value: { FOO: 'BAR' }
+				}
+			});
+			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				args: ['FOO']
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await assertLocalVariableValue('v', '"BAR"');
+
+			await dc.continueRequest({ threadId: 1 }); // continue until completion for cleanup.
+		});
+
+		test('env var from launch config is respected', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'envTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 10;
+
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+				toolsEnvVars: {
+					value: { FOO: 'BAR' }
+				}
+			});
+			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				args: ['FOO'],
+				env: { FOO: 'BAZ' }
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await assertLocalVariableValue('v', '"BAZ"');
+
+			await dc.continueRequest({ threadId: 1 }); // continue until completion for cleanup.
 		});
 	});
 
