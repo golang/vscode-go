@@ -336,7 +336,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 		})
 	);
 
-	if (isVscodeTestingAPIAvailable) {
+	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
 		GoTestExplorer.setup(ctx);
 	}
 
@@ -530,6 +530,15 @@ If you would like additional configuration for diagnostics from gopls, please se
 					ctx.subscriptions.push(lintDiagnosticCollection);
 					// TODO: actively maintain our own disposables instead of keeping pushing to ctx.subscription.
 				}
+			}
+			if (e.affectsConfiguration('go.testExplorer.enable')) {
+				const msg =
+					'Go test explorer has been enabled or disabled. For this change to take effect, the window must be reloaded.';
+				vscode.window.showInformationMessage(msg, 'Reload').then((selected) => {
+					if (selected === 'Reload') {
+						vscode.commands.executeCommand('workbench.action.reloadWindow');
+					}
+				});
 			}
 		})
 	);

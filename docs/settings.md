@@ -403,6 +403,11 @@ Default: `false`
 Concatenate all test log messages for a given location into a single message.
 
 Default: `true`
+### `go.testExplorer.enable`
+
+Enable the Go test explorer
+
+Default: `true`
 ### `go.testExplorer.packageDisplayMode`
 
 Present packages in the test explorer flat or nested.<br/>

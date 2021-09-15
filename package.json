@@ -1302,6 +1302,12 @@
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
+        "go.testExplorer.enable": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Enable the Go test explorer"
+        },
         "go.testExplorer.packageDisplayMode": {
           "type": "string",
           "enum": [
