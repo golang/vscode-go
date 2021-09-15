@@ -1,8 +1,37 @@
-📣 Delve's native DAP implementation ([`dlv-dap`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md))
-is enabled by default for local debugging. We updated the [Documentation for Debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md)
-to show the new features available with dlv-dap. This change does not apply to remote debugging yet.
-For remote debugging, keep following the instruction in the
-[legacy debug adapter documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
+## v0.28.0 - 16 Sep, 2021
+
+This version requires VS Code 1.59 or newer.
+
+🎉🧪 The extension implements [the Testing API of VS Code](https://code.visualstudio.com/api/extension-guides/testing). You can navigate and run/profile tests using the test explorer UI! Further work for better profiling and debugging support through the test explorer is underway. Please give it a try and provide feedback.
+
+A list of all issues and changes can be found in the [v0.28.0 milestone](https://github.com/golang/vscode-go/milestone/34) and [commit history](https://github.com/golang/vscode-go/compare/v0.27.2...v0.28.0).
+
+### Changes
+
+- Require VS Code engine 1.59+.
+- Implement the Testing API [Issue 1579](github.com/golang/vscode-go/issues/1579)). <!-- CL 330809 -->
+The test provider discovers all Go tests and benchmarks including `stretchr` test suits ([Issue 1641](github.com/golang/vscode-go/issues/1641)) <!-- CL 343489 --> and sub-tests ([Issue 47800](github.com/golang/go/issues/47800), [1641](github.com/golang/vscode-go/issues/1641)) <!-- CL 343433 -->.
+- Offer basic profiling support through the testing API. ([Issue 1685](github.com/golang/vscode-go/issues/1685)) <!-- CL 344149 -->
+- Debugging
+	- Allow to connect to a Delve DAP server running on a different host using `host` and `port` launch properties. ([Issue 1729](github.com/golang/vscode-go/issues/1729)) <!-- CL 346269 -->
+	- Disabled check for active debug session ([Issue 1710](github.com/golang/vscode-go/issues/1710)). <!-- CL 349596 --> This will allow to run multiple debug sessions simultaneously.
+	- Disabled the go version check by supplying the `--check-go-version=false` delve flag ([Issue 1716](github.com/golang/vscode-go/issues/1716)). <!-- CL 347562 --> This is to allow users of older versions of Go to debug using Delve DAP which requires Delve 1.6.1 or newer. If you need to use Delve 1.6.0 or older, please use [the legacy debug adapter](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md).
+	- Fixed a legacy debug adapter's bug that broke remote debugging when breakpoints were set in irrelevant files. ([Issue 1762](github.com/golang/vscode-go/issues/1762)) <!-- CL 348972 -->
+	- Added [the new FAQs section](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#faqs).
+- Removed tools version check hack that triggerred unnecessary warnings about go and tools version mismatch issues ([Issue 1698](github.com/golang/vscode-go/issues/1698)). <!-- CL 349752 --> 
+- Export an API with which other extensions can query the location of go tools. ([Issue 233](github.com/golang/vscode-go/issues/233)) <!-- CL 336509 -->
+- Fixed regexps for test function names ([CL 344130](https://go-review.googlesource.com/c/vscode-go/+/344130)).
+- Track the language server's restart history and include it in the automated gopls crash report ([CL 344130](https://go-review.googlesource.com/c/vscode-go/+/344130)).
+- Code Health
+	- Use `esbuild` instead of `webpack` ([Issue 1705](github.com/golang/vscode-go/issues/1705)). <!-- CL 343791 -->
+	- Removed the temporary security workaround in favor of [VS Code's Workspace Trust concept](https://code.visualstudio.com/docs/editor/workspace-trust). <!-- CL 347690 -->
+	- Updated the gopls settings documentation to reflect gopls/v0.7.2 settings.
+- docs: change blog.golang.org to go.dev/blog <!-- CL 348269 -->
+- package.json: update gopls settings (v0.7.2) <!-- CL 348909 -->
+
+### Thanks
+
+Thank you for your contribution, Nicolas Lepage, 180909, Polina Sokolova, Rebecca Stambler, and Suzy Mueller! Special thanks to Ethan Reesor for the Test Explorer work!
 
 ## v0.27.2 - 1st Sep, 2021
 
