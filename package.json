@@ -461,11 +461,6 @@
         "command": "go.global.resetState",
         "title": "Go: Reset Global State",
         "description": "Reset keys in global state to undefined."
-      },
-      {
-        "command": "go.workspace.isTrusted.toggle",
-        "title": "Go: Toggle Workspace Trust Flag",
-        "description": "Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces."
       }
     ],
     "breakpoints": [
