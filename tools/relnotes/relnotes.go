@@ -169,9 +169,9 @@ func mdPrintChanges(changes []*generic.Changelist, byCategory bool) {
 			fmt.Printf(" (")
 			for i, issue := range change.AssociatedIssues {
 				if i == 0 {
-					fmt.Printf("[Issue %d](%s)", issue.Number, issue.Link)
+					fmt.Printf("[Issue %d](https://%s)", issue.Number, issue.Link)
 				} else {
-					fmt.Printf(", [%d](%s)", issue.Number, issue.Link)
+					fmt.Printf(", [%d](https://%s)", issue.Number, issue.Link)
 				}
 			}
 			fmt.Printf(")")
