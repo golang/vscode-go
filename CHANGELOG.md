@@ -9,7 +9,7 @@ A list of all issues and changes can be found in the [v0.28.0 milestone](https:/
 ### Changes
 
 - Require VS Code engine 1.59+.
-- Implement the Testing API [Issue 1579](https://github.com/golang/vscode-go/issues/1579)). <!-- CL 330809 -->
+- Implement the Testing API ([Issue 1579](https://github.com/golang/vscode-go/issues/1579)). <!-- CL 330809 -->
 The test provider discovers all Go tests and benchmarks including `stretchr` test suits ([Issue 1641](https://github.com/golang/vscode-go/issues/1641)) <!-- CL 343489 --> and sub-tests ([Issue 1641](https://github.com/golang/vscode-go/issues/1641)). <!-- CL 343433 --> You can adjust behavior with the  [`go.testExplorer.*` settings](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotestexploreralwaysrunbenchmarks). 
 - Offer basic profiling support through the testing API. ([Issue 1685](https://github.com/golang/vscode-go/issues/1685)) <!-- CL 344149 -->
 - Debugging
