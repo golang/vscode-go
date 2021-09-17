@@ -182,7 +182,7 @@ export async function installTools(
 	// Report detailed information about any failures.
 	outputChannel.appendLine(''); // blank line for spacing
 	if (failures.length === 0) {
-		outputChannel.appendLine('All tools successfully installed. You are ready to Go :).');
+		outputChannel.appendLine('All tools successfully installed. You are ready to Go. :)');
 	} else {
 		// Show the output channel on failures, even if the installation should
 		// be silent.
