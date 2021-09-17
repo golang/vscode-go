@@ -182,15 +182,15 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 | --- | --- |
 | `addImport` | If true, adds command to import a package to the editor context menu <br/> Default: `true` |
 | `addTags` | If true, adds command to add configured tags from struct fields to the editor context menu <br/> Default: `true` |
-| `benchmarkAtCursor` | If true, adds command to benchmark the test under the cursor to the editor context menu <br/> Default: `true` |
-| `debugTestAtCursor` | If true, adds command to debug the test under the cursor to the editor context menu <br/> Default: `true` |
+| `benchmarkAtCursor` | If true, adds command to benchmark the test under the cursor to the editor context menu <br/> Default: `false` |
+| `debugTestAtCursor` | If true, adds command to debug the test under the cursor to the editor context menu <br/> Default: `false` |
 | `fillStruct` | If true, adds command to fill struct literal with default values to the editor context menu <br/> Default: `true` |
 | `generateTestForFile` | If true, adds command to generate unit tests for current file to the editor context menu <br/> Default: `true` |
 | `generateTestForFunction` | If true, adds command to generate unit tests for function under the cursor to the editor context menu <br/> Default: `true` |
 | `generateTestForPackage` | If true, adds command to generate unit tests for currnt package to the editor context menu <br/> Default: `true` |
 | `playground` | If true, adds command to upload the current file or selection to the Go Playground <br/> Default: `true` |
 | `removeTags` | If true, adds command to remove configured tags from struct fields to the editor context menu <br/> Default: `true` |
-| `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `true` |
+| `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `false` |
 | `testCoverage` | If true, adds command to run test coverage to the editor context menu <br/> Default: `true` |
 | `testFile` | If true, adds command to run all tests in the current file to the editor context menu <br/> Default: `true` |
 | `testPackage` | If true, adds command to run all tests in the current package to the editor context menu <br/> Default: `true` |

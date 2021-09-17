@@ -1662,7 +1662,7 @@
             },
             "testAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to run the test under the cursor to the editor context menu"
             },
             "testFile": {
@@ -1707,12 +1707,12 @@
             },
             "debugTestAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to debug the test under the cursor to the editor context menu"
             },
             "benchmarkAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to benchmark the test under the cursor to the editor context menu"
             }
           },
@@ -2443,17 +2443,17 @@
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.testAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.testAtCursor && resourceLangId == go",
           "command": "go.test.cursor",
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.benchmarkAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.benchmarkAtCursor && resourceLangId == go",
           "command": "go.benchmark.cursor",
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.debugTestAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.debugTestAtCursor && resourceLangId == go",
           "command": "go.debug.cursor",
           "group": "Go group 1"
         },
