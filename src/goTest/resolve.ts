@@ -304,11 +304,11 @@ export class GoTestResolver {
 		let item: TestItem;
 
 		const nested = getGoConfig(uri).get('testExplorer.packageDisplayMode') === 'nested';
-		const modDir = await getModFolderPath(uri, true);
+		const modDir = Uri.file(await getModFolderPath(uri, true)); // TODO support non-file schemes
 		const wsfolder = workspace.getWorkspaceFolder(uri);
 		if (modDir) {
 			// If the package is in a module, add it as a child of the module
-			let parent = await this.getModule(uri.with({ path: modDir, query: '', fragment: '' }));
+			let parent = await this.getModule(modDir);
 			if (uri.path === parent.uri.path) {
 				return parent;
 			}
