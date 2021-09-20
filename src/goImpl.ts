@@ -15,7 +15,7 @@ import { getBinPath } from './util';
 import vscode = require('vscode');
 
 // Supports only passing interface, see TODO in implCursor to finish
-const inputRegex = /^(\w+\ \*?\w+\ )?([\w./]+)$/;
+const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
 
 export function implCursor() {
 	const editor = vscode.window.activeTextEditor;
