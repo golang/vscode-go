@@ -197,18 +197,18 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				"'dlvLoadConfig' is deprecated with dlv-dap debug adapter.\n\nDlv-dap loads composite data on demand and uses increased string limits on source code hover, in Debug Console and via Copy Value. Please file an issue if these are not sufficient for your use case."
 			);
 		}
-		if (!debugConfiguration.hasOwnProperty('dlvLoadConfig') && dlvConfig.hasOwnProperty('dlvLoadConfig')) {
-			debugConfiguration['dlvLoadConfig'] = dlvConfig['dlvLoadConfig'];
+
+		// Reflect the defaults set through go.delveConfig setting.
+		const dlvProperties = ['showGlobalVariables', 'substitutePath', 'showLog', 'logOutput', 'dlvFlags'];
+		if (debugAdapter !== 'dlv-dap') {
+			dlvProperties.push('dlvLoadConfig');
 		}
-		if (
-			!debugConfiguration.hasOwnProperty('showGlobalVariables') &&
-			dlvConfig.hasOwnProperty('showGlobalVariables')
-		) {
-			debugConfiguration['showGlobalVariables'] = dlvConfig['showGlobalVariables'];
-		}
-		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
-			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
-		}
+		dlvProperties.forEach((p) => {
+			if (!debugConfiguration.hasOwnProperty(p) && dlvConfig.hasOwnProperty(p)) {
+				debugConfiguration[p] = dlvConfig[p];
+			}
+		});
+
 		if (debugAdapter !== 'dlv-dap' && debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
 			if (vscode.workspace.workspaceFolders?.length > 1) {

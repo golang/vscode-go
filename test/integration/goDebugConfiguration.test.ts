@@ -280,7 +280,10 @@ suite('Debug Configuration Merge User Settings', () => {
 					apiVersion: 1,
 					showGlobalVariables: true,
 					debugAdapter: 'dlv-dap',
-					substitutePath: [{ from: 'hello', to: 'goodbye' }]
+					substitutePath: [{ from: 'hello', to: 'goodbye' }],
+					showLog: true,
+					logOutput: 'dap,debugger',
+					dlvFlags: ['--check-go-version=false']
 				}
 			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
@@ -300,12 +303,11 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.substitutePath.length, 1);
 			assert.strictEqual(result.substitutePath[0].from, 'hello');
 			assert.strictEqual(result.substitutePath[0].to, 'goodbye');
+			assert.strictEqual(result.showLog, true);
+			assert.strictEqual(result.logOutput, 'dap,debugger');
+			assert.deepStrictEqual(result.dlvFlags, ['--check-go-version=false']);
 			const dlvLoadConfig = result.dlvLoadConfig;
-			assert.strictEqual(dlvLoadConfig.followPointers, false);
-			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 3);
-			assert.strictEqual(dlvLoadConfig.maxStringLen, 32);
-			assert.strictEqual(dlvLoadConfig.maxArrayValues, 32);
-			assert.strictEqual(dlvLoadConfig.maxStructFields, 5);
+			assert.strictEqual(dlvLoadConfig, undefined); // dlvLoadConfig does not apply in dlv-dap mode.
 		});
 
 		test('delve config in settings.json is overriden by launch.json', async () => {
@@ -337,8 +339,8 @@ suite('Debug Configuration Merge User Settings', () => {
 				request: 'launch',
 				mode: 'auto',
 				program: '${fileDirname}',
-				apiVersion: 2,
 				showGlobalVariables: false,
+				apiVersion: 2,
 				dlvLoadConfig: {
 					followPointers: true,
 					maxVariableRecurse: 6,
@@ -347,7 +349,8 @@ suite('Debug Configuration Merge User Settings', () => {
 					maxStructFields: -1
 				},
 				debugAdapter: 'legacy',
-				substitutePath: []
+				substitutePath: [],
+				logOutput: 'rpc'
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
@@ -355,6 +358,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.showGlobalVariables, false);
 			assert.strictEqual(result.debugAdapter, 'legacy');
 			assert.strictEqual(result.substitutePath.length, 0);
+			assert.strictEqual(result.showLog, undefined);
+			assert.strictEqual(result.logOutput, 'rpc');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 6);
