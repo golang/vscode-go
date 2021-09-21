@@ -369,65 +369,6 @@ suite('Debug Configuration Modify User Config', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 
 	suite('remove gcflags', () => {
-		test('remove gcflags from string args', () => {
-			const tt = [
-				{
-					input: '-gcflags=all=-l',
-					want: { args: '', removed: true }
-				},
-				{
-					input: '-gcflags all=-l',
-					want: { args: '', removed: true }
-				},
-				// Preserve other flags
-				{
-					input: '-race -gcflags=all=-l -mod=mod',
-					want: { args: '-race -mod=mod', removed: true }
-				},
-				{
-					input: '-race -gcflags all=-l -mod=mod',
-					want: { args: '-race -mod=mod', removed: true }
-				},
-				// Test with quoted value
-				{
-					input: "-mod=mod -gcflags=test/...='hello goodbye' -race",
-					want: { args: '-mod=mod -race', removed: true }
-				},
-				{
-					input: '-mod=mod -gcflags test/...="hello goodbye" -race',
-					want: { args: '-mod=mod -race', removed: true }
-				},
-				{
-					input: "-mod=mod -gcflags='test/...=hello goodbye' -race",
-					want: { args: '-mod=mod -race', removed: true }
-				},
-				{
-					input: '-mod=mod -gcflags "test/...=hello goodbye" -race',
-					want: { args: '-mod=mod -race', removed: true }
-				},
-				// Multiple -gcflags present
-				{
-					input: '-mod=mod -gcflags "test/...=hello goodbye" -race -gcflags=all="hello goodbye"',
-					want: { args: '-mod=mod -race', removed: true }
-				},
-				// No gcflags are present
-				{
-					input: '',
-					want: { args: '', removed: false }
-				},
-				{
-					input: '-race -mod=gcflags',
-					want: { args: '-race -mod=gcflags', removed: false }
-				}
-			];
-
-			tt.forEach((tc) => {
-				const got = debugConfigProvider.removeGcflags(tc.input);
-
-				assert.strictEqual(got.args, tc.want.args, `args for ${tc.input} do not match expected`);
-				assert.strictEqual(got.removed, tc.want.removed, `removed for ${tc.input} does not match expected`);
-			});
-		});
 		test('remove user set -gcflags in buildFlags', () => {
 			const config = {
 				name: 'Launch',
