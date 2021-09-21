@@ -394,7 +394,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
 		);
 		if (debugAdapter === 'dlv-dap') {
-			// relative paths -> absolute paths
+			// 1. Relative paths -> absolute paths
 			if (entriesWithRelativePaths.length > 0) {
 				const workspaceRoot = folder?.uri.fsPath;
 				if (workspaceRoot) {
@@ -408,8 +408,18 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					);
 				}
 			}
-			// compute build dir, and translate the dirname in program to a path relative to buildDir.
-			if (debugConfiguration.request === 'launch') {
+			// 2. For launch debug/test modes that builds the debug target,
+			//    delve needs to be launched from the right directory (inside the main module of the target).
+			//    Compute the launch dir heuristically, and translate the dirname in program to a path relative to buildDir.
+			//    We skip this step when working with externally launched debug adapter
+			//    because we do not control the adapter's launch process.
+			if (
+				debugConfiguration.request === 'launch' &&
+				// Presence of the following attributes indicates externally launched debug adapter.
+				!debugConfiguration.port &&
+				!debugConfiguration.host &&
+				!debugConfiguration.debugServer
+			) {
 				const mode = debugConfiguration['mode'] || 'debug';
 				if (['debug', 'test', 'auto'].includes(mode)) {
 					// Massage config to build the target from the package directory

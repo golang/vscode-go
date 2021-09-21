@@ -561,6 +561,52 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		);
 	});
 
+	test('program and __buildDir are not updated when working with externally launched adapters', () => {
+		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
+		config.program = path.join('foo', 'bar', 'pkg');
+		config.port = 12345;
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, __buildDir },
+			{
+				program: path.join(os.tmpdir(), 'foo', 'bar', 'pkg'),
+				cwd: os.tmpdir(),
+				__buildDir: undefined
+			}
+		);
+	});
+
+	test('program and __buildDir are not updated when working with externally launched adapters (debugServer)', () => {
+		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
+		config.program = path.join('foo', 'bar', 'pkg');
+		config.debugServer = 4777;
+		const workspaceFolder = {
+			uri: vscode.Uri.file(os.tmpdir()),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		);
+		assert.deepStrictEqual(
+			{ program, cwd, __buildDir },
+			{
+				program: path.join(os.tmpdir(), 'foo', 'bar', 'pkg'),
+				cwd: os.tmpdir(),
+				__buildDir: undefined
+			}
+		);
+	});
+
 	test('empty, undefined paths are not affected', () => {
 		const config = debugConfig('dlv-dap');
 		config.program = undefined;
