@@ -88,14 +88,20 @@ export function testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
  * @param cmd Whether the command is test, benchmark, or debug.
  * @param args
  */
-export function testAtCursorOrPrevious(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
-	_testAtCursor(goConfig, cmd, args).catch((err) => {
+export async function testAtCursorOrPrevious(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
+	try {
+		await _testAtCursor(goConfig, cmd, args);
+	} catch (err) {
 		if (err instanceof NotFoundError) {
-			testPrevious();
+			const editor = vscode.window.activeTextEditor;
+			if (editor) {
+				await editor.document.save();
+			}
+			await testPrevious();
 		} else {
 			console.error(err);
 		}
-	});
+	}
 }
 
 /**
