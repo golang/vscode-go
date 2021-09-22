@@ -73,7 +73,8 @@ import { getToolFromToolPath } from './utils/pathUtils';
 import WebRequest = require('web-request');
 import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
-import { daysBetween, getStateConfig, maybePromptForSurvey, timeDay, timeMinute } from './goSurvey';
+import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
+import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -277,7 +278,11 @@ function scheduleGoplsSuggestions() {
 		if (!foundGo) {
 			return;
 		}
-		maybePromptForSurvey();
+		maybePromptForGoplsSurvey();
+		// TODO(rstambler): Remove this when the survey is published.
+		if (isInPreviewMode()) {
+			maybePromptForDeveloperSurvey();
+		}
 	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
