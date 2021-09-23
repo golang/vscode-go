@@ -51,6 +51,7 @@ export class GoTestResolver {
 		ctrl.resolveHandler = async (item) => {
 			try {
 				await this.resolve(item);
+				this.updateGoTestContext();
 			} catch (error) {
 				if (isInTest()) throw error;
 
@@ -223,6 +224,14 @@ export class GoTestResolver {
 		});
 
 		disposeIfEmpty(this, item);
+	}
+
+	public updateGoTestContext() {
+		const items = [];
+		for (const item of this.allItems) {
+			items.push(item.id);
+		}
+		vscode.commands.executeCommand('setContext', 'go.tests', items);
 	}
 
 	/* ***** Private ***** */

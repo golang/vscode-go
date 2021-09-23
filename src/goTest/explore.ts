@@ -57,7 +57,7 @@ export class GoTestExplorer {
 
 				try {
 					await inst.resolver.resolve(item);
-					inst.updateGoTestContext();
+					inst.resolver.updateGoTestContext();
 				} catch (error) {
 					const m = 'Failed to resolve tests';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -210,7 +210,7 @@ export class GoTestExplorer {
 	protected async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
 		if (e.added.length > 0) {
 			await this.resolver.resolve();
-			this.updateGoTestContext();
+			this.resolver.updateGoTestContext();
 		}
 
 		if (e.removed.length === 0) {
@@ -268,7 +268,7 @@ export class GoTestExplorer {
 
 		if (update) {
 			this.resolver.resolve();
-			this.updateGoTestContext();
+			this.resolver.updateGoTestContext();
 		}
 	}
 
@@ -281,14 +281,6 @@ export class GoTestExplorer {
 		}
 
 		await this.resolver.processDocument(doc, ranges);
-		this.updateGoTestContext();
-	}
-
-	private updateGoTestContext() {
-		const items = [];
-		for (const item of this.resolver.allItems) {
-			items.push(item.id);
-		}
-		vscode.commands.executeCommand('setContext', 'go.tests', items);
+		this.resolver.updateGoTestContext();
 	}
 }
