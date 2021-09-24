@@ -1,4 +1,11 @@
-## v0.28.0 - 16 Sep, 2021
+## v0.28.1 - 24 Sep, 2021
+
+A list of all issues and changes can be found in the [v0.28.1 milestone](https://github.com/golang/vscode-go/milestone/38) and [commit history](https://github.com/golang/vscode-go/compare/v0.28.0...v0.28.1).
+
+### Fixes
+- Skipped launch configuration adjustment to address build errors when debugging using externally launched delve DAP servers. (Issue [1793](https://github.com/golang/vscode-go/issues/1793))
+
+## v0.28.0 - 20 Sep, 2021
 
 This version requires VS Code 1.59 or newer.
 
