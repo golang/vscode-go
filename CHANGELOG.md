@@ -4,6 +4,7 @@ A list of all issues and changes can be found in the [v0.28.1 milestone](https:/
 
 ### Fixes
 - Skipped launch configuration adjustment to address build errors when debugging using externally launched delve DAP servers. (Issue [1793](https://github.com/golang/vscode-go/issues/1793))
+- Restore the fix for Issue [1729](https://github.com/golang/vscode-go/issues/1729) that was accidentally dropped during merge for release.
 
 ## v0.28.0 - 20 Sep, 2021
 
