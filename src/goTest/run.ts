@@ -255,8 +255,13 @@ export class GoTestRunner {
 			return isInMod(item.parent);
 		}
 
-		let success = true;
 		const run = this.ctrl.createTestRun(request);
+		const windowGoConfig = getGoConfig();
+		if (windowGoConfig.get<boolean>('testExplorer.showOutput')) {
+			await vscode.commands.executeCommand('testing.showMostRecentOutput');
+		}
+
+		let success = true;
 		const subItems: string[] = [];
 		for (const [pkg, items] of collected.entries()) {
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));

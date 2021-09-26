@@ -410,6 +410,11 @@ Default: `"flat"`
 Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.
 
 Default: `false`
+### `go.testExplorer.showOutput`
+
+Open the test output terminal when a test run is started.
+
+Default: `true`
 ### `go.testFlags`
 
 Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.

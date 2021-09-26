@@ -1332,6 +1332,12 @@
           "description": "Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.",
           "scope": "resource"
         },
+        "go.testExplorer.showOutput": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the test output terminal when a test run is started.",
+          "scope": "window"
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {
