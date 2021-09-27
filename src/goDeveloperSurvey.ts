@@ -7,6 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
+import { getGoConfig } from './config';
 import { lastUserAction } from './goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
 
@@ -35,6 +36,12 @@ export interface DeveloperSurveyConfig {
 }
 
 export function maybePromptForDeveloperSurvey() {
+	// First, check the value of the 'go.survey.prompt' setting to see
+	// if the user has opted out of all survey prompts.
+	const goConfig = getGoConfig();
+	if (goConfig.get('survey.prompt') === false) {
+		return;
+	}
 	const now = new Date();
 	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
 	if (!cfg) {
@@ -115,7 +122,7 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 }
 
 async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
-	const selected = await vscode.window.showInformationMessage(
+	let selected = await vscode.window.showInformationMessage(
 		// TODO(rstambler): Figure out how to phrase this.
 		'Looks like you are coding in Go! We are currently running a Go developer survey...',
 		'Yes',
@@ -144,7 +151,18 @@ async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): 
 		case 'Never':
 			cfg.prompt = false;
 
-			vscode.window.showInformationMessage("No problem! We won't ask again.");
+			selected = await vscode.window.showInformationMessage(
+				`No problem! We won't ask again.
+To opt-out of all survey prompts, please set 'go.survey.prompt' to false.`,
+				'Open Settings'
+			);
+			switch (selected) {
+				case 'Open Settings':
+					vscode.commands.executeCommand('workbench.action.openSettings', 'go.survey.prompt');
+					break;
+				default:
+					break;
+			}
 			break;
 		default:
 			// If the user closes the prompt without making a selection, treat it

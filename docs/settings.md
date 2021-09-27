@@ -368,6 +368,11 @@ Default:
 	"tags" :	"",
 }
 ```
+### `go.survey.prompt`
+
+Prompt for surveys, including the gopls survey and the Go developer survey.
+
+Default: `true`
 ### `go.terminal.activateEnvironment`
 
 Apply the Go & PATH environment variables used by the extension to all integrated terminals.

@@ -1638,6 +1638,11 @@
             "run": true
           }
         },
+        "go.survey.prompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prompt for surveys, including the gopls survey and the Go developer survey."
+        },
         "go.editorContextMenuCommands": {
           "type": "object",
           "properties": {

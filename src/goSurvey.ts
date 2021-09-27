@@ -12,6 +12,7 @@ import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
 import { developerSurveyConfig } from './goDeveloperSurvey';
+import { getGoConfig } from './config';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -42,6 +43,12 @@ export interface GoplsSurveyConfig {
 }
 
 export function maybePromptForGoplsSurvey() {
+	// First, check the value of the 'go.survey.prompt' setting to see
+	// if the user has opted out of all survey prompts.
+	const goConfig = getGoConfig();
+	if (goConfig.get('survey.prompt') === false) {
+		return;
+	}
 	const now = new Date();
 	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
 	if (!cfg) {
@@ -135,7 +142,7 @@ function randomIntInRange(min: number, max: number): number {
 }
 
 async function promptForGoplsSurvey(cfg: GoplsSurveyConfig, now: Date): Promise<GoplsSurveyConfig> {
-	const selected = await vscode.window.showInformationMessage(
+	let selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
 		'Yes',
@@ -168,7 +175,18 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 		case 'Never':
 			cfg.prompt = false;
 
-			vscode.window.showInformationMessage("No problem! We won't ask again.");
+			selected = await vscode.window.showInformationMessage(
+				`No problem! We won't ask again.
+To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setting.`,
+				'Open Settings'
+			);
+			switch (selected) {
+				case 'Open Settings':
+					vscode.commands.executeCommand('workbench.action.openSettings', 'go.survey.prompt');
+					break;
+				default:
+					break;
+			}
 			break;
 		default:
 			// If the user closes the prompt without making a selection, treat it
