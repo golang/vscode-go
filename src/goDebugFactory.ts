@@ -526,7 +526,9 @@ export function parseProgramArgSync(
 		if (ext === '.go') {
 			return { program, dirname: path.dirname(program), programIsDirectory: false };
 		} else {
-			throw new Error('The program attribute must be a directory or .go file in debug and test mode');
+			throw new Error(
+				`The program attribute '${program}' must be a directory or .go file in debug and test modes.`
+			);
 		}
 	}
 	// Otherwise, let delve handle.
