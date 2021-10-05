@@ -26,12 +26,11 @@ import {
 	RemoteSourcesAndPackages
 } from '../../src/debugAdapter/goDebug';
 import * as extConfig from '../../src/config';
-import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
-import { parseProgramArgSync } from '../../src/goDebugFactory';
 import { TimestampedLogger } from '../../src/goLogging';
 
 // For debugging test and streaming the trace instead of buffering, set this.
@@ -2207,8 +2206,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// that the second test could build the binary, and then the
 		// first test could delete that binary during cleanup before the
 		// second test has a chance to run it.
-		if (!config['output'] && config['mode'] !== 'remote') {
-			const dir = parseProgramArgSync(config).dirname;
+		if (!config['output'] && ['debug', 'auto', 'test'].includes(config['mode'])) {
+			const dir = parseDebugProgramArgSync(config['program']).dirname;
 			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
 		}
 		testNumber++;

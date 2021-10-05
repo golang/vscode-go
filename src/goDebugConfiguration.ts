@@ -7,10 +7,10 @@
 
 'use strict';
 
+import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { parseProgramArgSync } from './goDebugFactory';
 import { toolExecutionEnvironment } from './goEnv';
 import {
 	declinedToolInstall,
@@ -20,8 +20,8 @@ import {
 	shouldUpdateTool
 } from './goInstallTools';
 import { packagePathToGoModPathMap } from './goModules';
-import { getTool, getToolAtVersion } from './goTools';
-import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
+import { getToolAtVersion } from './goTools';
+import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
@@ -413,28 +413,26 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			//    Compute the launch dir heuristically, and translate the dirname in program to a path relative to buildDir.
 			//    We skip this step when working with externally launched debug adapter
 			//    because we do not control the adapter's launch process.
-			if (
-				debugConfiguration.request === 'launch' &&
-				// Presence of the following attributes indicates externally launched debug adapter.
-				!debugConfiguration.port &&
-				!debugConfiguration.host &&
-				!debugConfiguration.debugServer
-			) {
+			if (debugConfiguration.request === 'launch') {
 				const mode = debugConfiguration['mode'] || 'debug';
 				if (['debug', 'test', 'auto'].includes(mode)) {
 					// Massage config to build the target from the package directory
 					// with a relative path. (https://github.com/golang/vscode-go/issues/1713)
-					try {
-						const { program, dirname, programIsDirectory } = parseProgramArgSync(debugConfiguration);
-						if (dirname) {
-							debugConfiguration['__buildDir'] = dirname;
-							debugConfiguration['program'] = programIsDirectory
-								? '.'
-								: '.' + path.sep + path.relative(dirname, program);
-						}
-					} catch (e) {
-						this.showWarning('invalidProgramArg', `Invalid 'program': ${e}`);
-						// keep going - just in case dlv knows how to handle this better.
+					// parseDebugProgramArgSync will throw an error if `program` is invalid.
+					const { program, dirname, programIsDirectory } = parseDebugProgramArgSync(
+						debugConfiguration['program']
+					);
+					if (
+						dirname &&
+						// Presence of the following attributes indicates externally launched debug adapter.
+						// Don't mess with 'program' if the debug adapter was launched externally.
+						!debugConfiguration.port &&
+						!debugConfiguration.debugServer
+					) {
+						debugConfiguration['__buildDir'] = dirname;
+						debugConfiguration['program'] = programIsDirectory
+							? '.'
+							: '.' + path.sep + path.relative(dirname, program);
 					}
 				}
 			}
@@ -462,4 +460,30 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		});
 	}
+}
+
+// parseDebugProgramArgSync parses program arg of debug/auto/test launch requests.
+export function parseDebugProgramArgSync(
+	program: string
+): { program: string; dirname: string; programIsDirectory: boolean } {
+	if (!program) {
+		throw new Error('The program attribute is missing in the debug configuration in launch.json');
+	}
+	try {
+		const pstats = lstatSync(program);
+		if (pstats.isDirectory()) {
+			return { program, dirname: program, programIsDirectory: true };
+		}
+		const ext = path.extname(program);
+		if (ext === '.go') {
+			// TODO(hyangah): .s?
+			return { program, dirname: path.dirname(program), programIsDirectory: false };
+		}
+	} catch (e) {
+		console.log(`parseDebugProgramArgSync failed: ${e}`);
+	}
+	// shouldn't reach here if program was a valid directory or .go file.
+	throw new Error(
+		`The program attribute '${program}' must be a valid directory or .go file in debug/test/auto modes.`
+	);
 }
