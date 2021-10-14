@@ -11,7 +11,12 @@ import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguage
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
-import { developerSurveyConfig } from './goDeveloperSurvey';
+import {
+	developerSurveyConfig,
+	getDeveloperSurveyConfig,
+	maybePromptForDeveloperSurvey,
+	promptForDeveloperSurvey
+} from './goDeveloperSurvey';
 import { getGoConfig } from './config';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
@@ -50,7 +55,7 @@ export function maybePromptForGoplsSurvey() {
 		return;
 	}
 	const now = new Date();
-	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
+	let cfg = shouldPromptForSurvey(now, getGoplsSurveyConfig());
 	if (!cfg) {
 		return;
 	}
@@ -200,7 +205,7 @@ To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setti
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
 
-function getSurveyConfig(): GoplsSurveyConfig {
+function getGoplsSurveyConfig(): GoplsSurveyConfig {
 	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
 }
 
@@ -244,17 +249,32 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 
 export async function showSurveyConfig() {
 	// TODO(rstambler): Add developer survey config.
-	outputChannel.appendLine('Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getSurveyConfig(), null, 2));
+	outputChannel.appendLine('HaTs Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
 	outputChannel.show();
 
-	const selected = await vscode.window.showInformationMessage('Prompt for survey?', 'Yes', 'Maybe', 'No');
+	outputChannel.appendLine('Developer Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getDeveloperSurveyConfig(), null, 2));
+	outputChannel.show();
+
+	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(getSurveyConfig(), new Date());
+			promptForGoplsSurvey(getGoplsSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
 			maybePromptForGoplsSurvey();
+			break;
+		default:
+			break;
+	}
+	selected = await vscode.window.showInformationMessage('Prompt for Developer survey?', 'Yes', 'Maybe', 'No');
+	switch (selected) {
+		case 'Yes':
+			promptForDeveloperSurvey(getDeveloperSurveyConfig(), new Date());
+			break;
+		case 'Maybe':
+			maybePromptForDeveloperSurvey();
 			break;
 		default:
 			break;

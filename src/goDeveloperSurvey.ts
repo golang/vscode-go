@@ -43,7 +43,7 @@ export function maybePromptForDeveloperSurvey() {
 		return;
 	}
 	const now = new Date();
-	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
+	let cfg = shouldPromptForSurvey(now, getDeveloperSurveyConfig());
 	if (!cfg) {
 		return;
 	}
@@ -121,12 +121,13 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	return cfg;
 }
 
-async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
+export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
 	let selected = await vscode.window.showInformationMessage(
 		// TODO(rstambler): Figure out how to phrase this.
-		'Looks like you are coding in Go! We are currently running a Go developer survey...',
+		`Looks like you are coding in Go! Help ensure Go is meeting your needs
+by participating in this 10-minute survey by ${endDate.toDateString()}?`,
 		'Yes',
-		'Not now',
+		'Remind me later',
 		'Never'
 	);
 
@@ -176,7 +177,7 @@ To opt-out of all survey prompts, please set 'go.survey.prompt' to false.`,
 
 export const developerSurveyConfig = 'developerSurveyConfig';
 
-function getSurveyConfig(): DeveloperSurveyConfig {
+export function getDeveloperSurveyConfig(): DeveloperSurveyConfig {
 	return getStateConfig(developerSurveyConfig) as DeveloperSurveyConfig;
 }
 
