@@ -299,7 +299,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 	private async startAndConnectToServer() {
 		try {
-			const { port, host, dlvDapServer } = await startDapServer(
+			const { dlvDapServer, socket } = await startDapServer(
 				this.configuration,
 				(msg) => this.outputEvent('stdout', msg),
 				(msg) => this.outputEvent('stderr', msg),
@@ -312,21 +312,8 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 					this.logger?.info(msg);
 				}
 			);
-			const socket = await new Promise<net.Socket>((resolve, reject) => {
-				// eslint-disable-next-line prefer-const
-				let timer: NodeJS.Timeout;
-				const s = net.createConnection(port, host, () => {
-					clearTimeout(timer);
-					resolve(s);
-				});
-				timer = setTimeout(() => {
-					reject('connection timeout');
-					s?.destroy();
-				}, 1000);
-			});
 
 			this.dlvDapServer = dlvDapServer;
-			this.port = port;
 			this.socket = socket;
 			this.start(this.socket, this.socket);
 		} catch (err) {
@@ -346,17 +333,30 @@ async function startDapServer(
 	log: (msg: string) => void,
 	logErr: (msg: string) => void,
 	logConsole: (msg: string) => void
-): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
+): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
 	const host = configuration.host || '127.0.0.1';
+	const port = configuration.port || (await getPort());
 
-	if (configuration.port) {
-		// If a port has been specified, assume there is an already
-		// running dap server to connect to.
-		return { port: configuration.port, host };
-	}
-	const port = await getPort();
-	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
-	return { dlvDapServer, port, host };
+	// If a port has been specified, assume there is an already
+	// running dap server to connect to. Otherwise, we start the dlv dap server.
+	const dlvDapServer = configuration.port
+		? undefined
+		: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+
+	const socket = await new Promise<net.Socket>((resolve, reject) => {
+		// eslint-disable-next-line prefer-const
+		let timer: NodeJS.Timeout;
+		const s = net.createConnection(port, host, () => {
+			clearTimeout(timer);
+			resolve(s);
+		});
+		timer = setTimeout(() => {
+			reject('connection timeout');
+			s?.destroy();
+		}, 1000);
+	});
+
+	return { dlvDapServer, socket };
 }
 
 function spawnDlvDapServerProcess(
