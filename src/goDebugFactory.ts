@@ -49,6 +49,7 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 }
 
 export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+	private eventListener: vscode.Disposable;
 	constructor(private outputChannel: vscode.OutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -57,6 +58,14 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 			return null;
 		}
 		const logger = new TimestampedLogger(session.configuration?.trace || 'off', this.outputChannel);
+		this.eventListener = vscode.debug.onDidReceiveDebugSessionCustomEvent(async (ev) => {
+			const files = await vscode.workspace.findFiles(decodeURIComponent(ev.body.path));
+			
+			await ev.session.customRequest(ev.body.reqId, {
+				files: files.map(f => f.path),
+			});
+		}, session);
+
 		return {
 			onWillStartSession: () =>
 				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
@@ -69,7 +78,9 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 		};
 	}
 
-	dispose() {}
+	dispose() {
+		this.eventListener.dispose();
+	}
 }
 
 const TWO_CRLF = '\r\n\r\n';
