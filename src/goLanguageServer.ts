@@ -279,10 +279,7 @@ function scheduleGoplsSuggestions() {
 			return;
 		}
 		maybePromptForGoplsSurvey();
-		// TODO(rstambler): Remove this when the survey is published.
-		if (isInPreviewMode()) {
-			maybePromptForDeveloperSurvey();
-		}
+		maybePromptForDeveloperSurvey();
 	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
