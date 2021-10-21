@@ -257,8 +257,8 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	};
 
 	const execFile = util.promisify(cp.execFile);
-	logVerbose(`$ ${goBinary} install -x ${importPath}} (cwd: ${opts.cwd})`);
-	await execFile(goBinary, ['install', '-x', importPath], opts);
+	logVerbose(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
+	await execFile(goBinary, ['install', '-v', importPath], opts);
 }
 
 async function installToolWithGoGet(
