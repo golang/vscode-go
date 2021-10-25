@@ -312,7 +312,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
+const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
@@ -735,6 +735,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
+			// TODO(hyangah): why does it take 30sec?
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -1940,8 +1941,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.stop();
 			dc = undefined;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
+			const preamble =
+				debugConfig.console === 'integrated' || debugConfig.console === 'external'
+					? 'DAP server for a predetermined client'
+					: 'DAP server listening at';
 			assert(
-				dapLog.includes('DAP server listening at') &&
+				dapLog.includes(preamble) &&
 					dapLog.includes('"command":"initialize"') &&
 					dapLog.includes('"event":"terminated"'),
 				dapLog
@@ -1967,12 +1972,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 		}
 		test('relative path as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest('delve.log', 'relative path');
 		});
 
 		test('number as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest(3, 'file descriptor');
 		});
 	});
@@ -2167,6 +2172,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// be explicit and prevent resolveDebugConfiguration from picking
 		// a default debugAdapter for us.
 		config['debugAdapter'] = isDlvDap ? 'dlv-dap' : 'legacy';
+		if (withConsole) {
+			config['console'] = withConsole;
+		}
 
 		if (!keepUserLogSettings) {
 			dapTraced = true;
@@ -2216,6 +2224,11 @@ suite('Go Debug Adapter Tests (legacy)', function () {
 suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	this.timeout(60_000);
 	testAll(this.ctx, true);
+});
+
+suite('Go Debug Adapter Tests (dlv-dap, console=integrated)', function () {
+	this.timeout(60_000);
+	testAll(this.ctx, true, 'integrated');
 });
 
 // DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
