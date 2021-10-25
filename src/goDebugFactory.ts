@@ -221,7 +221,6 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	constructor(private configuration: vscode.DebugConfiguration, logger?: Logger) {
 		super(logger);
-		this.connected = this.startAndConnectToServer();
 	}
 
 	private connected: Promise<{ connected: boolean; reason?: any }>;
@@ -230,6 +229,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private terminatedOnError = false;
 
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
+		if (!this.connected) {
+			this.connected = this.startAndConnectToServer();
+		}
 		const { connected, reason } = await this.connected;
 		if (connected) {
 			super.sendMessageToServer(message);
@@ -299,19 +301,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 	private async startAndConnectToServer() {
 		try {
-			const { dlvDapServer, socket } = await startDapServer(
-				this.configuration,
-				(msg) => this.outputEvent('stdout', msg),
-				(msg) => this.outputEvent('stderr', msg),
-				(msg) => {
-					this.outputEvent('console', msg);
-					// Some log messages generated after vscode stops the debug session
-					// may not appear in the DEBUG CONSOLE. For easier debugging, log
-					// the messages through the logger that prints to Go Debug output
-					// channel.
-					this.logger?.info(msg);
-				}
-			);
+			const { dlvDapServer, socket } = await this.startDapServer(this.configuration);
 
 			this.dlvDapServer = dlvDapServer;
 			this.socket = socket;
@@ -326,42 +316,53 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private outputEvent(dest: string, output: string, data?: any) {
 		this.sendMessageToClient(new OutputEvent(output, dest, data));
 	}
-}
 
-async function startDapServer(
-	configuration: vscode.DebugConfiguration,
-	log: (msg: string) => void,
-	logErr: (msg: string) => void,
-	logConsole: (msg: string) => void
-): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
-	// If a port has been specified, assume there is an already
-	// running dap server to connect to. Otherwise, we start the dlv dap server.
-	const dlvExternallyLaunched = !!configuration.port;
+	async startDapServer(
+		configuration: vscode.DebugConfiguration
+	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+		const log = (msg: string) => this.outputEvent('stdout', msg);
+		const logErr = (msg: string) => this.outputEvent('stderr', msg);
+		const logConsole = (msg: string) => {
+			this.outputEvent('console', msg);
+			// Some log messages generated after vscode stops the debug session
+			// may not appear in the DEBUG CONSOLE. For easier debugging, log
+			// the messages through the logger that prints to Go Debug output
+			// channel.
+			this.logger?.info(msg);
+		};
 
-	if (!dlvExternallyLaunched && (configuration.console === 'integrated' || configuration.console === 'external')) {
-		return startDAPServerWithClientAddrFlag(configuration, log, logErr, logConsole);
-	}
-	const host = configuration.host || '127.0.0.1';
-	const port = configuration.port || (await getPort());
+		// If a port has been specified, assume there is an already
+		// running dap server to connect to. Otherwise, we start the dlv dap server.
+		const dlvExternallyLaunched = !!configuration.port;
 
-	const dlvDapServer = dlvExternallyLaunched
-		? undefined
-		: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+		if (
+			!dlvExternallyLaunched &&
+			(configuration.console === 'integrated' || configuration.console === 'external')
+		) {
+			return startDAPServerWithClientAddrFlag(configuration, log, logErr, logConsole);
+		}
+		const host = configuration.host || '127.0.0.1';
+		const port = configuration.port || (await getPort());
 
-	const socket = await new Promise<net.Socket>((resolve, reject) => {
-		// eslint-disable-next-line prefer-const
-		let timer: NodeJS.Timeout;
-		const s = net.createConnection(port, host, () => {
-			clearTimeout(timer);
-			resolve(s);
+		const dlvDapServer = dlvExternallyLaunched
+			? undefined
+			: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+
+		const socket = await new Promise<net.Socket>((resolve, reject) => {
+			// eslint-disable-next-line prefer-const
+			let timer: NodeJS.Timeout;
+			const s = net.createConnection(port, host, () => {
+				clearTimeout(timer);
+				resolve(s);
+			});
+			timer = setTimeout(() => {
+				reject('connection timeout');
+				s?.destroy();
+			}, 1000);
 		});
-		timer = setTimeout(() => {
-			reject('connection timeout');
-			s?.destroy();
-		}, 1000);
-	});
 
-	return { dlvDapServer, socket };
+		return { dlvDapServer, socket };
+	}
 }
 
 async function startDAPServerWithClientAddrFlag(
@@ -385,9 +386,32 @@ async function startDAPServerWithClientAddrFlag(
 	//  1) launch dlv in the super-module module directory and adjust launchArgs.cwd (--wd).
 	//  2) introduce a new buildDir launch attribute.
 	return new Promise<{ dlvDapServer: ChildProcessWithoutNullStreams; socket: net.Socket }>((resolve, reject) => {
-		let p: ChildProcessWithoutNullStreams = undefined;
+		let s: net.Server = undefined; // temporary server that waits for p to connect to.
+		let p: ChildProcessWithoutNullStreams = undefined; // dlv dap
 
-		const s = net.createServer();
+		const timeoutToken: NodeJS.Timer = setTimeout(() => {
+			if (s?.listening) {
+				s.close();
+			}
+			if (p) {
+				p.kill('SIGINT');
+			}
+			reject(new Error('timed out while waiting for DAP server to start'));
+		}, 30_000);
+
+		s = net.createServer({ pauseOnConnect: true }, (socket) => {
+			if (!p) {
+				logVerbose('unexpected connection, ignoring...');
+				socket.resume();
+				socket.destroy(new Error('unexpected connection'));
+				return;
+			}
+			logVerbose(`connected: ${port}`);
+			clearTimeout(timeoutToken);
+			s.close(); // accept no more connection
+			socket.resume();
+			resolve({ dlvDapServer: p, socket });
+		});
 		s.on('close', () => {
 			logVerbose('server is closed');
 		});
@@ -397,21 +421,6 @@ async function startDAPServerWithClientAddrFlag(
 		});
 
 		s.maxConnections = 1;
-
-		const timeoutToken: NodeJS.Timer = setTimeout(() => {
-			s.close();
-			if (p) {
-				p.kill('SIGINT');
-			}
-			reject(new Error('timed out while waiting for DAP server to start'));
-		}, 30_000);
-
-		s.on('connection', (socket) => {
-			logVerbose(`connected: ${port}`);
-			clearTimeout(timeoutToken);
-			s.close(); // accept no more connection
-			resolve({ dlvDapServer: p, socket });
-		});
 
 		s.listen(port);
 
