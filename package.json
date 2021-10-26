@@ -773,6 +773,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              },
+              "showRegisters": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
               }
             }
           },
@@ -969,6 +974,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              },
+              "showRegisters": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
               }
             }
           }
@@ -1819,6 +1829,11 @@
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "showRegisters": {
+              "type": "boolean",
+              "default": false,
+              "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
             },
             "showLog": {
               "type": "boolean",
