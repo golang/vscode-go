@@ -73,7 +73,8 @@ import { getToolFromToolPath } from './utils/pathUtils';
 import WebRequest = require('web-request');
 import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
-import { daysBetween, getStateConfig, maybePromptForSurvey, timeDay, timeMinute } from './goSurvey';
+import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
+import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -277,7 +278,8 @@ function scheduleGoplsSuggestions() {
 		if (!foundGo) {
 			return;
 		}
-		maybePromptForSurvey();
+		maybePromptForGoplsSurvey();
+		maybePromptForDeveloperSurvey();
 	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
@@ -1018,7 +1020,7 @@ export function getLanguageServerToolPath(): string {
 	// Check that all workspace folders are configured with the same GOPATH.
 	if (!allFoldersHaveSameGopath()) {
 		vscode.window.showInformationMessage(
-			'The Go language server is currently not supported in a multi-root set-up with different GOPATHs.'
+			`The Go language server is currently not supported in a multi-root set-up with different GOPATHs (${gopathsPerFolder()}).`
 		);
 		return;
 	}
@@ -1050,6 +1052,14 @@ function allFoldersHaveSameGopath(): boolean {
 	}
 	const tempGopath = getCurrentGoPath(vscode.workspace.workspaceFolders[0].uri);
 	return vscode.workspace.workspaceFolders.find((x) => tempGopath !== getCurrentGoPath(x.uri)) ? false : true;
+}
+
+function gopathsPerFolder(): string[] {
+	const result: string[] = [];
+	for (const folder of vscode.workspace.workspaceFolders) {
+		result.push(getCurrentGoPath(folder.uri));
+	}
+	return result;
 }
 
 export async function shouldUpdateLanguageServer(

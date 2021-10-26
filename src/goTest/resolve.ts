@@ -37,6 +37,7 @@ interface TestSuite {
 }
 
 export class GoTestResolver {
+	public readonly all = new Map<string, TestItem>();
 	public readonly isDynamicSubtest = new WeakSet<TestItem>();
 	public readonly isTestMethod = new WeakSet<TestItem>();
 	public readonly isTestSuiteFunc = new WeakSet<TestItem>();
@@ -50,6 +51,7 @@ export class GoTestResolver {
 		ctrl.resolveHandler = async (item) => {
 			try {
 				await this.resolve(item);
+				this.updateGoTestContext();
 			} catch (error) {
 				if (isInTest()) throw error;
 
@@ -75,7 +77,7 @@ export class GoTestResolver {
 				}
 
 				if (this.workspace.getWorkspaceFolder(item.uri)) {
-					dispose(item);
+					dispose(this, item);
 				}
 			});
 
@@ -212,16 +214,24 @@ export class GoTestResolver {
 		item.children.forEach((child) => {
 			const { name } = GoTest.parseId(child.id);
 			if (!seen.has(name)) {
-				dispose(child);
+				dispose(this, child);
 				return;
 			}
 
 			if (ranges?.some((r) => !!child.range.intersection(r))) {
-				item.children.forEach(dispose);
+				item.children.forEach((x) => dispose(this, x));
 			}
 		});
 
-		disposeIfEmpty(item);
+		disposeIfEmpty(this, item);
+	}
+
+	public updateGoTestContext() {
+		const items = [];
+		for (const item of this.allItems) {
+			items.push(item.id);
+		}
+		vscode.commands.executeCommand('setContext', 'go.tests', items);
 	}
 
 	/* ***** Private ***** */
@@ -233,7 +243,10 @@ export class GoTestResolver {
 
 	// Create an item.
 	private createItem(label: string, uri: Uri, kind: GoTestKind, name?: string): TestItem {
-		return this.ctrl.createTestItem(GoTest.id(uri, kind, name), label, uri.with({ query: '', fragment: '' }));
+		const id = GoTest.id(uri, kind, name);
+		const item = this.ctrl.createTestItem(id, label, uri.with({ query: '', fragment: '' }));
+		this.all.set(id, item);
+		return item;
 	}
 
 	// Retrieve an item.

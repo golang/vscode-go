@@ -40,7 +40,13 @@ export class GoTestExplorer {
 			symProvider.provideDocumentSymbols(doc, token)
 		);
 
+		// Process already open editors
+		vscode.window.visibleTextEditors.forEach((ed) => {
+			inst.documentUpdate(ed.document);
+		});
+
 		context.subscriptions.push(ctrl);
+		context.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
 
 		context.subscriptions.push(
 			vscode.commands.registerCommand('go.test.refresh', async (item) => {
@@ -51,7 +57,7 @@ export class GoTestExplorer {
 
 				try {
 					await inst.resolver.resolve(item);
-					inst.updateGoTestContext();
+					inst.resolver.updateGoTestContext();
 				} catch (error) {
 					const m = 'Failed to resolve tests';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -69,7 +75,7 @@ export class GoTestExplorer {
 				}
 
 				try {
-					await inst.profiler.showProfiles(item);
+					await inst.profiler.show(item);
 				} catch (error) {
 					const m = 'Failed to open profiles';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -99,7 +105,26 @@ export class GoTestExplorer {
 					return;
 				}
 
-				await inst.profiler.showProfiles(item);
+				await inst.profiler.show(item);
+			})
+		);
+
+		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.deleteProfile', async (file) => {
+				if (!file) {
+					await vscode.window.showErrorMessage('No profile selected');
+					return;
+				}
+
+				try {
+					await inst.profiler.delete(file);
+				} catch (error) {
+					const m = 'Failed to delete profile';
+					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.show();
+					await vscode.window.showErrorMessage(m);
+					return;
+				}
 			})
 		);
 
@@ -204,7 +229,7 @@ export class GoTestExplorer {
 	protected async didChangeWorkspaceFolders(e: WorkspaceFoldersChangeEvent) {
 		if (e.added.length > 0) {
 			await this.resolver.resolve();
-			this.updateGoTestContext();
+			this.resolver.updateGoTestContext();
 		}
 
 		if (e.removed.length === 0) {
@@ -219,7 +244,7 @@ export class GoTestExplorer {
 
 			const ws = this.workspace.getWorkspaceFolder(item.uri);
 			if (!ws) {
-				dispose(item);
+				dispose(this.resolver, item);
 			}
 		});
 	}
@@ -246,8 +271,8 @@ export class GoTestExplorer {
 
 		const found = find(this.ctrl.items);
 		if (found) {
-			dispose(found);
-			disposeIfEmpty(found.parent);
+			dispose(this.resolver, found);
+			disposeIfEmpty(this.resolver, found.parent);
 		}
 	}
 
@@ -255,14 +280,14 @@ export class GoTestExplorer {
 		let update = false;
 		this.ctrl.items.forEach((item) => {
 			if (e.affectsConfiguration('go.testExplorerPackages', item.uri)) {
-				dispose(item);
+				dispose(this.resolver, item);
 				update = true;
 			}
 		});
 
 		if (update) {
 			this.resolver.resolve();
-			this.updateGoTestContext();
+			this.resolver.updateGoTestContext();
 		}
 	}
 
@@ -270,25 +295,11 @@ export class GoTestExplorer {
 
 	// Handle opened documents, document changes, and file creation.
 	private async documentUpdate(doc: TextDocument, ranges?: Range[]) {
-		if (doc.uri.scheme === 'git') {
-			// TODO(firelizzard18): When a workspace is reopened, VSCode passes us git: URIs. Why?
-			const { path } = JSON.parse(doc.uri.query);
-			doc = await vscode.workspace.openTextDocument(path);
-		}
-
 		if (!doc.uri.path.endsWith('_test.go')) {
 			return;
 		}
 
 		await this.resolver.processDocument(doc, ranges);
-		this.updateGoTestContext();
-	}
-
-	private updateGoTestContext() {
-		const items = [];
-		for (const item of this.resolver.allItems) {
-			items.push(item.id);
-		}
-		vscode.commands.executeCommand('setContext', 'go.tests', items);
+		this.resolver.updateGoTestContext();
 	}
 }

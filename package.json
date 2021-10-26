@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.28.1",
+  "version": "0.29.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -77,7 +77,7 @@
     "fs-extra": "^9.0.0",
     "get-port": "^5.1.1",
     "gts": "^3.1.0",
-    "mocha": "^7.1.1",
+    "mocha": "^9.1.2",
     "prettier": "^2.2.1",
     "sinon": "^9.0.2",
     "ts-loader": "^7.0.5",
@@ -99,7 +99,8 @@
     "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
-    "onWebviewPanel:welcomeGo"
+    "onWebviewPanel:welcomeGo",
+    "onView:go.test.profile"
   ],
   "main": "./dist/goMain.js",
   "capabilities": {
@@ -249,6 +250,13 @@
         "command": "go.test.captureProfile",
         "title": "Go Test: Profile",
         "description": "Run a test and capture a profile",
+        "category": "Test"
+      },
+      {
+        "command": "go.test.deleteProfile",
+        "title": "Go Test: Delete Profile",
+        "shortTitle": "Delete",
+        "description": "Delete selected profile",
         "category": "Test"
       },
       {
@@ -1330,6 +1338,12 @@
           "description": "Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.",
           "scope": "resource"
         },
+        "go.testExplorer.showOutput": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the test output terminal when a test run is started.",
+          "scope": "window"
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {
@@ -1636,6 +1650,11 @@
             "run": true
           }
         },
+        "go.survey.prompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prompt for surveys, including the gopls survey and the Go developer survey."
+        },
         "go.editorContextMenuCommands": {
           "type": "object",
           "properties": {
@@ -1661,7 +1680,7 @@
             },
             "testAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to run the test under the cursor to the editor context menu"
             },
             "testFile": {
@@ -1706,12 +1725,12 @@
             },
             "debugTestAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to debug the test under the cursor to the editor context menu"
             },
             "benchmarkAtCursor": {
               "type": "boolean",
-              "default": true,
+              "default": false,
               "description": "If true, adds command to benchmark the test under the cursor to the editor context menu"
             }
           },
@@ -1792,13 +1811,31 @@
                 1,
                 2
               ],
-              "description": "Delve Api Version to use. Default value is 2.",
+              "description": "Delve Api Version to use. Default value is 2. This applies only when using the 'legacy' debug adapter.",
               "default": 2
             },
             "showGlobalVariables": {
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "showLog": {
+              "type": "boolean",
+              "description": "Show log output from the delve debugger. Maps to dlv's `--log` flag.",
+              "default": false
+            },
+            "logOutput": {
+              "type": "string",
+              "enum": [
+                "debugger",
+                "gdbwire",
+                "lldbout",
+                "debuglineerr",
+                "rpc",
+                "dap"
+              ],
+              "description": "Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.",
+              "default": "debugger"
             },
             "debugAdapter": {
               "type": "string",
@@ -1808,6 +1845,14 @@
               ],
               "description": "Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses.",
               "default": "dlv-dap"
+            },
+            "dlvFlags": {
+              "type": "array",
+              "description": "Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             },
             "substitutePath": {
               "type": "array",
@@ -1830,19 +1875,7 @@
               "default": []
             }
           },
-          "default": {
-            "dlvLoadConfig": {
-              "followPointers": true,
-              "maxVariableRecurse": 1,
-              "maxStringLen": 64,
-              "maxArrayValues": 64,
-              "maxStructFields": -1
-            },
-            "apiVersion": 2,
-            "showGlobalVariables": false,
-            "debugAdapter": "legacy",
-            "substitutePath": []
-          },
+          "default": {},
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
         },
@@ -1911,6 +1944,7 @@
             "build.directoryFilters": {
               "type": "array",
               "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "default": "[\"-node_modules\"]",
               "scope": "resource"
             },
             "build.env": {
@@ -1976,7 +2010,7 @@
             },
             "ui.codelenses": {
               "type": "object",
-              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelens\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
               "scope": "resource",
               "properties": {
                 "gc_details": {
@@ -2135,6 +2169,11 @@
                   "markdownDescription": "detect impossible interface-to-interface type assertions\n\nThis checker flags type assertions v.(T) and corresponding type-switch cases\nin which the static type V of v is an interface that cannot possibly implement\nthe target interface T. This occurs when V and T contain methods with the same\nname but different signatures. Example:\n\n\tvar v interface {\n\t\tRead()\n\t}\n\t_ = v.(io.Reader)\n\nThe Read method in v has a different signature than the Read method in\nio.Reader, so this assertion cannot succeed.\n",
                   "default": true
                 },
+                "infertypeargs": {
+                  "type": "boolean",
+                  "markdownDescription": "check for unnecessary type arguments in call expressions\n\nExplicit type arguments may be omitted from call expressions if they can be\ninferred from function arguments, or from other type arguments:\n\nfunc f[T any](T) {}\n\nfunc _() {\n\tf[string](\"foo\") // string could be inferred\n}\n",
+                  "default": true
+                },
                 "loopclosure": {
                   "type": "boolean",
                   "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer checks for references to loop variables from within a\nfunction literal inside the loop body. It checks only instances where\nthe function literal is called in a defer or go statement that is the\nlast statement in the loop body, as otherwise we would need whole\nprogram analysis.\n\nFor example:\n\n\tfor i, v := range s {\n\t\tgo func() {\n\t\t\tprintln(i, v) // not what you might expect\n\t\t}()\n\t}\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
@@ -2227,7 +2266,7 @@
                 },
                 "undeclaredname": {
                   "type": "boolean",
-                  "markdownDescription": "suggested fixes for \"undeclared name: <>\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"undeclared name: <>\". It will insert a new statement:\n\"<> := \".",
+                  "markdownDescription": "suggested fixes for \"undeclared name: <>\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"undeclared name: <>\". It will either insert a new statement,\nsuch as:\n\n\"<> := \"\n\nor a new function declaration, such as:\n\nfunc <>(inferred parameters) {\n\tpanic(\"implement me!\")\n}\n",
                   "default": true
                 },
                 "unmarshal": {
@@ -2259,6 +2298,11 @@
                   "type": "boolean",
                   "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}\n",
                   "default": false
+                },
+                "useany": {
+                  "type": "boolean",
+                  "markdownDescription": "check for constraints that could be simplified to \"any\"",
+                  "default": true
                 }
               }
             },
@@ -2375,7 +2419,7 @@
             },
             "ui.navigation.symbolStyle": {
               "type": "string",
-              "markdownDescription": "(Advanced) symbolStyle controls how symbols are qualified in symbol responses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"symbolStyle\": \"dynamic\",\n...\n}\n```\n",
+              "markdownDescription": "(Advanced) symbolStyle controls how symbols are qualified in symbol responses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"symbolStyle\": \"Dynamic\",\n...\n}\n```\n",
               "enum": [
                 "Dynamic",
                 "Full",
@@ -2418,6 +2462,10 @@
         {
           "command": "go.test.captureProfile",
           "when": "false"
+        },
+        {
+          "command": "go.test.deleteProfile",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -2442,17 +2490,17 @@
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.testAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.testAtCursor && resourceLangId == go",
           "command": "go.test.cursor",
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.benchmarkAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.benchmarkAtCursor && resourceLangId == go",
           "command": "go.benchmark.cursor",
           "group": "Go group 1"
         },
         {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.debugTestAtCursor && resourceLangId == go && !config.editor.codeLens",
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.debugTestAtCursor && resourceLangId == go",
           "command": "go.debug.cursor",
           "group": "Go group 1"
         },
@@ -2517,6 +2565,23 @@
           "command": "go.test.captureProfile",
           "when": "testId in go.tests && testId =~ /\\?(test|benchmark)/",
           "group": "profile"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "go.test.deleteProfile",
+          "when": "viewItem == go:test:file"
+        }
+      ]
+    },
+    "views": {
+      "test": [
+        {
+          "id": "go.test.profile",
+          "name": "Profiles",
+          "contextualTitle": "Go",
+          "icon": "$(graph)",
+          "when": "go.hasProfiles"
         }
       ]
     }

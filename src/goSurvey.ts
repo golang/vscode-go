@@ -11,10 +11,17 @@ import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguage
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
+import {
+	developerSurveyConfig,
+	getDeveloperSurveyConfig,
+	maybePromptForDeveloperSurvey,
+	promptForDeveloperSurvey
+} from './goDeveloperSurvey';
+import { getGoConfig } from './config';
 
-// SurveyConfig is the set of global properties used to determine if
+// GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
-export interface SurveyConfig {
+export interface GoplsSurveyConfig {
 	// prompt is true if the user can be prompted to take the survey.
 	// It is false if the user has responded "Never" to the prompt.
 	prompt?: boolean;
@@ -40,13 +47,18 @@ export interface SurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForSurvey() {
+export function maybePromptForGoplsSurvey() {
+	// First, check the value of the 'go.survey.prompt' setting to see
+	// if the user has opted out of all survey prompts.
+	const goConfig = getGoConfig();
+	if (goConfig.get('survey.prompt') === false) {
+		return;
+	}
 	const now = new Date();
-	let cfg = shouldPromptForSurvey(now, getSurveyConfig());
+	let cfg = shouldPromptForSurvey(now, getGoplsSurveyConfig());
 	if (!cfg) {
 		return;
 	}
-	flushSurveyConfig(cfg);
 	if (!cfg.dateToPromptThisMonth) {
 		return;
 	}
@@ -58,21 +70,22 @@ export function maybePromptForSurvey() {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForSurvey(cfg, now);
+		cfg = await promptForGoplsSurvey(cfg, now);
 		if (cfg) {
-			flushSurveyConfig(cfg);
+			flushSurveyConfig(goplsSurveyConfig, cfg);
 		}
 	};
 	const ms = msBetween(now, cfg.dateToPromptThisMonth);
 	setTimeout(callback, ms);
 }
 
-export function shouldPromptForSurvey(now: Date, cfg: SurveyConfig): SurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
 		cfg.prompt = true;
 	}
+	flushSurveyConfig(goplsSurveyConfig, cfg);
 	if (!cfg.prompt) {
 		return;
 	}
@@ -122,6 +135,7 @@ export function shouldPromptForSurvey(now: Date, cfg: SurveyConfig): SurveyConfi
 		cfg.dateToPromptThisMonth = undefined;
 	}
 	cfg.dateComputedPromptThisMonth = now;
+	flushSurveyConfig(goplsSurveyConfig, cfg);
 	return cfg;
 }
 
@@ -132,8 +146,8 @@ function randomIntInRange(min: number, max: number): number {
 	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
-async function promptForSurvey(cfg: SurveyConfig, now: Date): Promise<SurveyConfig> {
-	const selected = await vscode.window.showInformationMessage(
+async function promptForGoplsSurvey(cfg: GoplsSurveyConfig, now: Date): Promise<GoplsSurveyConfig> {
+	let selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
 		'Yes',
@@ -166,7 +180,18 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 		case 'Never':
 			cfg.prompt = false;
 
-			vscode.window.showInformationMessage("No problem! We won't ask again.");
+			selected = await vscode.window.showInformationMessage(
+				`No problem! We won't ask again.
+To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setting.`,
+				'Open Settings'
+			);
+			switch (selected) {
+				case 'Open Settings':
+					vscode.commands.executeCommand('workbench.action.openSettings', 'go.survey.prompt');
+					break;
+				default:
+					break;
+			}
 			break;
 		default:
 			// If the user closes the prompt without making a selection, treat it
@@ -180,19 +205,20 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 
 export const goplsSurveyConfig = 'goplsSurveyConfig';
 
-function getSurveyConfig(): SurveyConfig {
-	return getStateConfig(goplsSurveyConfig) as SurveyConfig;
+function getGoplsSurveyConfig(): GoplsSurveyConfig {
+	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
 }
 
-export function resetSurveyConfig() {
-	flushSurveyConfig(null);
+export function resetSurveyConfigs() {
+	flushSurveyConfig(goplsSurveyConfig, null);
+	flushSurveyConfig(developerSurveyConfig, null);
 }
 
-function flushSurveyConfig(cfg: SurveyConfig) {
+export function flushSurveyConfig(key: string, cfg: any) {
 	if (cfg) {
-		updateGlobalState(goplsSurveyConfig, JSON.stringify(cfg));
+		updateGlobalState(key, JSON.stringify(cfg));
 	} else {
-		updateGlobalState(goplsSurveyConfig, null); // reset
+		updateGlobalState(key, null); // reset
 	}
 }
 
@@ -222,17 +248,33 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 }
 
 export async function showSurveyConfig() {
-	outputChannel.appendLine('Gopls Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getSurveyConfig(), null, 2));
+	// TODO(rstambler): Add developer survey config.
+	outputChannel.appendLine('HaTs Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
 	outputChannel.show();
 
-	const selected = await vscode.window.showInformationMessage('Prompt for survey?', 'Yes', 'Maybe', 'No');
+	outputChannel.appendLine('Developer Survey Configuration');
+	outputChannel.appendLine(JSON.stringify(getDeveloperSurveyConfig(), null, 2));
+	outputChannel.show();
+
+	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForSurvey(getSurveyConfig(), new Date());
+			promptForGoplsSurvey(getGoplsSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForSurvey();
+			maybePromptForGoplsSurvey();
+			break;
+		default:
+			break;
+	}
+	selected = await vscode.window.showInformationMessage('Prompt for Developer survey?', 'Yes', 'Maybe', 'No');
+	switch (selected) {
+		case 'Yes':
+			promptForDeveloperSurvey(getDeveloperSurveyConfig(), new Date());
+			break;
+		case 'Maybe':
+			maybePromptForDeveloperSurvey();
 			break;
 		default:
 			break;
@@ -249,7 +291,7 @@ export function daysBetween(a: Date, b: Date): number {
 }
 
 // minutesBetween returns the number of minutes between a and b.
-function minutesBetween(a: Date, b: Date): number {
+export function minutesBetween(a: Date, b: Date): number {
 	return msBetween(a, b) / timeMinute;
 }
 

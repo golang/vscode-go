@@ -86,7 +86,7 @@ export function getImportPathWithVersion(
 			return importPath + '@' + version;
 		}
 	}
-	return importPath;
+	return importPath + '@latest';
 }
 
 export function containsTool(tools: Tool[], tool: Tool): boolean {

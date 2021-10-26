@@ -4,6 +4,7 @@
  *--------------------------------------------------------*/
 import {
 	CancellationToken,
+	DebugSession,
 	Location,
 	OutputChannel,
 	Position,
@@ -20,10 +21,13 @@ import vscode = require('vscode');
 import { outputChannel } from '../goStatus';
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
-import { getTestFlags, goTest, GoTestOutput } from '../testUtils';
+import { getBenchmarkFunctions, getTestFlags, getTestFunctions, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
+import { debugTestAtCursor } from '../goTest';
+
+let debugSessionID = 0;
 
 type CollectedTest = { item: TestItem; explicitlyIncluded?: boolean };
 
@@ -90,6 +94,21 @@ export class GoTestRunner {
 			true
 		);
 
+		ctrl.createRunProfile(
+			'Go (Debug)',
+			TestRunProfileKind.Debug,
+			async (request, token) => {
+				try {
+					await this.debug(request, token);
+				} catch (error) {
+					const m = 'Failed to debug tests';
+					outputChannel.appendLine(`${m}: ${error}`);
+					await vscode.window.showErrorMessage(m);
+				}
+			},
+			true
+		);
+
 		const pprof = ctrl.createRunProfile(
 			'Go (Profile)',
 			TestRunProfileKind.Run,
@@ -110,6 +129,91 @@ export class GoTestRunner {
 			if (!state) return;
 			this.profiler.options = state;
 		};
+	}
+
+	async debug(request: TestRunRequest, token?: CancellationToken) {
+		if (!request.include) {
+			await vscode.window.showErrorMessage('The Go test explorer does not support debugging multiple tests');
+			return;
+		}
+
+		const collected = new Map<TestItem, CollectedTest[]>();
+		const files = new Set<TestItem>();
+		for (const item of request.include) {
+			await this.collectTests(item, true, request.exclude || [], collected, files);
+		}
+
+		const tests = Array.from(collected.values()).reduce((a, b) => a.concat(b), []);
+		if (tests.length > 1) {
+			await vscode.window.showErrorMessage('The Go test explorer does not support debugging multiple tests');
+			return;
+		}
+
+		const test = tests[0].item;
+		const { kind, name } = GoTest.parseId(test.id);
+		const doc = await vscode.workspace.openTextDocument(test.uri);
+		await doc.save();
+
+		const goConfig = getGoConfig(test.uri);
+		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
+		const testFunctions = await getFunctions(doc, token);
+
+		// TODO Can we get output from the debug session, in order to check for
+		// run/pass/fail events?
+
+		const id = `debug #${debugSessionID++} ${name}`;
+		const subs: vscode.Disposable[] = [];
+		const sessionPromise = new Promise<DebugSession>((resolve) => {
+			subs.push(
+				vscode.debug.onDidStartDebugSession((s) => {
+					if (s.configuration.sessionID === id) {
+						resolve(s);
+						subs.forEach((s) => s.dispose());
+					}
+				})
+			);
+
+			if (token) {
+				subs.push(
+					token.onCancellationRequested(() => {
+						resolve(null);
+						subs.forEach((s) => s.dispose());
+					})
+				);
+			}
+		});
+
+		const run = this.ctrl.createTestRun(request, `Debug ${name}`);
+		const started = await debugTestAtCursor(doc, name, testFunctions, goConfig, id);
+		if (!started) {
+			subs.forEach((s) => s.dispose());
+			run.end();
+			return;
+		}
+
+		const session = await sessionPromise;
+		if (!session) {
+			run.end();
+			return;
+		}
+
+		token.onCancellationRequested(() => vscode.debug.stopDebugging(session));
+
+		await new Promise<void>((resolve) => {
+			const sub = vscode.debug.onDidTerminateDebugSession(didTerminateSession);
+
+			token?.onCancellationRequested(() => {
+				resolve();
+				sub.dispose();
+			});
+
+			function didTerminateSession(s: DebugSession) {
+				if (s.id !== session.id) return;
+				resolve();
+				sub.dispose();
+			}
+		});
+		run.end();
 	}
 
 	// Execute tests - TestController.runTest callback
@@ -151,8 +255,13 @@ export class GoTestRunner {
 			return isInMod(item.parent);
 		}
 
-		let success = true;
 		const run = this.ctrl.createTestRun(request);
+		const windowGoConfig = getGoConfig();
+		if (windowGoConfig.get<boolean>('testExplorer.showOutput')) {
+			await vscode.commands.executeCommand('testing.showMostRecentOutput');
+		}
+
+		let success = true;
 		const subItems: string[] = [];
 		for (const [pkg, items] of collected.entries()) {
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
@@ -200,7 +309,7 @@ export class GoTestRunner {
 				// Remove subtests created dynamically from test output
 				item.children.forEach((child) => {
 					if (this.resolver.isDynamicSubtest.has(child)) {
-						dispose(child);
+						dispose(this.resolver, child);
 					}
 				});
 
@@ -327,15 +436,21 @@ export class GoTestRunner {
 	}
 
 	private async runGoTest(config: RunConfig): Promise<boolean> {
-		const { run, options, pkg, functions, record, concat, flags, ...rest } = config;
+		const { run, options, pkg, functions, record, concat, ...rest } = config;
 		if (Object.keys(functions).length === 0) return true;
+
+		if (options.kind) {
+			if (Object.keys(functions).length > 1) {
+				throw new Error('Profiling more than one test at once is unsupported');
+			}
+			rest.flags.push(...this.profiler.preRun(options, Object.values(functions)[0]));
+		}
 
 		const complete = new Set<TestItem>();
 		const outputChannel = new TestRunOutput(run);
 
 		const success = await goTest({
 			...rest,
-			flags: [...flags, ...this.profiler.preRun(options, Object.values(functions))],
 			outputChannel,
 			dir: pkg.uri.fsPath,
 			functions: Object.keys(functions),

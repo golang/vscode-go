@@ -14,16 +14,17 @@ import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
 import { isInPreviewMode } from '../../src/goLanguageServer';
 import { MockCfg } from '../mocks/MockCfg';
+import { fileURLToPath } from 'url';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 
+	// Set up the test fixtures.
+	const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
+	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
+
 	suiteSetup(async () => {
 		await updateGoVarsFromConfig();
-
-		// Set up the test fixtures.
-		const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
-		const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
 	});
 
@@ -59,7 +60,8 @@ suite('Debug Environment Variable Merge Test', () => {
 			request: 'launch',
 			env: input.env,
 			envFile: input.envFile,
-			debugAdapter: input.debugAdapter
+			debugAdapter: input.debugAdapter,
+			program: filePath
 		});
 
 		const actual = config.env;
@@ -280,7 +282,10 @@ suite('Debug Configuration Merge User Settings', () => {
 					apiVersion: 1,
 					showGlobalVariables: true,
 					debugAdapter: 'dlv-dap',
-					substitutePath: [{ from: 'hello', to: 'goodbye' }]
+					substitutePath: [{ from: 'hello', to: 'goodbye' }],
+					showLog: true,
+					logOutput: 'dap,debugger',
+					dlvFlags: ['--check-go-version=false']
 				}
 			});
 			sinon.stub(config, 'getGoConfig').returns(goConfig);
@@ -300,12 +305,11 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.substitutePath.length, 1);
 			assert.strictEqual(result.substitutePath[0].from, 'hello');
 			assert.strictEqual(result.substitutePath[0].to, 'goodbye');
+			assert.strictEqual(result.showLog, true);
+			assert.strictEqual(result.logOutput, 'dap,debugger');
+			assert.deepStrictEqual(result.dlvFlags, ['--check-go-version=false']);
 			const dlvLoadConfig = result.dlvLoadConfig;
-			assert.strictEqual(dlvLoadConfig.followPointers, false);
-			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 3);
-			assert.strictEqual(dlvLoadConfig.maxStringLen, 32);
-			assert.strictEqual(dlvLoadConfig.maxArrayValues, 32);
-			assert.strictEqual(dlvLoadConfig.maxStructFields, 5);
+			assert.strictEqual(dlvLoadConfig, undefined); // dlvLoadConfig does not apply in dlv-dap mode.
 		});
 
 		test('delve config in settings.json is overriden by launch.json', async () => {
@@ -337,8 +341,8 @@ suite('Debug Configuration Merge User Settings', () => {
 				request: 'launch',
 				mode: 'auto',
 				program: '${fileDirname}',
-				apiVersion: 2,
 				showGlobalVariables: false,
+				apiVersion: 2,
 				dlvLoadConfig: {
 					followPointers: true,
 					maxVariableRecurse: 6,
@@ -347,7 +351,8 @@ suite('Debug Configuration Merge User Settings', () => {
 					maxStructFields: -1
 				},
 				debugAdapter: 'legacy',
-				substitutePath: []
+				substitutePath: [],
+				logOutput: 'rpc'
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
@@ -355,6 +360,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.showGlobalVariables, false);
 			assert.strictEqual(result.debugAdapter, 'legacy');
 			assert.strictEqual(result.substitutePath.length, 0);
+			assert.strictEqual(result.showLog, undefined);
+			assert.strictEqual(result.logOutput, 'rpc');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);
 			assert.strictEqual(dlvLoadConfig.maxVariableRecurse, 6);
@@ -492,8 +499,105 @@ suite('Debug Configuration Resolve Paths', () => {
 	});
 });
 
+function writeEmptyFile(filename: string) {
+	const dir = path.dirname(filename);
+	if (!fs.existsSync(dir)) {
+		createDirRecursively(dir);
+	}
+	try {
+		fs.writeFileSync(filename, '');
+	} catch (e) {
+		console.log(`failed to write a file: ${e}`);
+	}
+}
+
+function createDirRecursively(dir: string) {
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch (e) {
+		console.log(`failed to create directory: ${e}`);
+	}
+}
+
+suite('Debug Configuration With Invalid Program', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	let workspaceDir = '';
+	setup(() => {
+		workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'godebugrelpath_test'));
+	});
+
+	teardown(() => {
+		rmdirRecursive(workspaceDir);
+	});
+
+	function debugConfig(adapter: string) {
+		return {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			mode: 'auto',
+			debugAdapter: adapter,
+			program: path.join('foo', 'bar.go'),
+			cwd: '.',
+			output: 'debug'
+		};
+	}
+
+	test('empty, undefined program is an error', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = '';
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		assert.throws(() => {
+			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		}, /The program attribute is missing/);
+	});
+
+	test('non-existing file/directory is an error', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = '/notexists';
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		assert.throws(() => {
+			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		}, /The program attribute.* must be a valid directory or .go file/);
+	});
+
+	test('files other than .go file with debug/test/auto mode is an error', () => {
+		writeEmptyFile(path.join(workspaceDir, 'foo', 'bar.test'));
+		const config = debugConfig('dlv-dap');
+		config.program = path.join(workspaceDir, 'foo', 'bar.test');
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		assert.throws(() => {
+			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		}, /The program attribute.* must be a valid directory or .go file/);
+	});
+});
+
 suite('Debug Configuration Converts Relative Paths', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
+
+	let workspaceDir = '';
+	setup(() => {
+		workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'godebugrelpath_test'));
+	});
+
+	teardown(() => {
+		rmdirRecursive(workspaceDir);
+	});
 
 	function debugConfig(adapter: string) {
 		return {
@@ -509,11 +613,14 @@ suite('Debug Configuration Converts Relative Paths', () => {
 	}
 
 	test('resolve relative paths with workspace root in dlv-dap mode, exec mode does not set __buildDir', () => {
+		writeEmptyFile(path.join(workspaceDir, 'foo', 'bar.exe'));
+
 		const config = debugConfig('dlv-dap');
 		config.mode = 'exec';
 		config.program = path.join('foo', 'bar.exe');
+
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
@@ -524,18 +631,20 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
-				program: path.join(os.tmpdir(), 'foo', 'bar.exe'),
-				cwd: os.tmpdir(),
+				program: path.join(workspaceDir, 'foo', 'bar.exe'),
+				cwd: workspaceDir,
 				__buildDir: undefined
 			}
 		);
 	});
 
 	test('program and __buildDir are updated while resolving debug configuration in dlv-dap mode', () => {
+		createDirRecursively(path.join(workspaceDir, 'foo', 'bar', 'pkg'));
+
 		const config = debugConfig('dlv-dap');
 		config.program = path.join('foo', 'bar', 'pkg');
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
@@ -549,19 +658,21 @@ suite('Debug Configuration Converts Relative Paths', () => {
 			{ program, cwd, output, __buildDir },
 			{
 				program: '.',
-				cwd: os.tmpdir(),
-				output: path.join(os.tmpdir(), 'debug'),
-				__buildDir: path.join(os.tmpdir(), 'foo', 'bar', 'pkg')
+				cwd: workspaceDir,
+				output: path.join(workspaceDir, 'debug'),
+				__buildDir: path.join(workspaceDir, 'foo', 'bar', 'pkg')
 			}
 		);
 	});
 
 	test('program and __buildDir are not updated when working with externally launched adapters', () => {
+		createDirRecursively(path.join(workspaceDir, 'foo', 'bar', 'pkg'));
+
 		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
 		config.program = path.join('foo', 'bar', 'pkg');
 		config.port = 12345;
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
@@ -572,19 +683,21 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
-				program: path.join(os.tmpdir(), 'foo', 'bar', 'pkg'),
-				cwd: os.tmpdir(),
+				program: path.join(workspaceDir, 'foo', 'bar', 'pkg'),
+				cwd: workspaceDir,
 				__buildDir: undefined
 			}
 		);
 	});
 
 	test('program and __buildDir are not updated when working with externally launched adapters (debugServer)', () => {
+		createDirRecursively(path.join(workspaceDir, 'foo', 'bar', 'pkg'));
+
 		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
 		config.program = path.join('foo', 'bar', 'pkg');
 		config.debugServer = 4777;
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
@@ -595,40 +708,70 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
-				program: path.join(os.tmpdir(), 'foo', 'bar', 'pkg'),
-				cwd: os.tmpdir(),
+				program: path.join(workspaceDir, 'foo', 'bar', 'pkg'),
+				cwd: workspaceDir,
 				__buildDir: undefined
 			}
 		);
 	});
 
-	test('empty, undefined paths are not affected', () => {
-		const config = debugConfig('dlv-dap');
-		config.program = undefined;
-		config.cwd = '';
-		delete config.output;
+	test('directory as program still works when directory name contains .', () => {
+		createDirRecursively(path.join(workspaceDir, 'foo.test'));
 
+		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
+		config.program = 'foo.test';
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
-		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
 		);
 		assert.deepStrictEqual(
-			{ program, cwd, output },
+			{ program, cwd, __buildDir },
 			{
-				program: undefined,
+				program: '.',
+				cwd: workspaceDir,
+				__buildDir: path.join(workspaceDir, 'foo.test')
+			}
+		);
+	});
+
+	test('empty, undefined paths are not affected', () => {
+		writeEmptyFile(path.join(workspaceDir, 'bar_test.go'));
+
+		const config = debugConfig('dlv-dap');
+		config.program = 'bar_test.go';
+		config.cwd = '';
+		delete config.output;
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		const {
+			program,
+			cwd,
+			output,
+			__buildDir
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		assert.deepStrictEqual(
+			{ program, cwd, output, __buildDir },
+			{
+				program: '.' + path.sep + 'bar_test.go',
 				cwd: '',
-				output: undefined
+				output: undefined,
+				__buildDir: workspaceDir
 			}
 		);
 	});
 
 	test('relative paths with no workspace root are not expanded', () => {
 		const config = debugConfig('dlv-dap');
+		config.program = '.'; // the program must be a valid directory or .go file.
 		const {
 			program,
 			cwd,
@@ -638,18 +781,20 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		assert.deepStrictEqual(
 			{ program, cwd, output, __buildDir },
 			{
-				program: '.' + path.sep + 'bar.go',
+				program: '.',
 				cwd: '.',
 				output: 'debug',
-				__buildDir: 'foo'
+				__buildDir: '.'
 			}
 		);
 	});
 
 	test('do not affect relative paths (workspace) in legacy mode', () => {
+		writeEmptyFile(path.join(workspaceDir, 'foo', 'bar.go'));
+
 		const config = debugConfig('legacy');
 		const workspaceFolder = {
-			uri: vscode.Uri.file(os.tmpdir()),
+			uri: vscode.Uri.file(workspaceDir),
 			name: 'test',
 			index: 0
 		};
@@ -669,6 +814,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 
 	test('do not affect relative paths (no workspace) in legacy mode', () => {
 		const config = debugConfig('legacy');
+		config.program = '.'; // program must be a valid directory or .go file.
 		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			undefined,
 			config
@@ -676,7 +822,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		assert.deepStrictEqual(
 			{ program, cwd, output },
 			{
-				program: path.join('foo', 'bar.go'),
+				program: '.',
 				cwd: '.',
 				output: 'debug'
 			}

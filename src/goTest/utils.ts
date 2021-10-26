@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import * as vscode from 'vscode';
+import { GoTestResolver } from './resolve';
 
 // GoTestKind indicates the Go construct represented by a test item.
 //
@@ -91,13 +92,14 @@ export function forEachAsync<T>(
 	return Promise.all(promises);
 }
 
-export function dispose(item: vscode.TestItem) {
+export function dispose(resolver: GoTestResolver, item: vscode.TestItem) {
+	resolver.all.delete(item.id);
 	item.parent.children.delete(item.id);
 }
 
 // Dispose of the item if it has no children, recursively. This facilitates
 // cleaning up package/file trees that contain no tests.
-export function disposeIfEmpty(item: vscode.TestItem) {
+export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) {
 	// Don't dispose of empty top-level items
 	const { kind } = GoTest.parseId(item.id);
 	if (kind === 'module' || kind === 'workspace' || (kind === 'package' && !item.parent)) {
@@ -108,6 +110,6 @@ export function disposeIfEmpty(item: vscode.TestItem) {
 		return;
 	}
 
-	dispose(item);
-	disposeIfEmpty(item.parent);
+	dispose(resolver, item);
+	disposeIfEmpty(resolver, item.parent);
 }

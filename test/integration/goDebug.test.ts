@@ -26,12 +26,11 @@ import {
 	RemoteSourcesAndPackages
 } from '../../src/debugAdapter/goDebug';
 import * as extConfig from '../../src/config';
-import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
-import { parseProgramArgSync } from '../../src/goDebugFactory';
 import { TimestampedLogger } from '../../src/goLogging';
 
 // For debugging test and streaming the trace instead of buffering, set this.
@@ -1145,11 +1144,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should set breakpoints during continue (legacy)', async function () {
-			if (isDlvDap) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should set breakpoints during continue', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
@@ -1176,7 +1171,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		});
 
-		async function setBreakpointsWhileRunning(resumeFunc: () => void) {
+		async function setBreakpointsWhileRunningStep(resumeFunc: () => Promise<void>) {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
@@ -1198,18 +1193,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			// The program is now stopped at the line containing time.Sleep().
 			// Issue a next request, followed by a setBreakpointsRequest.
-			resumeFunc();
+			await resumeFunc();
 
-			// Note: the current behavior of setting a breakpoint during a next
-			// request will cause the step to be interrupted, so it may not be
-			// stopped on the next line.
+			// Assert that the program completes the step request.
 			await Promise.all([
 				dc.setBreakpointsRequest({
 					lines: [resumeBreakpoint.line],
 					breakpoints: [{ line: resumeBreakpoint.line, column: 0 }],
 					source: { path: resumeBreakpoint.path }
 				}),
-				dc.assertStoppedLocation('pause', {})
+				dc.assertStoppedLocation('step', {})
 			]);
 
 			// Once the 'step' has completed, continue the program and
@@ -1221,21 +1214,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		}
 
-		test('should set breakpoints during continue', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
-			await setBreakpointsWhileRunning(async () => {
-				const nextResponse = await dc.continueRequest({ threadId: 1 });
-				assert.ok(nextResponse.success);
-			});
-		});
-
 		test('should set breakpoints during next', async function () {
 			if (!isDlvDap) {
 				this.skip();
 			}
-			await setBreakpointsWhileRunning(async () => {
+			await setBreakpointsWhileRunningStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
@@ -1246,7 +1229,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip();
 			}
 
-			await setBreakpointsWhileRunning(async () => {
+			await setBreakpointsWhileRunningStep(async () => {
+				await Promise.all([dc.stepInRequest({ threadId: 1 }), dc.assertStoppedLocation('step', {})]);
+
 				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
 				assert.ok(stepOutResponse.success);
 			});
@@ -2207,8 +2192,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// that the second test could build the binary, and then the
 		// first test could delete that binary during cleanup before the
 		// second test has a chance to run it.
-		if (!config['output'] && config['mode'] !== 'remote') {
-			const dir = parseProgramArgSync(config).dirname;
+		if (!config['output'] && ['debug', 'auto', 'test'].includes(config['mode'])) {
+			const dir = parseDebugProgramArgSync(config['program']).dirname;
 			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
 		}
 		testNumber++;

@@ -112,11 +112,11 @@ import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
-import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
+import { resetSurveyConfigs, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
-import { ProfileDocumentContentProvider } from './goToolPprof';
+import { killRunningPprof } from './goTest/profile';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -339,10 +339,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
 		GoTestExplorer.setup(ctx);
 	}
-
-	ctx.subscriptions.push(
-		vscode.workspace.registerTextDocumentContentProvider('go-tool-pprof', new ProfileDocumentContentProvider())
-	);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
@@ -716,7 +712,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	// Survey related commands
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfigs()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
@@ -802,6 +798,7 @@ const goNightlyPromptKey = 'goNightlyPrompt';
 export function deactivate() {
 	return Promise.all([
 		cancelRunningTests(),
+		killRunningPprof(),
 		Promise.resolve(cleanupTempDir()),
 		Promise.resolve(disposeGoStatusBar())
 	]);
