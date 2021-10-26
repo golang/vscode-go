@@ -228,9 +228,32 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	private socket: net.Socket;
 	private terminatedOnError = false;
 
+	protected sendMessageToClient(message: vscode.DebugProtocolMessage) {
+		const m = message as any;
+		if (m.type === 'request') {
+			logVerbose(`do not forward reverse request: dropping ${JSON.stringify(m)}`);
+			return;
+		}
+
+		super.sendMessageToClient(message);
+	}
+
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
+		const m = message as any;
+		if (m.type === 'response') {
+			logVerbose(`do not forward reverse request response: dropping ${JSON.stringify(m)}`);
+			return;
+		}
+
 		if (!this.connected) {
-			this.connected = this.startAndConnectToServer();
+			if (m.type === 'request' && m.command === 'initialize') {
+				this.connected = this.launchDelveDAP();
+			} else {
+				this.connected = Promise.resolve({
+					connected: false,
+					reason: `the first message must be an initialize request, got ${JSON.stringify(m)}`
+				});
+			}
 		}
 		const { connected, reason } = await this.connected;
 		if (connected) {
@@ -243,7 +266,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			this.outputEvent('stderr', errMsg);
 			this.sendMessageToClient(new TerminatedEvent());
 		}
-		if ((message as any).type === 'request') {
+		if (m.type === 'request') {
 			const req = message as DebugProtocol.Request;
 			this.sendMessageToClient({
 				seq: 0,
@@ -299,7 +322,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		});
 	}
 
-	private async startAndConnectToServer() {
+	private async launchDelveDAP() {
 		try {
 			const { dlvDapServer, socket } = await this.startDapServer(this.configuration);
 
@@ -313,7 +336,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		return { connected: true };
 	}
 
-	private outputEvent(dest: string, output: string, data?: any) {
+	protected outputEvent(dest: string, output: string, data?: any) {
 		this.sendMessageToClient(new OutputEvent(output, dest, data));
 	}
 
@@ -339,7 +362,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			!dlvExternallyLaunched &&
 			(configuration.console === 'integrated' || configuration.console === 'external')
 		) {
-			return startDAPServerWithClientAddrFlag(configuration, log, logErr, logConsole);
+			return this.startDAPServerWithClientAddrFlag(configuration, logErr);
 		}
 		const host = configuration.host || '127.0.0.1';
 		const port = configuration.port || (await getPort());
@@ -363,104 +386,71 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 		return { dlvDapServer, socket };
 	}
+
+	async startDAPServerWithClientAddrFlag(
+		launchAttachArgs: vscode.DebugConfiguration,
+		logErr: (msg: string) => void
+	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+		// This is called only when launchAttachArgs.console === 'integrated' | 'external' currently.
+		const console = (launchAttachArgs as any).console || 'integrated';
+
+		const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
+
+		// logDest - unlike startDAPServer that relies on piping log messages to a file descriptor
+		// using --log-dest, we can pass the user-specified logDest directly to the flag.
+		const logDest = launchAttachArgs.logDest;
+		if (logDest) {
+			dlvArgs.push(`--log-dest=${logDest}`);
+		}
+
+		try {
+			const port = await getPort();
+			const rendezvousServerPromise = waitForDAPServer(port, 30_000);
+
+			dlvArgs.push(`--client-addr=:${port}`);
+
+			dlvArgs.unshift(dlvPath);
+			super.sendMessageToClient({
+				seq: 0,
+				type: 'request',
+				command: 'runInTerminal',
+				arguments: {
+					kind: console,
+					title: `Go Debug Terminal (${launchAttachArgs.name})`,
+					cwd: dir,
+					args: dlvArgs,
+					env: env
+				}
+			});
+			const socket = await rendezvousServerPromise;
+			return { socket };
+		} catch (err) {
+			logErr(`Failed to launch dlv: ${err}`);
+			throw new Error('cannot launch dlv dap. See DEBUG CONSOLE');
+		}
+	}
 }
 
-async function startDAPServerWithClientAddrFlag(
-	launchAttachArgs: vscode.DebugConfiguration,
-	log: (msg: string) => void,
-	logErr: (msg: string) => void,
-	logConsole: (msg: string) => void
-): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
-	const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
-
-	// logDest - unlike startDAPServer that relies on piping log messages to a file descriptor
-	// using --log-dest, we can pass the user-specified logDest directly to the flag.
-	const logDest = launchAttachArgs.logDest;
-	if (logDest) {
-		dlvArgs.push(`--log-dest=${logDest}`);
-	}
-
-	const port = await getPort();
-	// TODO(hyangah): In module-module workspace mode, the program should be build in the super module directory
-	// where go.work (gopls.mod) file is present. Where dlv runs determines the build directory currently. Two options:
-	//  1) launch dlv in the super-module module directory and adjust launchArgs.cwd (--wd).
-	//  2) introduce a new buildDir launch attribute.
-	return new Promise<{ dlvDapServer: ChildProcessWithoutNullStreams; socket: net.Socket }>((resolve, reject) => {
-		let s: net.Server = undefined; // temporary server that waits for p to connect to.
-		let p: ChildProcessWithoutNullStreams = undefined; // dlv dap
-
-		const timeoutToken: NodeJS.Timer = setTimeout(() => {
+function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
+	return new Promise((resolve, reject) => {
+		let s: net.Server = undefined;
+		const timeoutToken = setTimeout(() => {
 			if (s?.listening) {
 				s.close();
 			}
-			if (p) {
-				p.kill('SIGINT');
-			}
-			reject(new Error('timed out while waiting for DAP server to start'));
-		}, 30_000);
+			reject(new Error('timed out while waiting for DAP in reverse mode to connect'));
+		}, timeoutMs);
 
 		s = net.createServer({ pauseOnConnect: true }, (socket) => {
-			if (!p) {
-				logVerbose('unexpected connection, ignoring...');
-				socket.resume();
-				socket.destroy(new Error('unexpected connection'));
-				return;
-			}
 			logVerbose(`connected: ${port}`);
 			clearTimeout(timeoutToken);
 			s.close(); // accept no more connection
 			socket.resume();
-			resolve({ dlvDapServer: p, socket });
+			resolve(socket);
 		});
-		s.on('close', () => {
-			logVerbose('server is closed');
-		});
-		s.on('error', (err) => {
-			logVerbose(`server got error ${err}`);
-			reject(err);
-		});
-
+		s.on('error', (err) => reject(err));
 		s.maxConnections = 1;
-
 		s.listen(port);
-
-		dlvArgs.push(`--client-addr=:${port}`);
-
-		logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')} from ${dir}\n`);
-
-		p = spawn(dlvPath, dlvArgs, {
-			cwd: dir,
-			env
-		});
-		p.stdout.on('data', (chunk) => {
-			const msg = chunk.toString();
-			log(msg);
-		});
-		p.stderr.on('data', (chunk) => {
-			logErr(chunk.toString());
-		});
-		p.on('close', (code, signal) => {
-			// TODO: should we watch 'exit' instead?
-
-			// NOTE: log messages here may not appear in DEBUG CONSOLE if the termination of
-			// the process was triggered by debug adapter's dispose when dlv dap doesn't
-			// respond to disconnect on time. In that case, it's possible that the session
-			// is in the middle of teardown and DEBUG CONSOLE isn't accessible. Check
-			// Go Debug output channel.
-			if (typeof code === 'number') {
-				// The process exited on its own.
-				logConsole(`dlv dap (${p.pid}) exited with code: ${code}\n`);
-			} else if (code === null && signal) {
-				logConsole(`dlv dap (${p.pid}) was killed by signal: ${signal}\n`);
-			} else {
-				logConsole(`dlv dap (${p.pid}) terminated with code: ${code} signal: ${signal}\n`);
-			}
-		});
-		p.on('error', (err) => {
-			if (err) {
-				logConsole(`Error: ${err}\n`);
-			}
-		});
 	});
 }
 

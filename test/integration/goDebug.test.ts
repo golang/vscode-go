@@ -2274,10 +2274,61 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 		// forward to DelveDAPDebugAdapter, which will forward to dlv dap.
 		inStream.on('data', (data: Buffer) => this._handleData(data));
-		// handle data from DelveDAPDebugAdapter, that's from dlv dap.
-		this.onDidSendMessage((m) => this._send(m));
+		// DebugClient silently drops reverse requests. Handle runInTerminal request here.
+		this.onDidSendMessage((m) => {
+			if (this.handleRunInTerminal(m)) {
+				return;
+			}
+			this._send(m);
+		});
 
 		inStream.resume();
+	}
+
+	// handleRunInTerminal spawns the requested command and simulates RunInTerminal
+	// handler implementation inside an editor.
+	private _dlvInTerminal: cp.ChildProcess;
+	private handleRunInTerminal(m: vscode.DebugProtocolMessage) {
+		const m0 = m as any;
+		if (m0['type'] !== 'request' || m0['command'] !== 'runInTerminal') {
+			return false;
+		}
+		const json = JSON.stringify(m0);
+		this.log(`<- server: ${json}`);
+
+		const resp = {
+			seq: 0,
+			type: 'response',
+			success: false,
+			request_seq: m0['seq'],
+			command: m0['command'],
+			body: {}
+		};
+
+		if (!this._dlvInTerminal && m0['arguments']?.args?.length > 0) {
+			const args = m0['arguments'].args as string[];
+			const p = cp.spawn(args[0], args.slice(1), {
+				cwd: m0['arguments'].cwd,
+				env: m0['arguments'].env
+			});
+			// stdout/stderr are supposed to appear in the terminal, but
+			// some of noDebug tests depend on access to stdout/stderr.
+			// For those tests, let's pump the output as OutputEvent.
+			p.stdout.on('data', (chunk) => {
+				this.outputEvent('stdout', chunk.toString());
+			});
+			p.stderr.on('data', (chunk) => {
+				this.outputEvent('stderr', chunk.toString());
+			});
+			resp.success = true;
+			resp.body = { processId: p.pid };
+			this._dlvInTerminal = p;
+		}
+
+		this.log(`-> server: ${JSON.stringify(resp)}`);
+		this.handleMessage(resp);
+
+		return true;
 	}
 
 	private _disposed = false;
