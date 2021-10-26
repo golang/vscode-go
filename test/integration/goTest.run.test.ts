@@ -72,7 +72,7 @@ suite('Go Test Runner', () => {
 			);
 		});
 
-		test('tests are run individually when profiling', async () => {
+		test.skip('tests are run individually when profiling', async () => {
 			const tests = Array.from(testExplorer.resolver.allItems).filter((x) => GoTest.parseId(x.id).name);
 			assert(tests, 'No tests found');
 
