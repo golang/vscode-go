@@ -238,7 +238,7 @@ Here is the list of attributes specific to Go debugging.
 | Property | Launch | Attach |
 | --- | --- | --- |
 | `args` | Command line arguments passed to the debugged program.<br/> | <center>_n/a_</center> |
-| `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`<br/> | <center>_same as Launch_</center>|
+| `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`, `"rr"`<br/> | <center>_same as Launch_</center>|
 | `buildFlags` | Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.<br/>(Default: `""`)<br/> | <center>_n/a_</center> |
 | `coreFilePath` | Path to the core dump file to open. For use on 'core' mode only<br/>(Default: `""`)<br/> | <center>_n/a_</center> |
 | `cwd` | Workspace relative or absolute path to the working directory of the program being debugged if a non-empty value is specified. The `program` folder is used as the working directory if `cwd` is omitted or empty.<br/>(Default: `""`)<br/> | Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.<br/>(Default: `"${workspaceFolder}"`)<br/> |
