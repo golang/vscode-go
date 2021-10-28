@@ -5,7 +5,7 @@
 
 'use strict';
 
-import * as assert from 'assert';
+import assert from 'assert';
 import fs = require('fs-extra');
 import path = require('path');
 import sinon = require('sinon');

@@ -3,7 +3,7 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-import * as assert from 'assert';
+import assert from 'assert';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as vscode from 'vscode';

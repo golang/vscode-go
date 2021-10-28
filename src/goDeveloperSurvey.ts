@@ -12,8 +12,8 @@ import { lastUserAction } from './goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
 
 // Start and end dates of the survey.
-export const startDate = new Date('2021-09-01'); // TODO(rstambler): Set an actual start date.
-export const endDate = new Date('2022-01-01'); // TODO(rstambler): Set an actual end date.
+export const startDate = new Date('2021-10-27');
+export const endDate = new Date('2021-11-16');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -81,11 +81,14 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	if (cfg.datePromptComputed && !inDateRange(startDate, endDate, cfg.datePromptComputed)) {
 		cfg = {};
 	}
-	// If the prompt value is not set, assume we haven't prompted the user
-	// and should do so.
+	// If the prompt value is undefined, then this is the first activation
+	// for this survey period, so decide if we should prompt the user. This
+	// is done by generating a random number in the range [0, 1) and checking
+	// if it is < probability.
 	if (cfg.prompt === undefined) {
-		cfg.prompt = true;
+		const probability = 0.2;
 		cfg.datePromptComputed = now;
+		cfg.prompt = Math.random() < probability;
 	}
 	flushSurveyConfig(developerSurveyConfig, cfg);
 	if (!cfg.prompt) {
@@ -103,29 +106,26 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	// Check if the user has been prompted for the survey in the last 5 days.
 	// Don't prompt them if they have been.
 	if (cfg.lastDatePrompted) {
-		// If the survey will end in 5 days, prompt the next day.
-		// Otherwise, wait for 5 days.
-		if (daysBetween(now, endDate) > 5 && daysBetween(now, cfg.lastDatePrompted) < 5) {
+		const daysSinceLastPrompt = daysBetween(now, cfg.lastDatePrompted);
+		// Don't prompt twice on the same day, even if it's the last day of the
+		// survey.
+		if (daysSinceLastPrompt < 1) {
 			return;
 		}
-		return cfg;
+		// If the survey will end in 5 days, prompt on the next day.
+		// Otherwise, wait for 5 days.
+		if (daysBetween(now, endDate) > 5) {
+			return;
+		}
 	}
-
-	// This is the first activation this month (or ever), so decide if we
-	// should prompt the user. This is done by generating a random number in
-	// the range [0, 1) and checking if it is < probability.
-	const probability = 0.2;
-	cfg.datePromptComputed = now;
-	cfg.prompt = Math.random() < probability;
-	flushSurveyConfig(developerSurveyConfig, cfg);
 	return cfg;
 }
 
 export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
 	let selected = await vscode.window.showInformationMessage(
 		// TODO(rstambler): Figure out how to phrase this.
-		`Looks like you are coding in Go! Help ensure Go is meeting your needs
-by participating in this 10-minute survey by ${endDate.toDateString()}?`,
+		`Looks like you are coding in Go! Would you like to help ensure that Go is meeting your needs
+by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
@@ -140,7 +140,7 @@ by participating in this 10-minute survey by ${endDate.toDateString()}?`,
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = 'https://google.com?utm_source=vscode-go'; // set source to vscode-go
+				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_0BwHwKSaeE9Cx2S?s=p';
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
@@ -154,7 +154,7 @@ by participating in this 10-minute survey by ${endDate.toDateString()}?`,
 
 			selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
-To opt-out of all survey prompts, please set 'go.survey.prompt' to false.`,
+If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' to false.`,
 				'Open Settings'
 			);
 			switch (selected) {

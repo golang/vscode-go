@@ -157,25 +157,16 @@ export async function installTools(
 
 	outputChannel.appendLine(''); // Blank line for spacing.
 
-	const toInstall: Promise<{ tool: Tool; reason: string }>[] = [];
+	const failures: { tool: ToolAtVersion; reason: string }[] = [];
 	for (const tool of missing) {
 		const modulesOffForTool = modulesOff;
 
-		const reason = installTool(tool, goVersion, envForTools, !modulesOffForTool);
-		toInstall.push(Promise.resolve({ tool, reason: await reason }));
-	}
-
-	const results = await Promise.all(toInstall);
-
-	const failures: { tool: ToolAtVersion; reason: string }[] = [];
-	for (const result of results) {
-		if (result.reason === '') {
+		const failed = await installTool(tool, goVersion, envForTools, !modulesOffForTool);
+		if (failed) {
+			failures.push({ tool, reason: failed });
+		} else if (tool.name === 'gopls') {
 			// Restart the language server if a new binary has been installed.
-			if (result.tool.name === 'gopls') {
-				restartLanguageServer('installation');
-			}
-		} else {
-			failures.push(result);
+			restartLanguageServer('installation');
 		}
 	}
 
@@ -222,35 +213,10 @@ export async function installTool(
 			return reason;
 		}
 	}
-	let toolsTmpDir = '';
-	try {
-		toolsTmpDir = await tmpDirForToolInstallation();
-	} catch (e) {
-		return `Failed to create a temp directory: ${e}`;
-	}
 
 	const env = Object.assign({}, envForTools);
 	env['GO111MODULE'] = modulesOn ? 'on' : 'off';
 
-	// Some users use direnv-like setup where the choice of go is affected by
-	// the current directory path. In order to avoid choosing a different go,
-	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
-	// (which can be a wrapper script that switches 'go').
-	const goBinary = getCurrentGoRoot()
-		? path.join(getCurrentGoRoot(), 'bin', correctBinname('go'))
-		: goVersion.binaryPath;
-
-	// Build the arguments list for the tool installation.
-	const args = ['get', '-v'];
-	// Only get tools at master if we are not using modules.
-	if (!modulesOn) {
-		args.push('-u');
-	}
-	// dlv-dap or tools with a "mod" suffix can't be installed with
-	// simple `go install` or `go get`. We need to get, build, and rename them.
-	if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
-		args.push('-d'); // get the version, but don't build.
-	}
 	let importPath: string;
 	if (!modulesOn) {
 		importPath = getImportPath(tool, goVersion);
@@ -265,19 +231,80 @@ export async function installTool(
 		}
 		importPath = getImportPathWithVersion(tool, version, goVersion);
 	}
+
+	try {
+		if (!modulesOn || goVersion.lt('1.16') || hasModSuffix(tool) || tool.name === 'dlv-dap') {
+			await installToolWithGoGet(tool, goVersion, env, modulesOn, importPath);
+		} else {
+			await installToolWithGoInstall(goVersion, env, importPath);
+		}
+		const toolInstallPath = getBinPath(tool.name);
+		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
+	} catch (e) {
+		outputChannel.appendLine(`Installing ${importPath} FAILED`);
+		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
+		return `failed to install ${tool.name}(${importPath}): ${e}`;
+	}
+}
+
+async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<string>, importPath: string) {
+	// Unlike installToolWithGoGet, `go install` in module mode
+	// can run in the current directory safely. So, use the user-specified go tool path.
+	const goBinary = goVersion.binaryPath || getBinPath('go');
+	const opts = {
+		env,
+		cwd: getWorkspaceFolderPath()
+	};
+
+	const execFile = util.promisify(cp.execFile);
+	logVerbose(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
+	await execFile(goBinary, ['install', '-v', importPath], opts);
+}
+
+async function installToolWithGoGet(
+	tool: ToolAtVersion,
+	goVersion: GoVersion,
+	env: NodeJS.Dict<string>,
+	modulesOn: boolean,
+	importPath: string
+) {
+	// Some users use direnv-like setup where the choice of go is affected by
+	// the current directory path. In order to avoid choosing a different go,
+	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
+	// (which can be a wrapper script that switches 'go').
+	const goBinary = getCurrentGoRoot()
+		? path.join(getCurrentGoRoot(), 'bin', correctBinname('go'))
+		: goVersion.binaryPath;
+
+	// Build the arguments list for the tool installation.
+	const args = ['get', '-x'];
+	// Only get tools at master if we are not using modules.
+	if (!modulesOn) {
+		args.push('-u');
+	}
+	// dlv-dap or tools with a "mod" suffix can't be installed with
+	// simple `go install` or `go get`. We need to get, build, and rename them.
+	if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
+		args.push('-d'); // get the version, but don't build.
+	}
 	args.push(importPath);
 
-	let output = 'no output';
-	let result = '';
+	let toolsTmpDir = '';
 	try {
-		const opts = {
-			env,
-			cwd: toolsTmpDir
-		};
+		toolsTmpDir = await tmpDirForToolInstallation();
+	} catch (e) {
+		throw new Error(`Failed to create a temp directory: ${e}`);
+	}
+
+	const opts = {
+		env,
+		cwd: toolsTmpDir
+	};
+	try {
 		const execFile = util.promisify(cp.execFile);
-		const { stdout, stderr } = await execFile(goBinary, args, opts);
-		output = `${stdout} ${stderr}`;
-		logVerbose(`install: ${goBinary} ${args.join(' ')}\n${stdout}${stderr}`);
+		logVerbose(`$ ${goBinary} ${args.join(' ')} (cwd: ${opts.cwd})`);
+		await execFile(goBinary, args, opts);
+
 		if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
 			// Actual installation of the -gomod tool and dlv-dap is done by running go build.
 			let destDir = env['GOBIN'];
@@ -291,21 +318,17 @@ export async function installTool(
 			const outputFile = path.join(destDir, correctBinname(tool.name));
 
 			// go build does not take @version suffix yet.
-			const importPath = getImportPath(tool, goVersion);
-			await execFile(goBinary, ['build', '-o', outputFile, importPath], opts);
+			const importPathWithoutVersion = getImportPath(tool, goVersion);
+			logVerbose(`$ ${goBinary} build -o ${outputFile} ${importPathWithoutVersion} (cwd: ${opts.cwd})`);
+			await execFile(goBinary, ['build', '-o', outputFile, importPathWithoutVersion], opts);
 		}
-		const toolInstallPath = getBinPath(tool.name);
-		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
-		result = `failed to install ${tool.name}(${importPath}): ${e} ${output}`;
+		logVerbose(`FAILED: ${JSON.stringify(e, null, 1)}`);
+		throw e;
 	} finally {
 		// Delete the temporary installation directory.
 		rmdirRecursive(toolsTmpDir);
 	}
-
-	return result;
 }
 
 export function declinedToolInstall(toolName: string) {
@@ -662,11 +685,11 @@ async function defaultInspectGoToolVersion(binPath: string): Promise<{ goVersion
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 
 		   if the binary was built in GOPATH mode => the following code will throw an error which will be handled.
-		    /Users/hakim/go/bin/gopls: go1.16
+			/Users/hakim/go/bin/gopls: go1.16
 
 		   if the binary was built in dev branch, in module mode => the following code will not throw an error,
 		   and return (devel) as the moduleVersion.
-		    /Users/hakim/go/bin/gopls: go1.16
+			/Users/hakim/go/bin/gopls: go1.16
 			path    golang.org/x/tools/gopls
 			mod     golang.org/x/tools/gopls        (devel)
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=

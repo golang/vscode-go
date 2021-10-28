@@ -3,7 +3,7 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
 /* eslint-disable no-async-promise-executor */
 /* eslint-disable node/no-unpublished-import */
-import * as assert from 'assert';
+import assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as readline from 'readline';
