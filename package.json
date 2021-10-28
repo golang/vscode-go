@@ -779,6 +779,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+              },
+              "hideSystemGoroutines": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               }
             }
           },
@@ -981,6 +986,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+              },
+              "hideSystemGoroutines": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               }
             }
           }
@@ -1836,6 +1846,11 @@
               "type": "boolean",
               "default": false,
               "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+            },
+            "hideSystemGoroutines": {
+              "type": "boolean",
+              "default": false,
+              "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
             },
             "showLog": {
               "type": "boolean",

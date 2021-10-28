@@ -81,7 +81,7 @@ prepare_nightly() {
 .displayName="Go Nightly" |
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
-.contributes.configuration.properties."go.useLanguageServer".default=true
+.contributes.configuration.properties."go.delveConfig.hideSystemGoroutines".default=true
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
