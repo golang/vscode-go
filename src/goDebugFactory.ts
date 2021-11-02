@@ -16,6 +16,7 @@ import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
 import { toolExecutionEnvironment } from './goEnv';
+import { envPath, getBinPathFromEnvVar } from './utils/pathUtils';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
@@ -402,13 +403,23 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			dlvArgs.push(`--log-dest=${logDest}`);
 		}
 
+		dlvArgs.unshift(dlvPath);
+
+		if (launchAttachArgs.asRoot === true && process.platform !== 'win32') {
+			const sudo = getSudo();
+			if (sudo) {
+				dlvArgs.unshift(sudo);
+			} else {
+				throw new Error('Failed to find "sudo" utility');
+			}
+		}
+
 		try {
 			const port = await getPort();
 			const rendezvousServerPromise = waitForDAPServer(port, 30_000);
 
 			dlvArgs.push(`--client-addr=:${port}`);
 
-			dlvArgs.unshift(dlvPath);
 			super.sendMessageToClient({
 				seq: 0,
 				type: 'request',
@@ -428,6 +439,14 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			throw new Error('cannot launch dlv dap. See DEBUG CONSOLE');
 		}
 	}
+}
+
+let sudoPath: string | null | undefined = undefined;
+function getSudo(): string | null {
+	if (sudoPath === undefined) {
+		sudoPath = getBinPathFromEnvVar('sudo', envPath, false);
+	}
+	return sudoPath;
 }
 
 function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
