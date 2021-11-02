@@ -121,9 +121,7 @@ export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsS
 	// the user.
 	// Probability is set based on the # of responses received, and will be
 	// decreased if we begin receiving > 200 responses/month.
-	// Doubled the probability for survey v2 experiment.
-	// TODO(hyangah): switch back to 0.03.
-	const probability = 0.03 * 2;
+	const probability = 0.06;
 	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
 		// end is the last day of the month, day is the random day of the
@@ -165,10 +163,7 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 				cfg.prompt = true;
 				const goplsEnabled = latestConfig.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const surveyURL =
-					Math.random() < 0.5
-						? `https://google.qualtrics.com/jfe/form/SV_ekAdHVcVcvKUojX?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}` // v1
-						: `https://google.qualtrics.com/jfe/form/SV_8kbsnNINPIQ2QGq?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}`; // v2
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
