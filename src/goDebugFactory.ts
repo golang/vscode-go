@@ -38,17 +38,21 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		if (configuration.port) {
-			return new vscode.DebugAdapterServer(configuration.port, configuration.host ?? '127.0.0.1');
-		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
-		logger.debug(`Config: ${JSON.stringify(configuration)}`);
+		logger.debug(`Config: ${JSON.stringify(configuration)}\n`);
+		if (configuration.port) {
+			const host = configuration.host ?? '127.0.0.1';
+			logger.info(`Connecting to DAP server at ${host}:${configuration.port}\n`);
+			return new vscode.DebugAdapterServer(configuration.port, host);
+		}
 		const d = new DelveDAPOutputAdapter(configuration, logger);
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
 }
 
 export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+	private requestsSent = 0;
+	private responsesReceived = 0;
 	constructor(private outputChannel: vscode.OutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -60,10 +64,28 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 		return {
 			onWillStartSession: () =>
 				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
-			onWillReceiveMessage: (message: any) => logger.trace(`client -> ${JSON.stringify(message)}\n`),
-			onDidSendMessage: (message: any) => logger.trace(`client  <- ${JSON.stringify(message)}\n`),
+			onWillReceiveMessage: (message: any) => {
+				logger.trace(`client -> ${JSON.stringify(message)}\n`);
+				this.requestsSent++;
+			},
+			onDidSendMessage: (message: any) => {
+				logger.trace(`client  <- ${JSON.stringify(message)}\n`);
+				this.responsesReceived++;
+			},
 			onError: (error: Error) => logger.error(`error: ${error}\n`),
-			onWillStopSession: () => logger.debug(`session ${session.id} will stop\n`),
+			onWillStopSession: () => {
+				if (
+					session.configuration.debugAdapter === 'dlv-dap' &&
+					session.configuration.mode === 'remote' &&
+					this.requestsSent > 0 &&
+					this.responsesReceived === 0 // happens when the rpc server doesn't understand DAP
+				) {
+					logger.warn(
+						"'remote' mode with 'dlv-dap' debugAdapter must connect to an external headless server started with dlv @ v1.7.3 or later.\n"
+					);
+				}
+				logger.debug(`session ${session.id} will stop\n`);
+			},
 			onExit: (code: number | undefined, signal: string | undefined) =>
 				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})\n`)
 		};

@@ -887,13 +887,13 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = 'legacy'; // remote mode works only with legacy mode.
+		const want = 'legacy'; // Remote mode defaults to legacy mode.
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 
-	test('debugAdapter=dlv-dap should be ignored for remote mode', () => {
+	test('debugAdapter=dlv-dap is allowed with remote mode', () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -904,7 +904,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = 'legacy'; // remote mode works only with legacy mode.
+		const want = 'dlv-dap'; // If requested, dlv-dap is preserved.
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);

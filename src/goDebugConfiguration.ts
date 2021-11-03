@@ -155,21 +155,24 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		if (!debugConfiguration['debugAdapter']) {
-			// for local mode, default to dlv-dap.
+			// For local modes, default to dlv-dap. For remote - to legacy for now.
 			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
 		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
-			this.showWarning(
-				'ignoreDlvDAPInRemoteModeWarning',
-				"debugAdapter type of 'dlv-dap' with mode 'remote' is unsupported. Fall back to the 'legacy' debugAdapter for 'remote' mode."
-			);
-			debugConfiguration['debugAdapter'] = 'legacy';
-		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['port']) {
-			this.showWarning(
-				'ignorePortUsedInDlvDapWarning',
-				"`port` is used with the 'dlv-dap' debugAdapter to support [launching the debug adapter server externally](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally). Remove 'host' and 'port' from your launch.json if you are not launching a DAP server."
-			);
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
+			if (debugConfiguration['mode'] === 'remote') {
+				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
+				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
+				// but we have no way of detectng that with an external server.
+				this.showWarning(
+					'ignoreDlvDAPInRemoteModeWarning',
+					"'remote' mode with 'dlv-dap' debugAdapter must connect to an external `dlv --headless` server @ v1.7.3 or later. Older versions will fail with \"error layer=rpc rpc:invalid character 'C' looking for beginning of value\" logged to the terminal.\n"
+				);
+			} else if (debugConfiguration['port']) {
+				this.showWarning(
+					'ignorePortUsedInDlvDapWarning',
+					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+				);
+			}
 		}
 
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
