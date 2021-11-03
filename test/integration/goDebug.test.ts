@@ -2309,9 +2309,10 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 		if (!this._dlvInTerminal && m0['arguments']?.args?.length > 0) {
 			const args = m0['arguments'].args as string[];
+			const env = m0['arguments'].env ? Object.assign({}, process.env, m0['arguments'].env) : undefined;
 			const p = cp.spawn(args[0], args.slice(1), {
 				cwd: m0['arguments'].cwd,
-				env: m0['arguments'].env
+				env
 			});
 			// stdout/stderr are supposed to appear in the terminal, but
 			// some of noDebug tests depend on access to stdout/stderr.

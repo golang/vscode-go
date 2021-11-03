@@ -15,7 +15,6 @@ import * as net from 'net';
 import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
-import { toolExecutionEnvironment } from './goEnv';
 import { envPath, getBinPathFromEnvVar } from './utils/pathUtils';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
@@ -460,13 +459,18 @@ function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> 
 		}, timeoutMs);
 
 		s = net.createServer({ pauseOnConnect: true }, (socket) => {
-			logVerbose(`connected: ${port}`);
+			logVerbose(
+				`connected: ${port} (remote: ${socket.remoteAddress}:${socket.remotePort} local: ${socket.localAddress}:${socket.localPort})`
+			);
 			clearTimeout(timeoutToken);
 			s.close(); // accept no more connection
 			socket.resume();
 			resolve(socket);
 		});
-		s.on('error', (err) => reject(err));
+		s.on('error', (err) => {
+			logVerbose(`connection error ${err}`);
+			reject(err);
+		});
 		s.maxConnections = 1;
 		s.listen(port);
 	});
@@ -481,6 +485,9 @@ function spawnDlvDapServerProcess(
 	logConsole: (msg: string) => void
 ): Promise<ChildProcess> {
 	const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
+	// env does not include process.env. Construct the new env for process spawning
+	// by combining process.env.
+	const envForSpawn = env ? Object.assign({}, process.env, env) : undefined;
 
 	dlvArgs.push(`--listen=${host}:${port}`);
 
@@ -519,7 +526,7 @@ function spawnDlvDapServerProcess(
 	return new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
-			env,
+			env: envForSpawn,
 			stdio: onWindows ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3 if !onWindows.
 		});
 		let started = false;
@@ -590,12 +597,13 @@ function spawnDlvDapServerProcess(
 		});
 	});
 }
-function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (msg: string) => void) {
-	const launchArgsEnv = launchAttachArgs.env || {};
-	const goToolsEnvVars = toolExecutionEnvironment();
-	// launchArgsEnv is user-requested env vars (envFiles + env).
-	const env = Object.assign(goToolsEnvVars, launchArgsEnv);
 
+// getSpawnConfig returns the dlv args, directory, and dlv path necessary to spawn the dlv command.
+// It also returns `env` that is the additional environment variables users want to run the dlv
+// and the debuggee (i.e., go.toolsEnvVars, launch configuration's env and envFile) with.
+function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (msg: string) => void) {
+	// launchArgsEnv is user-requested env vars (envFiles + env + toolsEnvVars).
+	const env = launchAttachArgs.env;
 	const dlvPath = launchAttachArgs.dlvToolPath ?? 'dlv';
 
 	if (!fs.existsSync(dlvPath)) {

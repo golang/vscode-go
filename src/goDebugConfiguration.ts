@@ -401,10 +401,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		// For legacy mode, we merge the environment variables on top of
 		// the tools execution environment variables and update the debugConfiguration
 		// because VS Code directly handles launch of the legacy debug adapter.
-		// For dlv-dap mode, we do not merge the tools execution environment
+		// For dlv-dap mode, we do not merge process.env environment
 		// variables here to reduce the number of environment variables passed
 		// as launch/attach parameters.
-		const goToolsEnvVars = debugAdapter === 'legacy' ? toolExecutionEnvironment(folder?.uri) : {};
+		const mergeProcessEnv = debugAdapter === 'legacy';
+		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri, mergeProcessEnv);
 		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
 		const env = debugConfiguration['env'] || {};
 
