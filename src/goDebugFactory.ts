@@ -51,8 +51,6 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 }
 
 export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
-	private requestsSent = 0;
-	private responsesReceived = 0;
 	constructor(private outputChannel: vscode.OutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -61,24 +59,26 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 			return null;
 		}
 		const logger = new TimestampedLogger(session.configuration?.trace || 'off', this.outputChannel);
+		let requestsSent = 0;
+		let responsesReceived = 0;
 		return {
 			onWillStartSession: () =>
 				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
 			onWillReceiveMessage: (message: any) => {
 				logger.trace(`client -> ${JSON.stringify(message)}\n`);
-				this.requestsSent++;
+				requestsSent++;
 			},
 			onDidSendMessage: (message: any) => {
 				logger.trace(`client  <- ${JSON.stringify(message)}\n`);
-				this.responsesReceived++;
+				responsesReceived++;
 			},
 			onError: (error: Error) => logger.error(`error: ${error}\n`),
 			onWillStopSession: () => {
 				if (
 					session.configuration.debugAdapter === 'dlv-dap' &&
 					session.configuration.mode === 'remote' &&
-					this.requestsSent > 0 &&
-					this.responsesReceived === 0 // happens when the rpc server doesn't understand DAP
+					requestsSent > 0 &&
+					responsesReceived === 0 // happens when the rpc server doesn't understand DAP
 				) {
 					logger.warn(
 						"'remote' mode with 'dlv-dap' debugAdapter must connect to an external headless server started with dlv @ v1.7.3 or later.\n"
