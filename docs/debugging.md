@@ -7,7 +7,7 @@ The Go extension has been communicating with Delve through a custom debug adapte
 As the new [`Delve`'s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) becomes available,
 the Go extension is transitioning to skip the legacy debug adapter and directly communicate with Delve for local debugging.
 
-** 📣 We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default! **
+ 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default!**
 
 Delve DAP implementation's support for remote debugging is still a work in progress and the Go extension still uses
 the legacy debug adapter for the debug configuration with the `"remote"` mode.
