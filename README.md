@@ -49,7 +49,7 @@ application using VS Code Go.
 
 This extension provides many features, including [IntelliSense],
 [code navigation], and [code editing] support. It also shows [diagnostics] as
-you work and provides enhanced support for [testing] and [debugging] your
+you work and provides enhanced support for [testing](https://github.com/golang/vscode-go/blob/master/docs/testing.md) and [debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md) your
 programs. See the [full feature breakdown] for more details and to learn how to
 tune its behavior.
 
