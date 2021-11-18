@@ -210,7 +210,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	});
 });
 
-suite('Debug Configuration Merge User Settings', () => {
+suite.only('Debug Configuration Merge User Settings', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const config = require('../../src/config');
 
@@ -281,6 +281,8 @@ suite('Debug Configuration Merge User Settings', () => {
 					},
 					apiVersion: 1,
 					showGlobalVariables: true,
+					showRegisters: true,
+					hideSystemGoroutines: true,
 					debugAdapter: 'dlv-dap',
 					substitutePath: [{ from: 'hello', to: 'goodbye' }],
 					showLog: true,
@@ -301,6 +303,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 1);
 			assert.strictEqual(result.showGlobalVariables, true);
+			assert.strictEqual(result.showRegisters, true);
+			assert.strictEqual(result.hideSystemGoroutines, true);
 			assert.strictEqual(result.debugAdapter, 'dlv-dap');
 			assert.strictEqual(result.substitutePath.length, 1);
 			assert.strictEqual(result.substitutePath[0].from, 'hello');
@@ -329,6 +333,8 @@ suite('Debug Configuration Merge User Settings', () => {
 					},
 					apiVersion: 1,
 					showGlobalVariables: true,
+					showRegisters: true,
+					hideSystemGoroutines: true,
 					debugAdapter: 'dlv-dap',
 					substitutePath: [{ from: 'hello', to: 'goodbye' }]
 				}
@@ -342,6 +348,8 @@ suite('Debug Configuration Merge User Settings', () => {
 				mode: 'auto',
 				program: '${fileDirname}',
 				showGlobalVariables: false,
+				showRegisters: false,
+				hideSystemGoroutines: false,
 				apiVersion: 2,
 				dlvLoadConfig: {
 					followPointers: true,
@@ -358,6 +366,8 @@ suite('Debug Configuration Merge User Settings', () => {
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
 			assert.strictEqual(result.apiVersion, 2);
 			assert.strictEqual(result.showGlobalVariables, false);
+			assert.strictEqual(result.showRegisters, false);
+			assert.strictEqual(result.hideSystemGoroutines, false);
 			assert.strictEqual(result.debugAdapter, 'legacy');
 			assert.strictEqual(result.substitutePath.length, 0);
 			assert.strictEqual(result.showLog, undefined);

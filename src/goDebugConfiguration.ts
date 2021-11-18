@@ -202,7 +202,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		// Reflect the defaults set through go.delveConfig setting.
-		const dlvProperties = ['showGlobalVariables', 'substitutePath', 'showLog', 'logOutput', 'dlvFlags'];
+		const dlvProperties = [
+			'showRegisters',
+			'showGlobalVariables',
+			'substitutePath',
+			'showLog',
+			'logOutput',
+			'dlvFlags',
+			'hideSystemGoroutines'
+		];
 		if (debugAdapter !== 'dlv-dap') {
 			dlvProperties.push('dlvLoadConfig');
 		}
