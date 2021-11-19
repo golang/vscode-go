@@ -210,7 +210,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	});
 });
 
-suite.only('Debug Configuration Merge User Settings', () => {
+suite('Debug Configuration Merge User Settings', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const config = require('../../src/config');
 
