@@ -709,9 +709,9 @@ export class Delve {
 
 					conn.on('connect', () => resolve(conn))
 						.on('error', reject)
-						.on('end', () => {
-							logError('Socket connection was closed');
-							onClose?.(1);
+						.on('close', (hadError) => {
+							logError('Socket connection to remote was closed');
+							onClose?.(hadError ? 1 : 0);
 						});
 				}, 200);
 			}
