@@ -456,7 +456,7 @@ export class Delve {
 				this.isRemoteDebugging = true;
 				this.goroot = await queryGOROOT(dlvCwd, process.env);
 				serverRunning = true; // assume server is running when in remote mode
-				connectClient(launchArgs.port, launchArgs.host);
+				connectClient(launchArgs.port, launchArgs.host, this.onclose);
 				return;
 			}
 			this.isRemoteDebugging = false;
@@ -701,18 +701,18 @@ export class Delve {
 				env
 			});
 
-			function connectClient(port: number, host: string) {
+			function connectClient(port: number, host: string, onClose?: Delve['onclose']) {
 				// Add a slight delay to avoid issues on Linux with
 				// Delve failing calls made shortly after connection.
 				setTimeout(() => {
-					const client = Client.$create(port, host);
-					client.connectSocket((err, conn) => {
-						if (err) {
-							return reject(err);
-						}
-						return resolve(conn);
-					});
-					client.on('error', reject);
+					const conn = Client.$create(port, host).connectSocket();
+
+					conn.on('connect', () => resolve(conn))
+						.on('error', reject)
+						.on('close', (hadError) => {
+							logError('Socket connection to remote was closed');
+							onClose?.(hadError ? 1 : 0);
+						});
 				}, 200);
 			}
 
@@ -729,7 +729,7 @@ export class Delve {
 				}
 				if (!serverRunning) {
 					serverRunning = true;
-					connectClient(launchArgs.port, launchArgs.host);
+					connectClient(launchArgs.port, launchArgs.host, this.onclose);
 				}
 			});
 			this.debugProcess.on('close', (code) => {
