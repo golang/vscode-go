@@ -1,16 +1,12 @@
 # Debugging
 
-The Go extension allows you to launch or attach to Go programs for debugging. You can inspect variables and stacks, setting breakpoints, and do other debugging activities using [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
+The Go extension allows you to launch or attach to Go programs for debugging. You can inspect variables and stacks, set breakpoints, and do other debugging activities using [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
 
 These debugging features are possible by using [Delve](https://github.com/go-delve/delve), the Go debugger.
 The Go extension has been communicating with Delve through a custom debug adapter program (`legacy` mode).
-As the new [`Delve`'s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) becomes available,
-the Go extension is transitioning to skip the legacy debug adapter and directly communicate with Delve for local debugging.
+As the new [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap) has become available, the Go extension is transitioning to deprecate the legacy debug adapter in favor of direct communication with Delve via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
 
- 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default!**
-
-Delve DAP implementation's support for remote debugging is still a work in progress and the Go extension still uses
-the legacy debug adapter for the debug configuration with the `"remote"` mode.
+ 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default and is available for _remote_ _debugging_ on demand!**
 
 Many features and settings described in this document may be available only with the new `dlv-dap` mode.
 For troubleshooting and configuring the legacy debug adapter, see [the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
@@ -62,6 +58,7 @@ If you want to switch to `legacy` for only a subset of your launch configuration
 If you chose to switch to legacy because of bugs or limitations in the new debug adapter,
 please [open an issue](https://github.com/golang/vscode-go/issues/new)
 to help us improve the new debug adapter.
+
 ## Features
 
 For general debugging features such as inspecting variables, setting breakpoints, and other activities that aren't language-dependent, review [VS Code debugging](https://code.visualstudio.com/docs/editor/debugging).
@@ -90,10 +87,17 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
     *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all="-N -l"` flags to avoid stripping debugging information.
     *   `auto`: automatically choose between `debug` and `test` depending on the open file.
 
+NOTE: If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
+
 ### Attach
 
-You can debug an already running program using the `attach` request type configuration. With the `attach` request, the Go extension starts `dlv-dap` and configures it to attach to the specified process. Users can select the process to debug with one of the following options:
+You can use this configuration to attach to a running process or a running debug session.
 
+*   Supported modes
+    *   `local`: attaches to a local process
+    *   `remote`: attaches to an in-progress debug session run by an external server
+
+You can debug an already running program using the `local` mode type configuration. The Go extension will start `dlv-dap` and configure it to attach to the specified process. Users can select the process to debug with one of the following options:
 
 *   Specifying the numeric process id (PID) with the `processId` attribute.
 *   Specifying the target program name in the `processId` attribute. If there are multiple processes matching the specified program name, the extension will show the list of matching processes at the start of the debug session.
@@ -103,10 +107,18 @@ You can debug an already running program using the `attach` request type configu
 <img src="images/attach.gif" alt="Attach to a running process" width="75%">
 </p>
 
-When you end the debug session, the debug UI allows you to choose to either
+NOTE: If a `port` attribute is added to a local attach configuration, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and attach to the target there. The process resolution features will only work if localhost is used. See ["Remote Debugging"](#remote-debugging) for more details).
 
-*   Disconnect: detach and leave the process running. (default)
-*   Terminate: terminate the attached process.
+You can connect to an already running remote debug session using the `remote` mode. Specify optional `host` and required `port` for the external `dlv --headless` server that already took program or process id details as command-line arguments. See ["Remote Debugging"](#remote-debugging) for more details).
+
+When you end an attach debug session, the debug UI allows you to choose to:
+
+*   [DEFAULT] Disconnect: disconnect the client and
+    * `local`: leave the target process running (dlv terminates).
+	* `remote`: let dlv decide if it can continue running (`--accept-multiclient` mode only); if so, the target will stay in halted or running state it was in at disconnect.
+	   * `dlv debug/test/exec`: terminate the target process if dlv terminates.
+	   * `dlv attach`: leave the target process running even if dlv terminates.
+*   Stop: stop the attached server and the target process.
 
 <p align="center">
 <img src="images/attach-terminate.gif" alt="Terminate Debugging started with Attach" style="width: 30%">
@@ -270,18 +282,18 @@ Here is the list of attributes specific to Go debugging.
 
 ### **Debugging symlink directories**
 
-Since the debugger and go compiler use the actual filenames, extra configuration is required to debug symlinked directories. Use the substitutePath property to tell the `debugAdapter` how to properly translate the paths. For example, if your project lives in `/path/to/actual/helloWorld`, but the project is open in vscode under the linked folder `/path/to/hello`, you can add the following to your config to set breakpoints in the files in `/path/to/hello`:
+Since the debugger and go compiler use the actual filenames, extra configuration is required to debug symlinked directories. Use the `substitutePath` property to tell the `debugAdapter` how to properly translate the paths. For example, if your project lives in `/path/to/actual/helloWorld`, but the project is open in vscode under the linked folder `/link/to/helloWorld`, you can add the following to your config to set breakpoints in the files in `/link/to/helloWorld`:
 
 ```
 {
-    "name": "Launch remote",
+    "name": "Launch with symlinks",
     "type": "go",
     "request": "launch",
     "mode": "debug",
     "program": "/path/to/actual/helloWorld",
     "substitutePath": [
 		{
-			"from": "/path/to/hello",
+			"from": "/link/to/helloWorld",
 			"to": "/path/to/actual/helloWorld",
 		},
 	],
@@ -353,12 +365,48 @@ If you want to explicitly specify the location of the delve binary, use the `go.
 
 > If you are able to use the [Remote Development](https://aka.ms/vscode-remote/download/extension) extensions and VS Code’s  universal [remote development capabilities](https://code.visualstudio.com/docs/remote/remote-overview), that is the recommended way to debug Go programs remotely. Check out [Getting started](https://code.visualstudio.com/docs/remote/remote-overview#_getting-started) section and [Remote tutorials](https://code.visualstudio.com/docs/remote/remote-overview#_remote-tutorials) to learn more.
 
-Remote debugging is the debug mode intended to work with a debugger and target running on a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. This section describes a current temporary workaround and its limitations. If the following workaround is not working for your case, please file an issue and help us understand remote debugging use cases better.
+Remote debugging is the debug mode commonly used to work with a debugger and target running on a remote machine or a container. In spite of its name, it can also be used on a local machine with server started in an external terminal (e.g. to support entering stdin into the server's terminal window).
 
+With the introduction of `dlv dap` users now have two options for remote (i.e. external) debugging.
+
+#### Connecting to External Debugger with Pending Debug Session
+
+Here the user must first start a `dlv --headless` server listening at `host:port` and specify a program to debug/test/exec or a process to attach to on the command-line. A [remote attach](#Attach) configuration is then used to attach to the pending debug session.
+
+This is the tried-and-true remote mode that has been available since the `legacy` adapter. This is the only mode where we still use the `legacy` adapter by default while we stabilize the new `dlv-dap` version. Please do give the new version a try with `"debugAdapter": "dlv-dap"` in your launch configuration and Delve v.1.7.3 or newer and [let us know of any issues](https://github.com/golang/vscode-go/issues/new).
+
+For example, start external headless server:
+```
+dlv debug /path/to/program/ --headless --listen=:12345
+```
+The `--accept-multiclient` flag can be used to make this a multi-use server that persists on `Disconnect` from a client (unless `Stop` option is used instead) and allows repeated client connections. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options. 
+
+Connect to it with a remote attach configuration in your `launch.json`:
+```json5
+{
+    "name": "Connect to external session",
+    "type": "go",
+    "debugAdapter": "dlv-dap", // `legacy` by default
+    "request": "attach",
+    "mode": "remote",
+    "port": 12345,
+    "host": "127.0.0.1", // can skip for localhost
+    "substitutePath": [
+      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      ...
+  ]
+}
+```
+
+#### Connecting to External Debugger to Start Debug Session
+
+Here the user must first start a `dlv dap` server listening at `host:port` and specify a program to debug/test/exec or a process to attach to via [launch](#Launch) or [attach](#Attach) configuration with a `"port"` attribute. When the `"port"` attribute is specified, Go extension will assume a Delve DAP server has been started externally and tell VS Code to connect to it directly through the specified `host:port`. The `program` attribute must point to the absolute path of the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
+
+<!-- TODO: update or remote this picture
 <p align="center"><img src="images/remote-debugging.png" alt="Remote Debugging"> </p>
+-->
 
-When using the dlv-dap mode, the delve instance running remotely needs to be able to process DAP requests, instead of the traditional JSON-RPC, used with an external `dlv --headless` server. The following command starts a Delve DAP server on port 12345 that is ready to accept a request from an editor such as VS Code for launching or attaching to a target.
-
+Start a dlv-dap server ready to accept a client request to launch or attach to a target process:
 ```
 $ dlv-dap dap --listen=:12345
 ```
@@ -367,12 +415,12 @@ Use the following `launch` configuration to tell `dlv-dap` to execute a binary p
 
 ```json5
 {
-  "name": "Connect to server (DAP)",
+  "name": "Connect and launch",
   "type": "go",
-  "debugAdapter": "dlv-dap",
+  "debugAdapter": "dlv-dap", // the default
   "request": "launch",
   "port": 12345,
-  "host": "127.0.0.1",
+  "host": "127.0.0.1", // can skip for localhost
   "mode": "exec",
   "program": "/absolute/path/to/remote/workspace/program/executable",
   "substitutePath": [
@@ -389,22 +437,19 @@ Or have the binary compiled by dlv-dap by modifying the above configuration to u
   "program": "/absolute/path/to/remote/workspace/package",
 ```
 
-When seeing the `"port"` attribute being used in the launch request, Go extension will assume a Delve DAP server is started externally and accessible through the specified `host:port` and tell VS Code to connect to it directly. The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
-
 ⚠️ Limitations
-*   Unlike `dlv <debug|exec|attach> --headless` commands traditionally used for remote debugging scenarios, Delve’s new `dap` sub command does not launch or attach to the debuggee process until it receives a Launch/Attach request. We understand this limitation, and we are currently working on addressing this limitation.
-*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs.
+*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs as the target is not launched until a client request is received.
 *   When using `"attach"` requests, you will need to specify the `processId` since
 [the processId resolution feature](#attach) cannot gather process information running remotely.
-*   Delve DAP does not support `--allow-multiclient` or `--continue` flags yet, which means after a debug session ends, the dlv-dap process will exit.
+*   Delve DAP does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
 *   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
 
 ### Running Debugee Externally
 
-Sometimes you’d like to launch the program for debugging outside VS Code (e.g., as a workaround of the missing `console` support), there are currently two options.
+Sometimes you might like to launch the program for debugging outside of VS Code (e.g. as a workaround of the missing `console` support to enter stdin via an external terminal or separate target's output from debug session logging). There are currently two options:
 
-*   Compile and run the program from the external terminal and use [the "attach" configuration](#attach).
-*   Use ["Remote Debugging"](#remote-debugging); run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `"port"` attribute in your launch configuration.
+*   Compile and run the target program from the external terminal and use [the "attach" configuration](#attach).
+*   Run the debug server from the external terminal with `--listen=:<port>` and have VS Code connect to it using `port` in your launch configuration (see ["Remote Debugging"](#remote-debugging) for more details)
 
 ## Reporting Issues
 
