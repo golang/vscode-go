@@ -6,7 +6,7 @@ These debugging features are possible by using [Delve](https://github.com/go-del
 The Go extension has been communicating with Delve through a custom debug adapter program (`legacy` mode).
 As the new [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap) has become available, the Go extension is transitioning to deprecate the legacy debug adapter in favor of direct communication with Delve via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
 
- 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default and is available for _remote_ _debugging_ on demand!**
+ 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default and is available for [_remote_ _debugging_](#remote-debugging) on demand!**
 
 Many features and settings described in this document may be available only with the new `dlv-dap` mode.
 For troubleshooting and configuring the legacy debug adapter, see [the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
@@ -369,17 +369,18 @@ Remote debugging is the debug mode commonly used to work with a debugger and tar
 
 With the introduction of `dlv dap` users now have two options for remote (i.e. external) debugging.
 
-#### Connecting to External Debugger with Pending Debug Session
+#### Connecting to Headless Delve with Target Specified at Server Start-Up
 
-Here the user must first start a `dlv --headless` server listening at `host:port` and specify a program to debug/test/exec or a process to attach to on the command-line. A [remote attach](#Attach) configuration is then used to attach to the pending debug session.
+In this mode the user must first manually start a [`dlv --headless`](https://github.com/go-delve/delve/tree/master/Documentation/api) server listening at `host:port` while specifying the target program to debug/test/exec or a process to attach to on the command-line. A [remote attach](#attach) configuration is then used to connect to the debugger with a running target.
 
-This is the tried-and-true remote mode that has been available since the `legacy` adapter. This is the only mode where we still use the `legacy` adapter by default while we stabilize the new `dlv-dap` version. Please do give the new version a try with `"debugAdapter": "dlv-dap"` in your launch configuration and Delve v.1.7.3 or newer and [let us know of any issues](https://github.com/golang/vscode-go/issues/new).
+The [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api) can now be used with both `"debugAdapter": "legacy"` (default value) and `"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli) via `dlv connect`. The `--accept-multiclient` flag can be used to make this a multi-use server that persists on `Disconnect` from a client and allows repeated client connections. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options.
+
+We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a try and to [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If you need to use the `legacy` mode, pleasse also see the [legacy remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md#remote-debugging) documentation.
 
 For example, start external headless server:
 ```
 dlv debug /path/to/program/ --headless --listen=:12345
 ```
-The `--accept-multiclient` flag can be used to make this a multi-use server that persists on `Disconnect` from a client (unless `Stop` option is used instead) and allows repeated client connections. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options. 
 
 Connect to it with a remote attach configuration in your `launch.json`:
 ```json5
@@ -398,9 +399,11 @@ Connect to it with a remote attach configuration in your `launch.json`:
 }
 ```
 
-#### Connecting to External Debugger to Start Debug Session
+#### Connecting to Delve DAP with Target Specified at Client Start-Up
 
-Here the user must first start a `dlv dap` server listening at `host:port` and specify a program to debug/test/exec or a process to attach to via [launch](#Launch) or [attach](#Attach) configuration with a `"port"` attribute. When the `"port"` attribute is specified, Go extension will assume a Delve DAP server has been started externally and tell VS Code to connect to it directly through the specified `host:port`. The `program` attribute must point to the absolute path of the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
+In this mode the user must first manually start a [`dlv dap` server](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md) listening at `host:port` and then specify the target program via [launch](#launch) or [attach](#attach) client config with a `"port"` attribute. Instead of starting a new local server, the Go extension will tell VS Code to connect to the server specified by `host:port` attributes and then send a request with the target to debug. This option provides the flexibility of easily adapting local configurations to connect to external servers, but ⚠️ must be used with care since anyone who can connect to the server can make it run arbitrary programs.
+
+When using `launch` mode, the `program` attribute must point to the absolute path of the package or binary to debug in the remote host’s file system even when `substitutePath` is specified. When using `attach` mode outside of local host, you need to specify the `processId` in the config since [the processId resolution feature](#attach) cannot gather information about processes running remotely.
 
 <!-- TODO: update or remote this picture
 <p align="center"><img src="images/remote-debugging.png" alt="Remote Debugging"> </p>
@@ -438,11 +441,8 @@ Or have the binary compiled by dlv-dap by modifying the above configuration to u
 ```
 
 ⚠️ Limitations
-*   Anyone who can connect to the Delve DAP server’s host:port can exploit it to run arbitrary programs as the target is not launched until a client request is received.
-*   When using `"attach"` requests, you will need to specify the `processId` since
-[the processId resolution feature](#attach) cannot gather process information running remotely.
 *   Delve DAP does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
-*   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you’d run the `go build` or `go test` command.
+*   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you would run the `go build` or `go test` command.
 
 ### Running Debugee Externally
 
