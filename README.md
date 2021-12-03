@@ -170,7 +170,7 @@ conduct-related issue, please mail conduct@golang.org.
 [code editing]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-editing
 [diagnostics]: https://github.com/golang/vscode-go/blob/master/docs/features.md#diagnostics
 [testing]: https://github.com/golang/vscode-go/blob/master/docs/features.md##run-and-test-in-the-editor
-[debugging]: #debugging
+[debugging]: https://github.com/golang/vscode-go/blob/master/docs/features.md#debugging
 [full feature breakdown]: https://github.com/golang/vscode-go/blob/master/docs/features.md
 [workspace documentation]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
 [`Go: Install/Update Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
