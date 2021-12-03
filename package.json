@@ -656,12 +656,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -825,7 +825,7 @@
                   "local",
                   "remote"
                 ],
-                "description": "Indicates local or remote debugging. Local maps to the `dlv attach` command, remote maps to `connect`. `remote` is not supported in `dlv-dap` mode currently. Use `host` and `port` instead.",
+                "description": "Indicates local or remote debugging. Local is similar to the `dlv attach` command, remote - to `dlv connect`",
                 "default": "local"
               },
               "stopOnEntry": {
@@ -853,18 +853,18 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath.",
+                "description": "The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath. Not supported with `dlv-dap`.",
                 "markdownDeprecationMessage": "Use `substitutePath` instead.",
                 "default": ""
               },
               "port": {
                 "type": "number",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
