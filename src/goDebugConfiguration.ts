@@ -141,6 +141,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['type'] = this.defaultDebugAdapterType;
 		}
 
+		if (!debugConfiguration['mode']) {
+			if (debugConfiguration.request === 'launch') {
+				// 'auto' will decide mode by checking file extensions later
+				debugConfiguration['mode'] = 'auto';
+			} else if (debugConfiguration.request === 'attach') {
+				debugConfiguration['mode'] = 'local';
+			}
+		}
+
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
 		const goConfig = getGoConfig(folder && folder.uri);
