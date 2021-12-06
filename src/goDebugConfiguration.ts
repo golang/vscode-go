@@ -10,6 +10,7 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
+import { ContinuedEvent } from 'vscode-debugadapter';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -27,7 +28,7 @@ import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
-let dlvDAPVersionCurrent = false;
+let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') {}
@@ -265,7 +266,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
-		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
+		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
 			const tool = getToolAtVersion('dlv-dap');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
 				// If the user has opted in to automatic tool updates, we can update
@@ -276,13 +277,13 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
 					await installTools([toolVersion], goVersion, true);
 				} else {
-					// If we are prompting the user to update, we do not want to continue
-					// with this debug session.
-					promptForUpdatingTool(tool.name);
-					return;
+					await promptForUpdatingTool(tool.name);
 				}
+				// installTools could've failed (e.g. no network access) or the user decliend to install dlv-dap
+				// in promptForUpdatingTool. If dlv-dap doesn't exist or dlv-dap is too old to have MVP features,
+				// the failure will be visible to users when launching the dlv-dap process (crash or error message).
 			}
-			dlvDAPVersionCurrent = true;
+			dlvDAPVersionChecked = true;
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {
