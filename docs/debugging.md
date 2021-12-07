@@ -87,7 +87,9 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
     *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all="-N -l"` flags to avoid stripping debugging information.
     *   `auto`: automatically choose between `debug` and `test` depending on the open file.
 
-NOTE: If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
+⚠️ If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
+
+The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
 
 ### Attach
 
@@ -167,7 +169,7 @@ See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.c
 <img src="images/function-breakpoint.gif" alt="Function breakpoint" width="75%">
 </p>
 
-*   Logpoint (WIP)
+*   **Logpoints**: a [logpoint](https://code.visualstudio.com/docs/editor/debugging#_logpoints) is a variant of breakpoint that does not 'break', but instead logs a message to Debug Console and continues execution. Expressions within `{}` are interpolated. For the list of acceptable expressions and syntax, see [Delve's documentation](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md#expressions).
 
 ### Data Inspection
 
@@ -451,6 +453,14 @@ Sometimes you might like to launch the program for debugging outside of VS Code 
 *   Compile and run the target program from the external terminal and use [the "attach" configuration](#attach).
 *   Run the debug server from the external terminal with `--listen=:<port>` and have VS Code connect to it using `port` in your launch configuration (see ["Remote Debugging"](#remote-debugging) for more details)
 
+## Troubleshooting
+
+The suggestions below are intended to help you troubleshoot any problems you encounter. If you are unable to resolve the issue, please take a look at the [current known debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3ADebug) or [report a new issue](#reporting-issues).
+
+### Read documentation and [common issues](#common-issues)
+
+Start by taking a quick glance at the [FAQs](#faqs) described below. You can also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+
 ## Reporting Issues
 
 When you are having issues in `dlv-dap` mode, first check if the problems are reproducible after updating `dlv-dap`. It's possible that the problems are already fixed. Follow the instruction for [updating dlv-dap](#updating-dlv-dap)) and [updating extension](https://code.visualstudio.com/docs/editor/extension-gallery#\_extension-autoupdate).
@@ -518,10 +528,6 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
 
 ## FAQs
 
-### Why does my debug session stop when I set breakpoints?
-
-To support being able to set breakpoints while the program is running, the debug adapter needs to stop the program. Due to the extra synchronization required to correctly resume the program, the debug adapter currently sends a stopped event. This means that if you are editing breakpoints while the program is running, you will need to hit continue to continue your debug session. We plan to change the behavior of the debug adapter for more seamless editing of breakpoints. You can track the progress [here](https://github.com/golang/vscode-go/issues/1676).
-
 ### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
 
 The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
@@ -540,13 +546,21 @@ If you attempt to make another step request you will get an `invalid command` er
 
 <p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
 
-
 Use `Continue` to resume program execution.
 
 If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
 
 <p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
 
+### My program does not stop at breakpoints.
+
+Check the "BREAKPOINTS" section in the debug view and see if the breakpoints are [greyed out](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) when your debug session is active. Setting `stopOnEntry` is a great way to pause execution at the start to _verify_ breakpoints are set correctly. Or [enable logging](#collecting-logs) and see if `setBreakpoints` requests succeeded with all the breakpoints _verified_.
+
+This problem often occurs when the source location used in compiling the debugged program and the workspace directory VS Code uses are different. Common culprits are remote debugging where the program is built in the remote location, use of symbolic links, or use of `-trimpath` build flags. In this case, configure the `substitutePath` attribute in your launch configuration.
+
+### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
+
+The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
