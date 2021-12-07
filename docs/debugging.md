@@ -457,10 +457,49 @@ Sometimes you might like to launch the program for debugging outside of VS Code 
 
 The suggestions below are intended to help you troubleshoot any problems you encounter. If you are unable to resolve the issue, please take a look at the [current known debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3ADebug) or [report a new issue](#reporting-issues).
 
-### Read documentation and [common issues](#common-issues)
+1. Read documentation and [FAQs](#faqs). Also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+1. Check your `launch.json` configuration. Often error messages appearing in the DEBUG CONSOLE panel reveal issues.
+1. Update Delve (`dlv-dap`) to pick up most recent bug fixes. Follow [the instruction](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#staying-up-to-date).
+1. Check if you can reproduce the issue with `dlv`, the command line tool from the integrated terminal. <!-- TODO(vscode-go): add instructions https://github.com/golang/vscode-go/issues/1931 --> If it's reproducible when using `dlv`, take a look at the [delve's issue tracker](https://github.com/go-delve/delve/issues).
+1. Capture [logs](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#collecting-logs) and inspect them.
+1. Look at the [existing debugging issues](https://github.com/golang/vscode-go/labels/Debug) if similar issues were reported.
+1. If none of these solve your problem, please [open a new issue](#reporting-issues).
 
-Start by taking a quick glance at the [FAQs](#faqs) described below. You can also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+## FAQs
 
+### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
+
+The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
+
+*   Hover over the variable in the source code
+*   `Copy as Expression` to query the string via REPL in the DEBUG CONSOLE panel
+*   `Copy Value` to clipboard
+
+Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
+
+### Why does my debug session have an `invalid command` error when I try to step?
+
+When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
+
+If you attempt to make another step request you will get an `invalid command` error.
+
+<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+Use `Continue` to resume program execution.
+
+If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
+
+<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+### My program does not stop at breakpoints.
+
+Check the "BREAKPOINTS" section in the debug view and see if the breakpoints are [greyed out](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) when your debug session is active. Setting `stopOnEntry` is a great way to pause execution at the start to _verify_ breakpoints are set correctly. Or [enable logging](#collecting-logs) and see if `setBreakpoints` requests succeeded with all the breakpoints _verified_.
+
+This problem often occurs when the source location used in compiling the debugged program and the workspace directory VS Code uses are different. Common culprits are remote debugging where the program is built in the remote location, use of symbolic links, or use of `-trimpath` build flags. In this case, configure the `substitutePath` attribute in your launch configuration.
+
+### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
+
+The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 ## Reporting Issues
 
 When you are having issues in `dlv-dap` mode, first check if the problems are reproducible after updating `dlv-dap`. It's possible that the problems are already fixed. Follow the instruction for [updating dlv-dap](#updating-dlv-dap)) and [updating extension](https://code.visualstudio.com/docs/editor/extension-gallery#\_extension-autoupdate).
@@ -526,41 +565,7 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
 }
 ```
 
-## FAQs
 
-### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
-
-The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
-
-*   Hover over the variable in the source code
-*   `Copy as Expression` to query the string via REPL in the DEBUG CONSOLE panel
-*   `Copy Value` to clipboard
-
-Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
-
-### Why does my debug session have an `invalid command` error when I try to step?
-
-When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
-
-If you attempt to make another step request you will get an `invalid command` error.
-
-<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
-
-Use `Continue` to resume program execution.
-
-If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
-
-<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
-
-### My program does not stop at breakpoints.
-
-Check the "BREAKPOINTS" section in the debug view and see if the breakpoints are [greyed out](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) when your debug session is active. Setting `stopOnEntry` is a great way to pause execution at the start to _verify_ breakpoints are set correctly. Or [enable logging](#collecting-logs) and see if `setBreakpoints` requests succeeded with all the breakpoints _verified_.
-
-This problem often occurs when the source location used in compiling the debugged program and the workspace directory VS Code uses are different. Common culprits are remote debugging where the program is built in the remote location, use of symbolic links, or use of `-trimpath` build flags. In this case, configure the `substitutePath` attribute in your launch configuration.
-
-### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
-
-The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 
 [Delve]: https://github.com/go-delve/delve
 [VS Code variables]: https://code.visualstudio.com/docs/editor/variables-reference
