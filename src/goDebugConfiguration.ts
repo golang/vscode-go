@@ -232,28 +232,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['cwd'] = resolveHomeDir(debugConfiguration['cwd']);
 		}
 
-		// Remove any '--gcflags' entries and show a warning
-		if (debugConfiguration['buildFlags']) {
-			const resp = this.removeGcflags(debugConfiguration['buildFlags']);
-			if (resp.removed) {
-				debugConfiguration['buildFlags'] = resp.args;
-				this.showWarning(
-					'ignoreDebugGCFlagsWarning',
-					"User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
-				);
-			}
-		}
-		if (debugConfiguration['env'] && debugConfiguration['env']['GOFLAGS']) {
-			const resp = this.removeGcflags(debugConfiguration['env']['GOFLAGS']);
-			if (resp.removed) {
-				debugConfiguration['env']['GOFLAGS'] = resp.args;
-				this.showWarning(
-					'ignoreDebugGCFlagsWarning',
-					"User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
-				);
-			}
-		}
-
 		const dlvToolPath = getBinPath(debugAdapter);
 		if (!path.isAbsolute(dlvToolPath)) {
 			// If user has not already declined to install this tool,
@@ -334,43 +312,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		return debugConfiguration;
-	}
-
-	public removeGcflags(args: string): { args: string; removed: boolean } {
-		// From `go help build`
-		// ...
-		// -gcflags '[pattern=]arg list'
-		// 	 arguments to pass on each go tool compile invocation.
-		//
-		// The -asmflags, -gccgoflags, -gcflags, and -ldflags flags accept a
-		// space-separated list of arguments to pass to an underlying tool
-		// during the build. To embed spaces in an element in the list, surround
-		// it with either single or double quotes. The argument list may be
-		// preceded by a package pattern and an equal sign, which restricts
-		// the use of that argument list to the building of packages matching
-		// that pattern (see 'go help packages' for a description of package
-		// patterns). Without a pattern, the argument list applies only to the
-		// packages named on the command line. The flags may be repeated
-		// with different patterns in order to specify different arguments for
-		// different sets of packages. If a package matches patterns given in
-		// multiple flags, the latest match on the command line wins.
-		// For example, 'go build -gcflags=-S fmt' prints the disassembly
-		// only for package fmt, while 'go build -gcflags=all=-S fmt'
-		// prints the disassembly for fmt and all its dependencies.
-
-		// Regexp Explanation:
-		// 	1. (^|\s): the flag is preceded by a white space or is at the start of the line.
-		//  2. -gcflags: the name of the flag.
-		//  3. (=| ): the name of the flag is followed by = or a space.
-		//  4. ('[^']*'|"[^"]*"|[^'"\s]+)+: the value of the flag is a combination of nonwhitespace
-		//       characters and quoted strings which may contain white space.
-		const gcflagsRegexp = /(^|\s)(-gcflags)(=| )('[^']*'|"[^"]*"|[^'"\s]+)+/;
-		let removed = false;
-		while (args.search(gcflagsRegexp) >= 0) {
-			args = args.replace(gcflagsRegexp, '');
-			removed = true;
-		}
-		return { args, removed };
 	}
 
 	public resolveDebugConfigurationWithSubstitutedVariables(
