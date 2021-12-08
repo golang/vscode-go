@@ -115,7 +115,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.1.1'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
