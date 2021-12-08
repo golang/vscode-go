@@ -20,7 +20,9 @@ import { goVet } from './goVet';
 import { getTestFlags, goTest, TestConfig } from './testUtils';
 import { ICheckResult } from './util';
 
-const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+const STATUS_BAR_ITEM_NAME = 'Go Test';
+const statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ITEM_NAME, vscode.StatusBarAlignment.Left);
+statusBarItem.name = STATUS_BAR_ITEM_NAME;
 statusBarItem.command = 'go.test.showOutput';
 const neverAgain = { title: "Don't Show Again" };
 

@@ -100,14 +100,7 @@ import {
 	resolvePath,
 	runGoVersionM
 } from './util';
-import {
-	clearCacheForTools,
-	fileExists,
-	getCurrentGoRoot,
-	dirExists,
-	setCurrentGoRoot,
-	envPath
-} from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');

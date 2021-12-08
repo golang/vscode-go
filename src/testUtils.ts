@@ -23,7 +23,9 @@ import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspac
 import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
-const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+const STATUS_BAR_ITEM_NAME = 'Go Test Cancel';
+const statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ITEM_NAME, vscode.StatusBarAlignment.Left);
+statusBarItem.name = STATUS_BAR_ITEM_NAME;
 statusBarItem.command = 'go.test.cancel';
 statusBarItem.text = '$(x) Cancel Running Tests';
 

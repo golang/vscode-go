@@ -44,6 +44,8 @@ import util = require('util');
 import vscode = require('vscode');
 import { isInPreviewMode, RestartReason } from './goLanguageServer';
 
+const STATUS_BAR_ITEM_NAME = 'Go Tools';
+
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
 
@@ -395,7 +397,7 @@ Please select "Install", or follow the installation instructions [here](https://
 			break;
 		case 'Install All':
 			await installTools(missing, goVersion);
-			removeGoStatus();
+			removeGoStatus(STATUS_BAR_ITEM_NAME);
 			break;
 		default:
 			// The user has declined to install this tool.
@@ -555,12 +557,17 @@ export async function offerToInstallTools() {
 	let missing = await getMissingTools(goVersion);
 	missing = missing.filter((x) => x.isImportant);
 	if (missing.length > 0) {
-		addGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
+		addGoStatus(
+			STATUS_BAR_ITEM_NAME,
+			'Analysis Tools Missing',
+			'go.promptforinstall',
+			'Not all Go tools are available on the GOPATH'
+		);
 		vscode.commands.registerCommand('go.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',
 				async command() {
-					removeGoStatus();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
 					await installTools(missing, goVersion);
 				}
 			};
@@ -583,7 +590,7 @@ export async function offerToInstallTools() {
 					if (selection) {
 						selection.command();
 					} else {
-						removeGoStatus();
+						removeGoStatus(STATUS_BAR_ITEM_NAME);
 					}
 				});
 		});

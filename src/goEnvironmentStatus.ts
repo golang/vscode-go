@@ -555,6 +555,7 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 	return results;
 }
 
+const STATUS_BAR_ITEM_NAME = 'Go Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion() {
@@ -585,7 +586,12 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		addGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
+		addGoStatus(
+			STATUS_BAR_ITEM_NAME,
+			'Go Update Available',
+			'go.promptforgoinstall',
+			'A newer version of Go is available'
+		);
 		vscode.commands.registerCommand('go.promptforgoinstall', () => {
 			const download = {
 				title: 'Download',
@@ -630,7 +636,7 @@ export async function offerToInstallLatestGoVersion() {
 					// TODO: should we removeGoStatus if user has closed the notification
 					// without any action? It's kind of a feature now - without selecting
 					// neverAgain, user can hide this statusbar item.
-					removeGoStatus();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
 					selection?.command();
 				});
 		});
