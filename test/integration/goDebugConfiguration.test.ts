@@ -445,7 +445,7 @@ suite('Debug Configuration Modify User Config', () => {
 				assert.strictEqual(got.removed, tc.want.removed, `removed for ${tc.input} does not match expected`);
 			});
 		});
-		test('remove user set -gcflags in buildFlags', () => {
+		test('remove user set -gcflags in buildFlags', async () => {
 			const config = {
 				name: 'Launch',
 				type: 'go',
@@ -456,10 +456,10 @@ suite('Debug Configuration Modify User Config', () => {
 				buildFlags: '-race -gcflags=-l -mod=mod'
 			};
 
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 			assert.strictEqual(config.buildFlags, '-race -mod=mod');
 		});
-		test('remove user set -gcflags in GOFLAGS', () => {
+		test('remove user set -gcflags in GOFLAGS', async () => {
 			const config = {
 				name: 'Launch',
 				type: 'go',
@@ -469,7 +469,7 @@ suite('Debug Configuration Modify User Config', () => {
 				env: { GOFLAGS: '-race -gcflags=-l -mod=mod' }
 			};
 
-			debugConfigProvider.resolveDebugConfiguration(undefined, config);
+			await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			assert.strictEqual(config.env.GOFLAGS, '-race -mod=mod');
 		});
@@ -478,7 +478,7 @@ suite('Debug Configuration Modify User Config', () => {
 
 suite('Debug Configuration Resolve Paths', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	test('resolve ~ in cwd', () => {
+	test('resolve ~ in cwd', async () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -488,11 +488,11 @@ suite('Debug Configuration Resolve Paths', () => {
 			cwd: '~/main.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		assert.notStrictEqual(config.cwd, '~/main.go');
 	});
 
-	test('do not resolve workspaceFolder or fileDirname', () => {
+	test('do not resolve workspaceFolder or fileDirname', async () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -502,7 +502,7 @@ suite('Debug Configuration Resolve Paths', () => {
 			cwd: '${workspaceFolder}'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 		assert.strictEqual(config.cwd, '${workspaceFolder}');
 		assert.strictEqual(config.program, '${fileDirname}');
@@ -842,7 +842,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 
 suite('Debug Configuration Auto Mode', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	test('resolve auto to debug with non-test file', () => {
+	test('resolve auto to debug with non-test file', async () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -851,12 +851,12 @@ suite('Debug Configuration Auto Mode', () => {
 			program: '/path/to/main.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		assert.strictEqual(config.mode, 'debug');
 		assert.strictEqual(config.program, '/path/to/main.go');
 	});
 
-	test('resolve auto to debug with test file', () => {
+	test('resolve auto to debug with test file', async () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -865,7 +865,7 @@ suite('Debug Configuration Auto Mode', () => {
 			program: '/path/to/main_test.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		assert.strictEqual(config.mode, 'test');
 		assert.strictEqual(config.program, '/path/to');
 	});
@@ -873,7 +873,7 @@ suite('Debug Configuration Auto Mode', () => {
 
 suite('Debug Configuration Default DebugAdapter', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
-	test("default debugAdapter should be 'dlv-dap'", () => {
+	test("default debugAdapter should be 'dlv-dap'", async () => {
 		const config = {
 			name: 'Launch',
 			type: 'go',
@@ -882,12 +882,12 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			program: '/path/to/main.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test("default debugAdapter for remote mode should be always 'legacy'", () => {
+	test("default debugAdapter for remote mode should be always 'legacy'", async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -898,12 +898,12 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		};
 
 		const want = 'legacy'; // Remote mode defaults to legacy mode.
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 
-	test('debugAdapter=dlv-dap is allowed with remote mode', () => {
+	test('debugAdapter=dlv-dap is allowed with remote mode', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -915,7 +915,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		};
 
 		const want = 'dlv-dap'; // If requested, dlv-dap is preserved.
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
