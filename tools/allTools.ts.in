@@ -221,7 +221,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Go debugger & debug adapter (Delve DAP)',
-		defaultVersion: 'master', // Always build from the master.
+		defaultVersion: '%s', // pinned version
 		minimumGoVersion: semver.coerce('1.12'), // dlv requires 1.12+ for build
 		latestVersion: semver.parse('%s'),
 		latestVersionTimestamp: moment('%s', 'YYYY-MM-DD')
