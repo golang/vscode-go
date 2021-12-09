@@ -920,3 +920,45 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 });
+
+suite('Debug Configuration Infers Default Mode Property', () => {
+	const debugConfigProvider = new GoDebugConfigurationProvider();
+	test("default mode for launch requests and test Go programs should be 'test'", () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			program: '/path/to/main_test.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['mode'], 'test');
+	});
+
+	test("default mode for launch requests and non-test Go programs should be 'debug'", () => {
+		const config = {
+			name: 'Launch',
+			type: 'go',
+			request: 'launch',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['mode'], 'debug');
+	});
+
+	test("default mode for attach requests should be 'local'", () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			program: '/path/to/main.go'
+		};
+
+		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+		assert.strictEqual(resolvedConfig['mode'], 'local');
+	});
+});
