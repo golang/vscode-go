@@ -26,6 +26,9 @@ export GIT_GOFMT_HOOK=off
 
 YARN="${ROOT}/node_modules/.bin/yarn"
 
+# convert packages-lock.json to yarn.lock
+$YARN import
+
 ALL_LICENSES=$(
   $YARN licenses list --json --no-progress 2>/dev/null|
   jq 'select(.type == "table") | .data.body | map( {name: .[0], version: .[1], license: .[2], url: .[3], verndor: .[4], vendorName: .[5]} )')
@@ -43,9 +46,10 @@ NG=$(echo "${ALL_LICENSES}" | jq '
   "(MIT OR Apache-2.0)": 1,
   "(MIT AND Zlib)": 1,
   "(MIT AND BSD-3-Clause)": 1,
+  "Python-2.0": 1,
 } as $allowed_licenses |
 {
-  "json-schema@0.2.3": 1,
+  "json-schema@0.4.0": 1,
 } as $allow_list |
 .[] | select(.license | in($allowed_licenses) | not)
 | select((.name+"@"+.version) | in($allow_list) | not) ')
