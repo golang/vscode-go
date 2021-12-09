@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -90,8 +90,10 @@
     "vscode": "^1.59.0"
   },
   "activationEvents": [
-    "workspaceContains:**/*.go",
     "onLanguage:go",
+    "workspaceContains:*.go",
+    "workspaceContains:*/*.go",
+    "workspaceContains:*/*/*.go",
     "onCommand:go.gopath",
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
@@ -653,12 +655,12 @@
               },
               "port": {
                 "type": "number",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "trace": {
@@ -690,7 +692,8 @@
                 "enum": [
                   "default",
                   "native",
-                  "lldb"
+                  "lldb",
+                  "rr"
                 ],
                 "description": "Backend used by delve. Maps to `dlv`'s `--backend` flag."
               },
@@ -772,6 +775,16 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              },
+              "showRegisters": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+              },
+              "hideSystemGoroutines": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               }
             }
           },
@@ -811,7 +824,7 @@
                   "local",
                   "remote"
                 ],
-                "description": "Indicates local or remote debugging. Local maps to the `dlv attach` command, remote maps to `connect`. `remote` is not supported in `dlv-dap` mode currently. Use `host` and `port` instead.",
+                "description": "Indicates local or remote debugging. Local is similar to the `dlv attach` command, remote - to `dlv connect`",
                 "default": "local"
               },
               "stopOnEntry": {
@@ -839,18 +852,18 @@
               },
               "remotePath": {
                 "type": "string",
-                "description": "The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath.",
+                "description": "The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath. Not supported with `dlv-dap`.",
                 "markdownDeprecationMessage": "Use `substitutePath` instead.",
                 "default": ""
               },
               "port": {
                 "type": "number",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": 2345
               },
               "host": {
                 "type": "string",
-                "description": "In legacy mode, this will only apply to remote-attach configurations, which will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
+                "description": "When applied to remote-attach configurations, will look for \"dlv ... --headless --listen=<host>:<port>\" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with \"dlv dap --listen=<host>:<port>\" to ask it to launch/attach to the target process.",
                 "default": "127.0.0.1"
               },
               "substitutePath": {
@@ -891,7 +904,8 @@
                 "enum": [
                   "default",
                   "native",
-                  "lldb"
+                  "lldb",
+                  "rr"
                 ],
                 "description": "Backend used by delve. Maps to `dlv`'s `--backend` flag."
               },
@@ -968,6 +982,16 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not."
+              },
+              "showRegisters": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+              },
+              "hideSystemGoroutines": {
+                "type": "boolean",
+                "default": false,
+                "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               }
             }
           }
@@ -1818,6 +1842,16 @@
               "type": "boolean",
               "description": "Boolean value to indicate whether global package variables should be shown in the variables pane or not.",
               "default": false
+            },
+            "showRegisters": {
+              "type": "boolean",
+              "default": false,
+              "description": "Boolean value to indicate whether register variables should be shown in the variables pane or not."
+            },
+            "hideSystemGoroutines": {
+              "type": "boolean",
+              "default": false,
+              "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
             },
             "showLog": {
               "type": "boolean",

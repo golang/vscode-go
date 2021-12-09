@@ -38,11 +38,13 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		if (configuration.port) {
-			return new vscode.DebugAdapterServer(configuration.port, configuration.host ?? '127.0.0.1');
-		}
 		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
-		logger.debug(`Config: ${JSON.stringify(configuration)}`);
+		logger.debug(`Config: ${JSON.stringify(configuration)}\n`);
+		if (configuration.port) {
+			const host = configuration.host ?? '127.0.0.1';
+			logger.info(`Connecting to DAP server at ${host}:${configuration.port}\n`);
+			return new vscode.DebugAdapterServer(configuration.port, host);
+		}
 		const d = new DelveDAPOutputAdapter(configuration, logger);
 		return new vscode.DebugAdapterInlineImplementation(d);
 	}
@@ -57,13 +59,33 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 			return null;
 		}
 		const logger = new TimestampedLogger(session.configuration?.trace || 'off', this.outputChannel);
+		let requestsSent = 0;
+		let responsesReceived = 0;
 		return {
 			onWillStartSession: () =>
 				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
-			onWillReceiveMessage: (message: any) => logger.trace(`client -> ${JSON.stringify(message)}\n`),
-			onDidSendMessage: (message: any) => logger.trace(`client  <- ${JSON.stringify(message)}\n`),
+			onWillReceiveMessage: (message: any) => {
+				logger.trace(`client -> ${JSON.stringify(message)}\n`);
+				requestsSent++;
+			},
+			onDidSendMessage: (message: any) => {
+				logger.trace(`client  <- ${JSON.stringify(message)}\n`);
+				responsesReceived++;
+			},
 			onError: (error: Error) => logger.error(`error: ${error}\n`),
-			onWillStopSession: () => logger.debug(`session ${session.id} will stop\n`),
+			onWillStopSession: () => {
+				if (
+					session.configuration.debugAdapter === 'dlv-dap' &&
+					session.configuration.mode === 'remote' &&
+					requestsSent > 0 &&
+					responsesReceived === 0 // happens when the rpc server doesn't understand DAP
+				) {
+					logger.warn(
+						"'remote' mode with 'dlv-dap' debugAdapter must connect to an external headless server started with dlv @ v1.7.3 or later.\n"
+					);
+				}
+				logger.debug(`session ${session.id} will stop\n`);
+			},
 			onExit: (code: number | undefined, signal: string | undefined) =>
 				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})\n`)
 		};
@@ -277,7 +299,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 	private async startAndConnectToServer() {
 		try {
-			const { port, host, dlvDapServer } = await startDapServer(
+			const { dlvDapServer, socket } = await startDapServer(
 				this.configuration,
 				(msg) => this.outputEvent('stdout', msg),
 				(msg) => this.outputEvent('stderr', msg),
@@ -290,21 +312,8 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 					this.logger?.info(msg);
 				}
 			);
-			const socket = await new Promise<net.Socket>((resolve, reject) => {
-				// eslint-disable-next-line prefer-const
-				let timer: NodeJS.Timeout;
-				const s = net.createConnection(port, host, () => {
-					clearTimeout(timer);
-					resolve(s);
-				});
-				timer = setTimeout(() => {
-					reject('connection timeout');
-					s?.destroy();
-				}, 1000);
-			});
 
 			this.dlvDapServer = dlvDapServer;
-			this.port = port;
 			this.socket = socket;
 			this.start(this.socket, this.socket);
 		} catch (err) {
@@ -324,17 +333,30 @@ async function startDapServer(
 	log: (msg: string) => void,
 	logErr: (msg: string) => void,
 	logConsole: (msg: string) => void
-): Promise<{ port: number; host: string; dlvDapServer?: ChildProcessWithoutNullStreams }> {
+): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
 	const host = configuration.host || '127.0.0.1';
+	const port = configuration.port || (await getPort());
 
-	if (configuration.port) {
-		// If a port has been specified, assume there is an already
-		// running dap server to connect to.
-		return { port: configuration.port, host };
-	}
-	const port = await getPort();
-	const dlvDapServer = await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
-	return { dlvDapServer, port, host };
+	// If a port has been specified, assume there is an already
+	// running dap server to connect to. Otherwise, we start the dlv dap server.
+	const dlvDapServer = configuration.port
+		? undefined
+		: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+
+	const socket = await new Promise<net.Socket>((resolve, reject) => {
+		// eslint-disable-next-line prefer-const
+		let timer: NodeJS.Timeout;
+		const s = net.createConnection(port, host, () => {
+			clearTimeout(timer);
+			resolve(s);
+		});
+		timer = setTimeout(() => {
+			reject('connection timeout');
+			s?.destroy();
+		}, 1000);
+	});
+
+	return { dlvDapServer, socket };
 }
 
 function spawnDlvDapServerProcess(

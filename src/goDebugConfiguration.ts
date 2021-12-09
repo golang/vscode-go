@@ -10,6 +10,7 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
+import { ContinuedEvent } from 'vscode-debugadapter';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -27,7 +28,7 @@ import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
-let dlvDAPVersionCurrent = false;
+let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') {}
@@ -140,6 +141,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['type'] = this.defaultDebugAdapterType;
 		}
 
+		if (!debugConfiguration['mode']) {
+			if (debugConfiguration.request === 'launch') {
+				// 'auto' will decide mode by checking file extensions later
+				debugConfiguration['mode'] = 'auto';
+			} else if (debugConfiguration.request === 'attach') {
+				debugConfiguration['mode'] = 'local';
+			}
+		}
+
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
 		const goConfig = getGoConfig(folder && folder.uri);
@@ -155,21 +165,24 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		if (!debugConfiguration['debugAdapter']) {
-			// for local mode, default to dlv-dap.
+			// For local modes, default to dlv-dap. For remote - to legacy for now.
 			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
 		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
-			this.showWarning(
-				'ignoreDlvDAPInRemoteModeWarning',
-				"debugAdapter type of 'dlv-dap' with mode 'remote' is unsupported. Fall back to the 'legacy' debugAdapter for 'remote' mode."
-			);
-			debugConfiguration['debugAdapter'] = 'legacy';
-		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['port']) {
-			this.showWarning(
-				'ignorePortUsedInDlvDapWarning',
-				"`port` is used with the 'dlv-dap' debugAdapter to support [launching the debug adapter server externally](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally). Remove 'host' and 'port' from your launch.json if you are not launching a DAP server."
-			);
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
+			if (debugConfiguration['mode'] === 'remote') {
+				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
+				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
+				// but we have no way of detectng that with an external server.
+				this.showWarning(
+					'ignoreDlvDAPInRemoteModeWarning',
+					"'remote' mode with 'dlv-dap' debugAdapter must connect to an external `dlv --headless` server @ v1.7.3 or later. Older versions will fail with \"error layer=rpc rpc:invalid character 'C' looking for beginning of value\" logged to the terminal.\n"
+				);
+			} else if (debugConfiguration['port']) {
+				this.showWarning(
+					'ignorePortUsedInDlvDapWarning',
+					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+				);
+			}
 		}
 
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
@@ -199,7 +212,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		// Reflect the defaults set through go.delveConfig setting.
-		const dlvProperties = ['showGlobalVariables', 'substitutePath', 'showLog', 'logOutput', 'dlvFlags'];
+		const dlvProperties = [
+			'showRegisters',
+			'showGlobalVariables',
+			'substitutePath',
+			'showLog',
+			'logOutput',
+			'dlvFlags',
+			'hideSystemGoroutines'
+		];
 		if (debugAdapter !== 'dlv-dap') {
 			dlvProperties.push('dlvLoadConfig');
 		}
@@ -254,7 +275,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
-		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
+		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
 			const tool = getToolAtVersion('dlv-dap');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
 				// If the user has opted in to automatic tool updates, we can update
@@ -265,13 +286,13 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
 					await installTools([toolVersion], goVersion, true);
 				} else {
-					// If we are prompting the user to update, we do not want to continue
-					// with this debug session.
-					promptForUpdatingTool(tool.name);
-					return;
+					await promptForUpdatingTool(tool.name);
 				}
+				// installTools could've failed (e.g. no network access) or the user decliend to install dlv-dap
+				// in promptForUpdatingTool. If dlv-dap doesn't exist or dlv-dap is too old to have MVP features,
+				// the failure will be visible to users when launching the dlv-dap process (crash or error message).
 			}
-			dlvDAPVersionCurrent = true;
+			dlvDAPVersionChecked = true;
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {

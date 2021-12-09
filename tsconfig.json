@@ -3,9 +3,9 @@
 		"module": "commonjs",
 		"outDir": "out",
 		"sourceMap": true,
-		"target": "es6",
+		"target": "es2017",
 		"lib": [
-			"es2015"
+			"es2017"
 		],
 		//"strict": true,
 		"noImplicitAny": true,
@@ -13,6 +13,7 @@
 		"alwaysStrict": true,
 		"strictBindCallApply": true,
 		"strictFunctionTypes": true,
+		"esModuleInterop": true,
 		//"strictNullChecks": true,
 		//"strictPropertyInitialization": true,
 	},

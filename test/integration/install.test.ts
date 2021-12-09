@@ -5,7 +5,7 @@
  *--------------------------------------------------------*/
 
 import AdmZip = require('adm-zip');
-import * as assert from 'assert';
+import assert from 'assert';
 import * as config from '../../src/config';
 import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
 import { getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
@@ -160,7 +160,7 @@ suite('Installation Tests', function () {
 				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
 				{
 					name: 'dlv-dap',
-					versions: ['v1.0.0', 'master'],
+					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
 					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
 				}
 			],
@@ -175,7 +175,7 @@ suite('Installation Tests', function () {
 				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
 				{
 					name: 'dlv-dap',
-					versions: ['v1.0.0', 'master'],
+					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
 					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
 				}
 			],

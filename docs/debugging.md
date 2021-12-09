@@ -1,16 +1,12 @@
 # Debugging
 
-The Go extension allows you to launch or attach to Go programs for debugging. You can inspect variables and stacks, setting breakpoints, and do other debugging activities using [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
+The Go extension allows you to launch or attach to Go programs for debugging. You can inspect variables and stacks, set breakpoints, and do other debugging activities using [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
 
 These debugging features are possible by using [Delve](https://github.com/go-delve/delve), the Go debugger.
 The Go extension has been communicating with Delve through a custom debug adapter program (`legacy` mode).
-As the new [`Delve`'s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap) becomes available,
-the Go extension is transitioning to skip the legacy debug adapter and directly communicate with Delve for local debugging.
+As the new [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap) has become available, the Go extension is transitioning to deprecate the legacy debug adapter in favor of direct communication with Delve via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
 
-** 📣 We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default! **
-
-Delve DAP implementation's support for remote debugging is still a work in progress and the Go extension still uses
-the legacy debug adapter for the debug configuration with the `"remote"` mode.
+ 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default and is available for [_remote_ _debugging_](#remote-debugging) on demand!**
 
 Many features and settings described in this document may be available only with the new `dlv-dap` mode.
 For troubleshooting and configuring the legacy debug adapter, see [the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
@@ -62,6 +58,7 @@ If you want to switch to `legacy` for only a subset of your launch configuration
 If you chose to switch to legacy because of bugs or limitations in the new debug adapter,
 please [open an issue](https://github.com/golang/vscode-go/issues/new)
 to help us improve the new debug adapter.
+
 ## Features
 
 For general debugging features such as inspecting variables, setting breakpoints, and other activities that aren't language-dependent, review [VS Code debugging](https://code.visualstudio.com/docs/editor/debugging).
@@ -90,10 +87,19 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
     *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all="-N -l"` flags to avoid stripping debugging information.
     *   `auto`: automatically choose between `debug` and `test` depending on the open file.
 
+⚠️ If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
+
+The `program` attribute must point to the absolute path to the package or binary to debug in the remote host’s file system even when `substitutePath` is specified.
+
 ### Attach
 
-You can debug an already running program using the `attach` request type configuration. With the `attach` request, the Go extension starts `dlv-dap` and configures it to attach to the specified process. Users can select the process to debug with one of the following options:
+You can use this configuration to attach to a running process or a running debug session.
 
+*   Supported modes
+    *   `local`: attaches to a local process
+    *   `remote`: attaches to an in-progress debug session run by an external server
+
+You can debug an already running program using the `local` mode type configuration. The Go extension will start `dlv-dap` and configure it to attach to the specified process. Users can select the process to debug with one of the following options:
 
 *   Specifying the numeric process id (PID) with the `processId` attribute.
 *   Specifying the target program name in the `processId` attribute. If there are multiple processes matching the specified program name, the extension will show the list of matching processes at the start of the debug session.
@@ -103,10 +109,18 @@ You can debug an already running program using the `attach` request type configu
 <img src="images/attach.gif" alt="Attach to a running process" width="75%">
 </p>
 
-When you end the debug session, the debug UI allows you to choose to either
+NOTE: If a `port` attribute is added to a local attach configuration, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and attach to the target there. The process resolution features will only work if localhost is used. See ["Remote Debugging"](#remote-debugging) for more details).
 
-*   Disconnect: detach and leave the process running. (default)
-*   Terminate: terminate the attached process.
+You can connect to an already running remote debug session using the `remote` mode. Specify optional `host` and required `port` for the external `dlv --headless` server that already took program or process id details as command-line arguments. See ["Remote Debugging"](#remote-debugging) for more details).
+
+When you end an attach debug session, the debug UI allows you to choose to:
+
+*   [DEFAULT] Disconnect: disconnect the client and
+    * `local`: leave the target process running (dlv terminates).
+	* `remote`: let dlv decide if it can continue running (`--accept-multiclient` mode only); if so, the target will stay in halted or running state it was in at disconnect.
+	   * `dlv debug/test/exec`: terminate the target process if dlv terminates.
+	   * `dlv attach`: leave the target process running even if dlv terminates.
+*   Stop: stop the attached server and the target process.
 
 <p align="center">
 <img src="images/attach-terminate.gif" alt="Terminate Debugging started with Attach" style="width: 30%">
@@ -155,7 +169,7 @@ See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.c
 <img src="images/function-breakpoint.gif" alt="Function breakpoint" width="75%">
 </p>
 
-*   Logpoint (WIP)
+*   **Logpoints**: a [logpoint](https://code.visualstudio.com/docs/editor/debugging#_logpoints) is a variant of breakpoint that does not 'break', but instead logs a message to Debug Console and continues execution. Expressions within `{}` are interpolated. For the list of acceptable expressions and syntax, see [Delve's documentation](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md#expressions).
 
 ### Data Inspection
 
@@ -238,7 +252,7 @@ Here is the list of attributes specific to Go debugging.
 | Property | Launch | Attach |
 | --- | --- | --- |
 | `args` | Command line arguments passed to the debugged program.<br/> | <center>_n/a_</center> |
-| `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`<br/> | <center>_same as Launch_</center>|
+| `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`, `"rr"`<br/> | <center>_same as Launch_</center>|
 | `buildFlags` | Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.<br/>(Default: `""`)<br/> | <center>_n/a_</center> |
 | `coreFilePath` | Path to the core dump file to open. For use on 'core' mode only<br/>(Default: `""`)<br/> | <center>_n/a_</center> |
 | `cwd` | Workspace relative or absolute path to the working directory of the program being debugged if a non-empty value is specified. The `program` folder is used as the working directory if `cwd` is omitted or empty.<br/>(Default: `""`)<br/> | Workspace relative or absolute path to the working directory of the program being debugged. Default is the current workspace.<br/>(Default: `"${workspaceFolder}"`)<br/> |
@@ -246,17 +260,19 @@ Here is the list of attributes specific to Go debugging.
 | `dlvFlags` | Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error.<br/> | <center>_same as Launch_</center>|
 | `env` | Environment variables passed to the program.<br/> | <center>_n/a_</center> |
 | `envFile` | Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths<br/>(Default: `${workspaceFolder}/.env`)<br/> | <center>_n/a_</center> |
-| `host` | In legacy mode, this will only apply to remote-attach configurations, which will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `"127.0.0.1"`)<br/> | <center>_same as Launch_</center>|
+| `hideSystemGoroutines` | Boolean value to indicate whether system goroutines should be hidden from call stack view.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
+| `host` | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `"127.0.0.1"`)<br/> | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `"127.0.0.1"`)<br/> |
 | `logDest` | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode, and on Linux and Mac OS.<br/> | dlv's `--log-dest` flag. See `dlv log` for details. Number argument is not allowed. Supported only in `dlv-dap` mode and on Linux and Mac OS.<br/> |
 | `logOutput` | Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details.<br/><p>Allowed Values: `"debugger"`, `"gdbwire"`, `"lldbout"`, `"debuglineerr"`, `"rpc"`, `"dap"`<br/>(Default: `"debugger"`)<br/> | <center>_same as Launch_</center>|
-| `mode` | One of `auto`, `debug`, `test`, `exec`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.<br/><p>Allowed Values: `"auto"`, `"debug"`, `"test"`, `"exec"`, `"replay"`, `"core"`<br/>(Default: `auto`)<br/> | Indicates local or remote debugging. Local maps to the `dlv attach` command, remote maps to `connect`. `remote` is not supported in `dlv-dap` mode currently. Use `host` and `port` instead.<br/><p>Allowed Values: `"local"`, `"remote"`<br/>(Default: `local`)<br/> |
+| `mode` | One of `auto`, `debug`, `test`, `exec`, `replay`, `core`. In `auto` mode, the extension will choose either `debug` or `test` depending on active editor window.<br/><p>Allowed Values: `"auto"`, `"debug"`, `"test"`, `"exec"`, `"replay"`, `"core"`<br/>(Default: `auto`)<br/> | Indicates local or remote debugging. Local is similar to the `dlv attach` command, remote - to `dlv connect`<br/><p>Allowed Values: `"local"`, `"remote"`<br/>(Default: `local`)<br/> |
 | `output` | Output path for the binary of the debugee.<br/>(Default: `"debug"`)<br/> | <center>_n/a_</center> |
-| `port` | In legacy mode, this will only apply to remote-attach configurations, which will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode (which does not yet support remote-attach), this will apply to all other configurations. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> | <center>_same as Launch_</center>|
+| `port` | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> |
 | `processId` | <center>_n/a_</center> | <br/><p><b>Option 1:</b> Use process picker to select a process to attach, or Process ID as integer.<br/><p>Allowed Values: `"${command:pickProcess}"`, `"${command:pickGoProcess}"`<br/><br/><p><b>Option 2:</b> Attach to a process by name. If more than one process matches the name, use the process picker to select a process.<br/><br/><p><b>Option 3:</b> The numeric ID of the process to be debugged. If 0, use the process picker to select a process.<br/><br/>(Default: `0`)<br/> |
 | `program` | Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interpretes it as a workspace relative path.<br/>(Default: `"${workspaceFolder}"`)<br/> | <center>_n/a_</center> |
-| `remotePath` | <center>_n/a_</center> | (Deprecated) *Use `substitutePath` instead.*<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath.<br/>(Default: `""`)<br/> |
+| `remotePath` | <center>_n/a_</center> | (Deprecated) *Use `substitutePath` instead.*<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath. Not supported with `dlv-dap`.<br/>(Default: `""`)<br/> |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
 | `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
+| `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
 | `stackTraceDepth` | Maximum depth of stack trace collected from Delve.<br/>(Default: `50`)<br/> | <center>_same as Launch_</center>|
 | `stopOnEntry` | Automatically stop program after launch.<br/>(Default: `false`)<br/> | Automatically stop program after attach.<br/>(Default: `false`)<br/> |
 | `substitutePath` | An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.<br/><p><br/><ul><li>`"from"`: The absolute local path to be replaced when passing paths to the debugger.<br/>(Default: `""`)<br/></li><li>`"to"`: The absolute remote path to be replaced when passing paths back to the client.<br/>(Default: `""`)<br/></li></ul><br/> | An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.  Overriden by `remotePath`.<br/><p><br/><ul><li>`"from"`: The absolute local path to be replaced when passing paths to the debugger.<br/>(Default: `""`)<br/></li><li>`"to"`: The absolute remote path to be replaced when passing paths back to the client.<br/>(Default: `""`)<br/></li></ul><br/> |
@@ -268,18 +284,18 @@ Here is the list of attributes specific to Go debugging.
 
 ### **Debugging symlink directories**
 
-Since the debugger and go compiler use the actual filenames, extra configuration is required to debug symlinked directories. Use the substitutePath property to tell the `debugAdapter` how to properly translate the paths. For example, if your project lives in `/path/to/actual/helloWorld`, but the project is open in vscode under the linked folder `/path/to/hello`, you can add the following to your config to set breakpoints in the files in `/path/to/hello`:
+Since the debugger and go compiler use the actual filenames, extra configuration is required to debug symlinked directories. Use the `substitutePath` property to tell the `debugAdapter` how to properly translate the paths. For example, if your project lives in `/path/to/actual/helloWorld`, but the project is open in vscode under the linked folder `/link/to/helloWorld`, you can add the following to your config to set breakpoints in the files in `/link/to/helloWorld`:
 
 ```
 {
-    "name": "Launch remote",
+    "name": "Launch with symlinks",
     "type": "go",
     "request": "launch",
     "mode": "debug",
     "program": "/path/to/actual/helloWorld",
     "substitutePath": [
 		{
-			"from": "/path/to/hello",
+			"from": "/link/to/helloWorld",
 			"to": "/path/to/actual/helloWorld",
 		},
 	],
@@ -351,15 +367,139 @@ If you want to explicitly specify the location of the delve binary, use the `go.
 
 > If you are able to use the [Remote Development](https://aka.ms/vscode-remote/download/extension) extensions and VS Code’s  universal [remote development capabilities](https://code.visualstudio.com/docs/remote/remote-overview), that is the recommended way to debug Go programs remotely. Check out [Getting started](https://code.visualstudio.com/docs/remote/remote-overview#_getting-started) section and [Remote tutorials](https://code.visualstudio.com/docs/remote/remote-overview#_remote-tutorials) to learn more.
 
-🚧 Remote debugging is the debug mode intended to work with a debugger and target running on a different machine or a container. Support for remote debugging using Delve’s native DAP implementation is still a work-in-progress. Please fall back to the `legacy` debug adapter.
+Remote debugging is the debug mode commonly used to work with a debugger and target running on a remote machine or a container. In spite of its name, it can also be used on a local machine with server started in an external terminal (e.g. to support entering stdin into the server's terminal window).
+
+With the introduction of `dlv dap` users now have two options for remote (i.e. external) debugging.
+
+#### Connecting to Headless Delve with Target Specified at Server Start-Up
+
+In this mode the user must first manually start a [`dlv --headless`](https://github.com/go-delve/delve/tree/master/Documentation/api) server listening at `host:port` while specifying the target program to debug/test/exec or a process to attach to on the command-line. A [remote attach](#attach) configuration is then used to connect to the debugger with a running target.
+
+The [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api) can now be used with both `"debugAdapter": "legacy"` (default value) and `"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli) via `dlv connect`. The `--accept-multiclient` flag can be used to make this a multi-use server that persists on `Disconnect` from a client and allows repeated client connections. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options.
+
+We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a try and to [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If you need to use the `legacy` mode, pleasse also see the [legacy remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md#remote-debugging) documentation.
+
+For example, start external headless server:
+```
+dlv debug /path/to/program/ --headless --listen=:12345
+```
+
+Connect to it with a remote attach configuration in your `launch.json`:
+```json5
+{
+    "name": "Connect to external session",
+    "type": "go",
+    "debugAdapter": "dlv-dap", // `legacy` by default
+    "request": "attach",
+    "mode": "remote",
+    "port": 12345,
+    "host": "127.0.0.1", // can skip for localhost
+    "substitutePath": [
+      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      ...
+  ]
+}
+```
+
+#### Connecting to Delve DAP with Target Specified at Client Start-Up
+
+In this mode the user must first manually start a [`dlv dap` server](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md) listening at `host:port` and then specify the target program via [launch](#launch) or [attach](#attach) client config with a `"port"` attribute. Instead of starting a new local server, the Go extension will tell VS Code to connect to the server specified by `host:port` attributes and then send a request with the target to debug. This option provides the flexibility of easily adapting local configurations to connect to external servers, but ⚠️ must be used with care since anyone who can connect to the server can make it run arbitrary programs.
+
+When using `launch` mode, the `program` attribute must point to the absolute path of the package or binary to debug in the remote host’s file system even when `substitutePath` is specified. When using `attach` mode outside of local host, you need to specify the `processId` in the config since [the processId resolution feature](#attach) cannot gather information about processes running remotely.
+
+<!-- TODO: update or remote this picture
+<p align="center"><img src="images/remote-debugging.png" alt="Remote Debugging"> </p>
+-->
+
+Start a dlv-dap server ready to accept a client request to launch or attach to a target process:
+```
+$ dlv-dap dap --listen=:12345
+```
+
+Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`:
+
+```json5
+{
+  "name": "Connect and launch",
+  "type": "go",
+  "debugAdapter": "dlv-dap", // the default
+  "request": "launch",
+  "port": 12345,
+  "host": "127.0.0.1", // can skip for localhost
+  "mode": "exec",
+  "program": "/absolute/path/to/remote/workspace/program/executable",
+  "substitutePath": [
+      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      ...
+  ]
+}
+```
+
+Or have the binary compiled by dlv-dap by modifying the above configuration to use:
+
+```json5
+  "mode": "debug",
+  "program": "/absolute/path/to/remote/workspace/package",
+```
+
+⚠️ Limitations
+*   Delve DAP does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
+*   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you would run the `go build` or `go test` command.
 
 ### Running Debugee Externally
 
-Sometimes you’d like to launch the program for debugging outside VS Code (e.g., as a workaround of the missing `console` support), there are currently two options.
+Sometimes you might like to launch the program for debugging outside of VS Code (e.g. as a workaround of the missing `console` support to enter stdin via an external terminal or separate target's output from debug session logging). There are currently two options:
 
-*   Compile and run the program from the external terminal and use [the "attach" configuration](#attach).
-*   Launch the server externally; run `dlv-dap dap --listen=:<port>` from the external terminal, and set the `"debugServer": <port>` attribute in your launch configuration.
+*   Compile and run the target program from the external terminal and use [the "attach" configuration](#attach).
+*   Run the debug server from the external terminal with `--listen=:<port>` and have VS Code connect to it using `port` in your launch configuration (see ["Remote Debugging"](#remote-debugging) for more details)
 
+## Troubleshooting
+
+The suggestions below are intended to help you troubleshoot any problems you encounter. If you are unable to resolve the issue, please take a look at the [current known debugging issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3ADebug) or [report a new issue](#reporting-issues).
+
+1. Read documentation and [FAQs](#faqs). Also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
+1. Check your `launch.json` configuration. Often error messages appearing in the DEBUG CONSOLE panel reveal issues.
+1. Update Delve (`dlv-dap`) to pick up most recent bug fixes. Follow [the instruction](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#staying-up-to-date).
+1. Check if you can reproduce the issue with `dlv`, the command line tool from the integrated terminal. <!-- TODO(vscode-go): add instructions https://github.com/golang/vscode-go/issues/1931 --> If it's reproducible when using `dlv`, take a look at the [delve's issue tracker](https://github.com/go-delve/delve/issues).
+1. Capture [logs](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#collecting-logs) and inspect them.
+1. Look at the [existing debugging issues](https://github.com/golang/vscode-go/labels/Debug) if similar issues were reported.
+1. If none of these solve your problem, please [open a new issue](#reporting-issues).
+
+## FAQs
+
+### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
+
+The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
+
+*   Hover over the variable in the source code
+*   `Copy as Expression` to query the string via REPL in the DEBUG CONSOLE panel
+*   `Copy Value` to clipboard
+
+Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
+
+### Why does my debug session have an `invalid command` error when I try to step?
+
+When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
+
+If you attempt to make another step request you will get an `invalid command` error.
+
+<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+Use `Continue` to resume program execution.
+
+If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
+
+<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
+
+### My program does not stop at breakpoints.
+
+Check the "BREAKPOINTS" section in the debug view and see if the breakpoints are [greyed out](https://code.visualstudio.com/docs/editor/debugging#_breakpoints) when your debug session is active. Setting `stopOnEntry` is a great way to pause execution at the start to _verify_ breakpoints are set correctly. Or [enable logging](#collecting-logs) and see if `setBreakpoints` requests succeeded with all the breakpoints _verified_.
+
+This problem often occurs when the source location used in compiling the debugged program and the workspace directory VS Code uses are different. Common culprits are remote debugging where the program is built in the remote location, use of symbolic links, or use of `-trimpath` build flags. In this case, configure the `substitutePath` attribute in your launch configuration.
+
+### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
+
+The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 ## Reporting Issues
 
 When you are having issues in `dlv-dap` mode, first check if the problems are reproducible after updating `dlv-dap`. It's possible that the problems are already fixed. Follow the instruction for [updating dlv-dap](#updating-dlv-dap)) and [updating extension](https://code.visualstudio.com/docs/editor/extension-gallery#\_extension-autoupdate).
@@ -421,40 +561,10 @@ $ dlv-dap dap --listen=:12345 --log --log-output=dap
     "request": "launch",
     "debugAdapter": "dlv-dap",
     ...
-    "debugServer": 12345,
+    "port": 12345
 }
 ```
 
-## FAQs
-
-### Why does my debug session stop when I set breakpoints?
-
-To support being able to set breakpoints while the program is running, the debug adapter needs to stop the program. Due to the extra synchronization required to correctly resume the program, the debug adapter currently sends a stopped event. This means that if you are editing breakpoints while the program is running, you will need to hit continue to continue your debug session. We plan to change the behavior of the debug adapter for more seamless editing of breakpoints. You can track the progress [here](https://github.com/golang/vscode-go/issues/1676).
-
-### I need to view large strings. How can I do that if `dlvLoadConfig` with `maxStringLen` is deprecated?
-
-The legacy adapter used `dlvLoadConfig` as one-time session-wide setting to override dlv's conservative default variable loading limits, intended to protect tool's performance. The new debug adapter is taking a different approach with on-demand loading of composite data and updated string limits, relaxed when interacting with individual strings. In particular, if the new default limit of 512, applied to all string values in the variables pane, is not sufficient, you can take advantage of a larger limit of 4096 with one of the following:
-
-*   Hover over the variable in the source code
-*   `Copy as Expression` to query the string via REPL in the DEBUG CONSOLE panel
-*   `Copy Value` to clipboard
-
-Please [open an issue](https://github.com/golang/vscode-go/issues/new) if this is not sufficient for your use case or if you have any additional feedback.
-
-### Why does my debug session have an `invalid command` error when I try to step?
-
-When stepping through a program on a particular goroutine, the debugger will make sure that the step is completed, even when interrupted by events on a different goroutine. If a breakpoint is hit on a different goroutine, the debug adapter will stop the program execution to allow you to inspect the state, even though the step request is still active.
-
-If you attempt to make another step request you will get an `invalid command` error.
-
-<p align="center"><img src="images/invalidCommandExceptionInfo.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
-
-
-Use `Continue` to resume program execution.
-
-If you do not want the step request to be interrupted, you can disable all breakpoints from VS Code from the context menu in the `Breakpoints` view.
-
-<p align="center"><img src="images/disablebps.png" alt="Disable breakpoints from the Breakpoints context menu" width="75%"> </p>
 
 
 [Delve]: https://github.com/go-delve/delve

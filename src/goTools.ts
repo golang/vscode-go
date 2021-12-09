@@ -208,7 +208,11 @@ export function goplsStaticcheckEnabled(
 	goConfig: { [key: string]: any },
 	goplsConfig: { [key: string]: any }
 ): boolean {
-	if (goConfig['useLanguageServer'] !== true || goplsConfig['ui.diagnostic.staticcheck'] !== true) {
+	if (
+		goConfig['useLanguageServer'] !== true ||
+		goplsConfig['ui.diagnostic.staticcheck'] === false ||
+		(goplsConfig['ui.diagnostic.staticcheck'] === undefined && goplsConfig['staticcheck'] !== true)
+	) {
 		return false;
 	}
 	const features = goConfig['languageServerExperimentalFeatures'];

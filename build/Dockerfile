@@ -6,9 +6,9 @@ ENV GO111MODULE on
 ENV GOBIN /gobin
 
 # Install other Go tools tests depend on
-RUN mkdir -p /scratch/build
-ADD build/all.bash /scratch/build/all.bash
-RUN /scratch/build/all.bash setup_env
+RUN mkdir -p /scratch/installtools
+ADD tools/installtools/main.go /scratch/installtools/main.go
+RUN go run /scratch/installtools/main.go
 
 FROM node:latest
 

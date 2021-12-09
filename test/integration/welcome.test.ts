@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 
 import vscode = require('vscode');
-import * as assert from 'assert';
+import assert from 'assert';
 import { shouldShowGoWelcomePage } from '../../src/goMain';
 import { extensionId } from '../../src/const';
 import { WelcomePanel } from '../../src/welcome';

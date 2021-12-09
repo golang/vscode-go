@@ -3,7 +3,7 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
 /* eslint-disable no-async-promise-executor */
 /* eslint-disable node/no-unpublished-import */
-import * as assert from 'assert';
+import assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as readline from 'readline';
@@ -28,7 +28,7 @@ import {
 import * as extConfig from '../../src/config';
 import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
-import { killProcessTree } from '../../src/utils/processUtils';
+import { killProcessTree, killProcess } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
 import { TimestampedLogger } from '../../src/goLogging';
@@ -994,6 +994,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
+
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
@@ -1035,6 +1036,20 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
+		});
+
+		test('connection to remote is terminated when external dlv process exits', async function () {
+			if (isDlvDap && dlvDapSkipsEnabled) {
+				this.skip(); // not working in dlv-dap.
+			}
+
+			const childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
+
+			await setUpRemoteAttach(remoteAttachConfig);
+
+			killProcess(childProcess);
+
+			await dc.waitForEvent('terminated');
 		});
 	});
 

@@ -13,7 +13,7 @@ suite('Go Test Runner', () => {
 
 	let testExplorer: GoTestExplorer;
 
-	suite('Profile', () => {
+	suite.skip('Profile', () => {
 		const sandbox = sinon.createSandbox();
 		const ctx = MockExtensionContext.new();
 
