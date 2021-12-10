@@ -169,7 +169,7 @@ See [VS Code’s Debug Documentation on Breakpoints](https://code.visualstudio.c
 <img src="images/function-breakpoint.gif" alt="Function breakpoint" width="75%">
 </p>
 
-*   **Logpoints**: a [logpoint](https://code.visualstudio.com/docs/editor/debugging#_logpoints) is a variant of breakpoint that does not 'break', but instead logs a message to Debug Console and continues execution. Expressions within `{}` are interpolated. For the list of acceptable expressions and syntax, see [Delve's documentation](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md#expressions).
+*   **Logpoints**: a [logpoint](https://code.visualstudio.com/docs/editor/debugging#_logpoints) is a variant of breakpoint that does not 'break', but instead logs a message to DEBUG CONSOLE and continues execution. Expressions within `{}` are interpolated. For the list of acceptable expressions and syntax, see [Delve's documentation](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md#expressions).
 
 ### Data Inspection
 
@@ -234,6 +234,10 @@ You can inspect all goroutines and their stacks in the CALL STACK section. The C
 When the program stops due to exception, panic, or bad access error, the CALL STACK shows the stop reason and the editor highlights the source location with more details.
 
 <p align="center"><img src="images/panicinfo.png" alt="Panic" width="75%"></p>
+
+## `dlv` command from DEBUG CONSOLE
+
+DEBUG CONSOLE accepts commands that allow users to dynamically inspect/change debug configuration, or inspect the list of source code compiled in the debugged binary. Use `dlv help` and `dlv config -list` from the DEBUG CONSOLE panel to see the list of supported commands and dynamically adjustable settings.
 
 ## Configuration
 
