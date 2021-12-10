@@ -1,3 +1,39 @@
+## v0.30.0 - 14 Dec, 2021
+
+<!-- TODO: Debug features -->
+
+A list of all issues and changes can be found in the [v0.30.0 milestone](https://github.com/golang/vscode-go/milestone/40) and [commit history](https://github.com/golang/vscode-go/compare/v0.29.0...v0.30.0).
+
+### Changes
+
+- Debugging
+  - `dlv-dap` is pinned at [`@2f136727`](https://github.com/go-delve/delve/commit/2f13672765fead22e5376fb4754c48a96c33cc0b).
+  - Remote debugging support using `dlv-dap` is available.<br>Please follow [the instruction](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging) to enable remote debugging using `dlv-dap`. ([Issue 1861](https://github.com/golang/vscode-go/issues/1861))
+  - [Launch configuration](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#launchjson-attributes):
+    - `showRegisters`([Issue 1527](https://github.com/golang/vscode-go/issues/1527)). This was added to [`go.delveConfig`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#godelveconfig), too.
+	- `hideSystemGoroutines`([Issue 1797](https://github.com/golang/vscode-go/issues/1797)). This was added to [`go.delveConfig`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#godelveconfig), too. We plan to hide system goroutines by default in the next release, and it is already enabled in Nightly. Feedback is welcome!
+	- `backend` accepts [`"rr"`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_backend.md). Along with [`"mode": "replay"`](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_replay.md) support that has been available since v0.27.2, this concludes the work for the [rewind](https://twitter.com/belbaoverhill/status/1466911997174464513) feature support. ([Issue 110](https://github.com/golang/vscode-go/issues/110)). The feature requires [Mozilla's `rr`](https://github.com/mozilla/rr).
+  - Runtime frames are no longer deemphasized. ([Issue 1916](https://github.com/golang/vscode-go/issues/1916))
+  - [Logpoints](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#breakpoints) support is available. ([Issue 123](https://github.com/golang/vscode-go/issues/123))
+  - DEBUG CONSOLE accepts the new `dlv` command that allows users to dynamically inspect/adjust debug configuration. Please run `dlv help` from DEBUG CONSOLE to see the list of supported options.  
+  - Bug fixes:
+    - Correctly infer `mode` for `attach` requests. ([Issue 1929](https://github.com/golang/vscode-go/issues/1929))
+	- Stop debugging when delve remote connection ends in `legacy` remote debugging. ([CL 366936](https://go-review.googlesource.com/c/vscode-go/+/366936/))
+	- Allow users to debug with older versions of `dlv-dap`. ([Issue 1814](https://github.com/golang/vscode-go/issues/1814))
+
+- Include `Fuzz*` functions in Testing UI and adds test codelens. ([Issue 1794](https://github.com/golang/vscode-go/issues/1794)) <!-- CL 361935 -->
+- `gofumports` is pinned at `v0.1.1`. We plan to remove it from the recognized formatter tool list since [`gofumports` is officially deprecated](https://github.com/mvdan/gofumpt/releases/tag/v0.2.0) early next year.
+- Disabled separate linting if gopls's 'staticcheck' is enabled. ([Issue 1867](https://github.com/golang/vscode-go/issues/1867))
+- Updated the in-editor user survey URL. ([CL 360775](https://go-review.googlesource.com/c/vscode-go/+/366936))
+- Limited Go file search scope for extension activation ([Issue 1894](https://github.com/golang/vscode-go/issues/1894))
+- Code Health
+   - Enabled esModuleInterop. ([CL 349170](https://go-review.googlesource.com/c/vscode-go/+/349170))
+   - Bumped TS target to ES2017. ([Issue 1712](https://github.com/golang/vscode-go/issues/1712))
+   - Updated json-schema to 0.4.0
+
+### Thanks
+
+Thank you for your contribution, @polinasok, @suzmue, @firelizzard18, @hashedhyphen, @fengwei2002, @devuo, @fflewddur, @hyangah
 ## v0.29.0 - 26 Oct, 2021
 
 A list of all issues and changes can be found in the [v0.29.0 milestone](https://github.com/golang/vscode-go/milestone/37) and [commit history](https://github.com/golang/vscode-go/compare/v0.28.1...v0.29.0).
