@@ -1,6 +1,4 @@
-## v0.30.0 - 14 Dec, 2021
-
-<!-- TODO: Debug features -->
+## v0.30.0 - 16 Dec, 2021
 
 A list of all issues and changes can be found in the [v0.30.0 milestone](https://github.com/golang/vscode-go/milestone/40) and [commit history](https://github.com/golang/vscode-go/compare/v0.29.0...v0.30.0).
 
@@ -21,6 +19,7 @@ A list of all issues and changes can be found in the [v0.30.0 milestone](https:/
 	- Stop debugging when delve remote connection ends in `legacy` remote debugging. ([CL 366936](https://go-review.googlesource.com/c/vscode-go/+/366936/))
 	- Allow users to debug with older versions of `dlv-dap`. ([Issue 1814](https://github.com/golang/vscode-go/issues/1814))
 
+- Enabled Go template file processing. ([Issue 609](https://github.com/golang/vscode-go/issues/609)) By default, files with `.tmpl` and `.gotmpl` extension are treated as Go template files.
 - Include `Fuzz*` functions in Testing UI and adds test codelens. ([Issue 1794](https://github.com/golang/vscode-go/issues/1794)) <!-- CL 361935 -->
 - `gofumports` is pinned at `v0.1.1`. We plan to remove it from the recognized formatter tool list since [`gofumports` is officially deprecated](https://github.com/mvdan/gofumpt/releases/tag/v0.2.0) early next year.
 - Disabled separate linting if gopls's 'staticcheck' is enabled. ([Issue 1867](https://github.com/golang/vscode-go/issues/1867))

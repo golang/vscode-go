@@ -491,13 +491,10 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		{ language: 'go', scheme: 'file' },
 		{ language: 'go.mod', scheme: 'file' },
 		{ language: 'go.sum', scheme: 'file' },
-		{ language: 'go.work', scheme: 'file' }
+		{ language: 'go.work', scheme: 'file' },
+		{ language: 'tmpl', scheme: 'file' }
 	];
 
-	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
-	if (isInPreviewMode()) {
-		documentSelector.push({ language: 'tmpl', scheme: 'file' });
-	}
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls

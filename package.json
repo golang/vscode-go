@@ -154,8 +154,9 @@
       },
       {
         "id": "tmpl",
-        "filenamePatterns": [
-          "*.*tmpl"
+        "extensions": [
+          ".tmpl",
+          ".gotmpl"
         ],
         "aliases": [
           "Go Template File"
