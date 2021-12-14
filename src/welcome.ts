@@ -158,12 +158,11 @@ export class WelcomePanel {
 			<div class="Announcement">
 				<img src="${announceURI}" alt="announce" class="Announcement-image" />
 				<p>
-					Heads up!
-					The extension now uses Delve's native DAP implementation (<a href="https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md">dlv-dap</a>)
-					for local debugging. We updated the <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">
-					Documentation for Debugging</a> to show the new features available with dlv-dap.
-					This change does not apply to remote debugging yet. For remote debugging, keep following
-					the instruction in the <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md">old documentation</a>.
+					New! <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging">Remote
+					attach debugging</a> is now available on demand via Delve's native DAP implementation with Delve v1.7.3 or newer.
+					We plan to enable this as the default in early 2022 to enhance remote debugging with the same
+					<a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">debugging features</a>
+                    that are already in use for local debugging.
 				</p>
 			</div>
 
