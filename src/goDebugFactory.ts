@@ -80,9 +80,10 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 					requestsSent > 0 &&
 					responsesReceived === 0 // happens when the rpc server doesn't understand DAP
 				) {
-					logger.warn(
-						"'remote' mode with 'dlv-dap' debugAdapter must connect to an external headless server started with dlv @ v1.7.3 or later.\n"
-					);
+					const err =
+						'Expected to connect to external `dlv --headless` server @ v1.7.3 or later via DAP. Older versions fail with "error layer=rpc rpc:invalid character \'C\' looking for beginning of value" logged to the terminal.\n';
+					logger.warn(err);
+					vscode.window.showErrorMessage(err);
 				}
 				logger.debug(`session ${session.id} will stop\n`);
 			},

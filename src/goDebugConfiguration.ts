@@ -175,7 +175,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				// but we have no way of detectng that with an external server.
 				this.showWarning(
 					'ignoreDlvDAPInRemoteModeWarning',
-					"'remote' mode with 'dlv-dap' debugAdapter must connect to an external `dlv --headless` server @ v1.7.3 or later. Older versions will fail with \"error layer=rpc rpc:invalid character 'C' looking for beginning of value\" logged to the terminal.\n"
+					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
 				);
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
