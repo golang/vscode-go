@@ -57,6 +57,7 @@ suite('GoDebugSession Tests', async () => {
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
+		// eslint-disable-next-line prettier/prettier
 		fileSystem = ({ existsSync: () => false } as unknown) as typeof fs;
 		delve.program = workspaceFolder;
 		delve.isApiV1 = false;
@@ -287,6 +288,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let delve: Delve;
 	setup(() => {
+		// eslint-disable-next-line prettier/prettier
 		delve = ({ callPromise: () => ({}), isApiV1: false } as unknown) as Delve;
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
 	});
@@ -399,7 +401,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	): Promise<cp.ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
-		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
+		const args = [
+			'debug',
+			'--check-go-version=false',
+			'--api-version=2',
+			'--headless',
+			`--listen=127.0.0.1:${dlvPort}`
+		];
 		if (acceptMultiClient) {
 			args.push('--accept-multiclient');
 		}
@@ -2169,6 +2177,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
+		}
+
+		// disable version check (like in dlv-dap).
+		if (!isDlvDap) {
+			const dlvFlags = config['dlvFlags'] || [];
+			config['dlvFlags'] = ['--check-go-version=false'].concat(dlvFlags);
 		}
 		// Give each test a distinct debug binary. If a previous test
 		// and a new test use the same binary location, it is possible
