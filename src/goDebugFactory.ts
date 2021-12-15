@@ -17,7 +17,6 @@ import { Logger, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
 import { toolExecutionEnvironment } from './goEnv';
-import { ShowMessageNotification } from 'vscode-languageserver-protocol';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
