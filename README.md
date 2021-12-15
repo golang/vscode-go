@@ -16,6 +16,8 @@ We recommend switching your remote attach configurations in `launch.json` to use
 `"debugAdapter":"dlv-dap"` now to verify that this works for you.
 Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
 
+📣📣 Watch [Debugging Treasure Hunt](https://youtu.be/Gcp2ACyCadA?t=16211) from [Gophercon 2021](https://www.gophercon.com/) for a fun take on a how-to demo with VS Code Go and Delve DAP.
+
 ## Quick Start
 
 Welcome! 👋🏻<br/>
