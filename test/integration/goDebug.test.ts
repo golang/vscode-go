@@ -503,11 +503,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	}
 
 	suite('basic', () => {
-		test('unknown request should produce error', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('unknown request should produce error', async () => {
 			// fake config that will be used to initialize fixtures.
 			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
 			await initializeDebugConfig(config);
