@@ -319,7 +319,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		} catch (err) {
 			return { connected: false, reason: err };
 		}
-		this.logger?.debug(`Running dlv dap server: port=${this.port} pid=${this.dlvDapServer.pid}\n`);
+		this.logger?.debug(`Running dlv dap server: port=${this.port} pid=${this.dlvDapServer?.pid}\n`);
 		return { connected: true };
 	}
 

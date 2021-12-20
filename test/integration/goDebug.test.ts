@@ -1004,39 +1004,27 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
 		test('connection to remote is terminated when external dlv process exits', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
+			if (isDlvDap) {
+				this.skip(); // this test does not apply for dlv-dap.
 			}
 
 			const childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
