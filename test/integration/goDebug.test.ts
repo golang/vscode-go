@@ -2066,11 +2066,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				rmdirRecursive(helloWorldLocal);
 			});
 
-			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
-				}
-
+			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
 				const FILE = path.join(helloWorldLocal, 'main.go');
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -2096,8 +2092,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			// Skip because it times out in nightly release workflow.
 			// BUG(https://github.com/golang/vscode-go/issues/1043)
 			test.skip('stopped for a breakpoint set during initialization using remotePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
+				if (isDlvDap) {
+					this.skip(); // remotePath is not used in dlv-dap
 				}
 
 				const FILE = path.join(helloWorldLocal, 'main.go');
