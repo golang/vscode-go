@@ -1521,11 +1521,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
 
-		test('disconnect should work for remote attach', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('disconnect should work for remote attach', async () => {
 			const server = await getPort();
 			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1721,7 +1717,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 
 		test('should cleanup when stopped', async function () {
-			if (!isDlvDap || !dlvDapSkipsEnabled) {
+			if (!isDlvDap) {
 				this.skip();
 			}
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
