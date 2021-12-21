@@ -313,8 +313,6 @@ suite('RemoteSourcesAndPackages Tests', () => {
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
 const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
-	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
-	const dlvDapSkipsEnabled = true;
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
