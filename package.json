@@ -1945,6 +1945,11 @@
               "type": "string",
               "default": "dlv",
               "description": "Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary."
+            },
+            "dlv-dap": {
+              "type": "string",
+              "default": "dlv-dap",
+              "description": "Alternate tool to use instead of the dlv-dap binary or alternate path to use for the dlv-dap binary."
             }
           },
           "additionalProperties": true

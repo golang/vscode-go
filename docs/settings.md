@@ -52,6 +52,7 @@ Alternate tools or alternate paths for the same tools used by the Go extension. 
 | Properties | Description |
 | --- | --- |
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
+| `dlv-dap` | Alternate tool to use instead of the dlv-dap binary or alternate path to use for the dlv-dap binary. <br/> Default: `"dlv-dap"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
 | `go-outline` | Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary. <br/> Default: `"go-outline"` |
 | `gopkgs` | Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary. <br/> Default: `"gopkgs"` |
