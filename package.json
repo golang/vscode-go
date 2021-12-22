@@ -787,6 +787,20 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
+              },
+              "console": {
+                "default": "internal",
+                "description": "(Experimental) Where to launch the debugger and the debug target: internal console, integrated terminal, or external terminal. It is ignored in remote debugging.",
+                "enum": [
+                  "internal",
+                  "integrated",
+                  "external"
+                ]
+              },
+              "asRoot": {
+                "default": false,
+                "description": "(Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.",
+                "type": "boolean"
               }
             }
           },
@@ -994,6 +1008,20 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
+              },
+              "console": {
+                "default": "internal",
+                "description": "(Experimental) Where to launch the debugger: internal console, integrated terminal, or external terminal. This does not affect tty of the running program. It is ignored in remote debugging.",
+                "enum": [
+                  "internal",
+                  "integrated",
+                  "external"
+                ]
+              },
+              "asRoot": {
+                "default": false,
+                "description": "(Experimental) Debug with elevated permissions (on Unix). This requires `integrated` or `external` console modes and is ignored in remote debugging.",
+                "type": "boolean"
               }
             }
           }
