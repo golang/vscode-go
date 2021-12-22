@@ -789,12 +789,12 @@
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               },
               "console": {
-                "default": "internal",
+                "default": "internalConsole",
                 "description": "(Experimental) Where to launch the debugger and the debug target: internal console, integrated terminal, or external terminal. It is ignored in remote debugging.",
                 "enum": [
-                  "internal",
-                  "integrated",
-                  "external"
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
                 ]
               },
               "asRoot": {
@@ -1010,12 +1010,12 @@
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
               },
               "console": {
-                "default": "internal",
+                "default": "internalConsole",
                 "description": "(Experimental) Where to launch the debugger: internal console, integrated terminal, or external terminal. This does not affect tty of the running program. It is ignored in remote debugging.",
                 "enum": [
-                  "internal",
-                  "integrated",
-                  "external"
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
                 ]
               },
               "asRoot": {

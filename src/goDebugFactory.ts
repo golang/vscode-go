@@ -359,7 +359,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 		if (
 			!dlvExternallyLaunched &&
-			(configuration.console === 'integrated' || configuration.console === 'external')
+			(configuration.console === 'integratedTerminal' || configuration.console === 'externalTerminal')
 		) {
 			return this.startDAPServerWithClientAddrFlag(configuration, logErr);
 		}
@@ -390,8 +390,8 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		launchAttachArgs: vscode.DebugConfiguration,
 		logErr: (msg: string) => void
 	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
-		// This is called only when launchAttachArgs.console === 'integrated' | 'external' currently.
-		const console = (launchAttachArgs as any).console || 'integrated';
+		// This is called only when launchAttachArgs.console === 'integratedTerminal' | 'externalTerminal' currently.
+		const console = (launchAttachArgs as any).console === 'externalTerminal' ? 'external' : 'integrated';
 
 		const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
 

@@ -1944,7 +1944,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			dc = undefined;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
 			const preamble =
-				debugConfig.console === 'integrated' || debugConfig.console === 'external'
+				debugConfig.console === 'integratedTerminal' || debugConfig.console === 'externalTerminal'
 					? 'DAP server for a predetermined client'
 					: 'DAP server listening at';
 			assert(
@@ -2228,9 +2228,9 @@ suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	testAll(this.ctx, true);
 });
 
-suite('Go Debug Adapter Tests (dlv-dap, console=integrated)', function () {
+suite('Go Debug Adapter Tests (dlv-dap, console=integratedTerminal)', function () {
 	this.timeout(60_000);
-	testAll(this.ctx, true, 'integrated');
+	testAll(this.ctx, true, 'integratedTerminal');
 });
 
 // DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
