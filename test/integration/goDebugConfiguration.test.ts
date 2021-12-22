@@ -221,6 +221,28 @@ suite('Debug Configuration Merge User Settings', () => {
 	teardown(() => sinon.restore());
 
 	suite("merge 'go' config from settings.json", () => {
+		test('default settings are applied', async () => {
+			// Run resolveDebugConfiguration with the default workspace settings.
+			const cfg1 = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}'
+			};
+
+			const defaultResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
+
+			assert.strictEqual(defaultResult.showGlobalVariables, false);
+			assert.strictEqual(defaultResult.showRegisters, false);
+			assert.strictEqual(defaultResult.hideSystemGoroutines, false);
+			assert.strictEqual(defaultResult.showLog, false);
+			assert.strictEqual(defaultResult.logOutput, 'debugger');
+			assert.strictEqual(defaultResult.debugAdapter, 'dlv-dap');
+			assert.deepStrictEqual(defaultResult.dlvFlags, []);
+			assert.deepStrictEqual(defaultResult.substitutePath, []);
+		});
+
 		test('go flags config does not affect debug config', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
@@ -374,7 +396,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.hideSystemGoroutines, false);
 			assert.strictEqual(result.debugAdapter, 'legacy');
 			assert.strictEqual(result.substitutePath.length, 0);
-			assert.strictEqual(result.showLog, undefined);
+			assert.strictEqual(result.showLog, false);
 			assert.strictEqual(result.logOutput, 'rpc');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);

@@ -10,7 +10,7 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
-import { ContinuedEvent } from 'vscode-debugadapter';
+import { extensionId } from './const';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -154,6 +154,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
+		const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+			.properties['go.delveConfig'].properties;
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
@@ -225,8 +227,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			dlvProperties.push('dlvLoadConfig');
 		}
 		dlvProperties.forEach((p) => {
-			if (!debugConfiguration.hasOwnProperty(p) && dlvConfig.hasOwnProperty(p)) {
-				debugConfiguration[p] = dlvConfig[p];
+			if (!debugConfiguration.hasOwnProperty(p)) {
+				if (dlvConfig.hasOwnProperty(p)) {
+					debugConfiguration[p] = dlvConfig[p];
+				} else {
+					debugConfiguration[p] = defaultConfig[p]?.default;
+				}
 			}
 		});
 
