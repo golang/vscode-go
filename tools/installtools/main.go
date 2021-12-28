@@ -31,7 +31,6 @@ var tools = []struct {
 	{"github.com/zmb3/gogetdoc", "", ""},
 	{"honnef.co/go/tools/cmd/staticcheck", "", ""},
 	{"golang.org/x/tools/cmd/gorename", "", ""},
-	{"github.com/go-delve/delve/cmd/dlv", "master", "dlv-dap"},
 	{"github.com/go-delve/delve/cmd/dlv", "", ""},
 }
 
@@ -139,8 +138,4 @@ func binName(toolPath string) string {
 		return b + ".exe"
 	}
 	return b
-}
-
-func runWithGoInstall() error {
-	return nil
 }

@@ -263,34 +263,34 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const dlvToolPath = getBinPath(debugAdapter);
+		const dlvToolPath = getBinPath('dlv');
 		if (!path.isAbsolute(dlvToolPath)) {
 			// If user has not already declined to install this tool,
 			// prompt for it. Otherwise continue and have the lack of
 			// dlv binary be caught later.
-			if (!declinedToolInstall(debugAdapter)) {
-				await promptForMissingTool(debugAdapter);
+			if (!declinedToolInstall('dlv')) {
+				await promptForMissingTool('dlv');
 				return;
 			}
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
+		// For dlv-dap mode, check if the dlv is recent enough to support DAP.
 		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
-			const tool = getToolAtVersion('dlv-dap');
+			const tool = getToolAtVersion('dlv');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
 				// If the user has opted in to automatic tool updates, we can update
 				// without prompting.
 				const toolsManagementConfig = getGoConfig()['toolsManagement'];
 				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
 					const goVersion = await getGoVersion();
-					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
-					await installTools([toolVersion], goVersion, true);
+					await installTools([tool], goVersion, true);
 				} else {
 					await promptForUpdatingTool(tool.name);
 				}
-				// installTools could've failed (e.g. no network access) or the user decliend to install dlv-dap
-				// in promptForUpdatingTool. If dlv-dap doesn't exist or dlv-dap is too old to have MVP features,
-				// the failure will be visible to users when launching the dlv-dap process (crash or error message).
+				// installTools could've failed (e.g. no network access) or the user decliend to install dlv
+				// in promptForUpdatingTool. If dlv doesn't exist or dlv is too old to have MVP features,
+				// the failure will be visible to users when launching the dlv process (crash or error message).
 			}
 			dlvDAPVersionChecked = true;
 		}

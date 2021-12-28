@@ -12,7 +12,6 @@ import getPort = require('get-port');
 import path = require('path');
 import * as fs from 'fs';
 import * as net from 'net';
-import { getTool } from './goTools';
 import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
@@ -578,12 +577,12 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 	// launchArgsEnv is user-requested env vars (envFiles + env).
 	const env = Object.assign(goToolsEnvVars, launchArgsEnv);
 
-	const dlvPath = launchAttachArgs.dlvToolPath ?? getTool('dlv-dap');
+	const dlvPath = launchAttachArgs.dlvToolPath ?? 'dlv';
 
 	if (!fs.existsSync(dlvPath)) {
 		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
 		logErr(
-			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
+			`Couldn't find ${dlvPath} at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}\n` +
 				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/debugging.md#getting-started.\n'
