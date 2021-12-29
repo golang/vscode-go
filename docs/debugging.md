@@ -84,8 +84,9 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
 *   Supported modes
     *   `debug`: build and debug a main package
     *   `test`: build and debug a test
-    *   `exec`: debug a precompiled binary. The binary needs to be built with `-gcflags=all="-N -l"` flags to avoid stripping debugging information.
-    *   `auto`: automatically choose between `debug` and `test` depending on the open file.
+    *   `exec`: debug a precompiled binary
+		* The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
+    *   `auto`: automatically choose between `debug` and `test` depending on the open file
 
 ⚠️ If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
 
@@ -97,6 +98,7 @@ You can use this configuration to attach to a running process or a running debug
 
 *   Supported modes
     *   `local`: attaches to a local process
+		* The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
     *   `remote`: attaches to an in-progress debug session run by an external server
 
 You can debug an already running program using the `local` mode type configuration. The Go extension will start `dlv-dap` and configure it to attach to the specified process. Users can select the process to debug with one of the following options:
@@ -420,7 +422,7 @@ Start a dlv-dap server ready to accept a client request to launch or attach to a
 $ dlv-dap dap --listen=:12345
 ```
 
-Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `-gcflags='all=-N -l'`:
+Use the following `launch` configuration to tell `dlv-dap` to execute a binary precompiled with `go build -gcflags='all=-N -l'`:
 
 ```json5
 {
@@ -504,6 +506,11 @@ This problem often occurs when the source location used in compiling the debugge
 ### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
 
 The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
+
+### Why can't I use local attach with a process started with `go run`?
+
+Unlike `go build`, `go run` passes `-s -w` to the linker to strip the debug info. If you try attach to such a binary with a debugger, it will fail an error like `decoding dwarf section info at offset 0x0: too short`. Use `go build -gcflags='all=-N -l'` to build your binary instead. See Go Issue [24833](https://github.com/golang/go/issues/24833) for more information.
+
 ## Reporting Issues
 
 When you are having issues in `dlv-dap` mode, first check if the problems are reproducible after updating `dlv-dap`. It's possible that the problems are already fixed. Follow the instruction for [updating dlv-dap](#updating-dlv-dap)) and [updating extension](https://code.visualstudio.com/docs/editor/extension-gallery#\_extension-autoupdate).
