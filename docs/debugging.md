@@ -85,7 +85,7 @@ You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a th
     *   `debug`: build and debug a main package
     *   `test`: build and debug a test
     *   `exec`: debug a precompiled binary
-		* The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
+        * The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
     *   `auto`: automatically choose between `debug` and `test` depending on the open file
 
 ⚠️ If a `port` attribute is added to any of the launch configurations, it will signal VS Code that instead of launching the debug server internally, it should connect to an external user-specified `dlv dap` server at `host:port` and launch the target there. See ["Remote Debugging"](#remote-debugging) for more details).
@@ -98,7 +98,7 @@ You can use this configuration to attach to a running process or a running debug
 
 *   Supported modes
     *   `local`: attaches to a local process
-		* The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
+        * The binary must be built with `go build -gcflags=all="-N -l"` to disable inlining and optimizations that can interfere with debugging.
     *   `remote`: attaches to an in-progress debug session run by an external server
 
 You can debug an already running program using the `local` mode type configuration. The Go extension will start `dlv-dap` and configure it to attach to the specified process. Users can select the process to debug with one of the following options:
