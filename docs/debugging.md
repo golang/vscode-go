@@ -447,7 +447,7 @@ Or have the binary compiled by dlv-dap by modifying the above configuration to u
 ```
 
 ⚠️ Limitations
-*   Unliked `dlv --headless` above, `dlv dap` does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
+*   Unlike `dlv --headless` above, `dlv dap` does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
 *   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you would run the `go build` or `go test` command.
 
 ### Running Debugee Externally
