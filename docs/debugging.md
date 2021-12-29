@@ -379,13 +379,13 @@ With the introduction of `dlv dap` users now have two options for remote (i.e. e
 
 In this mode the user must first manually start a [`dlv --headless`](https://github.com/go-delve/delve/tree/master/Documentation/api) server listening at `host:port` while specifying the target program to debug/test/exec or a process to attach to on the command-line. A [remote attach](#attach) configuration is then used to connect to the debugger with a running target.
 
-The [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api) can now be used with both `"debugAdapter": "legacy"` (default value) and `"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli) via `dlv connect`. The `--accept-multiclient` flag can be used to make this a multi-use server that persists on `Disconnect` from a client and allows repeated client connections. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options.
+The [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api) can now be used with both `"debugAdapter": "legacy"` (default value) and `"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli) via `dlv connect`. The `--accept-multiclient` flag makes this a multi-use server that persists on `Disconnect` from a client and allows repeated connections from any of the aforementioned clients. A combination of `--accept-multiclient --continue` flags can be used to resume process execution on start-up. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options.
 
 We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a try and to [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If you need to use the `legacy` mode, pleasse also see the [legacy remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md#remote-debugging) documentation.
 
 For example, start external headless server:
 ```
-dlv debug /path/to/program/ --headless --listen=:12345
+dlv debug /path/to/program/ --headless --listen=:12345 # also add as needed: --accept-multiclient --continue
 ```
 
 Connect to it with a remote attach configuration in your `launch.json`:
@@ -447,7 +447,7 @@ Or have the binary compiled by dlv-dap by modifying the above configuration to u
 ```
 
 ⚠️ Limitations
-*   Delve DAP does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
+*   Unlike `dlv --headless` above, `dlv dap` does not support `--accept-multiclient` or `--continue` flags, which means after a debug session ends, the dlv-dap process will always exit.
 *   If you use `debug` or `test` mode `launch` requests, Delve builds the target binary. Delve tries to build the target from the directory where the `dlv` (or `dlv-dap`) process is running, so make sure to run the `dlv-dap` command from the directory you would run the `go build` or `go test` command.
 
 ### Running Debugee Externally
