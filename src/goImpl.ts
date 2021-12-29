@@ -41,7 +41,6 @@ export function implCursor() {
 	quickPick.placeholder = 'Input interface name (e.g. client)';
 
 	const search = function (keyword: string) {
-		console.debug('got: ', keyword);
 		quickPick.busy = true;
 		vscode.commands
 			.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', keyword)
@@ -98,7 +97,6 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 
 			// replace ReceiverName_ and Receiver__ with placeholders
 			let stub = '\n' + stdout + '\n';
-			stub = stub.replace('(ReceiverName__ *Receiver__)', '($0 *$1)');
 			stub = stub.replace(new RegExp('ReceiverName__', 'g'), '${0:r}');
 			stub = stub.replace(new RegExp('Receiver__', 'g'), '${1:receiver}');
 
