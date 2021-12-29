@@ -5,7 +5,7 @@
  *--------------------------------------------------------*/
 
 import AdmZip = require('adm-zip');
-import * as assert from 'assert';
+import assert from 'assert';
 import * as config from '../../src/config';
 import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
 import { getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
@@ -157,12 +157,7 @@ suite('Installation Tests', function () {
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
-				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
-				{
-					name: 'dlv-dap',
-					versions: ['v1.0.0', 'master'],
-					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
-				}
+				{ name: 'dlv', versions: ['v1.0.0', 'v1.8.0'], wantVersion: 'v1.8.0' }
 			],
 			true
 		);
@@ -172,12 +167,7 @@ suite('Installation Tests', function () {
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
-				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
-				{
-					name: 'dlv-dap',
-					versions: ['v1.0.0', 'master'],
-					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
-				}
+				{ name: 'dlv', versions: ['v1.0.0', 'v1.8.0'], wantVersion: 'v1.8.0' }
 			],
 			true, // LOCAL PROXY
 			true // GOBIN
@@ -213,14 +203,12 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 		fs.writeFileSync(path.join(dir, 'list'), `${versions.join('\n')}\n`);
 
 		versions.map((version) => {
-			if (version === 'master') {
-				// for dlv-dap that retrieves the version from master
+			if (!version.match(/^v\d+\.\d+\.\d+/)) {
+				// for tools that retrieve the versions from a revision (commit hash)
 				const resolvedVersion = tool.latestVersion?.toString() || '1.0.0';
+				const infoPath = path.join(dir, `${version}.info`);
 				version = `v${resolvedVersion}`;
-				fs.writeFileSync(
-					path.join(dir, 'master.info'),
-					`{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `
-				);
+				fs.writeFileSync(infoPath, `{ "Version": "${version}", "Time": "2020-04-07T14:45:07Z" } `);
 			}
 
 			// Write the go.mod file.

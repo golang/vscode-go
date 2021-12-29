@@ -59,6 +59,22 @@ Runs all unit tests in the current file.
 
 Runs all unit tests in the package of the current file.
 
+### `Go Test: Refresh`
+
+Refresh a test in the test explorer. Only available as a context menu option in the test explorer.
+
+### `Go Test: Show Last Profile`
+
+Show last captured profile
+
+### `Go Test: Profile`
+
+Run a test and capture a profile
+
+### `Go Test: Delete Profile`
+
+Delete selected profile
+
 ### `Go: Benchmark Package`
 
 Runs all benchmarks in the package of the current file.
@@ -226,7 +242,3 @@ Reset keys in workspace state to undefined.
 ### `Go: Reset Global State`
 
 Reset keys in global state to undefined.
-
-### `Go: Toggle Workspace Trust Flag`
-
-Toggle the workspace trust flag. Workspace settings that determine tool locations are disabled by default in untrusted workspaces.

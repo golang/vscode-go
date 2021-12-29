@@ -1,11 +1,11 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
 
-  "example.com/vendorpls"
+	"example/vendorpls"
 )
 
 func main() {
-  fmt.Prinln(vendorpls.F())
+	fmt.Prinln(vendorpls.F())
 }

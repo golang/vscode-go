@@ -6,7 +6,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------*/
 
-import * as assert from 'assert';
+import assert from 'assert';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import * as lsp from '../../src/goLanguageServer';
@@ -188,7 +188,7 @@ suite('gopls update tests', () => {
 });
 
 suite('version comparison', () => {
-	const tool = getTool('dlv-dap');
+	const tool = getTool('dlv');
 	const latestVersion = tool.latestVersion;
 
 	teardown(() => {
@@ -197,7 +197,7 @@ suite('version comparison', () => {
 
 	async function testShouldUpdateTool(expected: boolean, moduleVersion?: string) {
 		sinon.stub(goInstallTools, 'inspectGoToolVersion').returns(Promise.resolve({ moduleVersion }));
-		const got = await goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv-dap');
+		const got = await goInstallTools.shouldUpdateTool(tool, '/bin/path/to/dlv');
 		assert.strictEqual(
 			expected,
 			got,

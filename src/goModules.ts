@@ -36,7 +36,8 @@ async function runGoModEnv(folderPath: string): Promise<string> {
 				return resolve('');
 			}
 			const [goMod] = stdout.split('\n');
-			resolve(goMod);
+			if (goMod === '/dev/null' || goMod === 'NUL') resolve('');
+			else resolve(goMod);
 		});
 	});
 }
@@ -192,7 +193,7 @@ export async function goModInit() {
 	const moduleName = await vscode.window.showInputBox({
 		prompt: 'Enter module name',
 		value: '',
-		placeHolder: 'example.com/m'
+		placeHolder: 'example/project'
 	});
 
 	const goRuntimePath = getBinPath('go');

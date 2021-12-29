@@ -108,6 +108,7 @@ export class WelcomePanel {
 		// Local path to css styles and images
 		const scriptPathOnDisk = joinPath(this.dataroot, 'welcome.js');
 		const stylePath = joinPath(this.dataroot, 'welcome.css');
+		const announcePath = vscode.Uri.joinPath(this.dataroot, 'announce.png');
 		const gopherPath = joinPath(this.dataroot, 'go-logo-blue.png');
 		const goExtension = vscode.extensions.getExtension(extensionId)!;
 		const goExtensionVersion = goExtension.packageJSON.version;
@@ -116,6 +117,7 @@ export class WelcomePanel {
 		const scriptURI = webview.asWebviewUri(scriptPathOnDisk);
 		const stylesURI = webview.asWebviewUri(stylePath);
 		const gopherURI = webview.asWebviewUri(gopherPath);
+		const announceURI = webview.asWebviewUri(announcePath);
 
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
@@ -147,9 +149,21 @@ export class WelcomePanel {
 						-->
 						<li><a href="#" class="Command" data-command="openDocument" data-document="CHANGELOG.md">Release notes</a></li>
 						<li><a href="https://github.com/golang/vscode-go">GitHub</a></li>
+						<li><a href="https://stackoverflow.com/questions/tagged/go+visual-studio-code">Questions</a></li>
 						<li><a href="https://invite.slack.golangbridge.org/">Slack</a></li>
 					</ul>
 				</div>
+			</div>
+
+			<div class="Announcement">
+				<img src="${announceURI}" alt="announce" class="Announcement-image" />
+				<p>
+					New! <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging">Remote
+					attach debugging</a> is now available on demand via Delve's native DAP implementation with Delve v1.7.3 or newer.
+					We plan to enable this as the default in early 2022 to enhance remote debugging with the same
+					<a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">debugging features</a>
+                    that are already in use for local debugging.
+				</p>
 			</div>
 
 			<div class="Cards">
@@ -166,7 +180,7 @@ export class WelcomePanel {
 					<div class="Card-inner">
 						<p class="Card-title">Learning Go</p>
 						<p class="Card-content">If you're new to the Go programming language,
-							<a href="https://learn.go.dev">learn.go.dev</a> is a great place to get started.</a>
+							<a href="https://go.dev/learn">go.dev/learn</a> is a great place to get started.</a>
 						</p>
 					</div>
 				</div>

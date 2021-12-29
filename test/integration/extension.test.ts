@@ -7,7 +7,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import * as assert from 'assert';
+import assert from 'assert';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
@@ -37,7 +37,9 @@ import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,
 	getCurrentGoPath,
+	getGoVersion,
 	getImportPath,
+	GoVersion,
 	handleDiagnosticErrors,
 	ICheckResult,
 	isVendorSupported
@@ -57,6 +59,7 @@ const testAll = (isModuleMode: boolean) => {
 	let generateFunctionTestSourcePath: string;
 	let generatePackageTestSourcePath: string;
 	let previousEnv: any;
+	let goVersion: GoVersion;
 
 	suiteSetup(async () => {
 		previousEnv = Object.assign({}, process.env);
@@ -69,6 +72,8 @@ const testAll = (isModuleMode: boolean) => {
 			assert.ok(gopath, 'Cannot run tests if GOPATH is not set as environment variable');
 			return;
 		}
+		goVersion = await getGoVersion();
+
 		console.log(`Using GOPATH: ${gopath}`);
 
 		repoPath = isModuleMode ? fs.mkdtempSync(path.join(os.tmpdir(), 'legacy')) : path.join(gopath, 'src', 'test');
@@ -225,13 +230,16 @@ standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
 encountered.
 `;
+		const printlnSig = goVersion.lt('1.18')
+			? 'Println(a ...interface{}) (n int, err error)'
+			: 'Println(a ...any) (n int, err error)';
 
 		const testCases: [vscode.Position, string, string, string[]][] = [
 			[
 				new vscode.Position(19, 13),
-				'Println(a ...interface{}) (n int, err error)',
+				printlnSig,
 				printlnDoc,
-				['a ...interface{}']
+				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
 				new vscode.Position(23, 7),
@@ -272,12 +280,16 @@ encountered.
 Spaces are always added between operands and a newline is appended.
 It returns the number of bytes written and any write error encountered.
 `;
+		const printlnSig = goVersion.lt('1.18')
+			? 'Println(a ...interface{}) (n int, err error)'
+			: 'Println(a ...any) (n int, err error)';
+
 		const testCases: [vscode.Position, string, string, string[]][] = [
 			[
 				new vscode.Position(19, 13),
-				'Println(a ...interface{}) (n int, err error)',
+				printlnSig,
 				printlnDoc,
-				['a ...interface{}']
+				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
 				new vscode.Position(23, 7),
@@ -314,6 +326,10 @@ standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
 encountered.
 `;
+		const printlnSig = goVersion.lt('1.18')
+			? 'Println func(a ...interface{}) (n int, err error)'
+			: 'Println func(a ...any) (n int, err error)';
+
 		const testCases: [vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
 			[new vscode.Position(0, 3), null, null], // keyword
@@ -322,7 +338,7 @@ encountered.
 			[new vscode.Position(28, 16), null, null], // inside a number
 			[new vscode.Position(22, 5), 'main func()', '\n'],
 			[new vscode.Position(40, 23), 'import (math "math")', null],
-			[new vscode.Position(19, 6), 'Println func(a ...interface{}) (n int, err error)', printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDoc],
 			[
 				new vscode.Position(23, 4),
 				'print func(txt string)',
@@ -350,6 +366,10 @@ encountered.
 Spaces are always added between operands and a newline is appended.
 It returns the number of bytes written and any write error encountered.
 `;
+		const printlnSig = goVersion.lt('1.18')
+			? 'func Println(a ...interface{}) (n int, err error)'
+			: 'func Println(a ...any) (n int, err error)';
+
 		const testCases: [vscode.Position, string | null, string | null][] = [
 			[new vscode.Position(0, 3), null, null], // keyword
 			[new vscode.Position(23, 11), null, null], // inside a string
@@ -366,7 +386,7 @@ It returns the number of bytes written and any write error encountered.
 				'package math',
 				'Package math provides basic constants and mathematical functions.\n\nThis package does not guarantee bit-identical results across architectures.\n'
 			],
-			[new vscode.Position(19, 6), 'func Println(a ...interface{}) (n int, err error)', printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDoc],
 			[
 				new vscode.Position(27, 14),
 				'type ABC struct {\n    a int\n    b int\n    c int\n}',
@@ -384,7 +404,13 @@ It returns the number of bytes written and any write error encountered.
 		await testHoverProvider(config, testCases);
 	});
 
-	test('Linting - concurrent process cancelation', async () => {
+	test('Linting - concurrent process cancelation', async function () {
+		if (!goVersion.lt('1.18')) {
+			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
+			// https://github.com/dominikh/go-tools/issues/1145
+			this.skip();
+		}
+
 		const util = require('../../src/util');
 		const processutil = require('../../src/utils/processUtils');
 		sinon.spy(util, 'runTool');
@@ -413,7 +439,12 @@ It returns the number of bytes written and any write error encountered.
 		);
 	});
 
-	test('Linting - lint errors with multiple open files', async () => {
+	test('Linting - lint errors with multiple open files', async function () {
+		if (!goVersion.lt('1.18')) {
+			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
+			// https://github.com/dominikh/go-tools/issues/1145
+			this.skip();
+		}
 		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
 		// This adjustment applies only to the text documents known to vscode. This test checks
 		// the adjustment is made consistently across multiple open text documents.
@@ -448,7 +479,13 @@ It returns the number of bytes written and any write error encountered.
 		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
 	});
 
-	test('Error checking', async () => {
+	test('Error checking', async function () {
+		if (!goVersion.lt('1.18')) {
+			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
+			// https://github.com/dominikh/go-tools/issues/1145
+			this.skip();
+		}
+
 		const config = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
@@ -725,8 +762,8 @@ It returns the number of bytes written and any write error encountered.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const workDir = path.dirname(filePath);
-		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
-		const vendorPkgsRelativePath = ['example.com/vendorpls'];
+		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example/vendorpls'];
+		const vendorPkgsRelativePath = ['example/vendorpls'];
 
 		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
 			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
@@ -785,7 +822,7 @@ It returns the number of bytes written and any write error encountered.
 		} // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
-		const vendorPkgs = ['test/testfixture/vendoring/vendor/example.com/vendorpls'];
+		const vendorPkgs = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 
 		const gopkgsPromise = new Promise<void>((resolve, reject) => {
 			const cmd = cp.spawn(getBinPath('gopkgs'), ['-format', '{{.ImportPath}}'], {
@@ -865,7 +902,7 @@ It returns the number of bytes written and any write error encountered.
 			configWithoutIgnoringFolders
 		).then((results) => {
 			assert.equal(results[0].name, 'SomethingStrange');
-			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example.com/vendorpls/lib.go'));
+			assert.equal(results[0].path, path.join(workspacePath, 'vendor/example/vendorpls/lib.go'));
 		});
 		const withIgnoringFolders = getWorkspaceSymbols(
 			workspacePath,
@@ -901,10 +938,14 @@ standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
 encountered.
 `;
+		const printlnSig = goVersion.lt('1.18')
+			? 'func(a ...interface{}) (n int, err error)'
+			: 'func(a ...any) (n int, err error)';
+
 		const provider = new GoCompletionItemProvider();
 		const testCases: [vscode.Position, string, string | null, string | null][] = [
 			[new vscode.Position(7, 4), 'fmt', 'fmt', null],
-			[new vscode.Position(7, 6), 'Println', 'func(a ...interface{}) (n int, err error)', printlnDoc]
+			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDoc]
 		];
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
@@ -980,7 +1021,10 @@ encountered.
 				if (!item1) {
 					assert.fail('Suggestion with label "Print" not found in test case withFunctionSnippet.');
 				}
-				assert.equal((<vscode.SnippetString>item1.insertText).value, 'Print(${1:a ...interface{\\}})');
+				assert.equal(
+					(<vscode.SnippetString>item1.insertText).value,
+					goVersion.lt('1.18') ? 'Print(${1:a ...interface{\\}})' : 'Print(${1:a ...any})'
+				);
 			});
 		const withFunctionSnippetNotype = provider
 			.provideCompletionItemsInternal(

@@ -75,7 +75,7 @@ jobs:
           npm run vscode:prepublish
 
       - name: package
-        uses: lannonbr/vsce-action@704da577da0f27de5cdb4ae018374c2f08b5f523
+        uses: lannonbr/vsce-action@0f3391ee0477b08fae949eb0a875e91e6d20b075
         with:
           args: "package"
 
@@ -102,7 +102,7 @@ jobs:
 
       - name: publish
         if: env.EXT_ISPREVIEW != 1 && github.repository == 'golang/vscode-go'
-        uses: lannonbr/vsce-action@704da577da0f27de5cdb4ae018374c2f08b5f523
+        uses: lannonbr/vsce-action@0f3391ee0477b08fae949eb0a875e91e6d20b075
         with:
           args: "publish -p $VSCE_TOKEN"
         env:

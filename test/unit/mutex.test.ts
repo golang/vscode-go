@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import * as assert from 'assert';
+import assert from 'assert';
 import { Mutex } from '../../src/utils/mutex';
 
 suite('Mutex Tests', () => {

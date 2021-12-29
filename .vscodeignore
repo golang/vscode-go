@@ -18,4 +18,3 @@ third_party/
 tools/
 tsconfig.json
 typings/
-webpack.config.js

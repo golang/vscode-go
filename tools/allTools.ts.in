@@ -115,7 +115,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.1.1'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
@@ -211,19 +212,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Go debugger (Delve)'
-	},
-	'dlv-dap': {
-		name: 'dlv-dap',
-		importPath: 'github.com/go-delve/delve/cmd/dlv',
-		modulePath: 'github.com/go-delve/delve',
-		replacedByGopls: false,
-		isImportant: false,
-		description: 'Go debugger (Delve built for DAP experiment)',
-		defaultVersion: 'master', // Always build from the master.
-		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
-		latestVersion: semver.parse('%s'),
-		latestVersionTimestamp: moment('%s', 'YYYY-MM-DD')
+		description: 'Go debugger (Delve)',
+		latestVersion: semver.parse('v1.6.1'), // minimum version that supports DAP
+		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
+		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
 	},
 	'fillstruct': {
 		name: 'fillstruct',

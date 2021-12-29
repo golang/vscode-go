@@ -73,7 +73,8 @@ import { getToolFromToolPath } from './utils/pathUtils';
 import WebRequest = require('web-request');
 import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
-import { daysBetween, getStateConfig, maybePromptForSurvey, timeDay, timeMinute } from './goSurvey';
+import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
+import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -105,8 +106,37 @@ let serverTraceChannel: vscode.OutputChannel;
 let crashCount = 0;
 
 // Some metrics for automated issue reports:
-let manualRestartCount = 0;
-let totalStartCount = 0;
+let restartHistory: Restart[] = [];
+
+export function updateRestartHistory(reason: RestartReason, enabled: boolean) {
+	// Keep the history limited to 10 elements.
+	while (restartHistory.length > 10) {
+		restartHistory = restartHistory.slice(1);
+	}
+	restartHistory.push(new Restart(reason, new Date(), enabled));
+}
+
+function formatRestartHistory(): string {
+	const result: string[] = [];
+	for (const restart of restartHistory) {
+		result.push(`${restart.timestamp.toUTCString()}: ${restart.reason} (enabled: ${restart.enabled})`);
+	}
+	return result.join('\n');
+}
+
+export type RestartReason = 'activation' | 'manual' | 'config change' | 'installation';
+
+class Restart {
+	reason: RestartReason;
+	timestamp: Date;
+	enabled: boolean;
+
+	constructor(reason: RestartReason, timestamp: Date, enabled: boolean) {
+		this.reason = reason;
+		this.timestamp = timestamp;
+		this.enabled = enabled;
+	}
+}
 
 // defaultLanguageProviders is the list of providers currently registered.
 let defaultLanguageProviders: vscode.Disposable[] = [];
@@ -121,7 +151,7 @@ export let lastUserAction: Date = new Date();
 
 // startLanguageServerWithFallback starts the language server, if enabled,
 // or falls back to the default language providers.
-export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, activation: boolean) {
+export async function startLanguageServerWithFallback(ctx: vscode.ExtensionContext, reason: RestartReason) {
 	for (const folder of vscode.workspace.workspaceFolders || []) {
 		switch (folder.uri.scheme) {
 			case 'vsls':
@@ -148,9 +178,11 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 	const goConfig = getGoConfig();
 	const cfg = buildLanguageServerConfig(goConfig);
 
+	updateRestartHistory(reason, cfg.enabled);
+
 	// We have some extra prompts for gopls users and for people who have opted
 	// out of gopls.
-	if (activation) {
+	if (reason === 'activation') {
 		scheduleGoplsSuggestions();
 	}
 
@@ -246,7 +278,8 @@ function scheduleGoplsSuggestions() {
 		if (!foundGo) {
 			return;
 		}
-		maybePromptForSurvey();
+		maybePromptForGoplsSurvey();
+		maybePromptForDeveloperSurvey();
 	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
@@ -406,9 +439,7 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 				"Looks like you're about to manually restart the language server.",
 				errorKind.manualRestart
 			);
-
-			manualRestartCount++;
-			restartLanguageServer();
+			restartLanguageServer('manual');
 		});
 		ctx.subscriptions.push(restartCommand);
 	}
@@ -418,7 +449,6 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	disposeDefaultProviders();
 
 	languageServerDisposable = languageClient.start();
-	totalStartCount++;
 	ctx.subscriptions.push(languageServerDisposable);
 	await languageClient.onReady();
 	return true;
@@ -460,13 +490,11 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		// gopls handles only file URIs.
 		{ language: 'go', scheme: 'file' },
 		{ language: 'go.mod', scheme: 'file' },
-		{ language: 'go.sum', scheme: 'file' }
+		{ language: 'go.sum', scheme: 'file' },
+		{ language: 'go.work', scheme: 'file' },
+		{ language: 'tmpl', scheme: 'file' }
 	];
 
-	// Let gopls know about .tmpl - this is experimental, so enable it only in the experimental mode now.
-	if (isInPreviewMode()) {
-		documentSelector.push({ language: 'tmpl', scheme: 'file' });
-	}
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
@@ -630,7 +658,9 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							// cause to reorder candiates, which is not ideal.
 							// Force to use non-empty `label`.
 							// https://github.com/golang/vscode-go/issues/441
-							hardcodedFilterText = items[0].label;
+							let { label } = items[0];
+							if (typeof label !== 'string') label = label.label;
+							hardcodedFilterText = label;
 						}
 						for (const item of items) {
 							item.filterText = hardcodedFilterText;
@@ -919,7 +949,7 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 		e.affectsConfiguration('go.formatTool')
 		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
-		restartLanguageServer();
+		restartLanguageServer('config change');
 	}
 
 	if (e.affectsConfiguration('go.useLanguageServer') && getGoConfig()['useLanguageServer'] === false) {
@@ -987,7 +1017,7 @@ export function getLanguageServerToolPath(): string {
 	// Check that all workspace folders are configured with the same GOPATH.
 	if (!allFoldersHaveSameGopath()) {
 		vscode.window.showInformationMessage(
-			'The Go language server is currently not supported in a multi-root set-up with different GOPATHs.'
+			`The Go language server is currently not supported in a multi-root set-up with different GOPATHs (${gopathsPerFolder()}).`
 		);
 		return;
 	}
@@ -1019,6 +1049,14 @@ function allFoldersHaveSameGopath(): boolean {
 	}
 	const tempGopath = getCurrentGoPath(vscode.workspace.workspaceFolders[0].uri);
 	return vscode.workspace.workspaceFolders.find((x) => tempGopath !== getCurrentGoPath(x.uri)) ? false : true;
+}
+
+function gopathsPerFolder(): string[] {
+	const result: string[] = [];
+	for (const folder of vscode.workspace.workspaceFolders) {
+		result.push(getCurrentGoPath(folder.uri));
+	}
+	return result;
 }
 
 export async function shouldUpdateLanguageServer(
@@ -1381,6 +1419,7 @@ Please copy the stack trace and error messages from that window and paste it in 
 
 Failed to auto-collect gopls trace: ${failureReason}.
 `;
+				const now = new Date();
 
 				const body = `
 gopls version: ${usersGoplsVersion}
@@ -1390,8 +1429,9 @@ extension version: ${extInfo.version}
 go version: ${goVersion?.format(true)}
 environment: ${extInfo.appName} ${process.platform}
 initialization error: ${initializationError}
-manual restart count: ${manualRestartCount}
-total start count: ${totalStartCount}
+issue timestamp: ${now.toUTCString()}
+restart history:
+${formatRestartHistory()}
 
 ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
 

@@ -86,7 +86,7 @@ export function getImportPathWithVersion(
 			return importPath + '@' + version;
 		}
 	}
-	return importPath;
+	return importPath + '@latest';
 }
 
 export function containsTool(tools: Tool[], tool: Tool): boolean {
@@ -157,9 +157,8 @@ export function getConfiguredTools(
 	// Check if the system supports dlv, i.e. is 64-bit.
 	// There doesn't seem to be a good way to check if the mips and s390
 	// families are 64-bit, so just try to install it and hope for the best.
-	if (process.arch.match(/^(arm64|mips|mipsel|ppc64|s390|s390x|x64)$/)) {
+	if (process.arch.match(/^(mips|mipsel|ppc64|s390|s390x|x64)$/)) {
 		maybeAddTool('dlv');
-		maybeAddTool('dlv-dap');
 	}
 
 	// gocode-gomod needed in go 1.11 & higher
@@ -208,7 +207,11 @@ export function goplsStaticcheckEnabled(
 	goConfig: { [key: string]: any },
 	goplsConfig: { [key: string]: any }
 ): boolean {
-	if (goConfig['useLanguageServer'] !== true || goplsConfig['ui.diagnostic.staticcheck'] !== true) {
+	if (
+		goConfig['useLanguageServer'] !== true ||
+		goplsConfig['ui.diagnostic.staticcheck'] === false ||
+		(goplsConfig['ui.diagnostic.staticcheck'] === undefined && goplsConfig['staticcheck'] !== true)
+	) {
 		return false;
 	}
 	const features = goConfig['languageServerExperimentalFeatures'];

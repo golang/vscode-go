@@ -62,7 +62,7 @@ export function implCursor() {
 
 	quickPick.onDidChangeValue(lodash.debounce(search, 250));
 
-	quickPick.onDidChangeSelection((selections: vscode.QuickPickItem[]) => {
+	quickPick.onDidChangeSelection((selections: readonly vscode.QuickPickItem[]) => {
 		if (typeof selections === 'undefined') {
 			return;
 		}

@@ -117,7 +117,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.1.1'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
@@ -202,10 +203,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.12'),
-		latestVersion: semver.parse('v0.7.0'),
-		latestVersionTimestamp: moment('2021-06-08', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.7.0'),
-		latestPrereleaseVersionTimestamp: moment('2021-06-08', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.7.4'),
+		latestVersionTimestamp: moment('2021-12-09', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.7.4'),
+		latestPrereleaseVersionTimestamp: moment('2021-12-09', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
@@ -213,19 +214,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Go debugger (Delve)'
-	},
-	'dlv-dap': {
-		name: 'dlv-dap',
-		importPath: 'github.com/go-delve/delve/cmd/dlv',
-		modulePath: 'github.com/go-delve/delve',
-		replacedByGopls: false,
-		isImportant: false,
-		description: 'Go debugger (Delve built for DAP experiment)',
-		defaultVersion: 'master', // Always build from the master.
-		minimumGoVersion: semver.coerce('1.14'), // last 3 versions per delve policy
-		latestVersion: semver.parse('v1.6.2-0.20210611174649-688f94a4f838'),
-		latestVersionTimestamp: moment('2021-06-11', 'YYYY-MM-DD')
+		description: 'Go debugger (Delve)',
+		latestVersion: semver.parse('v1.6.1'), // minimum version that supports DAP
+		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
+		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
 	},
 	'fillstruct': {
 		name: 'fillstruct',

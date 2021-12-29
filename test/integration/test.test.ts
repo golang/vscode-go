@@ -6,7 +6,7 @@
 
 'use strict';
 
-import * as assert from 'assert';
+import assert from 'assert';
 import { getGoConfig } from '../../src/config';
 import { computeTestCommand, getTestFlags, goTest } from '../../src/testUtils';
 import { rmdirRecursive } from '../../src/util';

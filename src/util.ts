@@ -12,7 +12,7 @@ import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
-import { DefaultConfig, getGoConfig } from './config';
+import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
 import { languageClient } from './goLanguageServer';
@@ -391,6 +391,20 @@ export async function getGoEnv(cwd?: string): Promise<string> {
 }
 
 /**
+ * Returns the output of `go version -m` with the toolPath.
+ */
+export async function runGoVersionM(toolPath: string): Promise<string> {
+	const goRuntime = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	const opts = { env: toolExecutionEnvironment() };
+	const { stdout, stderr } = await execFile(goRuntime, ['version', '-m', toolPath], opts);
+	if (stderr) {
+		throw new Error(`failed to run 'go version -m ${toolPath}': ${stderr}`);
+	}
+	return stdout;
+}
+
+/**
  * Returns boolean denoting if current version of Go supports vendoring
  */
 export async function isVendorSupported(): Promise<boolean> {
@@ -481,7 +495,7 @@ function resolveToolsGopath(): string {
 		return toolsGopathForWorkspace;
 	}
 
-	if (DefaultConfig().workspaceIsTrusted() === false) {
+	if (!vscode.workspace.isTrusted) {
 		return toolsGopathForWorkspace;
 	}
 
@@ -504,8 +518,12 @@ export function getBinPath(tool: string, useCache = true): string {
 
 // getBinPathWithExplanation returns the path to the tool, and the explanation on why
 // the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
-export function getBinPathWithExplanation(tool: string, useCache = true): { binPath: string; why?: string } {
-	const cfg = getGoConfig();
+export function getBinPathWithExplanation(
+	tool: string,
+	useCache = true,
+	uri?: vscode.Uri
+): { binPath: string; why?: string } {
+	const cfg = getGoConfig(uri);
 	const alternateTools: { [key: string]: string } = cfg.get('alternateTools');
 	const alternateToolPath: string = alternateTools[tool];
 

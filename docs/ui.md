@@ -41,5 +41,5 @@ Selecting `Open 'gopls' trace` will open the trace of the `gopls` server in the 
 
 When modules are enabled for the file you have open, you can navigate to the `go.mod` file for the project using the menu. If you do not see the `Open go.mod` item, then the extension does not think the file you have open belongs to a module.
 
-More information about [using Go modules](https://blog.golang.org/using-go-modules) is available on the Go blog.
+More information about [using Go modules](https://go.dev/blog/using-go-modules ) is available on the Go blog.
 

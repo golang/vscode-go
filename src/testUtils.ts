@@ -23,7 +23,9 @@ import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspac
 import { killProcessTree } from './utils/processUtils';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
-const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+const STATUS_BAR_ITEM_NAME = 'Go Test Cancel';
+const statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ITEM_NAME, vscode.StatusBarAlignment.Left);
+statusBarItem.name = STATUS_BAR_ITEM_NAME;
 statusBarItem.command = 'go.test.cancel';
 statusBarItem.text = '$(x) Cancel Running Tests';
 
@@ -37,10 +39,10 @@ const runningTestProcesses: cp.ChildProcess[] = [];
 // There could be slight difference between \P{Ll} (not lowercase letter)
 // & go unicode package's uppercase detection. But hopefully
 // these will be replaced by gopls's codelens computation soon.
-const testFuncRegex = /^Test\P{Ll}.*|^Example\P{Ll}.*/u;
-const testMethodRegex = /^\(([^)]+)\)\.(Test\P{Ll}.*)$/u;
-const benchmarkRegex = /^Benchmark\P{Ll}.*/u;
-
+const testFuncRegex = /^Test$|^Test\P{Ll}.*|^Example$|^Example\P{Ll}.*/u;
+const testMethodRegex = /^\(([^)]+)\)\.(Test|Test\P{Ll}.*)$/u;
+const benchmarkRegex = /^Benchmark$|^Benchmark\P{Ll}.*/u;
+const fuzzFuncRegx = /^Fuzz$|^Fuzz\P{Ll}.*/u;
 /**
  * Input to goTest.
  */
@@ -85,6 +87,14 @@ export interface TestConfig {
 	 * Output channel for test output.
 	 */
 	outputChannel?: vscode.OutputChannel;
+	/**
+	 * Can be used to terminate the test process.
+	 */
+	cancel?: vscode.CancellationToken;
+	/**
+	 * Output channel for JSON test output.
+	 */
+	goTestOutputConsumer?: (_: GoTestOutput) => void;
 }
 
 export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
@@ -150,7 +160,7 @@ export async function getTestFunctions(
 	return children.filter(
 		(sym) =>
 			sym.kind === vscode.SymbolKind.Function &&
-			(testFuncRegex.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
 	);
 }
 
@@ -236,10 +246,12 @@ export async function getBenchmarkFunctions(
  * which is a subset of https://golang.org/cmd/test2json/#hdr-Output_Format
  * and includes only the fields that we are using.
  */
-interface GoTestOutput {
+export interface GoTestOutput {
 	Action: string;
 	Output?: string;
 	Package?: string;
+	Test?: string;
+	Elapsed?: number; // seconds
 }
 
 /**
@@ -294,9 +306,16 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const outBuf = new LineBuffer();
 			const errBuf = new LineBuffer();
 
+			testconfig.cancel?.onCancellationRequested(() => killProcessTree(tp));
+
 			const testResultLines: string[] = [];
 			const processTestResultLine = addJSONFlag
-				? processTestResultLineInJSONMode(pkgMap, currentGoWorkspace, outputChannel)
+				? processTestResultLineInJSONMode(
+						pkgMap,
+						currentGoWorkspace,
+						outputChannel,
+						testconfig.goTestOutputConsumer
+				  )
 				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 			outBuf.onLine((line) => processTestResultLine(line));
@@ -443,7 +462,7 @@ export function computeTestCommand(
 	const outArgs = args.slice(0); // command to show
 
 	// if user set -v, set -json to emulate streaming test output
-	const addJSONFlag = userFlags.includes('-v') && !userFlags.includes('-json');
+	const addJSONFlag = (userFlags.includes('-v') || testconfig.goTestOutputConsumer) && !userFlags.includes('-json');
 	if (addJSONFlag) {
 		args.push('-json'); // this is not shown to the user.
 	}
@@ -478,11 +497,15 @@ export function computeTestCommand(
 function processTestResultLineInJSONMode(
 	pkgMap: Map<string, string>,
 	currentGoWorkspace: string,
-	outputChannel: vscode.OutputChannel
+	outputChannel: vscode.OutputChannel,
+	goTestOutputConsumer?: (_: GoTestOutput) => void
 ) {
 	return (line: string) => {
 		try {
 			const m = <GoTestOutput>JSON.parse(line);
+			if (goTestOutputConsumer) {
+				goTestOutputConsumer(m);
+			}
 			if (m.Action !== 'output' || !m.Output) {
 				return;
 			}
@@ -566,7 +589,11 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 
 	if (testconfig.functions) {
 		if (testconfig.isBenchmark) {
-			params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
+			if (testconfig.functions.length === 1) {
+				params = ['-bench', util.format('^%s$', testconfig.functions[0])];
+			} else {
+				params = ['-bench', util.format('^(%s)$', testconfig.functions.join('|'))];
+			}
 		} else {
 			let testFunctions = testconfig.functions;
 			let testifyMethods = testFunctions.filter((fn) => testMethodRegex.test(fn));

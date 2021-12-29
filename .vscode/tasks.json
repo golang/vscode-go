@@ -50,6 +50,22 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"type": "npm",
+			"script": "bundle-watch",
+			"group": "build",
+			"problemMatcher": "$esbuild-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			}
+		},
+		{
+			"type": "npm",
+			"script": "bundle-dev",
+			"group": "build",
+			"problemMatcher": "$esbuild",
 		}
 	]
 }

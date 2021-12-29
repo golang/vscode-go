@@ -7,8 +7,10 @@
 
 'use strict';
 
+import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
+import { ContinuedEvent } from 'vscode-debugadapter';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -18,16 +20,15 @@ import {
 	promptForUpdatingTool,
 	shouldUpdateTool
 } from './goInstallTools';
-import { isInPreviewMode } from './goLanguageServer';
 import { packagePathToGoModPathMap } from './goModules';
-import { getTool, getToolAtVersion } from './goTools';
+import { getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion, getWorkspaceFolderPath, resolvePath } from './util';
+import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 
-let dlvDAPVersionCurrent = false;
+let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
 	constructor(private defaultDebugAdapterType: string = 'go') {}
@@ -140,6 +141,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['type'] = this.defaultDebugAdapterType;
 		}
 
+		if (!debugConfiguration['mode']) {
+			if (debugConfiguration.request === 'launch') {
+				// 'auto' will decide mode by checking file extensions later
+				debugConfiguration['mode'] = 'auto';
+			} else if (debugConfiguration.request === 'attach') {
+				debugConfiguration['mode'] = 'local';
+			}
+		}
+
 		debugConfiguration['packagePathToGoModPathMap'] = packagePathToGoModPathMap;
 
 		const goConfig = getGoConfig(folder && folder.uri);
@@ -155,17 +165,24 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		if (!debugConfiguration['debugAdapter']) {
-			// for nightly/dev mode, default to dlv-dap.
-			// TODO(hyangah): when we switch the stable version's default to 'dlv-dap', adjust this.
-			debugConfiguration['debugAdapter'] =
-				isInPreviewMode() && debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+			// For local modes, default to dlv-dap. For remote - to legacy for now.
+			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
 		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && debugConfiguration['mode'] === 'remote') {
-			this.showWarning(
-				'ignoreDlvDAPInRemoteModeWarning',
-				"debugAdapter type of 'dlv-dap' with mode 'remote' is unsupported. Fall back to the 'legacy' debugAdapter for 'remote' mode."
-			);
-			debugConfiguration['debugAdapter'] = 'legacy';
+		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
+			if (debugConfiguration['mode'] === 'remote') {
+				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
+				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
+				// but we have no way of detectng that with an external server.
+				this.showWarning(
+					'ignoreDlvDAPInRemoteModeWarning',
+					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
+				);
+			} else if (debugConfiguration['port']) {
+				this.showWarning(
+					'ignorePortUsedInDlvDapWarning',
+					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+				);
+			}
 		}
 
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
@@ -190,21 +207,29 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		) {
 			this.showWarning(
 				'ignoreDebugDlvConfigWithDlvDapWarning',
-				"User specified 'dlvLoadConfig' setting will be ignored by debug adapter 'dlv-dap'."
+				"'dlvLoadConfig' is deprecated with dlv-dap debug adapter.\n\nDlv-dap loads composite data on demand and uses increased string limits on source code hover, in Debug Console and via Copy Value. Please file an issue if these are not sufficient for your use case."
 			);
 		}
-		if (!debugConfiguration.hasOwnProperty('dlvLoadConfig') && dlvConfig.hasOwnProperty('dlvLoadConfig')) {
-			debugConfiguration['dlvLoadConfig'] = dlvConfig['dlvLoadConfig'];
+
+		// Reflect the defaults set through go.delveConfig setting.
+		const dlvProperties = [
+			'showRegisters',
+			'showGlobalVariables',
+			'substitutePath',
+			'showLog',
+			'logOutput',
+			'dlvFlags',
+			'hideSystemGoroutines'
+		];
+		if (debugAdapter !== 'dlv-dap') {
+			dlvProperties.push('dlvLoadConfig');
 		}
-		if (
-			!debugConfiguration.hasOwnProperty('showGlobalVariables') &&
-			dlvConfig.hasOwnProperty('showGlobalVariables')
-		) {
-			debugConfiguration['showGlobalVariables'] = dlvConfig['showGlobalVariables'];
-		}
-		if (!debugConfiguration.hasOwnProperty('substitutePath') && dlvConfig.hasOwnProperty('substitutePath')) {
-			debugConfiguration['substitutePath'] = dlvConfig['substitutePath'];
-		}
+		dlvProperties.forEach((p) => {
+			if (!debugConfiguration.hasOwnProperty(p) && dlvConfig.hasOwnProperty(p)) {
+				debugConfiguration[p] = dlvConfig[p];
+			}
+		});
+
 		if (debugAdapter !== 'dlv-dap' && debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
 			if (vscode.workspace.workspaceFolders?.length > 1) {
@@ -238,43 +263,36 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const dlvToolPath = getBinPath(debugAdapter);
+		const dlvToolPath = getBinPath('dlv');
 		if (!path.isAbsolute(dlvToolPath)) {
-			const tool = getTool(debugAdapter);
-
 			// If user has not already declined to install this tool,
 			// prompt for it. Otherwise continue and have the lack of
 			// dlv binary be caught later.
-			if (!declinedToolInstall(debugAdapter)) {
-				await promptForMissingTool(debugAdapter);
+			if (!declinedToolInstall('dlv')) {
+				await promptForMissingTool('dlv');
 				return;
 			}
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
-		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionCurrent) {
-			const tool = getToolAtVersion('dlv-dap');
+		// For dlv-dap mode, check if the dlv is recent enough to support DAP.
+		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
+			const tool = getToolAtVersion('dlv');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
 				// If the user has opted in to automatic tool updates, we can update
 				// without prompting.
 				const toolsManagementConfig = getGoConfig()['toolsManagement'];
 				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
 					const goVersion = await getGoVersion();
-					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
-					await installTools([toolVersion], goVersion, true);
+					await installTools([tool], goVersion, true);
 				} else {
-					// If we are prompting the user to update, we do not want to continue
-					// with this debug session.
-					promptForUpdatingTool(tool.name);
-					return;
+					await promptForUpdatingTool(tool.name);
 				}
+				// installTools could've failed (e.g. no network access) or the user decliend to install dlv
+				// in promptForUpdatingTool. If dlv doesn't exist or dlv is too old to have MVP features,
+				// the failure will be visible to users when launching the dlv process (crash or error message).
 			}
-			dlvDAPVersionCurrent = true;
-		}
-
-		if (debugAdapter === 'dlv-dap' && debugConfiguration['cwd']) {
-			// dlv dap expects 'wd' not 'cwd'
-			debugConfiguration['wd'] = debugConfiguration['cwd'];
+			dlvDAPVersionChecked = true;
 		}
 
 		if (debugConfiguration['mode'] === 'auto') {
@@ -315,16 +333,13 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
 			if (!debugConfiguration['processId'] || debugConfiguration['processId'] === 0) {
 				// The processId is not valid, offer a quickpick menu of all processes.
-				debugConfiguration['processId'] = parseInt(await pickProcess(), 10);
+				debugConfiguration['processId'] = await pickProcess();
 			} else if (
 				typeof debugConfiguration['processId'] === 'string' &&
 				debugConfiguration['processId'] !== '${command:pickProcess}' &&
 				debugConfiguration['processId'] !== '${command:pickGoProcess}'
 			) {
-				debugConfiguration['processId'] = parseInt(
-					await pickProcessByName(debugConfiguration['processId']),
-					10
-				);
+				debugConfiguration['processId'] = await pickProcessByName(debugConfiguration['processId']);
 			}
 		}
 		return debugConfiguration;
@@ -372,12 +387,24 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
 	): vscode.DebugConfiguration {
-		// Reads debugConfiguration.envFile and
-		// combines the environment variables from all the env files and
-		// debugConfiguration.env, on top of the tools execution environment variables.
-		// It also unsets 'envFile' from the user-suppled debugConfiguration
+		const debugAdapter = debugConfiguration['debugAdapter'];
+		if (debugAdapter === '') {
+			return null;
+		}
+
+		// Read debugConfiguration.envFile and
+		// combine the environment variables from all the env files and
+		// debugConfiguration.env.
+		// We also unset 'envFile' from the user-suppled debugConfiguration
 		// because it is already applied.
-		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri); // also includes GOPATH: getCurrentGoPath().
+		//
+		// For legacy mode, we merge the environment variables on top of
+		// the tools execution environment variables and update the debugConfiguration
+		// because VS Code directly handles launch of the legacy debug adapter.
+		// For dlv-dap mode, we do not merge the tools execution environment
+		// variables here to reduce the number of environment variables passed
+		// as launch/attach parameters.
+		const goToolsEnvVars = debugAdapter === 'legacy' ? toolExecutionEnvironment(folder?.uri) : {};
 		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
 		const env = debugConfiguration['env'] || {};
 
@@ -387,18 +414,56 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const entriesWithRelativePaths = ['cwd', 'output', 'program'].filter(
 			(attr) => debugConfiguration[attr] && !path.isAbsolute(debugConfiguration[attr])
 		);
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap' && entriesWithRelativePaths.length > 0) {
-			const workspaceRoot = folder?.uri.fsPath;
-			if (!workspaceRoot) {
-				this.showWarning(
-					'relativePathsWithoutWorkspaceFolder',
-					'Relative paths without a workspace folder for `cwd`, `program`, or `output` are not allowed.'
-				);
-				return null;
+		if (debugAdapter === 'dlv-dap') {
+			// 1. Relative paths -> absolute paths
+			if (entriesWithRelativePaths.length > 0) {
+				const workspaceRoot = folder?.uri.fsPath;
+				if (workspaceRoot) {
+					entriesWithRelativePaths.forEach((attr) => {
+						debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
+					});
+				} else {
+					this.showWarning(
+						'relativePathsWithoutWorkspaceFolder',
+						'Behavior when using relative paths without a workspace folder for `cwd`, `program`, or `output` is undefined.'
+					);
+				}
 			}
-			entriesWithRelativePaths.forEach((attr) => {
-				debugConfiguration[attr] = path.join(workspaceRoot, debugConfiguration[attr]);
-			});
+			// 2. For launch debug/test modes that builds the debug target,
+			//    delve needs to be launched from the right directory (inside the main module of the target).
+			//    Compute the launch dir heuristically, and translate the dirname in program to a path relative to buildDir.
+			//    We skip this step when working with externally launched debug adapter
+			//    because we do not control the adapter's launch process.
+			if (debugConfiguration.request === 'launch') {
+				const mode = debugConfiguration['mode'] || 'debug';
+				if (['debug', 'test', 'auto'].includes(mode)) {
+					// Massage config to build the target from the package directory
+					// with a relative path. (https://github.com/golang/vscode-go/issues/1713)
+					// parseDebugProgramArgSync will throw an error if `program` is invalid.
+					const { program, dirname, programIsDirectory } = parseDebugProgramArgSync(
+						debugConfiguration['program']
+					);
+					if (
+						dirname &&
+						// Presence of the following attributes indicates externally launched debug adapter.
+						// Don't mess with 'program' if the debug adapter was launched externally.
+						!debugConfiguration.port &&
+						!debugConfiguration.debugServer
+					) {
+						debugConfiguration['__buildDir'] = dirname;
+						debugConfiguration['program'] = programIsDirectory
+							? '.'
+							: '.' + path.sep + path.relative(dirname, program);
+					}
+				}
+			}
+		}
+		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
+			// processId needs to be an int, but the substituted variables from pickGoProcess and pickProcess
+			// become a string. Convert any strings to integers.
+			if (typeof debugConfiguration['processId'] === 'string') {
+				debugConfiguration['processId'] = parseInt(debugConfiguration['processId'], 10);
+			}
 		}
 		return debugConfiguration;
 	}
@@ -416,4 +481,30 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		});
 	}
+}
+
+// parseDebugProgramArgSync parses program arg of debug/auto/test launch requests.
+export function parseDebugProgramArgSync(
+	program: string
+): { program: string; dirname: string; programIsDirectory: boolean } {
+	if (!program) {
+		throw new Error('The program attribute is missing in the debug configuration in launch.json');
+	}
+	try {
+		const pstats = lstatSync(program);
+		if (pstats.isDirectory()) {
+			return { program, dirname: program, programIsDirectory: true };
+		}
+		const ext = path.extname(program);
+		if (ext === '.go') {
+			// TODO(hyangah): .s?
+			return { program, dirname: path.dirname(program), programIsDirectory: false };
+		}
+	} catch (e) {
+		console.log(`parseDebugProgramArgSync failed: ${e}`);
+	}
+	// shouldn't reach here if program was a valid directory or .go file.
+	throw new Error(
+		`The program attribute '${program}' must be a valid directory or .go file in debug/test/auto modes.`
+	);
 }

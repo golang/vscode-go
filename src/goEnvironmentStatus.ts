@@ -543,9 +543,11 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 			});
 		} catch (e) {
 			// hardcode the latest versions of Go in case golang.dl is unavailable
+			// TODO(hyangah): consider to remove these hardcoded versions and instead
+			// show error notification if necessary.
 			results = [
-				new GoEnvironmentOption('go get golang.org/dl/go1.15', 'Go 1.15'),
-				new GoEnvironmentOption('go get golang.org/dl/go1.14.7', 'Go 1.14.7')
+				new GoEnvironmentOption('go get golang.org/dl/go1.17.1', 'Go 1.17.1'),
+				new GoEnvironmentOption('go get golang.org/dl/go1.16.8', 'Go 1.16.8')
 			];
 		}
 	}
@@ -553,6 +555,7 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 	return results;
 }
 
+const STATUS_BAR_ITEM_NAME = 'Go Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion() {
@@ -583,7 +586,12 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		addGoStatus('Go Update Available', 'go.promptforgoinstall', 'A newer version of Go is available');
+		addGoStatus(
+			STATUS_BAR_ITEM_NAME,
+			'Go Update Available',
+			'go.promptforgoinstall',
+			'A newer version of Go is available'
+		);
 		vscode.commands.registerCommand('go.promptforgoinstall', () => {
 			const download = {
 				title: 'Download',
@@ -628,7 +636,7 @@ export async function offerToInstallLatestGoVersion() {
 					// TODO: should we removeGoStatus if user has closed the notification
 					// without any action? It's kind of a feature now - without selecting
 					// neverAgain, user can hide this statusbar item.
-					removeGoStatus();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
 					selection?.command();
 				});
 		});

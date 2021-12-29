@@ -19,6 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as util from 'util';
 import {
+	ContinuedEvent,
 	DebugSession,
 	ErrorDestination,
 	Handles,
@@ -455,7 +456,7 @@ export class Delve {
 				this.isRemoteDebugging = true;
 				this.goroot = await queryGOROOT(dlvCwd, process.env);
 				serverRunning = true; // assume server is running when in remote mode
-				connectClient(launchArgs.port, launchArgs.host);
+				connectClient(launchArgs.port, launchArgs.host, this.onclose);
 				return;
 			}
 			this.isRemoteDebugging = false;
@@ -505,11 +506,6 @@ export class Delve {
 				log(`Using GOPATH: ${env['GOPATH']}`);
 				log(`Using GOROOT: ${this.goroot}`);
 				log(`Using PATH: ${env['PATH']}`);
-				if (launchArgs.trace === 'verbose') {
-					Object.keys(env).forEach((key) => {
-						log('  export ' + key + '="' + env[key] + '"');
-					});
-				}
 				if (launchArgs.noDebug) {
 					if (mode === 'debug') {
 						this.noDebug = true;
@@ -705,18 +701,18 @@ export class Delve {
 				env
 			});
 
-			function connectClient(port: number, host: string) {
+			function connectClient(port: number, host: string, onClose?: Delve['onclose']) {
 				// Add a slight delay to avoid issues on Linux with
 				// Delve failing calls made shortly after connection.
 				setTimeout(() => {
-					const client = Client.$create(port, host);
-					client.connectSocket((err, conn) => {
-						if (err) {
-							return reject(err);
-						}
-						return resolve(conn);
-					});
-					client.on('error', reject);
+					const conn = Client.$create(port, host).connectSocket();
+
+					conn.on('connect', () => resolve(conn))
+						.on('error', reject)
+						.on('close', (hadError) => {
+							logError('Socket connection to remote was closed');
+							onClose?.(hadError ? 1 : 0);
+						});
 				}, 200);
 			}
 
@@ -733,7 +729,7 @@ export class Delve {
 				}
 				if (!serverRunning) {
 					serverRunning = true;
-					connectClient(launchArgs.port, launchArgs.host);
+					connectClient(launchArgs.port, launchArgs.host, this.onclose);
 				}
 			});
 			this.debugProcess.on('close', (code) => {
@@ -1037,7 +1033,7 @@ export class GoDebugSession extends LoggingDebugSession {
 	 * files with the same base names as filePath.
 	 */
 	protected findPathWithBestMatchingSuffix(filePath: string, potentialPaths: string[]): string | undefined {
-		if (!potentialPaths.length) {
+		if (!potentialPaths?.length) {
 			return;
 		}
 
@@ -1779,6 +1775,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a next request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('NextResponse');
 	}
@@ -1802,6 +1800,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step in request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepInResponse');
 	}
@@ -1825,6 +1825,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			this.debugState = state;
 			this.handleReenterDebug('step');
 		});
+		// All threads are resumed on a step out request
+		this.sendEvent(new ContinuedEvent(1, true));
 		this.sendResponse(response);
 		log('StepOutResponse');
 	}

@@ -3,15 +3,17 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
 /* eslint-disable no-async-promise-executor */
 /* eslint-disable node/no-unpublished-import */
-import * as assert from 'assert';
+import assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as readline from 'readline';
 import * as http from 'http';
 import { tmpdir } from 'os';
 import * as net from 'net';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as proxy from '../../src/goDebugFactory';
+import * as vscode from 'vscode';
 import { DebugConfiguration, DebugProtocolMessage } from 'vscode';
 import { DebugClient } from 'vscode-debugadapter-testsupport';
 import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
@@ -23,12 +25,12 @@ import {
 	PackageBuildInfo,
 	RemoteSourcesAndPackages
 } from '../../src/debugAdapter/goDebug';
-import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
+import * as extConfig from '../../src/config';
+import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
-import { killProcessTree } from '../../src/utils/processUtils';
+import { killProcessTree, killProcess } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
-import { parseProgramArgSync } from '../../src/goDebugFactory';
 import { TimestampedLogger } from '../../src/goLogging';
 
 // For debugging test and streaming the trace instead of buffering, set this.
@@ -55,6 +57,7 @@ suite('GoDebugSession Tests', async () => {
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
+		// eslint-disable-next-line prettier/prettier
 		fileSystem = ({ existsSync: () => false } as unknown) as typeof fs;
 		delve.program = workspaceFolder;
 		delve.isApiV1 = false;
@@ -79,6 +82,19 @@ suite('GoDebugSession Tests', async () => {
 			'C:\\Users\\Documents\\src\\hello-world\\main.go'
 		);
 		assert.strictEqual(inferredPath, '/app/hello-world/main.go');
+	});
+
+	test('inferRemotePathFromLocalPath does not crash due to non-existing files', () => {
+		const sourceFileMapping = new Map<string, string[]>();
+		sourceFileMapping.set('main.go', ['/app/hello-world/main.go', '/app/main.go']);
+
+		remoteSourcesAndPackages.remoteSourceFilesNameGrouping = sourceFileMapping;
+
+		// Non-existing file.
+		const inferredPath = goDebugSession['inferRemotePathFromLocalPath'](
+			'C:\\Users\\Documents\\src\\hello-world\\main-copy.go'
+		);
+		assert.strictEqual(inferredPath, undefined);
 	});
 
 	test('inferLocalPathFromRemoteGoPackage works for package in workspaceFolder', () => {
@@ -272,6 +288,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let delve: Delve;
 	setup(() => {
+		// eslint-disable-next-line prettier/prettier
 		delve = ({ callPromise: () => ({}), isApiV1: false } as unknown) as Delve;
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
 	});
@@ -295,9 +312,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
-	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
-	const dlvDapSkipsEnabled = true;
+const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
@@ -315,8 +330,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 	let dc: DebugClient;
 	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
+	let dapTraced = false;
 
 	setup(async () => {
+		dapTraced = false;
+
 		if (isDlvDap) {
 			dc = new DebugClient('dlv', 'dap', 'go');
 			// dc.start will be called in initializeDebugConfig call,
@@ -335,7 +353,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		await dc.start();
 	});
 
-	teardown(() => {
+	teardown(async () => {
 		if (dlvDapAdapter) {
 			const d = dlvDapAdapter;
 			dlvDapAdapter = null;
@@ -345,6 +363,21 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 			d.dispose();
 		} else {
+			if (ctx.currentTest?.state === 'failed' && dapTraced) {
+				console.log(`${ctx.currentTest?.title} FAILED: Debug Adapter Trace`);
+				try {
+					await new Promise<void>((resolve) => {
+						const rl = readline.createInterface({
+							input: fs.createReadStream(path.join(tmpdir(), 'vscode-go-debug.txt')),
+							crlfDelay: Infinity
+						});
+						rl.on('line', (line) => console.log(line));
+						rl.on('close', () => resolve());
+					});
+				} catch (e) {
+					console.log(`Failed to read trace: ${e}`);
+				}
+			}
 			dc?.stop();
 		}
 		sinon.restore();
@@ -366,7 +399,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	): Promise<cp.ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
-		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
+		const args = [
+			'debug',
+			'--check-go-version=false',
+			'--api-version=2',
+			'--headless',
+			`--listen=127.0.0.1:${dlvPort}`
+		];
 		if (acceptMultiClient) {
 			args.push('--accept-multiclient');
 		}
@@ -470,11 +509,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	}
 
 	suite('basic', () => {
-		test('unknown request should produce error', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('unknown request should produce error', async () => {
 			// fake config that will be used to initialize fixtures.
 			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
 			await initializeDebugConfig(config);
@@ -517,6 +552,70 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				return; // want error
 			}
 			throw new Error("does not report error on invalid 'pathFormat' attribute");
+		});
+	});
+
+	suite('env', () => {
+		let sandbox: sinon.SinonSandbox;
+
+		setup(() => {
+			sandbox = sinon.createSandbox();
+		});
+		teardown(async () => sandbox.restore());
+
+		test('env var from go.toolsEnvVars is respected', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'envTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 10;
+
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+				toolsEnvVars: {
+					value: { FOO: 'BAR' }
+				}
+			});
+			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				args: ['FOO']
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await assertLocalVariableValue('v', '"BAR"');
+
+			await dc.continueRequest({ threadId: 1 }); // continue until completion for cleanup.
+		});
+
+		test('env var from launch config is respected', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'envTest');
+			const FILE = path.join(PROGRAM, 'main.go');
+			const BREAKPOINT_LINE = 10;
+
+			const goConfig = Object.create(vscode.workspace.getConfiguration('go'), {
+				toolsEnvVars: {
+					value: { FOO: 'BAR' }
+				}
+			});
+			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				args: ['FOO'],
+				env: { FOO: 'BAZ' }
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			await assertLocalVariableValue('v', '"BAZ"');
+
+			await dc.continueRequest({ threadId: 1 }); // continue until completion for cleanup.
 		});
 	});
 
@@ -636,6 +735,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
+			// TODO(hyangah): why does it take 30sec?
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -897,6 +997,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
+
 		setup(async () => {
 			server = await getPort();
 			remoteAttachConfig.port = await getPort();
@@ -910,34 +1011,36 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
+		});
+
+		test('connection to remote is terminated when external dlv process exits', async function () {
+			if (isDlvDap) {
+				this.skip(); // this test does not apply for dlv-dap.
+			}
+
+			const childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
+
+			await setUpRemoteAttach(remoteAttachConfig);
+
+			killProcess(childProcess);
+
+			await dc.waitForEvent('terminated');
 		});
 	});
 
@@ -991,11 +1094,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1016,11 +1115,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('stopped for a breakpoint set after initialization (remote attach)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1047,11 +1142,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should set breakpoints during continue (legacy)', async function () {
-			if (isDlvDap) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should set breakpoints during continue', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
@@ -1078,7 +1169,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		});
 
-		async function setBreakpointsWhileRunning(resumeFunc: () => void) {
+		async function setBreakpointsWhileRunningStep(resumeFunc: () => Promise<void>) {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
@@ -1100,18 +1191,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 
 			// The program is now stopped at the line containing time.Sleep().
 			// Issue a next request, followed by a setBreakpointsRequest.
-			resumeFunc();
+			await resumeFunc();
 
-			// Note: the current behavior of setting a breakpoint during a next
-			// request will cause the step to be interrupted, so it may not be
-			// stopped on the next line.
+			// Assert that the program completes the step request.
 			await Promise.all([
 				dc.setBreakpointsRequest({
 					lines: [resumeBreakpoint.line],
 					breakpoints: [{ line: resumeBreakpoint.line, column: 0 }],
 					source: { path: resumeBreakpoint.path }
 				}),
-				dc.assertStoppedLocation('pause', {})
+				dc.assertStoppedLocation('step', {})
 			]);
 
 			// Once the 'step' has completed, continue the program and
@@ -1123,21 +1212,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			]);
 		}
 
-		test('should set breakpoints during continue', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
-			await setBreakpointsWhileRunning(async () => {
-				const nextResponse = await dc.continueRequest({ threadId: 1 });
-				assert.ok(nextResponse.success);
-			});
-		});
-
 		test('should set breakpoints during next', async function () {
 			if (!isDlvDap) {
 				this.skip();
 			}
-			await setBreakpointsWhileRunning(async () => {
+			await setBreakpointsWhileRunningStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
@@ -1148,7 +1227,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip();
 			}
 
-			await setBreakpointsWhileRunning(async () => {
+			await setBreakpointsWhileRunningStep(async () => {
+				await Promise.all([dc.stepInRequest({ threadId: 1 }), dc.assertStoppedLocation('step', {})]);
+
 				const stepOutResponse = await dc.stepOutRequest({ threadId: 1 });
 				assert.ok(stepOutResponse.success);
 			});
@@ -1447,11 +1528,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
 
-		test('disconnect should work for remote attach', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('disconnect should work for remote attach', async () => {
 			const server = await getPort();
 			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1483,11 +1560,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('should disconnect while continuing on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while continuing on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1504,11 +1577,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect with multiple disconnectRequests', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect with multiple disconnectRequests', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1524,16 +1593,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig)]);
 
 			await Promise.all([
-				dc.disconnectRequest({ restart: false }).then(() => dc.disconnectRequest({ restart: false })),
+				new Promise<void>((resolve) => {
+					dc.disconnectRequest({ restart: false });
+					dc.disconnectRequest({ restart: false });
+					resolve();
+				}),
 				dc.waitForEvent('terminated')
 			]);
 		});
 
-		test('should disconnect after continue', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect after continue', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1553,11 +1622,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while nexting', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while nexting', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'sleep');
 			const FILE = path.join(DATA_ROOT, 'sleep', 'sleep.go');
 			const BREAKPOINT_LINE = 11;
@@ -1580,11 +1645,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on pause', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on pause', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1604,11 +1665,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on breakpoint', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 			const FILE = path.join(PROGRAM, 'loop.go');
 			const BREAKPOINT_LINE = 5;
@@ -1627,11 +1684,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on entry', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on entry', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1649,11 +1702,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect while paused on next', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('should disconnect while paused on next', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
@@ -1675,7 +1724,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		});
 
 		test('should cleanup when stopped', async function () {
-			if (!isDlvDap || !dlvDapSkipsEnabled) {
+			if (!isDlvDap) {
 				this.skip();
 			}
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
@@ -1892,8 +1941,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.stop();
 			dc = undefined;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
+			const preamble =
+				debugConfig.console === 'integrated' || debugConfig.console === 'external'
+					? 'DAP server for a predetermined client'
+					: 'DAP server listening at';
 			assert(
-				dapLog.includes('DAP server listening at') &&
+				dapLog.includes(preamble) &&
 					dapLog.includes('"command":"initialize"') &&
 					dapLog.includes('"event":"terminated"'),
 				dapLog
@@ -1919,12 +1972,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 		}
 		test('relative path as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest('delve.log', 'relative path');
 		});
 
 		test('number as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest(3, 'file descriptor');
 		});
 	});
@@ -2024,11 +2077,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				rmdirRecursive(helloWorldLocal);
 			});
 
-			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
-				}
-
+			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
 				const FILE = path.join(helloWorldLocal, 'main.go');
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -2054,8 +2103,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			// Skip because it times out in nightly release workflow.
 			// BUG(https://github.com/golang/vscode-go/issues/1043)
 			test.skip('stopped for a breakpoint set during initialization using remotePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
+				if (isDlvDap) {
+					this.skip(); // remotePath is not used in dlv-dap
 				}
 
 				const FILE = path.join(helloWorldLocal, 'main.go');
@@ -2081,36 +2130,83 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				await new Promise((resolve) => setTimeout(resolve, 2_000));
 			});
 		});
+
+		suite('substitutePath with symlink', () => {
+			let realPath: string;
+			let symlinkPath: string;
+
+			suiteSetup(() => {
+				realPath = copyDirectory('baseTest');
+				symlinkPath = path.join(tmpDir, 'symlinked');
+				fs.symlinkSync(realPath, symlinkPath, 'dir');
+			});
+			suiteTeardown(() => {
+				fs.unlinkSync(symlinkPath);
+				rmdirRecursive(realPath);
+			});
+			test('should stop on a breakpoint', async function () {
+				if (!isDlvDap) this.skip(); // BUG: the legacy adapter fails with 'breakpoint verification mismatch' error.
+				const FILE = path.join(symlinkPath, 'test.go');
+				const BREAKPOINT_LINE = 11;
+				const config = {
+					name: 'Launch',
+					type: 'go',
+					request: 'launch',
+					mode: 'debug',
+					program: FILE,
+					substitutePath: [
+						{
+							from: symlinkPath,
+							to: realPath
+						}
+					]
+				};
+				const debugConfig = await initializeDebugConfig(config);
+				await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			});
+		});
 	});
 
 	let testNumber = 0;
-	async function initializeDebugConfig(config: DebugConfiguration, keepUserLog?: boolean) {
-		if (isDlvDap) {
-			config['debugAdapter'] = 'dlv-dap';
-			if (!keepUserLog) {
-				// Log the output for easier test debugging.
-				config['logOutput'] = 'dap,debugger';
-				config['showLog'] = true;
-				config['trace'] = 'verbose';
-			}
-		} else {
-			config['debugAdapter'] = 'legacy';
-			// be explicit and prevent resolveDebugConfiguration from picking
-			// a default debugAdapter for us.
+	async function initializeDebugConfig(config: DebugConfiguration, keepUserLogSettings?: boolean) {
+		// be explicit and prevent resolveDebugConfiguration from picking
+		// a default debugAdapter for us.
+		config['debugAdapter'] = isDlvDap ? 'dlv-dap' : 'legacy';
+		if (withConsole) {
+			config['console'] = withConsole;
 		}
 
+		if (!keepUserLogSettings) {
+			dapTraced = true;
+
+			// Log the output for easier test debugging.
+			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
+			config['showLog'] = true;
+			config['trace'] = 'verbose';
+		}
+
+		// disable version check (like in dlv-dap).
+		if (!isDlvDap) {
+			const dlvFlags = config['dlvFlags'] || [];
+			config['dlvFlags'] = ['--check-go-version=false'].concat(dlvFlags);
+		}
 		// Give each test a distinct debug binary. If a previous test
 		// and a new test use the same binary location, it is possible
 		// that the second test could build the binary, and then the
 		// first test could delete that binary during cleanup before the
 		// second test has a chance to run it.
-		if (!config['output'] && config['mode'] !== 'remote') {
-			const dir = parseProgramArgSync(config).dirname;
+		if (!config['output'] && ['debug', 'auto', 'test'].includes(config['mode'])) {
+			const dir = parseDebugProgramArgSync(config['program']).dirname;
 			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
 		}
 		testNumber++;
 
-		const debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		let debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		debugConfig = await debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			undefined,
+			debugConfig
+		);
+
 		if (isDlvDap) {
 			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig);
 			const port = await dlvDapAdapter.serve();
@@ -2128,6 +2224,11 @@ suite('Go Debug Adapter Tests (legacy)', function () {
 suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	this.timeout(60_000);
 	testAll(this.ctx, true);
+});
+
+suite('Go Debug Adapter Tests (dlv-dap, console=integrated)', function () {
+	this.timeout(60_000);
+	testAll(this.ctx, true, 'integrated');
 });
 
 // DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
@@ -2173,10 +2274,61 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 		// forward to DelveDAPDebugAdapter, which will forward to dlv dap.
 		inStream.on('data', (data: Buffer) => this._handleData(data));
-		// handle data from DelveDAPDebugAdapter, that's from dlv dap.
-		this.onDidSendMessage((m) => this._send(m));
+		// DebugClient silently drops reverse requests. Handle runInTerminal request here.
+		this.onDidSendMessage((m) => {
+			if (this.handleRunInTerminal(m)) {
+				return;
+			}
+			this._send(m);
+		});
 
 		inStream.resume();
+	}
+
+	// handleRunInTerminal spawns the requested command and simulates RunInTerminal
+	// handler implementation inside an editor.
+	private _dlvInTerminal: cp.ChildProcess;
+	private handleRunInTerminal(m: vscode.DebugProtocolMessage) {
+		const m0 = m as any;
+		if (m0['type'] !== 'request' || m0['command'] !== 'runInTerminal') {
+			return false;
+		}
+		const json = JSON.stringify(m0);
+		this.log(`<- server: ${json}`);
+
+		const resp = {
+			seq: 0,
+			type: 'response',
+			success: false,
+			request_seq: m0['seq'],
+			command: m0['command'],
+			body: {}
+		};
+
+		if (!this._dlvInTerminal && m0['arguments']?.args?.length > 0) {
+			const args = m0['arguments'].args as string[];
+			const p = cp.spawn(args[0], args.slice(1), {
+				cwd: m0['arguments'].cwd,
+				env: m0['arguments'].env
+			});
+			// stdout/stderr are supposed to appear in the terminal, but
+			// some of noDebug tests depend on access to stdout/stderr.
+			// For those tests, let's pump the output as OutputEvent.
+			p.stdout.on('data', (chunk) => {
+				this.outputEvent('stdout', chunk.toString());
+			});
+			p.stderr.on('data', (chunk) => {
+				this.outputEvent('stderr', chunk.toString());
+			});
+			resp.success = true;
+			resp.body = { processId: p.pid };
+			this._dlvInTerminal = p;
+		}
+
+		this.log(`-> server: ${JSON.stringify(resp)}`);
+		this.handleMessage(resp);
+
+		return true;
 	}
 
 	private _disposed = false;

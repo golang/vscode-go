@@ -142,28 +142,16 @@ Default: `"showBothCoveredAndUncoveredCode"`
 Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.
 | Properties | Description |
 | --- | --- |
-| `apiVersion` | Delve Api Version to use. Default value is 2. <br/> Allowed Options: `1`, `2` <br/> Default: `2` |
-| `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"legacy"` |
+| `apiVersion` | Delve Api Version to use. Default value is 2. This applies only when using the 'legacy' debug adapter. <br/> Allowed Options: `1`, `2` <br/> Default: `2` |
+| `debugAdapter` | Select which debug adapter to use by default. This is also used for choosing which debug adapter to use when no launch.json is present and with codelenses. <br/> Allowed Options: `legacy`, `dlv-dap` <br/> Default: `"dlv-dap"` |
+| `dlvFlags` | Extra flags for `dlv`. See `dlv help` for the full list of supported. Flags such as `--log-output`, `--log`, `--log-dest`, `--api-version`, `--output`, `--backend` already have corresponding properties in the debug configuration, and flags such as `--listen` and `--headless` are used internally. If they are specified in `dlvFlags`, they may be ignored or cause an error. |
 | `dlvLoadConfig` | LoadConfig describes to delve, how to load values from target's memory. Ignored by 'dlv-dap'. <br/> Default: ``` { <pre>"followPointers" :	true,<br/>"maxArrayValues" :	64,<br/>"maxStringLen" :	64,<br/>"maxStructFields" :	-1,<br/>"maxVariableRecurse" :	1,</pre>} ``` |
+| `hideSystemGoroutines` | Boolean value to indicate whether system goroutines should be hidden from call stack view. <br/> Default: `false` |
+| `logOutput` | Comma separated list of components that should produce debug output. Maps to dlv's `--log-output` flag. Check `dlv log` for details. <br/> Allowed Options: `debugger`, `gdbwire`, `lldbout`, `debuglineerr`, `rpc`, `dap` <br/> Default: `"debugger"` |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not. <br/> Default: `false` |
+| `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag. <br/> Default: `false` |
+| `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not. <br/> Default: `false` |
 | `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request). |
-
-Default:
-```
-{
-	"apiVersion" :	2,
-	"debugAdapter" :	"legacy",
-	"dlvLoadConfig" :		{
-		"followPointers" :	true,
-		"maxArrayValues" :	64,
-		"maxStringLen" :	64,
-		"maxStructFields" :	-1,
-		"maxVariableRecurse" :	1,
-	},
-	"showGlobalVariables" :	false,
-	"substitutePath" :	[],
-}
-```
 ### `go.disableConcurrentTests`
 
 If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
@@ -182,15 +170,15 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 | --- | --- |
 | `addImport` | If true, adds command to import a package to the editor context menu <br/> Default: `true` |
 | `addTags` | If true, adds command to add configured tags from struct fields to the editor context menu <br/> Default: `true` |
-| `benchmarkAtCursor` | If true, adds command to benchmark the test under the cursor to the editor context menu <br/> Default: `true` |
-| `debugTestAtCursor` | If true, adds command to debug the test under the cursor to the editor context menu <br/> Default: `true` |
+| `benchmarkAtCursor` | If true, adds command to benchmark the test under the cursor to the editor context menu <br/> Default: `false` |
+| `debugTestAtCursor` | If true, adds command to debug the test under the cursor to the editor context menu <br/> Default: `false` |
 | `fillStruct` | If true, adds command to fill struct literal with default values to the editor context menu <br/> Default: `true` |
 | `generateTestForFile` | If true, adds command to generate unit tests for current file to the editor context menu <br/> Default: `true` |
 | `generateTestForFunction` | If true, adds command to generate unit tests for function under the cursor to the editor context menu <br/> Default: `true` |
 | `generateTestForPackage` | If true, adds command to generate unit tests for currnt package to the editor context menu <br/> Default: `true` |
 | `playground` | If true, adds command to upload the current file or selection to the Go Playground <br/> Default: `true` |
 | `removeTags` | If true, adds command to remove configured tags from struct fields to the editor context menu <br/> Default: `true` |
-| `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `true` |
+| `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `false` |
 | `testCoverage` | If true, adds command to run test coverage to the editor context menu <br/> Default: `true` |
 | `testFile` | If true, adds command to run all tests in the current file to the editor context menu <br/> Default: `true` |
 | `testPackage` | If true, adds command to run all tests in the current package to the editor context menu <br/> Default: `true` |
@@ -382,6 +370,11 @@ Default:
 	"tags" :	"",
 }
 ```
+### `go.survey.prompt`
+
+Prompt for surveys, including the gopls survey and the Go developer survey.
+
+Default: `true`
 ### `go.terminal.activateEnvironment`
 
 Apply the Go & PATH environment variables used by the extension to all integrated terminals.
@@ -393,6 +386,37 @@ Absolute path to a file containing environment variables definitions. File conte
 ### `go.testEnvVars`
 
 Environment variables that will be passed to the process that runs the Go tests
+### `go.testExplorer.alwaysRunBenchmarks`
+
+Run benchmarks when running all tests in a file or folder.
+
+Default: `false`
+### `go.testExplorer.concatenateMessages`
+
+Concatenate all test log messages for a given location into a single message.
+
+Default: `true`
+### `go.testExplorer.enable`
+
+Enable the Go test explorer
+
+Default: `true`
+### `go.testExplorer.packageDisplayMode`
+
+Present packages in the test explorer flat or nested.<br/>
+Allowed Options: `flat`, `nested`
+
+Default: `"flat"`
+### `go.testExplorer.showDynamicSubtestsInEditor`
+
+Set the source location of dynamically discovered subtests to the location of the containing function. As a result, dynamically discovered subtests will be added to the gutter test widget of the containing function.
+
+Default: `false`
+### `go.testExplorer.showOutput`
+
+Open the test output terminal when a test run is started.
+
+Default: `true`
 ### `go.testFlags`
 
 Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.
@@ -549,10 +573,12 @@ comprehensively test.
 
 
 Default: `true`
-### `build.experimentalTemplateSupport`
+### `build.experimentalUseInvalidMetadata`
 
-(Experimental) experimentalTemplateSupport opts into the experimental support
-for template files.
+(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
+package metadata to provide editor features if the go command fails to
+load packages for some reason (like an invalid go.mod file). This will
+eventually be the default behavior, and this setting will be removed.
 
 
 Default: `false`
@@ -579,6 +605,12 @@ References and Rename will miss results in such packages.
 
 
 Default: `"Normal"`
+### `build.templateExtensions`
+
+templateExtensions gives the extensions of file names that are treateed
+as template files. (The extension
+is the part of the file name after the final dot.)
+
 ### `formatting.gofumpt`
 
 gofumpt indicates if we should run gofumpt formatting.
@@ -606,7 +638,7 @@ Example Usage:
 ```json5
 "gopls": {
 ...
-  "codelens": {
+  "codelenses": {
     "generate": false,  // Don't show the `go generate` lens.
     "gc_details": true  // Show a code lens toggling the display of gc's choices.
   }
@@ -687,10 +719,11 @@ Example Usage:
 | `deepequalerrors` | check for calls of reflect.DeepEqual on error values <br/> The deepequalerrors checker looks for calls of the form: <br/>     reflect.DeepEqual(err1, err2) <br/> where err1 and err2 are errors. Using reflect.DeepEqual to compare errors is discouraged. <br/> Default: `true` |
 | `errorsas` | report passing non-pointer or non-error values to errors.As <br/> The errorsas analysis reports calls to errors.As where the type of the second argument is not a pointer to a type implementing error. <br/> Default: `true` |
 | `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the optimal order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> <br/> Default: `false` |
-| `fillreturns` | suggested fixes for "wrong number of return values (want %d, got %d)" <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre>will turn into <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> <br/> Default: `true` |
+| `fillreturns` | suggest fixes for errors due to an incorrect number of return values <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre>will turn into <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> <br/> Default: `true` |
 | `fillstruct` | note incomplete struct initializations <br/> This analyzer provides diagnostics for any struct literals that do not have any fields initialized. Because the suggested fix for this analysis is expensive to compute, callers should compute it separately, using the SuggestedFix function below. <br/> <br/> Default: `true` |
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
 | `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> <br/> Default: `true` |
+| `infertypeargs` | check for unnecessary type arguments in call expressions <br/> Explicit type arguments may be omitted from call expressions if they can be inferred from function arguments, or from other type arguments: <br/> <pre>func f[T any](T) {}<br/><br/><br/>func _() {<br/>	f[string]("foo") // string could be inferred<br/>}</pre><br/> <br/> Default: `true` |
 | `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer checks for references to loop variables from within a function literal inside the loop body. It checks only instances where the function literal is called in a defer or go statement that is the last statement in the loop body, as otherwise we would need whole program analysis. <br/> For example: <br/> <pre>for i, v := range s {<br/>	go func() {<br/>		println(i, v) // not what you might expect<br/>	}()<br/>}</pre><br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
 | `lostcancel` | check cancel func returned by context.WithCancel is called <br/> The cancellation function returned by context.WithCancel, WithTimeout, and WithDeadline must be called or the new context will remain live until its parent context is cancelled. (The background context is never cancelled.) <br/> Default: `true` |
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
@@ -709,13 +742,14 @@ Example Usage:
 | `structtag` | check that struct field tags conform to reflect.StructTag.Get <br/> Also report certain struct tags (json, xml) used with unexported fields. <br/> Default: `true` |
 | `testinggoroutine` | report calls to (*testing.T).Fatal from goroutines started by a test. <br/> Functions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and Skip{,f,Now} methods of *testing.T, must be called from the test goroutine itself. This checker detects calls to these functions that occur within a goroutine started by the test. For example: <br/> func TestFoo(t *testing.T) {     go func() {         t.Fatal("oops") // error: (*T).Fatal called from non-test goroutine     }() } <br/> <br/> Default: `true` |
 | `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
-| `undeclaredname` | suggested fixes for "undeclared name: <>" <br/> This checker provides suggested fixes for type errors of the type "undeclared name: <>". It will insert a new statement: "<> := ". <br/> Default: `true` |
+| `undeclaredname` | suggested fixes for "undeclared name: <>" <br/> This checker provides suggested fixes for type errors of the type "undeclared name: <>". It will either insert a new statement, such as: <br/> "<> := " <br/> or a new function declaration, such as: <br/> func <>(inferred parameters) { <pre>panic("implement me!")</pre>} <br/> <br/> Default: `true` |
 | `unmarshal` | report passing non-pointer or non-interface values to unmarshal <br/> The unmarshal analysis reports calls to functions such as json.Unmarshal in which the argument type is not a pointer or an interface. <br/> Default: `true` |
 | `unreachable` | check for unreachable code <br/> The unreachable analyzer finds statements that execution can never reach because they are preceded by an return statement, a call to panic, an infinite loop, or similar constructs. <br/> Default: `true` |
 | `unsafeptr` | check for invalid conversions of uintptr to unsafe.Pointer <br/> The unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer to convert integers to pointers. A conversion from uintptr to unsafe.Pointer is invalid if it implies that there is a uintptr-typed word in memory that holds a pointer value, because that word will be invisible to stack copying and to the garbage collector. <br/> Default: `true` |
 | `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To reduce false positives it ignores: - methods - parameters that do not have a name or are underscored - functions in test files - functions with empty bodies or those with just a return stmt <br/> Default: `false` |
 | `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. This analyzer reports calls to certain functions in which the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
 | `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }<br/>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }<br/>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> <br/> Default: `false` |
+| `useany` | check for constraints that could be simplified to "any" <br/> Default: `true` |
 ### `ui.diagnostic.annotations`
 
 (Experimental) annotations specifies the various kinds of optimization diagnostics
@@ -727,9 +761,9 @@ that should be reported by the gc_details command.
 | `escape` | `"escape"` controls diagnostics about escape choices. <br/> <br/> Default: `true` |
 | `inline` | `"inline"` controls diagnostics about inlining choices. <br/> <br/> Default: `true` |
 | `nil` | `"nil"` controls nil checks. <br/> <br/> Default: `true` |
-### `ui.diagnostic.experimentalDiagnosticsDelay`
+### `ui.diagnostic.diagnosticsDelay`
 
-(Experimental) experimentalDiagnosticsDelay controls the amount of time that gopls waits
+(Advanced) diagnosticsDelay controls the amount of time that gopls waits
 after the most recent file modification before computing deep diagnostics.
 Simple diagnostics (parsing and type-checking) are always run immediately
 on recently modified packages.
@@ -738,6 +772,18 @@ This option must be set to a valid duration string, for example `"250ms"`.
 
 
 Default: `"250ms"`
+### `ui.diagnostic.experimentalWatchedFileDelay`
+
+(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits
+for additional workspace/didChangeWatchedFiles notifications to arrive,
+before processing all such notifications in a single batch. This is
+intended for use by LSP clients that don't support their own batching of
+file system notifications.
+
+This option must be set to a valid duration string, for example `"100ms"`.
+
+
+Default: `"0s"`
 ### `ui.diagnostic.staticcheck`
 
 (Experimental) staticcheck enables additional analyses from staticcheck.io.
@@ -791,7 +837,7 @@ Default: `"Both"`
 
 (Advanced) symbolMatcher sets the algorithm that is used when finding workspace symbols.
 <br/>
-Allowed Options: `CaseInsensitive`, `CaseSensitive`, `Fuzzy`
+Allowed Options: `CaseInsensitive`, `CaseSensitive`, `FastFuzzy`, `Fuzzy`
 
 Default: `"Fuzzy"`
 ### `ui.navigation.symbolStyle`
@@ -803,7 +849,7 @@ Example Usage:
 ```json5
 "gopls": {
 ...
-  "symbolStyle": "dynamic",
+  "symbolStyle": "Dynamic",
 ...
 }
 ```

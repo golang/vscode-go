@@ -24,7 +24,12 @@ import { getGoVersion } from './util';
 
 export const outputChannel = vscode.window.createOutputChannel('Go');
 
-export const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+const STATUS_BAR_ITEM_NAME = 'Go Diagnostics';
+export const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(
+	STATUS_BAR_ITEM_NAME,
+	vscode.StatusBarAlignment.Left
+);
+diagnosticsStatusBarItem.name = STATUS_BAR_ITEM_NAME;
 
 // statusbar item for switching the Go environment
 export let goEnvStatusbarItem: vscode.StatusBarItem;
@@ -106,7 +111,13 @@ export async function expandGoStatusBar() {
  */
 export async function initGoStatusBar() {
 	if (!goEnvStatusbarItem) {
-		goEnvStatusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
+		const STATUS_BAR_ITEM_NAME = 'Go';
+		goEnvStatusbarItem = vscode.window.createStatusBarItem(
+			STATUS_BAR_ITEM_NAME,
+			vscode.StatusBarAlignment.Left,
+			50
+		);
+		goEnvStatusbarItem.name = STATUS_BAR_ITEM_NAME;
 	}
 	// set Go version and command
 	const version = await getGoVersion();
@@ -158,7 +169,13 @@ export function disposeGoStatusBar() {
 	if (terminalCreationListener) {
 		terminalCreationListener.dispose();
 	}
-	removeGoStatus();
+	for (const statusBarEntry of statusBarEntries) {
+		if (statusBarEntry) {
+			const [name, entry] = statusBarEntry;
+			statusBarEntries.delete(name);
+			entry.dispose();
+		}
+	}
 }
 
 /**
@@ -171,18 +188,23 @@ export function showGoStatusBar() {
 }
 
 // status bar item to show warning messages such as missing analysis tools.
-let statusBarEntry: vscode.StatusBarItem;
+const statusBarEntries = new Map<string, vscode.StatusBarItem>();
 
-export function removeGoStatus() {
+export function removeGoStatus(name: string) {
+	const statusBarEntry = statusBarEntries.get(name);
 	if (statusBarEntry) {
 		statusBarEntry.dispose();
-		statusBarEntry = undefined;
+		statusBarEntries.delete(name);
 	}
 }
 
-export function addGoStatus(message: string, command: string, tooltip?: string) {
+export function addGoStatus(name: string, message: string, command: string, tooltip?: string) {
+	let statusBarEntry = statusBarEntries.get(name);
 	if (!statusBarEntry) {
-		statusBarEntry = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, Number.MIN_VALUE);
+		statusBarEntry = vscode.window.createStatusBarItem(name, vscode.StatusBarAlignment.Right, Number.MIN_VALUE);
+		statusBarEntries.set(name, statusBarEntry);
+
+		statusBarEntry.name = name;
 	}
 	statusBarEntry.text = `$(alert) ${message}`;
 	statusBarEntry.command = command;

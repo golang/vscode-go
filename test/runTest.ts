@@ -6,6 +6,9 @@ import { runTests } from 'vscode-test';
 async function main() {
 	// We are in test mode.
 	process.env['VSCODE_GO_IN_TEST'] = '1';
+	if (process.argv.length > 2) {
+		process.env['MOCHA_GREP'] = process.argv[2];
+	}
 
 	// The folder containing the Extension Manifest package.json
 	// Passed to `--extensionDevelopmentPath`

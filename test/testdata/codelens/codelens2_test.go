@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -10,6 +11,7 @@ import (
 //   TestΣυνάρτηση
 //   Test함수
 //   Test_foobar
+//   Test
 func TestFunction(t *testing.T) {
 	t.Log("this is a valid test function")
 }
@@ -36,4 +38,20 @@ func Test함수(t *testing.T) {
 
 func Test_foobar(t *testing.T) {
 	t.Log("this is an acceptable test function")
+}
+
+func Test(t *testing.T) {
+	t.Log("this is a valid test function")
+}
+
+func ExampleFunction() {
+	fmt.Println("this is a valid example function")
+	// Output:
+	// this is a valid example function
+}
+
+func Example() {
+	fmt.Println("this is a valid example function")
+	// Output:
+	// this is a valid example function
 }

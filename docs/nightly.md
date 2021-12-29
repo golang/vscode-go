@@ -16,7 +16,7 @@ Once you have uninstalled or disabled the standard Go extension, search for [Go 
 
 ## Feedback
 
-If you use [Go Nightly], please share your feedback or bug reports by [filing an issue]. You can also speak to the maintainers directly in the [#vscode-dev](https://gophers.slack.com/archives/CUWGEKH5Z) channel on the [Gophers Slack].
+If you use [Go Nightly], please share your feedback or bug reports by [filing an issue].
 
 ### Community
 

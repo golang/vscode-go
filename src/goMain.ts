@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, initConfig, IsInCloudIDE } from './config';
+import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -47,6 +47,7 @@ import {
 import {
 	isInPreviewMode,
 	languageServerIsRunning,
+	RestartReason,
 	showServerOutputChannel,
 	startLanguageServerWithFallback,
 	watchLanguageServerConfiguration
@@ -93,16 +94,22 @@ import {
 	getGoVersion,
 	getToolsGopath,
 	getWorkspaceFolderPath,
+	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
-	resolvePath
+	resolvePath,
+	runGoVersionM
 } from './util';
-import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, setCurrentGoRoot } from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './goFormat';
-import { resetSurveyConfig, showSurveyConfig, timeMinute } from './goSurvey';
+import { resetSurveyConfigs, showSurveyConfig, timeMinute } from './goSurvey';
+import { ExtensionAPI } from './export';
+import extensionAPI from './extensionAPI';
+import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
+import { killRunningPprof } from './goTest/profile';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -111,11 +118,11 @@ export let vetDiagnosticCollection: vscode.DiagnosticCollection;
 // restartLanguageServer wraps all of the logic needed to restart the
 // language server. It can be used to enable, disable, or otherwise change
 // the configuration of the server.
-export let restartLanguageServer = () => {
+export let restartLanguageServer = (reason: RestartReason) => {
 	return;
 };
 
-export async function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// Make sure this does not run when running in test.
 		return;
@@ -124,8 +131,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
-
-	await initConfig(ctx);
 
 	const cfg = getGoConfig();
 	setLogConfig(cfg['logging']);
@@ -183,6 +188,10 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 		}
 	}
+
+	// Present a warning about the deprecation of a 'dlv-dap' binary setting.
+	checkAlternateTools(cfg);
+
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
 		offerToInstallLatestGoVersion();
@@ -324,6 +333,10 @@ If you would like additional configuration for diagnostics from gopls, please se
 		})
 	);
 
+	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
+		GoTestExplorer.setup(ctx);
+	}
+
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
 			const goConfig = getGoConfig();
@@ -333,10 +346,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.debug.cursor', (args) => {
-			if (vscode.debug.activeDebugSession) {
-				vscode.window.showErrorMessage('Debug session has already been started');
-				return;
-			}
 			const goConfig = getGoConfig();
 			testAtCursor(goConfig, 'debug', args);
 		})
@@ -515,6 +524,15 @@ If you would like additional configuration for diagnostics from gopls, please se
 					// TODO: actively maintain our own disposables instead of keeping pushing to ctx.subscription.
 				}
 			}
+			if (e.affectsConfiguration('go.testExplorer.enable')) {
+				const msg =
+					'Go test explorer has been enabled or disabled. For this change to take effect, the window must be reloaded.';
+				vscode.window.showInformationMessage(msg, 'Reload').then((selected) => {
+					if (selected === 'Reload') {
+						vscode.commands.executeCommand('workbench.action.reloadWindow');
+					}
+				});
+			}
 		})
 	);
 
@@ -691,20 +709,22 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 	// Survey related commands
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfig()));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfigs()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
 	});
+
+	return extensionAPI;
 }
 
 function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
-	const showVersions: string[] = ['0.22.0'];
+	const showVersions: string[] = ['0.30.0'];
 	// TODO(hyangah): use the content hash instead of hard-coded string.
 	// https://github.com/golang/vscode-go/issue/1179
-	let goExtensionVersion = '0.22.0';
+	let goExtensionVersion = '0.30.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (isInPreviewMode()) {
 		goExtensionVersion = '0.0.0';
@@ -775,6 +795,7 @@ const goNightlyPromptKey = 'goNightlyPrompt';
 export function deactivate() {
 	return Promise.all([
 		cancelRunningTests(),
+		killRunningPprof(),
 		Promise.resolve(cleanupTempDir()),
 		Promise.resolve(disposeGoStatusBar())
 	]);
@@ -856,54 +877,10 @@ function checkToolExists(tool: string) {
 }
 
 async function suggestUpdates(ctx: vscode.ExtensionContext) {
-	const updateToolsCmdText = 'Update tools';
-	interface GoInfo {
-		goroot: string;
-		version: string;
+	// TODO(hyangah): this is to clean up the unused key. Delete this code in 2021 Dec.
+	if (ctx.globalState.get('toolsGoInfo')) {
+		ctx.globalState.update('toolsGoInfo', null);
 	}
-	const toolsGoInfo: { [id: string]: GoInfo } = ctx.globalState.get('toolsGoInfo') || {};
-	const toolsGopath = getToolsGopath() || getCurrentGoPath();
-	if (!toolsGoInfo[toolsGopath]) {
-		toolsGoInfo[toolsGopath] = { goroot: null, version: null };
-	}
-	const prevGoroot = toolsGoInfo[toolsGopath].goroot;
-	const currentGoroot: string = getCurrentGoRoot().toLowerCase();
-	if (prevGoroot && prevGoroot.toLowerCase() !== currentGoroot) {
-		vscode.window
-			.showInformationMessage(
-				`Your current goroot (${currentGoroot}) is different than before (${prevGoroot}), a few Go tools may need recompiling`,
-				updateToolsCmdText
-			)
-			.then((selected) => {
-				if (selected === updateToolsCmdText) {
-					installAllTools(true);
-				}
-			});
-	} else {
-		const currentVersion = await getGoVersion();
-		if (currentVersion) {
-			const prevVersion = toolsGoInfo[toolsGopath].version;
-			const currVersionString = currentVersion.format();
-
-			if (prevVersion !== currVersionString) {
-				if (prevVersion) {
-					vscode.window
-						.showInformationMessage(
-							'Your Go version is different than before, a few Go tools may need re-compiling',
-							updateToolsCmdText
-						)
-						.then((selected) => {
-							if (selected === updateToolsCmdText) {
-								installAllTools(true);
-							}
-						});
-				}
-				toolsGoInfo[toolsGopath].version = currVersionString;
-			}
-		}
-	}
-	toolsGoInfo[toolsGopath].goroot = currentGoroot;
-	ctx.globalState.update('toolsGoInfo', toolsGoInfo);
 }
 
 function configureLanguageServer(ctx: vscode.ExtensionContext) {
@@ -914,12 +891,12 @@ function configureLanguageServer(ctx: vscode.ExtensionContext) {
 	// Set the function that is used to restart the language server.
 	// This is necessary, even if the language server is not currently
 	// in use.
-	restartLanguageServer = async () => {
-		startLanguageServerWithFallback(ctx, false);
+	restartLanguageServer = async (reason: RestartReason) => {
+		startLanguageServerWithFallback(ctx, reason);
 	};
 
 	// Start the language server, or fallback to the default language providers.
-	return startLanguageServerWithFallback(ctx, true);
+	return startLanguageServerWithFallback(ctx, 'activation');
 }
 
 function getCurrentGoPathCommand() {
@@ -954,22 +931,40 @@ async function getConfiguredGoToolsCommand() {
 	outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
 	outputChannel.appendLine('gopath: ' + getCurrentGoPath());
 	outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
-	outputChannel.appendLine('PATH: ' + process.env['PATH']);
+	const currentEnvPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+	outputChannel.appendLine('PATH: ' + currentEnvPath);
+	if (currentEnvPath !== envPath) {
+		outputChannel.appendLine(`PATH (vscode launched with): ${envPath}`);
+	}
 	outputChannel.appendLine('');
 
 	const goVersion = await getGoVersion();
 	const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+	const goVersionTooOld = goVersion?.lt('1.12') || false;
 
-	allTools.forEach((tool) => {
-		const toolPath = getBinPath(tool.name);
-		// TODO(hyangah): print alternate tool info if set.
-		let msg = 'not installed';
-		if (path.isAbsolute(toolPath)) {
-			// getBinPath returns the absolute path is the tool exists.
-			// (See getBinPathWithPreferredGopath which is called underneath)
-			msg = 'installed';
-		}
-		outputChannel.appendLine(`   ${tool.name}: ${toolPath} ${msg}`);
+	outputChannel.appendLine(`\tgo:\t${goVersion?.binaryPath}: ${goVersion?.version}`);
+	const toolsInfo = await Promise.all(
+		allTools.map(async (tool) => {
+			const toolPath = getBinPath(tool.name);
+			// TODO(hyangah): print alternate tool info if set.
+			if (!path.isAbsolute(toolPath)) {
+				// getBinPath returns the absolute path is the tool exists.
+				// (See getBinPathWithPreferredGopath which is called underneath)
+				return `\t${tool.name}:\tnot installed`;
+			}
+			if (goVersionTooOld) {
+				return `\t${tool.name}:\t${toolPath}: unknown version`;
+			}
+			try {
+				const out = await runGoVersionM(toolPath);
+				return `\t${tool.name}:${out.replace(/^/gm, '\t')}`;
+			} catch (e) {
+				return `\t${tool.name}:\t${toolPath}: go version -m failed: ${e}`;
+			}
+		})
+	);
+	toolsInfo.forEach((info) => {
+		outputChannel.appendLine(info);
 	});
 
 	let folders = vscode.workspace.workspaceFolders?.map((folder) => {
@@ -1037,5 +1032,25 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 		process.env['GOROOT'] = goroot;
 	} else {
 		delete process.env.GOROOT;
+	}
+}
+
+async function checkAlternateTools(goConfig: vscode.WorkspaceConfiguration) {
+	const alternateTools = goConfig ? goConfig['alternateTools'] : {};
+	// TODO(hyangah): delete this check after 2022-03-01.
+	if (alternateTools['dlv-dap']) {
+		const msg = `The extension no longer requires a separate 'dlv-dap' binary but uses the 'dlv' binary.
+The "dlv-dap" property of the "go.alternateTools" setting will be ignored.
+Please use the "dlv" property if you need to override the default Go debugger.`;
+
+		const selected = await vscode.window.showWarningMessage(msg, 'Open settings.json');
+		if (selected === 'Open settings.json') {
+			const { workspaceValue } = goConfig.inspect('alternateTools.dlv-dap');
+			if (workspaceValue !== undefined) {
+				vscode.commands.executeCommand('workbench.action.openWorkspaceSettingsFile');
+			} else {
+				vscode.commands.executeCommand('workbench.action.openSettingsJson');
+			}
+		}
 	}
 }

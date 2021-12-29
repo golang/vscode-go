@@ -8,9 +8,15 @@
 provides rich language support for the
 [Go programming language](https://golang.org/).
 
+📣
+[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer.
+We plan to enable this as the default in early 2022 to enhance remote debugging with the same
+[debugging features](docs/debugging.md) that are already in use for local debugging.
+We recommend switching your remote attach configurations in `launch.json` to use
+`"debugAdapter":"dlv-dap"` now to verify that this works for you.
+Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
 
-> 📣 Debugging using [`Delve`'s native DAP implementation](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md) is now available for use.<br>
-> Please test it by following [the instruction to enable this new feature](https://github.com/golang/vscode-go/blob/master/docs/dlv-dap.md#getting-started) and share your feedback!
+📣📣 Watch [Debugging Treasure Hunt](https://youtu.be/ZPIPPRjwg7Q) from [GopherCon 2021](https://www.gophercon.com/) for a fun take on a debugging demo with VS Code Go and Delve DAP.
 
 ## Quick Start
 
@@ -131,10 +137,9 @@ troubleshooting](docs/troubleshooting.md), and another specifically for
 If the troubleshooting guides did not resolve the issue, please reach out to us
 by [filing an issue](https://github.com/golang/vscode-go/issues/new/choose),
 [starting a GitHub discussion](https://github.com/golang/vscode-go/discussions),
-or by asking a question in the [Gophers Slack]. We hang out in the `#vscode`
-channel!
+or by asking a question on [Stack Overflow].
 
-Also, you can take a look at [learn.go.dev](https://learn.go.dev) and
+Also, you can take a look at [go.dev/learn](https://go.dev/learn) and
 [golang.org/help](https://golang.org/help) for more general guidance on using
 Go.
 
@@ -162,7 +167,7 @@ conduct-related issue, please mail conduct@golang.org.
 
 [MIT](LICENSE)
 
-[Gophers Slack]: https://gophers.slack.com/
+[Stack Overflow]: https://stackoverflow.com/questions/tagged/go+visual-studio-code
 [`gopls`]: https://golang.org/s/gopls
 [`go`]: https://golang.org/cmd/go
 [Managing extensions in VS Code]: https://code.visualstudio.com/docs/editor/extension-gallery
@@ -174,7 +179,7 @@ conduct-related issue, please mail conduct@golang.org.
 [code editing]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-editing
 [diagnostics]: https://github.com/golang/vscode-go/blob/master/docs/features.md#diagnostics
 [testing]: https://github.com/golang/vscode-go/blob/master/docs/features.md##run-and-test-in-the-editor
-[debugging]: #debugging
+[debugging]: https://github.com/golang/vscode-go/blob/master/docs/debugging.md#features
 [full feature breakdown]: https://github.com/golang/vscode-go/blob/master/docs/features.md
 [workspace documentation]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
 [`Go: Install/Update Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
