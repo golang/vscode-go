@@ -17,15 +17,15 @@ import vscode = require('vscode');
 
 class InterfaceItem implements vscode.QuickPickItem {
 	public label: string;
+	public description: string;
 	public name: string;
 	public package: string;
-	public location: vscode.Location;
 
-	constructor(public symbol: vscode.SymbolInformation) {
-		this.label = symbol.name + ' ' + symbol.containerName;
-		this.name = symbol.name;
+	constructor(symbol: vscode.SymbolInformation) {
+		this.label = symbol.name;
+		this.description = symbol.containerName;
+		this.name = symbol.name.split('.').pop(); // in case, symbol contains package name.
 		this.package = symbol.containerName;
-		this.location = symbol.location;
 	}
 }
 
@@ -37,7 +37,7 @@ export function implCursor() {
 	}
 	const cursor = editor.selection;
 	const quickPick = vscode.window.createQuickPick();
-	quickPick.placeholder = 'Input interface name (e.g. client)';
+	quickPick.placeholder = 'Input interface name (e.g. Client)';
 
 	const search = function (keyword: string) {
 		quickPick.busy = true;
