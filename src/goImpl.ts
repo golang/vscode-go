@@ -12,8 +12,8 @@ import { dirname } from 'path';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
-import * as lodash from 'lodash';
 import vscode = require('vscode');
+import { debounce } from 'lodash';
 
 class InterfaceItem implements vscode.QuickPickItem {
 	public label: string;
@@ -58,7 +58,7 @@ export function implCursor() {
 		quickPick.busy = false;
 	};
 
-	quickPick.onDidChangeValue(lodash.debounce(search, 250));
+	quickPick.onDidChangeValue(debounce(search, 250));
 
 	quickPick.onDidChangeSelection((selections: readonly vscode.QuickPickItem[]) => {
 		if (typeof selections === 'undefined') {
