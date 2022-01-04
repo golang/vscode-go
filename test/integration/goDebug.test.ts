@@ -1768,7 +1768,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 	});
 
-	suite('switch goroutine', () => {
+	// Skip because it times out.
+	// BUG(https://github.com/golang/vscode-go/issues/1958)
+	suite.skip('switch goroutine', () => {
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
