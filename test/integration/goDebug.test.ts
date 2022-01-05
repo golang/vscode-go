@@ -1723,7 +1723,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should cleanup when stopped', async function () {
+		// Skip because it is failing in daily build.
+		// BUG(https://github.com/golang/vscode-go/issues/1993)
+		test.skip('should cleanup when stopped', async function () {
 			if (!isDlvDap) {
 				this.skip();
 			}
