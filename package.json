@@ -135,11 +135,20 @@
         "id": "go.mod",
         "filenames": [
           "go.mod",
-          "gopls.mod",
-          "go.work"
+          "gopls.mod"
         ],
         "aliases": [
           "Go Module File"
+        ],
+        "configuration": "./languages/go.mod.language-configuration.json"
+      },
+      {
+        "id": "go.work",
+        "filenames": [
+          "go.work"
+        ],
+        "aliases": [
+          "Go Work File"
         ],
         "configuration": "./languages/go.mod.language-configuration.json"
       },
@@ -153,7 +162,7 @@
         ]
       },
       {
-        "id": "tmpl",
+        "id": "gotmpl",
         "extensions": [
           ".tmpl",
           ".gotmpl"
