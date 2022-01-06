@@ -249,7 +249,7 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 					obj.Properties[unquotedName] = &Object{
 						Type:                propertyType(opt.EnumKeys.ValueType),
 						MarkdownDescription: k.Doc,
-						Default:             formatDefault(k.Default),
+						Default:             formatDefault(k.Default, opt.EnumKeys.ValueType),
 					}
 				}
 			}
@@ -272,21 +272,26 @@ func formatOptionDefault(opt *OptionJSON) interface{} {
 	if len(opt.EnumKeys.Keys) > 0 {
 		return nil
 	}
-	def := opt.Default
-	switch opt.Type {
-	case "enum", "string", "time.Duration":
-		unquote, err := strconv.Unquote(def)
-		if err == nil {
-			def = unquote
-		}
-	}
-	return formatDefault(def)
+
+	return formatDefault(opt.Default, opt.Type)
 }
 
 // formatDefault converts a string-based default value to an actual value that
 // can be marshaled to JSON. Right now, gopls generates default values as
 // strings, but perhaps that will change.
-func formatDefault(def string) interface{} {
+func formatDefault(def, typ string) interface{} {
+	switch typ {
+	case "enum", "string", "time.Duration":
+		unquote, err := strconv.Unquote(def)
+		if err == nil {
+			def = unquote
+		}
+	case "[]string":
+		var x []string
+		if err := json.Unmarshal([]byte(def), &x); err == nil {
+			return x
+		}
+	}
 	switch def {
 	case "{}", "[]":
 		return nil

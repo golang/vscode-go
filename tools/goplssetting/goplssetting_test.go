@@ -105,6 +105,19 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 					"scope": "resource"
 				}`,
 		},
+		{
+			name: "array",
+			in: &OptionJSON{
+				Name:    "directoryFilters",
+				Type:    "[]string",
+				Default: "[\"-node_modules\", \"-vendor\"]",
+			},
+			out: `"directoryFilters": {
+					"type": "array",
+					"default": ["-node_modules", "-vendor"],
+					"scope": "resource"
+				}`,
+		},
 	}
 
 	for _, tc := range testCases {

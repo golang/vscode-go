@@ -248,7 +248,7 @@ Default: `false`
 
 Additional flags to pass to gocode. Not applicable when using the language server.
 
-Default: `[-builtin -ignore-case -unimported-packages]`
+Default: `["-builtin", "-ignore-case", "-unimported-packages"]`
 ### `go.gocodePackageLookupMode`
 
 Used to determine the Go package lookup rules for completions by gocode. Only applies when using nsf/gocode. Latest versions of the Go extension uses mdempsky/gocode by default. Not applicable when using the language server.<br/>
@@ -546,6 +546,8 @@ Include only project_a: `-` (exclude everything), `+project_a`
 
 Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
+
+Default: `["-node_modules"]`
 ### `build.env`
 
 env adds environment variables to external commands run by `gopls`, most notably `go list`.
@@ -611,6 +613,8 @@ templateExtensions gives the extensions of file names that are treateed
 as template files. (The extension
 is the part of the file name after the final dot.)
 
+
+Default: `["tmpl", "gotmpl"]`
 ### `formatting.gofumpt`
 
 gofumpt indicates if we should run gofumpt formatting.

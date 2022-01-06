@@ -2003,12 +2003,15 @@
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
+              "default": [],
               "scope": "resource"
             },
             "build.directoryFilters": {
               "type": "array",
               "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
-              "default": "[\"-node_modules\"]",
+              "default": [
+                "-node_modules"
+              ],
               "scope": "resource"
             },
             "build.env": {
@@ -2057,7 +2060,10 @@
             "build.templateExtensions": {
               "type": "array",
               "markdownDescription": "templateExtensions gives the extensions of file names that are treateed\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
-              "default": "[\"tmpl\",\"gotmpl\"]",
+              "default": [
+                "tmpl",
+                "gotmpl"
+              ],
               "scope": "resource"
             },
             "formatting.gofumpt": {
