@@ -1770,14 +1770,66 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 	});
 
-	// Skip because it times out.
-	// BUG(https://github.com/golang/vscode-go/issues/1958)
-	suite.skip('switch goroutine', () => {
+	suite('switch goroutine', () => {
+		async function findParkedGoroutine(file: string): Promise<number> {
+			// Find a goroutine that is stopped in parked.
+			const bp = getBreakpointLocation(file, 8);
+			await dc.setBreakpointsRequest({ source: { path: bp.path }, breakpoints: [bp] });
+
+			let parkedGoid = -1;
+			while (parkedGoid < 0) {
+				const res = await Promise.all([
+					dc.continueRequest({ threadId: 1 }),
+					Promise.race([
+						dc.waitForEvent('stopped'),
+						// It is very unlikely to happen. But in theory if all sayhi
+						// goroutines are run serially, there will never be a second parked
+						// sayhi goroutine when another breaks and we will keep trying
+						// until process termination. If the process terminates, mark the test
+						// as done.
+						dc.waitForEvent('terminated')
+					])
+				]);
+				const event = res[1];
+				if (res[1].event === 'terminated') {
+					break;
+				}
+				const threads = await dc.threadsRequest();
+
+				// Search for a parked goroutine that we know for sure will have to be
+				// resumed before the program can exit. This is a parked goroutine that:
+				// 1. is executing main.sayhi
+				// 2. hasn't called wg.Done yet
+				// 3. is not the currently selected goroutine
+				for (let i = 0; i < threads.body.threads.length; i++) {
+					const g = threads.body.threads[i];
+					if (g.id === event.body.threadId) {
+						continue;
+					}
+					const st = await dc.stackTraceRequest({ threadId: g.id, startFrame: 0, levels: 5 });
+					for (let j = 0; j < st.body.stackFrames.length; j++) {
+						const frame = st.body.stackFrames[j];
+						// line 11 is the line where wg.Done is called
+						if (frame.name === 'main.sayhi' && frame.line < 11) {
+							parkedGoid = g.id;
+							break;
+						}
+					}
+					if (parkedGoid >= 0) {
+						break;
+					}
+				}
+			}
+
+			// Clear all breakpoints
+			await dc.setBreakpointsRequest({ source: { path: bp.path }, breakpoints: [] });
+			return parkedGoid;
+		}
+
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
-			const BREAKPOINT_LINE_MAIN_RUN1 = 6;
-			const BREAKPOINT_LINE_MAIN_RUN2 = 14;
+			const BREAKPOINT_LINE_MAIN_RUN = 15;
 
 			const config = {
 				name: 'Launch',
@@ -1787,33 +1839,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			// Set a breakpoint in run 1 and get the goroutine id.
-			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN1));
-			const threadsResponse1 = await dc.threadsRequest();
-			assert.ok(threadsResponse1.success);
-			const run1Goroutine = threadsResponse1.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
+			// Set a breakpoint in main.
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN));
 
-			// Set a breakpoint in run 2 and get the goroutine id.
-			// By setting breakpoints in both goroutine, we can make sure that both goroutines
-			// are running before continuing.
-			const bp2 = getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN2);
-			const breakpointsResult = await dc.setBreakpointsRequest({
-				source: { path: bp2.path },
-				breakpoints: [{ line: bp2.line }]
-			});
-			assert.ok(breakpointsResult.success);
-			const threadsResponse2 = await dc.threadsRequest();
-			assert.ok(threadsResponse2.success);
-			const run2Goroutine = threadsResponse2.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
-
-			await Promise.all([dc.continueRequest({ threadId: 1 }), dc.assertStoppedLocation('breakpoint', bp2)]);
-
-			// Clear breakpoints to make sure they do not interrupt the stepping.
-			const clearBreakpointsResult = await dc.setBreakpointsRequest({
-				source: { path: FILE },
-				breakpoints: []
-			});
-			assert.ok(clearBreakpointsResult.success);
+			const parkedGoid = await findParkedGoroutine(FILE);
 
 			// runStepFunction runs the necessary step function and resolves if it succeeded.
 			async function runStepFunction(
@@ -1833,68 +1862,26 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 						callback(await dc.stepInRequest(args));
 						break;
 					case 'step out':
-						// TODO(suzmue): write a test for step out.
-						reject(new Error('step out will never complete on this program'));
+						callback(await dc.stepOutRequest(args));
 						break;
 					default:
 						reject(new Error(`not a valid step function ${stepFunction}`));
 				}
 			}
 
-			// The program is currently stopped on the goroutine in main.run2.
-			// Test switching go routines by stepping in:
-			//   1. main.run2
-			//   2. main.run1 (switch routine)
-			//   3. main.run1
-			//   4. main.run2 (switch routine)
-
-			// Next on the goroutine in main.run2
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run2Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run2Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run1
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run1Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run1Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run1
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run1Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run1Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run2
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run2Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run2Goroutine.id);
-				})
-			]);
+			if (parkedGoid > 0) {
+				// Next on the parkedGoid.
+				await Promise.all([
+					new Promise<void>((resolve, reject) => {
+						const args = { threadId: parkedGoid };
+						return runStepFunction(args, resolve, reject);
+					}),
+					dc.waitForEvent('stopped').then((event) => {
+						assert.strictEqual(event.body.reason, 'step');
+						assert.strictEqual(event.body.threadId, parkedGoid);
+					})
+				]);
+			}
 		}
 
 		test('next', async function () {
@@ -1910,8 +1897,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				// Not implemented in the legacy adapter.
 				this.skip();
 			}
-			// neither debug adapter implements this behavior
 			await runSwitchGoroutineTest('step in');
+		});
+
+		test('step out', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+			await runSwitchGoroutineTest('step out');
 		});
 	});
 
