@@ -1723,9 +1723,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		// Skip because it is failing in daily build.
+		// This test is flaky. It has been updated to run stat multiple
+		// times to decrease the likelihood of stat occuring before delve
+		// has a chance to clean up.
 		// BUG(https://github.com/golang/vscode-go/issues/1993)
-		test.skip('should cleanup when stopped', async function () {
+		test('should cleanup when stopped', async function () {
 			if (!isDlvDap) {
 				this.skip();
 			}
@@ -1753,14 +1755,20 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			}
 
 			// Skip the proper disconnect sequence started with a disconnect request.
-
 			await dlvDapAdapter.dispose(1);
 			dc = undefined;
-			await sleep(100); // allow dlv to respond and finish cleanup.
 			let stat: fs.Stats = null;
 			try {
 				const fsstat = util.promisify(fs.stat);
-				stat = await fsstat(OUTPUT);
+				const maxAttempts = 5;
+				for (let i = 0; i < maxAttempts; i++) {
+					await sleep(100); // allow dlv to respond and finish cleanup.
+					stat = await fsstat(OUTPUT);
+					// Don't need to try again if stat result is null.
+					if (stat === null) {
+						break;
+					}
+				}
 				fs.unlinkSync(OUTPUT);
 			} catch (e) {
 				console.log(`output was cleaned ${OUTPUT} ${e}`);
