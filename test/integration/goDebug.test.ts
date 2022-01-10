@@ -1760,9 +1760,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			let stat: fs.Stats = null;
 			try {
 				const fsstat = util.promisify(fs.stat);
-				const maxAttempts = 5;
+				const maxAttempts = 2;
 				for (let i = 0; i < maxAttempts; i++) {
-					await sleep(100); // allow dlv to respond and finish cleanup.
+					await sleep(1000); // allow dlv to respond and finish cleanup.
 					stat = await fsstat(OUTPUT);
 					// Don't need to try again if stat result is null.
 					if (stat === null) {
