@@ -35,12 +35,12 @@ Please note that extra configuration is required to build and run the [Debug Ada
 ### Setup
 
 1) Install [node](https://nodejs.org/en/). Note: make sure that you are using `npm v7` or higher. The file format for `package-lock.json` (changed significantly)[https://docs.npmjs.com/cli/v7/configuring-npm/package-lock-json#file-format] in `npm v7`.
-2) Clone the repository, run `npm install`, and open VS Code:
+2) Clone the repository, run `npm ci`, and open VS Code:
 
     ```bash
     git clone https://go.googlesource.com/vscode-go
     cd vscode-go
-    npm install
+    npm ci
     code .
     ```
 
@@ -79,13 +79,13 @@ After making changes to the extension, you may want to test it end-to-end instea
 
 1. Install the [vsce](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#vsce) tool for packaging extensions (`npm install -g vsce`).
 2. `cd` into your `vscode-go` directory.
-3. Install all dependencies by running `npm install`.
+3. Install all dependencies by running `npm ci`.
 4. Run `vsce package`. This will generate a file with a `.vsix` extension in your current directory.
 
     ```bash
     npm install -g vsce
     cd vscode-go
-    npm install
+    npm ci
     vsce package
     ```
 
