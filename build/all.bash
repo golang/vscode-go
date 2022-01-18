@@ -11,7 +11,6 @@ Available subcommands:
   help      - display this help message.
   test      - build and test locally. Some tests may fail if vscode is already in use.
   testlocal - build and test in a locally built container.
-  setup_env - setup environment for test. This installs tools under GOPATH/bin.
   ci        - build and test with headless vscode. Requires Xvfb.
 EOUSAGE
 }
