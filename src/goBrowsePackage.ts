@@ -95,22 +95,19 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 	);
 }
 
-function showPackageList(workDir: string) {
-	return getAllPackages(workDir).then((pkgMap) => {
-		const pkgs: string[] = Array.from(pkgMap.keys());
-		if (pkgs.length === 0) {
-			return vscode.window.showErrorMessage(
-				'Could not find packages. Ensure `gopkgs -format {{.Name}};{{.ImportPath}}` runs successfully.'
-			);
-		}
-
-		vscode.window
-			.showQuickPick(pkgs.sort(), { placeHolder: 'Select a package to browse' })
-			.then((pkgFromDropdown) => {
-				if (!pkgFromDropdown) {
-					return;
-				}
-				showPackageFiles(pkgFromDropdown, false, workDir);
-			});
+async function showPackageList(workDir: string) {
+	const pkgMap = await getAllPackages(workDir);
+	const pkgs: string[] = Array.from(pkgMap.keys());
+	if (pkgs.length === 0) {
+		return vscode.window.showErrorMessage(
+			'Could not find packages. Ensure `gopkgs -format {{.Name}};{{.ImportPath}}` runs successfully.'
+		);
+	}
+	const pkgFromDropdown = await vscode.window.showQuickPick(pkgs.sort(), {
+		placeHolder: 'Select a package to browse'
 	});
+	if (!pkgFromDropdown) {
+		return;
+	}
+	showPackageFiles(pkgFromDropdown, false, workDir);
 }
