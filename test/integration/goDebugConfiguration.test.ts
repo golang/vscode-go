@@ -12,9 +12,8 @@ import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
-import { isInPreviewMode } from '../../src/goLanguageServer';
 import { MockCfg } from '../mocks/MockCfg';
-import { fileURLToPath } from 'url';
+import { extensionId } from '../../src/const';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -222,6 +221,9 @@ suite('Debug Configuration Merge User Settings', () => {
 
 	suite("merge 'go' config from settings.json", () => {
 		test('default settings are applied', async () => {
+			const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+				.properties['go.delveConfig'].properties;
+
 			// Run resolveDebugConfiguration with the default workspace settings.
 			const cfg1 = {
 				name: 'Launch',
@@ -233,14 +235,14 @@ suite('Debug Configuration Merge User Settings', () => {
 
 			const defaultResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
 
-			assert.strictEqual(defaultResult.showGlobalVariables, false);
-			assert.strictEqual(defaultResult.showRegisters, false);
-			assert.strictEqual(defaultResult.hideSystemGoroutines, false);
-			assert.strictEqual(defaultResult.showLog, false);
-			assert.strictEqual(defaultResult.logOutput, 'debugger');
-			assert.strictEqual(defaultResult.debugAdapter, 'dlv-dap');
-			assert.deepStrictEqual(defaultResult.dlvFlags, []);
-			assert.deepStrictEqual(defaultResult.substitutePath, []);
+			assert.strictEqual(defaultResult.showGlobalVariables, defaultConfig.showGlobalVariables.default);
+			assert.strictEqual(defaultResult.showRegisters, defaultConfig.showRegisters.default);
+			assert.strictEqual(defaultResult.hideSystemGoroutines, defaultConfig.hideSystemGoroutines.default);
+			assert.strictEqual(defaultResult.showLog, defaultConfig.showLog.default);
+			assert.strictEqual(defaultResult.logOutput, defaultConfig.logOutput.default);
+			assert.strictEqual(defaultResult.debugAdapter, defaultConfig.debugAdapter.default);
+			assert.deepStrictEqual(defaultResult.dlvFlags, defaultConfig.dlvFlags.default);
+			assert.deepStrictEqual(defaultResult.substitutePath, defaultConfig.substitutePath.default);
 		});
 
 		test('go flags config does not affect debug config', async () => {
