@@ -239,7 +239,8 @@ func main() {
 	latestPre := versions.Versions[latestIndex]
 	// We need to find the last version that was not a pre-release.
 	var latest string
-	for latest = versions.Versions[latestIndex]; latestIndex >= 0; latestIndex-- {
+	for ; latestIndex >= 0; latestIndex-- {
+		latest = versions.Versions[latestIndex]
 		if !strings.Contains(latest, "pre") {
 			break
 		}
