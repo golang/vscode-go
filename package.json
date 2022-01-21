@@ -2069,10 +2069,7 @@
             "build.templateExtensions": {
               "type": "array",
               "markdownDescription": "templateExtensions gives the extensions of file names that are treateed\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
-              "default": [
-                "tmpl",
-                "gotmpl"
-              ],
+              "default": [],
               "scope": "resource"
             },
             "formatting.gofumpt": {

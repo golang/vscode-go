@@ -613,8 +613,6 @@ templateExtensions gives the extensions of file names that are treateed
 as template files. (The extension
 is the part of the file name after the final dot.)
 
-
-Default: `["tmpl", "gotmpl"]`
 ### `formatting.gofumpt`
 
 gofumpt indicates if we should run gofumpt formatting.
