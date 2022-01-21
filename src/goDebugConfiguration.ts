@@ -10,7 +10,7 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
-import { ContinuedEvent } from 'vscode-debugadapter';
+import { extensionId } from './const';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -154,6 +154,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
+		const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+			.properties['go.delveConfig'].properties;
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
@@ -175,7 +177,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				// but we have no way of detectng that with an external server.
 				this.showWarning(
 					'ignoreDlvDAPInRemoteModeWarning',
-					"'remote' mode with 'dlv-dap' debugAdapter must connect to an external `dlv --headless` server @ v1.7.3 or later. Older versions will fail with \"error layer=rpc rpc:invalid character 'C' looking for beginning of value\" logged to the terminal.\n"
+					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
 				);
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
@@ -225,8 +227,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			dlvProperties.push('dlvLoadConfig');
 		}
 		dlvProperties.forEach((p) => {
-			if (!debugConfiguration.hasOwnProperty(p) && dlvConfig.hasOwnProperty(p)) {
-				debugConfiguration[p] = dlvConfig[p];
+			if (!debugConfiguration.hasOwnProperty(p)) {
+				if (dlvConfig.hasOwnProperty(p)) {
+					debugConfiguration[p] = dlvConfig[p];
+				} else {
+					debugConfiguration[p] = defaultConfig[p]?.default;
+				}
 			}
 		});
 
@@ -263,34 +269,34 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const dlvToolPath = getBinPath(debugAdapter);
+		const dlvToolPath = getBinPath('dlv');
 		if (!path.isAbsolute(dlvToolPath)) {
 			// If user has not already declined to install this tool,
 			// prompt for it. Otherwise continue and have the lack of
 			// dlv binary be caught later.
-			if (!declinedToolInstall(debugAdapter)) {
-				await promptForMissingTool(debugAdapter);
+			if (!declinedToolInstall('dlv')) {
+				await promptForMissingTool('dlv');
 				return;
 			}
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
 
+		// For dlv-dap mode, check if the dlv is recent enough to support DAP.
 		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
-			const tool = getToolAtVersion('dlv-dap');
+			const tool = getToolAtVersion('dlv');
 			if (await shouldUpdateTool(tool, dlvToolPath)) {
 				// If the user has opted in to automatic tool updates, we can update
 				// without prompting.
 				const toolsManagementConfig = getGoConfig()['toolsManagement'];
 				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
 					const goVersion = await getGoVersion();
-					const toolVersion = { ...tool, version: tool.latestVersion }; // ToolWithVersion
-					await installTools([toolVersion], goVersion, true);
+					await installTools([tool], goVersion, true);
 				} else {
 					await promptForUpdatingTool(tool.name);
 				}
-				// installTools could've failed (e.g. no network access) or the user decliend to install dlv-dap
-				// in promptForUpdatingTool. If dlv-dap doesn't exist or dlv-dap is too old to have MVP features,
-				// the failure will be visible to users when launching the dlv-dap process (crash or error message).
+				// installTools could've failed (e.g. no network access) or the user decliend to install dlv
+				// in promptForUpdatingTool. If dlv doesn't exist or dlv is too old to have MVP features,
+				// the failure will be visible to users when launching the dlv process (crash or error message).
 			}
 			dlvDAPVersionChecked = true;
 		}
@@ -401,10 +407,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		// For legacy mode, we merge the environment variables on top of
 		// the tools execution environment variables and update the debugConfiguration
 		// because VS Code directly handles launch of the legacy debug adapter.
-		// For dlv-dap mode, we do not merge the tools execution environment
+		// For dlv-dap mode, we do not merge process.env environment
 		// variables here to reduce the number of environment variables passed
 		// as launch/attach parameters.
-		const goToolsEnvVars = debugAdapter === 'legacy' ? toolExecutionEnvironment(folder?.uri) : {};
+		const mergeProcessEnv = debugAdapter === 'legacy';
+		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri, mergeProcessEnv);
 		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
 		const env = debugConfiguration['env'] || {};
 

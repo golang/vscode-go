@@ -157,12 +157,7 @@ suite('Installation Tests', function () {
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
-				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
-				{
-					name: 'dlv-dap',
-					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
-					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
-				}
+				{ name: 'dlv', versions: ['v1.0.0', 'v1.8.0'], wantVersion: 'v1.8.0' }
 			],
 			true
 		);
@@ -172,12 +167,7 @@ suite('Installation Tests', function () {
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
-				{ name: 'guru', versions: ['v1.0.0'], wantVersion: 'v1.0.0' },
-				{
-					name: 'dlv-dap',
-					versions: ['v1.0.0', getTool('dlv-dap').defaultVersion!],
-					wantVersion: 'v' + getTool('dlv-dap').latestVersion!.toString()
-				}
+				{ name: 'dlv', versions: ['v1.0.0', 'v1.8.0'], wantVersion: 'v1.8.0' }
 			],
 			true, // LOCAL PROXY
 			true // GOBIN
@@ -214,7 +204,7 @@ function buildFakeProxy(testCases: installationTestCase[]) {
 
 		versions.map((version) => {
 			if (!version.match(/^v\d+\.\d+\.\d+/)) {
-				// for dlv-dap that retrieves the version from a revision (commit hash)
+				// for tools that retrieve the versions from a revision (commit hash)
 				const resolvedVersion = tool.latestVersion?.toString() || '1.0.0';
 				const infoPath = path.join(dir, `${version}.info`);
 				version = `v${resolvedVersion}`;

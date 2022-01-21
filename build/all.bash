@@ -11,7 +11,6 @@ Available subcommands:
   help      - display this help message.
   test      - build and test locally. Some tests may fail if vscode is already in use.
   testlocal - build and test in a locally built container.
-  setup_env - setup environment for test. This installs tools under GOPATH/bin.
   ci        - build and test with headless vscode. Requires Xvfb.
 EOUSAGE
 }
@@ -81,7 +80,7 @@ prepare_nightly() {
 .displayName="Go Nightly" |
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
-.contributes.configuration.properties."go.delveConfig.hideSystemGoroutines".default=true
+.contributes.configuration.properties."go.delveConfig".properties.hideSystemGoroutines.default=true
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.

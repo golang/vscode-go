@@ -44,6 +44,8 @@ import util = require('util');
 import vscode = require('vscode');
 import { isInPreviewMode, RestartReason } from './goLanguageServer';
 
+const STATUS_BAR_ITEM_NAME = 'Go Tools';
+
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
 
@@ -233,7 +235,7 @@ export async function installTool(
 	}
 
 	try {
-		if (!modulesOn || goVersion.lt('1.16') || hasModSuffix(tool) || tool.name === 'dlv-dap') {
+		if (!modulesOn || goVersion.lt('1.16') || hasModSuffix(tool)) {
 			await installToolWithGoGet(tool, goVersion, env, modulesOn, importPath);
 		} else {
 			await installToolWithGoInstall(goVersion, env, importPath);
@@ -282,9 +284,9 @@ async function installToolWithGoGet(
 	if (!modulesOn) {
 		args.push('-u');
 	}
-	// dlv-dap or tools with a "mod" suffix can't be installed with
+	// tools with a "mod" suffix can't be installed with
 	// simple `go install` or `go get`. We need to get, build, and rename them.
-	if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
+	if (hasModSuffix(tool)) {
 		args.push('-d'); // get the version, but don't build.
 	}
 	args.push(importPath);
@@ -305,8 +307,8 @@ async function installToolWithGoGet(
 		logVerbose(`$ ${goBinary} ${args.join(' ')} (cwd: ${opts.cwd})`);
 		await execFile(goBinary, args, opts);
 
-		if (hasModSuffix(tool) || tool.name === 'dlv-dap') {
-			// Actual installation of the -gomod tool and dlv-dap is done by running go build.
+		if (hasModSuffix(tool)) {
+			// Actual installation of the -gomod tool is done by running go build.
 			let destDir = env['GOBIN'];
 			if (!destDir) {
 				const gopath0 = env['GOPATH']?.split(path.delimiter)[0];
@@ -381,21 +383,20 @@ export async function promptForMissingTool(toolName: string) {
 		// Offer the option to install all tools.
 		installOptions.push('Install All');
 	}
-	let msg = `The "${tool.name}" command is not available.
-Run "go get -v ${getImportPath(tool, goVersion)}" to install.`;
-	if (tool.name === 'dlv-dap') {
-		msg = `The ["${tool.name}"](https://github.com/golang/vscode-go/blob/master/docs/debugging.md) command is not available.
-Please select "Install", or follow the installation instructions [here](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#updating-dlv-dap).`;
-	}
-
-	const selected = await vscode.window.showErrorMessage(msg, ...installOptions);
+	const cmd = goVersion.lt('1.16')
+		? `go get -v ${getImportPath(tool, goVersion)}`
+		: `go install -v ${getImportPathWithVersion(tool, tool.defaultVersion, goVersion)}`;
+	const selected = await vscode.window.showErrorMessage(
+		`The "${tool.name}" command is not available. Run "${cmd}" to install.`,
+		...installOptions
+	);
 	switch (selected) {
 		case 'Install':
 			await installTools([tool], goVersion);
 			break;
 		case 'Install All':
 			await installTools(missing, goVersion);
-			removeGoStatus();
+			removeGoStatus(STATUS_BAR_ITEM_NAME);
 			break;
 		default:
 			// The user has declined to install this tool.
@@ -434,7 +435,7 @@ export async function promptForUpdatingTool(
 	if (toolName === 'gopls') {
 		choices = ['Always Update', 'Update Once', 'Release Notes'];
 	}
-	if (toolName === 'dlv-dap') {
+	if (toolName === 'dlv') {
 		choices = ['Always Update', 'Update Once'];
 	}
 
@@ -555,12 +556,17 @@ export async function offerToInstallTools() {
 	let missing = await getMissingTools(goVersion);
 	missing = missing.filter((x) => x.isImportant);
 	if (missing.length > 0) {
-		addGoStatus('Analysis Tools Missing', 'go.promptforinstall', 'Not all Go tools are available on the GOPATH');
+		addGoStatus(
+			STATUS_BAR_ITEM_NAME,
+			'Analysis Tools Missing',
+			'go.promptforinstall',
+			'Not all Go tools are available on the GOPATH'
+		);
 		vscode.commands.registerCommand('go.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',
 				async command() {
-					removeGoStatus();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
 					await installTools(missing, goVersion);
 				}
 			};
@@ -583,7 +589,7 @@ export async function offerToInstallTools() {
 					if (selection) {
 						selection.command();
 					} else {
-						removeGoStatus();
+						removeGoStatus(STATUS_BAR_ITEM_NAME);
 					}
 				});
 		});

@@ -100,14 +100,7 @@ import {
 	resolvePath,
 	runGoVersionM
 } from './util';
-import {
-	clearCacheForTools,
-	fileExists,
-	getCurrentGoRoot,
-	dirExists,
-	setCurrentGoRoot,
-	envPath
-} from './utils/pathUtils';
+import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
@@ -195,6 +188,10 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 		}
 	}
+
+	// Present a warning about the deprecation of a 'dlv-dap' binary setting.
+	checkAlternateTools(cfg);
+
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
 		offerToInstallLatestGoVersion();
@@ -1035,5 +1032,25 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 		process.env['GOROOT'] = goroot;
 	} else {
 		delete process.env.GOROOT;
+	}
+}
+
+async function checkAlternateTools(goConfig: vscode.WorkspaceConfiguration) {
+	const alternateTools = goConfig ? goConfig['alternateTools'] : {};
+	// TODO(hyangah): delete this check after 2022-03-01.
+	if (alternateTools['dlv-dap']) {
+		const msg = `The extension no longer requires a separate 'dlv-dap' binary but uses the 'dlv' binary.
+The "dlv-dap" property of the "go.alternateTools" setting will be ignored.
+Please use the "dlv" property if you need to override the default Go debugger.`;
+
+		const selected = await vscode.window.showWarningMessage(msg, 'Open settings.json');
+		if (selected === 'Open settings.json') {
+			const { workspaceValue } = goConfig.inspect('alternateTools.dlv-dap');
+			if (workspaceValue !== undefined) {
+				vscode.commands.executeCommand('workbench.action.openWorkspaceSettingsFile');
+			} else {
+				vscode.commands.executeCommand('workbench.action.openSettingsJson');
+			}
+		}
 	}
 }

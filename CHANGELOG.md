@@ -1,3 +1,36 @@
+## v0.31.0 - 20 Jan, 2022
+
+### Fixes
+
+- src/goStatus: assign id/name to each status bar item ([Issue 1571](https://github.com/golang/vscode-go/issues/1571)) <!-- CL 370354 -->
+- Change go template file language id to `gotmpl` ([Issue 1957](https://github.com/golang/vscode-go/issues/1957)) <!-- CL 376037 -->
+
+### Debugging
+
+- Use 'dlv' instead of 'dlv-dap' binary ([Issue 1977](https://github.com/golang/vscode-go/issues/1977)) <!-- CL 374594 -->
+- Experimental support of 'console' mode debugging ([Issue 124](https://github.com/golang/vscode-go/issues/124)) <!-- CL 358618 -->
+- Support debugging with root privileges ([Issue 558](https://github.com/golang/vscode-go/issues/558))
+- Updated [debugging documentation]() ([Issue 1861](https://github.com/golang/vscode-go/issues/1861),[1719](https://github.com/golang/vscode-go/issues/1719),([1676](https://github.com/golang/vscode-go/issues/1676), [123](https://github.com/golang/vscode-go/issues/123), [855](https://github.com/golang/vscode-go/issues/855), [1840](https://github.com/golang/vscode-go/issues/1840)))
+- Enabled remaining tests for dlv dap and fixed flaky tests ([Issue 1958](https://github.com/golang/vscode-go/issues/1958),[Issue 1993](https://github.com/golang/vscode-go/issues/1993))
+- Improvement of debug session start-up and session fail messages ([Issue 1861](https://github.com/golang/vscode-go/issues/1861)) <!-- CL 371974 -->
+
+### Test Explorer
+
+- src/goTest: don't resolve tests in virtual files <!-- CL 373234 -->
+- src/goTest: fix output for subtests ([Issue 1837](https://github.com/golang/vscode-go/issues/1837)) <!-- CL 373274 -->
+
+### Development Process Updates
+
+- Recommend that contributers use npm ci instead of npm install when developing vscode-go ([Issue 2010](https://github.com/golang/vscode-go/issues/2010)) <!-- CL 379154 -->
+- test: use @vscode/test-electron instead of vscode-test <!-- CL 377336 -->
+- go.mod: update imports to latest versions <!-- CL 374280 -->
+- package.json: pin direct dependencies ([Issue 2010](https://github.com/golang/vscode-go/issues/2010)) <!-- CL 379155 -->
+- Enable tests with go1.18beta1 ([Issue 1950](https://github.com/golang/vscode-go/issues/1950)) <!-- CL 374055 -->
+
+### Thanks
+
+Thank you for your contribution, @firelizzard18, @hyangah, @jamalc, @polinasok, @TheNagaPraneeth, @suzmue!
+
 ## v0.30.0 - 16 Dec, 2021
 
 A list of all issues and changes can be found in the [v0.30.0 milestone](https://github.com/golang/vscode-go/milestone/40) and [commit history](https://github.com/golang/vscode-go/compare/v0.29.0...v0.30.0).

@@ -12,9 +12,8 @@ import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
-import { isInPreviewMode } from '../../src/goLanguageServer';
 import { MockCfg } from '../mocks/MockCfg';
-import { fileURLToPath } from 'url';
+import { extensionId } from '../../src/const';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -91,7 +90,7 @@ suite('Debug Environment Variable Merge Test', () => {
 		);
 	});
 
-	test('toolsEnvVars is not propagated', () => {
+	test('toolsEnvVars is propagated', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			GOOS: 'valueFromToolsEnv'
@@ -101,7 +100,7 @@ suite('Debug Environment Variable Merge Test', () => {
 			{
 				toolsEnv
 			},
-			{}
+			toolsEnv
 		);
 	});
 
@@ -155,7 +154,7 @@ suite('Debug Environment Variable Merge Test', () => {
 		);
 	});
 
-	test('launchArgs.env is respected, toolsEnvVar is ignored (dlv-dap)', () => {
+	test('launchArgs.env and toolsEnvVar is respected', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromToolsEnvVar1',
@@ -166,7 +165,9 @@ suite('Debug Environment Variable Merge Test', () => {
 		runTest(
 			{ env, toolsEnv },
 			{
-				SOMEVAR1: 'valueFromEnv'
+				GOPATH: '/gopath',
+				SOMEVAR1: 'valueFromEnv',
+				SOMEVAR2: 'valueFromToolsEnvVar2'
 			}
 		);
 	});
@@ -191,7 +192,7 @@ suite('Debug Environment Variable Merge Test', () => {
 		);
 	});
 
-	test('launchArgs.envFile is repected, and toolsEnvVar is ignored (dlv-dap)', () => {
+	test('launchArgs.envFile and toolsEnvVar are repected (dlv-dap)', () => {
 		const toolsEnv = {
 			GOPATH: '/gopath',
 			SOMEVAR1: 'valueFromToolsEnvVar1',
@@ -204,6 +205,8 @@ suite('Debug Environment Variable Merge Test', () => {
 		runTest(
 			{ debugAdapter, toolsEnv, envFile },
 			{
+				GOPATH: '/gopath',
+				SOMEVAR1: 'valueFromToolsEnvVar1',
 				SOMEVAR2: 'valueFromEnvFile2'
 			}
 		);
@@ -217,6 +220,31 @@ suite('Debug Configuration Merge User Settings', () => {
 	teardown(() => sinon.restore());
 
 	suite("merge 'go' config from settings.json", () => {
+		test('default settings are applied', async () => {
+			const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+				.properties['go.delveConfig'].properties;
+
+			// Run resolveDebugConfiguration with the default workspace settings.
+			const cfg1 = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'auto',
+				program: '${fileDirname}'
+			};
+
+			const defaultResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
+
+			assert.strictEqual(defaultResult.showGlobalVariables, defaultConfig.showGlobalVariables.default);
+			assert.strictEqual(defaultResult.showRegisters, defaultConfig.showRegisters.default);
+			assert.strictEqual(defaultResult.hideSystemGoroutines, defaultConfig.hideSystemGoroutines.default);
+			assert.strictEqual(defaultResult.showLog, defaultConfig.showLog.default);
+			assert.strictEqual(defaultResult.logOutput, defaultConfig.logOutput.default);
+			assert.strictEqual(defaultResult.debugAdapter, defaultConfig.debugAdapter.default);
+			assert.deepStrictEqual(defaultResult.dlvFlags, defaultConfig.dlvFlags.default);
+			assert.deepStrictEqual(defaultResult.substitutePath, defaultConfig.substitutePath.default);
+		});
+
 		test('go flags config does not affect debug config', async () => {
 			// This tests that the testFlags and GOOS and GOARCH set
 			// in settings.json do not affect the resolved debug configuration.
@@ -370,7 +398,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			assert.strictEqual(result.hideSystemGoroutines, false);
 			assert.strictEqual(result.debugAdapter, 'legacy');
 			assert.strictEqual(result.substitutePath.length, 0);
-			assert.strictEqual(result.showLog, undefined);
+			assert.strictEqual(result.showLog, false);
 			assert.strictEqual(result.logOutput, 'rpc');
 			const dlvLoadConfig = result.dlvLoadConfig;
 			assert.strictEqual(dlvLoadConfig.followPointers, true);

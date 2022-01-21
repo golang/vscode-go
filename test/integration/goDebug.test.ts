@@ -57,6 +57,7 @@ suite('GoDebugSession Tests', async () => {
 		process.env.GOPATH = '/usr/gopath';
 		process.env.GOROOT = '/usr/goroot';
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
+		// eslint-disable-next-line prettier/prettier
 		fileSystem = ({ existsSync: () => false } as unknown) as typeof fs;
 		delve.program = workspaceFolder;
 		delve.isApiV1 = false;
@@ -287,6 +288,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 	let remoteSourcesAndPackages: RemoteSourcesAndPackages;
 	let delve: Delve;
 	setup(() => {
+		// eslint-disable-next-line prettier/prettier
 		delve = ({ callPromise: () => ({}), isApiV1: false } as unknown) as Delve;
 		remoteSourcesAndPackages = new RemoteSourcesAndPackages();
 	});
@@ -310,9 +312,7 @@ suite('RemoteSourcesAndPackages Tests', () => {
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
-const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
-	// To disable skipping of dlvDapTests, set dlvDapSkipsEnabled = false.
-	const dlvDapSkipsEnabled = true;
+const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 	const DEBUG_ADAPTER = path.join('.', 'out', 'src', 'debugAdapter', 'goDebug.js');
 
@@ -399,7 +399,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	): Promise<cp.ChildProcess> {
 		const serverFolder = path.join(DATA_ROOT, 'helloWorldServer');
 		const toolPath = getBinPath('dlv');
-		const args = ['debug', '--api-version=2', '--headless', `--listen=127.0.0.1:${dlvPort}`];
+		const args = [
+			'debug',
+			'--check-go-version=false',
+			'--api-version=2',
+			'--headless',
+			`--listen=127.0.0.1:${dlvPort}`
+		];
 		if (acceptMultiClient) {
 			args.push('--accept-multiclient');
 		}
@@ -503,11 +509,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	}
 
 	suite('basic', () => {
-		test('unknown request should produce error', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('unknown request should produce error', async () => {
 			// fake config that will be used to initialize fixtures.
 			const config = { name: 'Launch', type: 'go', request: 'launch', program: DATA_ROOT };
 			await initializeDebugConfig(config);
@@ -733,6 +735,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				this.skip(); // not working in dlv-dap.
 			}
 
+			// TODO(hyangah): why does it take 30sec?
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -1008,39 +1011,27 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=true', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, true);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=false --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, false, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
-		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('can connect and initialize using external dlv --headless --accept-multiclient=true --continue=false', async () => {
 			childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
 
 			await setUpRemoteAttach(debugConfig);
 		});
 
 		test('connection to remote is terminated when external dlv process exits', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
+			if (isDlvDap) {
+				this.skip(); // this test does not apply for dlv-dap.
 			}
 
 			const childProcess = await setUpRemoteProgram(remoteAttachConfig.port, server, true, false);
@@ -1103,11 +1094,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
 
-		test('stopped for a breakpoint set during initialization (remote attach)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1128,11 +1115,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
 		});
 
-		test('stopped for a breakpoint set after initialization (remote attach)', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('stopped for a breakpoint set after initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
 			const BREAKPOINT_LINE = 29;
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1545,11 +1528,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
 
-		test('disconnect should work for remote attach', async function () {
-			if (isDlvDap && dlvDapSkipsEnabled) {
-				this.skip(); // not working in dlv-dap.
-			}
-
+		test('disconnect should work for remote attach', async () => {
 			const server = await getPort();
 			remoteAttachConfig.port = await getPort();
 			const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -1744,8 +1723,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
+		// This test is flaky. It has been updated to run stat multiple
+		// times to decrease the likelihood of stat occuring before delve
+		// has a chance to clean up.
+		// BUG(https://github.com/golang/vscode-go/issues/1993)
 		test('should cleanup when stopped', async function () {
-			if (!isDlvDap || !dlvDapSkipsEnabled) {
+			if (!isDlvDap) {
 				this.skip();
 			}
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
@@ -1772,14 +1755,20 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 
 			// Skip the proper disconnect sequence started with a disconnect request.
-
 			await dlvDapAdapter.dispose(1);
 			dc = undefined;
-			await sleep(100); // allow dlv to respond and finish cleanup.
 			let stat: fs.Stats = null;
 			try {
 				const fsstat = util.promisify(fs.stat);
-				stat = await fsstat(OUTPUT);
+				const maxAttempts = 2;
+				for (let i = 0; i < maxAttempts; i++) {
+					await sleep(1000); // allow dlv to respond and finish cleanup.
+					stat = await fsstat(OUTPUT);
+					// Don't need to try again if stat result is null.
+					if (stat === null) {
+						break;
+					}
+				}
 				fs.unlinkSync(OUTPUT);
 			} catch (e) {
 				console.log(`output was cleaned ${OUTPUT} ${e}`);
@@ -1790,11 +1779,65 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 	});
 
 	suite('switch goroutine', () => {
+		async function findParkedGoroutine(file: string): Promise<number> {
+			// Find a goroutine that is stopped in parked.
+			const bp = getBreakpointLocation(file, 8);
+			await dc.setBreakpointsRequest({ source: { path: bp.path }, breakpoints: [bp] });
+
+			let parkedGoid = -1;
+			while (parkedGoid < 0) {
+				const res = await Promise.all([
+					dc.continueRequest({ threadId: 1 }),
+					Promise.race([
+						dc.waitForEvent('stopped'),
+						// It is very unlikely to happen. But in theory if all sayhi
+						// goroutines are run serially, there will never be a second parked
+						// sayhi goroutine when another breaks and we will keep trying
+						// until process termination. If the process terminates, mark the test
+						// as done.
+						dc.waitForEvent('terminated')
+					])
+				]);
+				const event = res[1];
+				if (res[1].event === 'terminated') {
+					break;
+				}
+				const threads = await dc.threadsRequest();
+
+				// Search for a parked goroutine that we know for sure will have to be
+				// resumed before the program can exit. This is a parked goroutine that:
+				// 1. is executing main.sayhi
+				// 2. hasn't called wg.Done yet
+				// 3. is not the currently selected goroutine
+				for (let i = 0; i < threads.body.threads.length; i++) {
+					const g = threads.body.threads[i];
+					if (g.id === event.body.threadId) {
+						continue;
+					}
+					const st = await dc.stackTraceRequest({ threadId: g.id, startFrame: 0, levels: 5 });
+					for (let j = 0; j < st.body.stackFrames.length; j++) {
+						const frame = st.body.stackFrames[j];
+						// line 11 is the line where wg.Done is called
+						if (frame.name === 'main.sayhi' && frame.line < 11) {
+							parkedGoid = g.id;
+							break;
+						}
+					}
+					if (parkedGoid >= 0) {
+						break;
+					}
+				}
+			}
+
+			// Clear all breakpoints
+			await dc.setBreakpointsRequest({ source: { path: bp.path }, breakpoints: [] });
+			return parkedGoid;
+		}
+
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
-			const BREAKPOINT_LINE_MAIN_RUN1 = 6;
-			const BREAKPOINT_LINE_MAIN_RUN2 = 14;
+			const BREAKPOINT_LINE_MAIN_RUN = 15;
 
 			const config = {
 				name: 'Launch',
@@ -1804,33 +1847,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				program: PROGRAM
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			// Set a breakpoint in run 1 and get the goroutine id.
-			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN1));
-			const threadsResponse1 = await dc.threadsRequest();
-			assert.ok(threadsResponse1.success);
-			const run1Goroutine = threadsResponse1.body.threads.find((val) => val.name.indexOf('main.run1') >= 0);
+			// Set a breakpoint in main.
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN));
 
-			// Set a breakpoint in run 2 and get the goroutine id.
-			// By setting breakpoints in both goroutine, we can make sure that both goroutines
-			// are running before continuing.
-			const bp2 = getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN2);
-			const breakpointsResult = await dc.setBreakpointsRequest({
-				source: { path: bp2.path },
-				breakpoints: [{ line: bp2.line }]
-			});
-			assert.ok(breakpointsResult.success);
-			const threadsResponse2 = await dc.threadsRequest();
-			assert.ok(threadsResponse2.success);
-			const run2Goroutine = threadsResponse2.body.threads.find((val) => val.name.indexOf('main.run2') >= 0);
-
-			await Promise.all([dc.continueRequest({ threadId: 1 }), dc.assertStoppedLocation('breakpoint', bp2)]);
-
-			// Clear breakpoints to make sure they do not interrupt the stepping.
-			const clearBreakpointsResult = await dc.setBreakpointsRequest({
-				source: { path: FILE },
-				breakpoints: []
-			});
-			assert.ok(clearBreakpointsResult.success);
+			const parkedGoid = await findParkedGoroutine(FILE);
 
 			// runStepFunction runs the necessary step function and resolves if it succeeded.
 			async function runStepFunction(
@@ -1850,68 +1870,26 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 						callback(await dc.stepInRequest(args));
 						break;
 					case 'step out':
-						// TODO(suzmue): write a test for step out.
-						reject(new Error('step out will never complete on this program'));
+						callback(await dc.stepOutRequest(args));
 						break;
 					default:
 						reject(new Error(`not a valid step function ${stepFunction}`));
 				}
 			}
 
-			// The program is currently stopped on the goroutine in main.run2.
-			// Test switching go routines by stepping in:
-			//   1. main.run2
-			//   2. main.run1 (switch routine)
-			//   3. main.run1
-			//   4. main.run2 (switch routine)
-
-			// Next on the goroutine in main.run2
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run2Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run2Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run1
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run1Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run1Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run1
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run1Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run1Goroutine.id);
-				})
-			]);
-
-			// Next on the goroutine in main.run2
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					const args = { threadId: run2Goroutine.id };
-					return runStepFunction(args, resolve, reject);
-				}),
-				dc.waitForEvent('stopped').then((event) => {
-					assert.strictEqual(event.body.reason, 'step');
-					assert.strictEqual(event.body.threadId, run2Goroutine.id);
-				})
-			]);
+			if (parkedGoid > 0) {
+				// Next on the parkedGoid.
+				await Promise.all([
+					new Promise<void>((resolve, reject) => {
+						const args = { threadId: parkedGoid };
+						return runStepFunction(args, resolve, reject);
+					}),
+					dc.waitForEvent('stopped').then((event) => {
+						assert.strictEqual(event.body.reason, 'step');
+						assert.strictEqual(event.body.threadId, parkedGoid);
+					})
+				]);
+			}
 		}
 
 		test('next', async function () {
@@ -1927,8 +1905,15 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				// Not implemented in the legacy adapter.
 				this.skip();
 			}
-			// neither debug adapter implements this behavior
 			await runSwitchGoroutineTest('step in');
+		});
+
+		test('step out', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+			await runSwitchGoroutineTest('step out');
 		});
 	});
 
@@ -1962,8 +1947,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			await dc.stop();
 			dc = undefined;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
+			const preamble =
+				debugConfig.console === 'integratedTerminal' || debugConfig.console === 'externalTerminal'
+					? 'DAP server for a predetermined client'
+					: 'DAP server listening at';
 			assert(
-				dapLog.includes('DAP server listening at') &&
+				dapLog.includes(preamble) &&
 					dapLog.includes('"command":"initialize"') &&
 					dapLog.includes('"event":"terminated"'),
 				dapLog
@@ -1989,12 +1978,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			}
 		}
 		test('relative path as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest('delve.log', 'relative path');
 		});
 
 		test('number as logDest triggers an error', async function () {
-			if (!isDlvDap || process.platform === 'win32') this.skip();
+			if (!isDlvDap || withConsole || process.platform === 'win32') this.skip();
 			await testWithInvalidLogDest(3, 'file descriptor');
 		});
 	});
@@ -2094,11 +2083,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 				rmdirRecursive(helloWorldLocal);
 			});
 
-			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
-				}
-
+			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
 				const FILE = path.join(helloWorldLocal, 'main.go');
 				const BREAKPOINT_LINE = 29;
 				const remoteProgram = await setUpRemoteProgram(remoteAttachConfig.port, server);
@@ -2124,8 +2109,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			// Skip because it times out in nightly release workflow.
 			// BUG(https://github.com/golang/vscode-go/issues/1043)
 			test.skip('stopped for a breakpoint set during initialization using remotePath (remote attach)', async function () {
-				if (isDlvDap && dlvDapSkipsEnabled) {
-					this.skip(); // not working in dlv-dap.
+				if (isDlvDap) {
+					this.skip(); // remotePath is not used in dlv-dap
 				}
 
 				const FILE = path.join(helloWorldLocal, 'main.go');
@@ -2193,6 +2178,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 		// be explicit and prevent resolveDebugConfiguration from picking
 		// a default debugAdapter for us.
 		config['debugAdapter'] = isDlvDap ? 'dlv-dap' : 'legacy';
+		if (withConsole) {
+			config['console'] = withConsole;
+		}
 
 		if (!keepUserLogSettings) {
 			dapTraced = true;
@@ -2201,6 +2189,12 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean) => {
 			config['logOutput'] = isDlvDap ? 'dap,debugger' : 'rpc,debugger';
 			config['showLog'] = true;
 			config['trace'] = 'verbose';
+		}
+
+		// disable version check (like in dlv-dap).
+		if (!isDlvDap) {
+			const dlvFlags = config['dlvFlags'] || [];
+			config['dlvFlags'] = ['--check-go-version=false'].concat(dlvFlags);
 		}
 		// Give each test a distinct debug binary. If a previous test
 		// and a new test use the same binary location, it is possible
@@ -2236,6 +2230,11 @@ suite('Go Debug Adapter Tests (legacy)', function () {
 suite('Go Debug Adapter Tests (dlv-dap)', function () {
 	this.timeout(60_000);
 	testAll(this.ctx, true);
+});
+
+suite('Go Debug Adapter Tests (dlv-dap, console=integratedTerminal)', function () {
+	this.timeout(60_000);
+	testAll(this.ctx, true, 'integratedTerminal');
 });
 
 // DelveDAPDebugAdapterOnSocket runs a DelveDAPOutputAdapter
@@ -2281,10 +2280,62 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 		// forward to DelveDAPDebugAdapter, which will forward to dlv dap.
 		inStream.on('data', (data: Buffer) => this._handleData(data));
-		// handle data from DelveDAPDebugAdapter, that's from dlv dap.
-		this.onDidSendMessage((m) => this._send(m));
+		// DebugClient silently drops reverse requests. Handle runInTerminal request here.
+		this.onDidSendMessage((m) => {
+			if (this.handleRunInTerminal(m)) {
+				return;
+			}
+			this._send(m);
+		});
 
 		inStream.resume();
+	}
+
+	// handleRunInTerminal spawns the requested command and simulates RunInTerminal
+	// handler implementation inside an editor.
+	private _dlvInTerminal: cp.ChildProcess;
+	private handleRunInTerminal(m: vscode.DebugProtocolMessage) {
+		const m0 = m as any;
+		if (m0['type'] !== 'request' || m0['command'] !== 'runInTerminal') {
+			return false;
+		}
+		const json = JSON.stringify(m0);
+		this.log(`<- server: ${json}`);
+
+		const resp = {
+			seq: 0,
+			type: 'response',
+			success: false,
+			request_seq: m0['seq'],
+			command: m0['command'],
+			body: {}
+		};
+
+		if (!this._dlvInTerminal && m0['arguments']?.args?.length > 0) {
+			const args = m0['arguments'].args as string[];
+			const env = m0['arguments'].env ? Object.assign({}, process.env, m0['arguments'].env) : undefined;
+			const p = cp.spawn(args[0], args.slice(1), {
+				cwd: m0['arguments'].cwd,
+				env
+			});
+			// stdout/stderr are supposed to appear in the terminal, but
+			// some of noDebug tests depend on access to stdout/stderr.
+			// For those tests, let's pump the output as OutputEvent.
+			p.stdout.on('data', (chunk) => {
+				this.outputEvent('stdout', chunk.toString());
+			});
+			p.stderr.on('data', (chunk) => {
+				this.outputEvent('stderr', chunk.toString());
+			});
+			resp.success = true;
+			resp.body = { processId: p.pid };
+			this._dlvInTerminal = p;
+		}
+
+		this.log(`-> server: ${JSON.stringify(resp)}`);
+		this.handleMessage(resp);
+
+		return true;
 	}
 
 	private _disposed = false;

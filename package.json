@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -48,43 +48,43 @@
   },
   "extensionDependencies": [],
   "dependencies": {
-    "deep-equal": "^2.0.2",
-    "diff": "^4.0.2",
-    "glob": "^7.1.6",
-    "json-rpc2": "^2.0.0",
-    "moment": "^2.24.0",
-    "semver": "^7.3.2",
+    "deep-equal": "2.0.5",
+    "diff": "4.0.2",
+    "glob": "7.1.7",
+    "json-rpc2": "2.0.0",
+    "moment": "2.29.1",
+    "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.44.0",
-    "vscode-debugadapter-testsupport": "^1.44.0",
-    "vscode-debugprotocol": "^1.44.0",
-    "vscode-languageclient": "^7.0.0",
-    "vscode-languageserver-protocol": "^3.16.0",
-    "web-request": "^1.0.7"
+    "vscode-debugadapter": "1.45.0",
+    "vscode-debugadapter-testsupport": "1.45.0",
+    "vscode-debugprotocol": "1.45.0",
+    "vscode-languageclient": "7.0.0",
+    "vscode-languageserver-protocol": "3.16.0",
+    "web-request": "1.0.7"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.4.33",
-    "@types/deep-equal": "^1.0.1",
-    "@types/fs-extra": "^8.1.0",
-    "@types/glob": "^7.1.1",
-    "@types/mocha": "^7.0.2",
-    "@types/node": "^13.11.1",
-    "@types/semver": "^7.1.0",
-    "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.59.0",
-    "adm-zip": "^0.4.14",
-    "esbuild": "^0.12.21",
-    "fs-extra": "^9.0.0",
-    "get-port": "^5.1.1",
-    "gts": "^3.1.0",
-    "mocha": "^9.1.2",
-    "prettier": "^2.2.1",
-    "sinon": "^9.0.2",
-    "ts-loader": "^7.0.5",
-    "tslint": "^6.1.1",
-    "typescript": "^3.8.3",
-    "vscode-test": "^1.3.0",
-    "yarn": "^1.22.4"
+    "@types/adm-zip": "0.4.33",
+    "@types/deep-equal": "1.0.1",
+    "@types/fs-extra": "8.1.1",
+    "@types/glob": "7.1.3",
+    "@types/mocha": "7.0.2",
+    "@types/node": "13.13.46",
+    "@types/semver": "7.3.4",
+    "@types/sinon": "9.0.11",
+    "@types/vscode": "1.59.0",
+    "@vscode/test-electron": "2.0.2",
+    "adm-zip": "0.4.16",
+    "esbuild": "0.12.21",
+    "fs-extra": "9.1.0",
+    "get-port": "5.1.1",
+    "gts": "3.1.0",
+    "mocha": "9.1.2",
+    "prettier": "2.2.1",
+    "sinon": "9.2.4",
+    "ts-loader": "7.0.5",
+    "tslint": "6.1.3",
+    "typescript": "3.9.9",
+    "yarn": "1.22.10"
   },
   "engines": {
     "vscode": "^1.59.0"
@@ -134,11 +134,20 @@
         "id": "go.mod",
         "filenames": [
           "go.mod",
-          "gopls.mod",
-          "go.work"
+          "gopls.mod"
         ],
         "aliases": [
           "Go Module File"
+        ],
+        "configuration": "./languages/go.mod.language-configuration.json"
+      },
+      {
+        "id": "go.work",
+        "filenames": [
+          "go.work"
+        ],
+        "aliases": [
+          "Go Work File"
         ],
         "configuration": "./languages/go.mod.language-configuration.json"
       },
@@ -152,7 +161,7 @@
         ]
       },
       {
-        "id": "tmpl",
+        "id": "gotmpl",
         "extensions": [
           ".tmpl",
           ".gotmpl"
@@ -786,6 +795,20 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
+              },
+              "console": {
+                "default": "internalConsole",
+                "description": "(Experimental) Where to launch the debugger and the debug target: internal console, integrated terminal, or external terminal. It is ignored in remote debugging.",
+                "enum": [
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
+                ]
+              },
+              "asRoot": {
+                "default": false,
+                "description": "(Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.",
+                "type": "boolean"
               }
             }
           },
@@ -993,6 +1016,20 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Boolean value to indicate whether system goroutines should be hidden from call stack view."
+              },
+              "console": {
+                "default": "internalConsole",
+                "description": "(Experimental) Where to launch the debugger: internal console, integrated terminal, or external terminal. This does not affect tty of the running program. It is ignored in remote debugging.",
+                "enum": [
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
+                ]
+              },
+              "asRoot": {
+                "default": false,
+                "description": "(Experimental) Debug with elevated permissions (on Unix). This requires `integrated` or `external` console modes and is ignored in remote debugging.",
+                "type": "boolean"
               }
             }
           }
@@ -1974,12 +2011,15 @@
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
+              "default": [],
               "scope": "resource"
             },
             "build.directoryFilters": {
               "type": "array",
               "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
-              "default": "[\"-node_modules\"]",
+              "default": [
+                "-node_modules"
+              ],
               "scope": "resource"
             },
             "build.env": {
@@ -2028,7 +2068,7 @@
             "build.templateExtensions": {
               "type": "array",
               "markdownDescription": "templateExtensions gives the extensions of file names that are treateed\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
-              "default": "[\"tmpl\",\"gotmpl\"]",
+              "default": [],
               "scope": "resource"
             },
             "formatting.gofumpt": {

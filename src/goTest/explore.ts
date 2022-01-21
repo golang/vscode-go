@@ -299,6 +299,14 @@ export class GoTestExplorer {
 			return;
 		}
 
+		// If we don't do this, then we attempt to resolve tests in virtual
+		// documents such as those created by the Git, GitLens, and GitHub PR
+		// extensions
+		if (doc.uri.scheme !== 'file') {
+			// TODO This breaks virtual/remote workspace support
+			return;
+		}
+
 		await this.resolver.processDocument(doc, ranges);
 		this.resolver.updateGoTestContext();
 	}

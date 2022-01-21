@@ -492,7 +492,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 		{ language: 'go.mod', scheme: 'file' },
 		{ language: 'go.sum', scheme: 'file' },
 		{ language: 'go.work', scheme: 'file' },
-		{ language: 'tmpl', scheme: 'file' }
+		{ language: 'gotmpl', scheme: 'file' }
 	];
 
 	const c = new LanguageClient(

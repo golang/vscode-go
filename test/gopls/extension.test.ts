@@ -11,6 +11,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
 import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
 import sinon = require('sinon');
+import { getGoVersion, GoVersion } from '../../src/util';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -132,7 +133,11 @@ suite('Go Extension Tests With Gopls', function () {
 	const testdataDir = path.join(projectDir, 'test', 'testdata');
 	const env = new Env();
 
-	suiteSetup(async () => await env.setup(path.resolve(testdataDir, 'gogetdocTestData', 'test.go')));
+	let goVersion: GoVersion;
+	suiteSetup(async () => {
+		await env.setup(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		goVersion = await getGoVersion();
+	});
 	suiteTeardown(() => env.teardown());
 
 	this.afterEach(function () {
@@ -155,7 +160,9 @@ suite('Go Extension Tests With Gopls', function () {
 			[
 				'func Println()',
 				new vscode.Position(19, 6),
-				'func fmt.Println(a ...interface{}) (n int, err error)',
+				goVersion.lt('1.18')
+					? 'func fmt.Println(a ...interface{}) (n int, err error)'
+					: 'func fmt.Println(a ...any) (n int, err error)',
 				'Println formats '
 			],
 			['func print()', new vscode.Position(23, 4), 'func print(txt string)', 'This is an unexported function ']

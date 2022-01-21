@@ -42,7 +42,7 @@ interface RunConfig {
 	options: ProfilingOptions;
 	pkg: TestItem;
 	concat: boolean;
-	record: Map<TestItem, string[]>;
+	record: Map<string, string[]>;
 	functions: Record<string, TestItem>;
 }
 
@@ -320,7 +320,7 @@ export class GoTestRunner {
 				}
 			}
 
-			const record = new Map<TestItem, string[]>();
+			const record = new Map<string, string[]>();
 			const concat = goConfig.get<boolean>('testExplorer.concatenateMessages');
 
 			// https://github.com/golang/go/issues/39904
@@ -583,7 +583,7 @@ export class GoTestRunner {
 	consumeGoTestEvent(
 		run: TestRun,
 		tests: Record<string, TestItem>,
-		record: Map<TestItem, string[]>,
+		record: Map<string, string[]>,
 		complete: Set<TestItem>,
 		concat: boolean,
 		e: GoTestOutput
@@ -612,7 +612,7 @@ export class GoTestRunner {
 
 			case 'fail': {
 				complete.add(test);
-				const messages = this.parseOutput(test, record.get(test) || []);
+				const messages = this.parseOutput(test, record.get(test.id) || []);
 
 				if (!concat) {
 					run.failed(test, messages, e.Elapsed * 1000);
@@ -643,8 +643,8 @@ export class GoTestRunner {
 					break;
 				}
 
-				if (record.has(test)) record.get(test).push(e.Output);
-				else record.set(test, [e.Output]);
+				if (record.has(test.id)) record.get(test.id).push(e.Output);
+				else record.set(test.id, [e.Output]);
 				break;
 		}
 	}

@@ -12,11 +12,10 @@ import getPort = require('get-port');
 import path = require('path');
 import * as fs from 'fs';
 import * as net from 'net';
-import { getTool } from './goTools';
-import { Logger, TimestampedLogger } from './goLogging';
+import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
-import { toolExecutionEnvironment } from './goEnv';
+import { envPath, getBinPathFromEnvVar } from './utils/pathUtils';
 
 export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
@@ -80,9 +79,10 @@ export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerF
 					requestsSent > 0 &&
 					responsesReceived === 0 // happens when the rpc server doesn't understand DAP
 				) {
-					logger.warn(
-						"'remote' mode with 'dlv-dap' debugAdapter must connect to an external headless server started with dlv @ v1.7.3 or later.\n"
-					);
+					const err =
+						'Expected to connect to external `dlv --headless` server @ v1.7.3 or later via DAP. Older versions fail with "error layer=rpc rpc:invalid character \'C\' looking for beginning of value" logged to the terminal.\n';
+					logger.warn(err);
+					vscode.window.showErrorMessage(err);
 				}
 				logger.debug(`session ${session.id} will stop\n`);
 			},
@@ -220,16 +220,40 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	constructor(private configuration: vscode.DebugConfiguration, logger?: Logger) {
 		super(logger);
-		this.connected = this.startAndConnectToServer();
 	}
 
 	private connected: Promise<{ connected: boolean; reason?: any }>;
 	private dlvDapServer: ChildProcess;
-	private port: number;
 	private socket: net.Socket;
 	private terminatedOnError = false;
 
+	protected sendMessageToClient(message: vscode.DebugProtocolMessage) {
+		const m = message as any;
+		if (m.type === 'request') {
+			logVerbose(`do not forward reverse request: dropping ${JSON.stringify(m)}`);
+			return;
+		}
+
+		super.sendMessageToClient(message);
+	}
+
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
+		const m = message as any;
+		if (m.type === 'response') {
+			logVerbose(`do not forward reverse request response: dropping ${JSON.stringify(m)}`);
+			return;
+		}
+
+		if (!this.connected) {
+			if (m.type === 'request' && m.command === 'initialize') {
+				this.connected = this.launchDelveDAP();
+			} else {
+				this.connected = Promise.resolve({
+					connected: false,
+					reason: `the first message must be an initialize request, got ${JSON.stringify(m)}`
+				});
+			}
+		}
 		const { connected, reason } = await this.connected;
 		if (connected) {
 			super.sendMessageToServer(message);
@@ -241,7 +265,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			this.outputEvent('stderr', errMsg);
 			this.sendMessageToClient(new TerminatedEvent());
 		}
-		if ((message as any).type === 'request') {
+		if (m.type === 'request') {
 			const req = message as DebugProtocol.Request;
 			this.sendMessageToClient({
 				seq: 0,
@@ -297,21 +321,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		});
 	}
 
-	private async startAndConnectToServer() {
+	private async launchDelveDAP() {
 		try {
-			const { dlvDapServer, socket } = await startDapServer(
-				this.configuration,
-				(msg) => this.outputEvent('stdout', msg),
-				(msg) => this.outputEvent('stderr', msg),
-				(msg) => {
-					this.outputEvent('console', msg);
-					// Some log messages generated after vscode stops the debug session
-					// may not appear in the DEBUG CONSOLE. For easier debugging, log
-					// the messages through the logger that prints to Go Debug output
-					// channel.
-					this.logger?.info(msg);
-				}
-			);
+			const { dlvDapServer, socket } = await this.startDapServer(this.configuration);
 
 			this.dlvDapServer = dlvDapServer;
 			this.socket = socket;
@@ -319,44 +331,149 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		} catch (err) {
 			return { connected: false, reason: err };
 		}
-		this.logger?.debug(`Running dlv dap server: port=${this.port} pid=${this.dlvDapServer.pid}\n`);
+		this.logger?.debug(`Running dlv dap server: pid=${this.dlvDapServer?.pid}\n`);
 		return { connected: true };
 	}
 
-	private outputEvent(dest: string, output: string, data?: any) {
+	protected outputEvent(dest: string, output: string, data?: any) {
 		this.sendMessageToClient(new OutputEvent(output, dest, data));
+	}
+
+	async startDapServer(
+		configuration: vscode.DebugConfiguration
+	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+		const log = (msg: string) => this.outputEvent('stdout', msg);
+		const logErr = (msg: string) => this.outputEvent('stderr', msg);
+		const logConsole = (msg: string) => {
+			this.outputEvent('console', msg);
+			// Some log messages generated after vscode stops the debug session
+			// may not appear in the DEBUG CONSOLE. For easier debugging, log
+			// the messages through the logger that prints to Go Debug output
+			// channel.
+			this.logger?.info(msg);
+		};
+
+		// If a port has been specified, assume there is an already
+		// running dap server to connect to. Otherwise, we start the dlv dap server.
+		const dlvExternallyLaunched = !!configuration.port;
+
+		if (
+			!dlvExternallyLaunched &&
+			(configuration.console === 'integratedTerminal' || configuration.console === 'externalTerminal')
+		) {
+			return this.startDAPServerWithClientAddrFlag(configuration, logErr);
+		}
+		const host = configuration.host || '127.0.0.1';
+		const port = configuration.port || (await getPort());
+
+		const dlvDapServer = dlvExternallyLaunched
+			? undefined
+			: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+
+		const socket = await new Promise<net.Socket>((resolve, reject) => {
+			// eslint-disable-next-line prefer-const
+			let timer: NodeJS.Timeout;
+			const s = net.createConnection(port, host, () => {
+				clearTimeout(timer);
+				resolve(s);
+			});
+			timer = setTimeout(() => {
+				reject('connection timeout');
+				s?.destroy();
+			}, 1000);
+		});
+
+		return { dlvDapServer, socket };
+	}
+
+	async startDAPServerWithClientAddrFlag(
+		launchAttachArgs: vscode.DebugConfiguration,
+		logErr: (msg: string) => void
+	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+		// This is called only when launchAttachArgs.console === 'integratedTerminal' | 'externalTerminal' currently.
+		const console = (launchAttachArgs as any).console === 'externalTerminal' ? 'external' : 'integrated';
+
+		const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
+
+		// logDest - unlike startDAPServer that relies on piping log messages to a file descriptor
+		// using --log-dest, we can pass the user-specified logDest directly to the flag.
+		const logDest = launchAttachArgs.logDest;
+		if (logDest) {
+			dlvArgs.push(`--log-dest=${logDest}`);
+		}
+
+		dlvArgs.unshift(dlvPath);
+
+		if (launchAttachArgs.asRoot === true && process.platform !== 'win32') {
+			const sudo = getSudo();
+			if (sudo) {
+				dlvArgs.unshift(sudo);
+			} else {
+				throw new Error('Failed to find "sudo" utility');
+			}
+		}
+
+		try {
+			const port = await getPort();
+			const rendezvousServerPromise = waitForDAPServer(port, 30_000);
+
+			dlvArgs.push(`--client-addr=:${port}`);
+
+			super.sendMessageToClient({
+				seq: 0,
+				type: 'request',
+				command: 'runInTerminal',
+				arguments: {
+					kind: console,
+					title: `Go Debug Terminal (${launchAttachArgs.name})`,
+					cwd: dir,
+					args: dlvArgs,
+					env: env
+				}
+			});
+			const socket = await rendezvousServerPromise;
+			return { socket };
+		} catch (err) {
+			logErr(`Failed to launch dlv: ${err}`);
+			throw new Error('cannot launch dlv dap. See DEBUG CONSOLE');
+		}
 	}
 }
 
-async function startDapServer(
-	configuration: vscode.DebugConfiguration,
-	log: (msg: string) => void,
-	logErr: (msg: string) => void,
-	logConsole: (msg: string) => void
-): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
-	const host = configuration.host || '127.0.0.1';
-	const port = configuration.port || (await getPort());
+let sudoPath: string | null | undefined = undefined;
+function getSudo(): string | null {
+	if (sudoPath === undefined) {
+		sudoPath = getBinPathFromEnvVar('sudo', envPath, false);
+	}
+	return sudoPath;
+}
 
-	// If a port has been specified, assume there is an already
-	// running dap server to connect to. Otherwise, we start the dlv dap server.
-	const dlvDapServer = configuration.port
-		? undefined
-		: await spawnDlvDapServerProcess(configuration, host, port, log, logErr, logConsole);
+function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
+	return new Promise((resolve, reject) => {
+		let s: net.Server = undefined;
+		const timeoutToken = setTimeout(() => {
+			if (s?.listening) {
+				s.close();
+			}
+			reject(new Error('timed out while waiting for DAP in reverse mode to connect'));
+		}, timeoutMs);
 
-	const socket = await new Promise<net.Socket>((resolve, reject) => {
-		// eslint-disable-next-line prefer-const
-		let timer: NodeJS.Timeout;
-		const s = net.createConnection(port, host, () => {
-			clearTimeout(timer);
-			resolve(s);
+		s = net.createServer({ pauseOnConnect: true }, (socket) => {
+			logVerbose(
+				`connected: ${port} (remote: ${socket.remoteAddress}:${socket.remotePort} local: ${socket.localAddress}:${socket.localPort})`
+			);
+			clearTimeout(timeoutToken);
+			s.close(); // accept no more connection
+			socket.resume();
+			resolve(socket);
 		});
-		timer = setTimeout(() => {
-			reject('connection timeout');
-			s?.destroy();
-		}, 1000);
+		s.on('error', (err) => {
+			logVerbose(`connection error ${err}`);
+			reject(err);
+		});
+		s.maxConnections = 1;
+		s.listen(port);
 	});
-
-	return { dlvDapServer, socket };
 }
 
 function spawnDlvDapServerProcess(
@@ -367,48 +484,12 @@ function spawnDlvDapServerProcess(
 	logErr: (msg: string) => void,
 	logConsole: (msg: string) => void
 ): Promise<ChildProcess> {
-	const launchArgsEnv = launchAttachArgs.env || {};
-	const goToolsEnvVars = toolExecutionEnvironment();
-	// launchArgsEnv is user-requested env vars (envFiles + env).
-	const env = Object.assign(goToolsEnvVars, launchArgsEnv);
+	const { dlvArgs, dlvPath, dir, env } = getSpawnConfig(launchAttachArgs, logErr);
+	// env does not include process.env. Construct the new env for process spawning
+	// by combining process.env.
+	const envForSpawn = env ? Object.assign({}, process.env, env) : undefined;
 
-	const dlvPath = launchAttachArgs.dlvToolPath ?? getTool('dlv-dap');
-
-	if (!fs.existsSync(dlvPath)) {
-		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
-		logErr(
-			`Couldn't find dlv-dap at the Go tools path, ${process.env['GOPATH']}${
-				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
-			} or ${envPath}\n` +
-				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/debugging.md#getting-started.\n'
-		);
-		throw new Error('Cannot find Delve debugger (dlv dap)');
-	}
-	let dir = getWorkspaceFolderPath();
-	if (launchAttachArgs.request === 'launch' && launchAttachArgs['__buildDir']) {
-		// __buildDir is the directory determined during resolving debug config
-		dir = launchAttachArgs['__buildDir'];
-	}
-
-	const dlvArgs = new Array<string>();
-	dlvArgs.push('dap');
-	// When duplicate flags are specified,
-	// dlv doesn't mind but accepts the last flag value.
-	// Add user-specified dlv flags first except
-	//  --check-go-version that we want to disable by default but allow users to override.
-	dlvArgs.push('--check-go-version=false');
-	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
-		dlvArgs.push(...launchAttachArgs.dlvFlags);
-	}
 	dlvArgs.push(`--listen=${host}:${port}`);
-	if (launchAttachArgs.showLog) {
-		dlvArgs.push('--log=' + launchAttachArgs.showLog.toString());
-		// Only add the log output flag if we have already added the log flag.
-		// Otherwise, delve complains.
-		if (launchAttachArgs.logOutput) {
-			dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
-		}
-	}
 
 	const onWindows = process.platform === 'win32';
 
@@ -445,7 +526,7 @@ function spawnDlvDapServerProcess(
 	return new Promise<ChildProcess>((resolve, reject) => {
 		const p = spawn(dlvPath, dlvArgs, {
 			cwd: dir,
-			env,
+			env: envForSpawn,
 			stdio: onWindows ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3 if !onWindows.
 		});
 		let started = false;
@@ -515,4 +596,52 @@ function spawnDlvDapServerProcess(
 			}
 		});
 	});
+}
+
+// getSpawnConfig returns the dlv args, directory, and dlv path necessary to spawn the dlv command.
+// It also returns `env` that is the additional environment variables users want to run the dlv
+// and the debuggee (i.e., go.toolsEnvVars, launch configuration's env and envFile) with.
+function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (msg: string) => void) {
+	// launchArgsEnv is user-requested env vars (envFiles + env + toolsEnvVars).
+	const env = launchAttachArgs.env;
+	const dlvPath = launchAttachArgs.dlvToolPath ?? 'dlv';
+
+	if (!fs.existsSync(dlvPath)) {
+		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+		logErr(
+			`Couldn't find ${dlvPath} at the Go tools path, ${process.env['GOPATH']}${
+				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
+			} or ${envPath}\n` +
+				'Follow the setup instruction in https://github.com/golang/vscode-go/blob/master/docs/debugging.md#getting-started.\n'
+		);
+		throw new Error('Cannot find Delve debugger (dlv dap)');
+	}
+	let dir = getWorkspaceFolderPath();
+	if (launchAttachArgs.request === 'launch' && launchAttachArgs['__buildDir']) {
+		// __buildDir is the directory determined during resolving debug config
+		dir = launchAttachArgs['__buildDir'];
+	}
+
+	const dlvArgs = new Array<string>();
+	dlvArgs.push('dap');
+
+	// TODO(hyangah): if Go version is higher than what the delve can support, we need to warn users.
+
+	// When duplicate flags are specified,
+	// dlv doesn't mind but accepts the last flag value.
+	// Add user-specified dlv flags first except
+	//  --check-go-version that we want to disable by default but allow users to override.
+	dlvArgs.push('--check-go-version=false');
+	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
+		dlvArgs.push(...launchAttachArgs.dlvFlags);
+	}
+	if (launchAttachArgs.showLog) {
+		dlvArgs.push('--log=' + launchAttachArgs.showLog.toString());
+		// Only add the log output flag if we have already added the log flag.
+		// Otherwise, delve complains.
+		if (launchAttachArgs.logOutput) {
+			dlvArgs.push('--log-output=' + launchAttachArgs.logOutput);
+		}
+	}
+	return { dlvArgs, dlvPath, dir, env };
 }

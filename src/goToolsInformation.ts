@@ -203,10 +203,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.12'),
-		latestVersion: semver.parse('v0.7.1'),
-		latestVersionTimestamp: moment('2021-08-02', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.7.1'),
-		latestPrereleaseVersionTimestamp: moment('2021-08-02', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.7.5'),
+		latestVersionTimestamp: moment('2022-01-18', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.7.5'),
+		latestPrereleaseVersionTimestamp: moment('2022-01-18', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
@@ -215,19 +215,9 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Go debugger (Delve)',
+		latestVersion: semver.parse('v1.6.1'), // minimum version that supports DAP
+		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
 		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
-	},
-	'dlv-dap': {
-		name: 'dlv-dap',
-		importPath: 'github.com/go-delve/delve/cmd/dlv',
-		modulePath: 'github.com/go-delve/delve',
-		replacedByGopls: false,
-		isImportant: true,
-		description: 'Go debugger & debug adapter (Delve DAP)',
-		defaultVersion: '2f13672765fe', // pinned version
-		minimumGoVersion: semver.coerce('1.12'), // dlv requires 1.12+ for build
-		latestVersion: semver.parse('v1.7.3-0.20211026171155-b48ceec161d5'),
-		latestVersionTimestamp: moment('2021-10-26', 'YYYY-MM-DD')
 	},
 	'fillstruct': {
 		name: 'fillstruct',
