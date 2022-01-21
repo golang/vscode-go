@@ -1870,7 +1870,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 						callback(await dc.stepInRequest(args));
 						break;
 					case 'step out':
-						callback(await dc.stepOutRequest(args));
+						reject(new Error(`cannot use this test for ${stepFunction}`));
 						break;
 					default:
 						reject(new Error(`not a valid step function ${stepFunction}`));
@@ -1906,14 +1906,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				this.skip();
 			}
 			await runSwitchGoroutineTest('step in');
-		});
-
-		test('step out', async function () {
-			if (!isDlvDap) {
-				// Not implemented in the legacy adapter.
-				this.skip();
-			}
-			await runSwitchGoroutineTest('step out');
 		});
 	});
 
