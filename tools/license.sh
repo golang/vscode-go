@@ -30,7 +30,7 @@ YARN="${ROOT}/node_modules/.bin/yarn"
 $YARN import
 
 ALL_LICENSES=$(
-  $YARN licenses list --json --no-progress 2>/dev/null|
+  $YARN licenses list --json --no-progress --prod 2>/dev/null|
   jq 'select(.type == "table") | .data.body | map( {name: .[0], version: .[1], license: .[2], url: .[3], verndor: .[4], vendorName: .[5]} )')
 
 NG=$(echo "${ALL_LICENSES}" | jq '
