@@ -431,7 +431,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	 */
 	async function setUpRemoteAttach(config: DebugConfiguration, breakpoints: ILocation[] = []): Promise<void> {
 		const debugConfig = await initializeDebugConfig(config);
-		console.log('Sending initializing request for remote attach setup.');
 		const initializedResult = await dc.initializeRequest();
 		assert.ok(initializedResult.success);
 
@@ -1780,7 +1779,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('switch goroutine', () => {
-		async function findParkedGoroutine(file: string): Promise<number> {
+		async function continueAndFindParkedGoroutine(file: string): Promise<number> {
 			// Find a goroutine that is stopped in parked.
 			const bp = getBreakpointLocation(file, 8);
 			await dc.setBreakpointsRequest({ source: { path: bp.path }, breakpoints: [bp] });
@@ -1806,8 +1805,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				const threads = await dc.threadsRequest();
 
 				// Search for a parked goroutine that we know for sure will have to be
-				// resumed before the program can exit. This is a parked goroutine that:
-				// 1. is executing main.sayhi
+				// resumed before the program can exit. This is a goroutine that:
+				// 1. is executing main.hi
 				// 2. hasn't called wg.Done yet
 				// 3. is not the currently selected goroutine
 				for (let i = 0; i < threads.body.threads.length; i++) {
@@ -1818,8 +1817,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					const st = await dc.stackTraceRequest({ threadId: g.id, startFrame: 0, levels: 5 });
 					for (let j = 0; j < st.body.stackFrames.length; j++) {
 						const frame = st.body.stackFrames[j];
-						// line 11 is the line where wg.Done is called
-						if (frame.name === 'main.sayhi' && frame.line < 11) {
+						if (frame.name === 'main.hi') {
 							parkedGoid = g.id;
 							break;
 						}
@@ -1838,20 +1836,20 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		async function runSwitchGoroutineTest(stepFunction: string) {
 			const PROGRAM = path.join(DATA_ROOT, 'goroutineTest');
 			const FILE = path.join(PROGRAM, 'main.go');
-			const BREAKPOINT_LINE_MAIN_RUN = 15;
 
 			const config = {
 				name: 'Launch',
 				type: 'go',
 				request: 'launch',
 				mode: 'debug',
-				program: PROGRAM
+				program: PROGRAM,
+				stopOnEntry: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			// Set a breakpoint in main.
-			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE_MAIN_RUN));
 
-			const parkedGoid = await findParkedGoroutine(FILE);
+			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('stopped')]);
+
+			const parkedGoid = await continueAndFindParkedGoroutine(FILE);
 
 			// runStepFunction runs the necessary step function and resolves if it succeeded.
 			async function runStepFunction(
@@ -1871,7 +1869,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 						callback(await dc.stepInRequest(args));
 						break;
 					case 'step out':
-						reject(new Error(`cannot use this test for ${stepFunction}`));
+						callback(await dc.stepOutRequest(args));
 						break;
 					default:
 						reject(new Error(`not a valid step function ${stepFunction}`));
@@ -1890,6 +1888,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 						assert.strictEqual(event.body.threadId, parkedGoid);
 					})
 				]);
+			} else {
+				console.log('Unable to find a goroutine to step.');
 			}
 		}
 
@@ -1902,6 +1902,14 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		test('step in', async function () {
+			if (!isDlvDap) {
+				// Not implemented in the legacy adapter.
+				this.skip();
+			}
+			await runSwitchGoroutineTest('step in');
+		});
+
+		test('step out', async function () {
 			if (!isDlvDap) {
 				// Not implemented in the legacy adapter.
 				this.skip();

@@ -6,9 +6,13 @@ import (
 )
 
 func sayhi(n int, wg *sync.WaitGroup) {
-	fmt.Println("hi", n)
-	fmt.Println("hi", n)
+	hi(n)
 	wg.Done()
+}
+
+func hi(n int) {
+	fmt.Println("hi", n)
+	fmt.Println("hi", n)
 }
 
 func main() {
