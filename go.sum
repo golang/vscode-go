@@ -638,6 +638,8 @@ github.com/spf13/pflag v1.0.1/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnIn
 github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/stamblerre/work-stats v0.0.0-20210726215650-a14fc877fae7 h1:yZLmB9oK2DoOIQ/62SSC4PVg0LtYTXvsak9cW+O2umw=
 github.com/stamblerre/work-stats v0.0.0-20210726215650-a14fc877fae7/go.mod h1:dM4zJ9OuZuchdonBFCaFef0ZAnZuuCgX4WDLlUm6+RM=
+github.com/stamblerre/work-stats v0.0.0-20211013195910-92098c96a21a h1:p2dmgMcxN88UcGsvwD0GjDAEfjFZGjDdvpuT+O3YV70=
+github.com/stamblerre/work-stats v0.0.0-20211013195910-92098c96a21a/go.mod h1:dM4zJ9OuZuchdonBFCaFef0ZAnZuuCgX4WDLlUm6+RM=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a/go.mod h1:qNTQ5P5JnDBl6z3cMAg/SywNDC5ABu5ApDIw6lUbRmI=
