@@ -71,7 +71,7 @@
     "@types/mocha": "7.0.2",
     "@types/node": "13.13.46",
     "@types/semver": "7.3.4",
-    "@types/sinon": "9.0.11",
+    "@types/sinon": "10.0.8",
     "@types/vscode": "1.59.0",
     "@vscode/test-electron": "2.0.2",
     "adm-zip": "0.4.16",
