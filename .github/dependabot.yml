@@ -9,4 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    allow:
+      # Allow updates for Lodash
+      - dependency-name: "nanoid"
     open-pull-requests-limit: 10
