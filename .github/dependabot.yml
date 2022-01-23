@@ -10,6 +10,6 @@ updates:
     schedule:
       interval: "daily"
     allow:
-      # Allow updates for Lodash
+      # Allow updates for Lodashh
       - dependency-name: "nanoid"
     open-pull-requests-limit: 10
