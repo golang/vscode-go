@@ -172,6 +172,7 @@ suite('Go Test Resolver', () => {
 						func TestFoo(*testing.T) {}
 						func BenchmarkBar(*testing.B) {}
 						func ExampleBaz() {}
+						func FuzzFuss(*testing.F) {}
 					`
 				},
 				item: [
@@ -181,7 +182,8 @@ suite('Go Test Resolver', () => {
 				expect: [
 					'file:///src/proj/main_test.go?test#TestFoo',
 					'file:///src/proj/main_test.go?benchmark#BenchmarkBar',
-					'file:///src/proj/main_test.go?example#ExampleBaz'
+					'file:///src/proj/main_test.go?example#ExampleBaz',
+					'file:///src/proj/main_test.go?fuzz#FuzzFuss'
 				]
 			}
 		}
