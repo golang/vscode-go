@@ -27,7 +27,7 @@ import { walk, WalkStop } from './walk';
 
 export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
 
-const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example)($|\P{Ll}.*))/u;
+const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example|Fuzz)($|\P{Ll}.*))/u;
 const testMethodRegex = /^\(\*(?<type>[^)]+)\)\.(?<name>(?<kind>Test)($|\P{Ll}.*))$/u;
 const runTestSuiteRegex = /^\s*suite\.Run\(\w+,\s*(?:&?(?<type1>\w+)\{\}|new\((?<type2>\w+)\))\)/mu;
 
@@ -393,7 +393,7 @@ export class GoTestResolver {
 		return suite;
 	}
 
-	// Recursively process a Go AST symbol. If the symbol represents a test,
+	// Recursively process a Go AST symbol. If the symbol represents a test, fuzz test,
 	// benchmark, or example function, a test item will be created for it, if one
 	// does not already exist. If the symbol is not a function and contains
 	// children, those children will be processed recursively.

@@ -13,14 +13,15 @@ import { GoTestResolver } from './resolve';
 // - A 'package' is a folder that contains .go files (and is not a module)
 // - A 'file' is a file ending with _test.go
 // - A 'test' is a Go test, e.g. func TestXxx(t *testing.T)
-// - A 'benchmark' is a Go benchmark, e.g. func BenchmarkXxx(t *testing.T)
+// - A 'benchmark' is a Go benchmark, e.g. func BenchmarkXxx(t *testing.B)
+// - A 'fuzz' is a Fuzz test, e.g., func TestFuzz(f *testing.F)
 // - An 'example' is a Go example, e.g. func ExampleXxx()
 //
 // The top-level test item for a workspace folder is always either a module or a
 // workspace. If the user opens a file (containing tests) that is not contained
 // within any workspace folder, a top-level package will be created as a parent
 // of that file.
-export type GoTestKind = 'module' | 'workspace' | 'package' | 'file' | 'test' | 'benchmark' | 'example';
+export type GoTestKind = 'module' | 'workspace' | 'package' | 'file' | 'test' | 'benchmark' | 'fuzz' | 'example';
 
 export class GoTest {
 	// Constructs an ID for an item. The ID of a test item consists of the URI
@@ -34,6 +35,7 @@ export class GoTest {
 	// - File:      file:///path/to/mod/file.go?file
 	// - Test:      file:///path/to/mod/file.go?test#TestXxx
 	// - Benchmark: file:///path/to/mod/file.go?benchmark#BenchmarkXxx
+	// - Fuzz:      file:///path/to/mod/file.go?test#FuzzXxx
 	// - Example:   file:///path/to/mod/file.go?example#ExampleXxx
 	static id(uri: vscode.Uri, kind: GoTestKind, name?: string): string {
 		uri = uri.with({ query: kind });
@@ -49,7 +51,7 @@ export class GoTest {
 		const u = vscode.Uri.parse(id);
 		const kind = u.query as GoTestKind;
 		const name = u.fragment;
-		return { name, kind };
+		return { kind, name };
 	}
 }
 
