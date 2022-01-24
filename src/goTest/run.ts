@@ -477,14 +477,16 @@ export class GoTestRunner {
 	}
 
 	// Resolve a test name to a test item. If the test name is TestXxx/Foo, Foo is
-	// created as a child of TestXxx. The same is true for TestXxx#Foo and
-	// TestXxx/#Foo.
+	// created as a child of TestXxx.
 	resolveTestName(tests: Record<string, TestItem>, name: string): TestItem | undefined {
 		if (!name) {
 			return;
 		}
 
-		const re = /[#/]+/;
+		// Heuristically determines whether a test is a subtest by checking the existence of "/".
+		// BUG: go test does not escape "/" included in the name passed to t.Run, so that
+		// can result in confusing presentation.
+		const re = /\/+/;
 
 		const resolve = (parent?: TestItem, start = 0, length = 0): TestItem | undefined => {
 			const pos = start + length;

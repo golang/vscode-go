@@ -144,6 +144,12 @@ suite('Go Test Runner', () => {
 			const tSub = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub'));
 			assert(tSub, 'Subtest was not created');
 
+			console.log('Locate subtests with conflicting names');
+			const tSub2 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01'));
+			assert(tSub2, 'Subtest #01 was not created');
+			const tSub3 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01#01'));
+			assert(tSub3, 'Subtest #01#01 was not created');
+
 			// Run subtest by itself
 			console.log('Run subtest by itself');
 			assert(await testExplorer.runner.run({ include: [tSub] }), 'Failed to execute `go test`');
