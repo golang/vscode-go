@@ -15,6 +15,7 @@ This document describes the features supported by this extension.
   * [Find interface implementations](#find-interface-implementations)
   * [Document outline](#document-outline)
   * [Toggle between code and tests](#toggle-between-code-and-tests)
+* [Syntax Highlighting](#syntax-highlighting)
 * [Code Editing](#code-editing)
   * [Snippets](#snippets)
   * [Format and organize imports](#format-and-organize-imports)
@@ -103,6 +104,19 @@ Quickly toggle between a file and its corresponding test file by using the [`Go:
 
 <div style="text-align: center;"><img src="images/toggletestfile.gif" alt="Toggle between reverse.go and reverse_test.go" style="width: 75%"> </div>
 
+
+## Syntax Highlighting
+
+The default syntax highlighting for Go files is implemented in Visual Studio Code using TextMate grammar, not by this extension.
+
+If you are using `gopls`, you can enable [Semantic Highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide) for more accurate syntax highlighting based on semantic tokenization using `"gopls": { "ui.semanticTokens": true }`.
+
+### Go template syntax highlighting
+
+When `gopls`'s semantic tokens feature is enabled, `gopls` also provides semantic tokens for Go template files (language identifier: `gotmpl`). By default, the extension associates all `*.tmpl` or `*.gotmpl` files in the workspace with `gotmpl` language. Users can override the language mode by using Visual Studio Code's UI or the `"files.associations"` setting. See [Visual Studio Code's doc](https://code.visualstudio.com/docs/languages/overview#_changing-the-language-for-the-selected-file) for more details.
+
+<div style="text-align: center;"><img src="images/gotmpl.gif" alt="Enable Go template language support by changing the language ID" style="width: 75%"> </div>
+
 ## Code Editing
 
 ### [Snippets](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
@@ -115,12 +129,15 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 Format code and organize imports, either manually or on save.
 
+The extension formats Go code, organizes imports, and removes unused imports by default. For different behavior, please override per-language default settings following [the instruction](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#formatting-code-and-organizing-imports).
+
+When organizing imports, the imported packages are grouped in the default `goimports` style. In order to group some packages after 3rd-party packages, use [`"gopls": { "formatting.local": <comma-separated imports prefix>}`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#formattinglocal).
+
 #### Add import
 
-Manually add a new import to your file through the [`Go: Add Import`](commands.md#go-add-import) command. Available packages are offered from your `GOPATH` and module cache.
+The extension organizes imports automatically and can add missing imports if the package is present in your module cache already. However, you can also manually add a new import to your file through the [`Go: Add Import`](commands.md#go-add-import) command. Available packages are offered from module cache (or from your `GOPATH` in GOPATH mode).
 
 <div style="text-align: center;"><img src="images/addimport.gif" alt="Add byte import to Go file" style="width: 75%"> </div>
-
 
 ### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
 
