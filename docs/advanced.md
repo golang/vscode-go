@@ -5,25 +5,30 @@ extension.
 
 ## Using Go1.18
 
-Go 1.18 introduces significant changes to the language and tooling including
-Generics, Fuzzing, and `go.work` Workspace mode. 
-The latest Go extension (v0.31.0+, or [Nightly](./nightly.md)) supports most 
-of the new Go 1.18 features with the following configuration.
+The latest Go extension (`v0.31.0+` or [Nightly](./nightly.md))
+contains experimental support for the [new Go 1.18 features](https://tip.golang.org/doc/go1.18).
 
-1. Get the preview of Go 1.18 by visiting [the official Go downloads page](https://go.dev/dl/#go1.18beta2).
-The following command will install `go1.18beta2` binary in your `$GOPATH/bin`
+* [Generics](https://go.dev/doc/tutorial/generics): IntelliSense, Code Editing, Diagnostics, Sytax Highlighting, etc.
+* [Fuzzing](https://go.dev/doc/tutorial/fuzz): Run/Debug Test using CodeLens and Test UI (available in Nightly).
+* [Go workspace mode](https://pkg.go.dev/cmd/go@go1.18beta1#hdr-Workspace_maintenance): _WIP_
+
+The latest Go extension (v0.31.0+, or [Nightly](./nightly.md)) supports most of the new Go 1.18 features with
+the following configuration.
+
+1. Get the preview of Go 1.18 by visiting [the official Go downloads page](https://go.dev/dl/#go1.18beta1).
+The following command will install `go1.18beta1` binary in your `$GOPATH/bin`
 or `GOBIN` directory, and download the Go 1.18 SDK.
     ```sh
-    go install golang.org/dl/go1.18beta2@latest
-    go1.18beta2 download
+    go install golang.org/dl/go1.18beta1@latest
+    go1.18beta1 download
     ```
 
     The location of the downloaded Go 1.18 SDK directory can be found with
     ```sh
-    go1.18beta2 GOROOT
+    go1.18beta1 GOROOT
     ```
 
-2. Configure the extension to use `go1.18beta2`
+2. Configure the extension to use `go1.18beta1`
 (or the `go` binary in the Go 1.18 SDK `bin` directory), using [one of
 the options listed below](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#choosing-a-different-version-of-go).
 
@@ -41,14 +46,16 @@ by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vsc
 ### Known Issues
 
 The Go Tools team are actively working on fixing bugs and improving usability
-of the new Go 1.18 features. Please take a look at current known issues in [`vscode-go` repo]](https://github.com/golang/vscode-go/issues?q=is%3Aissue+label%3Ago1.18+) and [`gopls` repo](https://github.com/golang/go/milestone/244).
+of the new Go 1.18 features. Please take a look at current known
+[`vscode-go` issues](https://github.com/golang/vscode-go/issues?q=is%3Aissue+label%3Ago1.18+)
+and [`gopls` issues](https://github.com/golang/go/milestone/244).
 
-  * Generics support for 3rd party tools including linter tools (`staticcheck`, `golangci-lint`, ...)
-are still work in progress ([Tracking issue](https://github.com/golang/go/issues/50558)).
-  * Support for `go.work` is still in progress.
+  * Features that depend on 3rd party tools (`staticcheck`, `golangci-lint`, ...) may not work yet.
+  Please follow the [tracking issue](https://github.com/golang/go/issues/50558).
+  * Support for `go.work` is a work in progress.
 
 In order to pick up the latest fixes, please consider to use the [Nightly](./nightly.md) version of
-Go extension. We plan to make prereleases of `gopls` v0.8.0 available frequently.
+the extension. We plan to make prereleases of `gopls` v0.8.0 available frequently.
 The Nightly version installs the pre-release version of `gopls`, so you will be able to pick up the
 latest bug fixes of `gopls` without manual installation.
 
