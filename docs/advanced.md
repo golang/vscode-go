@@ -3,6 +3,55 @@
 This document describes more advanced ways of working with the VS Code Go
 extension.
 
+## Using Go1.18
+
+Go 1.18 introduces significant changes to the language and tooling including
+Generics, Fuzzing, and `go.work` Workspace mode. 
+The latest Go extension (v0.31.0+, or [Nightly](./nightly.md)) supports most 
+of the new Go 1.18 features with the following configuration.
+
+1. Get the preview of Go 1.18 by visiting [the official Go downloads page](https://go.dev/dl/#go1.18beta2).
+The following command will install `go1.18beta2` binary in your `$GOPATH/bin`
+or `GOBIN` directory, and download the Go 1.18 SDK.
+    ```sh
+    go install golang.org/dl/go1.18beta2@latest
+    go1.18beta2 download
+    ```
+
+    The location of the downloaded Go 1.18 SDK directory can be found with
+    ```sh
+    go1.18beta2 GOROOT
+    ```
+
+2. Configure the extension to use `go1.18beta2`
+(or the `go` binary in the Go 1.18 SDK `bin` directory), using [one of
+the options listed below](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#choosing-a-different-version-of-go).
+
+3. In order to process the new language features, [tools](./tools.md) this extension
+needs rebuilding with Go 1.18. **Please run the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools)
+command to update tools**.
+
+4. (optional) for correct syntax highlighting, we recommend to enable 
+[semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
+by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uisemantictokens).
+    ```
+    "gopls": { "ui.semanticTokens": true }
+    ```
+
+### Known Issues
+
+The Go Tools team are actively working on fixing bugs and improving usability
+of the new Go 1.18 features. Please take a look at current known issues in [`vscode-go` repo]](https://github.com/golang/vscode-go/issues?q=is%3Aissue+label%3Ago1.18+) and [`gopls` repo](https://github.com/golang/go/milestone/244).
+
+  * Generics support for 3rd party tools including linter tools (`staticcheck`, `golangci-lint`, ...)
+are still work in progress ([Tracking issue](https://github.com/golang/go/issues/50558)).
+  * Support for `go.work` is still in progress.
+
+In order to pick up the latest fixes, please consider to use the [Nightly](./nightly.md) version of
+Go extension. We plan to make prereleases of `gopls` v0.8.0 available frequently.
+The Nightly version installs the pre-release version of `gopls`, so you will be able to pick up the
+latest bug fixes of `gopls` without manual installation.
+
 ## Choosing a different version of Go
 
 The extension chooses the `go` command using the `PATH` (or `Path`) environment
