@@ -22,16 +22,20 @@ Please answer these questions before submitting your issue. Thanks!
 ### What version of Go, VS Code & VS Code Go extension are you using?
 <details><summary>Version Information</summary><br>
 
-* Run `go version` to get version of Go from _the VS Code integrated terminal_.
-	- <Paste go version here>
-* Run `gopls -v version` to get version of Gopls from _the VS Code integrated terminal_.
-	- <Paste gopls version here>
-* Run `code -v` or `code-insiders -v` to get version of VS Code or VS Code Insiders.
-	- <Paste VS Code version here>
-* Check your installed extensions to get the version of the VS Code Go extension
-	- <Paste Go extension version here>
-* Run Ctrl+Shift+P (Cmd+Shift+P on Mac OS) > `Go: Locate Configured Go Tools` command.
-	- <Paste the output here>
+#### Run `code -v` or `code-insiders -v` to get version of VS Code or VS Code Insiders.
+```
+<paste output here>
+```
+
+#### Check your installed extensions to get the version of the VS Code Go extension
+```
+<Paste Go extension version here>
+```
+
+#### Run Ctrl+Shift+P (Cmd+Shift+P on Mac OS) > `Go: Locate Configured Go Tools` command.
+```
+<Paste the output here>
+```
 </details>
 
 ### Share the Go related settings you have added/edited
