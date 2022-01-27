@@ -1072,6 +1072,12 @@ export async function shouldUpdateLanguageServer(
 		return null;
 	}
 
+	// If the Go version is too old, don't update.
+	const goVersion = await getGoVersion();
+	if (!goVersion || (tool.minimumGoVersion && goVersion.lt(tool.minimumGoVersion.format()))) {
+		return null;
+	}
+
 	// First, run the "gopls version" command and parse its results.
 	// TODO(rstambler): Confirm that the gopls binary's modtime matches the
 	// modtime in the config. Update it if needed.

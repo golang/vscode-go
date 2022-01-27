@@ -200,7 +200,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.12'),
+		minimumGoVersion: semver.coerce('1.13'),
 		latestVersion: semver.parse('%s'),
 		latestVersionTimestamp: moment('%s', 'YYYY-MM-DD'),
 		latestPrereleaseVersion: semver.parse('%s'),
