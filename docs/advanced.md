@@ -10,25 +10,25 @@ contains experimental support for the [new Go 1.18 features](https://tip.golang.
 
 * [Generics](https://go.dev/doc/tutorial/generics): IntelliSense, Code Editing, Diagnostics, Sytax Highlighting, etc.
 * [Fuzzing](https://go.dev/doc/tutorial/fuzz): Run/Debug Test using CodeLens and Test UI (available in Nightly).
-* [Go workspace mode](https://pkg.go.dev/cmd/go@go1.18beta1#hdr-Workspace_maintenance): _WIP_
+* [Go workspace mode](https://pkg.go.dev/cmd/go@go1.18beta2#hdr-Workspace_maintenance): _WIP_
 
-The latest Go extension (v0.31.0+, or [Nightly](./nightly.md)) supports most of the new Go 1.18 features with
+The latest Go extension (v0.31.0+, or [Nightly](./nightly.md)) supports the new Go 1.18 features with
 the following configuration.
 
-1. Get the preview of Go 1.18 by visiting [the official Go downloads page](https://go.dev/dl/#go1.18beta1).
-The following command will install `go1.18beta1` binary in your `$GOPATH/bin`
+1. Get the preview of Go 1.18 by visiting [the official Go downloads page](https://go.dev/dl/#go1.18beta2).
+The following command will install `go1.18beta2` binary in your `$GOPATH/bin`
 or `GOBIN` directory, and download the Go 1.18 SDK.
     ```sh
-    go install golang.org/dl/go1.18beta1@latest
-    go1.18beta1 download
+    go install golang.org/dl/go1.18beta2@latest
+    go1.18beta2 download
     ```
 
     The location of the downloaded Go 1.18 SDK directory can be found with
     ```sh
-    go1.18beta1 GOROOT
+    go1.18beta2 env GOROOT
     ```
 
-2. Configure the extension to use `go1.18beta1`
+2. Configure the extension to use `go1.18beta2`
 (or the `go` binary in the Go 1.18 SDK `bin` directory), using [one of
 the options listed below](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#choosing-a-different-version-of-go).
 
