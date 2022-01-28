@@ -1577,7 +1577,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			await Promise.all([dc.disconnectRequest({ restart: false }), dc.waitForEvent('terminated')]);
 		});
 
-		test('should disconnect with multiple disconnectRequests', async () => {
+		// FIXIT: disabled due to https://github.com/golang/vscode-go/issues/1995
+		test.skip('should disconnect with multiple disconnectRequests', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
 
 			const config = {
