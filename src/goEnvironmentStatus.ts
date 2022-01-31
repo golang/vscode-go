@@ -502,7 +502,7 @@ async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 	// fetch information about what Go versions are available to install
 	let webResults;
 	try {
-		webResults = await WebRequest.json<GoVersionWebResult[]>('https://golang.org/dl/?mode=json');
+		webResults = await WebRequest.json<GoVersionWebResult[]>('https://golang.org/dl/?mode=json&include=all');
 	} catch (error) {
 		return [];
 	}
