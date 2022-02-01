@@ -76,16 +76,16 @@ export class GoTestProfiler {
 	}
 
 	async configure(): Promise<ProfilingOptions | undefined> {
-		const { kind } = await vscode.window.showQuickPick(
-			Kind.all.map((x) => ({ label: x.label, kind: x })),
+		const { profilekind } = await vscode.window.showQuickPick(
+			Kind.all.map((x) => ({ label: x.label, profilekind: x })),
 			{
 				title: 'Profile'
 			}
 		);
-		if (!kind) return;
+		if (!profilekind) return;
 
 		return {
-			kind: kind.id
+			kind: profilekind.id
 		};
 	}
 
