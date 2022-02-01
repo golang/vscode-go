@@ -666,25 +666,10 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							item.filterText = hardcodedFilterText;
 						}
 					}
-					// TODO(hyangah): when v1.42+ api is available, we can simplify
-					// language-specific configuration lookup using the new
-					// ConfigurationScope.
-					//    const paramHintsEnabled = vscode.workspace.getConfiguration(
-					//          'editor.parameterHints',
-					//          { languageId: 'go', uri: document.uri });
-					const editorParamHintsEnabled = vscode.workspace.getConfiguration(
-						'editor.parameterHints',
-						document.uri
-					)['enabled'];
-					const goParamHintsEnabled = vscode.workspace.getConfiguration('[go]', document.uri)[
-						'editor.parameterHints.enabled'
-					];
-					let paramHintsEnabled = false;
-					if (typeof goParamHintsEnabled === 'undefined') {
-						paramHintsEnabled = editorParamHintsEnabled;
-					} else {
-						paramHintsEnabled = goParamHintsEnabled;
-					}
+					const paramHintsEnabled = vscode.workspace.getConfiguration('editor.parameterHints', {
+						languageId: 'go',
+						uri: document.uri
+					});
 					// If the user has parameterHints (signature help) enabled,
 					// trigger it for function or method completion items.
 					if (paramHintsEnabled) {
