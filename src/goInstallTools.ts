@@ -677,11 +677,15 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 // inspectGoToolVersion reads the go version and module version
 // of the given go tool using `go version -m` command.
 export const inspectGoToolVersion = defaultInspectGoToolVersion;
-async function defaultInspectGoToolVersion(binPath: string): Promise<{ goVersion?: string; moduleVersion?: string }> {
+async function defaultInspectGoToolVersion(
+	binPath: string
+): Promise<{ goVersion?: string; moduleVersion?: string; debugInfo?: string }> {
 	const goCmd = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
+	let debugInfo = 'go version -m failed';
 	try {
 		const { stdout } = await execFile(goCmd, ['version', '-m', binPath]);
+		debugInfo = stdout;
 		/* The output format will look like this
 
 		   if the binary was built in module mode.
@@ -705,11 +709,9 @@ async function defaultInspectGoToolVersion(binPath: string): Promise<{ goVersion
 		const moduleVersion = lines[2].split(/\s+/)[3];
 		return { goVersion, moduleVersion };
 	} catch (e) {
-		outputChannel.appendLine(
-			`Failed to determine the version of ${binPath}. For debugging, run "go version -m ${binPath}"`
-		);
-		// either go version failed or stdout is not in the expected format.
-		return {};
+		// either go version failed (e.g. the tool was compiled with a more recent version of go)
+		// or stdout is not in the expected format.
+		return { debugInfo };
 	}
 }
 

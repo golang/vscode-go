@@ -390,20 +390,6 @@ export async function getGoEnv(cwd?: string): Promise<string> {
 }
 
 /**
- * Returns the output of `go version -m` with the toolPath.
- */
-export async function runGoVersionM(toolPath: string): Promise<string> {
-	const goRuntime = getBinPath('go');
-	const execFile = util.promisify(cp.execFile);
-	const opts = { env: toolExecutionEnvironment() };
-	const { stdout, stderr } = await execFile(goRuntime, ['version', '-m', toolPath], opts);
-	if (stderr) {
-		throw new Error(`failed to run 'go version -m ${toolPath}': ${stderr}`);
-	}
-	return stdout;
-}
-
-/**
  * Returns boolean indicating if GOPATH is set or not
  * If not set, then prompts user to do set GOPATH
  */

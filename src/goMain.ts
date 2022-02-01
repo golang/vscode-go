@@ -38,6 +38,7 @@ import { implCursor } from './goImpl';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
+	inspectGoToolVersion,
 	installAllTools,
 	installTools,
 	offerToInstallTools,
@@ -94,11 +95,9 @@ import {
 	getGoVersion,
 	getToolsGopath,
 	getWorkspaceFolderPath,
-	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
-	resolvePath,
-	runGoVersionM
+	resolvePath
 } from './util';
 import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
@@ -955,11 +954,11 @@ async function getConfiguredGoToolsCommand() {
 			if (goVersionTooOld) {
 				return `\t${tool.name}:\t${toolPath}: unknown version`;
 			}
-			try {
-				const out = await runGoVersionM(toolPath);
-				return `\t${tool.name}:${out.replace(/^/gm, '\t')}`;
-			} catch (e) {
-				return `\t${tool.name}:\t${toolPath}: go version -m failed: ${e}`;
+			const { goVersion, moduleVersion, debugInfo } = await inspectGoToolVersion(toolPath);
+			if (goVersion || moduleVersion) {
+				return `\t${tool.name}:\t${toolPath}\t(version: ${moduleVersion} built with go: ${goVersion})`;
+			} else {
+				return `\t${tool.name}:\t${toolPath}\t(version: unknown - ${debugInfo})`;
 			}
 		})
 	);
