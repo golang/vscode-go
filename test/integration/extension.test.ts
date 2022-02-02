@@ -761,59 +761,26 @@ It returns the number of bytes written and any write error encountered.
 		} // not working in module mode.
 		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
-		const workDir = path.dirname(filePath);
 		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 		const vendorPkgsRelativePath = ['example/vendorpls'];
 
-		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
-			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
-				const pkg = pkgMap.get(p);
-				return pkg && pkg.name !== 'main';
-			});
+		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
+			await vscode.window.showTextDocument(document);
+			const pkgs = await listPackages();
 			if (vendorSupport) {
-				vendorPkgsFullPath.forEach((pkg) => {
-					assert.equal(pkgs.indexOf(pkg) > -1, true, `Package not found by goPkgs: ${pkg}`);
-				});
 				vendorPkgsRelativePath.forEach((pkg) => {
+					assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
+				});
+				vendorPkgsFullPath.forEach((pkg) => {
 					assert.equal(
 						pkgs.indexOf(pkg),
 						-1,
-						`Relative path to vendor package ${pkg} should not be returned by gopkgs command`
+						`Full path for vendor package ${pkg} should be shown by listPackages method`
 					);
 				});
 			}
 			return pkgs;
 		});
-
-		const listPkgPromise: Thenable<string[]> = vscode.workspace
-			.openTextDocument(vscode.Uri.file(filePath))
-			.then(async (document) => {
-				await vscode.window.showTextDocument(document);
-				const pkgs = await listPackages();
-				if (vendorSupport) {
-					vendorPkgsRelativePath.forEach((pkg) => {
-						assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
-					});
-					vendorPkgsFullPath.forEach((pkg) => {
-						assert.equal(
-							pkgs.indexOf(pkg),
-							-1,
-							`Full path for vendor package ${pkg} should be shown by listPackages method`
-						);
-					});
-				}
-				return pkgs;
-			});
-
-		const values = await Promise.all<string[]>([gopkgsPromise, listPkgPromise]);
-		if (!vendorSupport) {
-			const originalPkgs = values[0].sort();
-			const updatedPkgs = values[1].sort();
-			assert.equal(originalPkgs.length, updatedPkgs.length);
-			for (let index = 0; index < originalPkgs.length; index++) {
-				assert.equal(updatedPkgs[index], originalPkgs[index]);
-			}
-		}
 	});
 
 	test('Vendor pkgs from other projects should not be allowed to import', async function () {
@@ -824,44 +791,19 @@ It returns the number of bytes written and any write error encountered.
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 
-		const gopkgsPromise = new Promise<void>((resolve, reject) => {
-			const cmd = cp.spawn(getBinPath('gopkgs'), ['-format', '{{.ImportPath}}'], {
-				env: process.env
-			});
-			const chunks: any[] = [];
-			cmd.stdout.on('data', (d) => chunks.push(d));
-			cmd.on('close', () => {
-				const pkgs = chunks
-					.join('')
-					.split('\n')
-					.filter((pkg) => pkg)
-					.sort();
-				if (vendorSupport) {
-					vendorPkgs.forEach((pkg) => {
-						assert.equal(pkgs.indexOf(pkg) > -1, true, `Package not found by goPkgs: ${pkg}`);
-					});
-				}
-				return resolve();
-			});
+		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
+			await vscode.window.showTextDocument(document);
+			const pkgs = await listPackages();
+			if (vendorSupport) {
+				vendorPkgs.forEach((pkg) => {
+					assert.equal(
+						pkgs.indexOf(pkg),
+						-1,
+						`Vendor package ${pkg} should not be shown by listPackages method`
+					);
+				});
+			}
 		});
-
-		const listPkgPromise: Thenable<void> = vscode.workspace
-			.openTextDocument(vscode.Uri.file(filePath))
-			.then(async (document) => {
-				await vscode.window.showTextDocument(document);
-				const pkgs = await listPackages();
-				if (vendorSupport) {
-					vendorPkgs.forEach((pkg) => {
-						assert.equal(
-							pkgs.indexOf(pkg),
-							-1,
-							`Vendor package ${pkg} should not be shown by listPackages method`
-						);
-					});
-				}
-			});
-
-		return Promise.all<void>([gopkgsPromise, listPkgPromise]);
 	});
 
 	test('Workspace Symbols', () => {

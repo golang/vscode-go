@@ -139,7 +139,6 @@ export function getConfiguredTools(
 	// Start with default tools that should always be installed.
 	for (const name of [
 		'gocode',
-		'gopkgs',
 		'go-outline',
 		'go-symbols',
 		'guru',

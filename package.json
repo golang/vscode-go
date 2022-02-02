@@ -1963,11 +1963,6 @@
               "default": "go",
               "description": "Alternate tool to use instead of the go binary or alternate path to use for the go binary."
             },
-            "gopkgs": {
-              "type": "string",
-              "default": "gopkgs",
-              "description": "Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary."
-            },
             "gopls": {
               "type": "string",
               "default": "gopls",

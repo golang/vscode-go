@@ -38,10 +38,6 @@ For a comprehensive overview of how to debug your Go programs, please see the [d
 ### [`dlv-dap`](https://github.com/go-delve/delve)
 This extension requires an unstable version of [`dlv`](#dlv) when users opt in to use Delve's native DAP implementation. `dlv-dap` is a `dlv` built from the master, which includes unreleased features. Please see the documentation about [Dlv DAP - Delve's Native DAP implementation](./dlv-dap.md) for details.
 
-### [`gopkgs`](https://pkg.go.dev/github.com/uudashr/gopkgs?tab=overview)
-
-This tool provides autocompletion for unimported packages. Replacement of `gopkgs` with [`gopls`] is a work-in-progress. <!--TODO: reference to the issue-->
-
 ### [`go-outline`](https://pkg.go.dev/github.com/ramya-rao-a/go-outline?tab=overview)
 
 This tool provides the information needed to compute the various test code lenses. It will be replaced with [`gopls`]. <!--TODO: reference to the issue-->

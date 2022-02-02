@@ -12,7 +12,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { getBinPath, getCurrentGoPath, isVendorSupported } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
-type GopkgsDone = (res: Map<string, PackageInfo>) => void;
+type GoListPkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
 	entry: Map<string, PackageInfo>;
 	lastHit: number;
@@ -23,11 +23,11 @@ export interface PackageInfo {
 	isStd: boolean;
 }
 
-let gopkgsNotified = false;
+let goListPkgsNotified = false;
 let cacheTimeout = 5000;
 
-const gopkgsSubscriptions: Map<string, GopkgsDone[]> = new Map<string, GopkgsDone[]>();
-const gopkgsRunning: Set<string> = new Set<string>();
+const goListPkgsSubscriptions: Map<string, GoListPkgsDone[]> = new Map<string, GoListPkgsDone[]>();
+const goListPkgsRunning: Set<string> = new Set<string>();
 
 const allPkgsCache: Map<string, Cache> = new Map<string, Cache>();
 
@@ -87,20 +87,20 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 			resolve(pkgMap);
 		};
 
-		let subs = gopkgsSubscriptions.get(workDir);
+		let subs = goListPkgsSubscriptions.get(workDir);
 		if (!subs) {
 			subs = [];
-			gopkgsSubscriptions.set(workDir, subs);
+			goListPkgsSubscriptions.set(workDir, subs);
 		}
 		subs.push(callback);
 
 		// Ensure only single gokpgs running
-		if (!gopkgsRunning.has(workDir)) {
-			gopkgsRunning.add(workDir);
+		if (!goListPkgsRunning.has(workDir)) {
+			goListPkgsRunning.add(workDir);
 
 			goListPkgs(workDir).then((pkgMap) => {
-				gopkgsRunning.delete(workDir);
-				gopkgsSubscriptions.delete(workDir);
+				goListPkgsRunning.delete(workDir);
+				goListPkgsSubscriptions.delete(workDir);
 				subs.forEach((cb) => cb(pkgMap));
 			});
 		}
@@ -108,7 +108,7 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 }
 
 /**
- * Runs gopkgs
+ * Runs `go list all std`
  * @argument workDir. The workspace directory of the project.
  * @returns Map<string, string> mapping between package import path and package name
  */
@@ -122,11 +122,11 @@ export async function getAllPackages(workDir: string): Promise<Map<string, Packa
 
 	const pkgs = await getAllPackagesNoCache(workDir);
 	if (!pkgs || pkgs.size === 0) {
-		if (!gopkgsNotified) {
+		if (!goListPkgsNotified) {
 			vscode.window.showInformationMessage(
 				'Could not find packages. Ensure `go list -f {{.Name}};{{.ImportPath}}` runs successfully.'
 			);
-			gopkgsNotified = true;
+			goListPkgsNotified = true;
 		}
 	}
 	allPkgsCache.set(workDir, {
