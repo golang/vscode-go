@@ -44,6 +44,10 @@ const pkgRootDirs = new Map<string, string>();
 async function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 	const pkgs = new Map<string, PackageInfo>();
 
+	if (workDir) {
+		workDir = fixDriveCasingInWindows(workDir);
+	}
+
 	const goBin = getBinPath('go');
 	if (!goBin) {
 		vscode.window.showErrorMessage(
@@ -67,6 +71,21 @@ async function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 				return;
 			}
 			const [pkgName, pkgPath, pkgDir] = pkgDetail.trim().split(';');
+			const pkgDirNormalized = fixDriveCasingInWindows(pkgDir);
+			// goListPkgs are used to retrieve packages importable from packages under workDir.
+			// Vendored packages outside the workDir, thus, do not qualify.
+			// (equivalent to `gopkgs -workDir`)
+			// Remove vendored packages if it's outside the current workDir (e.g. vendor of Go project's src/ and src/cmd)
+			if (workDir) {
+				const vendorIdx = pkgDirNormalized.indexOf('/vendor/');
+				if (
+					vendorIdx !== -1 &&
+					// Both workDir (from vscode file path) and pkgDir (from go list -f {{.Dir}}) are absolute.
+					!workDir.startsWith(pkgDirNormalized.substring(0, vendorIdx))
+				) {
+					return;
+				}
+			}
 			pkgs.set(pkgPath, {
 				name: pkgName,
 				isStd: goroot === null ? false : pkgDir.startsWith(goroot)

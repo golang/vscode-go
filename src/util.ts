@@ -156,7 +156,7 @@ export class GoVersion {
 
 let cachedGoBinPath: string | undefined;
 let cachedGoVersion: GoVersion | undefined;
-let vendorSupport: boolean | undefined;
+let vendorSupport: boolean = null;
 let toolsGopath: string;
 
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
