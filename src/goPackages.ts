@@ -7,6 +7,7 @@
 
 import cp = require('child_process');
 import path = require('path');
+import { promisify } from 'util';
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { getBinPath, getCurrentGoPath, isVendorSupported } from './util';
@@ -40,44 +41,47 @@ const pkgRootDirs = new Map<string, string>();
  * @param workDir the current working directory.
  * @returns package path to PackageInfo map.
  */
-function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
+async function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
+	const pkgs = new Map<string, PackageInfo>();
+
 	const goBin = getBinPath('go');
 	if (!goBin) {
 		vscode.window.showErrorMessage(
 			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
-		return Promise.resolve(new Map<string, PackageInfo>());
+		return pkgs;
 	}
 	const t0 = Date.now();
-	return new Promise<Map<string, PackageInfo>>((resolve, reject) => {
-		const args = ['list', '-f', '{{.Name}};{{.ImportPath}};{{.Dir}}', 'std', 'all'];
-		const env = toolExecutionEnvironment();
-		cp.execFile(goBin, args, { env, cwd: workDir }, (err, stdout, stderr) => {
-			if (stderr || err) {
-				vscode.window.showErrorMessage(
-					`Running go list failed with "${stderr || err}"\nCheck if you can run \`go ${args.join(
-						' '
-					)}\` in a terminal successfully.`
-				);
+
+	const args = ['list', '-e', '-f', '{{.Name}};{{.ImportPath}};{{.Dir}}', 'std', 'all'];
+	const env = toolExecutionEnvironment();
+	const execFile = promisify(cp.execFile);
+	try {
+		const { stdout, stderr } = await execFile(goBin, args, { env, cwd: workDir });
+		if (stderr) {
+			throw stderr;
+		}
+		const goroot = getCurrentGoRoot();
+		stdout.split('\n').forEach((pkgDetail) => {
+			if (!pkgDetail || !pkgDetail.trim() || pkgDetail.indexOf(';') === -1) {
 				return;
 			}
-			const pkgs = new Map<string, PackageInfo>();
-			const goroot = getCurrentGoRoot();
-			stdout.split('\n').forEach((pkgDetail) => {
-				if (!pkgDetail || !pkgDetail.trim() || pkgDetail.indexOf(';') === -1) {
-					return;
-				}
-				const [pkgName, pkgPath, pkgDir] = pkgDetail.trim().split(';');
-				pkgs.set(pkgPath, {
-					name: pkgName,
-					isStd: goroot === null ? false : pkgDir.startsWith(goroot)
-				});
+			const [pkgName, pkgPath, pkgDir] = pkgDetail.trim().split(';');
+			pkgs.set(pkgPath, {
+				name: pkgName,
+				isStd: goroot === null ? false : pkgDir.startsWith(goroot)
 			});
-			const timeTaken = Date.now() - t0;
-			cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
-			return resolve(pkgs);
 		});
-	});
+	} catch (err) {
+		vscode.window.showErrorMessage(
+			`Running go list failed with "${err}"\nCheck if you can run \`go ${args.join(
+				' '
+			)}\` in a terminal successfully.`
+		);
+	}
+	const timeTaken = Date.now() - t0;
+	cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
+	return pkgs;
 }
 
 function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo>> {
@@ -124,7 +128,7 @@ export async function getAllPackages(workDir: string): Promise<Map<string, Packa
 	if (!pkgs || pkgs.size === 0) {
 		if (!goListPkgsNotified) {
 			vscode.window.showInformationMessage(
-				'Could not find packages. Ensure `go list -f {{.Name}};{{.ImportPath}}` runs successfully.'
+				'Could not find packages. Ensure `go list -e -f {{.Name}};{{.ImportPath}}` runs successfully.'
 			);
 			goListPkgsNotified = true;
 		}
@@ -248,7 +252,7 @@ export function getImportPathToFolder(targets: string[], cwd?: string): Promise<
 	return new Promise<Map<string, string>>((resolve, reject) => {
 		const childProcess = cp.spawn(
 			goRuntimePath,
-			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', ...targets],
+			['list', '-e', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', ...targets],
 			{ cwd, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];

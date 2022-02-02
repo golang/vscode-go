@@ -751,8 +751,8 @@ It returns the number of bytes written and any write error encountered.
 
 		const includeImportedPkgs = await listPackages(false);
 		const excludeImportedPkgs = await listPackages(true);
-		assert.equal(includeImportedPkgs.indexOf('fmt') > -1, true);
-		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false);
+		assert.equal(includeImportedPkgs.indexOf('fmt') > -1, true, 'want to include imported package');
+		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false, 'want to exclude imported package');
 	});
 
 	test('Replace vendor packages with relative path', async function () {
