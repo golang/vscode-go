@@ -10,7 +10,7 @@ import path = require('path');
 import { promisify } from 'util';
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
-import { getBinPath, getCurrentGoPath, isVendorSupported } from './util';
+import { getBinPath, getCurrentGoPath } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 type GoListPkgsDone = (res: Map<string, PackageInfo>) => void;
@@ -177,7 +177,7 @@ export function getImportablePackages(filePath: string, useCache = false): Promi
 	const getAllPackagesPromise: Promise<Map<string, PackageInfo>> =
 		useCache && cache ? Promise.race([getAllPackages(workDir), cache.entry]) : getAllPackages(workDir);
 
-	return Promise.all([isVendorSupported(), getAllPackagesPromise]).then(([vendorSupported, pkgs]) => {
+	return getAllPackagesPromise.then((pkgs) => {
 		const pkgMap = new Map<string, PackageInfo>();
 		if (!pkgs) {
 			return pkgMap;
@@ -189,7 +189,7 @@ export function getImportablePackages(filePath: string, useCache = false): Promi
 				return;
 			}
 
-			if (!vendorSupported || !currentWorkspace) {
+			if (!currentWorkspace) {
 				pkgMap.set(pkgPath, info);
 				return;
 			}

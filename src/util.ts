@@ -156,7 +156,6 @@ export class GoVersion {
 
 let cachedGoBinPath: string | undefined;
 let cachedGoVersion: GoVersion | undefined;
-let vendorSupport: boolean = null;
 let toolsGopath: string;
 
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
@@ -402,35 +401,6 @@ export async function runGoVersionM(toolPath: string): Promise<string> {
 		throw new Error(`failed to run 'go version -m ${toolPath}': ${stderr}`);
 	}
 	return stdout;
-}
-
-/**
- * Returns boolean denoting if current version of Go supports vendoring
- */
-export async function isVendorSupported(): Promise<boolean> {
-	if (vendorSupport !== null) {
-		return Promise.resolve(vendorSupport);
-	}
-	const goVersion = await getGoVersion();
-	if (!goVersion.sv) {
-		return process.env['GO15VENDOREXPERIMENT'] === '0' ? false : true;
-	}
-	switch (goVersion.sv.major) {
-		case 0:
-			vendorSupport = false;
-			break;
-		case 1:
-			vendorSupport =
-				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
-					? true
-					: false;
-			break;
-		default:
-			vendorSupport = true;
-			break;
-	}
-	return vendorSupport;
 }
 
 /**

@@ -20,6 +20,7 @@ import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
 const missingToolMsg = 'Missing tool: ';
 
+// listPackages returns 'importable' packages and places std packages first.
 export async function listPackages(excludeImportedPkgs = false): Promise<string[]> {
 	const importedPkgs =
 		excludeImportedPkgs && vscode.window.activeTextEditor

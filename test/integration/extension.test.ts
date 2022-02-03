@@ -41,8 +41,7 @@ import {
 	getImportPath,
 	GoVersion,
 	handleDiagnosticErrors,
-	ICheckResult,
-	isVendorSupported
+	ICheckResult
 } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
@@ -759,7 +758,6 @@ It returns the number of bytes written and any write error encountered.
 		if (isModuleMode) {
 			this.skip();
 		} // not working in module mode.
-		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
 		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 		const vendorPkgsRelativePath = ['example/vendorpls'];
@@ -767,18 +765,16 @@ It returns the number of bytes written and any write error encountered.
 		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
 			await vscode.window.showTextDocument(document);
 			const pkgs = await listPackages();
-			if (vendorSupport) {
-				vendorPkgsRelativePath.forEach((pkg) => {
-					assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
-				});
-				vendorPkgsFullPath.forEach((pkg) => {
-					assert.equal(
-						pkgs.indexOf(pkg),
-						-1,
-						`Full path for vendor package ${pkg} should be shown by listPackages method`
-					);
-				});
-			}
+			vendorPkgsRelativePath.forEach((pkg) => {
+				assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
+			});
+			vendorPkgsFullPath.forEach((pkg) => {
+				assert.equal(
+					pkgs.indexOf(pkg),
+					-1,
+					`Full path for vendor package ${pkg} should be shown by listPackages method`
+				);
+			});
 			return pkgs;
 		});
 	});
@@ -787,22 +783,15 @@ It returns the number of bytes written and any write error encountered.
 		if (isModuleMode) {
 			this.skip();
 		} // not working in module mode.
-		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 
 		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
 			await vscode.window.showTextDocument(document);
 			const pkgs = await listPackages();
-			if (vendorSupport) {
-				vendorPkgs.forEach((pkg) => {
-					assert.equal(
-						pkgs.indexOf(pkg),
-						-1,
-						`Vendor package ${pkg} should not be shown by listPackages method`
-					);
-				});
-			}
+			vendorPkgs.forEach((pkg) => {
+				assert.equal(pkgs.indexOf(pkg), -1, `Vendor package ${pkg} should not be shown by listPackages method`);
+			});
 		});
 	});
 
