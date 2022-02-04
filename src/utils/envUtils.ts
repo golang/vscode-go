@@ -50,27 +50,27 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 const SUBST_REGEX = /\${([a-zA-Z]\w*)?([^}\w].*)?}/g;
 
 function substituteEnvVars(
-    value: string,
-    localVars: { [key: string]: string },
+	value: string,
+	localVars: { [key: string]: string },
 	globalVars: { [key: string]: string }
 ): string {
-    let invalid = false;
-    let replacement = value;
-    replacement = replacement.replace(SUBST_REGEX, (match, substName, bogus, offset, orig) => {
-        if (offset > 0 && orig[offset - 1] === '\\') {
-            return match;
-        }
-        if ((bogus && bogus !== '') || !substName || substName === '') {
-            invalid = true;
-            return match;
-        }
-        return localVars[substName] || globalVars[substName] || '';
-    });
-    if (!invalid && replacement !== value) {
-        value = replacement;
-    }
+	let invalid = false;
+	let replacement = value;
+	replacement = replacement.replace(SUBST_REGEX, (match, substName, bogus, offset, orig) => {
+		if (offset > 0 && orig[offset - 1] === '\\') {
+			return match;
+		}
+		if ((bogus && bogus !== '') || !substName || substName === '') {
+			invalid = true;
+			return match;
+		}
+		return localVars[substName] || globalVars[substName] || '';
+	});
+	if (!invalid && replacement !== value) {
+		value = replacement;
+	}
 
-    return value.replace(/\\\$/g, '$');
+	return value.replace(/\\\$/g, '$');
 }
 
 export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
