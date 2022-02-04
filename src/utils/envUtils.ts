@@ -8,6 +8,7 @@
 'use strict';
 
 import fs = require('fs');
+import { toolExecutionEnvironment } from '../goEnv';
 
 function stripBOM(s: string): string {
 	if (s && s[0] === '\uFEFF') {
@@ -25,6 +26,7 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 		return env;
 	}
 
+	const globalVars = toolExecutionEnvironment();
 	try {
 		const buffer = stripBOM(fs.readFileSync(envFilePath, 'utf8'));
 		buffer.split('\n').forEach((line) => {
@@ -34,13 +36,41 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 				if (value.length > 0 && value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
 					value = value.replace(/\\n/gm, '\n');
 				}
-				env[r[1]] = value.replace(/(^['"]|['"]$)/g, '');
+				const v = value.replace(/(^['"]|['"]$)/g, '');
+				env[r[1]] = substituteEnvVars(v, env, globalVars);
 			}
 		});
 		return env;
 	} catch (e) {
 		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
 	}
+}
+
+// matches ${var} where var is alphanumeric starting with a letter.
+const SUBST_REGEX = /\${([a-zA-Z]\w*)?([^}\w].*)?}/g;
+
+function substituteEnvVars(
+    value: string,
+    localVars: { [key: string]: string },
+	globalVars: { [key: string]: string }
+): string {
+    let invalid = false;
+    let replacement = value;
+    replacement = replacement.replace(SUBST_REGEX, (match, substName, bogus, offset, orig) => {
+        if (offset > 0 && orig[offset - 1] === '\\') {
+            return match;
+        }
+        if ((bogus && bogus !== '') || !substName || substName === '') {
+            invalid = true;
+            return match;
+        }
+        return localVars[substName] || globalVars[substName] || '';
+    });
+    if (!invalid && replacement !== value) {
+        value = replacement;
+    }
+
+    return value.replace(/\\\$/g, '$');
 }
 
 export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
