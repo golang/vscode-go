@@ -8,7 +8,6 @@
 'use strict';
 
 import fs = require('fs');
-import { toolExecutionEnvironment } from '../goEnv';
 
 function stripBOM(s: string): string {
 	if (s && s[0] === '\uFEFF') {
@@ -77,7 +76,7 @@ function substituteEnvVars(
 
 export function parseEnvFiles(
 	envFiles: string[] | string,
-	globalVars?: { [key: string]: string },
+	globalVars?: { [key: string]: string }
 ): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {

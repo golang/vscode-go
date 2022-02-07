@@ -488,7 +488,7 @@ export class Delve {
 
 				// read env from disk and merge into env variables
 				try {
-					const goToolsEnvVars = toolExecutionEnvironment()
+					const goToolsEnvVars = toolExecutionEnvironment();
 					const fileEnvs = parseEnvFiles(launchArgs.envFile, goToolsEnvVars);
 					const launchArgsEnv = launchArgs.env || {};
 					env = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
