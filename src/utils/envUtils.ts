@@ -20,13 +20,15 @@ function stripBOM(s: string): string {
 /**
  * returns the environment variable collection created by parsing the given .env file.
  */
-export function parseEnvFile(envFilePath: string): { [key: string]: string } {
+export function parseEnvFile(envFilePath: string, globalVars?: { [key: string]: string }): { [key: string]: string } {
 	const env: { [key: string]: string } = {};
 	if (!envFilePath) {
 		return env;
 	}
+	if (!globalVars) {
+		globalVars = {};
+	}
 
-	const globalVars = toolExecutionEnvironment();
 	try {
 		const buffer = stripBOM(fs.readFileSync(envFilePath, 'utf8'));
 		buffer.split('\n').forEach((line) => {
@@ -73,14 +75,17 @@ function substituteEnvVars(
 	return value.replace(/\\\$/g, '$');
 }
 
-export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
+export function parseEnvFiles(
+	envFiles: string[] | string,
+	globalVars?: { [key: string]: string },
+): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
-		fileEnvs.push(parseEnvFile(envFiles));
+		fileEnvs.push(parseEnvFile(envFiles, globalVars));
 	}
 	if (Array.isArray(envFiles)) {
 		envFiles.forEach((envFile) => {
-			fileEnvs.push(parseEnvFile(envFile));
+			fileEnvs.push(parseEnvFile(envFile, globalVars));
 		});
 	}
 	return Object.assign({}, ...fileEnvs);

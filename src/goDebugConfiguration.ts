@@ -406,7 +406,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		// as launch/attach parameters.
 		const mergeProcessEnv = debugAdapter === 'legacy';
 		const goToolsEnvVars = toolExecutionEnvironment(folder?.uri, mergeProcessEnv);
-		const fileEnvs = parseEnvFiles(debugConfiguration['envFile']);
+		const fileEnvs = parseEnvFiles(debugConfiguration['envFile'], goToolsEnvVars);
 		const env = debugConfiguration['env'] || {};
 
 		debugConfiguration['env'] = Object.assign(goToolsEnvVars, fileEnvs, env);
