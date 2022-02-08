@@ -1,3 +1,11 @@
+## v0.31.1 - 8 Feb, 2022
+
+A list of all issues and changes can be found in the [v0.31.1 milestone](https://github.com/golang/vscode-go/milestone/44) and [commit history](https://github.com/golang/vscode-go/compare/v0.31.0...v0.31.1).
+
+### Fixes
+- Fixed the profile functionality broken by VSCode 1.63 ([Issue 2048](https://github.com/golang/vscode-go/issues/2048))
+- Include fuzz tests in test explorer UI ([Issue 2023](https://github.com/golang/vscode-go/issues/2023))
+
 ## v0.31.0 - 26 Jan, 2022
 
 A list of all issues and changes can be found in the [v0.31.0 milestone](https://github.com/golang/vscode-go/milestone/41) and [commit history](https://github.com/golang/vscode-go/compare/v0.30.0...v0.31.0).
