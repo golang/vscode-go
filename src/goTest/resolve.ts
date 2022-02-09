@@ -24,6 +24,7 @@ import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
 import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, isInTest, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
+import { importsTestify } from '../testUtils';
 
 export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
 
@@ -202,11 +203,7 @@ export class GoTestResolver {
 		const seen = new Set<string>();
 		const item = await this.getFile(doc.uri);
 		const symbols = await this.provideDocumentSymbols(doc, null);
-		const testify = symbols.some((s) =>
-			s.children.some(
-				(sym) => sym.kind === SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
-			)
-		);
+		const testify = importsTestify(symbols);
 		for (const symbol of symbols) {
 			await this.processSymbol(doc, item, seen, testify, symbol);
 		}
@@ -410,7 +407,7 @@ export class GoTestResolver {
 		}
 
 		// Recursively process symbols that are nested
-		if (symbol.kind !== SymbolKind.Function) {
+		if (symbol.kind !== SymbolKind.Function && symbol.kind !== SymbolKind.Method) {
 			for (const sym of symbol.children) await this.processSymbol(doc, file, seen, importsTestify, sym);
 			return;
 		}

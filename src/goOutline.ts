@@ -7,10 +7,13 @@
 'use strict';
 
 import cp = require('child_process');
+import semver = require('semver');
 import vscode = require('vscode');
+import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
+import { getLocalGoplsVersion, languageClient, latestConfig } from './goLanguageServer';
 import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
 import { killProcess } from './utils/processUtils';
 
@@ -192,14 +195,63 @@ function convertToCodeSymbols(
 export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 	constructor(private includeImports?: boolean) {}
 
-	public provideDocumentSymbols(
+	public async provideDocumentSymbols(
 		document: vscode.TextDocument,
 		token: vscode.CancellationToken
-	): Thenable<vscode.DocumentSymbol[]> {
+	): Promise<vscode.DocumentSymbol[]> {
 		if (typeof this.includeImports !== 'boolean') {
 			const gotoSymbolConfig = getGoConfig(document.uri)['gotoSymbol'];
 			this.includeImports = gotoSymbolConfig ? gotoSymbolConfig['includeImports'] : false;
 		}
+
+		// TODO(suzmue): Check the commands available instead of the version.
+		const goplsVersion = await getLocalGoplsVersion(latestConfig);
+		const sv = semver.parse(goplsVersion, true);
+		if (languageClient && (goplsVersion === '(devel)' || semver.gt(sv, 'v0.7.6'))) {
+			const symbols: vscode.DocumentSymbol[] = await vscode.commands.executeCommand(
+				'vscode.executeDocumentSymbolProvider',
+				document.uri
+			);
+			if (!symbols || symbols.length === 0) {
+				return [];
+			}
+
+			// Stitch the results together to make the results look like
+			// go-outline.
+			// TODO(suzmue): use regexp to find the package declaration.
+			const packageSymbol = new vscode.DocumentSymbol(
+				'unknown',
+				'package',
+				vscode.SymbolKind.Package,
+				new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+				new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
+			);
+			packageSymbol.children = symbols;
+			if (this.includeImports) {
+				try {
+					const imports = await listImports(document);
+					imports?.forEach((value) => {
+						packageSymbol.children.unshift(
+							new vscode.DocumentSymbol(
+								value.Path,
+								'import',
+								vscode.SymbolKind.Namespace,
+								new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+								new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
+							)
+						);
+					});
+				} catch (e) {
+					// Fall back to use go-outline.
+					return this.runGoOutline(document, token);
+				}
+			}
+			return [packageSymbol];
+		}
+		return this.runGoOutline(document, token);
+	}
+
+	private runGoOutline(document: vscode.TextDocument, token: vscode.CancellationToken) {
 		const options: GoOutlineOptions = {
 			fileName: document.fileName,
 			document,
@@ -207,4 +259,18 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 		};
 		return documentSymbols(options, token);
 	}
+}
+
+async function listImports(document: vscode.TextDocument): Promise<{ Path: string; Name: string }[]> {
+	const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
+	const params: ExecuteCommandParams = {
+		command: 'gopls.list_imports',
+		arguments: [
+			{
+				URI: uri
+			}
+		]
+	};
+	const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, params);
+	return resp.Imports;
 }

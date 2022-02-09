@@ -154,12 +154,10 @@ export async function getTestFunctions(
 		return;
 	}
 	const children = symbol.children;
-	const testify = children.some(
-		(sym) => sym.kind === vscode.SymbolKind.Namespace && sym.name === '"github.com/stretchr/testify/suite"'
-	);
+	const testify = importsTestify(symbols);
 	return children.filter(
 		(sym) =>
-			sym.kind === vscode.SymbolKind.Function &&
+			(sym.kind === vscode.SymbolKind.Function || sym.kind === vscode.SymbolKind.Method) &&
 			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
 	);
 }
@@ -631,4 +629,16 @@ function removeRunFlag(flags: string[]): void {
 	if (index !== -1) {
 		flags.splice(index, 2);
 	}
+}
+
+export function importsTestify(syms: vscode.DocumentSymbol[]): boolean {
+	if (!syms || syms.length === 0 || !syms[0]) {
+		return false;
+	}
+	const children = syms[0].children;
+	return children.some(
+		(sym) =>
+			sym.kind === vscode.SymbolKind.Namespace &&
+			(sym.name === '"github.com/stretchr/testify/suite"' || sym.name === 'github.com/stretchr/testify/suite')
+	);
 }
