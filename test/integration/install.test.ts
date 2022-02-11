@@ -21,6 +21,9 @@ import util = require('util');
 import vscode = require('vscode');
 import { isInPreviewMode } from '../../src/goLanguageServer';
 import { allToolsInformation } from '../../src/goToolsInformation';
+import { listOutdatedTools } from '../../src/goMain';
+import * as goInstallTools from '../../src/goInstallTools';
+import * as utilModule from '../../src/util';
 
 interface installationTestCase {
 	name: string;
@@ -238,27 +241,112 @@ function shouldRunSlowTests(): boolean {
 
 suite('getConfiguredTools', () => {
 	test('do not require legacy tools when using language server', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.15.6'), { useLanguageServer: true }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.15.6 linux/amd64'),
+			{ useLanguageServer: true },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
 		assert(!got.includes('guru') && !got.includes('gocode'), `suggested legacy tools: ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.15.6'), { useLanguageServer: false }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.15.6 linux/amd64'),
+			{ useLanguageServer: false },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
 		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when the go version is old', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.9'), { useLanguageServer: true }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.9 linux/amd64'),
+			{ useLanguageServer: true },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls' for old go: ${JSON.stringify(got)}`);
 		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
 	});
 });
 
-function fakeGoVersion(version: string) {
-	return new GoVersion('/path/to/go', `go version go${version} windows/amd64`);
+function fakeGoVersion(versionStr: string) {
+	return new GoVersion('/path/to/go', versionStr);
 }
+
+suite('listOutdatedTools', () => {
+	let sandbox: sinon.SinonSandbox;
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+	teardown(() => sandbox.restore());
+
+	async function runTest(goVersion: string | undefined, tools: { [key: string]: string | undefined }) {
+		const binPathStub = sandbox.stub(utilModule, 'getBinPath');
+		const versionStub = sandbox.stub(goInstallTools, 'inspectGoToolVersion');
+		for (const tool in tools) {
+			binPathStub.withArgs(tool).returns(`/bin/${tool}`);
+			versionStub.withArgs(`/bin/${tool}`).returns(Promise.resolve({ goVersion: tools[tool] }));
+		}
+
+		const toolsToCheck = Object.keys(tools).map((tool) => getToolAtVersion(tool));
+
+		const configuredGoVersion = goVersion ? fakeGoVersion(goVersion) : undefined;
+		const toolsToUpdate = await listOutdatedTools(configuredGoVersion, toolsToCheck);
+		return toolsToUpdate.map((tool) => tool.name).filter((tool) => !!tool);
+	}
+
+	test('minor version difference requires updates', async () => {
+		const x = await runTest('go version go1.18 linux/amd64', {
+			gopls: 'go1.16', // 1.16 < 1.18
+			dlv: 'go1.17', // 1.17 < 1.18
+			staticcheck: 'go1.18', // 1.18 == 1.18
+			gotests: 'go1.19' // 1.19 > 1.18
+		});
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
+	});
+	test('patch version difference does not require updates', async () => {
+		const x = await runTest('go version go1.16.1 linux/amd64', {
+			gopls: 'go1.16', // 1.16 < 1.16.1
+			dlv: 'go1.16.1', // 1.16.1 == 1.16.1
+			staticcheck: 'go1.16.2', // 1.16.2 > 1.16.1
+			gotests: 'go1.16rc1' // 1.16rc1 != 1.16.1
+		});
+		assert.deepStrictEqual(x, ['gotests']);
+	});
+	test('go is beta version', async () => {
+		const x = await runTest('go version go1.18beta2 linux/amd64', {
+			gopls: 'go1.17.1', // 1.17.1 < 1.18beta2
+			dlv: 'go1.18beta1', // 1.18beta1 != 1.18beta2
+			staticcheck: 'go1.18beta2', // 1.18beta2 == 1.18beta2
+			gotests: 'go1.18' // 1.18 > 1.18beta2
+		});
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
+	});
+	test('go is dev version', async () => {
+		const x = await runTest('go version devel go1.18-41f485b9a7 linux/amd64', {
+			gopls: 'go1.17.1',
+			dlv: 'go1.18beta1',
+			staticcheck: 'go1.18',
+			gotests: 'go1.19'
+		});
+		assert.deepStrictEqual(x, []);
+	});
+	test('go is unknown version', async () => {
+		const x = await runTest('', {
+			gopls: 'go1.17.1'
+		});
+		assert.deepStrictEqual(x, []);
+	});
+	test('tools are unknown versions', async () => {
+		const x = await runTest('go version go1.17 linux/amd64', {
+			gopls: undefined, // this can be because gopls was compiled with go1.18 or it's too old.
+			dlv: 'go1.16.1'
+		});
+		assert.deepStrictEqual(x, ['dlv']);
+	});
+});

@@ -96,7 +96,7 @@ export class GoVersion {
 
 	constructor(public binaryPath: string, public version: string) {
 		const matchesRelease = /^go version go(\d\.\d+\S*)\s+/.exec(version);
-		const matchesDevel = /^go version devel (\S+)\s+/.exec(version);
+		const matchesDevel = /^go version devel go(\d\.\d+\S*)\s+/.exec(version);
 		if (matchesRelease) {
 			// note: semver.parse does not work with Go version string like go1.14.
 			const sv = semver.coerce(matchesRelease[1]);

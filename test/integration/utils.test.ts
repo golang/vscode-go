@@ -30,15 +30,9 @@ suite('utils Tests', () => {
 		// [input, wantFormat, wantFormatIncludePrerelease, wantIsValid]
 		const testCases: [string | undefined, string, string, boolean][] = [
 			[
-				'go version devel +a295d59d Fri Jun 26 19:00:25 2020 +0000 darwin/amd64',
-				'devel +a295d59d',
-				'devel +a295d59d',
-				true
-			],
-			[
 				'go version devel go1.17-756fd56bbf Thu Apr 29 01:15:34 2021 +0000 darwin/amd64',
-				'devel go1.17-756fd56bbf',
-				'devel go1.17-756fd56bbf',
+				'devel 1.17-756fd56bbf',
+				'devel 1.17-756fd56bbf',
 				true
 			],
 			['go version go1.14 darwin/amd64', '1.14.0', '1.14', true],

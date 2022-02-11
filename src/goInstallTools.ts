@@ -703,9 +703,15 @@ async function defaultInspectGoToolVersion(
 			path    golang.org/x/tools/gopls
 			mod     golang.org/x/tools/gopls        (devel)
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+
+		   if the binary was built with a dev version of go, in module mode.
+		    /Users/hakim/go/bin/gopls: devel go1.18-41f485b9a7 Mon Jan 31 13:43:52 2022 +0000
+			path    golang.org/x/tools/gopls
+            mod     golang.org/x/tools/gopls        v0.8.0-pre.1    h1:6iHi9bCJ8XndQtBEFFG/DX+eTJrf2lKFv4GI3zLeDOo=
+			...
 		*/
 		const lines = stdout.split('\n', 3);
-		const goVersion = lines[0].split(/\s+/)[1];
+		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)[1];
 		const moduleVersion = lines[2].split(/\s+/)[3];
 		return { goVersion, moduleVersion };
 	} catch (e) {

@@ -72,7 +72,7 @@ import {
 	testPrevious,
 	testWorkspace
 } from './goTest';
-import { getConfiguredTools } from './goTools';
+import { getConfiguredTools, Tool } from './goTools';
 import { vetCode } from './goVet';
 import { pickGoProcess, pickProcess } from './pickProcess';
 import {
@@ -95,6 +95,7 @@ import {
 	getGoVersion,
 	getToolsGopath,
 	getWorkspaceFolderPath,
+	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
 	resolvePath
@@ -828,10 +829,88 @@ function checkToolExists(tool: string) {
 	}
 }
 
+// exported for testing
+export async function listOutdatedTools(configuredGoVersion: GoVersion, allTools: Tool[]): Promise<Tool[]> {
+	if (!configuredGoVersion || !configuredGoVersion.sv) {
+		return [];
+	}
+
+	const { major, minor } = configuredGoVersion.sv;
+
+	const oldTools = await Promise.all(
+		allTools.map(async (tool) => {
+			const toolPath = getBinPath(tool.name);
+			if (!path.isAbsolute(toolPath)) {
+				return;
+			}
+			const m = await inspectGoToolVersion(toolPath);
+			if (!m) {
+				console.log(`failed to get go tool version: ${toolPath}`);
+				return;
+			}
+			const { goVersion } = m;
+			if (!goVersion) {
+				// TODO: we cannot tell whether the tool was compiled with a newer version of go
+				// or compiled in an unconventional way.
+				return;
+			}
+			const toolGoVersion = new GoVersion('', `go version ${goVersion} os/arch`);
+			if (!toolGoVersion || !toolGoVersion.sv) {
+				return tool;
+			}
+			if (
+				major > toolGoVersion.sv.major ||
+				(major === toolGoVersion.sv.major && minor > toolGoVersion.sv.minor)
+			) {
+				return tool;
+			}
+			// special case: if the tool was compiled with beta or rc, and the current
+			// go version is a stable version, let's ask to recompile.
+			if (
+				major === toolGoVersion.sv.major &&
+				minor === toolGoVersion.sv.minor &&
+				(goVersion.includes('beta') || goVersion.includes('rc')) &&
+				// We assume tools compiled with different rc/beta need to be recompiled.
+				// We test the inequality by checking whether the exact beta or rc version
+				// appears in the `go version` output. e.g.,
+				//   configuredGoVersion.version      	goVersion(tool)		update
+				//   'go version go1.18 ...'    		'go1.18beta1'		Yes
+				//   'go version go1.18beta1 ...'		'go1.18beta1'		No
+				//   'go version go1.18beta2 ...'		'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18'			No
+				//   'go version devel go1.18-deadbeaf ...'	'go1.18beta1'	No (* rare)
+				!configuredGoVersion.version.includes(goVersion)
+			) {
+				return tool;
+			}
+			return;
+		})
+	);
+	return oldTools.filter((tool) => !!tool);
+}
+
 async function suggestUpdates(ctx: vscode.ExtensionContext) {
-	// TODO(hyangah): this is to clean up the unused key. Delete this code in 2021 Dec.
-	if (ctx.globalState.get('toolsGoInfo')) {
-		ctx.globalState.update('toolsGoInfo', null);
+	const configuredGoVersion = await getGoVersion();
+	if (!configuredGoVersion || configuredGoVersion.lt('1.12')) {
+		// User is using an ancient or a dev version of go. Don't suggest updates -
+		// user should know what they are doing.
+		return;
+	}
+
+	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
+	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
+	if (toolsToUpdate.length > 0) {
+		const updateToolsCmdText = 'Update tools';
+		const selected = await vscode.window.showWarningMessage(
+			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${
+				configuredGoVersion.version
+			}`,
+			updateToolsCmdText
+		);
+		if (selected === updateToolsCmdText) {
+			installTools(toolsToUpdate, configuredGoVersion);
+		}
 	}
 }
 
