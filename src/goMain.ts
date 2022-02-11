@@ -143,12 +143,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		});
 	}
 
-	if (isInPreviewMode()) {
-		// For Nightly extension users, show a message directing them to forums
-		// to give feedback.
-		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
-	}
-
 	// Show the Go welcome page on update.
 	if (!IsInCloudIDE) {
 		showGoWelcomePage(ctx);
@@ -752,44 +746,6 @@ export function shouldShowGoWelcomePage(showVersions: string[], newVersion: stri
 	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
 	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
-
-async function showGoNightlyWelcomeMessage() {
-	const shown = getFromGlobalState(goNightlyPromptKey, false);
-	if (shown === true) {
-		return;
-	}
-	const prompt = async () => {
-		const selected = await vscode.window.showInformationMessage(
-			`Thank you for testing new features by using the Go Nightly extension!
-We'd like to welcome you to share feedback and/or join our community of Go Nightly users and developers.`,
-			'Share feedback',
-			'Community resources'
-		);
-		switch (selected) {
-			case 'Share feedback':
-				await vscode.env.openExternal(
-					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#feedback')
-				);
-				break;
-			case 'Community resources':
-				await vscode.env.openExternal(
-					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#community')
-				);
-				break;
-			default:
-				return;
-		}
-		// Only prompt again if the user clicked one of the buttons.
-		// They may want to look at the other option.
-		prompt();
-	};
-	prompt();
-
-	// Update state to indicate that we've shown this message to the user.
-	updateGlobalState(goNightlyPromptKey, true);
-}
-
-const goNightlyPromptKey = 'goNightlyPrompt';
 
 export function deactivate() {
 	return Promise.all([
