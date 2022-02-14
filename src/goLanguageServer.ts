@@ -25,6 +25,7 @@ import {
 	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
+	InitializeResult,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
@@ -94,11 +95,23 @@ export interface LanguageServerConfig {
 // Global variables used for management of the language client.
 // They are global so that the server can be easily restarted with
 // new configurations.
+// TODO: refactor it. These can be encapsulated in a single LanguageServer class
+// that keeps track of the state of the active language server instance.
 export let languageClient: LanguageClient;
 let languageServerDisposable: vscode.Disposable;
 export let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
+
+// serverInfo is the information from the server received during initialization.
+export let serverInfo: ServerInfo = undefined;
+
+interface ServerInfo {
+	Name: string;
+	Version?: string;
+	GoVersion?: string;
+	Commands?: string[];
+}
 
 const languageServerStartMutex = new Mutex();
 
@@ -451,7 +464,34 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	languageServerDisposable = languageClient.start();
 	ctx.subscriptions.push(languageServerDisposable);
 	await languageClient.onReady();
+	serverInfo = toServerInfo(languageClient.initializeResult);
+
+	console.log(`Server: ${JSON.stringify(serverInfo, null, 2)}`);
 	return true;
+}
+
+function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
+	if (!res) return undefined;
+
+	const info: ServerInfo = {
+		Commands: res.capabilities?.executeCommandProvider?.commands || [],
+		Name: res.serverInfo?.name || 'unknown'
+	};
+
+	try {
+		interface serverVersionJSON {
+			GoVersion?: string;
+			Version?: string;
+			// before gopls 0.8.0
+			version?: string;
+		}
+		const v = <serverVersionJSON>(res.serverInfo?.version ? JSON.parse(res.serverInfo.version) : {});
+		info.Version = v.Version || v.version;
+		info.GoVersion = v.GoVersion;
+	} catch (e) {
+		// gopls is not providing any info, that's ok.
+	}
+	return info;
 }
 
 export interface BuildLanguageClientOption extends LanguageServerConfig {
