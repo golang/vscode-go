@@ -19,25 +19,24 @@ import { getBinPath, getGoVersion, getModuleCache, getWorkspaceFolderPath } from
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
 export let GO111MODULE: string;
 
-async function runGoModEnv(folderPath: string): Promise<string> {
+export async function runGoEnv(folderPath: string, envvars: string[]): Promise<any> {
 	const goExecutable = getBinPath('go');
 	if (!goExecutable) {
 		console.warn(
 			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
-		return;
+		return {};
 	}
 	const env = toolExecutionEnvironment();
 	GO111MODULE = env['GO111MODULE'];
 	return new Promise((resolve) => {
-		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env }, (err, stdout) => {
+		const args = ['env', '-json'].concat(envvars);
+		cp.execFile(goExecutable, args, { cwd: folderPath, env }, (err, stdout) => {
 			if (err) {
-				console.warn(`Error when running go env GOMOD: ${err}`);
-				return resolve('');
+				console.warn(`Error when running go env ${args}: ${err}`);
+				return resolve({});
 			}
-			const [goMod] = stdout.split('\n');
-			if (goMod === '/dev/null' || goMod === 'NUL') resolve('');
-			else resolve(goMod);
+			resolve(JSON.parse(stdout));
 		});
 	});
 }
@@ -65,7 +64,9 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 		return;
 	}
 
-	let goModEnvResult = await runGoModEnv(pkgPath);
+	const goModEnvJSON = await runGoEnv(pkgPath, ['GOMOD']);
+	let goModEnvResult =
+		goModEnvJSON['GOMOD'] === '/dev/null' || goModEnvJSON['GOMOD'] === 'NUL' ? '' : goModEnvJSON['GOMOD'];
 	if (goModEnvResult) {
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);

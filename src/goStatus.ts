@@ -18,7 +18,7 @@ import {
 	serverOutputChannel
 } from './goLanguageServer';
 import { isGoFile } from './goMode';
-import { getModFolderPath, isModSupported } from './goModules';
+import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
 
@@ -34,22 +34,26 @@ diagnosticsStatusBarItem.name = STATUS_BAR_ITEM_NAME;
 // statusbar item for switching the Go environment
 export let goEnvStatusbarItem: vscode.StatusBarItem;
 
-let modulePath: string;
+let gomod: string;
+let gowork: string;
 export const languageServerIcon = '$(zap)';
 export const languageServerErrorIcon = '$(warning)';
 
-export function updateGoStatusBar(editor: vscode.TextEditor) {
+export async function updateGoStatusBar(editor: vscode.TextEditor) {
 	// Only update the module path if we are in a Go file.
 	// This allows the user to open output windows without losing
 	// the go.mod information in the status bar.
 	if (!!editor && isGoFile(editor.document)) {
-		isModSupported(editor.document.uri).then((isMod) => {
-			if (isMod) {
-				getModFolderPath(editor.document.uri).then((p) => (modulePath = p));
-			} else {
-				modulePath = '';
-			}
-		});
+		const isMod = await isModSupported(editor.document.uri);
+		if (isMod) {
+			runGoEnv(path.dirname(editor.document.uri.fsPath), ['GOMOD', 'GOWORK']).then((p) => {
+				gomod = p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
+				gowork = p['GOWORK'];
+			});
+		} else {
+			gomod = '';
+			gowork = '';
+		}
 	}
 }
 
@@ -74,8 +78,12 @@ export async function expandGoStatusBar() {
 	}
 
 	// If modules is enabled, add link to mod file
-	if (modulePath) {
-		options.push({ label: "Open 'go.mod'", description: path.join(modulePath, 'go.mod') });
+	if (gomod) {
+		options.push({ label: "Open 'go.mod'", description: gomod });
+	}
+
+	if (gowork) {
+		options.push({ label: "Open 'go.work'", description: gowork });
 	}
 
 	vscode.window.showQuickPick(options).then((item) => {
@@ -95,6 +103,7 @@ export async function expandGoStatusBar() {
 				case 'Install Go Language Server':
 					vscode.commands.executeCommand('go.tools.install', [allToolsInformation['gopls']]);
 					break;
+				case "Open 'go.work'":
 				case "Open 'go.mod'":
 					const openPath = vscode.Uri.file(item.description);
 					vscode.workspace.openTextDocument(openPath).then((doc) => {
