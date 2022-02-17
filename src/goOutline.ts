@@ -218,13 +218,28 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
 			// Stitch the results together to make the results look like
 			// go-outline.
-			// TODO(suzmue): use regexp to find the package declaration.
+			let pkgDeclRng = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+			let pkgName = '';
+
+			// Try to find the package statement.
+			const text = document.getText();
+			const packageStatement = new RegExp('^[ \\t]*package[ \\t]*(\\S+)', 'm');
+			const match = packageStatement.exec(text);
+			if (match && match.length === 2) {
+				const packageDecl = match[0];
+				const start = text.indexOf(packageDecl);
+				pkgDeclRng = new vscode.Range(
+					document.positionAt(start),
+					document.positionAt(start + packageDecl.length)
+				);
+				pkgName = packageDecl[1];
+			}
 			const packageSymbol = new vscode.DocumentSymbol(
-				'unknown',
+				pkgName,
 				'package',
 				vscode.SymbolKind.Package,
-				new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
-				new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
+				pkgDeclRng,
+				pkgDeclRng
 			);
 			packageSymbol.children = symbols;
 			if (this.includeImports) {
