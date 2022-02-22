@@ -102,7 +102,6 @@ let languageServerDisposable: vscode.Disposable;
 export let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
-
 // serverInfo is the information from the server received during initialization.
 export let serverInfo: ServerInfo = undefined;
 
@@ -975,10 +974,6 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
 	) {
 		restartLanguageServer('config change');
-	}
-
-	if (e.affectsConfiguration('go.useLanguageServer') && getGoConfig()['useLanguageServer'] === false) {
-		promptAboutGoplsOptOut(true);
 	}
 }
 
