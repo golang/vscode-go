@@ -267,7 +267,7 @@ function scheduleGoplsSuggestions() {
 				return;
 			}
 			// Prompt the user to enable gopls and record what actions they took.
-			await promptAboutGoplsOptOut(false);
+			await promptAboutGoplsOptOut();
 			// Check if the language server has now been enabled, and if so,
 			// it will be installed below.
 			cfg = buildLanguageServerConfig(getGoConfig());
@@ -297,7 +297,7 @@ function scheduleGoplsSuggestions() {
 	setTimeout(survey, 30 * timeMinute);
 }
 
-export async function promptAboutGoplsOptOut(surveyOnly: boolean) {
+export async function promptAboutGoplsOptOut() {
 	// Check if the configuration is set in the workspace.
 	const useLanguageServer = getGoConfig().inspect('useLanguageServer');
 	const workspace = useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false;
@@ -312,14 +312,6 @@ export async function promptAboutGoplsOptOut(surveyOnly: boolean) {
 			return cfg;
 		}
 		cfg.lastDatePrompted = new Date();
-		if (surveyOnly) {
-			await promptForGoplsOptOutSurvey(
-				cfg,
-				`Looks like you've disabled the Go language server, which is the recommended default for this extension.
-Would you be willing to tell us why you've disabled it?`
-			);
-			return cfg;
-		}
 		const selected = await vscode.window.showInformationMessage(
 			`We noticed that you have disabled the language server.
 It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
