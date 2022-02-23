@@ -297,7 +297,8 @@ function scheduleGoplsSuggestions() {
 	setTimeout(survey, 30 * timeMinute);
 }
 
-export async function promptAboutGoplsOptOut() {
+// Ask users to enable gopls. If they still don't want it, ask to fill out opt-out survey with the probability.
+export async function promptAboutGoplsOptOut(probability = 0.5) {
 	// Check if the configuration is set in the workspace.
 	const useLanguageServer = getGoConfig().inspect('useLanguageServer');
 	const workspace = useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false;
@@ -312,6 +313,7 @@ export async function promptAboutGoplsOptOut() {
 			return cfg;
 		}
 		cfg.lastDatePrompted = new Date();
+
 		const selected = await vscode.window.showInformationMessage(
 			`We noticed that you have disabled the language server.
 It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
@@ -348,10 +350,12 @@ Would you like to enable it now?`,
 				break;
 			case 'Never':
 				cfg.prompt = false;
-				await promptForGoplsOptOutSurvey(
-					cfg,
-					'No problem. Would you be willing to tell us why you have opted out of the language server?'
-				);
+				if (Math.random() < probability) {
+					await promptForGoplsOptOutSurvey(
+						cfg,
+						'No problem. Would you be willing to tell us why you have opted out of the language server?'
+					);
+				}
 				break;
 		}
 		return cfg;
