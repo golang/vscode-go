@@ -80,7 +80,7 @@ import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
 export interface LanguageServerConfig {
 	serverName: string;
 	path: string;
-	version: string;
+	version?: { version: string; goVersion?: string };
 	modtime: Date;
 	enabled: boolean;
 	flags: string[];
@@ -369,10 +369,8 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	if (!s) {
 		return cfg;
 	}
-	let goplsVersion = await getLocalGoplsVersion(latestConfig);
-	if (!goplsVersion) {
-		goplsVersion = 'na';
-	}
+	const localGoplsVersion = await getLocalGoplsVersion(latestConfig);
+	const goplsVersion = localGoplsVersion?.version || 'na';
 	const goV = await getGoVersion();
 	let goVersion = 'na';
 	if (goV) {
@@ -855,15 +853,6 @@ async function adjustGoplsWorkspaceConfiguration(
 	if (!isInPreviewMode()) {
 		return workspaceConfig;
 	}
-	// allExperiments is only available with gopls/v0.5.2 and above.
-	const version = await getLocalGoplsVersion(cfg);
-	if (!version) {
-		return workspaceConfig;
-	}
-	const sv = semver.parse(version, true);
-	if (!sv || semver.lt(sv, 'v0.5.2')) {
-		return workspaceConfig;
-	}
 	if (!workspaceConfig['allExperiments']) {
 		workspaceConfig['allExperiments'] = true;
 	}
@@ -981,7 +970,7 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
-		version: '', // compute version lazily
+		version: null, // compute version lazily
 		modtime: null,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
@@ -1100,7 +1089,7 @@ export async function shouldUpdateLanguageServer(
 	const usersVersion = await getLocalGoplsVersion(cfg);
 
 	// We might have a developer version. Don't make the user update.
-	if (usersVersion === '(devel)') {
+	if (usersVersion && usersVersion.version === '(devel)') {
 		return null;
 	}
 
@@ -1116,13 +1105,13 @@ export async function shouldUpdateLanguageServer(
 	// If "gopls" is so old that it doesn't have the "gopls version" command,
 	// or its version doesn't match our expectations, usersVersion will be empty or invalid.
 	// Suggest the latestVersion.
-	if (!usersVersion || !semver.valid(usersVersion)) {
+	if (!usersVersion || !semver.valid(usersVersion.version)) {
 		return latestVersion;
 	}
 
 	// The user may have downloaded golang.org/x/tools/gopls@master,
 	// which means that they have a pseudoversion.
-	const usersTime = parseTimestampFromPseudoversion(usersVersion);
+	const usersTime = parseTimestampFromPseudoversion(usersVersion.version);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
 		let latestTime = cfg.checkForUpdates
@@ -1136,7 +1125,7 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.parse(usersVersion, {
+	const usersVersionSemver = semver.parse(usersVersion.version, {
 		includePrerelease: true,
 		loose: true
 	});
@@ -1226,6 +1215,14 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	return time;
 };
 
+interface GoplsVersionOutput {
+	GoVersion: string;
+	Main: {
+		Path: string;
+		Version: string;
+	};
+}
+
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
@@ -1235,17 +1232,31 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	if (!cfg) {
 		return null;
 	}
-	if (cfg.version !== '') {
+	if (cfg.version) {
 		return cfg.version;
 	}
 	if (cfg.path === '') {
 		return null;
 	}
+	const env = toolExecutionEnvironment();
+	const cwd = getWorkspaceFolderPath();
+
 	const execFile = util.promisify(cp.execFile);
-	let output: any;
 	try {
-		const env = toolExecutionEnvironment();
-		const cwd = getWorkspaceFolderPath();
+		const { stdout } = await execFile(cfg.path, ['version', '-json'], { env, cwd });
+
+		const v = <GoplsVersionOutput>JSON.parse(stdout);
+		if (v?.Main.Version) {
+			cfg.version = { version: v.Main.Version, goVersion: v.GoVersion };
+			return cfg.version;
+		}
+	} catch (e) {
+		// do nothing
+	}
+
+	// fall back to the old way (pre v0.8.0)
+	let output = '';
+	try {
 		const { stdout } = await execFile(cfg.path, ['version'], { env, cwd });
 		output = stdout;
 	} catch (e) {
@@ -1254,7 +1265,7 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 		return null;
 	}
 
-	const lines = <string>output.trim().split('\n');
+	const lines = output.trim().split('\n');
 	switch (lines.length) {
 		case 0:
 			// No results, should update.
@@ -1294,7 +1305,7 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	//
 	//    v0.1.3
 	//
-	cfg.version = split[1];
+	cfg.version = { version: split[1] };
 	return cfg.version;
 };
 
@@ -1444,7 +1455,7 @@ Failed to auto-collect gopls trace: ${failureReason}.
 				const now = new Date();
 
 				const body = `
-gopls version: ${usersGoplsVersion}
+gopls version: ${usersGoplsVersion?.version} (${usersGoplsVersion?.goVersion})
 gopls flags: ${settings}
 update flags: ${latestConfig.checkForUpdates}
 extension version: ${extInfo.version}

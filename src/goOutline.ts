@@ -206,8 +206,12 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
 		// TODO(suzmue): Check the commands available instead of the version.
 		const goplsVersion = await getLocalGoplsVersion(latestConfig);
-		const sv = semver.parse(goplsVersion, true);
-		if (languageClient && (goplsVersion === '(devel)' || semver.gt(sv, 'v0.7.6'))) {
+		if (!goplsVersion) {
+			return this.runGoOutline(document, token);
+		}
+
+		const sv = semver.parse(goplsVersion.version, true);
+		if (languageClient && (goplsVersion.version === '(devel)' || semver.gte(sv, 'v0.8.0-pre.1'))) {
 			const symbols: vscode.DocumentSymbol[] = await vscode.commands.executeCommand(
 				'vscode.executeDocumentSymbolProvider',
 				document.uri

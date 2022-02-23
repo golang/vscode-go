@@ -68,7 +68,7 @@ export async function expandGoStatusBar() {
 	const cfg = buildLanguageServerConfig(goConfig);
 	if (languageServerIsRunning && cfg.serverName === 'gopls') {
 		const goplsVersion = await getLocalGoplsVersion(cfg);
-		options.push({ label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion}` });
+		options.push({ label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion?.version}` });
 	}
 	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer'] === true) {
 		options.push({

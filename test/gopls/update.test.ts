@@ -152,7 +152,7 @@ suite('gopls update tests', () => {
 		];
 		for (const [name, usersVersion, acceptPrerelease, want] of testCases) {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
-				return usersVersion;
+				return { version: usersVersion };
 			});
 			sinon.replace(goInstallTools, 'latestToolVersion', async () => {
 				if (acceptPrerelease) {
@@ -171,7 +171,7 @@ suite('gopls update tests', () => {
 			const got = await lsp.shouldUpdateLanguageServer(tool, {
 				enabled: true,
 				path: 'bad/path/to/gopls',
-				version: '',
+				version: null,
 				checkForUpdates: 'proxy',
 				env: {},
 				features: {
