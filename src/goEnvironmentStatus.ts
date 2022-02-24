@@ -213,18 +213,13 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			outputChannel.clear();
 			outputChannel.show();
 			outputChannel.appendLine(`go install ${goOption.binpath}@latest`);
-			const result = await installTool(
-				{
-					name: newExecutableName,
-					importPath: goOption.binpath,
-					modulePath: goOption.binpath,
-					description: newExecutableName,
-					isImportant: false
-				},
-				await getGoVersion(),
-				toolInstallationEnvironment(),
-				true
-			);
+			const result = await installTool({
+				name: newExecutableName,
+				importPath: goOption.binpath,
+				modulePath: goOption.binpath,
+				description: newExecutableName,
+				isImportant: false
+			});
 			if (result) {
 				outputChannel.appendLine(`Error installing ${goOption.binpath}: ${result}`);
 				throw new Error('Could not install ${goOption.binpath}');

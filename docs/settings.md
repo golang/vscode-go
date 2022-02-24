@@ -454,6 +454,11 @@ Allowed Options:
 
 
 Default: `"proxy"`
+### `go.toolsManagement.go`
+
+The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.
+
+Default: `""`
 ### `go.trace.server`
 
 Trace the communication between VS Code and the Go language server.<br/>
