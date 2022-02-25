@@ -516,7 +516,10 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
-export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
+export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient | undefined> {
+	if (!cfg.enabled) {
+		return Promise.resolve(undefined);
+	}
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
