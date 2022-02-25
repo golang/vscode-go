@@ -13,7 +13,7 @@ import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
-import { getGoConfig, IsInCloudIDE } from './config';
+import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
 import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
@@ -516,7 +516,7 @@ const STATUS_BAR_ITEM_NAME = 'Go Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion() {
-	if (IsInCloudIDE) {
+	if (extensionInfo.isInCloudIDE) {
 		return;
 	}
 	const goConfig = getGoConfig();

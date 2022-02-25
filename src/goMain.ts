@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
+import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -46,7 +46,6 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	isInPreviewMode,
 	languageServerIsRunning,
 	RestartReason,
 	showServerOutputChannel,
@@ -145,7 +144,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	}
 
 	// Show the Go welcome page on update.
-	if (!IsInCloudIDE) {
+	if (!extensionInfo.isInCloudIDE) {
 		showGoWelcomePage(ctx);
 	}
 
@@ -717,7 +716,7 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// https://github.com/golang/vscode-go/issue/1179
 	let goExtensionVersion = '0.30.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
-	if (isInPreviewMode()) {
+	if (extensionInfo.isPreview) {
 		goExtensionVersion = '0.0.0';
 		goExtensionVersionKey = 'go.nightlyExtensionVersion';
 	}

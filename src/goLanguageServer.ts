@@ -34,8 +34,7 @@ import {
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
-import { extensionId } from './const';
+import { getGoConfig, getGoplsConfig, extensionInfo } from './config';
 import { GoCodeActionProvider } from './goCodeAction';
 import { GoDefinitionProvider } from './goDeclaration';
 import { toolExecutionEnvironment } from './goEnv';
@@ -77,7 +76,7 @@ import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/f
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
 import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
 
-export interface LanguageServerConfig {
+interface LanguageServerConfig {
 	serverName: string;
 	path: string;
 	version?: { version: string; goVersion?: string };
@@ -232,7 +231,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
 function scheduleGoplsSuggestions() {
-	if (IsInCloudIDE) {
+	if (extensionInfo.isInCloudIDE) {
 		return;
 	}
 	// Some helper functions.
@@ -853,7 +852,7 @@ async function adjustGoplsWorkspaceConfiguration(
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
 
 	// Only modify the user's configurations for the Nightly.
-	if (!isInPreviewMode()) {
+	if (!extensionInfo.isPreview) {
 		return workspaceConfig;
 	}
 	if (!workspaceConfig['allExperiments']) {
@@ -1073,7 +1072,7 @@ export async function shouldUpdateLanguageServer(
 	mustCheck?: boolean
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || IsInCloudIDE))) {
+	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || extensionInfo.isInCloudIDE))) {
 		return null;
 	}
 	if (!cfg.enabled) {
@@ -1098,7 +1097,7 @@ export async function shouldUpdateLanguageServer(
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
 	let latestVersion =
-		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, isInPreviewMode());
+		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, extensionInfo.isPreview);
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -1441,7 +1440,6 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 				}
 				// Get the user's version in case the update prompt above failed.
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const extInfo = getExtensionInfo();
 				const goVersion = await getGoVersion();
 				const settings = latestConfig.flags.join(' ');
 				const title = `gopls: automated issue report (${errKind})`;
@@ -1461,9 +1459,9 @@ Failed to auto-collect gopls trace: ${failureReason}.
 gopls version: ${usersGoplsVersion?.version} (${usersGoplsVersion?.goVersion})
 gopls flags: ${settings}
 update flags: ${latestConfig.checkForUpdates}
-extension version: ${extInfo.version}
+extension version: ${extensionInfo.version}
 go version: ${goVersion?.format(true)}
-environment: ${extInfo.appName} ${process.platform}
+environment: ${extensionInfo.appName} ${process.platform}
 initialization error: ${initializationError}
 issue timestamp: ${now.toUTCString()}
 restart history:
@@ -1636,25 +1634,4 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
 	return useLanguageServer.globalValue === undefined && useLanguageServer.workspaceValue === undefined;
-}
-
-interface ExtensionInfo {
-	version?: string; // Extension version
-	appName: string; // The application name of the editor, like 'VS Code'
-	isPreview?: boolean; // if the extension runs in preview mode (e.g. Nightly)
-}
-
-function getExtensionInfo(): ExtensionInfo {
-	const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
-	const version = packageJSON?.version;
-	const appName = vscode.env.appName;
-	const isPreview = !!packageJSON?.preview;
-	return { version, appName, isPreview };
-}
-
-// isInPreviewMode returns true if the extension's preview mode is set to true.
-// In the Nightly extension and the dev extension built from master, the preview
-// is set to true.
-export function isInPreviewMode(): boolean {
-	return getExtensionInfo().isPreview;
 }

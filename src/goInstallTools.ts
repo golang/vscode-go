@@ -13,7 +13,7 @@ import fs = require('fs');
 import path = require('path');
 import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
-import { getGoConfig, getGoplsConfig } from './config';
+import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
@@ -42,7 +42,6 @@ import {
 import { correctBinname, envPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
-import { isInPreviewMode, RestartReason } from './goLanguageServer';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
@@ -225,7 +224,7 @@ export async function installTool(
 	} else {
 		let version: semver.SemVer | string | undefined = tool.version;
 		if (!version) {
-			if (tool.usePrereleaseInPreviewMode && isInPreviewMode()) {
+			if (tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
 				version = await latestToolVersion(tool, true);
 			} else if (tool.defaultVersion) {
 				version = tool.defaultVersion;
