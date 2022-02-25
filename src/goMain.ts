@@ -900,7 +900,16 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 
 	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
 	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
-	if (toolsToUpdate.length > 0) {
+	if (toolsToUpdate.length === 0) {
+		return;
+	}
+
+	// If the user has opted in to automatic tool updates, we can update
+	// without prompting.
+	const toolsManagementConfig = getGoConfig()['toolsManagement'];
+	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+		installTools(toolsToUpdate, configuredGoVersion, true);
+	} else {
 		const updateToolsCmdText = 'Update tools';
 		const selected = await vscode.window.showWarningMessage(
 			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${
