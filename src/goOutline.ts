@@ -7,13 +7,12 @@
 'use strict';
 
 import cp = require('child_process');
-import semver = require('semver');
 import vscode = require('vscode');
 import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getLocalGoplsVersion, languageClient, latestConfig } from './goLanguageServer';
+import { languageClient, serverInfo } from './goLanguageServer';
 import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
 import { killProcess } from './utils/processUtils';
 
@@ -192,6 +191,8 @@ function convertToCodeSymbols(
 	return symbols;
 }
 
+const GOPLS_LIST_IMPORTS = 'gopls.list_imports';
+
 export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 	constructor(private includeImports?: boolean) {}
 
@@ -205,13 +206,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 		}
 
 		// TODO(suzmue): Check the commands available instead of the version.
-		const goplsVersion = await getLocalGoplsVersion(latestConfig);
-		if (!goplsVersion) {
-			return this.runGoOutline(document, token);
-		}
-
-		const sv = semver.parse(goplsVersion.version, true);
-		if (languageClient && (goplsVersion.version === '(devel)' || semver.gte(sv, 'v0.8.0-pre.1'))) {
+		if (languageClient && serverInfo?.Commands?.includes(GOPLS_LIST_IMPORTS)) {
 			const symbols: vscode.DocumentSymbol[] = await vscode.commands.executeCommand(
 				'vscode.executeDocumentSymbolProvider',
 				document.uri
@@ -283,7 +278,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 async function listImports(document: vscode.TextDocument): Promise<{ Path: string; Name: string }[]> {
 	const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 	const params: ExecuteCommandParams = {
-		command: 'gopls.list_imports',
+		command: GOPLS_LIST_IMPORTS,
 		arguments: [
 			{
 				URI: uri
