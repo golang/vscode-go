@@ -35,30 +35,17 @@ import {
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
-import { GoCodeActionProvider } from './legacy/goCodeAction';
-import { GoDefinitionProvider } from './legacy/goDeclaration';
 import { toolExecutionEnvironment } from '../goEnv';
-import { GoHoverProvider } from './legacy/goExtraInfo';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
-import { GoImplementationProvider } from './legacy/goImplementations';
 import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
-import { parseLiveFile } from './legacy/goLiveErrors';
 import {
 	buildDiagnosticCollection,
 	lintDiagnosticCollection,
 	restartLanguageServer,
 	vetDiagnosticCollection
 } from '../goMain';
-import { GO_MODE } from '../goMode';
-import { GoDocumentSymbolProvider } from './legacy/goOutline';
-import { GoReferenceProvider } from './legacy/goReferences';
-import { GoRenameProvider } from './legacy/goRename';
-import { GoSignatureHelpProvider } from './legacy/goSignature';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
-import { GoCompletionItemProvider } from './legacy/goSuggest';
-import { GoWorkspaceSymbolProvider } from './legacy/goSymbol';
 import { getTool, Tool } from '../goTools';
-import { GoTypeDefinitionProvider } from './legacy/goTypeDefinition';
 import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
 	getBinPath,
@@ -75,6 +62,7 @@ import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
 import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
+import { LegacyLanguageService } from './registerDefaultProviders';
 
 interface LanguageServerConfig {
 	serverName: string;
@@ -101,6 +89,7 @@ let languageServerDisposable: vscode.Disposable;
 export let latestConfig: LanguageServerConfig;
 export let serverOutputChannel: vscode.OutputChannel;
 export let languageServerIsRunning = false;
+
 // serverInfo is the information from the server received during initialization.
 export let serverInfo: ServerInfo = undefined;
 
@@ -110,6 +99,8 @@ interface ServerInfo {
 	GoVersion?: string;
 	Commands?: string[];
 }
+
+let legacyLanguageService: LegacyLanguageService = undefined;
 
 const languageServerStartMutex = new Mutex();
 
@@ -148,9 +139,6 @@ class Restart {
 		this.enabled = enabled;
 	}
 }
-
-// defaultLanguageProviders is the list of providers currently registered.
-let defaultLanguageProviders: vscode.Disposable[] = [];
 
 // restartCommand is the command used by the user to restart the language
 // server.
@@ -216,8 +204,9 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		// If the server has been disabled, or failed to start,
 		// fall back to the default providers, while making sure not to
 		// re-register any providers.
-		if (!started && defaultLanguageProviders.length === 0) {
-			registerDefaultProviders(ctx);
+		if (!started && !legacyLanguageService) {
+			legacyLanguageService = new LegacyLanguageService(ctx);
+			ctx.subscriptions.push(legacyLanguageService);
 		}
 		languageServerIsRunning = started;
 		updateLanguageServerIconGoStatusBar(started, goConfig['useLanguageServer'] === true);
@@ -451,7 +440,9 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.
-	disposeDefaultProviders();
+
+	legacyLanguageService?.dispose();
+	legacyLanguageService = undefined;
 
 	languageServerDisposable = languageClient.start();
 	ctx.subscriptions.push(languageServerDisposable);
@@ -902,48 +893,6 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 			arguments: [{ functionName: lens.command.arguments[2][0] }]
 		})
 	];
-}
-
-// registerUsualProviders registers the language feature providers if the language server is not enabled.
-function registerDefaultProviders(ctx: vscode.ExtensionContext) {
-	const completionProvider = new GoCompletionItemProvider(ctx.globalState);
-	defaultLanguageProviders.push(completionProvider);
-	defaultLanguageProviders.push(
-		vscode.languages.registerCompletionItemProvider(GO_MODE, completionProvider, '.', '"')
-	);
-	defaultLanguageProviders.push(vscode.languages.registerHoverProvider(GO_MODE, new GoHoverProvider()));
-	defaultLanguageProviders.push(vscode.languages.registerDefinitionProvider(GO_MODE, new GoDefinitionProvider()));
-	defaultLanguageProviders.push(vscode.languages.registerReferenceProvider(GO_MODE, new GoReferenceProvider()));
-	defaultLanguageProviders.push(
-		vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoDocumentSymbolProvider())
-	);
-	defaultLanguageProviders.push(vscode.languages.registerWorkspaceSymbolProvider(new GoWorkspaceSymbolProvider()));
-	defaultLanguageProviders.push(
-		vscode.languages.registerSignatureHelpProvider(GO_MODE, new GoSignatureHelpProvider(), '(', ',')
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerImplementationProvider(GO_MODE, new GoImplementationProvider())
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerDocumentFormattingEditProvider(GO_MODE, new GoDocumentFormattingEditProvider())
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerTypeDefinitionProvider(GO_MODE, new GoTypeDefinitionProvider())
-	);
-	defaultLanguageProviders.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
-	defaultLanguageProviders.push(vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions));
-	defaultLanguageProviders.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
-
-	for (const provider of defaultLanguageProviders) {
-		ctx.subscriptions.push(provider);
-	}
-}
-
-function disposeDefaultProviders() {
-	for (const disposable of defaultLanguageProviders) {
-		disposable.dispose();
-	}
-	defaultLanguageProviders = [];
 }
 
 export async function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
