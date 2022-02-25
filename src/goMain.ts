@@ -51,7 +51,7 @@ import {
 	showServerOutputChannel,
 	startLanguageServerWithFallback,
 	watchLanguageServerConfiguration
-} from './goLanguageServer';
+} from './language/goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
@@ -103,7 +103,7 @@ import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } 
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
-import { getFormatTool } from './goFormat';
+import { getFormatTool } from './language/legacy/goFormat';
 import { resetSurveyConfigs, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';

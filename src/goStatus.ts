@@ -16,7 +16,7 @@ import {
 	getLocalGoplsVersion,
 	languageServerIsRunning,
 	serverOutputChannel
-} from './goLanguageServer';
+} from './language/goLanguageServer';
 import { isGoFile } from './goMode';
 import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';

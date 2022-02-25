@@ -8,7 +8,7 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { lastUserAction } from './goLanguageServer';
+import { lastUserAction } from './language/goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
 
 // Start and end dates of the survey.

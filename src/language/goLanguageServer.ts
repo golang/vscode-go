@@ -34,32 +34,32 @@ import {
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { getGoConfig, getGoplsConfig, extensionInfo } from './config';
-import { GoCodeActionProvider } from './goCodeAction';
-import { GoDefinitionProvider } from './goDeclaration';
-import { toolExecutionEnvironment } from './goEnv';
-import { GoHoverProvider } from './goExtraInfo';
-import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './goFormat';
-import { GoImplementationProvider } from './goImplementations';
-import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { parseLiveFile } from './goLiveErrors';
+import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
+import { GoCodeActionProvider } from './legacy/goCodeAction';
+import { GoDefinitionProvider } from './legacy/goDeclaration';
+import { toolExecutionEnvironment } from '../goEnv';
+import { GoHoverProvider } from './legacy/goExtraInfo';
+import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
+import { GoImplementationProvider } from './legacy/goImplementations';
+import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
+import { parseLiveFile } from './legacy/goLiveErrors';
 import {
 	buildDiagnosticCollection,
 	lintDiagnosticCollection,
 	restartLanguageServer,
 	vetDiagnosticCollection
-} from './goMain';
-import { GO_MODE } from './goMode';
-import { GoDocumentSymbolProvider } from './goOutline';
-import { GoReferenceProvider } from './goReferences';
-import { GoRenameProvider } from './goRename';
-import { GoSignatureHelpProvider } from './goSignature';
-import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
-import { GoCompletionItemProvider } from './goSuggest';
-import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { getTool, Tool } from './goTools';
-import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from './stateUtils';
+} from '../goMain';
+import { GO_MODE } from '../goMode';
+import { GoDocumentSymbolProvider } from './legacy/goOutline';
+import { GoReferenceProvider } from './legacy/goReferences';
+import { GoRenameProvider } from './legacy/goRename';
+import { GoSignatureHelpProvider } from './legacy/goSignature';
+import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
+import { GoCompletionItemProvider } from './legacy/goSuggest';
+import { GoWorkspaceSymbolProvider } from './legacy/goSymbol';
+import { getTool, Tool } from '../goTools';
+import { GoTypeDefinitionProvider } from './legacy/goTypeDefinition';
+import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
@@ -67,14 +67,14 @@ import {
 	getGoVersion,
 	getWorkspaceFolderPath,
 	removeDuplicateDiagnostics
-} from './util';
-import { Mutex } from './utils/mutex';
-import { getToolFromToolPath } from './utils/pathUtils';
+} from '../util';
+import { Mutex } from '../utils/mutex';
+import { getToolFromToolPath } from '../utils/pathUtils';
 import WebRequest = require('web-request');
 import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
-import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
-import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
+import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
+import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 
 interface LanguageServerConfig {
 	serverName: string;

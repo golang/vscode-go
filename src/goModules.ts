@@ -11,7 +11,7 @@ import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { getFormatTool } from './goFormat';
+import { getFormatTool } from './language/legacy/goFormat';
 import { installTools } from './goInstallTools';
 import { outputChannel } from './goStatus';
 import { getTool } from './goTools';

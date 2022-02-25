@@ -6,7 +6,7 @@
 import assert from 'assert';
 import sinon = require('sinon');
 import vscode = require('vscode');
-import goLanguageServer = require('../../src/goLanguageServer');
+import goLanguageServer = require('../../src/language/goLanguageServer');
 import goSurvey = require('../../src/goSurvey');
 import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
 

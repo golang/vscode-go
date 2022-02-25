@@ -14,7 +14,7 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { GoDocumentSymbolProvider } from './goOutline';
+import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
 import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 

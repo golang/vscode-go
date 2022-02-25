@@ -9,12 +9,12 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
-import { getGoConfig } from './config';
+import { getGoConfig } from '../../config';
 import { adjustWordPosition, definitionLocation, parseMissingError } from './goDeclaration';
-import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive, goBuiltinTypes } from './util';
-import { killProcessTree } from './utils/processUtils';
+import { toolExecutionEnvironment } from '../../goEnv';
+import { promptForMissingTool } from '../../goInstallTools';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive, goBuiltinTypes } from '../../util';
+import { killProcessTree } from '../../utils/processUtils';
 
 interface GuruDescribeOutput {
 	desc: string;

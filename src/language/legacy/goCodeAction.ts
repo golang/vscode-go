@@ -7,7 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { listPackages } from './goImport';
+import { listPackages } from '../../goImport';
 
 export class GoCodeActionProvider implements vscode.CodeActionProvider {
 	public provideCodeActions(
