@@ -61,6 +61,7 @@
     "vscode-debugprotocol": "1.45.0",
     "vscode-languageclient": "7.0.0",
     "vscode-languageserver-protocol": "3.16.0",
+    "vscode-uri": "3.0.3",
     "web-request": "1.0.7"
   },
   "devDependencies": {
@@ -487,6 +488,20 @@
         "command": "go.global.resetState",
         "title": "Go: Reset Global State",
         "description": "Reset keys in global state to undefined."
+      },
+      {
+        "command": "go.explorer.refresh",
+        "title": "Go Explorer: Refresh",
+        "description": "Refresh the Go explorer. Only available as a menu item in the explorer.",
+        "category": "Explorer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "go.explorer.open",
+        "title": "Go Explorer: Open File",
+        "description": "Open a file from the Go explorer. Only available as a menu item in the explorer.",
+        "category": "Explorer",
+        "icon": "$(go-to-file)"
       }
     ],
     "breakpoints": [
@@ -2554,6 +2569,14 @@
         {
           "command": "go.test.deleteProfile",
           "when": "false"
+        },
+        {
+          "command": "go.explorer.refresh",
+          "when": "false"
+        },
+        {
+          "command": "go.explorer.open",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -2655,14 +2678,32 @@
           "group": "profile"
         }
       ],
+      "view/title": [
+        {
+          "command": "go.explorer.refresh",
+          "when": "view == go.explorer",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
         {
           "command": "go.test.deleteProfile",
           "when": "viewItem == go:test:file"
+        },
+        {
+          "command": "go.explorer.open",
+          "when": "view == go.explorer && viewItem == go:explorer:envitem:file",
+          "group": "inline"
         }
       ]
     },
     "views": {
+      "explorer": [
+        {
+          "id": "go.explorer",
+          "name": "go"
+        }
+      ],
       "test": [
         {
           "id": "go.test.profile",

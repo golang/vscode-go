@@ -109,6 +109,7 @@ import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
+import { GoExplorerProvider } from './goExplorer';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -326,6 +327,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
 		GoTestExplorer.setup(ctx);
 	}
+
+	GoExplorerProvider.setup(ctx);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
