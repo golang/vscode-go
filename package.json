@@ -2332,6 +2332,11 @@
                   "markdownDescription": "check that struct field tags conform to reflect.StructTag.Get\n\nAlso report certain struct tags (json, xml) used with unexported fields.",
                   "default": true
                 },
+                "stubmethods": {
+                  "type": "boolean",
+                  "markdownDescription": "stub methods analyzer\n\nThis analyzer generates method stubs for concrete types\nin order to implement a target interface",
+                  "default": true
+                },
                 "testinggoroutine": {
                   "type": "boolean",
                   "markdownDescription": "report calls to (*testing.T).Fatal from goroutines started by a test.\n\nFunctions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and\nSkip{,f,Now} methods of *testing.T, must be called from the test goroutine itself.\nThis checker detects calls to these functions that occur within a goroutine\nstarted by the test. For example:\n\nfunc TestFoo(t *testing.T) {\n    go func() {\n        t.Fatal(\"oops\") // error: (*T).Fatal called from non-test goroutine\n    }()\n}\n",
@@ -2380,7 +2385,7 @@
                 "useany": {
                   "type": "boolean",
                   "markdownDescription": "check for constraints that could be simplified to \"any\"",
-                  "default": true
+                  "default": false
                 }
               }
             },
