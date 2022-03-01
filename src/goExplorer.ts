@@ -8,16 +8,19 @@ import cp = require('child_process');
 import util = require('util');
 import os = require('os');
 import path = require('path');
-import { getGoConfig } from './config';
-import { getBinPath } from './util';
+import { getGoConfig, getGoplsConfig } from './config';
+import { getBinPath, getGoVersion } from './util';
 import { toolExecutionEnvironment } from './goEnv';
+import { getConfiguredTools } from './goTools';
+import { inspectGoToolVersion } from './goInstallTools';
 
 /**
  * GoExplorerProvider provides data for the Go tree view in the Explorer
  * Tree View Container.
  */
 export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-	private goEnvCache = new Cache((uri) => GoEnv.get(uri ? vscode.Uri.parse(uri) : undefined), 1000 * 60);
+	private goEnvCache = new Cache((uri) => GoEnv.get(uri ? vscode.Uri.parse(uri) : undefined), Time.MINUTE);
+	private toolDetailCache = new Cache((name) => getToolDetail(name), Time.HOUR);
 	private activeFolder?: vscode.WorkspaceFolder;
 	private activeDocument?: vscode.TextDocument;
 
@@ -51,15 +54,24 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 
 	getChildren(element?: vscode.TreeItem) {
+		if (!element) {
+			return [this.envTree(), this.toolTree()];
+		}
 		if (isEnvTree(element)) {
 			return this.envTreeItems(element.workspace);
 		}
-		return [this.envTree()];
+		if (isToolTree(element)) {
+			return this.toolTreeItems();
+		}
+		if (isToolTreeItem(element)) {
+			return element.children;
+		}
 	}
 
 	private update(clearCache = false) {
 		if (clearCache) {
 			this.goEnvCache.clear();
+			this.toolDetailCache.clear();
 		}
 		const { activeTextEditor } = vscode.window;
 		const { getWorkspaceFolder, workspaceFolders } = vscode.workspace;
@@ -104,10 +116,21 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 		}
 		return items;
 	}
-}
 
-function isEnvTree(item?: vscode.TreeItem): item is EnvTree {
-	return item?.contextValue === 'go:explorer:env';
+	private toolTree() {
+		return new ToolTree();
+	}
+
+	private async toolTreeItems() {
+		const goVersion = await getGoVersion();
+		const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+		const toolsInfo = await Promise.all(allTools.map((tool) => this.toolDetailCache.get(tool.name)));
+		const items = [];
+		for (const t of toolsInfo) {
+			items.push(new ToolTreeItem(t));
+		}
+		return items;
+	}
 }
 
 class EnvTree implements vscode.TreeItem {
@@ -118,13 +141,17 @@ class EnvTree implements vscode.TreeItem {
 	constructor(public description = '', public workspace?: vscode.Uri) {}
 }
 
+function isEnvTree(item?: vscode.TreeItem): item is EnvTree {
+	return item?.contextValue === 'go:explorer:env';
+}
+
 class EnvTreeItem implements vscode.TreeItem {
 	file?: vscode.Uri;
 	label: string;
 	contextValue?: string;
 	tooltip?: string;
 	constructor(public key: string, public value: string) {
-		this.label = `${key}=${value.replace(new RegExp(`^${os.homedir()}`), '~')}`;
+		this.label = `${key}=${replaceHome(value)}`;
 		this.contextValue = 'go:explorer:envitem';
 		if (GoEnv.fileVars.includes(key)) {
 			this.contextValue = 'go:explorer:envitem:file';
@@ -188,6 +215,88 @@ class GoEnv {
 	}
 }
 
+class ToolTree implements vscode.TreeItem {
+	label = 'tools';
+	contextValue = 'go:explorer:tools';
+	collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+	iconPath = new vscode.ThemeIcon('package');
+}
+
+function isToolTree(item?: vscode.TreeItem): item is ToolTree {
+	return item?.contextValue === 'go:explorer:tools';
+}
+
+class ToolTreeItem implements vscode.TreeItem {
+	contextValue = 'go:explorer:toolitem';
+	description = 'not installed';
+	label: string;
+	children: vscode.TreeItem[];
+	collapsibleState?: vscode.TreeItemCollapsibleState;
+	tooltip: string;
+	constructor({ name, version, goVersion, binPath, error }: ToolDetail) {
+		this.label = name;
+		if (binPath) {
+			this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+			this.children = [new ToolDetailTreeItem(binPath, goVersion)];
+			this.description = version;
+			this.tooltip = `${name}@${version}`;
+		}
+		if (error) {
+			const msg = `go version -m failed: ${error}`;
+			this.description = msg;
+			this.tooltip = msg;
+		}
+	}
+}
+
+function isToolTreeItem(item?: vscode.TreeItem): item is ToolTreeItem {
+	return item?.contextValue === 'go:explorer:toolitem';
+}
+
+class ToolDetailTreeItem implements vscode.TreeItem {
+	contextValue = 'go:explorer:tooldetail';
+	label: string;
+	description: string;
+	tooltip: string;
+	constructor(bin: string, goVersion: string) {
+		this.label = replaceHome(bin);
+		this.description = goVersion;
+		this.tooltip = `${bin} ${goVersion}`;
+	}
+}
+
+interface ToolDetail {
+	name: string;
+	goVersion?: string;
+	version?: string;
+	binPath?: string;
+	error?: Error;
+}
+
+async function getToolDetail(name: string): Promise<ToolDetail> {
+	const toolPath = getBinPath(name);
+	if (!path.isAbsolute(toolPath)) {
+		return { name: name };
+	}
+	try {
+		const { goVersion, moduleVersion } = await inspectGoToolVersion(toolPath);
+		return {
+			name: name,
+			binPath: toolPath,
+			goVersion: goVersion,
+			version: moduleVersion
+		};
+	} catch (e) {
+		return { name: name, error: e };
+	}
+}
+
+const enum Time {
+	SECOND = 1000,
+	MINUTE = SECOND * 60,
+	HOUR = MINUTE * 60
+}
+
 interface CacheEntry<T> {
 	entry: T;
 	updatedAt: number;
@@ -216,4 +325,13 @@ class Cache<T> {
 	delete(key: string) {
 		return this.cache.delete(key);
 	}
+}
+
+/**
+ * replaceHome replaces the home directory prefix of a string with `~`.
+ * @param maybePath a string that might be a file system path.
+ * @returns the string with os.homedir() replaced by `~`.
+ */
+function replaceHome(maybePath: string) {
+	return maybePath.replace(new RegExp(`^${os.homedir()}`), '~');
 }
