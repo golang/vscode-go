@@ -174,7 +174,7 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 | `fillStruct` | If true, adds command to fill struct literal with default values to the editor context menu <br/> Default: `true` |
 | `generateTestForFile` | If true, adds command to generate unit tests for current file to the editor context menu <br/> Default: `true` |
 | `generateTestForFunction` | If true, adds command to generate unit tests for function under the cursor to the editor context menu <br/> Default: `true` |
-| `generateTestForPackage` | If true, adds command to generate unit tests for currnt package to the editor context menu <br/> Default: `true` |
+| `generateTestForPackage` | If true, adds command to generate unit tests for current package to the editor context menu <br/> Default: `true` |
 | `playground` | If true, adds command to upload the current file or selection to the Go Playground <br/> Default: `true` |
 | `removeTags` | If true, adds command to remove configured tags from struct fields to the editor context menu <br/> Default: `true` |
 | `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `false` |
