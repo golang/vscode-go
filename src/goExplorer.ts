@@ -137,7 +137,7 @@ class EnvTree implements vscode.TreeItem {
 	label = 'env';
 	contextValue = 'go:explorer:env';
 	collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-	iconPath = new vscode.ThemeIcon('folder-opened');
+	iconPath = new vscode.ThemeIcon('symbol-folder');
 	constructor(public description = '', public workspace?: vscode.Uri) {}
 }
 
@@ -218,8 +218,8 @@ class GoEnv {
 class ToolTree implements vscode.TreeItem {
 	label = 'tools';
 	contextValue = 'go:explorer:tools';
-	collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-	iconPath = new vscode.ThemeIcon('package');
+	collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+	iconPath = new vscode.ThemeIcon('tools');
 }
 
 function isToolTree(item?: vscode.TreeItem): item is ToolTree {
