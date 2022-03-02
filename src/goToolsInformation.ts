@@ -23,14 +23,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Auto-completion, works with modules',
 		minimumGoVersion: semver.coerce('1.11')
 	},
-	'gopkgs': {
-		name: 'gopkgs',
-		importPath: 'github.com/uudashr/gopkgs/v2/cmd/gopkgs',
-		modulePath: 'github.com/uudashr/gopkgs/v2',
-		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/258): disable Add Import command.
-		isImportant: true,
-		description: 'Auto-completion of unimported packages & Add Import feature'
-	},
 	'go-outline': {
 		name: 'go-outline',
 		importPath: 'github.com/ramya-rao-a/go-outline',
@@ -202,7 +194,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.12'),
+		minimumGoVersion: semver.coerce('1.13'),
 		latestVersion: semver.parse('v0.7.5'),
 		latestVersionTimestamp: moment('2022-01-18', 'YYYY-MM-DD'),
 		latestPrereleaseVersion: semver.parse('v0.7.5'),

@@ -96,7 +96,7 @@ export class GoVersion {
 
 	constructor(public binaryPath: string, public version: string) {
 		const matchesRelease = /^go version go(\d\.\d+\S*)\s+/.exec(version);
-		const matchesDevel = /^go version devel (\S+)\s+/.exec(version);
+		const matchesDevel = /^go version devel go(\d\.\d+\S*)\s+/.exec(version);
 		if (matchesRelease) {
 			// note: semver.parse does not work with Go version string like go1.14.
 			const sv = semver.coerce(matchesRelease[1]);
@@ -156,7 +156,6 @@ export class GoVersion {
 
 let cachedGoBinPath: string | undefined;
 let cachedGoVersion: GoVersion | undefined;
-let vendorSupport: boolean | undefined;
 let toolsGopath: string;
 
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
@@ -388,49 +387,6 @@ export async function getGoEnv(cwd?: string): Promise<string> {
 		throw new Error(`failed to run 'go env': ${stderr}`);
 	}
 	return stdout;
-}
-
-/**
- * Returns the output of `go version -m` with the toolPath.
- */
-export async function runGoVersionM(toolPath: string): Promise<string> {
-	const goRuntime = getBinPath('go');
-	const execFile = util.promisify(cp.execFile);
-	const opts = { env: toolExecutionEnvironment() };
-	const { stdout, stderr } = await execFile(goRuntime, ['version', '-m', toolPath], opts);
-	if (stderr) {
-		throw new Error(`failed to run 'go version -m ${toolPath}': ${stderr}`);
-	}
-	return stdout;
-}
-
-/**
- * Returns boolean denoting if current version of Go supports vendoring
- */
-export async function isVendorSupported(): Promise<boolean> {
-	if (vendorSupport !== null) {
-		return Promise.resolve(vendorSupport);
-	}
-	const goVersion = await getGoVersion();
-	if (!goVersion.sv) {
-		return process.env['GO15VENDOREXPERIMENT'] === '0' ? false : true;
-	}
-	switch (goVersion.sv.major) {
-		case 0:
-			vendorSupport = false;
-			break;
-		case 1:
-			vendorSupport =
-				goVersion.sv.minor > 6 ||
-				((goVersion.sv.minor === 5 || goVersion.sv.minor === 6) && process.env['GO15VENDOREXPERIMENT'] === '1')
-					? true
-					: false;
-			break;
-		default:
-			vendorSupport = true;
-			break;
-	}
-	return vendorSupport;
 }
 
 /**

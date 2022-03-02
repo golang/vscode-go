@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.31.1",
+  "version": "0.32.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -78,7 +78,7 @@
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
     "gts": "3.1.0",
-    "mocha": "9.1.2",
+    "mocha": "9.2.0",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
     "ts-loader": "7.0.5",
@@ -115,7 +115,8 @@
         "go.goroot",
         "go.inferGopath",
         "go.toolsGopath",
-        "go.toolsEnvVars"
+        "go.toolsEnvVars",
+        "go.toolsManagement.go"
       ]
     }
   },
@@ -1527,6 +1528,12 @@
           "description": "The logging level the extension logs at, defaults to 'error'",
           "scope": "machine-overridable"
         },
+        "go.toolsManagement.go": {
+          "type": "string",
+          "default": "",
+          "description": "The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.",
+          "scope": "machine-overridable"
+        },
         "go.toolsManagement.checkForUpdates": {
           "type": "string",
           "default": "proxy",
@@ -1768,7 +1775,7 @@
             "generateTestForPackage": {
               "type": "boolean",
               "default": true,
-              "description": "If true, adds command to generate unit tests for currnt package to the editor context menu"
+              "description": "If true, adds command to generate unit tests for current package to the editor context menu"
             },
             "addImport": {
               "type": "boolean",
@@ -1961,11 +1968,6 @@
               "type": "string",
               "default": "go",
               "description": "Alternate tool to use instead of the go binary or alternate path to use for the go binary."
-            },
-            "gopkgs": {
-              "type": "string",
-              "default": "gopkgs",
-              "description": "Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary."
             },
             "gopls": {
               "type": "string",
@@ -2276,7 +2278,7 @@
                 },
                 "noresultvalues": {
                   "type": "boolean",
-                  "markdownDescription": "suggested fixes for \"no result values expected\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"no result values expected\". For example:\n\tfunc z() { return nil }\nwill turn into\n\tfunc z() { return }\n",
+                  "markdownDescription": "suggested fixes for unexpected return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"no result values expected\" or \"too many return values\".\nFor example:\n\tfunc z() { return nil }\nwill turn into\n\tfunc z() { return }\n",
                   "default": true
                 },
                 "printf": {
@@ -2329,6 +2331,11 @@
                   "markdownDescription": "check that struct field tags conform to reflect.StructTag.Get\n\nAlso report certain struct tags (json, xml) used with unexported fields.",
                   "default": true
                 },
+                "stubmethods": {
+                  "type": "boolean",
+                  "markdownDescription": "stub methods analyzer\n\nThis analyzer generates method stubs for concrete types\nin order to implement a target interface",
+                  "default": true
+                },
                 "testinggoroutine": {
                   "type": "boolean",
                   "markdownDescription": "report calls to (*testing.T).Fatal from goroutines started by a test.\n\nFunctions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and\nSkip{,f,Now} methods of *testing.T, must be called from the test goroutine itself.\nThis checker detects calls to these functions that occur within a goroutine\nstarted by the test. For example:\n\nfunc TestFoo(t *testing.T) {\n    go func() {\n        t.Fatal(\"oops\") // error: (*T).Fatal called from non-test goroutine\n    }()\n}\n",
@@ -2377,7 +2384,7 @@
                 "useany": {
                   "type": "boolean",
                   "markdownDescription": "check for constraints that could be simplified to \"any\"",
-                  "default": true
+                  "default": false
                 }
               }
             },
@@ -2489,7 +2496,7 @@
                 "",
                 ""
               ],
-              "default": "Fuzzy",
+              "default": "FastFuzzy",
               "scope": "resource"
             },
             "ui.navigation.symbolStyle": {

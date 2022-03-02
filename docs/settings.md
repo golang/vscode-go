@@ -54,7 +54,6 @@ Alternate tools or alternate paths for the same tools used by the Go extension. 
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
 | `go-outline` | Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary. <br/> Default: `"go-outline"` |
-| `gopkgs` | Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary. <br/> Default: `"gopkgs"` |
 | `gopls` | Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary. <br/> Default: `"gopls"` |
 ### `go.autocompleteUnimportedPackages`
 
@@ -175,7 +174,7 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 | `fillStruct` | If true, adds command to fill struct literal with default values to the editor context menu <br/> Default: `true` |
 | `generateTestForFile` | If true, adds command to generate unit tests for current file to the editor context menu <br/> Default: `true` |
 | `generateTestForFunction` | If true, adds command to generate unit tests for function under the cursor to the editor context menu <br/> Default: `true` |
-| `generateTestForPackage` | If true, adds command to generate unit tests for currnt package to the editor context menu <br/> Default: `true` |
+| `generateTestForPackage` | If true, adds command to generate unit tests for current package to the editor context menu <br/> Default: `true` |
 | `playground` | If true, adds command to upload the current file or selection to the Go Playground <br/> Default: `true` |
 | `removeTags` | If true, adds command to remove configured tags from struct fields to the editor context menu <br/> Default: `true` |
 | `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `false` |
@@ -455,6 +454,11 @@ Allowed Options:
 
 
 Default: `"proxy"`
+### `go.toolsManagement.go`
+
+The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.
+
+Default: `""`
 ### `go.trace.server`
 
 Trace the communication between VS Code and the Go language server.<br/>
@@ -731,7 +735,7 @@ Example Usage:
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
 | `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> <br/> Default: `false` |
 | `nonewvars` | suggested fixes for "no new vars on left side of :=" <br/> This checker provides suggested fixes for type errors of the type "no new vars on left side of :=". For example: <pre>z := 1<br/>z := 2</pre>will turn into <pre>z := 1<br/>z = 2</pre><br/> <br/> Default: `true` |
-| `noresultvalues` | suggested fixes for "no result values expected" <br/> This checker provides suggested fixes for type errors of the type "no result values expected". For example: <pre>func z() { return nil }</pre>will turn into <pre>func z() { return }</pre><br/> <br/> Default: `true` |
+| `noresultvalues` | suggested fixes for unexpected return values <br/> This checker provides suggested fixes for type errors of the type "no result values expected" or "too many return values". For example: <pre>func z() { return nil }</pre>will turn into <pre>func z() { return }</pre><br/> <br/> Default: `true` |
 | `printf` | check consistency of Printf format strings and arguments <br/> The check applies to known functions (for example, those in package fmt) as well as any detected wrappers of known functions. <br/> A function that wants to avail itself of printf checking but is not found by this analyzer's heuristics (for example, due to use of dynamic calls) can insert a bogus call: <br/> <pre>if false {<br/>	_ = fmt.Sprintf(format, args...) // enable printf checking<br/>}</pre><br/> The -funcs flag specifies a comma-separated list of names of additional known formatting functions or methods. If the name contains a period, it must denote a specific function using one of the following forms: <br/> <pre>dir/pkg.Function<br/>dir/pkg.Type.Method<br/>(*dir/pkg.Type).Method</pre><br/> Otherwise the name is interpreted as a case-insensitive unqualified identifier such as "errorf". Either way, if a listed name ends in f, the function is assumed to be Printf-like, taking a format string before the argument list. Otherwise it is assumed to be Print-like, taking a list of arguments with no format string. <br/> <br/> Default: `true` |
 | `shadow` | check for possible unintended shadowing of variables <br/> This analyzer check for shadowed variables. A shadowed variable is a variable declared in an inner scope with the same name and type as a variable in an outer scope, and where the outer variable is mentioned after the inner one is declared. <br/> (This definition can be refined; the module generates too many false positives and is not yet enabled by default.) <br/> For example: <br/> <pre>func BadRead(f *os.File, buf []byte) error {<br/>	var err error<br/>	for {<br/>		n, err := f.Read(buf) // shadows the function variable 'err'<br/>		if err != nil {<br/>			break // causes return of wrong value<br/>		}<br/>		foo(buf)<br/>	}<br/>	return err<br/>}</pre><br/> <br/> Default: `false` |
 | `shift` | check for shifts that equal or exceed the width of the integer <br/> Default: `true` |
@@ -742,6 +746,7 @@ Example Usage:
 | `stdmethods` | check signature of methods of well-known interfaces <br/> Sometimes a type may be intended to satisfy an interface but may fail to do so because of a mistake in its method signature. For example, the result of this WriteTo method should be (int64, error), not error, to satisfy io.WriterTo: <br/> <pre>type myWriterTo struct{...}</pre>        func (myWriterTo) WriteTo(w io.Writer) error { ... } <br/> This check ensures that each method whose name matches one of several well-known interface methods from the standard library has the correct signature for that interface. <br/> Checked method names include: <pre>Format GobEncode GobDecode MarshalJSON MarshalXML<br/>Peek ReadByte ReadFrom ReadRune Scan Seek<br/>UnmarshalJSON UnreadByte UnreadRune WriteByte<br/>WriteTo</pre><br/> <br/> Default: `true` |
 | `stringintconv` | check for string(int) conversions <br/> This checker flags conversions of the form string(x) where x is an integer (but not byte or rune) type. Such conversions are discouraged because they return the UTF-8 representation of the Unicode code point x, and not a decimal string representation of x as one might expect. Furthermore, if x denotes an invalid code point, the conversion cannot be statically rejected. <br/> For conversions that intend on using the code point, consider replacing them with string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the string representation of the value in the desired base. <br/> <br/> Default: `true` |
 | `structtag` | check that struct field tags conform to reflect.StructTag.Get <br/> Also report certain struct tags (json, xml) used with unexported fields. <br/> Default: `true` |
+| `stubmethods` | stub methods analyzer <br/> This analyzer generates method stubs for concrete types in order to implement a target interface <br/> Default: `true` |
 | `testinggoroutine` | report calls to (*testing.T).Fatal from goroutines started by a test. <br/> Functions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and Skip{,f,Now} methods of *testing.T, must be called from the test goroutine itself. This checker detects calls to these functions that occur within a goroutine started by the test. For example: <br/> func TestFoo(t *testing.T) {     go func() {         t.Fatal("oops") // error: (*T).Fatal called from non-test goroutine     }() } <br/> <br/> Default: `true` |
 | `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
 | `undeclaredname` | suggested fixes for "undeclared name: <>" <br/> This checker provides suggested fixes for type errors of the type "undeclared name: <>". It will either insert a new statement, such as: <br/> "<> := " <br/> or a new function declaration, such as: <br/> func <>(inferred parameters) { <pre>panic("implement me!")</pre>} <br/> <br/> Default: `true` |
@@ -751,7 +756,7 @@ Example Usage:
 | `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To reduce false positives it ignores: - methods - parameters that do not have a name or are underscored - functions in test files - functions with empty bodies or those with just a return stmt <br/> Default: `false` |
 | `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. This analyzer reports calls to certain functions in which the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
 | `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }<br/>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }<br/>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> <br/> Default: `false` |
-| `useany` | check for constraints that could be simplified to "any" <br/> Default: `true` |
+| `useany` | check for constraints that could be simplified to "any" <br/> Default: `false` |
 ### `ui.diagnostic.annotations`
 
 (Experimental) annotations specifies the various kinds of optimization diagnostics
@@ -841,7 +846,7 @@ Default: `"Both"`
 <br/>
 Allowed Options: `CaseInsensitive`, `CaseSensitive`, `FastFuzzy`, `Fuzzy`
 
-Default: `"Fuzzy"`
+Default: `"FastFuzzy"`
 ### `ui.navigation.symbolStyle`
 
 (Advanced) symbolStyle controls how symbols are qualified in symbol responses.

@@ -1,13 +1,11 @@
 name: Release (golang.go-nightly)
 
 # Daily release on 15:00 UTC, monday-thursday.
-# Or, force to release by triggering repository_dispatch events by using
-#   curl -v -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/golang/vscode-go/dispatches -d '{ "event_type": "force-release" }'
+# Or, trigger with workflow dispatch event.
 on:
   schedule:
     - cron: "0 15 * * MON-THU"  # 15 UTC, monday-thursday daily
-  repository_dispatch:
-    types: [force-release]
+  workflow_dispatch:   
 
 jobs:
   release:
@@ -15,6 +13,7 @@ jobs:
 
     name: Release Nightly
     runs-on: ubuntu-latest
+    environment: nightly
     timeout-minutes: 20
 
     steps:

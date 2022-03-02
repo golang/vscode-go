@@ -100,7 +100,7 @@ async function showPackageList(workDir: string) {
 	const pkgs: string[] = Array.from(pkgMap.keys());
 	if (pkgs.length === 0) {
 		return vscode.window.showErrorMessage(
-			'Could not find packages. Ensure `gopkgs -format {{.Name}};{{.ImportPath}}` runs successfully.'
+			'Could not find packages. Ensure `go list -f "{{.Name}};{{.ImportPath}}" all` runs successfully.'
 		);
 	}
 	const pkgFromDropdown = await vscode.window.showQuickPick(pkgs.sort(), {

@@ -43,6 +43,7 @@ go_binaries_info() {
 
 run_test() {
   echo "**** Run test ****"
+  df -h | grep shm
   npm ci
   npm run compile
   npm run unit-test
@@ -61,7 +62,7 @@ run_test_in_docker() {
   docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
 
   # For debug tests, we need ptrace.
-  docker run --cap-add SYS_PTRACE --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
+  docker run --cap-add SYS_PTRACE --shm-size=8G --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
 
 prepare_nightly() {

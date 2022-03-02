@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
+import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -38,6 +38,7 @@ import { implCursor } from './goImpl';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
+	inspectGoToolVersion,
 	installAllTools,
 	installTools,
 	offerToInstallTools,
@@ -45,7 +46,6 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	isInPreviewMode,
 	languageServerIsRunning,
 	RestartReason,
 	showServerOutputChannel,
@@ -71,7 +71,7 @@ import {
 	testPrevious,
 	testWorkspace
 } from './goTest';
-import { getConfiguredTools } from './goTools';
+import { getConfiguredTools, Tool } from './goTools';
 import { vetCode } from './goVet';
 import { pickGoProcess, pickProcess } from './pickProcess';
 import {
@@ -97,8 +97,7 @@ import {
 	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
-	resolvePath,
-	runGoVersionM
+	resolvePath
 } from './util';
 import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
@@ -144,14 +143,8 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		});
 	}
 
-	if (isInPreviewMode()) {
-		// For Nightly extension users, show a message directing them to forums
-		// to give feedback.
-		setTimeout(showGoNightlyWelcomeMessage, 10 * timeMinute);
-	}
-
 	// Show the Go welcome page on update.
-	if (!IsInCloudIDE) {
+	if (!extensionInfo.isInCloudIDE) {
 		showGoWelcomePage(ctx);
 	}
 
@@ -188,9 +181,6 @@ If you would like additional configuration for diagnostics from gopls, please se
 			}
 		}
 	}
-
-	// Present a warning about the deprecation of a 'dlv-dap' binary setting.
-	checkAlternateTools(cfg);
 
 	updateGoVarsFromConfig().then(async () => {
 		suggestUpdates(ctx);
@@ -726,7 +716,7 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// https://github.com/golang/vscode-go/issue/1179
 	let goExtensionVersion = '0.30.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
-	if (isInPreviewMode()) {
+	if (extensionInfo.isPreview) {
 		goExtensionVersion = '0.0.0';
 		goExtensionVersionKey = 'go.nightlyExtensionVersion';
 	}
@@ -753,44 +743,6 @@ export function shouldShowGoWelcomePage(showVersions: string[], newVersion: stri
 	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
 	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
-
-async function showGoNightlyWelcomeMessage() {
-	const shown = getFromGlobalState(goNightlyPromptKey, false);
-	if (shown === true) {
-		return;
-	}
-	const prompt = async () => {
-		const selected = await vscode.window.showInformationMessage(
-			`Thank you for testing new features by using the Go Nightly extension!
-We'd like to welcome you to share feedback and/or join our community of Go Nightly users and developers.`,
-			'Share feedback',
-			'Community resources'
-		);
-		switch (selected) {
-			case 'Share feedback':
-				await vscode.env.openExternal(
-					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#feedback')
-				);
-				break;
-			case 'Community resources':
-				await vscode.env.openExternal(
-					vscode.Uri.parse('https://github.com/golang/vscode-go/blob/master/docs/nightly.md#community')
-				);
-				break;
-			default:
-				return;
-		}
-		// Only prompt again if the user clicked one of the buttons.
-		// They may want to look at the other option.
-		prompt();
-	};
-	prompt();
-
-	// Update state to indicate that we've shown this message to the user.
-	updateGlobalState(goNightlyPromptKey, true);
-}
-
-const goNightlyPromptKey = 'goNightlyPrompt';
 
 export function deactivate() {
 	return Promise.all([
@@ -876,10 +828,97 @@ function checkToolExists(tool: string) {
 	}
 }
 
+// exported for testing
+export async function listOutdatedTools(configuredGoVersion: GoVersion, allTools: Tool[]): Promise<Tool[]> {
+	if (!configuredGoVersion || !configuredGoVersion.sv) {
+		return [];
+	}
+
+	const { major, minor } = configuredGoVersion.sv;
+
+	const oldTools = await Promise.all(
+		allTools.map(async (tool) => {
+			const toolPath = getBinPath(tool.name);
+			if (!path.isAbsolute(toolPath)) {
+				return;
+			}
+			const m = await inspectGoToolVersion(toolPath);
+			if (!m) {
+				console.log(`failed to get go tool version: ${toolPath}`);
+				return;
+			}
+			const { goVersion } = m;
+			if (!goVersion) {
+				// TODO: we cannot tell whether the tool was compiled with a newer version of go
+				// or compiled in an unconventional way.
+				return;
+			}
+			const toolGoVersion = new GoVersion('', `go version ${goVersion} os/arch`);
+			if (!toolGoVersion || !toolGoVersion.sv) {
+				return tool;
+			}
+			if (
+				major > toolGoVersion.sv.major ||
+				(major === toolGoVersion.sv.major && minor > toolGoVersion.sv.minor)
+			) {
+				return tool;
+			}
+			// special case: if the tool was compiled with beta or rc, and the current
+			// go version is a stable version, let's ask to recompile.
+			if (
+				major === toolGoVersion.sv.major &&
+				minor === toolGoVersion.sv.minor &&
+				(goVersion.includes('beta') || goVersion.includes('rc')) &&
+				// We assume tools compiled with different rc/beta need to be recompiled.
+				// We test the inequality by checking whether the exact beta or rc version
+				// appears in the `go version` output. e.g.,
+				//   configuredGoVersion.version      	goVersion(tool)		update
+				//   'go version go1.18 ...'    		'go1.18beta1'		Yes
+				//   'go version go1.18beta1 ...'		'go1.18beta1'		No
+				//   'go version go1.18beta2 ...'		'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18'			No
+				//   'go version devel go1.18-deadbeaf ...'	'go1.18beta1'	No (* rare)
+				!configuredGoVersion.version.includes(goVersion)
+			) {
+				return tool;
+			}
+			return;
+		})
+	);
+	return oldTools.filter((tool) => !!tool);
+}
+
 async function suggestUpdates(ctx: vscode.ExtensionContext) {
-	// TODO(hyangah): this is to clean up the unused key. Delete this code in 2021 Dec.
-	if (ctx.globalState.get('toolsGoInfo')) {
-		ctx.globalState.update('toolsGoInfo', null);
+	const configuredGoVersion = await getGoVersion();
+	if (!configuredGoVersion || configuredGoVersion.lt('1.12')) {
+		// User is using an ancient or a dev version of go. Don't suggest updates -
+		// user should know what they are doing.
+		return;
+	}
+
+	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
+	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
+	if (toolsToUpdate.length === 0) {
+		return;
+	}
+
+	// If the user has opted in to automatic tool updates, we can update
+	// without prompting.
+	const toolsManagementConfig = getGoConfig()['toolsManagement'];
+	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+		installTools(toolsToUpdate, configuredGoVersion, true);
+	} else {
+		const updateToolsCmdText = 'Update tools';
+		const selected = await vscode.window.showWarningMessage(
+			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${
+				configuredGoVersion.version
+			}`,
+			updateToolsCmdText
+		);
+		if (selected === updateToolsCmdText) {
+			installTools(toolsToUpdate, configuredGoVersion);
+		}
 	}
 }
 
@@ -955,11 +994,11 @@ async function getConfiguredGoToolsCommand() {
 			if (goVersionTooOld) {
 				return `\t${tool.name}:\t${toolPath}: unknown version`;
 			}
-			try {
-				const out = await runGoVersionM(toolPath);
-				return `\t${tool.name}:${out.replace(/^/gm, '\t')}`;
-			} catch (e) {
-				return `\t${tool.name}:\t${toolPath}: go version -m failed: ${e}`;
+			const { goVersion, moduleVersion, debugInfo } = await inspectGoToolVersion(toolPath);
+			if (goVersion || moduleVersion) {
+				return `\t${tool.name}:\t${toolPath}\t(version: ${moduleVersion} built with go: ${goVersion})`;
+			} else {
+				return `\t${tool.name}:\t${toolPath}\t(version: unknown - ${debugInfo})`;
 			}
 		})
 	);
@@ -1032,25 +1071,5 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 		process.env['GOROOT'] = goroot;
 	} else {
 		delete process.env.GOROOT;
-	}
-}
-
-async function checkAlternateTools(goConfig: vscode.WorkspaceConfiguration) {
-	const alternateTools = goConfig ? goConfig['alternateTools'] : {};
-	// TODO(hyangah): delete this check after 2022-03-01.
-	if (alternateTools['dlv-dap']) {
-		const msg = `The extension no longer requires a separate 'dlv-dap' binary but uses the 'dlv' binary.
-The "dlv-dap" property of the "go.alternateTools" setting will be ignored.
-Please use the "dlv" property if you need to override the default Go debugger.`;
-
-		const selected = await vscode.window.showWarningMessage(msg, 'Open settings.json');
-		if (selected === 'Open settings.json') {
-			const { workspaceValue } = goConfig.inspect('alternateTools.dlv-dap');
-			if (workspaceValue !== undefined) {
-				vscode.commands.executeCommand('workbench.action.openWorkspaceSettingsFile');
-			} else {
-				vscode.commands.executeCommand('workbench.action.openSettingsJson');
-			}
-		}
 	}
 }

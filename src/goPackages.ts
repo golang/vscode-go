@@ -7,13 +7,13 @@
 
 import cp = require('child_process');
 import path = require('path');
+import { promisify } from 'util';
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath, getCurrentGoPath, isVendorSupported } from './util';
+import { getBinPath, getCurrentGoPath } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
-type GopkgsDone = (res: Map<string, PackageInfo>) => void;
+type GoListPkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
 	entry: Map<string, PackageInfo>;
 	lastHit: number;
@@ -24,91 +24,83 @@ export interface PackageInfo {
 	isStd: boolean;
 }
 
-let gopkgsNotified = false;
+let goListPkgsNotified = false;
 let cacheTimeout = 5000;
 
-const gopkgsSubscriptions: Map<string, GopkgsDone[]> = new Map<string, GopkgsDone[]>();
-const gopkgsRunning: Set<string> = new Set<string>();
+const goListPkgsSubscriptions: Map<string, GoListPkgsDone[]> = new Map<string, GoListPkgsDone[]>();
+const goListPkgsRunning: Set<string> = new Set<string>();
 
 const allPkgsCache: Map<string, Cache> = new Map<string, Cache>();
 
 const pkgRootDirs = new Map<string, string>();
 
-function gopkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
-	const gopkgsBinPath = getBinPath('gopkgs');
-	if (!path.isAbsolute(gopkgsBinPath)) {
-		promptForMissingTool('gopkgs');
-		return Promise.resolve(new Map<string, PackageInfo>());
+/**
+ * goListPkgs collects package information for the transitive set of
+ * package imports from workDir and all standard library packages using
+ * the go list command.
+ * @param workDir the current working directory.
+ * @returns package path to PackageInfo map.
+ */
+async function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
+	const pkgs = new Map<string, PackageInfo>();
+
+	if (workDir) {
+		workDir = fixDriveCasingInWindows(workDir);
 	}
 
+	const goBin = getBinPath('go');
+	if (!goBin) {
+		vscode.window.showErrorMessage(
+			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+		);
+		return pkgs;
+	}
 	const t0 = Date.now();
-	return new Promise<Map<string, PackageInfo>>((resolve, reject) => {
-		const args = ['-format', '{{.Name}};{{.ImportPath}};{{.Dir}}'];
-		if (workDir) {
-			args.push('-workDir', workDir);
+
+	const args = ['list', '-e', '-f', '{{.Name}};{{.ImportPath}};{{.Dir}}', 'std', 'all'];
+	const env = toolExecutionEnvironment();
+	const execFile = promisify(cp.execFile);
+	try {
+		const { stdout, stderr } = await execFile(goBin, args, { env, cwd: workDir });
+		if (stderr) {
+			throw stderr;
 		}
-
-		const env = toolExecutionEnvironment();
-		env['GOROOT'] = getCurrentGoRoot(); // https://github.com/golang/vscode-go/issues/294
-		const cmd = cp.spawn(gopkgsBinPath, args, { env, cwd: workDir });
-		const chunks: any[] = [];
-		const errchunks: any[] = [];
-		let err: any;
-		cmd.stdout.on('data', (d) => chunks.push(d));
-		cmd.stderr.on('data', (d) => errchunks.push(d));
-		cmd.on('error', (e) => (err = e));
-		cmd.on('close', () => {
-			const pkgs = new Map<string, PackageInfo>();
-			if (err && err.code === 'ENOENT') {
-				return promptForMissingTool('gopkgs');
+		const goroot = getCurrentGoRoot();
+		stdout.split('\n').forEach((pkgDetail) => {
+			if (!pkgDetail || !pkgDetail.trim() || pkgDetail.indexOf(';') === -1) {
+				return;
 			}
-
-			const errorMsg = errchunks.join('').trim() || (err && err.message);
-			if (errorMsg) {
-				if (errorMsg.startsWith('flag provided but not defined: -workDir')) {
-					promptForUpdatingTool('gopkgs');
-					// fallback to gopkgs without -workDir
-					return gopkgs().then((result) => resolve(result));
-				}
-
-				console.log(
-					`Running gopkgs failed with "${errorMsg}"\nCheck if you can run \`gopkgs -format {{.Name}};{{.ImportPath}}\` in a terminal successfully.`
-				);
-				return resolve(pkgs);
-			}
-			const goroot = getCurrentGoRoot();
-			const output = chunks.join('');
-			if (output.indexOf(';') === -1) {
-				// User might be using the old gopkgs tool, prompt to update
-				promptForUpdatingTool('gopkgs');
-				output.split('\n').forEach((pkgPath) => {
-					if (!pkgPath || !pkgPath.trim()) {
-						return;
-					}
-					const index = pkgPath.lastIndexOf('/');
-					const pkgName = index === -1 ? pkgPath : pkgPath.substr(index + 1);
-					pkgs.set(pkgPath, {
-						name: pkgName,
-						isStd: !pkgPath.includes('.')
-					});
-				});
-				return resolve(pkgs);
-			}
-			output.split('\n').forEach((pkgDetail) => {
-				if (!pkgDetail || !pkgDetail.trim() || pkgDetail.indexOf(';') === -1) {
+			const [pkgName, pkgPath, pkgDir] = pkgDetail.trim().split(';');
+			const pkgDirNormalized = fixDriveCasingInWindows(pkgDir);
+			// goListPkgs are used to retrieve packages importable from packages under workDir.
+			// Vendored packages outside the workDir, thus, do not qualify.
+			// (equivalent to `gopkgs -workDir`)
+			// Remove vendored packages if it's outside the current workDir (e.g. vendor of Go project's src/ and src/cmd)
+			if (workDir) {
+				const vendorIdx = pkgDirNormalized.indexOf('/vendor/');
+				if (
+					vendorIdx !== -1 &&
+					// Both workDir (from vscode file path) and pkgDir (from go list -f {{.Dir}}) are absolute.
+					!workDir.startsWith(pkgDirNormalized.substring(0, vendorIdx))
+				) {
 					return;
 				}
-				const [pkgName, pkgPath, pkgDir] = pkgDetail.trim().split(';');
-				pkgs.set(pkgPath, {
-					name: pkgName,
-					isStd: goroot === null ? false : pkgDir.startsWith(goroot)
-				});
+			}
+			pkgs.set(pkgPath, {
+				name: pkgName,
+				isStd: goroot === null ? false : pkgDir.startsWith(goroot)
 			});
-			const timeTaken = Date.now() - t0;
-			cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
-			return resolve(pkgs);
 		});
-	});
+	} catch (err) {
+		vscode.window.showErrorMessage(
+			`Running go list failed with "${err}"\nCheck if you can run \`go ${args.join(
+				' '
+			)}\` in a terminal successfully.`
+		);
+	}
+	const timeTaken = Date.now() - t0;
+	cacheTimeout = timeTaken > 5000 ? timeTaken : 5000;
+	return pkgs;
 }
 
 function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo>> {
@@ -118,20 +110,20 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 			resolve(pkgMap);
 		};
 
-		let subs = gopkgsSubscriptions.get(workDir);
+		let subs = goListPkgsSubscriptions.get(workDir);
 		if (!subs) {
 			subs = [];
-			gopkgsSubscriptions.set(workDir, subs);
+			goListPkgsSubscriptions.set(workDir, subs);
 		}
 		subs.push(callback);
 
 		// Ensure only single gokpgs running
-		if (!gopkgsRunning.has(workDir)) {
-			gopkgsRunning.add(workDir);
+		if (!goListPkgsRunning.has(workDir)) {
+			goListPkgsRunning.add(workDir);
 
-			gopkgs(workDir).then((pkgMap) => {
-				gopkgsRunning.delete(workDir);
-				gopkgsSubscriptions.delete(workDir);
+			goListPkgs(workDir).then((pkgMap) => {
+				goListPkgsRunning.delete(workDir);
+				goListPkgsSubscriptions.delete(workDir);
 				subs.forEach((cb) => cb(pkgMap));
 			});
 		}
@@ -139,7 +131,7 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 }
 
 /**
- * Runs gopkgs
+ * Runs `go list all std`
  * @argument workDir. The workspace directory of the project.
  * @returns Map<string, string> mapping between package import path and package name
  */
@@ -153,11 +145,11 @@ export async function getAllPackages(workDir: string): Promise<Map<string, Packa
 
 	const pkgs = await getAllPackagesNoCache(workDir);
 	if (!pkgs || pkgs.size === 0) {
-		if (!gopkgsNotified) {
+		if (!goListPkgsNotified) {
 			vscode.window.showInformationMessage(
-				'Could not find packages. Ensure `gopkgs -format {{.Name}};{{.ImportPath}}` runs successfully.'
+				'Could not find packages. Ensure `go list -e -f {{.Name}};{{.ImportPath}}` runs successfully.'
 			);
-			gopkgsNotified = true;
+			goListPkgsNotified = true;
 		}
 	}
 	allPkgsCache.set(workDir, {
@@ -185,7 +177,7 @@ export function getImportablePackages(filePath: string, useCache = false): Promi
 	const getAllPackagesPromise: Promise<Map<string, PackageInfo>> =
 		useCache && cache ? Promise.race([getAllPackages(workDir), cache.entry]) : getAllPackages(workDir);
 
-	return Promise.all([isVendorSupported(), getAllPackagesPromise]).then(([vendorSupported, pkgs]) => {
+	return getAllPackagesPromise.then((pkgs) => {
 		const pkgMap = new Map<string, PackageInfo>();
 		if (!pkgs) {
 			return pkgMap;
@@ -197,7 +189,7 @@ export function getImportablePackages(filePath: string, useCache = false): Promi
 				return;
 			}
 
-			if (!vendorSupported || !currentWorkspace) {
+			if (!currentWorkspace) {
 				pkgMap.set(pkgPath, info);
 				return;
 			}
@@ -279,7 +271,7 @@ export function getImportPathToFolder(targets: string[], cwd?: string): Promise<
 	return new Promise<Map<string, string>>((resolve, reject) => {
 		const childProcess = cp.spawn(
 			goRuntimePath,
-			['list', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', ...targets],
+			['list', '-e', '-f', 'ImportPath: {{.ImportPath}} FolderPath: {{.Dir}}', ...targets],
 			{ cwd, env: toolExecutionEnvironment() }
 		);
 		const chunks: any[] = [];

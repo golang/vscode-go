@@ -1,4 +1,4 @@
-package main
+package hello
 
 //#include <stdlib.h>
 import "C"

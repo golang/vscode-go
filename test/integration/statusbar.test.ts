@@ -131,7 +131,7 @@ describe('#setSelectedGo()', function () {
 		process.env.HOME = os.tmpdir();
 
 		// set selected go as a version to download
-		const option = new GoEnvironmentOption('go get golang.org/dl/go1.13.12', 'Go 1.13.12');
+		const option = new GoEnvironmentOption('golang.org/dl/go1.13.12', 'Go 1.13.12', false);
 		await setSelectedGo(option, false);
 
 		// the temp sdk directory should now contain go1.13.12
