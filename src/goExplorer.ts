@@ -4,15 +4,13 @@
  *--------------------------------------------------------*/
 import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
-import cp = require('child_process');
-import util = require('util');
 import os = require('os');
 import path = require('path');
 import { getGoConfig, getGoplsConfig } from './config';
 import { getBinPath, getGoVersion } from './util';
-import { toolExecutionEnvironment } from './goEnv';
 import { getConfiguredTools } from './goTools';
 import { inspectGoToolVersion } from './goInstallTools';
+import { runGoEnv } from './goModules';
 
 /**
  * GoExplorerProvider provides data for the Go tree view in the Explorer
@@ -101,13 +99,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 
 	private async envTreeItems(uri?: vscode.Uri) {
-		let env: Record<string, string>;
-		try {
-			env = await this.goEnvCache.get(uri?.toString());
-		} catch (e) {
-			vscode.window.showErrorMessage(`Failed to run "go env": ${e.message}`);
-			return;
-		}
+		const env = await this.goEnvCache.get(uri?.toString());
 		const items = [];
 		for (const [k, v] of Object.entries(env)) {
 			if (v !== '') {
@@ -170,8 +162,8 @@ class GoEnv {
 	 */
 	static async get(uri?: vscode.Uri) {
 		const toolsEnv = await getGoConfig(uri)['toolsEnvVars'];
-		const output = await this.go(['env', '-json', ...this.vars, ...Object.keys(toolsEnv)], uri);
-		return JSON.parse(output) as Record<string, string>;
+		const output = await runGoEnv(uri, [...this.vars, ...Object.keys(toolsEnv)]);
+		return output as Record<string, string>;
 	}
 
 	/**
@@ -201,18 +193,6 @@ class GoEnv {
 
 	/** The list of env vars that should always be visible if they contain a value. */
 	private static vars = ['GOPRIVATE', 'GOMOD', 'GOWORK', 'GOENV'];
-
-	private static async go(args: string[], uri?: vscode.Uri) {
-		const exec = util.promisify(cp.execFile);
-		const goBin = getBinPath('go');
-		const env = toolExecutionEnvironment(uri);
-		const cwd = uri?.fsPath;
-		const { stdout, stderr } = await exec(goBin, args, { env, cwd });
-		if (stderr) {
-			throw new Error(stderr);
-		}
-		return stdout;
-	}
 }
 
 class ToolTree implements vscode.TreeItem {

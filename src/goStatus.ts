@@ -7,8 +7,8 @@
 
 'use strict';
 
-import path = require('path');
 import vscode = require('vscode');
+import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
 import {
@@ -46,7 +46,7 @@ export async function updateGoStatusBar(editor: vscode.TextEditor) {
 	if (!!editor && isGoFile(editor.document)) {
 		const isMod = await isModSupported(editor.document.uri);
 		if (isMod) {
-			runGoEnv(path.dirname(editor.document.uri.fsPath), ['GOMOD', 'GOWORK']).then((p) => {
+			runGoEnv(vscodeUri.Utils.dirname(editor.document.uri), ['GOMOD', 'GOWORK']).then((p) => {
 				gomod = p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
 				gowork = p['GOWORK'];
 			});
