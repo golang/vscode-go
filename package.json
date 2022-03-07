@@ -180,6 +180,11 @@
         "path": "./syntaxes/go.mod.tmGrammar.json"
       },
       {
+        "language": "go.work",
+        "scopeName": "go.mod",
+        "path": "./syntaxes/go.mod.tmGrammar.json"
+      },
+      {
         "language": "go.sum",
         "scopeName": "go.sum",
         "path": "./syntaxes/go.sum.tmGrammar.json"
