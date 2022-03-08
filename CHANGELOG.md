@@ -1,3 +1,37 @@
+## v0.32.0 - 8 Mar, 2022
+
+This version includes features to enhance Go 1.18 support. It works best when paired with the latest Go Language Server ([`gopls` v0.8.0+](https://github.com/golang/tools/releases/tag/gopls%2Fv0.8.0)) and Delve ([`dlv` v1.8.0+](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#changelog)).
+
+[Go 1.18](https://go.dev/doc/go1.18) introduces substantial changes to [the language spec](https://go.dev/doc/go1.18#generics), so many tools need rebuilding with Go 1.18 or newer. The extension now suggests updates of tools if it finds they were built with old versions of `go` which are inadequate for the version used for the project. If you [opted in for auto-update](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementautoupdate), tools will be auto-updated.
+
+In order to use Go 1.18, please follow [the instruction to configure your Visual Studio Code to locate the right go binary](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#using-go118), and run the Go tools using the "Go: Install/Update Tools" command.
+
+A list of all issues and changes can be found in the [v0.32.0 milestone](https://github.com/golang/vscode-go/milestone/42) and [commit history](https://github.com/golang/vscode-go/compare/v0.31.1...v0.32.0).
+
+### Changes
+
+- Starting with Go 1.18,  the `go` command provides native support for multi-module workspaces, via  [`go.work`](https://go.dev/ref/mod#workspaces) files. The new "Open 'go.work'" option in the Go status bar's quickpick menu allows users to access the corresponding `go.work` file.
+![go work short](https://user-images.githubusercontent.com/4999471/157268414-fba63843-5a14-44ba-be82-d42765568856.gif)
+
+- The extension no longer depends on [`gopkgs`](https://github.com/uudashr/gopkgs/cmd/gopkgs). Its use for "Go: Browse Packages" and "Go: Add Import" commands had been replaced with `go list` or commands in `gopls`. ([Issue 258](https://github.com/golang/vscode-go/issues/258))
+
+- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issue/1020))
+
+- The new [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementgo) allows users to specify the Go command for tools installation/updates separate from the Go command used for the project.
+
+- The latest `gopls` requires go 1.13+ for installation, so the extension no longer asks for `gopls` updates when an older versions of `go` is used. ([Issue 2030](https://github.com/golang/vscode-go/issues/2030)) Note `gopls` compiled with go 1.13 or newer can still process projects that use go 1.12. If you want to update `gopls` while working with an older version of Go, utilize the new `"go.toolsManagement.go"` setting.
+
+- Reduced the verbosity of "Go: Locate Configured Go Tools" output.
+
+### Code Health
+- Updated to mocha@9.2.0 (CVE-2021-23566).
+- Deflaked debug tests.
+- Changed to check `go.dev/dl` instead of `golang.org/dl` for Go release.
+- Improved documentation for the default formatting behavior  and template support.
+
+### Thanks
+@jamalc @suzmue @pavlelee @dekimsey @hyangah
+
 ## v0.31.1 - 8 Feb, 2022
 
 A list of all issues and changes can be found in the [v0.31.1 milestone](https://github.com/golang/vscode-go/milestone/44) and [commit history](https://github.com/golang/vscode-go/compare/v0.31.0...v0.31.1).
