@@ -61,6 +61,7 @@ import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
+import { GoMainCodeLensProvider } from './goMainCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import {
 	debugPrevious,
@@ -210,9 +211,11 @@ If you would like additional configuration for diagnostics from gopls, please se
 		})
 	);
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
+	const mainCodeLensProvider = new GoMainCodeLensProvider();
 	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
 
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
+	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, mainCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 
 	// debug
@@ -479,6 +482,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 
 			if (updatedGoConfig['enableCodeLens']) {
 				testCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runtest']);
+				mainCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runmain']);
 				referencesCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['references']);
 			}
 
