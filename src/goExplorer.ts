@@ -216,10 +216,9 @@ class ToolTreeItem implements vscode.TreeItem {
 	constructor({ name, version, goVersion, binPath, error }: ToolDetail) {
 		this.label = name;
 		if (binPath) {
-			this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-			this.children = [new ToolDetailTreeItem(binPath, goVersion)];
-			this.description = version;
-			this.tooltip = `${name}@${version}`;
+			this.label = `${name}@${version}`;
+			this.description = `${replaceHome(binPath)} ${goVersion}`;
+			this.tooltip = `${this.label} ${this.description}`;
 		}
 		if (error) {
 			const msg = `go version -m failed: ${error}`;
@@ -231,18 +230,6 @@ class ToolTreeItem implements vscode.TreeItem {
 
 function isToolTreeItem(item?: vscode.TreeItem): item is ToolTreeItem {
 	return item?.contextValue === 'go:explorer:toolitem';
-}
-
-class ToolDetailTreeItem implements vscode.TreeItem {
-	contextValue = 'go:explorer:tooldetail';
-	label: string;
-	description: string;
-	tooltip: string;
-	constructor(bin: string, goVersion: string) {
-		this.label = replaceHome(bin);
-		this.description = goVersion;
-		this.tooltip = `${bin} ${goVersion}`;
-	}
 }
 
 interface ToolDetail {

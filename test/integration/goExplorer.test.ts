@@ -56,9 +56,11 @@ suite('GoExplorerProvider', () => {
 		const expectTools = allTools.map((t) => t.name);
 		const [, tools] = await explorer.getChildren();
 		const items = (await explorer.getChildren(tools)) as TreeItem[];
-		assert.deepStrictEqual(
-			items.map((t) => t.label),
-			expectTools
-		);
+		for (const idx in items) {
+			assert(
+				items[idx].label.toString().startsWith(expectTools[idx]),
+				`Unexpected tool tree item with label "${items[idx].label}"`
+			);
+		}
 	});
 });
