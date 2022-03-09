@@ -82,6 +82,9 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
 	private async open(item: EnvTreeItem) {
 		if (typeof item.file === 'undefined') return;
+		const edit = new vscode.WorkspaceEdit();
+		edit.createFile(item.file, { ignoreIfExists: true });
+		await vscode.workspace.applyEdit(edit);
 		const doc = await vscode.workspace.openTextDocument(item.file);
 		await vscode.window.showTextDocument(doc);
 	}
