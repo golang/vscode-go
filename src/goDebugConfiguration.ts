@@ -172,13 +172,10 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
 			if (debugConfiguration['mode'] === 'remote') {
-				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
+				// This is only possible if a user explicitely requests this combination. Let them.
 				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
-				// but we have no way of detectng that with an external server.
-				this.showWarning(
-					'ignoreDlvDAPInRemoteModeWarning',
-					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
-				);
+				// but we have no way of detectng that with an external server ahead of time.
+				// If an earlier version is used, the attach will fail and a warning will warn about it.
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
 					'ignorePortUsedInDlvDapWarning',
