@@ -2701,7 +2701,8 @@
       "explorer": [
         {
           "id": "go.explorer",
-          "name": "go"
+          "name": "go",
+          "icon": "media/go-logo-white.svg"
         }
       ],
       "test": [
