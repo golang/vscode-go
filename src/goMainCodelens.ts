@@ -8,16 +8,18 @@
 'use strict';
 
 import vscode = require('vscode');
+import cp = require('child_process');
+
 import { CancellationToken, CodeLens, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goOutline';
-import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
-
-const mainFuncRegx = /^main$/u;
+import { getBinPath } from './util';
+import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { reject } from 'lodash';
 
 export class GoMainCodeLensProvider extends GoBaseCodeLensProvider {
-	private readonly mainRegex = /^main.+/;
+	private readonly mainRegex = /^main$/;
 
 	public async provideCodeLenses(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
 		if (!this.enabled) {
@@ -52,7 +54,7 @@ export class GoMainCodeLensProvider extends GoBaseCodeLensProvider {
 		}
 		const children = symbol.children;
 
-		return children.find(sym => sym.kind === vscode.SymbolKind.Function && mainFuncRegx.test(sym.name));
+		return children.find(sym => sym.kind === vscode.SymbolKind.Function && this.mainRegex.test(sym.name));
 	}
 
 	private async getCodeLensForMainFunc(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
@@ -64,13 +66,8 @@ export class GoMainCodeLensProvider extends GoBaseCodeLensProvider {
 
 			return [
 				new CodeLens(mainFunc.range, {
-					title: 'run',
-					command: 'go.main.run',
-					arguments: [{ functionName: mainFunc.name }]
-				}),
-				new CodeLens(mainFunc.range, {
-					title: 'package run',
-					command: 'go.main.package',
+					title: 'run main',
+					command: 'go.runMain',
 					arguments: [{ functionName: mainFunc.name }]
 				})
 			];
@@ -78,4 +75,47 @@ export class GoMainCodeLensProvider extends GoBaseCodeLensProvider {
 
 		return await mainPromise();
 	}
+}
+
+const mainFuncOutputChannel = vscode.window.createOutputChannel('Go Main');
+
+export async function runMainFunc() {
+	let outputChannel = mainFuncOutputChannel
+	const goRuntimePath = getBinPath('go');
+	if (!goRuntimePath) {
+		vscode.window.showErrorMessage(
+			`Failed to run "go run ." as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot}) or PATH(${envPath})`
+		);
+		return Promise.resolve(false);
+	}
+
+	const editor = vscode.window.activeTextEditor;
+	const documentUri = editor ? editor.document.uri : null;
+	const args = ['run', documentUri.path];
+
+	outputChannel.clear()
+	outputChannel.show(true)
+	outputChannel.appendLine(["Running main func: ", goRuntimePath, ...args].join(' '))
+
+	cp.execFile(
+		goRuntimePath,
+		args,
+		{ },
+		(err, stdout, stderr) => {
+			try {
+				if (err) {
+					outputChannel.appendLine(err.message);
+					return;
+				}
+				if (stdout) {
+					outputChannel.append(stdout);
+				}
+				if (stderr) {
+					outputChannel.append(stderr);
+				}
+			} catch (e) {
+				reject(e);
+			}
+		}
+	)
 }

@@ -210,12 +210,14 @@ Feature level setting to enable/disable code lens for references and run/debug t
 | --- | --- |
 | `references` | If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead. <br/> Default: `false` |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
+| `runmain` | If true, enables code lens for running main func <br/> Default: `true` |
 
 Default:
 ```
 {
 	"references" :	false,
 	"runtest" :	true,
+	"runmain" :	true,
 }
 ```
 ### `go.formatFlags`
@@ -492,7 +494,7 @@ Allowed Options: `package`, `workspace`, `off`
 Default: `"package"`
 ### `gopls`
 
-Customize `gopls` behavior by specifying the gopls' settings in this section. For example, 
+Customize `gopls` behavior by specifying the gopls' settings in this section. For example,
 ```
 "gopls" : {
 	"build.directoryFilters": ["-node_modules"]

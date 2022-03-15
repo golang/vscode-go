@@ -61,7 +61,7 @@ import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { GoMainCodeLensProvider } from './goMainCodelens';
+import { GoMainCodeLensProvider, runMainFunc } from './goMainCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import {
 	debugPrevious,
@@ -565,6 +565,12 @@ If you would like additional configuration for diagnostics from gopls, please se
 			return vscode.debug.startDebugging(workspaceFolder, config);
 		})
 	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.runMain', (args) => {
+			runMainFunc()
+		})
+	)
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.show.commands', () => {

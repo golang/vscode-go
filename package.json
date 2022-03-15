@@ -481,6 +481,11 @@
         "command": "go.global.resetState",
         "title": "Go: Reset Global State",
         "description": "Reset keys in global state to undefined."
+      },
+      {
+        "command": "go.runMain",
+        "title": "Go: Run main() func on file",
+        "description": "Run main() func on file"
       }
     ],
     "breakpoints": [
@@ -1579,12 +1584,18 @@
               "type": "boolean",
               "default": true,
               "description": "If true, enables code lens for running and debugging tests"
+            },
+            "runmain": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, enables code lens for running main func"
             }
           },
           "additionalProperties": false,
           "default": {
             "references": false,
-            "runtest": true
+            "runtest": true,
+            "runmain": true
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"
