@@ -14,7 +14,7 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { GoDocumentSymbolProvider } from './goOutline';
+import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
 import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 
@@ -227,5 +227,7 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 async function getFunctions(doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, null);
-	return symbols[0].children.filter((sym) => sym.kind === vscode.SymbolKind.Function);
+	return symbols[0].children.filter((sym) =>
+		[vscode.SymbolKind.Function, vscode.SymbolKind.Method].includes(sym.kind)
+	);
 }

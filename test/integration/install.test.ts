@@ -19,7 +19,6 @@ import sinon = require('sinon');
 import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
-import { isInPreviewMode } from '../../src/goLanguageServer';
 import { allToolsInformation } from '../../src/goToolsInformation';
 import { listOutdatedTools } from '../../src/goMain';
 import * as goInstallTools from '../../src/goInstallTools';
@@ -149,7 +148,7 @@ suite('Installation Tests', function () {
 				{
 					name: 'gopls',
 					versions: ['v0.1.0', 'v1.0.0', 'v1.0.1-pre.2'],
-					wantVersion: isInPreviewMode() ? 'v1.0.1-pre.2' : 'v1.0.0'
+					wantVersion: config.extensionInfo.isPreview ? 'v1.0.1-pre.2' : 'v1.0.0'
 				}
 			],
 			true

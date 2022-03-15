@@ -7,7 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguageServer';
+import { getLocalGoplsVersion, lastUserAction, latestConfig } from './language/goLanguageServer';
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
@@ -163,7 +163,7 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 				cfg.prompt = true;
 				const goplsEnabled = latestConfig.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}`;
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;

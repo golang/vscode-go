@@ -12,8 +12,8 @@ import vscode = require('vscode');
 import { ExecuteCommandRequest, ExecuteCommandParams } from 'vscode-languageserver-protocol';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { languageClient } from './goLanguageServer';
-import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
+import { languageClient, serverInfo } from './language/goLanguageServer';
+import { documentSymbols, GoOutlineImportsOptions } from './language/legacy/goOutline';
 import { getImportablePackages } from './goPackages';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
@@ -43,13 +43,14 @@ export async function listPackages(excludeImportedPkgs = false): Promise<string[
 }
 
 async function golist(): Promise<string[]> {
-	if (languageClient) {
+	const COMMAND = 'gopls.list_known_packages';
+	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 		try {
 			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
 				vscode.window.activeTextEditor.document
 			).uri;
 			const params: ExecuteCommandParams = {
-				command: 'gopls.list_known_packages',
+				command: COMMAND,
 				arguments: [
 					{
 						URI: uri
@@ -163,13 +164,14 @@ export function addImport(arg: { importPath: string }) {
 			return;
 		}
 
-		if (languageClient) {
+		const COMMAND = 'gopls.add_import';
+		if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 			try {
 				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
 					vscode.window.activeTextEditor.document
 				).uri;
 				const params: ExecuteCommandParams = {
-					command: 'gopls.add_import',
+					command: COMMAND,
 					arguments: [
 						{
 							ImportPath: imp,

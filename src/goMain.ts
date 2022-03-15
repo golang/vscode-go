@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
+import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -46,13 +46,12 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	isInPreviewMode,
 	languageServerIsRunning,
 	RestartReason,
 	showServerOutputChannel,
 	startLanguageServerWithFallback,
 	watchLanguageServerConfiguration
-} from './goLanguageServer';
+} from './language/goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
@@ -105,12 +104,13 @@ import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } 
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
-import { getFormatTool } from './goFormat';
+import { getFormatTool } from './language/legacy/goFormat';
 import { resetSurveyConfigs, showSurveyConfig, timeMinute } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
+import { GoExplorerProvider } from './goExplorer';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -146,7 +146,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	}
 
 	// Show the Go welcome page on update.
-	if (!IsInCloudIDE) {
+	if (!extensionInfo.isInCloudIDE) {
 		showGoWelcomePage(ctx);
 	}
 
@@ -330,6 +330,8 @@ If you would like additional configuration for diagnostics from gopls, please se
 	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
 		GoTestExplorer.setup(ctx);
 	}
+
+	GoExplorerProvider.setup(ctx);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
@@ -727,7 +729,7 @@ function showGoWelcomePage(ctx: vscode.ExtensionContext) {
 	// https://github.com/golang/vscode-go/issue/1179
 	let goExtensionVersion = '0.30.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
-	if (isInPreviewMode()) {
+	if (extensionInfo.isPreview) {
 		goExtensionVersion = '0.0.0';
 		goExtensionVersionKey = 'go.nightlyExtensionVersion';
 	}
@@ -910,7 +912,16 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 
 	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
 	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
-	if (toolsToUpdate.length > 0) {
+	if (toolsToUpdate.length === 0) {
+		return;
+	}
+
+	// If the user has opted in to automatic tool updates, we can update
+	// without prompting.
+	const toolsManagementConfig = getGoConfig()['toolsManagement'];
+	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+		installTools(toolsToUpdate, configuredGoVersion, true);
+	} else {
 		const updateToolsCmdText = 'Update tools';
 		const selected = await vscode.window.showWarningMessage(
 			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${

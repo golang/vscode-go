@@ -18,7 +18,7 @@ import {
 	WorkspaceFoldersChangeEvent
 } from 'vscode';
 import vscode = require('vscode');
-import { GoDocumentSymbolProvider } from '../goOutline';
+import { GoDocumentSymbolProvider } from '../language/legacy/goOutline';
 import { outputChannel } from '../goStatus';
 import { dispose, disposeIfEmpty, findItem, GoTest, isInTest, Workspace } from './utils';
 import { GoTestResolver, ProvideSymbols } from './resolve';

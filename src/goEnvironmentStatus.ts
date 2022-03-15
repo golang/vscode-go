@@ -13,7 +13,7 @@ import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
-import { getGoConfig, IsInCloudIDE } from './config';
+import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
 import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
@@ -213,18 +213,13 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			outputChannel.clear();
 			outputChannel.show();
 			outputChannel.appendLine(`go install ${goOption.binpath}@latest`);
-			const result = await installTool(
-				{
-					name: newExecutableName,
-					importPath: goOption.binpath,
-					modulePath: goOption.binpath,
-					description: newExecutableName,
-					isImportant: false
-				},
-				await getGoVersion(),
-				toolInstallationEnvironment(),
-				true
-			);
+			const result = await installTool({
+				name: newExecutableName,
+				importPath: goOption.binpath,
+				modulePath: goOption.binpath,
+				description: newExecutableName,
+				isImportant: false
+			});
 			if (result) {
 				outputChannel.appendLine(`Error installing ${goOption.binpath}: ${result}`);
 				throw new Error('Could not install ${goOption.binpath}');
@@ -516,7 +511,7 @@ const STATUS_BAR_ITEM_NAME = 'Go Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion() {
-	if (IsInCloudIDE) {
+	if (extensionInfo.isInCloudIDE) {
 		return;
 	}
 	const goConfig = getGoConfig();

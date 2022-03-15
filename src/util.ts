@@ -15,7 +15,7 @@ import { NearestNeighborDict, Node } from './avlTree';
 import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
-import { languageClient } from './goLanguageServer';
+import { languageClient } from './language/goLanguageServer';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';

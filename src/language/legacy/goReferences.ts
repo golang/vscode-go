@@ -9,11 +9,11 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool } from './goInstallTools';
-import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive } from './util';
-import { killProcessTree } from './utils/processUtils';
+import { getGoConfig } from '../../config';
+import { toolExecutionEnvironment } from '../../goEnv';
+import { promptForMissingTool } from '../../goInstallTools';
+import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getFileArchive } from '../../util';
+import { killProcessTree } from '../../utils/processUtils';
 
 export class GoReferenceProvider implements vscode.ReferenceProvider {
 	public provideReferences(

@@ -195,10 +195,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.13'),
-		latestVersion: semver.parse('v0.7.5'),
-		latestVersionTimestamp: moment('2022-01-18', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.7.5'),
-		latestPrereleaseVersionTimestamp: moment('2022-01-18', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.8.0'),
+		latestVersionTimestamp: moment('2022-03-03', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.8.0'),
+		latestPrereleaseVersionTimestamp: moment('2022-03-03', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',

@@ -9,7 +9,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
-import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
+import {
+	buildLanguageClient,
+	BuildLanguageClientOption,
+	buildLanguageServerConfig
+} from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
 

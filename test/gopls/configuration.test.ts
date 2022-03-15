@@ -6,7 +6,7 @@
 
 import assert from 'assert';
 import { getGoplsConfig } from '../../src/config';
-import * as lsp from '../../src/goLanguageServer';
+import * as lsp from '../../src/language/goLanguageServer';
 
 suite('gopls configuration tests', () => {
 	test('filterGoplsDefaultConfigValues', async () => {

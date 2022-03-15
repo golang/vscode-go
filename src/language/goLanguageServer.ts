@@ -34,33 +34,19 @@ import {
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { getGoConfig, getGoplsConfig, IsInCloudIDE } from './config';
-import { extensionId } from './const';
-import { GoCodeActionProvider } from './goCodeAction';
-import { GoDefinitionProvider } from './goDeclaration';
-import { toolExecutionEnvironment } from './goEnv';
-import { GoHoverProvider } from './goExtraInfo';
-import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './goFormat';
-import { GoImplementationProvider } from './goImplementations';
-import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { parseLiveFile } from './goLiveErrors';
+import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
+import { toolExecutionEnvironment } from '../goEnv';
+import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
+import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
 import {
 	buildDiagnosticCollection,
 	lintDiagnosticCollection,
 	restartLanguageServer,
 	vetDiagnosticCollection
-} from './goMain';
-import { GO_MODE } from './goMode';
-import { GoDocumentSymbolProvider } from './goOutline';
-import { GoReferenceProvider } from './goReferences';
-import { GoRenameProvider } from './goRename';
-import { GoSignatureHelpProvider } from './goSignature';
-import { outputChannel, updateLanguageServerIconGoStatusBar } from './goStatus';
-import { GoCompletionItemProvider } from './goSuggest';
-import { GoWorkspaceSymbolProvider } from './goSymbol';
-import { getTool, Tool } from './goTools';
-import { GoTypeDefinitionProvider } from './goTypeDefinition';
-import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from './stateUtils';
+} from '../goMain';
+import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
+import { getTool, Tool } from '../goTools';
+import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
@@ -68,19 +54,20 @@ import {
 	getGoVersion,
 	getWorkspaceFolderPath,
 	removeDuplicateDiagnostics
-} from './util';
-import { Mutex } from './utils/mutex';
-import { getToolFromToolPath } from './utils/pathUtils';
+} from '../util';
+import { Mutex } from '../utils/mutex';
+import { getToolFromToolPath } from '../utils/pathUtils';
 import WebRequest = require('web-request');
 import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
-import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from './goSurvey';
-import { maybePromptForDeveloperSurvey } from './goDeveloperSurvey';
+import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
+import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
+import { LegacyLanguageService } from './registerDefaultProviders';
 
-export interface LanguageServerConfig {
+interface LanguageServerConfig {
 	serverName: string;
 	path: string;
-	version: string;
+	version?: { version: string; goVersion?: string };
 	modtime: Date;
 	enabled: boolean;
 	flags: string[];
@@ -112,6 +99,8 @@ interface ServerInfo {
 	GoVersion?: string;
 	Commands?: string[];
 }
+
+let legacyLanguageService: LegacyLanguageService = undefined;
 
 const languageServerStartMutex = new Mutex();
 
@@ -150,9 +139,6 @@ class Restart {
 		this.enabled = enabled;
 	}
 }
-
-// defaultLanguageProviders is the list of providers currently registered.
-let defaultLanguageProviders: vscode.Disposable[] = [];
 
 // restartCommand is the command used by the user to restart the language
 // server.
@@ -218,8 +204,9 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		// If the server has been disabled, or failed to start,
 		// fall back to the default providers, while making sure not to
 		// re-register any providers.
-		if (!started && defaultLanguageProviders.length === 0) {
-			registerDefaultProviders(ctx);
+		if (!started && !legacyLanguageService) {
+			legacyLanguageService = new LegacyLanguageService(ctx);
+			ctx.subscriptions.push(legacyLanguageService);
 		}
 		languageServerIsRunning = started;
 		updateLanguageServerIconGoStatusBar(started, goConfig['useLanguageServer'] === true);
@@ -233,7 +220,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 // update to the latest version. We also check if we should prompt users to
 // fill out the survey.
 function scheduleGoplsSuggestions() {
-	if (IsInCloudIDE) {
+	if (extensionInfo.isInCloudIDE) {
 		return;
 	}
 	// Some helper functions.
@@ -268,7 +255,7 @@ function scheduleGoplsSuggestions() {
 				return;
 			}
 			// Prompt the user to enable gopls and record what actions they took.
-			await promptAboutGoplsOptOut(false);
+			await promptAboutGoplsOptOut();
 			// Check if the language server has now been enabled, and if so,
 			// it will be installed below.
 			cfg = buildLanguageServerConfig(getGoConfig());
@@ -298,7 +285,8 @@ function scheduleGoplsSuggestions() {
 	setTimeout(survey, 30 * timeMinute);
 }
 
-export async function promptAboutGoplsOptOut(surveyOnly: boolean) {
+// Ask users to enable gopls. If they still don't want it, ask to fill out opt-out survey with the probability.
+export async function promptAboutGoplsOptOut(probability = 0.5) {
 	// Check if the configuration is set in the workspace.
 	const useLanguageServer = getGoConfig().inspect('useLanguageServer');
 	const workspace = useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false;
@@ -313,14 +301,7 @@ export async function promptAboutGoplsOptOut(surveyOnly: boolean) {
 			return cfg;
 		}
 		cfg.lastDatePrompted = new Date();
-		if (surveyOnly) {
-			await promptForGoplsOptOutSurvey(
-				cfg,
-				`Looks like you've disabled the Go language server, which is the recommended default for this extension.
-Would you be willing to tell us why you've disabled it?`
-			);
-			return cfg;
-		}
+
 		const selected = await vscode.window.showInformationMessage(
 			`We noticed that you have disabled the language server.
 It has [stabilized](https://blog.golang.org/gopls-vscode-go) and is now enabled by default in this extension.
@@ -357,10 +338,12 @@ Would you like to enable it now?`,
 				break;
 			case 'Never':
 				cfg.prompt = false;
-				await promptForGoplsOptOutSurvey(
-					cfg,
-					'No problem. Would you be willing to tell us why you have opted out of the language server?'
-				);
+				if (Math.random() < probability) {
+					await promptForGoplsOptOutSurvey(
+						cfg,
+						'No problem. Would you be willing to tell us why you have opted out of the language server?'
+					);
+				}
 				break;
 		}
 		return cfg;
@@ -374,10 +357,8 @@ async function promptForGoplsOptOutSurvey(cfg: GoplsOptOutConfig, msg: string): 
 	if (!s) {
 		return cfg;
 	}
-	let goplsVersion = await getLocalGoplsVersion(latestConfig);
-	if (!goplsVersion) {
-		goplsVersion = 'na';
-	}
+	const localGoplsVersion = await getLocalGoplsVersion(latestConfig);
+	const goplsVersion = localGoplsVersion?.version || 'na';
 	const goV = await getGoVersion();
 	let goVersion = 'na';
 	if (goV) {
@@ -459,7 +440,9 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 
 	// Before starting the language server, make sure to deregister any
 	// currently registered language providers.
-	disposeDefaultProviders();
+
+	legacyLanguageService?.dispose();
+	legacyLanguageService = undefined;
 
 	languageServerDisposable = languageClient.start();
 	ctx.subscriptions.push(languageServerDisposable);
@@ -523,7 +506,10 @@ function buildLanguageClientOption(cfg: LanguageServerConfig): BuildLanguageClie
 
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
-export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient> {
+export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promise<LanguageClient | undefined> {
+	if (!cfg.enabled) {
+		return Promise.resolve(undefined);
+	}
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
@@ -857,16 +843,7 @@ async function adjustGoplsWorkspaceConfiguration(
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
 
 	// Only modify the user's configurations for the Nightly.
-	if (!isInPreviewMode()) {
-		return workspaceConfig;
-	}
-	// allExperiments is only available with gopls/v0.5.2 and above.
-	const version = await getLocalGoplsVersion(cfg);
-	if (!version) {
-		return workspaceConfig;
-	}
-	const sv = semver.parse(version, true);
-	if (!sv || semver.lt(sv, 'v0.5.2')) {
+	if (!extensionInfo.isPreview) {
 		return workspaceConfig;
 	}
 	if (!workspaceConfig['allExperiments']) {
@@ -918,48 +895,6 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	];
 }
 
-// registerUsualProviders registers the language feature providers if the language server is not enabled.
-function registerDefaultProviders(ctx: vscode.ExtensionContext) {
-	const completionProvider = new GoCompletionItemProvider(ctx.globalState);
-	defaultLanguageProviders.push(completionProvider);
-	defaultLanguageProviders.push(
-		vscode.languages.registerCompletionItemProvider(GO_MODE, completionProvider, '.', '"')
-	);
-	defaultLanguageProviders.push(vscode.languages.registerHoverProvider(GO_MODE, new GoHoverProvider()));
-	defaultLanguageProviders.push(vscode.languages.registerDefinitionProvider(GO_MODE, new GoDefinitionProvider()));
-	defaultLanguageProviders.push(vscode.languages.registerReferenceProvider(GO_MODE, new GoReferenceProvider()));
-	defaultLanguageProviders.push(
-		vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoDocumentSymbolProvider())
-	);
-	defaultLanguageProviders.push(vscode.languages.registerWorkspaceSymbolProvider(new GoWorkspaceSymbolProvider()));
-	defaultLanguageProviders.push(
-		vscode.languages.registerSignatureHelpProvider(GO_MODE, new GoSignatureHelpProvider(), '(', ',')
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerImplementationProvider(GO_MODE, new GoImplementationProvider())
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerDocumentFormattingEditProvider(GO_MODE, new GoDocumentFormattingEditProvider())
-	);
-	defaultLanguageProviders.push(
-		vscode.languages.registerTypeDefinitionProvider(GO_MODE, new GoTypeDefinitionProvider())
-	);
-	defaultLanguageProviders.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
-	defaultLanguageProviders.push(vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions));
-	defaultLanguageProviders.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
-
-	for (const provider of defaultLanguageProviders) {
-		ctx.subscriptions.push(provider);
-	}
-}
-
-function disposeDefaultProviders() {
-	for (const disposable of defaultLanguageProviders) {
-		disposable.dispose();
-	}
-	defaultLanguageProviders = [];
-}
-
 export async function watchLanguageServerConfiguration(e: vscode.ConfigurationChangeEvent) {
 	if (!e.affectsConfiguration('go')) {
 		return;
@@ -976,10 +911,6 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 	) {
 		restartLanguageServer('config change');
 	}
-
-	if (e.affectsConfiguration('go.useLanguageServer') && getGoConfig()['useLanguageServer'] === false) {
-		promptAboutGoplsOptOut(true);
-	}
 }
 
 export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
@@ -990,7 +921,7 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
-		version: '', // compute version lazily
+		version: null, // compute version lazily
 		modtime: null,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
@@ -1090,7 +1021,7 @@ export async function shouldUpdateLanguageServer(
 	mustCheck?: boolean
 ): Promise<semver.SemVer> {
 	// Only support updating gopls for now.
-	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || IsInCloudIDE))) {
+	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || extensionInfo.isInCloudIDE))) {
 		return null;
 	}
 	if (!cfg.enabled) {
@@ -1109,13 +1040,13 @@ export async function shouldUpdateLanguageServer(
 	const usersVersion = await getLocalGoplsVersion(cfg);
 
 	// We might have a developer version. Don't make the user update.
-	if (usersVersion === '(devel)') {
+	if (usersVersion && usersVersion.version === '(devel)') {
 		return null;
 	}
 
 	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
 	let latestVersion =
-		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, isInPreviewMode());
+		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, extensionInfo.isPreview);
 
 	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
 	if (!latestVersion) {
@@ -1125,13 +1056,13 @@ export async function shouldUpdateLanguageServer(
 	// If "gopls" is so old that it doesn't have the "gopls version" command,
 	// or its version doesn't match our expectations, usersVersion will be empty or invalid.
 	// Suggest the latestVersion.
-	if (!usersVersion || !semver.valid(usersVersion)) {
+	if (!usersVersion || !semver.valid(usersVersion.version)) {
 		return latestVersion;
 	}
 
 	// The user may have downloaded golang.org/x/tools/gopls@master,
 	// which means that they have a pseudoversion.
-	const usersTime = parseTimestampFromPseudoversion(usersVersion);
+	const usersTime = parseTimestampFromPseudoversion(usersVersion.version);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
 		let latestTime = cfg.checkForUpdates
@@ -1145,7 +1076,7 @@ export async function shouldUpdateLanguageServer(
 
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
-	const usersVersionSemver = semver.parse(usersVersion, {
+	const usersVersionSemver = semver.parse(usersVersion.version, {
 		includePrerelease: true,
 		loose: true
 	});
@@ -1235,6 +1166,14 @@ export const getTimestampForVersion = async (tool: Tool, version: semver.SemVer)
 	return time;
 };
 
+interface GoplsVersionOutput {
+	GoVersion: string;
+	Main: {
+		Path: string;
+		Version: string;
+	};
+}
+
 // getLocalGoplsVersion returns the version of gopls that is currently
 // installed on the user's machine. This is determined by running the
 // `gopls version` command.
@@ -1244,17 +1183,31 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	if (!cfg) {
 		return null;
 	}
-	if (cfg.version !== '') {
+	if (cfg.version) {
 		return cfg.version;
 	}
 	if (cfg.path === '') {
 		return null;
 	}
+	const env = toolExecutionEnvironment();
+	const cwd = getWorkspaceFolderPath();
+
 	const execFile = util.promisify(cp.execFile);
-	let output: any;
 	try {
-		const env = toolExecutionEnvironment();
-		const cwd = getWorkspaceFolderPath();
+		const { stdout } = await execFile(cfg.path, ['version', '-json'], { env, cwd });
+
+		const v = <GoplsVersionOutput>JSON.parse(stdout);
+		if (v?.Main.Version) {
+			cfg.version = { version: v.Main.Version, goVersion: v.GoVersion };
+			return cfg.version;
+		}
+	} catch (e) {
+		// do nothing
+	}
+
+	// fall back to the old way (pre v0.8.0)
+	let output = '';
+	try {
 		const { stdout } = await execFile(cfg.path, ['version'], { env, cwd });
 		output = stdout;
 	} catch (e) {
@@ -1263,7 +1216,7 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 		return null;
 	}
 
-	const lines = <string>output.trim().split('\n');
+	const lines = output.trim().split('\n');
 	switch (lines.length) {
 		case 0:
 			// No results, should update.
@@ -1303,7 +1256,7 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 	//
 	//    v0.1.3
 	//
-	cfg.version = split[1];
+	cfg.version = { version: split[1] };
 	return cfg.version;
 };
 
@@ -1436,7 +1389,6 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 				}
 				// Get the user's version in case the update prompt above failed.
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const extInfo = getExtensionInfo();
 				const goVersion = await getGoVersion();
 				const settings = latestConfig.flags.join(' ');
 				const title = `gopls: automated issue report (${errKind})`;
@@ -1453,12 +1405,12 @@ Failed to auto-collect gopls trace: ${failureReason}.
 				const now = new Date();
 
 				const body = `
-gopls version: ${usersGoplsVersion}
+gopls version: ${usersGoplsVersion?.version} (${usersGoplsVersion?.goVersion})
 gopls flags: ${settings}
 update flags: ${latestConfig.checkForUpdates}
-extension version: ${extInfo.version}
+extension version: ${extensionInfo.version}
 go version: ${goVersion?.format(true)}
-environment: ${extInfo.appName} ${process.platform}
+environment: ${extensionInfo.appName} ${process.platform}
 initialization error: ${initializationError}
 issue timestamp: ${now.toUTCString()}
 restart history:
@@ -1631,25 +1583,4 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
 	return useLanguageServer.globalValue === undefined && useLanguageServer.workspaceValue === undefined;
-}
-
-interface ExtensionInfo {
-	version?: string; // Extension version
-	appName: string; // The application name of the editor, like 'VS Code'
-	isPreview?: boolean; // if the extension runs in preview mode (e.g. Nightly)
-}
-
-function getExtensionInfo(): ExtensionInfo {
-	const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
-	const version = packageJSON?.version;
-	const appName = vscode.env.appName;
-	const isPreview = !!packageJSON?.preview;
-	return { version, appName, isPreview };
-}
-
-// isInPreviewMode returns true if the extension's preview mode is set to true.
-// In the Nightly extension and the dev extension built from master, the preview
-// is set to true.
-export function isInPreviewMode(): boolean {
-	return getExtensionInfo().isPreview;
 }

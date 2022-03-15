@@ -13,7 +13,7 @@ import fs = require('fs');
 import path = require('path');
 import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
-import { getGoConfig, getGoplsConfig } from './config';
+import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
@@ -39,10 +39,9 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import { correctBinname, envPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { correctBinname, envPath, executableFileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
-import { isInPreviewMode, RestartReason } from './goLanguageServer';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
@@ -97,12 +96,30 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	);
 }
 
+export async function getGoForInstall(goVersion?: GoVersion, silent?: boolean): Promise<GoVersion> {
+	const configured = getGoConfig().get<string>('toolsManagement.go');
+	if (!configured) {
+		return goVersion;
+	}
+	if (executableFileExists(configured)) {
+		const go = await getGoVersion(configured);
+		if (go) return go;
+	}
+	if (!silent) {
+		outputChannel.appendLine(
+			`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
+		);
+	}
+	return goVersion;
+}
+
 /**
  * Installs given array of missing tools. If no input is given, the all tools are installed
  *
  * @param missing array of tool names and optionally, their versions to be installed.
  *                If a tool's version is not specified, it will install the latest.
- * @param goVersion version of Go that affects how to install the tool. (e.g. modules vs legacy GOPATH mode)
+ * @param goVersion version of Go used in the project. If go used for tools installation
+ *                is not configured or misconfigured, this is used as a fallback.
  * @returns a list of tools that failed to install.
  */
 export async function installTools(
@@ -119,6 +136,7 @@ export async function installTools(
 	}
 	outputChannel.clear();
 
+	const goForInstall = await getGoForInstall(goVersion);
 	const envForTools = toolInstallationEnvironment();
 	const toolsGopath = envForTools['GOPATH'];
 	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
@@ -163,7 +181,7 @@ export async function installTools(
 	for (const tool of missing) {
 		const modulesOffForTool = modulesOff;
 
-		const failed = await installTool(tool, goVersion, envForTools, !modulesOffForTool);
+		const failed = await installToolWithGo(tool, goForInstall, envForTools, !modulesOffForTool);
 		if (failed) {
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls') {
@@ -202,9 +220,17 @@ async function tmpDirForToolInstallation() {
 	return toolsTmpDir;
 }
 
-export async function installTool(
+// installTool installs the specified tool.
+export async function installTool(tool: ToolAtVersion): Promise<string> {
+	const goVersion = await getGoForInstall(await getGoVersion());
+	const envForTools = toolInstallationEnvironment();
+
+	return await installToolWithGo(tool, goVersion, envForTools, true);
+}
+
+async function installToolWithGo(
 	tool: ToolAtVersion,
-	goVersion: GoVersion,
+	goVersion: GoVersion, // go version to be used for installation.
 	envForTools: NodeJS.Dict<string>,
 	modulesOn: boolean
 ): Promise<string> {
@@ -225,7 +251,7 @@ export async function installTool(
 	} else {
 		let version: semver.SemVer | string | undefined = tool.version;
 		if (!version) {
-			if (tool.usePrereleaseInPreviewMode && isInPreviewMode()) {
+			if (tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
 				version = await latestToolVersion(tool, true);
 			} else if (tool.defaultVersion) {
 				version = tool.defaultVersion;

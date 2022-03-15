@@ -9,11 +9,11 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getBinPath } from './util';
-import { killProcessTree } from './utils/processUtils';
+import { getGoConfig } from '../../config';
+import { toolExecutionEnvironment } from '../../goEnv';
+import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
+import { getBinPath } from '../../util';
+import { killProcessTree } from '../../utils/processUtils';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
 	public provideDocumentFormattingEdits(
