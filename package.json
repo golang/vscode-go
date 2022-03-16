@@ -502,6 +502,20 @@
         "description": "Open a file from the Go explorer. Only available as a menu item in the explorer.",
         "category": "Explorer",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "go.workspace.editEnv",
+        "title": "Go: Edit Workspace Env",
+        "description": "Edit the Go Env for the active workspace.",
+        "icon": "$(settings-edit)",
+        "enablement": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "go.workspace.resetEnv",
+        "title": "Go: Reset Workspace Env",
+        "description": "Reset the Go Env for the active workspace.",
+        "icon": "$(settings-remove)",
+        "enablement": "workspaceFolderCount > 0"
       }
     ],
     "breakpoints": [
@@ -2692,8 +2706,17 @@
         },
         {
           "command": "go.explorer.open",
-          "when": "view == go.explorer && viewItem == go:explorer:envitem:file",
+          "when": "viewItem == go:explorer:envfile",
           "group": "inline"
+        },
+        {
+          "command": "go.workspace.editEnv",
+          "when": "viewItem =~ /(go:explorer:envtree|go:explorer:envitem)/ && workspaceFolderCount > 0",
+          "group": "inline"
+        },
+        {
+          "command": "go.workspace.resetEnv",
+          "when": "viewItem =~ /go:explorer:env/ && workspaceFolderCount > 0"
         }
       ]
     },

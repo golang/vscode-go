@@ -22,13 +22,17 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	private activeFolder?: vscode.WorkspaceFolder;
 	private activeDocument?: vscode.TextDocument;
 
-	static setup(ctx: vscode.ExtensionContext) {
+	static setup({ subscriptions }: vscode.ExtensionContext) {
 		const provider = new this();
-		ctx.subscriptions.push(vscode.window.registerTreeDataProvider('go.explorer', provider));
-		ctx.subscriptions.push(vscode.commands.registerCommand('go.explorer.refresh', () => provider.update(true)));
-		ctx.subscriptions.push(
-			vscode.commands.registerCommand('go.explorer.open', (item: EnvTreeItem) => provider.open(item))
-		);
+		const {
+			window: { registerTreeDataProvider },
+			commands: { registerCommand }
+		} = vscode;
+		subscriptions.push(registerTreeDataProvider('go.explorer', provider));
+		subscriptions.push(registerCommand('go.explorer.refresh', () => provider.update(true)));
+		subscriptions.push(registerCommand('go.explorer.open', (item) => provider.open(item)));
+		subscriptions.push(registerCommand('go.workspace.editEnv', (item) => provider.editEnv(item)));
+		subscriptions.push(registerCommand('go.workspace.resetEnv', (item) => provider.resetEnv(item)));
 		return provider;
 	}
 
@@ -89,6 +93,39 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 		await vscode.window.showTextDocument(doc);
 	}
 
+	private async editEnv(item?: EnvTreeItem) {
+		const uri = this.activeFolder?.uri;
+		if (!uri) {
+			return;
+		}
+		let pick: { label?: string; description?: string };
+		if (isEnvTreeItem(item)) {
+			pick = { label: item.key, description: item.value };
+		} else {
+			const items = Object.entries<string>(await runGoEnv(uri))
+				.filter(([label]) => !GoEnv.readonlyVars.has(label))
+				.map(([label, description]) => ({
+					label,
+					description
+				}));
+			pick = await vscode.window.showQuickPick(items, { title: 'Go: Edit Workspace Env' });
+		}
+		if (!pick) return;
+		const { label, description } = pick;
+		const value = await vscode.window.showInputBox({ title: label, value: description });
+		if (typeof value !== 'undefined') {
+			await GoEnv.edit({ [label]: value });
+		}
+	}
+
+	private async resetEnv(item?: EnvTreeItem) {
+		if (item?.key) {
+			await GoEnv.reset([item.key]);
+			return;
+		}
+		await GoEnv.reset();
+	}
+
 	private envTree() {
 		if (this.activeFolder) {
 			const { name, uri } = this.activeFolder;
@@ -130,14 +167,14 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
 class EnvTree implements vscode.TreeItem {
 	label = 'env';
-	contextValue = 'go:explorer:env';
+	contextValue = 'go:explorer:envtree';
 	collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
 	iconPath = new vscode.ThemeIcon('symbol-folder');
 	constructor(public description = '', public workspace?: vscode.Uri) {}
 }
 
 function isEnvTree(item?: vscode.TreeItem): item is EnvTree {
-	return item?.contextValue === 'go:explorer:env';
+	return item?.contextValue === 'go:explorer:envtree';
 }
 
 class EnvTreeItem implements vscode.TreeItem {
@@ -148,12 +185,16 @@ class EnvTreeItem implements vscode.TreeItem {
 	constructor(public key: string, public value: string) {
 		this.label = `${key}=${replaceHome(value)}`;
 		this.contextValue = 'go:explorer:envitem';
-		if (GoEnv.fileVars.includes(key)) {
-			this.contextValue = 'go:explorer:envitem:file';
+		if (GoEnv.fileVars.has(key)) {
+			this.contextValue = 'go:explorer:envfile';
 			this.file = vscode.Uri.file(value);
 		}
 		this.tooltip = `${key}=${value}`;
 	}
+}
+
+function isEnvTreeItem(item?: vscode.TreeItem): item is EnvTreeItem {
+	return item?.contextValue === 'go:explorer:envitem';
 }
 
 class GoEnv {
@@ -173,7 +214,7 @@ class GoEnv {
 	 * update writes to toolsEnvVars in the go workspace config.
 	 * @param vars a record of env vars to update.
 	 */
-	static async update(vars: Record<string, string>) {
+	static async edit(vars: Record<string, string>) {
 		const config = getGoConfig();
 		await config.update('toolsEnvVars', { ...config['toolsEnvVars'], ...vars });
 	}
@@ -182,19 +223,34 @@ class GoEnv {
 	 * reset removes entries from toolsEnvVars in the go workspace config.
 	 * @param vars env vars to reset.
 	 */
-	static async reset(vars: string[]) {
+	static async reset(vars?: string[]) {
 		const config = getGoConfig();
-		const env = { ...config['toolsEnvVars'] };
-		for (const v of vars) {
-			delete env[v];
+		let env: Record<string, string> = {};
+		if (vars) {
+			env = { ...config['toolsEnvVars'] };
+			for (const v of vars) {
+				delete env[v];
+			}
 		}
 		await config.update('toolsEnvVars', env);
 	}
 
-	/** A list of env vars that point to files. */
-	static fileVars = ['GOMOD', 'GOWORK', 'GOENV'];
+	/** Vars that point to files. */
+	static fileVars = new Set(['GOMOD', 'GOWORK', 'GOENV']);
 
-	/** The list of env vars that should always be visible if they contain a value. */
+	/** Vars available from 'go env' but not read from the environment */
+	static readonlyVars = new Set([
+		'GOEXE',
+		'GOGCCFLAGS',
+		'GOHOSTARCH',
+		'GOHOSTOS',
+		'GOMOD',
+		'GOTOOLDIR',
+		'GOVERSION',
+		'GOWORK'
+	]);
+
+	/** Vars that should always be visible if they contain a value. */
 	private static vars = ['GOPRIVATE', 'GOMOD', 'GOWORK', 'GOENV'];
 }
 

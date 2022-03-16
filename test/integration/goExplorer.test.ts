@@ -33,7 +33,7 @@ suite('GoExplorerProvider', () => {
 	test('env tree', async () => {
 		const [env] = await explorer.getChildren();
 		assert.strictEqual(env.label, 'env');
-		assert.strictEqual(env.contextValue, 'go:explorer:env');
+		assert.strictEqual(env.contextValue, 'go:explorer:envtree');
 	});
 
 	test('env tree items', async () => {
