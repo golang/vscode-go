@@ -79,6 +79,10 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 			}
 			const codelens: CodeLens[] = [];
 			for (const f of testFunctions) {
+				// https://github.com/golang/vscode-go/issues/482
+				if (f.name === 'TestMain') {
+					continue;
+				}
 				codelens.push(
 					new CodeLens(f.range, {
 						title: 'run test',
