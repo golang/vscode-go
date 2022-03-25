@@ -209,6 +209,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 			ctx.subscriptions.push(legacyLanguageService);
 		}
 		languageServerIsRunning = started;
+		vscode.commands.executeCommand('setContext', 'go.goplsIsRunning', started);
 		updateLanguageServerIconGoStatusBar(started, goConfig['useLanguageServer'] === true);
 	} finally {
 		unlock();

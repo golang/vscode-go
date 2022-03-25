@@ -516,6 +516,12 @@
         "description": "Reset the Go Env for the active workspace.",
         "icon": "$(settings-remove)",
         "enablement": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "go.vulncheck.run",
+        "title": "Go: Run Vulncheck (Experimental)",
+        "description": "Run go vulncheck.",
+        "enablement": "go.goplsIsRunning"
       }
     ],
     "breakpoints": [

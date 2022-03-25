@@ -110,6 +110,7 @@ import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
+import { VulncheckProvider } from './goVulncheck';
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -329,6 +330,7 @@ If you would like additional configuration for diagnostics from gopls, please se
 	}
 
 	GoExplorerProvider.setup(ctx);
+	VulncheckProvider.setup(ctx);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
