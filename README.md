@@ -83,6 +83,13 @@ extension.
 [TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS
 Code, not by this extension.
 
+For better syntax highlighting, we recommend enabling
+[semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
+by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uisemantictokens).
+    ```
+    "gopls": { "ui.semanticTokens": true }
+    ```
+
 ## Tools
 
 The extension uses a few command-line tools developed by the Go community. In
