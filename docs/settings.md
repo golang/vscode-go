@@ -48,7 +48,7 @@ Default:
 ```
 ### `go.alternateTools`
 
-Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.
 | Properties | Description |
 | --- | --- |
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
@@ -256,10 +256,10 @@ Allowed Options: `go`, `gb`, `bzl`
 Default: `"go"`
 ### `go.gopath`
 
-Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.
 ### `go.goroot`
 
-Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Specifies the GOROOT to use when no environment variable is set.
 ### `go.gotoSymbol.ignoreFolders`
 
 Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.
@@ -275,7 +275,7 @@ If false, the import statements will be excluded while using the Go to Symbol in
 Default: `false`
 ### `go.inferGopath`
 
-Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Infer GOPATH from the workspace root. This is ignored when using Go Modules.
 
 Default: `false`
 ### `go.installDependenciesWhenBuilding`
@@ -305,7 +305,13 @@ Flags to pass to Lint tool (e.g. ["-min_confidence=.8"])
 ### `go.lintOnSave`
 
 Lints code on file save using the configured Lint tool. Options are 'file', 'package', 'workspace' or 'off'.<br/>
-Allowed Options: `file`, `package`, `workspace`, `off`
+Allowed Options:
+
+* `file`: lint the current file on file saving
+* `package`: lint the current package on file saving
+* `workspace`: lint all the packages in the current workspace root folder on file saving
+* `off`: do not run lint automatically
+
 
 Default: `"package"`
 ### `go.lintTool`
@@ -437,7 +443,7 @@ Default: `"30s"`
 Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)
 ### `go.toolsGopath`
 
-Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.
 ### `go.toolsManagement.autoUpdate`
 
 Automatically update the tools used by the extension, without prompting the user.
@@ -492,7 +498,12 @@ Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
 ### `go.vetOnSave`
 
 Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
-Allowed Options: `package`, `workspace`, `off`
+Allowed Options:
+
+* `package`: vet the current package on file saving
+* `workspace`: vet all the packages in the current workspace root folder on file saving
+* `off`: do not run vet automatically
+
 
 Default: `"package"`
 ### `gopls`
