@@ -12,9 +12,6 @@ import (
 //   Test함수
 //   Test_foobar
 //   Test
-//   TestT
-//   TestX
-//   Test0
 //   TestMain
 //   ExampleFunction
 //   Example
@@ -49,18 +46,6 @@ func Test_foobar(t *testing.T) {
 
 func Test(t *testing.T) {
 	t.Log("this is a valid test function")
-}
-
-func TestT(t *testing.T) {
-	t.Log("this is a valid test function")
-}
-
-func TestX(x *testing.T) {
-	x.Log("this is a valid test function")
-}
-
-func Test0(*testing.T) {
-	fmt.Println("this is a valid test function")
 }
 
 func TestMain(m *testing.T) {
