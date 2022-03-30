@@ -63,7 +63,6 @@
 			"env": {
 				"VSCODE_GO_IN_TEST": "1",  // Disable code that shouldn't be used in test
 				"MOCHA_TIMEOUT": "999999",
-				"MOCHA_GREP": "codelens",
 			},
 			"stopOnEntry": false,
 			"sourceMaps": true,
