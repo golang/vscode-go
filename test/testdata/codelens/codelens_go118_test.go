@@ -15,3 +15,6 @@ func Fuzz(f *testing.F) {
 
 func TestGo118(t *testing.T) {
 }
+
+func TestMain(m *testing.M) {
+}

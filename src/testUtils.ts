@@ -43,6 +43,8 @@ const testFuncRegex = /^Test$|^Test\P{Ll}.*|^Example$|^Example\P{Ll}.*/u;
 const testMethodRegex = /^\(([^)]+)\)\.(Test|Test\P{Ll}.*)$/u;
 const benchmarkRegex = /^Benchmark$|^Benchmark\P{Ll}.*/u;
 const fuzzFuncRegx = /^Fuzz$|^Fuzz\P{Ll}.*/u;
+const testMainRegex = /TestMain\(.*\*testing.M\)/;
+
 /**
  * Input to goTest.
  */
@@ -158,6 +160,8 @@ export async function getTestFunctions(
 	return children.filter(
 		(sym) =>
 			(sym.kind === vscode.SymbolKind.Function || sym.kind === vscode.SymbolKind.Method) &&
+			// Skip TestMain(*testing.M) - see https://github.com/golang/vscode-go/issues/482
+			!testMainRegex.test(doc.lineAt(sym.range.start.line).text) &&
 			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
 	);
 }

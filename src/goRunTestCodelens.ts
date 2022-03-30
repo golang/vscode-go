@@ -16,7 +16,6 @@ import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	private readonly benchmarkRegex = /^Benchmark.+/;
-	private readonly testingMRegex = /\(.*\*testing.M\)/;
 
 	public async provideCodeLenses(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
 		if (!this.enabled) {
@@ -80,13 +79,6 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 			}
 			const codelens: CodeLens[] = [];
 			for (const f of testFunctions) {
-				// Skip TestMain(*testing.M)
-				// https://github.com/golang/vscode-go/issues/482
-				// This will only work when provideDocumentSymbols uses
-				// vscode.executeDocumentSymbolProvider, not go-outline.
-				if (f.name === 'TestMain' && f.detail.match(this.testingMRegex)) {
-					continue;
-				}
 				codelens.push(
 					new CodeLens(f.range, {
 						title: 'run test',
