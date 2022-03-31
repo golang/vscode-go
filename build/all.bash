@@ -49,6 +49,7 @@ run_test() {
   npm run unit-test
   npm test --silent
   npm run lint
+  npm audit
 
   echo "**** Run settings generator ****"
   go run tools/generate.go -w=false -gopls=true
