@@ -510,9 +510,9 @@ This problem often occurs when the source location used in compiling the debugge
 
 The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 
-### Why can't I use local attach with a process started with `go run`?
+### Starting a debug session fails with `decoding dwarf section info at offset 0x0: too short` or `could not open debug info` error.
 
-Unlike `go build`, `go run` passes `-s -w` to the linker to strip the debug info. If you try attach to such a binary with a debugger, it will fail an error like `decoding dwarf section info at offset 0x0: too short`. Use `go build -gcflags='all=-N -l'` to build your binary instead. See Go Issue [24833](https://github.com/golang/go/issues/24833) for more information.
+These errors indicate that your binary was built with linker flags that stripped the symbol table (`-s`) or the DWARF debug information (`-w`), making debugging impossible. If the binary is built while launching the session, make sure your `launch.json` configuration does not contain `"buildFlags": "--ldflags '-s -w'"`. If you use `debug test` or Test Explorer, check `go.buildFlags` in `settings.json`. If the binary is built externally, check the command-line flags and do not use `go run`. Unlike `go build`, `go run` passes `-s -w` to the linker under the hood. If you try to attach to such a binary with a debugger, it will fail with one of the above errors (see Go Issue [24833](https://github.com/golang/go/issues/24833)). Instead let dlv build the binary for you or use `go build -gcflags='all=-N -l'`.
 
 ## Reporting Issues
 
