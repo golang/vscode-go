@@ -731,7 +731,7 @@
                   "type": "string"
                 },
                 "description": "Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths",
-                "default": "${workspaceFolder}/.env"
+                "default": ""
               },
               "backend": {
                 "type": "string",
@@ -1131,6 +1131,12 @@
             "workspace",
             "off"
           ],
+          "enumDescriptions": [
+            "lint the current file on file saving",
+            "lint the current package on file saving",
+            "lint all the packages in the current workspace root folder on file saving",
+            "do not run lint automatically"
+          ],
           "default": "package",
           "description": "Lints code on file save using the configured Lint tool. Options are 'file', 'package', 'workspace' or 'off'.",
           "scope": "resource"
@@ -1162,6 +1168,11 @@
             "package",
             "workspace",
             "off"
+          ],
+          "enumDescriptions": [
+            "vet the current package on file saving",
+            "vet all the packages in the current workspace root folder on file saving",
+            "do not run vet automatically"
           ],
           "default": "package",
           "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
@@ -1210,7 +1221,7 @@
         "go.inferGopath": {
           "type": "boolean",
           "default": false,
-          "description": "Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Infer GOPATH from the workspace root. This is ignored when using Go Modules.",
           "scope": "resource"
         },
         "go.gopath": {
@@ -1219,7 +1230,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.",
           "scope": "machine-overridable"
         },
         "go.toolsGopath": {
@@ -1228,7 +1239,7 @@
             "null"
           ],
           "default": null,
-          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.",
           "scope": "machine-overridable"
         },
         "go.goroot": {
@@ -1237,7 +1248,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Specifies the GOROOT to use when no environment variable is set.",
           "scope": "machine-overridable"
         },
         "go.testOnSave": {
@@ -1996,7 +2007,7 @@
         "go.alternateTools": {
           "type": "object",
           "default": {},
-          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.",
           "scope": "resource",
           "properties": {
             "go": {
@@ -2122,7 +2133,7 @@
             },
             "ui.codelenses": {
               "type": "object",
-              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#code-lenses)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
               "scope": "resource",
               "properties": {
                 "gc_details": {
@@ -2170,7 +2181,7 @@
             },
             "ui.completion.experimentalPostfixCompletions": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
+              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artificial method snippets\nsuch as \"someSlice.sort!\".\n",
               "default": true,
               "scope": "resource"
             },

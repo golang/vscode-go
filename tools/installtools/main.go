@@ -17,7 +17,7 @@ var tools = []struct {
 	dest    string
 }{
 	// TODO: auto-generate based on allTools.ts.in.
-	{"golang.org/x/tools/gopls", "v0.8.0-pre.3", ""}, // TODO: make this not hardcoded
+	{"golang.org/x/tools/gopls", "", ""},
 	{"github.com/acroca/go-symbols", "", ""},
 	{"github.com/cweill/gotests/gotests", "", ""},
 	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", ""},
