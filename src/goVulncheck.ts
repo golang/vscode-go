@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
+import path from 'path';
 import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 import { ExecuteCommandRequest } from 'vscode-languageserver-protocol';
@@ -25,10 +26,29 @@ export class VulncheckProvider {
 	constructor(private channel: vscode.OutputChannel) {}
 
 	async run() {
-		const dir = await this.activeDir();
+		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
+		let dir, pattern: string;
+		const filename = vscode.window.activeTextEditor?.document?.fileName;
+		switch (pick) {
+			case 'Current Package':
+				if (!filename) {
+					vscode.window.showErrorMessage('vulncheck error: no current package');
+					return;
+				}
+				dir = path.dirname(filename);
+				pattern = '.';
+				break;
+			case 'Workspace':
+				dir = await this.activeDir();
+				pattern = './...';
+				break;
+			default:
+				return;
+		}
+
 		let result = '\nNo known vulnerabilities found.';
 		try {
-			const vuln = await vulncheck(dir);
+			const vuln = await vulncheck(dir, pattern);
 			if (vuln.Vuln) {
 				result = vuln.Vuln.map(renderVuln).join('----------------------\n');
 			}
@@ -36,7 +56,8 @@ export class VulncheckProvider {
 			result = e;
 			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
 		}
-		result = `govulncheck ${dir}\n${result}`;
+
+		result = `DIR=${dir} govulncheck ${pattern}\n${result}`;
 		this.channel.clear();
 		this.channel.append(result);
 		this.channel.show();
@@ -52,16 +73,16 @@ export class VulncheckProvider {
 			const pick = await vscode.window.showQuickPick(
 				folders.map((f) => ({ label: f.name, description: f.uri.path }))
 			);
-			dir = pick.description;
+			dir = pick?.description;
 		}
 		return dir;
 	}
 }
 
-async function vulncheck(dir: string, pattern = '.'): Promise<VulncheckReponse | undefined> {
+async function vulncheck(dir: string, pattern = './...'): Promise<VulncheckReponse | undefined> {
 	const COMMAND = 'gopls.run_vulncheck_exp';
 	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
-		const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, {
+		const request = {
 			command: COMMAND,
 			arguments: [
 				{
@@ -69,7 +90,8 @@ async function vulncheck(dir: string, pattern = '.'): Promise<VulncheckReponse |
 					Pattern: pattern
 				}
 			]
-		});
+		};
+		const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, request);
 		return resp;
 	}
 }
