@@ -221,6 +221,7 @@ suite('gopls opt out', () => {
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);
 			const flushGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'flushGoplsOptOutConfig');
+			const openWindowStub = sandbox.stub(vscode.env, 'openExternal').resolves(true);
 
 			await goLanguageServer.promptAboutGoplsOptOut();
 			assert.strictEqual(stub.callCount, wantCount, 'unexpected call count');
