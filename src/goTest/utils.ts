@@ -116,7 +116,7 @@ export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) 
 	disposeIfEmpty(resolver, item.parent);
 }
 
-// Tne 'name' group captures the module name, and the unnamed group ignores a comment that follows the name.
+// The 'name' group captures the module name, and the unnamed group ignores any comment that might follow the name.
 const moduleNameRegex = /^module.(?<name>.*?)(?:\s|\/\/|$)/mu;
 
 export function findModuleName(goModContent: string): string {
