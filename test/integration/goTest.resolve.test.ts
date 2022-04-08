@@ -40,6 +40,14 @@ suite('Go Test Resolver', () => {
 				},
 				expect: ['file:///src/proj?module']
 			},
+			'Module with leading comments': {
+				workspace: ['/src/proj'],
+				files: {
+					'/src/proj/go.mod': '// Example comment\nmodule test',
+					'/src/proj/main.go': 'package main'
+				},
+				expect: ['file:///src/proj?module']
+			},
 			'Basic workspace': {
 				workspace: ['/src/proj'],
 				files: {
