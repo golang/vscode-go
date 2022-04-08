@@ -22,7 +22,7 @@ import { outputChannel } from '../goStatus';
 import { getModFolderPath } from '../goModules';
 import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
-import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, isInTest, Workspace } from './utils';
+import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, findModuleName, isInTest, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
 import { importsTestify } from '../testUtils';
 
@@ -32,6 +32,8 @@ const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example|Fuzz)($|\P{Ll}.*)
 const testMethodRegex = /^\(\*(?<type>[^)]+)\)\.(?<name>(?<kind>Test)($|\P{Ll}.*))$/u;
 const runTestSuiteRegex = /^\s*suite\.Run\(\w+,\s*(?:&?(?<type1>\w+)\{\}|new\((?<type2>\w+)\))\)/mu;
 
+// Tne 'name' group captures the module name, and the unnamed group ignores a comment that follows the name.
+const moduleNameRegex = /^module.(?<name>.*?)(?:\s|\/\/|$)/mu;
 interface TestSuite {
 	func?: TestItem;
 	methods: Set<TestItem>;
@@ -286,12 +288,13 @@ export class GoTestResolver {
 			return existing;
 		}
 
-		// Use the module name as the label
+		// Read go.mod
 		const goMod = Uri.joinPath(uri, 'go.mod');
 		const contents = await this.workspace.fs.readFile(goMod);
-		const modLine = contents.toString().split('\n', 2)[0];
-		const match = modLine.match(/^module (?<name>.*?)(?:\s|\/\/|$)/);
-		const item = this.getOrCreateItem(null, match.groups.name, uri, 'module');
+
+		// Use the module name as the label
+		const label = findModuleName(contents.toString());
+		const item = this.getOrCreateItem(null, label, uri, 'module');
 		item.canResolveChildren = true;
 		return item;
 	}
