@@ -32,8 +32,6 @@ const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example|Fuzz)($|\P{Ll}.*)
 const testMethodRegex = /^\(\*(?<type>[^)]+)\)\.(?<name>(?<kind>Test)($|\P{Ll}.*))$/u;
 const runTestSuiteRegex = /^\s*suite\.Run\(\w+,\s*(?:&?(?<type1>\w+)\{\}|new\((?<type2>\w+)\))\)/mu;
 
-// Tne 'name' group captures the module name, and the unnamed group ignores a comment that follows the name.
-const moduleNameRegex = /^module.(?<name>.*?)(?:\s|\/\/|$)/mu;
 interface TestSuite {
 	func?: TestItem;
 	methods: Set<TestItem>;
