@@ -6,10 +6,12 @@
 // the gopls's API and generate documentation from it.
 //
 // To update documentation based on the current package.json:
-//    go run tools/generate.go
+//
+//	go run tools/generate.go
 //
 // To update package.json and generate documentation.
-//    go run tools/generate.go -gopls
+//
+//	go run tools/generate.go -gopls
 package main
 
 import (
