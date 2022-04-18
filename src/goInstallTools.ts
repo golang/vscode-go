@@ -96,20 +96,24 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	);
 }
 
-export async function getGoForInstall(goVersion?: GoVersion, silent?: boolean): Promise<GoVersion> {
+export async function getGoForInstall(goVersion: GoVersion, silent?: boolean): Promise<GoVersion> {
 	const configured = getGoConfig().get<string>('toolsManagement.go');
 	if (!configured) {
 		return goVersion;
 	}
 	if (executableFileExists(configured)) {
-		const go = await getGoVersion(configured);
-		if (go) return go;
+		try {
+			const go = await getGoVersion(configured);
+			if (go) return go;
+		} finally {
+			if (!silent) {
+				outputChannel.appendLine(
+					`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
+				);
+			}
+		}
 	}
-	if (!silent) {
-		outputChannel.appendLine(
-			`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
-		);
-	}
+
 	return goVersion;
 }
 

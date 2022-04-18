@@ -321,54 +321,53 @@ export function getUserNameHash() {
 
 /**
  * Gets version of Go based on the output of the command `go version`.
- * Returns undefined if go version can't be determined because
- * go is not available or `go version` fails.
+ * Throws if go version can't be determined because go is not available
+ * or `go version` fails.
  */
-export async function getGoVersion(goBinPath?: string): Promise<GoVersion | undefined> {
+export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	// TODO(hyangah): limit the number of concurrent getGoVersion call.
 	// When the extension starts, at least 4 concurrent calls race
 	// and end up calling `go version`.
 
 	const goRuntimePath = goBinPath ?? getBinPath('go');
 
-	const warn = (msg: string) => {
+	const error = (msg: string) => {
 		outputChannel.appendLine(msg);
 		console.warn(msg);
+		return new Error(msg);
 	};
 
 	if (!goRuntimePath) {
-		warn(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
-		return;
+		throw error(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
 	}
 	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
-		warn(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
+		// Don't throw an the error. Continue and recompute go version.
+		error(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	const docUri = vscode.window.activeTextEditor?.document.uri;
 	const cwd = getWorkspaceFolderPath(docUri && docUri.fsPath.endsWith('.go') ? docUri : undefined);
 
-	let goVersion: GoVersion;
+	let goVersion: GoVersion | undefined;
 	try {
 		const env = toolExecutionEnvironment();
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
-			warn(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
-			return;
+			error(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
 		}
 		goVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
-		warn(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
-		return;
+		throw error(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
 	}
 	if (!goBinPath) {
 		// if getGoVersion was called with a given goBinPath, don't cache the result.
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = goVersion;
 		if (!cachedGoVersion.isValid()) {
-			warn(`unable to determine version from the output of "${goRuntimePath} version": "${goVersion.svString}"`);
+			error(`unable to determine version from the output of "${goRuntimePath} version": "${goVersion.svString}"`);
 		}
 	}
 	return goVersion;

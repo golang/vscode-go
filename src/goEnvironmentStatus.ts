@@ -172,12 +172,16 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 			vscode.window.showErrorMessage(`${newGoBin} is not an executable`);
 			return false;
 		}
-		const newGo = await getGoVersion(newGoBin);
-		if (!newGo || !newGo.isValid()) {
-			vscode.window.showErrorMessage(`failed to get "${newGoBin} version", invalid Go binary`);
-			return false;
+		let newGo: GoVersion | undefined;
+		try {
+			newGo = await getGoVersion(newGoBin);
+			await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
+		} catch (e) {
+			if (!newGo || !newGo.isValid()) {
+				vscode.window.showErrorMessage(`failed to get "${newGoBin} version", invalid Go binary:\n${e}`);
+				return false;
+			}
 		}
-		await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
 	}
 	// prompt the user to reload the window.
 	// promptReload defaults to true and should only be false for tests.
