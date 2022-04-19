@@ -37,12 +37,12 @@ You can take this step if your change modifies both the Debug Adapter and the ma
 1. Open the `vscode-go` folder in VS Code.
 2. Go to the Run view and choose the `Extension + Debug server` debug configuration. This combines `Launch Extension` and `Launch as server` debug configurations.
 3. Add breakpoints as needed and start debugging (`F5`). It will start an Extension Development Host window and the Debug Adapter server process at port 4711. Debuggers are attached to both processes and the breakpoints will apply to both of them.
-4. In the Extension Development Host window, open the Go application source code you'd like to debug. Here, as above, create a debug configuration pointing to the program you want to debug. Add `"debugServer": 4711` to the root of the configuration. Then, run the debug configuration (`F5`), which will start debugging of the Go application.
-5. Combined debug information (call stacks, breakpoints, etc) of the debugged Extension Development Host and the Debug Adapter will be displayed in the debug view of the original VS Code window. You can use the dropdown menu in the Debug toolbar to switch between the two instances (`Launch Extension` and `Launch as server`).
+4. In the Extension Development Host window, open the Go application source code you'd like to debug. As above, create a debug configuration pointing to the program you want to debug. Add `"debugServer": 4711` to the root of the configuration. Then, run the debug configuration (`F5`), which will start debugging the Go application.
+5. Combined debug information (call stacks, breakpoints, etc.) of the debugged Extension Development Host and the Debug Adapter will be displayed in the debug view of the original VS Code window. You can use the drop-down menu in the Debug toolbar to switch between the two instances (`Launch Extension` and `Launch as server`).
 
 ## Debug VS Code and the Debug Adapter
 
-In some very rare cases, you may find it helpful to debug VS Code itself. An example of such a case might be veryfing workbench behavior and state before executing debug adapter API calls.
+In some very rare cases, you may find it helpful to debug VS Code itself. An example of such a case might be verifying workbench behavior and state before executing debug adapter API calls.
 
 First, ensure that you can [build and run VS Code](https://github.com/Microsoft/vscode/wiki/How-to-Contribute#build-and-run) from source successfully.
 
@@ -51,8 +51,8 @@ Next, follow these steps:
 1. Open an instance of VS Code that you have built from source.
 2. [Sideload](contributing.md#sideload) your local `vscode-go` extension to the local instance of VS Code. This can be done by copying the contents of the `vscode-go` directory into `$HOME/.vscode-oss-dev/extensions/ms-vscode.go` (the exact location may vary by OS).
 3. Open the `vscode` folder in Visual Studio Code.
-4. Launch the VS Code debug instance (OSS - Code) by choosing the `Launch VS Code` debug configuraion from the drop-down in the Run view. Add breakpoints as needed.
+4. Launch the VS Code debug instance (OSS - Code) by choosing the `Launch VS Code` debug configuration from the drop-down in the Run view. Add breakpoints as needed.
 5. In another instance of VS Code, open the `vscode-go` folder. Choose the `Launch as server` debug configuration in the Run view. Add breakpoints as desired in the [`vscode-go/src/debugAdapter/goDebug.ts`](../src/debugAdapter/goDebug.ts) file.
-6. Open the Go application that you want to debug in the OSS Code instance initiated in step 4.
+6. Open the Go application you want to debug in the OSS Code instance initiated in step 4.
 7. Create a debug configuration with the setting `"debugServer": 4711`.
 8. Start debugging your Go application. Observe that any breakpoints you set in the VS Code and debug adapter codebases will be triggered.
