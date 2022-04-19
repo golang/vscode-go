@@ -26,8 +26,13 @@ jobs:
         with:
           repository: ${{github.repository}}.wiki
           path: wiki
+      - name: Setup Go
+        uses: actions/setup-go@v2
       - name: Push to wiki
         run: |
+          cd vscode-go
+          go run ./tools/docs2wiki -w ./docs
+          cd ..
           cd wiki
           diff -ruN --exclude=.git . ../vscode-go/docs > ../mypatch || patch -p3 -E -f < ../mypatch
           git config --local user.email "action@github.com"
