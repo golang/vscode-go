@@ -1,6 +1,6 @@
 **For Users**
 * [[features]]
-* [[command]]
+* [[commands]]
 * [[settings]]
 * [[debugging]]
 * [[tasks]]
