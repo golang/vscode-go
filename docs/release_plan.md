@@ -1,5 +1,7 @@
-# Release candidate (DATE)
+Use the following template to create an issue for release.
 
+```
+# Release candidate (DATE)
 -   [ ] Announce the release, leave enough time for teams to surface any last minute issues that need to get in before freeze. Make sure debugger and gopls teams are looped in as well.
 -   [ ] Create a milestone with the issues that are fixed by this release
 -	[ ] Update `master` for the release
@@ -36,3 +38,4 @@
     -   [ ] Bump the version number to the next monthly ("X.XX.X-dev") release in the `master` branch
         -   [ ] `package.json`
         -   [ ] `package-lock.json`
+```

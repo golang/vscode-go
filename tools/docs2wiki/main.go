@@ -53,7 +53,8 @@ func rewriteLinks(dir string, overwrite bool) error {
 		if err != nil {
 			return fmt.Errorf("failed to read file %v: %w", name, err)
 		}
-		converted := markdownLink2WikiLink(data)
+		converted := stripTitleInPage(data)
+		converted = markdownLink2WikiLink(converted)
 		if overwrite {
 			return ioutil.WriteFile(path, converted, 0644)
 		}
@@ -89,6 +90,18 @@ func writeToTempFile(content []byte) (filename string, err error) {
 
 	dst.Write(content)
 	return dst.Name(), nil
+}
+
+func stripTitleInPage(src []byte) []byte {
+	// remove the first line if it starts with "#"
+	if len(src) == 0 || src[0] != '#' {
+		return src
+	}
+	index := bytes.Index(src, []byte("\n"))
+	if index < 0 {
+		return src
+	}
+	return src[index+1:]
 }
 
 // find pattern like '](link.md)'

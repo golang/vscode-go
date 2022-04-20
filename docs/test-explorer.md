@@ -1,6 +1,7 @@
-# Test explorer implementation (src/goTest)
+# Test explorer
 
-## Mapping tests
+## Implementation (src/goTest)
+### Mapping tests
 
 `TestItem`s themselves cannot be used with `Map`s. For non-primitive (object)
 keys, Map uses strict equality. Two objects are only strictly equal to each

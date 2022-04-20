@@ -16,6 +16,7 @@ import (
 func TestRewriteLinks(t *testing.T) {
 	for _, tt := range []struct{ filename, in, want string }{
 		{filename: "doc.md", in: markdownStyle, want: wikiStyle},
+		{filename: "hasTitle.md", in: "# Redundant Title \n" + markdownStyle, want: wikiStyle},
 		{filename: "sub/doc.md", in: markdownStyle, want: wikiStyle},
 		{filename: "doc.txt", in: markdownStyle, want: markdownStyle},
 	} {

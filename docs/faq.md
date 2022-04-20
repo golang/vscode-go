@@ -1,4 +1,3 @@
-### Syntax highlighting does not seem to work.
 
 The default syntax highlighting for Go files is provided by a
 [TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS Code,
