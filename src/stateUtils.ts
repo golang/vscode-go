@@ -18,7 +18,7 @@ export function getFromGlobalState(key: string, defaultValue?: any): any {
 
 export function updateGlobalState(key: string, value: any) {
 	if (!globalState) {
-		return;
+		return Promise.resolve();
 	}
 	return globalState.update(key, value);
 }
@@ -44,7 +44,7 @@ export function getFromWorkspaceState(key: string, defaultValue?: any) {
 
 export function updateWorkspaceState(key: string, value: any) {
 	if (!workspaceState) {
-		return;
+		return Promise.resolve();
 	}
 	return workspaceState.update(key, value);
 }
@@ -75,15 +75,17 @@ export function getMementoKeys(state: vscode.Memento): string[] {
 	return [];
 }
 
-async function resetStateQuickPick(state: vscode.Memento, updateFn: (key: string, value: any) => {}) {
+async function resetStateQuickPick(state: vscode.Memento, updateFn: (key: string, value: any) => Thenable<void>) {
 	const items = await vscode.window.showQuickPick(getMementoKeys(state), {
 		canPickMany: true,
 		placeHolder: 'Select the keys to reset.'
 	});
-	resetItemsState(items, updateFn);
+	if (items) {
+		resetItemsState(items, updateFn);
+	}
 }
 
-export function resetItemsState(items: string[], updateFn: (key: string, value: any) => {}) {
+export function resetItemsState(items: string[], updateFn: (key: string, value: any) => Thenable<void>) {
 	if (!items) {
 		return;
 	}

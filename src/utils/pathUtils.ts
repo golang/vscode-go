@@ -20,7 +20,11 @@ let binPathCache: { [bin: string]: string } = {};
 export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
 
 // find the tool's path from the given PATH env var, or null if the tool is not found.
-export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appendBinToPath: boolean): string | null {
+export function getBinPathFromEnvVar(
+	toolName: string,
+	envVarValue: string | null | undefined,
+	appendBinToPath: boolean
+): string | null {
 	toolName = correctBinname(toolName);
 	if (envVarValue) {
 		const paths = envVarValue.split(path.delimiter);
@@ -187,7 +191,7 @@ export function resolveHomeDir(inputPath: string): string {
 }
 
 // Walks up given folder path to return the closest ancestor that has `src` as a child
-export function getInferredGopath(folderPath: string): string {
+export function getInferredGopath(folderPath: string): string | undefined {
 	if (!folderPath) {
 		return;
 	}
@@ -208,7 +212,7 @@ export function getInferredGopath(folderPath: string): string {
  */
 export function getCurrentGoWorkspaceFromGOPATH(gopath: string, currentFileDirPath: string): string {
 	if (!gopath) {
-		return;
+		return '';
 	}
 	const workspaces: string[] = gopath.split(path.delimiter);
 	let currentWorkspace = '';
