@@ -2742,7 +2742,8 @@
         {
           "id": "go.explorer",
           "name": "go",
-          "icon": "media/go-logo-white.svg"
+          "icon": "media/go-logo-white.svg",
+          "when": "go.showExplorer"
         }
       ],
       "test": [

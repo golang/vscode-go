@@ -26,13 +26,14 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 		const provider = new this();
 		const {
 			window: { registerTreeDataProvider },
-			commands: { registerCommand }
+			commands: { registerCommand, executeCommand }
 		} = vscode;
 		subscriptions.push(registerTreeDataProvider('go.explorer', provider));
 		subscriptions.push(registerCommand('go.explorer.refresh', () => provider.update(true)));
 		subscriptions.push(registerCommand('go.explorer.open', (item) => provider.open(item)));
 		subscriptions.push(registerCommand('go.workspace.editEnv', (item) => provider.editEnv(item)));
 		subscriptions.push(registerCommand('go.workspace.resetEnv', (item) => provider.resetEnv(item)));
+		executeCommand('setContext', 'go.showExplorer', true);
 		return provider;
 	}
 
