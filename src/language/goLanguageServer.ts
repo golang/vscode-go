@@ -68,7 +68,7 @@ interface LanguageServerConfig {
 	serverName: string;
 	path: string;
 	version?: { version: string; goVersion?: string };
-	modtime: Date;
+	modtime?: Date;
 	enabled: boolean;
 	flags: string[];
 	env: any;
@@ -84,14 +84,14 @@ interface LanguageServerConfig {
 // new configurations.
 // TODO: refactor it. These can be encapsulated in a single LanguageServer class
 // that keeps track of the state of the active language server instance.
-export let languageClient: LanguageClient;
-let languageServerDisposable: vscode.Disposable;
+export let languageClient: LanguageClient | undefined;
+let languageServerDisposable: vscode.Disposable | undefined;
 export let latestConfig: LanguageServerConfig;
-export let serverOutputChannel: vscode.OutputChannel;
+export let serverOutputChannel: vscode.OutputChannel | undefined;
 export let languageServerIsRunning = false;
 
 // serverInfo is the information from the server received during initialization.
-export let serverInfo: ServerInfo = undefined;
+export let serverInfo: ServerInfo | undefined;
 
 interface ServerInfo {
 	Name: string;
@@ -100,7 +100,7 @@ interface ServerInfo {
 	Commands?: string[];
 }
 
-let legacyLanguageService: LegacyLanguageService = undefined;
+let legacyLanguageService: LegacyLanguageService | undefined;
 
 const languageServerStartMutex = new Mutex();
 
@@ -165,7 +165,7 @@ export async function startLanguageServerWithFallback(ctx: vscode.ExtensionConte
 		}
 	}
 	const schemes = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.scheme);
-	if (schemes?.length > 0 && !schemes.includes('file') && !schemes.includes('untitled')) {
+	if (schemes && schemes.length > 0 && !schemes.includes('file') && !schemes.includes('untitled')) {
 		outputChannel.appendLine(
 			`None of the folders in this workspace ${schemes.join(
 				','
@@ -288,7 +288,7 @@ function scheduleGoplsSuggestions() {
 export async function promptAboutGoplsOptOut() {
 	// Check if the configuration is set in the workspace.
 	const useLanguageServer = getGoConfig().inspect('useLanguageServer');
-	const workspace = useLanguageServer.workspaceFolderValue === false || useLanguageServer.workspaceValue === false;
+	const workspace = useLanguageServer?.workspaceFolderValue === false || useLanguageServer?.workspaceValue === false;
 
 	let cfg = getGoplsOptOutConfig(workspace);
 	const promptFn = async (): Promise<GoplsOptOutConfig> => {
@@ -401,10 +401,10 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	legacyLanguageService?.dispose();
 	legacyLanguageService = undefined;
 
-	languageServerDisposable = languageClient.start();
-	ctx.subscriptions.push(languageServerDisposable);
-	await languageClient.onReady();
-	serverInfo = toServerInfo(languageClient.initializeResult);
+	languageServerDisposable = languageClient?.start();
+	languageServerDisposable && ctx.subscriptions.push(languageServerDisposable);
+	await languageClient?.onReady();
+	serverInfo = toServerInfo(languageClient?.initializeResult);
 
 	console.log(`Server: ${JSON.stringify(serverInfo, null, 2)}`);
 	return true;
@@ -572,7 +572,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 							'Show Trace'
 						);
 						if (answer === 'Show Trace') {
-							serverOutputChannel.show();
+							serverOutputChannel?.show();
 						}
 						return null;
 					}
@@ -596,10 +596,10 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 				): Promise<vscode.CodeLens[]> => {
 					const codeLens = await next(doc, token);
 					if (!codeLens || codeLens.length === 0) {
-						return codeLens;
+						return codeLens ?? [];
 					}
 					return codeLens.reduce((lenses: vscode.CodeLens[], lens: vscode.CodeLens) => {
-						switch (lens.command.title) {
+						switch (lens.command?.title) {
 							case 'run test': {
 								return [...lenses, ...createTestCodeLens(lens)];
 							}
@@ -753,7 +753,7 @@ export async function buildLanguageClient(cfg: BuildLanguageClientOption): Promi
 // and selects only those the user explicitly specifies in their settings.
 // This returns a new object created based on the filtered properties of workspaceConfig.
 // Exported for testing.
-export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource: vscode.Uri): any {
+export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource?: vscode.Uri): any {
 	if (!workspaceConfig) {
 		workspaceConfig = {};
 	}
@@ -816,8 +816,8 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 async function adjustGoplsWorkspaceConfiguration(
 	cfg: LanguageServerConfig,
 	workspaceConfig: any,
-	section: string,
-	resource: vscode.Uri
+	section?: string,
+	resource?: vscode.Uri
 ): Promise<any> {
 	// We process only gopls config
 	if (section !== 'gopls') {
@@ -843,19 +843,20 @@ function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
 	// so this needs to be deconstructured here
 	// Note that there will always only be one test function name in this context
-	if (lens.command.arguments.length < 2 || lens.command.arguments[1].length < 1) {
+	if ((lens.command?.arguments?.length ?? 0) < 2 || (lens.command?.arguments?.[1].length ?? 0) < 1) {
 		return [lens];
 	}
 	return [
 		new vscode.CodeLens(lens.range, {
+			title: '',
 			...lens.command,
 			command: 'go.test.cursor',
-			arguments: [{ functionName: lens.command.arguments[1][0] }]
+			arguments: [{ functionName: lens.command?.arguments?.[1][0] }]
 		}),
 		new vscode.CodeLens(lens.range, {
 			title: 'debug test',
 			command: 'go.debug.cursor',
-			arguments: [{ functionName: lens.command.arguments[1][0] }]
+			arguments: [{ functionName: lens.command?.arguments?.[1][0] }]
 		})
 	];
 }
@@ -864,19 +865,20 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
 	// so this needs to be deconstructured here
 	// Note that there will always only be one benchmark function name in this context
-	if (lens.command.arguments.length < 3 || lens.command.arguments[2].length < 1) {
+	if ((lens.command?.arguments?.length ?? 0) < 3 || (lens.command?.arguments?.[2].length ?? 0) < 1) {
 		return [lens];
 	}
 	return [
 		new vscode.CodeLens(lens.range, {
+			title: '',
 			...lens.command,
 			command: 'go.benchmark.cursor',
-			arguments: [{ functionName: lens.command.arguments[2][0] }]
+			arguments: [{ functionName: lens.command?.arguments?.[2][0] }]
 		}),
 		new vscode.CodeLens(lens.range, {
 			title: 'debug benchmark',
 			command: 'go.debug.cursor',
-			arguments: [{ functionName: lens.command.arguments[2][0] }]
+			arguments: [{ functionName: lens.command?.arguments?.[2][0] }]
 		})
 	];
 }
@@ -904,15 +906,15 @@ export async function watchLanguageServerConfiguration(e: vscode.ConfigurationCh
 }
 
 export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
-	let formatter: GoDocumentFormattingEditProvider;
+	let formatter: GoDocumentFormattingEditProvider | undefined;
 	if (usingCustomFormatTool(goConfig)) {
 		formatter = new GoDocumentFormattingEditProvider();
 	}
 	const cfg: LanguageServerConfig = {
 		serverName: '',
 		path: '',
-		version: null, // compute version lazily
-		modtime: null,
+		version: undefined, // compute version lazily
+		modtime: undefined,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
 		features: {
@@ -932,7 +934,7 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		return cfg;
 	}
 	cfg.path = languageServerPath;
-	cfg.serverName = getToolFromToolPath(cfg.path);
+	cfg.serverName = getToolFromToolPath(cfg.path) ?? '';
 
 	if (!cfg.enabled) {
 		return cfg;
@@ -958,7 +960,7 @@ Please try reinstalling it.`);
  * Return the absolute path to the correct binary. If the required tool is not available,
  * prompt the user to install it. Only gopls is officially supported.
  */
-export function getLanguageServerToolPath(): string {
+export function getLanguageServerToolPath(): string | undefined {
 	const goConfig = getGoConfig();
 	// Check that all workspace folders are configured with the same GOPATH.
 	if (!allFoldersHaveSameGopath()) {
@@ -999,7 +1001,7 @@ function allFoldersHaveSameGopath(): boolean {
 
 function gopathsPerFolder(): string[] {
 	const result: string[] = [];
-	for (const folder of vscode.workspace.workspaceFolders) {
+	for (const folder of vscode.workspace.workspaceFolders ?? []) {
 		result.push(getCurrentGoPath(folder.uri));
 	}
 	return result;
@@ -1009,7 +1011,7 @@ export async function shouldUpdateLanguageServer(
 	tool: Tool,
 	cfg: LanguageServerConfig,
 	mustCheck?: boolean
-): Promise<semver.SemVer> {
+): Promise<semver.SemVer | null | undefined> {
 	// Only support updating gopls for now.
 	if (tool.name !== 'gopls' || (!mustCheck && (cfg.checkForUpdates === 'off' || extensionInfo.isInCloudIDE))) {
 		return null;
@@ -1056,7 +1058,7 @@ export async function shouldUpdateLanguageServer(
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
 		let latestTime = cfg.checkForUpdates
-			? await getTimestampForVersion(tool, latestVersion)
+			? await getTimestampForVersion(tool, latestVersion!)
 			: tool.latestVersionTimestamp;
 		if (!latestTime) {
 			latestTime = tool.latestVersionTimestamp;
@@ -1070,7 +1072,7 @@ export async function shouldUpdateLanguageServer(
 		includePrerelease: true,
 		loose: true
 	});
-	return semver.lt(usersVersionSemver, latestVersion) ? latestVersion : null;
+	return semver.lt(usersVersionSemver!, latestVersion!) ? latestVersion : null;
 }
 
 /**
@@ -1082,7 +1084,7 @@ export async function shouldUpdateLanguageServer(
  * 				configuration.
  * @returns		true if the tool was updated
  */
-async function suggestUpdateGopls(tool: Tool, cfg: LanguageServerConfig): Promise<boolean> {
+async function suggestUpdateGopls(tool: Tool, cfg: LanguageServerConfig): Promise<boolean | undefined> {
 	const forceUpdatedGoplsKey = 'forceUpdateForGoplsOnDefault';
 	// forceUpdated is true when the process of updating has been succesfully completed.
 	const forceUpdated = getFromGlobalState(forceUpdatedGoplsKey, false);
@@ -1111,7 +1113,7 @@ const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0
 // parseTimestampFromPseudoversion returns the timestamp for the given
 // pseudoversion. The timestamp is the center component, and it has the
 // format "YYYYMMDDHHmmss".
-function parseTimestampFromPseudoversion(version: string): moment.Moment {
+function parseTimestampFromPseudoversion(version: string): moment.Moment | null {
 	const split = version.split('-');
 	if (split.length < 2) {
 		return null;
@@ -1253,7 +1255,7 @@ export const getLocalGoplsVersion = async (cfg: LanguageServerConfig) => {
 async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 	// Get the user's value of GOPROXY.
 	// If it is not set, we cannot make the request.
-	const output: string = process.env['GOPROXY'];
+	const output = process.env['GOPROXY'];
 	if (!output || !output.trim()) {
 		return null;
 	}
@@ -1309,7 +1311,7 @@ async function suggestGoplsIssueReport(
 	}
 
 	// Show the user the output channel content to alert them to the issue.
-	serverOutputChannel.show();
+	serverOutputChannel?.show();
 
 	if (latestConfig.serverName !== 'gopls') {
 		return;
@@ -1336,7 +1338,7 @@ async function suggestGoplsIssueReport(
 
 	// If the user has invalid values for "go.languageServerFlags", we may get
 	// this error. Prompt them to double check their flags.
-	let selected: string;
+	let selected: string | undefined;
 	if (failureReason === GoplsFailureModes.INCORRECT_COMMAND_USAGE) {
 		const languageServerFlags = getGoConfig()['languageServerFlags'] as string[];
 		if (languageServerFlags && languageServerFlags.length > 0) {
@@ -1445,8 +1447,8 @@ export function showServerOutputChannel() {
 		return;
 	}
 	// likely show() is asynchronous, despite the documentation
-	serverOutputChannel.show();
-	let found: vscode.TextDocument;
+	serverOutputChannel?.show();
+	let found: vscode.TextDocument | undefined;
 	for (const doc of vscode.workspace.textDocuments) {
 		if (doc.fileName.indexOf('extension-output-') !== -1) {
 			// despite show() above, this might not get the output we want, so check
@@ -1472,12 +1474,12 @@ function sleep(ms: number) {
 }
 
 async function collectGoplsLog(): Promise<{ sanitizedLog?: string; failureReason?: string }> {
-	serverOutputChannel.show();
+	serverOutputChannel?.show();
 	// Find the logs in the output channel. There is no way to read
 	// an output channel directly, but we can find the open text
 	// document, since we just surfaced the output channel to the user.
 	// See https://github.com/microsoft/vscode/issues/65108.
-	let logs: string;
+	let logs: string | undefined;
 	for (let i = 0; i < 10; i++) {
 		// try a couple of times until successfully finding the channel.
 		for (const doc of vscode.workspace.textDocuments) {
@@ -1572,5 +1574,5 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 
 function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
-	return useLanguageServer.globalValue === undefined && useLanguageServer.workspaceValue === undefined;
+	return useLanguageServer?.globalValue === undefined && useLanguageServer?.workspaceValue === undefined;
 }

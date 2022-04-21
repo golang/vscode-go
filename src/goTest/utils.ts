@@ -101,7 +101,8 @@ export function dispose(resolver: GoTestResolver, item: vscode.TestItem) {
 
 // Dispose of the item if it has no children, recursively. This facilitates
 // cleaning up package/file trees that contain no tests.
-export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) {
+export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem | undefined) {
+	if (!item) return;
 	// Don't dispose of empty top-level items
 	const { kind } = GoTest.parseId(item.id);
 	if (kind === 'module' || kind === 'workspace' || (kind === 'package' && !item.parent)) {
@@ -113,9 +114,7 @@ export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) 
 	}
 
 	dispose(resolver, item);
-	if (item.parent) {
-		disposeIfEmpty(resolver, item.parent);
-	}
+	disposeIfEmpty(resolver, item.parent);
 }
 
 // The 'name' group captures the module name, and the unnamed group ignores any comment that might follow the name.

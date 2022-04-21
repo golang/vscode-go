@@ -272,8 +272,6 @@ export class GoTestExplorer {
 		const found = find(this.ctrl.items);
 		if (found) {
 			dispose(this.resolver, found);
-		}
-		if (found?.parent) {
 			disposeIfEmpty(this.resolver, found.parent);
 		}
 	}

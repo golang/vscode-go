@@ -60,22 +60,24 @@ export interface GoOutlineOptions {
 
 export async function documentSymbols(
 	options: GoOutlineOptions,
-	token: vscode.CancellationToken
+	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[]> {
 	const decls = await runGoOutline(options, token);
-	return convertToCodeSymbols(
-		options.document,
-		decls,
-		options.importsOption !== GoOutlineImportsOptions.Exclude,
-		makeMemoizedByteOffsetConverter(Buffer.from(options.document.getText()))
-	);
+	return options.document
+		? convertToCodeSymbols(
+				options.document,
+				decls,
+				options.importsOption !== GoOutlineImportsOptions.Exclude,
+				makeMemoizedByteOffsetConverter(Buffer.from(options.document.getText()))
+		  )
+		: [];
 }
 
 export function runGoOutline(
 	options: GoOutlineOptions,
-	token: vscode.CancellationToken
+	token?: vscode.CancellationToken
 ): Promise<GoOutlineDeclaration[]> {
-	return new Promise<GoOutlineDeclaration[]>((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		const gooutline = getBinPath('go-outline');
 		const gooutlineFlags = ['-f', options.fileName];
 		if (options.importsOption === GoOutlineImportsOptions.Only) {
@@ -85,9 +87,9 @@ export function runGoOutline(
 			gooutlineFlags.push('-modified');
 		}
 
-		let p: cp.ChildProcess;
+		let p: cp.ChildProcess | null | undefined;
 		if (token) {
-			token.onCancellationRequested(() => killProcess(p));
+			token.onCancellationRequested(() => p && killProcess(p));
 		}
 
 		// Spawn `go-outline` process
@@ -102,7 +104,7 @@ export function runGoOutline(
 						options.importsOption = GoOutlineImportsOptions.Include;
 					}
 					if (stderr.startsWith('flag provided but not defined: -modified')) {
-						options.document = null;
+						options.document = undefined;
 					}
 					p = null;
 					return runGoOutline(options, token).then((results) => {
@@ -110,7 +112,7 @@ export function runGoOutline(
 					});
 				}
 				if (err) {
-					return resolve(null);
+					return resolve([]);
 				}
 				const result = stdout.toString();
 				const decls = <GoOutlineDeclaration[]>JSON.parse(result);
@@ -120,7 +122,7 @@ export function runGoOutline(
 			}
 		});
 		if (options.document && p.pid) {
-			p.stdin.end(getFileArchive(options.document));
+			p.stdin?.end(getFileArchive(options.document));
 		}
 	});
 }
@@ -198,7 +200,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
 	public async provideDocumentSymbols(
 		document: vscode.TextDocument,
-		token: vscode.CancellationToken
+		token?: vscode.CancellationToken
 	): Promise<vscode.DocumentSymbol[]> {
 		if (typeof this.includeImports !== 'boolean') {
 			const gotoSymbolConfig = getGoConfig(document.uri)['gotoSymbol'];
@@ -207,7 +209,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
 		// TODO(suzmue): Check the commands available instead of the version.
 		if (languageClient && serverInfo?.Commands?.includes(GOPLS_LIST_IMPORTS)) {
-			const symbols: vscode.DocumentSymbol[] = await vscode.commands.executeCommand(
+			const symbols: vscode.DocumentSymbol[] | undefined = await vscode.commands.executeCommand(
 				'vscode.executeDocumentSymbolProvider',
 				document.uri
 			);
@@ -265,7 +267,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 		return this.runGoOutline(document, token);
 	}
 
-	private runGoOutline(document: vscode.TextDocument, token: vscode.CancellationToken) {
+	private runGoOutline(document: vscode.TextDocument, token?: vscode.CancellationToken) {
 		const options: GoOutlineOptions = {
 			fileName: document.fileName,
 			document,
@@ -276,7 +278,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 }
 
 async function listImports(document: vscode.TextDocument): Promise<{ Path: string; Name: string }[]> {
-	const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
+	const uri = languageClient?.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 	const params: ExecuteCommandParams = {
 		command: GOPLS_LIST_IMPORTS,
 		arguments: [
@@ -285,6 +287,6 @@ async function listImports(document: vscode.TextDocument): Promise<{ Path: strin
 			}
 		]
 	};
-	const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, params);
+	const resp = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
 	return resp.Imports;
 }

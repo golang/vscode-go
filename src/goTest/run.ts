@@ -675,11 +675,11 @@ export class GoTestRunner {
 		}
 
 		let current: Location | undefined;
+		if (!test.uri) return messages;
+		const dir = Uri.joinPath(test.uri, '..');
 		for (const line of output) {
 			const m = line.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
 			if (m?.groups) {
-				if (!test.uri) return [];
-				const dir = Uri.joinPath(test.uri, '..');
 				const file = Uri.joinPath(dir, m.groups.file);
 				const ln = Number(m.groups.line) - 1; // VSCode uses 0-based line numbering (internally)
 				current = new Location(file, new Position(ln, 0));

@@ -19,7 +19,7 @@ export class GoHoverProvider implements HoverProvider {
 		this.goConfig = goConfig;
 	}
 
-	public provideHover(document: TextDocument, position: Position, token: CancellationToken): Thenable<Hover> {
+	public provideHover(document: TextDocument, position: Position, token: CancellationToken): Thenable<Hover | null> {
 		if (!this.goConfig) {
 			this.goConfig = getGoConfig(document.uri);
 		}
