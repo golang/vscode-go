@@ -150,6 +150,16 @@
 			"body": "t.Logf(\"${1:var}: %#+v\\\\n\", ${1:var})",
 			"description": "Snippet for t.Logf() with variable content"
 		},
+		"t.Error": {
+			"prefix": "ter",
+			"body": "t.Error(\"$1\")",
+			"description": "Snippet for t.Error()"
+		},
+		"t.Errorf": {
+			"prefix": "terf",
+			"body": "t.Errorf(\"$1\", ${2:var})",
+			"description": "Snippet for t.Errorf()"
+		},
 		"make(...)": {
 			"prefix": "make",
 			"body": "make(${1:type}, ${2:0})",
