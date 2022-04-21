@@ -96,7 +96,7 @@ export class GoTestExplorer {
 				if (!options) return;
 
 				try {
-					await inst.runner.run(new TestRunRequest([item]), null, options);
+					await inst.runner.run(new TestRunRequest([item]), undefined, options);
 				} catch (error) {
 					const m = 'Failed to execute tests';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -242,7 +242,7 @@ export class GoTestExplorer {
 				return;
 			}
 
-			const ws = this.workspace.getWorkspaceFolder(item.uri);
+			const ws = item.uri && this.workspace.getWorkspaceFolder(item.uri);
 			if (!ws) {
 				dispose(this.resolver, item);
 			}
@@ -255,13 +255,13 @@ export class GoTestExplorer {
 
 	protected async didDeleteFile(file: Uri) {
 		const id = GoTest.id(file, 'file');
-		function find(children: TestItemCollection): TestItem {
+		function find(children: TestItemCollection): TestItem | undefined {
 			return findItem(children, (item) => {
 				if (item.id === id) {
 					return item;
 				}
 
-				if (!file.path.startsWith(item.uri.path)) {
+				if (!item.uri || !file.path.startsWith(item.uri.path)) {
 					return;
 				}
 
@@ -272,6 +272,8 @@ export class GoTestExplorer {
 		const found = find(this.ctrl.items);
 		if (found) {
 			dispose(this.resolver, found);
+		}
+		if (found?.parent) {
 			disposeIfEmpty(this.resolver, found.parent);
 		}
 	}

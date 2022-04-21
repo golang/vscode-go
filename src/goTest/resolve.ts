@@ -26,7 +26,7 @@ import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, findModuleName
 import { walk, WalkStop } from './walk';
 import { importsTestify } from '../testUtils';
 
-export type ProvideSymbols = (doc: TextDocument, token: CancellationToken) => Thenable<DocumentSymbol[]>;
+export type ProvideSymbols = (doc: TextDocument, token?: CancellationToken) => Thenable<DocumentSymbol[]>;
 
 const testFuncRegex = /^(?<name>(?<kind>Test|Benchmark|Example|Fuzz)($|\P{Ll}.*))/u;
 const testMethodRegex = /^\(\*(?<type>[^)]+)\)\.(?<name>(?<kind>Test)($|\P{Ll}.*))$/u;
@@ -77,7 +77,7 @@ export class GoTestResolver {
 					return;
 				}
 
-				if (this.workspace.getWorkspaceFolder(item.uri)) {
+				if (item.uri && this.workspace.getWorkspaceFolder(item.uri)) {
 					dispose(this, item);
 				}
 			});
@@ -105,6 +105,7 @@ export class GoTestResolver {
 
 		const { kind } = GoTest.parseId(item.id);
 
+		if (!item.uri) return;
 		// The user expanded a module or workspace - find all packages
 		if (kind === 'module' || kind === 'workspace') {
 			await walkPackages(this.workspace.fs, item.uri, async (uri) => {
@@ -140,11 +141,11 @@ export class GoTestResolver {
 
 		function find(items: TestItemCollection) {
 			items.forEach((item) => {
-				const itemStr = item.uri.toString();
+				const itemStr = item.uri?.toString();
 				if (findStr === itemStr) {
 					found.push(item);
 					find(item.children);
-				} else if (findStr.startsWith(itemStr)) {
+				} else if (itemStr && findStr.startsWith(itemStr)) {
 					find(item.children);
 				}
 			});
@@ -170,7 +171,8 @@ export class GoTestResolver {
 
 	// Create or Retrieve a sub test or benchmark. The ID will be of the form:
 	//     file:///path/to/mod/file.go?test#TestXxx%2fA%2fB%2fC
-	getOrCreateSubTest(item: TestItem, label: string, name: string, dynamic?: boolean): TestItem {
+	getOrCreateSubTest(item: TestItem, label: string, name: string, dynamic?: boolean): TestItem | undefined {
+		if (!item.uri) return;
 		const { kind } = GoTest.parseId(item.id);
 
 		let existing: TestItem | undefined;
@@ -202,7 +204,7 @@ export class GoTestResolver {
 	async processDocument(doc: TextDocument, ranges?: Range[]) {
 		const seen = new Set<string>();
 		const item = await this.getFile(doc.uri);
-		const symbols = await this.provideDocumentSymbols(doc, null);
+		const symbols = await this.provideDocumentSymbols(doc);
 		const testify = importsTestify(symbols);
 		for (const symbol of symbols) {
 			await this.processSymbol(doc, item, seen, testify, symbol);
@@ -210,12 +212,12 @@ export class GoTestResolver {
 
 		item.children.forEach((child) => {
 			const { name } = GoTest.parseId(child.id);
-			if (!seen.has(name)) {
+			if (!name || !seen.has(name)) {
 				dispose(this, child);
 				return;
 			}
 
-			if (ranges?.some((r) => !!child.range.intersection(r))) {
+			if (ranges?.some((r) => !!child.range?.intersection(r))) {
 				item.children.forEach((x) => dispose(this, x));
 			}
 		});
@@ -235,7 +237,7 @@ export class GoTestResolver {
 
 	private shouldSetRange(item: TestItem): boolean {
 		const config = getGoConfig(item.uri);
-		return config.get<boolean>('testExplorer.showDynamicSubtestsInEditor');
+		return !!config.get<boolean>('testExplorer.showDynamicSubtestsInEditor');
 	}
 
 	// Create an item.
@@ -247,7 +249,7 @@ export class GoTestResolver {
 	}
 
 	// Retrieve an item.
-	private getItem(parent: TestItem | undefined, uri: Uri, kind: GoTestKind, name?: string): TestItem {
+	private getItem(parent: TestItem | undefined, uri: Uri, kind: GoTestKind, name?: string): TestItem | undefined {
 		return (parent?.children || this.ctrl.items).get(GoTest.id(uri, kind, name));
 	}
 
@@ -281,7 +283,7 @@ export class GoTestResolver {
 
 	// Retrieve or create an item for a Go module.
 	private async getModule(uri: Uri): Promise<TestItem> {
-		const existing = this.getItem(null, uri, 'module');
+		const existing = this.getItem(undefined, uri, 'module');
 		if (existing) {
 			return existing;
 		}
@@ -292,50 +294,54 @@ export class GoTestResolver {
 
 		// Use the module name as the label
 		const label = findModuleName(contents.toString());
-		const item = this.getOrCreateItem(null, label, uri, 'module');
+		const item = this.getOrCreateItem(undefined, label, uri, 'module');
 		item.canResolveChildren = true;
 		return item;
 	}
 
 	// Retrieve or create an item for a workspace folder that is not a module.
 	private async getWorkspace(ws: WorkspaceFolder): Promise<TestItem> {
-		const existing = this.getItem(null, ws.uri, 'workspace');
+		const existing = this.getItem(undefined, ws.uri, 'workspace');
 		if (existing) {
 			return existing;
 		}
 
 		// Use the workspace folder name as the label
-		const item = this.getOrCreateItem(null, ws.name, ws.uri, 'workspace');
+		const item = this.getOrCreateItem(undefined, ws.name, ws.uri, 'workspace');
 		item.canResolveChildren = true;
 		return item;
 	}
 
 	// Retrieve or create an item for a Go package.
-	private async getPackage(uri: Uri): Promise<TestItem> {
+	private async getPackage(uri: Uri): Promise<TestItem | undefined> {
 		let item: TestItem;
 
 		const nested = getGoConfig(uri).get('testExplorer.packageDisplayMode') === 'nested';
-		const modDir = Uri.file(await getModFolderPath(uri, true)); // TODO support non-file schemes
+		const modDirPath = await getModFolderPath(uri, true);
 		const wsfolder = workspace.getWorkspaceFolder(uri);
-		if (modDir) {
+		if (modDirPath) {
+			const modDir = Uri.file(modDirPath); // TODO support non-file schemes
 			// If the package is in a module, add it as a child of the module
 			let parent = await this.getModule(modDir);
-			if (uri.path === parent.uri.path) {
+			if (uri.path === parent.uri?.path) {
 				return parent;
 			}
 
 			if (nested) {
-				const bits = path.relative(parent.uri.path, uri.path).split(path.sep);
+				const bits = parent.uri ? path.relative(parent.uri.path, uri.path).split(path.sep) : [];
 				while (bits.length > 1) {
+					if (!parent.uri?.path) continue;
 					const dir = bits.shift();
+					if (!dir) continue;
 					const dirUri = uri.with({ path: path.join(parent.uri.path, dir), query: '', fragment: '' });
 					parent = this.getOrCreateItem(parent, dir, dirUri, 'package');
 				}
 			}
 
-			const label = uri.path.startsWith(parent.uri.path)
-				? uri.path.substring(parent.uri.path.length + 1)
-				: uri.path;
+			const label =
+				parent.uri && uri.path.startsWith(parent.uri.path)
+					? uri.path.substring(parent.uri.path.length + 1)
+					: uri.path;
 			item = this.getOrCreateItem(parent, label, uri, 'package');
 		} else if (wsfolder) {
 			// If the package is in a workspace folder, add it as a child of the workspace
@@ -351,14 +357,14 @@ export class GoTestResolver {
 			item = this.getOrCreateItem(workspace, label, uri, 'package');
 		} else {
 			// Otherwise, add it directly to the root
-			const existing = this.getItem(null, uri, 'package');
+			const existing = this.getItem(undefined, uri, 'package');
 			if (existing) {
 				return existing;
 			}
 
 			const srcPath = path.join(getCurrentGoPath(uri), 'src');
 			const label = uri.path.startsWith(srcPath) ? uri.path.substring(srcPath.length + 1) : uri.path;
-			item = this.getOrCreateItem(null, label, uri, 'package');
+			item = this.getOrCreateItem(undefined, label, uri, 'package');
 		}
 
 		item.canResolveChildren = true;
@@ -382,7 +388,7 @@ export class GoTestResolver {
 
 	private getTestSuite(type: string): TestSuite {
 		if (this.testSuites.has(type)) {
-			return this.testSuites.get(type);
+			return this.testSuites.get(type) as TestSuite;
 		}
 
 		const methods = new Set<TestItem>();
@@ -420,21 +426,27 @@ export class GoTestResolver {
 
 		seen.add(symbol.name);
 
-		const kind = match.groups.kind.toLowerCase() as GoTestKind;
-		const suite = match.groups.type ? this.getTestSuite(match.groups.type) : undefined;
+		const kind = match.groups?.kind.toLowerCase() as GoTestKind;
+		const suite = match.groups?.type ? this.getTestSuite(match.groups.type) : undefined;
 		const existing =
 			this.getItem(file, doc.uri, kind, symbol.name) ||
 			(suite?.func && this.getItem(suite?.func, doc.uri, kind, symbol.name));
 
 		if (existing) {
-			if (!existing.range.isEqual(symbol.range)) {
+			if (!existing.range?.isEqual(symbol.range)) {
 				existing.range = symbol.range;
 				this.relocateChildren(existing);
 			}
 			return existing;
 		}
 
-		const item = this.getOrCreateItem(suite?.func || file, match.groups.name, doc.uri, kind, symbol.name);
+		const item = this.getOrCreateItem(
+			suite?.func || file,
+			match.groups?.name ?? '<none>',
+			doc.uri,
+			kind,
+			symbol.name
+		);
 		item.range = symbol.range;
 
 		if (suite) {
@@ -460,11 +472,11 @@ export class GoTestResolver {
 		const matchRunSuite = text.match(runTestSuiteRegex);
 		if (matchRunSuite) {
 			const g = matchRunSuite.groups;
-			const suite = this.getTestSuite(g.type1 || g.type2);
+			const suite = this.getTestSuite(g?.type1 || g?.type2 || '');
 			suite.func = item;
 
 			for (const method of suite.methods) {
-				if (GoTest.parseId(method.parent.id).kind !== 'file') {
+				if (!method.parent || GoTest.parseId(method.parent.id).kind !== 'file') {
 					continue;
 				}
 

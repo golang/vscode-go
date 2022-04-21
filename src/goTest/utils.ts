@@ -96,7 +96,7 @@ export function forEachAsync<T>(
 
 export function dispose(resolver: GoTestResolver, item: vscode.TestItem) {
 	resolver.all.delete(item.id);
-	item.parent.children.delete(item.id);
+	item.parent?.children.delete(item.id);
 }
 
 // Dispose of the item if it has no children, recursively. This facilitates
@@ -113,7 +113,9 @@ export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) 
 	}
 
 	dispose(resolver, item);
-	disposeIfEmpty(resolver, item.parent);
+	if (item.parent) {
+		disposeIfEmpty(resolver, item.parent);
+	}
 }
 
 // The 'name' group captures the module name, and the unnamed group ignores any comment that might follow the name.
@@ -124,5 +126,5 @@ export function findModuleName(goModContent: string): string {
 	if (match === null) {
 		throw new Error('failed to find module name in go.mod');
 	}
-	return match.groups.name;
+	return match.groups?.name ?? '';
 }
