@@ -60,15 +60,20 @@ export class VulncheckProvider {
 			default:
 				return;
 		}
+		if (!dir) {
+			return;
+		}
 
 		let result = '\nNo known vulnerabilities found.';
 		try {
 			const vuln = await vulncheck(dir, pattern);
-			if (vuln.Vuln) {
+			if (vuln?.Vuln) {
 				result = vuln.Vuln.map(renderVuln).join('----------------------\n');
 			}
 		} catch (e) {
-			result = e;
+			if (e instanceof Error) {
+				result = e.message;
+			}
 			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
 		}
 
@@ -81,7 +86,7 @@ export class VulncheckProvider {
 	private async activeDir() {
 		const folders = vscode.workspace.workspaceFolders;
 		if (!folders || folders.length === 0) return;
-		let dir = '';
+		let dir: string | undefined = '';
 		if (folders.length === 1) {
 			dir = folders[0].uri.path;
 		} else {

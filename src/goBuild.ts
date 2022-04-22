@@ -41,7 +41,7 @@ export function buildCode(buildWorkspace?: boolean) {
 		}
 	}
 
-	const documentUri = editor ? editor.document.uri : null;
+	const documentUri = editor?.document.uri;
 	const goConfig = getGoConfig(documentUri);
 
 	outputChannel.clear(); // Ensures stale output from build on save is cleared
@@ -51,7 +51,7 @@ export function buildCode(buildWorkspace?: boolean) {
 	isModSupported(documentUri).then((isMod) => {
 		goBuild(documentUri, isMod, goConfig, buildWorkspace)
 			.then((errors) => {
-				handleDiagnosticErrors(editor ? editor.document : null, errors, buildDiagnosticCollection);
+				handleDiagnosticErrors(editor?.document, errors, buildDiagnosticCollection);
 				diagnosticsStatusBarItem.hide();
 			})
 			.catch((err) => {
@@ -70,7 +70,7 @@ export function buildCode(buildWorkspace?: boolean) {
  * @param buildWorkspace If true builds code in all workspace.
  */
 export async function goBuild(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri | undefined,
 	isMod: boolean,
 	goConfig: vscode.WorkspaceConfiguration,
 	buildWorkspace?: boolean
@@ -91,13 +91,14 @@ export async function goBuild(
 	};
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
-	const cwd = buildWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const cwd = buildWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fileUri?.fsPath ?? '');
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
 	}
 
 	// Skip building if cwd is in the module cache
-	if (isMod && cwd.startsWith(getModuleCache())) {
+	const cache = getModuleCache();
+	if (isMod && cache && cwd.startsWith(cache)) {
 		return [];
 	}
 
@@ -133,7 +134,7 @@ export async function goBuild(
 				currentWorkspace,
 				'error',
 				true,
-				null,
+				'',
 				buildEnv,
 				true,
 				tokenSource.token
@@ -162,10 +163,10 @@ export async function goBuild(
 	running = true;
 	return runTool(
 		buildArgs.concat('-o', tmpPath, importPath),
-		cwd,
+		cwd ?? '',
 		'error',
 		true,
-		null,
+		'',
 		buildEnv,
 		true,
 		tokenSource.token

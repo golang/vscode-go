@@ -39,7 +39,8 @@ export async function installCurrentPackage(): Promise<void> {
 	const isMod = await isModSupported(editor.document.uri);
 
 	// Skip installing if cwd is in the module cache
-	if (isMod && cwd.startsWith(getModuleCache())) {
+	const cache = getModuleCache();
+	if (isMod && cache && cwd.startsWith(cache)) {
 		return;
 	}
 

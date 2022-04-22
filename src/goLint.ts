@@ -29,7 +29,7 @@ export function lintCode(scope?: string) {
 		}
 	}
 
-	const documentUri = editor ? editor.document.uri : null;
+	const documentUri = editor ? editor.document.uri : undefined;
 	const goConfig = getGoConfig(documentUri);
 	const goplsConfig = getGoplsConfig(documentUri);
 
@@ -39,7 +39,7 @@ export function lintCode(scope?: string) {
 
 	goLint(documentUri, goConfig, goplsConfig, scope)
 		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
+			handleDiagnosticErrors(editor ? editor.document : undefined, warnings, lintDiagnosticCollection);
 			diagnosticsStatusBarItem.hide();
 		})
 		.catch((err) => {
@@ -56,7 +56,7 @@ export function lintCode(scope?: string) {
  * @param scope Scope in which to run the linter.
  */
 export function goLint(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri | undefined,
 	goConfig: vscode.WorkspaceConfiguration,
 	goplsConfig: vscode.WorkspaceConfiguration,
 	scope?: string
@@ -78,7 +78,7 @@ export function goLint(
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
 
-	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri?.fsPath ?? '');
 
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
@@ -128,8 +128,8 @@ export function goLint(
 		args.push('./...');
 		outputChannel.appendLine(`Starting linting the current workspace at ${currentWorkspace}`);
 	} else if (scope === 'file') {
-		args.push(fileUri.fsPath);
-		outputChannel.appendLine(`Starting linting the current file at ${fileUri.fsPath}`);
+		args.push(fileUri?.fsPath ?? '');
+		outputChannel.appendLine(`Starting linting the current file at ${fileUri?.fsPath}`);
 	} else {
 		outputChannel.appendLine(`Starting linting the current package at ${cwd}`);
 	}

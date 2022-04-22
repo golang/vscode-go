@@ -58,7 +58,7 @@ export function maybePromptForDeveloperSurvey() {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForDeveloperSurvey(cfg, now);
+		cfg = await promptForDeveloperSurvey(cfg ?? {}, now);
 		if (cfg) {
 			flushSurveyConfig(developerSurveyConfig, cfg);
 		}
@@ -69,7 +69,7 @@ export function maybePromptForDeveloperSurvey() {
 // shouldPromptForSurvey decides if we should prompt the given user to take the
 // survey. It returns the DeveloperSurveyConfig if we should prompt, and
 // undefined if we should not prompt.
-export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig | undefined {
 	// TODO(rstambler): Merge checks for surveys into a setting.
 
 	// Don't prompt if the survey hasn't started or is over.

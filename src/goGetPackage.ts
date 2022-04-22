@@ -14,9 +14,8 @@ import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
 export function goGetPackage() {
 	const editor = vscode.window.activeTextEditor;
-	const selection = editor.selection;
-	const selectedText = editor.document.lineAt(selection.active.line).text;
-
+	const selection = editor?.selection;
+	const selectedText = editor?.document.lineAt(selection?.active.line ?? 0).text ?? '';
 	const importPath = getImportPath(selectedText);
 	if (importPath === '') {
 		vscode.window.showErrorMessage('No import path to get');

@@ -80,7 +80,7 @@ export function maybePromptForGoplsSurvey() {
 	setTimeout(callback, ms);
 }
 
-export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig | undefined {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -145,7 +145,7 @@ function randomIntInRange(min: number, max: number): number {
 	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
-async function promptForGoplsSurvey(cfg: GoplsSurveyConfig, now: Date): Promise<GoplsSurveyConfig> {
+async function promptForGoplsSurvey(cfg: GoplsSurveyConfig = {}, now: Date): Promise<GoplsSurveyConfig> {
 	let selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,

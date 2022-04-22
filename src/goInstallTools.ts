@@ -56,7 +56,7 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	let allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 
 	// exclude tools replaced by alternateTools.
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
 	allTools = allTools.filter((tool) => {
 		return !alternateTools[tool.name];
 	});
@@ -154,7 +154,7 @@ export async function installTools(
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
 		const p = toolsGopath
-			.split(path.delimiter)
+			?.split(path.delimiter)
 			.map((e) => path.join(e, 'bin'))
 			.join(path.delimiter);
 		installingMsg += `${p}`;
@@ -164,7 +164,7 @@ export async function installTools(
 	// This ensures that users get the latest tagged version, rather than master,
 	// which may be unstable.
 	let modulesOff = false;
-	if (goVersion.lt('1.11')) {
+	if (goVersion?.lt('1.11')) {
 		modulesOff = true;
 	} else {
 		installingMsg += ' in module mode.';
@@ -225,7 +225,7 @@ async function tmpDirForToolInstallation() {
 }
 
 // installTool installs the specified tool.
-export async function installTool(tool: ToolAtVersion): Promise<string> {
+export async function installTool(tool: ToolAtVersion): Promise<string | undefined> {
 	const goVersion = await getGoForInstall(await getGoVersion());
 	const envForTools = toolInstallationEnvironment();
 
@@ -237,7 +237,7 @@ async function installToolWithGo(
 	goVersion: GoVersion, // go version to be used for installation.
 	envForTools: NodeJS.Dict<string>,
 	modulesOn: boolean
-): Promise<string> {
+): Promise<string | undefined> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
 		const reason = await tool.close(envForTools);
@@ -253,7 +253,7 @@ async function installToolWithGo(
 	if (!modulesOn) {
 		importPath = getImportPath(tool, goVersion);
 	} else {
-		let version: semver.SemVer | string | undefined = tool.version;
+		let version: semver.SemVer | string | undefined | null = tool.version;
 		if (!version) {
 			if (tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
 				version = await latestToolVersion(tool, true);
@@ -265,7 +265,7 @@ async function installToolWithGo(
 	}
 
 	try {
-		if (!modulesOn || goVersion.lt('1.16') || hasModSuffix(tool)) {
+		if (!modulesOn || goVersion?.lt('1.16') || hasModSuffix(tool)) {
 			await installToolWithGoGet(tool, goVersion, env, modulesOn, importPath);
 		} else {
 			await installToolWithGoInstall(goVersion, env, importPath);
@@ -282,7 +282,7 @@ async function installToolWithGo(
 async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<string>, importPath: string) {
 	// Unlike installToolWithGoGet, `go install` in module mode
 	// can run in the current directory safely. So, use the user-specified go tool path.
-	const goBinary = goVersion.binaryPath || getBinPath('go');
+	const goBinary = goVersion?.binaryPath || getBinPath('go');
 	const opts = {
 		env,
 		cwd: getWorkspaceFolderPath()
@@ -306,7 +306,11 @@ async function installToolWithGoGet(
 	// (which can be a wrapper script that switches 'go').
 	const goBinary = getCurrentGoRoot()
 		? path.join(getCurrentGoRoot(), 'bin', correctBinname('go'))
-		: goVersion.binaryPath;
+		: goVersion?.binaryPath;
+	if (!goBinary) {
+		vscode.window.showErrorMessage('Go binary not found.');
+		return;
+	}
 
 	// Build the arguments list for the tool installation.
 	const args = ['get', '-x'];
@@ -332,6 +336,7 @@ async function installToolWithGoGet(
 		env,
 		cwd: toolsTmpDir
 	};
+
 	try {
 		const execFile = util.promisify(cp.execFile);
 		logVerbose(`$ ${goBinary} ${args.join(' ')} (cwd: ${opts.cwd})`);
@@ -633,16 +638,16 @@ export async function offerToInstallTools() {
 
 function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 	const keys = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
-	return Promise.all<Tool>(
+	return Promise.all(
 		keys.map(
 			(tool) =>
-				new Promise<Tool>((resolve, reject) => {
+				new Promise<Tool | null>((resolve, reject) => {
 					const toolPath = getBinPath(tool.name);
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
 		)
 	).then((res) => {
-		return res.filter((x) => x != null);
+		return res.filter((x): x is Tool => x != null);
 	});
 }
 
@@ -741,7 +746,7 @@ async function defaultInspectGoToolVersion(
 			...
 		*/
 		const lines = stdout.split('\n', 3);
-		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)[1];
+		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)?.[1];
 		const moduleVersion = lines[2].split(/\s+/)[3];
 		return { goVersion, moduleVersion };
 	} catch (e) {

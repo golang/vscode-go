@@ -69,10 +69,10 @@ export function toggleTestFile(): void {
 	vscode.commands.executeCommand('vscode.open', vscode.Uri.file(targetFilePath));
 }
 
-export function generateTestCurrentPackage(): Promise<boolean> {
+export async function generateTestCurrentPackage(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 	return generateTests(
 		{
@@ -83,10 +83,10 @@ export function generateTestCurrentPackage(): Promise<boolean> {
 	);
 }
 
-export function generateTestCurrentFile(): Promise<boolean> {
+export async function generateTestCurrentFile(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 
 	return generateTests(
@@ -101,14 +101,12 @@ export function generateTestCurrentFile(): Promise<boolean> {
 export async function generateTestCurrentFunction(): Promise<boolean> {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 
 	const functions = await getFunctions(editor.document);
 	const selection = editor.selection;
-	const currentFunction: vscode.DocumentSymbol = functions.find(
-		(func) => selection && func.range.contains(selection.start)
-	);
+	const currentFunction = functions.find((func) => selection && func.range.contains(selection.start));
 
 	if (!currentFunction) {
 		vscode.window.showInformationMessage('No function found at cursor.');
@@ -216,8 +214,8 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 
 				return resolve(true);
 			} catch (e) {
-				vscode.window.showInformationMessage(e.msg);
-				outputChannel.append(e.msg);
+				vscode.window.showInformationMessage((e as any).msg);
+				outputChannel.append((e as any).msg);
 				reject(e);
 			}
 		});
@@ -226,7 +224,7 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 
 async function getFunctions(doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
 	const documentSymbolProvider = new GoDocumentSymbolProvider();
-	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, null);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	return symbols[0].children.filter((sym) =>
 		[vscode.SymbolKind.Function, vscode.SymbolKind.Method].includes(sym.kind)
 	);

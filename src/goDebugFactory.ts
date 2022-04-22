@@ -218,13 +218,13 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 // VSCode and a dlv dap process spawned and managed by this adapter.
 // It turns the process's stdout/stderrr into OutputEvent.
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
-	constructor(private configuration: vscode.DebugConfiguration, logger?: Logger) {
+	constructor(private configuration: vscode.DebugConfiguration, logger: Logger) {
 		super(logger);
 	}
 
-	private connected: Promise<{ connected: boolean; reason?: any }>;
-	private dlvDapServer: ChildProcess;
-	private socket: net.Socket;
+	private connected?: Promise<{ connected: boolean; reason?: any }>;
+	private dlvDapServer?: ChildProcess;
+	private socket?: net.Socket;
 	private terminatedOnError = false;
 
 	protected sendMessageToClient(message: vscode.DebugProtocolMessage) {
@@ -290,9 +290,6 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		}
 		this.connected = undefined;
 
-		if (timeoutMS === undefined || timeoutMS < 0) {
-			timeoutMS = 1_000;
-		}
 		const dlvDapServer = this.dlvDapServer;
 		this.dlvDapServer = undefined;
 		if (!dlvDapServer) {
@@ -305,6 +302,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			return;
 		}
 		await new Promise<void>((resolve) => {
+			if (timeoutMS === undefined || timeoutMS < 0) {
+				timeoutMS = 1_000;
+			}
 			const exitTimeoutToken = setTimeout(() => {
 				this.logger?.error(`dlv dap process (${dlvDapServer.pid}) isn't responding. Killing...`);
 				dlvDapServer.kill('SIGINT'); // Don't use treekill but let dlv handle cleaning up the child processes.
@@ -341,7 +341,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 	async startDapServer(
 		configuration: vscode.DebugConfiguration
-	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+	): Promise<{ dlvDapServer?: ChildProcess; socket: net.Socket }> {
 		const log = (msg: string) => this.outputEvent('stdout', msg);
 		const logErr = (msg: string) => this.outputEvent('stderr', msg);
 		const logConsole = (msg: string) => {
@@ -450,7 +450,8 @@ function getSudo(): string | null {
 
 function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
 	return new Promise((resolve, reject) => {
-		let s: net.Server = undefined;
+		// eslint-disable-next-line prefer-const
+		let s: net.Server | undefined;
 		const timeoutToken = setTimeout(() => {
 			if (s?.listening) {
 				s.close();
@@ -463,7 +464,7 @@ function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> 
 				`connected: ${port} (remote: ${socket.remoteAddress}:${socket.remotePort} local: ${socket.localAddress}:${socket.localPort})`
 			);
 			clearTimeout(timeoutToken);
-			s.close(); // accept no more connection
+			s?.close(); // accept no more connection
 			socket.resume();
 			resolve(socket);
 		});

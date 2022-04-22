@@ -123,7 +123,7 @@ export let restartLanguageServer = (reason: RestartReason) => {
 	return;
 };
 
-export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI> {
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// Make sure this does not run when running in test.
 		return;
@@ -205,15 +205,11 @@ async function activateContinued(
 	// TODO: let configureLanguageServer to return its status.
 	await configureLanguageServer(ctx);
 
-	if (
-		!languageServerIsRunning &&
-		vscode.window.activeTextEditor &&
-		vscode.window.activeTextEditor.document.languageId === 'go' &&
-		isGoPathSet()
-	) {
+	const activeDoc = vscode.window.activeTextEditor?.document;
+	if (!languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
 		// Check mod status so that cache is updated and then run build/lint/vet
-		isModSupported(vscode.window.activeTextEditor.document.uri).then(() => {
-			runBuilds(vscode.window.activeTextEditor.document, getGoConfig());
+		isModSupported(activeDoc.uri).then(() => {
+			runBuilds(activeDoc, getGoConfig());
 		});
 	}
 
@@ -305,7 +301,9 @@ async function activateContinued(
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.fill.struct', () => {
-			runFillStruct(vscode.window.activeTextEditor);
+			if (vscode.window.activeTextEditor) {
+				runFillStruct(vscode.window.activeTextEditor);
+			}
 		})
 	);
 
@@ -697,7 +695,7 @@ async function activateContinued(
 					}
 					applyCodeCoverageToAllEditors(
 						coverProfilePath,
-						getWorkspaceFolderPath(vscode.window.activeTextEditor.document.uri)
+						getWorkspaceFolderPath(vscode.window.activeTextEditor?.document.uri)
 					);
 				});
 		})
@@ -899,7 +897,7 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion, allTools
 			return;
 		})
 	);
-	return oldTools.filter((tool) => !!tool);
+	return oldTools.filter((tool): tool is Tool => !!tool);
 }
 
 async function suggestUpdates(ctx: vscode.ExtensionContext) {
@@ -1019,7 +1017,7 @@ async function getConfiguredGoToolsCommand() {
 		outputChannel.appendLine(info);
 	});
 
-	let folders = vscode.workspace.workspaceFolders?.map((folder) => {
+	let folders = vscode.workspace.workspaceFolders?.map<{ name: string; path?: string }>((folder) => {
 		return { name: folder.name, path: folder.uri.fsPath };
 	});
 	if (!folders) {
@@ -1059,7 +1057,7 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 	if (goroot === currentGOROOT) {
 		return;
 	}
-	if (!(await dirExists(goroot))) {
+	if (!(await dirExists(goroot ?? ''))) {
 		vscode.window.showWarningMessage(`go.goroot setting is ignored. ${goroot} is not a valid GOROOT directory.`);
 		return;
 	}

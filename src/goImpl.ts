@@ -70,6 +70,6 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 		}
 	);
 	if (p.pid) {
-		p.stdin.end();
+		p.stdin?.end();
 	}
 }

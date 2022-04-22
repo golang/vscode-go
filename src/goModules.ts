@@ -18,7 +18,7 @@ import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion, getModuleCache, getWorkspaceFolderPath } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
-export let GO111MODULE: string;
+export let GO111MODULE: string | undefined;
 
 export async function runGoEnv(uri?: vscode.Uri, envvars: string[] = []): Promise<any> {
 	const goExecutable = getBinPath('go');
@@ -38,28 +38,28 @@ export async function runGoEnv(uri?: vscode.Uri, envvars: string[] = []): Promis
 		}
 		return JSON.parse(stdout);
 	} catch (e) {
-		vscode.window.showErrorMessage(`Failed to run "go env ${args}": ${e.message}`);
+		vscode.window.showErrorMessage(`Failed to run "go env ${args}": ${(e as Error).message}`);
 		return {};
 	}
 }
 
-export function isModSupported(fileuri: vscode.Uri, isDir?: boolean): Promise<boolean> {
+export function isModSupported(fileuri?: vscode.Uri, isDir?: boolean): Promise<boolean> {
 	return getModFolderPath(fileuri, isDir).then((modPath) => !!modPath);
 }
 
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
-export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Promise<string> {
-	const pkgUri = isDir ? fileuri : vscodeUri.Utils.dirname(fileuri);
-	const pkgPath = pkgUri.fsPath;
-	if (packagePathToGoModPathMap[pkgPath]) {
+export async function getModFolderPath(fileuri?: vscode.Uri, isDir?: boolean): Promise<string | undefined> {
+	const pkgUri = isDir ? fileuri : fileuri && vscodeUri.Utils.dirname(fileuri);
+	const pkgPath = pkgUri?.fsPath ?? '';
+	if (pkgPath && packagePathToGoModPathMap[pkgPath]) {
 		return packagePathToGoModPathMap[pkgPath];
 	}
 
 	// We never would be using the path under module cache for anything
 	// So, dont bother finding where exactly is the go.mod file
 	const moduleCache = getModuleCache();
-	if (fixDriveCasingInWindows(fileuri.fsPath).startsWith(moduleCache)) {
+	if (moduleCache && fixDriveCasingInWindows(fileuri?.fsPath ?? '').startsWith(moduleCache)) {
 		return moduleCache;
 	}
 	const goVersion = await getGoVersion();
@@ -74,7 +74,7 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
 
-		if (goConfig['inferGopath'] === true && !fileuri.path.includes('/vendor/')) {
+		if (goConfig['inferGopath'] === true && !fileuri?.path.includes('/vendor/')) {
 			goConfig.update('inferGopath', false, vscode.ConfigurationTarget.WorkspaceFolder);
 			vscode.window.showInformationMessage(
 				'The "inferGopath" setting is disabled for this workspace because Go modules are being used.'
@@ -122,7 +122,7 @@ export async function promptToUpdateToolForModules(
 					if (goConfig.get('useLanguageServer') === false) {
 						goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.Global);
 					}
-					if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+					if (goConfig.inspect('useLanguageServer')?.workspaceFolderValue === false) {
 						goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.WorkspaceFolder);
 					}
 					break;
@@ -149,7 +149,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	}
 
 	const moduleCache = getModuleCache();
-	if (cwd.startsWith(moduleCache)) {
+	if (moduleCache && cwd.startsWith(moduleCache)) {
 		let importPath = cwd.substr(moduleCache.length + 1);
 		const matches = /@v\d+(\.\d+)?(\.\d+)?/.exec(importPath);
 		if (matches) {
@@ -165,7 +165,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 		console.warn(
 			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
 		);
-		return;
+		return '';
 	}
 	return new Promise<string>((resolve) => {
 		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: toolExecutionEnvironment() });
@@ -200,17 +200,21 @@ export async function goModInit() {
 		placeHolder: 'example/project'
 	});
 
+	if (!moduleName) {
+		return;
+	}
+
 	const goRuntimePath = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
 	try {
 		const env = toolExecutionEnvironment();
-		const cwd = getWorkspaceFolderPath();
+		const cwd = getWorkspaceFolderPath() ?? '';
 		outputChannel.appendLine(`Running "${goRuntimePath} mod init ${moduleName}"`);
 		await execFile(goRuntimePath, ['mod', 'init', moduleName], { env, cwd });
 		outputChannel.appendLine('Module successfully initialized. You are ready to Go :)');
 		vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(cwd, 'go.mod')));
 	} catch (e) {
-		outputChannel.appendLine(e);
+		outputChannel.appendLine((e as Error).message);
 		outputChannel.show();
 		vscode.window.showErrorMessage(
 			`Error running "${goRuntimePath} mod init ${moduleName}": See Go output channel for details`

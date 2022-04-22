@@ -99,7 +99,7 @@ function execFillStruct(editor: vscode.TextEditor, args: string[]): Promise<void
 			}
 		});
 		if (p.pid) {
-			p.stdin.end(input);
+			p.stdin?.end(input);
 		}
 	});
 }

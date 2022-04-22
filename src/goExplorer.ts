@@ -99,7 +99,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 		if (!uri) {
 			return;
 		}
-		let pick: { label?: string; description?: string };
+		let pick: { label?: string; description?: string } | undefined;
 		if (isEnvTreeItem(item)) {
 			pick = { label: item.key, description: item.value };
 		} else {
@@ -114,7 +114,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 		if (!pick) return;
 		const { label, description } = pick;
 		const value = await vscode.window.showInputBox({ title: label, value: description });
-		if (typeof value !== 'undefined') {
+		if (label && typeof value !== 'undefined') {
 			await GoEnv.edit({ [label]: value });
 		}
 	}
@@ -140,7 +140,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 
 	private async envTreeItems(uri?: vscode.Uri) {
-		const env = await this.goEnvCache.get(uri?.toString());
+		const env = await this.goEnvCache.get(uri?.toString() ?? '');
 		const items = [];
 		for (const [k, v] of Object.entries(env)) {
 			if (v !== '') {
@@ -270,9 +270,9 @@ class ToolTreeItem implements vscode.TreeItem {
 	contextValue = 'go:explorer:toolitem';
 	description = 'not installed';
 	label: string;
-	children: vscode.TreeItem[];
+	children?: vscode.TreeItem[];
 	collapsibleState?: vscode.TreeItemCollapsibleState;
-	tooltip: string;
+	tooltip?: string;
 	constructor({ name, version, goVersion, binPath, error }: ToolDetail) {
 		this.label = name;
 		if (binPath) {
@@ -314,7 +314,7 @@ async function getToolDetail(name: string): Promise<ToolDetail> {
 			version: moduleVersion
 		};
 	} catch (e) {
-		return { name: name, error: e };
+		return { name: name, error: e as Error };
 	}
 }
 

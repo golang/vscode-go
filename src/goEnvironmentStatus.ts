@@ -38,7 +38,7 @@ export class GoEnvironmentOption implements vscode.QuickPickItem {
 	}
 }
 
-export let terminalCreationListener: vscode.Disposable;
+export let terminalCreationListener: vscode.Disposable | undefined;
 
 let environmentVariableCollection: vscode.EnvironmentVariableCollection;
 export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariableCollection) {
@@ -79,7 +79,7 @@ export async function chooseGoEnvironment() {
 	}
 
 	// fetch default go and uninstalled go versions
-	let defaultOption: GoEnvironmentOption;
+	let defaultOption: GoEnvironmentOption | undefined;
 	let uninstalledOptions: GoEnvironmentOption[];
 	let goSDKOptions: GoEnvironmentOption[];
 	try {
@@ -89,7 +89,7 @@ export async function chooseGoEnvironment() {
 			getSDKGoOptions()
 		]);
 	} catch (e) {
-		vscode.window.showErrorMessage(e.message);
+		vscode.window.showErrorMessage((e as Error).message);
 		return;
 	}
 
@@ -123,7 +123,7 @@ export async function chooseGoEnvironment() {
 	try {
 		await setSelectedGo(selection);
 	} catch (e) {
-		vscode.window.showErrorMessage(e.message);
+		vscode.window.showErrorMessage((e as Error).message);
 	}
 }
 
@@ -163,7 +163,7 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 			return false;
 		}
 		const newGoBin = fixDriveCasingInWindows(newGoUris[0].fsPath);
-		const oldGoBin = fixDriveCasingInWindows(path.join(defaultUri.fsPath, correctBinname('go')));
+		const oldGoBin = fixDriveCasingInWindows(path.join(defaultUri?.fsPath ?? '', correctBinname('go')));
 
 		if (newGoBin === oldGoBin) {
 			return false;
@@ -472,7 +472,7 @@ async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 		const dlPath = `golang.org/dl/${result.version}`;
 		const label = result.version.replace('go', 'Go ');
 		return [...opts, new GoEnvironmentOption(dlPath, label, false)];
-	}, []);
+	}, [] as GoEnvironmentOption[]);
 }
 
 export const latestGoVersionKey = 'latestGoVersions';

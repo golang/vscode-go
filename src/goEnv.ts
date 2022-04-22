@@ -36,7 +36,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 					break;
 			}
 		});
-		return;
+		return {};
 	}
 	env['GOPATH'] = toolsGopath;
 

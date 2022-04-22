@@ -26,7 +26,9 @@ export async function listPackages(excludeImportedPkgs = false): Promise<string[
 		excludeImportedPkgs && vscode.window.activeTextEditor
 			? await getImports(vscode.window.activeTextEditor.document)
 			: [];
-	const pkgMap = await getImportablePackages(vscode.window.activeTextEditor.document.fileName, true);
+	const pkgMap = vscode.window.activeTextEditor
+		? await getImportablePackages(vscode.window.activeTextEditor?.document.fileName, true)
+		: new Map();
 	const stdLibs: string[] = [];
 	const nonStdLibs: string[] = [];
 	pkgMap.forEach((value, key) => {
@@ -46,9 +48,12 @@ async function golist(): Promise<string[]> {
 	const COMMAND = 'gopls.list_known_packages';
 	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 		try {
-			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
-				vscode.window.activeTextEditor.document
-			).uri;
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('No active editor found.');
+				return [];
+			}
+			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(editor.document).uri;
 			const params: ExecuteCommandParams = {
 				command: COMMAND,
 				arguments: [
@@ -80,7 +85,7 @@ async function getImports(document: vscode.TextDocument): Promise<string[]> {
 		importsOption: GoOutlineImportsOptions.Only,
 		document
 	};
-	const symbols = await documentSymbols(options, null);
+	const symbols = await documentSymbols(options);
 	if (!symbols || !symbols.length) {
 		return [];
 	}
@@ -102,13 +107,18 @@ async function askUserForImport(): Promise<string | undefined> {
 	}
 }
 
-export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
+export function getTextEditForAddImport(arg: string | undefined): vscode.TextEdit[] | undefined {
 	// Import name wasn't provided
 	if (arg === undefined) {
-		return null;
+		return undefined;
+	}
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showErrorMessage('No active editor found.');
+		return [];
 	}
 
-	const { imports, pkg } = parseFilePrelude(vscode.window.activeTextEditor.document.getText());
+	const { imports, pkg } = parseFilePrelude(editor.document.getText());
 	if (imports.some((block) => block.pkgs.some((pkgpath) => pkgpath === arg))) {
 		return [];
 	}
@@ -131,7 +141,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 
 		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
 		minusCgo.forEach((element) => {
-			const currentLine = vscode.window.activeTextEditor.document.lineAt(element.start).text;
+			const currentLine = editor.document.lineAt(element.start).text;
 			const updatedLine = currentLine.replace(/^\s*import\s*/, '\t');
 			edits.push(
 				vscode.TextEdit.replace(
@@ -167,9 +177,12 @@ export function addImport(arg: { importPath: string }) {
 		const COMMAND = 'gopls.add_import';
 		if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 			try {
-				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
-					vscode.window.activeTextEditor.document
-				).uri;
+				const editor = vscode.window.activeTextEditor;
+				if (!editor) {
+					vscode.window.showErrorMessage('No active editor found to determine current package.');
+					return [];
+				}
+				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(editor.document).uri;
 				const params: ExecuteCommandParams = {
 					command: COMMAND,
 					arguments: [

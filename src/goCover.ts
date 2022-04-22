@@ -213,7 +213,7 @@ function clearCoverage() {
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
  * @param dir Directory to execute go list in
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: string): Promise<void> {
+export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: string): Promise<void> {
 	const v = new Promise<void>((resolve, reject) => {
 		try {
 			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
@@ -285,7 +285,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				resolve();
 			});
 		} catch (e) {
-			vscode.window.showInformationMessage(e.msg);
+			vscode.window.showInformationMessage((e as any).msg);
 			reject(e);
 		}
 	});
@@ -358,7 +358,7 @@ function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
  * Apply the code coverage highlighting in given editor
  * @param editor
  */
-export function applyCodeCoverage(editor: vscode.TextEditor) {
+export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 	if (!editor || editor.document.languageId !== 'go' || editor.document.fileName.endsWith('_test.go')) {
 		return;
 	}

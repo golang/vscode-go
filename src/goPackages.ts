@@ -124,7 +124,7 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 			goListPkgs(workDir).then((pkgMap) => {
 				goListPkgsRunning.delete(workDir);
 				goListPkgsSubscriptions.delete(workDir);
-				subs.forEach((cb) => cb(pkgMap));
+				subs?.forEach((cb) => cb(pkgMap));
 			});
 		}
 	});
@@ -265,7 +265,7 @@ export function getImportPathToFolder(targets: string[], cwd?: string): Promise<
 		console.warn(
 			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) PATH(${envPath})`
 		);
-		return;
+		return Promise.resolve(new Map());
 	}
 
 	return new Promise<Map<string, string>>((resolve, reject) => {

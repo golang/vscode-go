@@ -22,12 +22,12 @@ import {
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.
-let lastTestConfig: TestConfig;
+let lastTestConfig: TestConfig | undefined;
 
 // lastDebugConfig holds a reference to the last executed DebugConfiguration which allows
 // the last test to be easily re-executed and debugged.
-let lastDebugConfig: vscode.DebugConfiguration;
-let lastDebugWorkspaceFolder: vscode.WorkspaceFolder;
+let lastDebugConfig: vscode.DebugConfiguration | undefined;
+let lastDebugWorkspaceFolder: vscode.WorkspaceFolder | undefined;
 
 export type TestAtCursorCmd = 'debug' | 'test' | 'benchmark';
 
@@ -43,13 +43,13 @@ async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
 	}
 
 	const getFunctions = cmd === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-	const testFunctions = await getFunctions(editor.document, null);
+	const testFunctions = (await getFunctions(editor.document)) ?? [];
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const testFunctionName =
 		args && args.functionName
 			? args.functionName
-			: testFunctions.filter((func) => func.range.contains(editor.selection.start)).map((el) => el.name)[0];
+			: testFunctions?.filter((func) => func.range.contains(editor.selection.start)).map((el) => el.name)[0];
 	if (!testFunctionName) {
 		throw new NotFoundError('No test function found at cursor.');
 	}
@@ -154,7 +154,7 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 
 	await editor.document.save();
 	try {
-		const testFunctions = await getTestFunctions(editor.document, null);
+		const testFunctions = (await getTestFunctions(editor.document)) ?? [];
 		// We use functionName if it was provided as argument
 		// Otherwise find any test function containing the cursor.
 		const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
@@ -170,8 +170,8 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 		const simpleRunRegex = /t.Run\("([^"]+)",/;
 		const runRegex = /t.Run\(/;
 		let lineText: string;
-		let runMatch: RegExpMatchArray | null;
-		let simpleMatch: RegExpMatchArray | null;
+		let runMatch: RegExpMatchArray | null | undefined;
+		let simpleMatch: RegExpMatchArray | null | undefined;
 		for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
 			lineText = editor.document.lineAt(i).text;
 			simpleMatch = lineText.match(simpleRunRegex);
@@ -200,7 +200,7 @@ export async function subTestAtCursor(goConfig: vscode.WorkspaceConfiguration, a
 
 		return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
 	} catch (err) {
-		vscode.window.showInformationMessage('Unable to run subtest: ' + err.toString());
+		vscode.window.showInformationMessage('Unable to run subtest: ' + (err as any).toString());
 		console.error(err);
 	}
 }
@@ -289,16 +289,16 @@ export async function testCurrentPackage(goConfig: vscode.WorkspaceConfiguration
  * @param goConfig Configuration for the Go extension.
  */
 export function testWorkspace(goConfig: vscode.WorkspaceConfiguration, args: any) {
-	if (!vscode.workspace.workspaceFolders.length) {
+	if (!vscode.workspace.workspaceFolders?.length) {
 		vscode.window.showInformationMessage('No workspace is open to run tests.');
 		return;
 	}
-	let workspaceUri = vscode.workspace.workspaceFolders[0].uri;
+	let workspaceUri: vscode.Uri | undefined = vscode.workspace.workspaceFolders[0].uri;
 	if (
 		vscode.window.activeTextEditor &&
 		vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)
 	) {
-		workspaceUri = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri).uri;
+		workspaceUri = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)!.uri;
 	}
 
 	const testConfig: TestConfig = {
@@ -332,11 +332,11 @@ export async function testCurrentFile(
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
-		return;
+		return false;
 	}
 	if (!editor.document.fileName.endsWith('_test.go')) {
 		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
-		return;
+		return false;
 	}
 
 	const getFunctions = isBenchmark ? getBenchmarkFunctions : getTestFunctions;
@@ -345,12 +345,12 @@ export async function testCurrentFile(
 	return editor.document
 		.save()
 		.then(() => {
-			return getFunctions(editor.document, null).then((testFunctions) => {
+			return getFunctions(editor.document).then((testFunctions) => {
 				const testConfig: TestConfig = {
 					goConfig,
 					dir: path.dirname(editor.document.fileName),
 					flags: getTestFlags(goConfig, args),
-					functions: testFunctions.map((sym) => sym.name),
+					functions: testFunctions?.map((sym) => sym.name),
 					isBenchmark,
 					isMod,
 					applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTestFile')
@@ -360,7 +360,7 @@ export async function testCurrentFile(
 				return goTest(testConfig);
 			});
 		})
-		.then(null, (err) => {
+		.then(undefined, (err) => {
 			console.error(err);
 			return Promise.resolve(false);
 		});

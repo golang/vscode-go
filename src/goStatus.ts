@@ -39,7 +39,7 @@ let gowork: string;
 export const languageServerIcon = '$(zap)';
 export const languageServerErrorIcon = '$(warning)';
 
-export async function updateGoStatusBar(editor: vscode.TextEditor) {
+export async function updateGoStatusBar(editor: vscode.TextEditor | undefined) {
 	// Only update the module path if we are in a Go file.
 	// This allows the user to open output windows without losing
 	// the go.mod information in the status bar.
@@ -105,11 +105,13 @@ export async function expandGoStatusBar() {
 					break;
 				case "Open 'go.work'":
 				case "Open 'go.mod'":
-					const openPath = vscode.Uri.file(item.description);
-					vscode.workspace.openTextDocument(openPath).then((doc) => {
-						vscode.window.showTextDocument(doc);
-					});
-					break;
+					if (item.description) {
+						const openPath = vscode.Uri.file(item.description);
+						vscode.workspace.openTextDocument(openPath).then((doc) => {
+							vscode.window.showTextDocument(doc);
+						});
+						break;
+					}
 			}
 		}
 	});
