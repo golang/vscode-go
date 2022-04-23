@@ -669,7 +669,7 @@
               },
               "env": {
                 "type": "object",
-                "description": "Environment variables passed to the program.",
+                "description": "Environment variables passed to the launched debuggee program. Format as string key:value pairs. Merged with `envFile` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`.",
                 "default": {}
               },
               "substitutePath": {
@@ -736,7 +736,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths",
+                "description": "Absolute path to a file containing environment variable definitions, formatted as string key=value pairs. Multiple files can be specified by provided an array of absolute paths. Merged with `env` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`. ",
                 "default": ""
               },
               "backend": {
@@ -1471,7 +1471,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
         "go.gocodeFlags": {
