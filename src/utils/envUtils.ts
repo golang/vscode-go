@@ -39,7 +39,7 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 		});
 		return env;
 	} catch (e) {
-		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
+		throw new Error(`Cannot load environment variables from file ${envFilePath}: ${e}`);
 	}
 }
 
