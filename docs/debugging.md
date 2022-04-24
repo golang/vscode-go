@@ -6,7 +6,8 @@ These debugging features are possible by using [Delve](https://github.com/go-del
 The Go extension has been communicating with Delve through a custom debug adapter program (`legacy` mode).
 As the new [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap) has become available (since Delve v1.6.1), the Go extension is transitioning to deprecate the legacy debug adapter in favor of direct communication with Delve via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
 
- 📣 **We are happy to announce that now this new mode of Delve integration (_`dlv-dap`_ mode) is enabled for _local_ _debugging_ by default and is available for [_remote_ _debugging_](#remote-debugging) on demand!**
+ 📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve integration is enabled for _local_ _debugging_ by default. For [_remote_ _debugging_](#remote-debugging) it is the default in [Go Nightly](docs/nightly.md) and is
+ available with stable builds on demand with `"debugAdapter": "dlv-dap"` attribute in `launch.json` or `settings.json`!**
 
 Many features and settings described in this document may be available only with the new `dlv-dap` mode.
 For troubleshooting and configuring the legacy debug adapter, see [the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
