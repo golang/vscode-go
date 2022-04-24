@@ -9,9 +9,9 @@ provides rich language support for the
 [Go programming language](https://golang.org/).
 
 📣
-[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer.
-We plan to enable this as the default in early 2022 to enhance remote debugging with the same
-[debugging features](docs/debugging.md) that are already in use for local debugging.
+[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
+[debugging features](docs/debugging.md) that are already in use for local debugging. It is now the default with the
+[Go Nightly](docs/nightly.md) build of the extension and will become the default for the stable releases in mid 2022.
 We recommend switching your remote attach configurations in `launch.json` to use
 `"debugAdapter":"dlv-dap"` now to verify that this works for you.
 Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
