@@ -25,7 +25,22 @@ export class VulncheckProvider {
 
 	constructor(private channel: vscode.OutputChannel) {}
 
+	private running = false;
+
 	async run() {
+		if (this.running) {
+			vscode.window.showWarningMessage('another vulncheck is in progress');
+			return;
+		}
+		try {
+			this.running = true;
+			await this.runInternal();
+		} finally {
+			this.running = false;
+		}
+	}
+
+	private async runInternal() {
 		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
 		let dir, pattern: string;
 		const filename = vscode.window.activeTextEditor?.document?.fileName;
@@ -112,9 +127,12 @@ ${renderStack(v)}`;
 const renderStack = (v: Vuln) => {
 	const content = [];
 	for (const stack of v.CallStacks ?? []) {
-		for (const [i, line] of stack.entries()) {
-			const pad = Array.from('\t\t'.repeat(i)).join('');
-			content.push(`${pad}${line.Name}\n${pad}\t${renderUri(line)}`);
+		for (const [, line] of stack.entries()) {
+			content.push(`\t${line.Name}`);
+			const loc = renderUri(line);
+			if (loc) {
+				content.push(`\t\t${loc}`);
+			}
 		}
 		content.push('');
 	}
@@ -122,12 +140,17 @@ const renderStack = (v: Vuln) => {
 };
 
 const renderUri = (stack: CallStack) => {
+	if (!stack.URI) {
+		// generated file or dummy location may not have a file name.
+		return '';
+	}
 	const parsed = vscode.Uri.parse(stack.URI);
+	const line = stack.Pos.line + 1; // Position uses 0-based line number.
 	const folder = vscode.workspace.getWorkspaceFolder(parsed);
 	if (folder) {
-		return `${parsed.path}:${stack.Pos.line}:${stack.Pos.character}`;
+		return `${parsed.path}:${line}:${stack.Pos.character}`;
 	}
-	return `${stack.URI}#${stack.Pos.line}:${stack.Pos.character}`;
+	return `${stack.URI}#${line}:${stack.Pos.character}`;
 };
 
 interface VulncheckReponse {
