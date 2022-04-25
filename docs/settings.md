@@ -440,7 +440,7 @@ Specifies the timeout for go test in ParseDuration format.
 Default: `"30s"`
 ### `go.toolsEnvVars`
 
-Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)
+Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.
 ### `go.toolsGopath`
 
 Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.
