@@ -115,3 +115,14 @@ export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) 
 	dispose(resolver, item);
 	disposeIfEmpty(resolver, item.parent);
 }
+
+// The 'name' group captures the module name, and the unnamed group ignores any comment that might follow the name.
+const moduleNameRegex = /^module.(?<name>.*?)(?:\s|\/\/|$)/mu;
+
+export function findModuleName(goModContent: string): string {
+	const match = goModContent.toString().match(moduleNameRegex);
+	if (match === null) {
+		throw new Error('failed to find module name in go.mod');
+	}
+	return match.groups.name;
+}

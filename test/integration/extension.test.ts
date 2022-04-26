@@ -15,8 +15,8 @@ import * as vscode from 'vscode';
 import { getGoConfig, getGoplsConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
-import { GoDefinitionProvider } from '../../src/goDeclaration';
-import { GoHoverProvider } from '../../src/goExtraInfo';
+import { GoDefinitionProvider } from '../../src/language/legacy/goDeclaration';
+import { GoHoverProvider } from '../../src/language/legacy/goExtraInfo';
 import { runFillStruct } from '../../src/goFillStruct';
 import {
 	generateTestCurrentFile,
@@ -25,14 +25,18 @@ import {
 } from '../../src/goGenerateTests';
 import { getTextEditForAddImport, listPackages } from '../../src/goImport';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { buildLanguageServerConfig } from '../../src/goLanguageServer';
+import { buildLanguageServerConfig } from '../../src/language/goLanguageServer';
 import { goLint } from '../../src/goLint';
-import { documentSymbols, GoDocumentSymbolProvider, GoOutlineImportsOptions } from '../../src/goOutline';
+import {
+	documentSymbols,
+	GoDocumentSymbolProvider,
+	GoOutlineImportsOptions
+} from '../../src/language/legacy/goOutline';
 import { getAllPackages } from '../../src/goPackages';
 import { goPlay } from '../../src/goPlayground';
-import { GoSignatureHelpProvider } from '../../src/goSignature';
-import { GoCompletionItemProvider } from '../../src/goSuggest';
-import { getWorkspaceSymbols } from '../../src/goSymbol';
+import { GoSignatureHelpProvider } from '../../src/language/legacy/goSignature';
+import { GoCompletionItemProvider } from '../../src/language/legacy/goSuggest';
+import { getWorkspaceSymbols } from '../../src/language/legacy/goSymbol';
 import { testCurrentFile } from '../../src/goTest';
 import {
 	getBinPath,

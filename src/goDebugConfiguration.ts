@@ -20,6 +20,7 @@ import {
 	promptForUpdatingTool,
 	shouldUpdateTool
 } from './goInstallTools';
+import { extensionInfo } from './config';
 import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
 import { pickProcess, pickProcessByName } from './pickProcess';
@@ -159,6 +160,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
+		// If debugAdapter is not provided in launch.json, see if it's in settings.json.
 		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
 			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter');
 			// user configured the default debug adapter through settings.json.
@@ -166,19 +168,19 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
 			}
 		}
+		// If neither launch.json nor settings.json gave us the debugAdapter value, we go with the default
+		// from package.json (dlv-dap) unless this is remote attach with a stable release.
 		if (!debugConfiguration['debugAdapter']) {
-			// For local modes, default to dlv-dap. For remote - to legacy for now.
-			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+			debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
+			if (debugConfiguration['mode'] === 'remote' && !extensionInfo.isPreview) {
+				debugConfiguration['debugAdapter'] = 'legacy';
+			}
 		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
 			if (debugConfiguration['mode'] === 'remote') {
-				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
-				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
-				// but we have no way of detectng that with an external server.
-				this.showWarning(
-					'ignoreDlvDAPInRemoteModeWarning',
-					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
-				);
+				// This needs to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
+				// but we have no way of detectng that with an external server ahead of time.
+				// If an earlier version is used, the attach will fail with  warning about versions.
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
 					'ignorePortUsedInDlvDapWarning',

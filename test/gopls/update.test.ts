@@ -9,7 +9,7 @@
 import assert from 'assert';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
-import * as lsp from '../../src/goLanguageServer';
+import * as lsp from '../../src/language/goLanguageServer';
 import * as goInstallTools from '../../src/goInstallTools';
 import { getTool, Tool } from '../../src/goTools';
 import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';

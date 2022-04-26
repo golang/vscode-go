@@ -7,7 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguageServer';
+import { getLocalGoplsVersion, lastUserAction, latestConfig } from './language/goLanguageServer';
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';

@@ -25,7 +25,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'go-outline',
 		importPath: 'github.com/ramya-rao-a/go-outline',
 		modulePath: 'github.com/ramya-rao-a/go-outline',
-		replacedByGopls: false, // TODO(github.com/golang/vscode-go/issues/1020): replace with Gopls.
+		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to symbol in file' // GoDocumentSymbolProvider, used by 'run test' codelens
 	},

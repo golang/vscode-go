@@ -10,8 +10,8 @@ import { isAbsolute } from 'path';
 import { CancellationToken, CodeLens, Range, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
-import { GoDocumentSymbolProvider } from './goOutline';
-import { GoReferenceProvider } from './goReferences';
+import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoReferenceProvider } from './language/legacy/goReferences';
 import { getBinPath } from './util';
 import vscode = require('vscode');
 

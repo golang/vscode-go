@@ -242,3 +242,23 @@ Reset keys in workspace state to undefined.
 ### `Go: Reset Global State`
 
 Reset keys in global state to undefined.
+
+### `Go Explorer: Refresh`
+
+Refresh the Go explorer. Only available as a menu item in the explorer.
+
+### `Go Explorer: Open File`
+
+Open a file from the Go explorer. Only available as a menu item in the explorer.
+
+### `Go: Edit Workspace Env`
+
+Edit the Go Env for the active workspace.
+
+### `Go: Reset Workspace Env`
+
+Reset the Go Env for the active workspace.
+
+### `Go: Run Vulncheck (Experimental)`
+
+Run go vulncheck.

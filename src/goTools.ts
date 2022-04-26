@@ -11,8 +11,8 @@ import moment = require('moment');
 import path = require('path');
 import semver = require('semver');
 import util = require('util');
-import { getFormatTool, usingCustomFormatTool } from './goFormat';
-import { goLiveErrorsEnabled } from './goLiveErrors';
+import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
+import { goLiveErrorsEnabled } from './language/legacy/goLiveErrors';
 import { allToolsInformation } from './goToolsInformation';
 import { getBinPath, GoVersion } from './util';
 
@@ -85,6 +85,11 @@ export function getImportPathWithVersion(
 		} else {
 			return importPath + '@' + version;
 		}
+	}
+	// staticcheck requires go1.17+ after v0.3.0.
+	// (golang/vscode-go#2162)
+	if (goVersion.lt('1.17') && tool.name === 'staticcheck') {
+		return importPath + '@v0.2.2';
 	}
 	return importPath + '@latest';
 }

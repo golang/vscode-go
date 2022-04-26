@@ -11,7 +11,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoplsConfig } from './config';
 import { goBuild } from './goBuild';
-import { buildLanguageServerConfig } from './goLanguageServer';
+import { buildLanguageServerConfig } from './language/goLanguageServer';
 import { goLint } from './goLint';
 import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';

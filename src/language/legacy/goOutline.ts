@@ -9,12 +9,12 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { languageClient, serverInfo } from './goLanguageServer';
-import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
-import { killProcess } from './utils/processUtils';
+import { getGoConfig } from '../../config';
+import { toolExecutionEnvironment } from '../../goEnv';
+import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
+import { languageClient, serverInfo } from '../goLanguageServer';
+import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from '../../util';
+import { killProcess } from '../../utils/processUtils';
 
 // Keep in sync with https://github.com/ramya-rao-a/go-outline
 export interface GoOutlineRange {

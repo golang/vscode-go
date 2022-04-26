@@ -55,6 +55,11 @@ run_test() {
 
   echo "**** Check if vsce works ****"
   vsce package
+
+  echo "**** Run Go tests ****"
+  go test ./...
+  # TODO(hyangah): see if go clean -modcache makes kokoro builder happy
+  go clean -modcache
 }
 
 run_test_in_docker() {

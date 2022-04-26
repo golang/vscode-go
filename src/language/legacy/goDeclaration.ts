@@ -9,10 +9,10 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
-import { getModFolderPath, promptToUpdateToolForModules } from './goModules';
+import { getGoConfig } from '../../config';
+import { toolExecutionEnvironment } from '../../goEnv';
+import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
+import { getModFolderPath, promptToUpdateToolForModules } from '../../goModules';
 import {
 	byteOffsetAt,
 	getBinPath,
@@ -22,9 +22,9 @@ import {
 	goKeywords,
 	isPositionInString,
 	runGodoc
-} from './util';
-import { getCurrentGoRoot } from './utils/pathUtils';
-import { killProcessTree } from './utils/processUtils';
+} from '../../util';
+import { getCurrentGoRoot } from '../../utils/pathUtils';
+import { killProcessTree } from '../../utils/processUtils';
 
 const missingToolMsg = 'Missing tool: ';
 
