@@ -172,7 +172,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		// from package.json (dlv-dap) unless this is remote attach with a stable release.
 		if (!debugConfiguration['debugAdapter']) {
 			debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
-			if (debugConfiguration['mode'] !== 'remote' && !extensionInfo.isPreview) {
+			if (debugConfiguration['mode'] === 'remote' && !extensionInfo.isPreview) {
 				debugConfiguration['debugAdapter'] = 'legacy';
 			}
 		}
