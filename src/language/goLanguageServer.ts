@@ -358,19 +358,18 @@ export const flushGoplsOptOutConfig = (cfg: GoplsOptOutConfig, workspace: boolea
 async function startLanguageServer(ctx: vscode.ExtensionContext, config: LanguageServerConfig): Promise<boolean> {
 	// If the client has already been started, make sure to clear existing
 	// diagnostics and stop it.
+	let cleanStop = true;
 	if (languageClient) {
-		if (languageClient.diagnostics) {
-			languageClient.diagnostics.clear();
-		}
-		await languageClient.stop();
+		cleanStop = await stopLanguageClient(languageClient);
 		if (languageServerDisposable) {
 			languageServerDisposable.dispose();
 		}
 	}
 
-	// Check if we should recreate the language client. This may be necessary
-	// if the user has changed settings in their config.
-	if (!deepEqual(latestConfig, config)) {
+	// Check if we should recreate the language client.
+	// This may be necessary if the user has changed settings
+	// in their config, or previous session wasn't stopped cleanly.
+	if (!cleanStop || !deepEqual(latestConfig, config)) {
 		// Track the latest config used to start the language server,
 		// and rebuild the language client.
 		latestConfig = config;
@@ -408,6 +407,35 @@ async function startLanguageServer(ctx: vscode.ExtensionContext, config: Languag
 	serverInfo = toServerInfo(languageClient.initializeResult);
 
 	console.log(`Server: ${JSON.stringify(serverInfo, null, 2)}`);
+	return true;
+}
+
+const race = function (promise: Promise<unknown>, timeoutInMilliseconds: number) {
+	let token: NodeJS.Timeout;
+	const timeout = new Promise((resolve, reject) => {
+		token = setTimeout(() => reject('timeout'), timeoutInMilliseconds);
+	});
+	return Promise.race([promise, timeout]).then(() => clearTimeout(token));
+};
+
+// exported for testing.
+export async function stopLanguageClient(c: LanguageClient): Promise<boolean> {
+	if (!c) return false;
+
+	if (c.diagnostics) {
+		c.diagnostics.clear();
+	}
+	// LanguageClient.stop may hang if the language server
+	// crashes during shutdown before responding to the
+	// shutdown request. Enforce client-side timeout.
+	// TODO(hyangah): replace with the new LSP client API that supports timeout
+	// and remove this.
+	try {
+		await race(c.stop(), 2000);
+	} catch (e) {
+		c.outputChannel?.appendLine(`Failed to stop client: ${e}`);
+		return false;
+	}
 	return true;
 }
 
