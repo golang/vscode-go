@@ -43,3 +43,8 @@ When modules are enabled for the file you have open, you can navigate to the `go
 
 More information about [using Go modules](https://go.dev/blog/using-go-modules ) is available on the Go blog.
 
+## Go Explorer View
+
+The view displays the go environment variables (`go env`) that are applied to the file open in the editor. You can customize the list by "Go: Edit Workspace" command (pencil icon), and update modifiable environment variables through this view.
+
+It displays required [tools](tools.md) and their location/version info, too.
