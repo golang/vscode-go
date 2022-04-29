@@ -210,7 +210,7 @@ export function getInferredGopath(folderPath: string): string | undefined {
  * @param gopath string Current Gopath. Can be ; or : separated (as per os) to support multiple paths
  * @param currentFileDirPath string
  */
-export function getCurrentGoWorkspaceFromGOPATH(gopath: string, currentFileDirPath: string): string {
+export function getCurrentGoWorkspaceFromGOPATH(gopath: string | undefined, currentFileDirPath: string): string {
 	if (!gopath) {
 		return '';
 	}
