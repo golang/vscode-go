@@ -1,4 +1,4 @@
-## v0.33.0 - 28 Apr, 2022
+## v0.33.0 - 1 May, 2022
 
 📣 [Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It is now the default with the [Go Nightly](docs/nightly.md) and will become the default for the stable releases in mid 2022.
 
