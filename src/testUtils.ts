@@ -15,7 +15,7 @@ import vscode = require('vscode');
 import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
-import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getNonVendorPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getTempFilePath, LineBuffer, resolvePath } from './util';
 import { parseEnvFile } from './utils/envUtils';
@@ -144,7 +144,7 @@ export async function getTestFunctions(
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
-	const documentSymbolProvider = new GoDocumentSymbolProvider(true);
+	const documentSymbolProvider = GoDocumentSymbolProvider(true);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
 		return;
@@ -226,7 +226,7 @@ export async function getBenchmarkFunctions(
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
-	const documentSymbolProvider = new GoDocumentSymbolProvider();
+	const documentSymbolProvider = GoDocumentSymbolProvider();
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
 		return;

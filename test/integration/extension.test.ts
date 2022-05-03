@@ -27,12 +27,8 @@ import { getTextEditForAddImport, listPackages } from '../../src/goImport';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { buildLanguageServerConfig } from '../../src/language/goLanguageServer';
 import { goLint } from '../../src/goLint';
-import {
-	documentSymbols,
-	GoDocumentSymbolProvider,
-	GoOutlineImportsOptions
-} from '../../src/language/legacy/goOutline';
-import { getAllPackages } from '../../src/goPackages';
+import { documentSymbols, GoOutlineImportsOptions } from '../../src/language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from '../../src/goDocumentSymbols';
 import { goPlay } from '../../src/goPlayground';
 import { GoSignatureHelpProvider } from '../../src/language/legacy/goSignature';
 import { GoCompletionItemProvider } from '../../src/language/legacy/goSuggest';
@@ -734,7 +730,7 @@ It returns the number of bytes written and any write error encountered.
 	test('Test Outline document symbols', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'outlineTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
-		const symbolProvider = new GoDocumentSymbolProvider();
+		const symbolProvider = GoDocumentSymbolProvider();
 
 		const outlines = await symbolProvider.provideDocumentSymbols(document, dummyCancellationSource.token);
 		const packages = outlines.filter((x) => x.kind === vscode.SymbolKind.Package);

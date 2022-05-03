@@ -11,7 +11,7 @@ import vscode = require('vscode');
 import { CancellationToken, CodeLens, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
-import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
@@ -36,7 +36,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	}
 
 	private async getCodeLensForPackage(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
-		const documentSymbolProvider = new GoDocumentSymbolProvider();
+		const documentSymbolProvider = GoDocumentSymbolProvider();
 		const symbols = await documentSymbolProvider.provideDocumentSymbols(document, token);
 		if (!symbols || symbols.length === 0) {
 			return [];

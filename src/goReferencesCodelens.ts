@@ -10,7 +10,7 @@ import { isAbsolute } from 'path';
 import { CancellationToken, CodeLens, Range, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
-import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { GoReferenceProvider } from './language/legacy/goReferences';
 import { getBinPath } from './util';
 import vscode = require('vscode');
@@ -89,7 +89,7 @@ export class GoReferencesCodeLensProvider extends GoBaseCodeLensProvider {
 		document: TextDocument,
 		token: CancellationToken
 	): Promise<vscode.DocumentSymbol[]> {
-		const symbolProvider = new GoDocumentSymbolProvider();
+		const symbolProvider = GoDocumentSymbolProvider();
 		const isTestFile = document.fileName.endsWith('_test.go');
 		const symbols = await symbolProvider.provideDocumentSymbols(document, token);
 		return symbols[0].children.filter((symbol) => {

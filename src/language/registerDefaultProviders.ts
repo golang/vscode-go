@@ -13,7 +13,7 @@ import { GoDocumentFormattingEditProvider } from './legacy/goFormat';
 import { GoImplementationProvider } from './legacy/goImplementations';
 import { parseLiveFile } from './legacy/goLiveErrors';
 import { GO_MODE } from '../goMode';
-import { GoDocumentSymbolProvider } from './legacy/goOutline';
+import { GoLegacyDocumentSymbolProvider } from './legacy/goOutline';
 import { GoReferenceProvider } from './legacy/goReferences';
 import { GoRenameProvider } from './legacy/goRename';
 import { GoSignatureHelpProvider } from './legacy/goSignature';
@@ -32,7 +32,7 @@ export class LegacyLanguageService implements vscode.Disposable {
 		this._disposables.push(vscode.languages.registerDefinitionProvider(GO_MODE, new GoDefinitionProvider()));
 		this._disposables.push(vscode.languages.registerReferenceProvider(GO_MODE, new GoReferenceProvider()));
 		this._disposables.push(
-			vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoDocumentSymbolProvider())
+			vscode.languages.registerDocumentSymbolProvider(GO_MODE, new GoLegacyDocumentSymbolProvider())
 		);
 		this._disposables.push(vscode.languages.registerWorkspaceSymbolProvider(new GoWorkspaceSymbolProvider()));
 		this._disposables.push(
