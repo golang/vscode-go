@@ -7,17 +7,16 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 import { ExecuteCommandRequest } from 'vscode-languageserver-protocol';
-
-import { languageClient, serverInfo } from './language/goLanguageServer';
+import { GoExtensionContext } from './context';
 
 export class VulncheckProvider {
 	static scheme = 'govulncheck';
-	static setup({ subscriptions }: vscode.ExtensionContext) {
+	static setup({ subscriptions }: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 		const channel = vscode.window.createOutputChannel('govulncheck');
 		const instance = new this(channel);
 		subscriptions.push(
 			vscode.commands.registerCommand('go.vulncheck.run', async () => {
-				instance.run();
+				instance.run(goCtx);
 			})
 		);
 		return instance;
@@ -27,20 +26,20 @@ export class VulncheckProvider {
 
 	private running = false;
 
-	async run() {
+	async run(goCtx: GoExtensionContext) {
 		if (this.running) {
 			vscode.window.showWarningMessage('another vulncheck is in progress');
 			return;
 		}
 		try {
 			this.running = true;
-			await this.runInternal();
+			await this.runInternal(goCtx);
 		} finally {
 			this.running = false;
 		}
 	}
 
-	private async runInternal() {
+	private async runInternal(goCtx: GoExtensionContext) {
 		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
 		let dir, pattern: string;
 		const document = vscode.window.activeTextEditor?.document;
@@ -72,7 +71,7 @@ export class VulncheckProvider {
 
 		let result = '\nNo known vulnerabilities found.';
 		try {
-			const vuln = await vulncheck(dir, pattern);
+			const vuln = await vulncheck(goCtx, dir, pattern);
 			if (vuln?.Vuln) {
 				result = vuln.Vuln.map(renderVuln).join('----------------------\n');
 			}
@@ -105,7 +104,12 @@ export class VulncheckProvider {
 	}
 }
 
-async function vulncheck(dir: string, pattern = './...'): Promise<VulncheckReponse | undefined> {
+async function vulncheck(
+	goCtx: GoExtensionContext,
+	dir: string,
+	pattern = './...'
+): Promise<VulncheckReponse | undefined> {
+	const { languageClient, serverInfo } = goCtx;
 	const COMMAND = 'gopls.run_vulncheck_exp';
 	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 		const request = {

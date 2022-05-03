@@ -26,11 +26,19 @@ import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 import ourutil = require('../../src/util');
+import { GoExtensionContext } from '../../src/context';
 import { setGOROOTEnvVar } from '../../src/goMain';
+import { Mutex } from '../../src/utils/mutex';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
-		await updateGoVarsFromConfig(); // should initialize the status bar.
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: [],
+			languageServerStartMutex: new Mutex()
+		};
+		await updateGoVarsFromConfig(goCtx); // should initialize the status bar.
 	});
 
 	this.afterAll(() => {

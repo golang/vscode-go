@@ -9,6 +9,8 @@ import vscode = require('vscode');
 import goLanguageServer = require('../../src/language/goLanguageServer');
 import goSurvey = require('../../src/goSurvey');
 import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
+import { Mutex } from '../../src/utils/mutex';
+import { GoExtensionContext } from '../../src/context';
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
@@ -218,12 +220,18 @@ suite('gopls opt out', () => {
 
 	testCases.map(async ([testConfig, choice, wantCount], i) => {
 		test(`opt out: ${i}`, async () => {
+			const goCtx: GoExtensionContext = {
+				lastUserAction: new Date(),
+				crashCount: 0,
+				restartHistory: [],
+				languageServerStartMutex: new Mutex()
+			};
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);
 			const flushGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'flushGoplsOptOutConfig');
 			sandbox.stub(vscode.env, 'openExternal').resolves(true);
 
-			await goLanguageServer.promptAboutGoplsOptOut();
+			await goLanguageServer.promptAboutGoplsOptOut(goCtx);
 			assert.strictEqual(stub.callCount, wantCount, 'unexpected call count');
 			sandbox.assert.called(getGoplsOptOutConfigStub);
 			sandbox.assert.calledOnce(flushGoplsOptOutConfigStub);

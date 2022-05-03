@@ -46,7 +46,6 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
-	languageServerIsRunning,
 	RestartReason,
 	showServerOutputChannel,
 	startLanguageServerWithFallback,
@@ -104,13 +103,25 @@ import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './language/legacy/goFormat';
-import { resetSurveyConfigs, showSurveyConfig, timeMinute } from './goSurvey';
+import { resetSurveyConfigs, showSurveyConfig } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
 import { VulncheckProvider } from './goVulncheck';
+
+import { Mutex } from './utils/mutex';
+import { GoExtensionContext } from './context';
+
+// TODO: Remove this export. Temporarily exporting the context for import into the
+// legacy DocumentSymbolProvider.
+export const goCtx: GoExtensionContext = {
+	lastUserAction: new Date(),
+	crashCount: 0,
+	restartHistory: [],
+	languageServerStartMutex: new Mutex()
+};
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
@@ -196,17 +207,17 @@ async function activateContinued(
 	ctx: vscode.ExtensionContext,
 	cfg: vscode.WorkspaceConfiguration
 ): Promise<ExtensionAPI> {
-	await updateGoVarsFromConfig();
+	await updateGoVarsFromConfig(goCtx);
 
 	suggestUpdates(ctx);
 	offerToInstallLatestGoVersion();
 	offerToInstallTools();
 
 	// TODO: let configureLanguageServer to return its status.
-	await configureLanguageServer(ctx);
+	await configureLanguageServer(ctx, goCtx);
 
 	const activeDoc = vscode.window.activeTextEditor?.document;
-	if (!languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
+	if (!goCtx.languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
 		// Check mod status so that cache is updated and then run build/lint/vet
 		isModSupported(activeDoc.uri).then(() => {
 			runBuilds(activeDoc, getGoConfig());
@@ -217,7 +228,7 @@ async function activateContinued(
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.environment.status', async () => {
-			expandGoStatusBar();
+			expandGoStatusBar(goCtx);
 		})
 	);
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
@@ -342,7 +353,7 @@ async function activateContinued(
 	}
 
 	GoExplorerProvider.setup(ctx);
-	VulncheckProvider.setup(ctx);
+	VulncheckProvider.setup(ctx, goCtx);
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.subtest.cursor', (args) => {
@@ -436,7 +447,7 @@ async function activateContinued(
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.import.add', (arg) => {
-			return addImport(arg);
+			return addImport(goCtx, arg);
 		})
 	);
 
@@ -483,7 +494,7 @@ async function activateContinued(
 				e.affectsConfiguration('go.toolsEnvVars') ||
 				e.affectsConfiguration('go.testEnvFile')
 			) {
-				updateGoVarsFromConfig();
+				updateGoVarsFromConfig(goCtx);
 			}
 			if (e.affectsConfiguration('go.logging')) {
 				setLogConfig(updatedGoConfig['logging']);
@@ -630,7 +641,7 @@ async function activateContinued(
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.extractServerChannel', () => {
-			showServerOutputChannel();
+			showServerOutputChannel(goCtx);
 		})
 	);
 
@@ -648,7 +659,7 @@ async function activateContinued(
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.toggle.gc_details', () => {
-			if (!languageServerIsRunning) {
+			if (!goCtx.languageServerIsRunning) {
 				vscode.window.showErrorMessage(
 					'"Go: Toggle gc details" command is available only when the language server is running'
 				);
@@ -709,7 +720,7 @@ async function activateContinued(
 	);
 
 	// Survey related commands
-	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig()));
+	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.showConfig', () => showSurveyConfig(goCtx)));
 	ctx.subscriptions.push(vscode.commands.registerCommand('go.survey.resetConfig', () => resetSurveyConfigs()));
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
@@ -933,20 +944,22 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 	}
 }
 
-function configureLanguageServer(ctx: vscode.ExtensionContext) {
+function configureLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 	// Subscribe to notifications for changes to the configuration
 	// of the language server, even if it's not currently in use.
-	ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(e)));
+	ctx.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
+	);
 
 	// Set the function that is used to restart the language server.
 	// This is necessary, even if the language server is not currently
 	// in use.
 	restartLanguageServer = async (reason: RestartReason) => {
-		startLanguageServerWithFallback(ctx, reason);
+		startLanguageServerWithFallback(ctx, goCtx, reason);
 	};
 
 	// Start the language server, or fallback to the default language providers.
-	return startLanguageServerWithFallback(ctx, 'activation');
+	return startLanguageServerWithFallback(ctx, goCtx, 'activation');
 }
 
 function getCurrentGoPathCommand() {

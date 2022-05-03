@@ -49,6 +49,8 @@ import {
 } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
+import { GoExtensionContext } from '../../src/context';
+import { Mutex } from '../../src/utils/mutex';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -68,7 +70,13 @@ const testAll = (isModuleMode: boolean) => {
 		previousEnv = Object.assign({}, process.env);
 		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
 
-		await updateGoVarsFromConfig();
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: [],
+			languageServerStartMutex: new Mutex()
+		};
+		await updateGoVarsFromConfig(goCtx);
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {

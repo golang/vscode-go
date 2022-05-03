@@ -17,6 +17,7 @@ import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
+import { GoExtensionContext } from './context';
 import { restartLanguageServer } from './goMain';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
@@ -512,7 +513,7 @@ export async function promptForUpdatingTool(
 	}
 }
 
-export function updateGoVarsFromConfig(): Promise<void> {
+export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void> {
 	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
@@ -570,7 +571,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoStatusBar();
+				initGoStatusBar(goCtx);
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();

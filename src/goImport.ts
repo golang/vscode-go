@@ -12,11 +12,11 @@ import vscode = require('vscode');
 import { ExecuteCommandRequest, ExecuteCommandParams } from 'vscode-languageserver-protocol';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { languageClient, serverInfo } from './language/goLanguageServer';
 import { documentSymbols, GoOutlineImportsOptions } from './language/legacy/goOutline';
 import { getImportablePackages } from './goPackages';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { GoExtensionContext } from './context';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -44,7 +44,8 @@ export async function listPackages(excludeImportedPkgs = false): Promise<string[
 	return [...stdLibs.sort(), ...nonStdLibs.sort()];
 }
 
-async function golist(): Promise<string[]> {
+async function golist(goCtx: GoExtensionContext): Promise<string[]> {
+	const { languageClient, serverInfo } = goCtx;
 	const COMMAND = 'gopls.list_known_packages';
 	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 		try {
@@ -96,9 +97,9 @@ async function getImports(document: vscode.TextDocument): Promise<string[]> {
 	return imports;
 }
 
-async function askUserForImport(): Promise<string | undefined> {
+async function askUserForImport(goCtx: GoExtensionContext): Promise<string | undefined> {
 	try {
-		const packages = await golist();
+		const packages = await golist(goCtx);
 		return vscode.window.showQuickPick(packages);
 	} catch (err) {
 		if (typeof err === 'string' && err.startsWith(missingToolMsg)) {
@@ -162,13 +163,14 @@ export function getTextEditForAddImport(arg: string | undefined): vscode.TextEdi
 	}
 }
 
-export function addImport(arg: { importPath: string }) {
+export function addImport(goCtx: GoExtensionContext, arg: { importPath: string }) {
+	const { languageClient, serverInfo } = goCtx;
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found to add imports.');
 		return;
 	}
-	const p = arg && arg.importPath ? Promise.resolve(arg.importPath) : askUserForImport();
+	const p = arg && arg.importPath ? Promise.resolve(arg.importPath) : askUserForImport(goCtx);
 	p.then(async (imp) => {
 		if (!imp) {
 			return;

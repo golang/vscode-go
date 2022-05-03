@@ -12,9 +12,11 @@ import sinon = require('sinon');
 import vscode = require('vscode');
 import { getGoConfig } from '../../src/config';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
+import { GoExtensionContext } from '../../src/context';
 import { GoRunTestCodeLensProvider } from '../../src/goRunTestCodelens';
 import { subTestAtCursor } from '../../src/goTest';
 import { getCurrentGoPath, getGoVersion } from '../../src/util';
+import { Mutex } from '../../src/utils/mutex';
 
 suite('Code lenses for testing and benchmarking', function () {
 	this.timeout(20000);
@@ -31,7 +33,13 @@ suite('Code lenses for testing and benchmarking', function () {
 	const codeLensProvider = new GoRunTestCodeLensProvider();
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig();
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: [],
+			languageServerStartMutex: new Mutex()
+		};
+		await updateGoVarsFromConfig(goCtx);
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {

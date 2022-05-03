@@ -11,16 +11,12 @@ import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
-import {
-	buildLanguageServerConfig,
-	getLocalGoplsVersion,
-	languageServerIsRunning,
-	serverOutputChannel
-} from './language/goLanguageServer';
+import { buildLanguageServerConfig, getLocalGoplsVersion } from './language/goLanguageServer';
 import { isGoFile } from './goMode';
 import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
+import { GoExtensionContext } from './context';
 
 export const outputChannel = vscode.window.createOutputChannel('Go');
 
@@ -57,7 +53,8 @@ export async function updateGoStatusBar(editor: vscode.TextEditor | undefined) {
 	}
 }
 
-export async function expandGoStatusBar() {
+export async function expandGoStatusBar(goCtx: GoExtensionContext) {
+	const { languageServerIsRunning, serverOutputChannel } = goCtx;
 	const options = [
 		{ label: 'Locate Configured Go Tools', description: 'display go env' },
 		{ label: 'Choose Go Environment' }
@@ -120,7 +117,8 @@ export async function expandGoStatusBar() {
 /**
  * Initialize the status bar item with current Go binary
  */
-export async function initGoStatusBar() {
+export async function initGoStatusBar(goCtx: GoExtensionContext) {
+	const { languageServerIsRunning } = goCtx;
 	if (!goEnvStatusbarItem) {
 		const STATUS_BAR_ITEM_NAME = 'Go';
 		goEnvStatusbarItem = vscode.window.createStatusBarItem(
@@ -141,7 +139,7 @@ export async function initGoStatusBar() {
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
 	const goConfig = getGoConfig();
-	updateLanguageServerIconGoStatusBar(languageServerIsRunning, goConfig['useLanguageServer'] === true);
+	updateLanguageServerIconGoStatusBar(!!languageServerIsRunning, goConfig['useLanguageServer'] === true);
 
 	showGoStatusBar();
 }

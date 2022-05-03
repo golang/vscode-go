@@ -8,8 +8,8 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { lastUserAction } from './language/goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
+import { GoExtensionContext } from './context';
 
 // Start and end dates of the survey.
 export const startDate = new Date('2021-10-27');
@@ -35,7 +35,7 @@ export interface DeveloperSurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForDeveloperSurvey() {
+export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -54,7 +54,7 @@ export function maybePromptForDeveloperSurvey() {
 		const currentTime = new Date();
 
 		// Make sure the user has been idle for at least a minute.
-		if (minutesBetween(lastUserAction, currentTime) < 1) {
+		if (minutesBetween(goCtx.lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}

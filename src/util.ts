@@ -15,8 +15,7 @@ import { NearestNeighborDict, Node } from './avlTree';
 import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { toolExecutionEnvironment } from './goEnv';
-import { languageClient } from './language/goLanguageServer';
-import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
+import { buildDiagnosticCollection, goCtx, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
@@ -885,6 +884,7 @@ export function handleDiagnosticErrors(
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
 			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri)!.slice(), newDiagnostics);
 		}
+		const { languageClient } = goCtx;
 		// If there are errors from the language client that are on the current file, ignore the warnings co-inciding
 		// with them.
 		if (languageClient && languageClient.diagnostics?.has(fileUri)) {

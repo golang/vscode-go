@@ -12,7 +12,7 @@ import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserv
 import { getGoConfig } from '../../config';
 import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
-import { languageClient, serverInfo } from '../goLanguageServer';
+import { goCtx } from '../../goMain';
 import { getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from '../../util';
 import { killProcess } from '../../utils/processUtils';
 
@@ -207,6 +207,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 			this.includeImports = gotoSymbolConfig ? gotoSymbolConfig['includeImports'] : false;
 		}
 
+		const { languageClient, serverInfo } = goCtx;
 		// TODO(suzmue): Check the commands available instead of the version.
 		if (languageClient && serverInfo?.Commands?.includes(GOPLS_LIST_IMPORTS)) {
 			const symbols: vscode.DocumentSymbol[] | undefined = await vscode.commands.executeCommand(
@@ -278,6 +279,7 @@ export class GoDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 }
 
 async function listImports(document: vscode.TextDocument): Promise<{ Path: string; Name: string }[]> {
+	const { languageClient } = goCtx;
 	const uri = languageClient?.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 	const params: ExecuteCommandParams = {
 		command: GOPLS_LIST_IMPORTS,
