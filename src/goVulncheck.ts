@@ -43,14 +43,20 @@ export class VulncheckProvider {
 	private async runInternal() {
 		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
 		let dir, pattern: string;
-		const filename = vscode.window.activeTextEditor?.document?.fileName;
+		const document = vscode.window.activeTextEditor?.document;
 		switch (pick) {
 			case 'Current Package':
-				if (!filename) {
+				if (!document) {
 					vscode.window.showErrorMessage('vulncheck error: no current package');
 					return;
 				}
-				dir = path.dirname(filename);
+				if (document.languageId !== 'go') {
+					vscode.window.showErrorMessage(
+						'File in the active editor is not a Go file, cannot find current package to check.'
+					);
+					return;
+				}
+				dir = path.dirname(document.fileName);
 				pattern = '.';
 				break;
 			case 'Workspace':
