@@ -18,7 +18,6 @@ import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
 import { GoExtensionContext } from './context';
-import { restartLanguageServer } from './goMain';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
@@ -43,6 +42,7 @@ import {
 import { correctBinname, envPath, executableFileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
+import { RestartReason } from './language/goLanguageServer';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
@@ -191,7 +191,7 @@ export async function installTools(
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls') {
 			// Restart the language server if a new binary has been installed.
-			restartLanguageServer('installation');
+			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
 		}
 	}
 

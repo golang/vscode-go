@@ -46,9 +46,10 @@ import {
 	updateGoVarsFromConfig
 } from './goInstallTools';
 import {
+	errorKind,
 	RestartReason,
 	showServerOutputChannel,
-	startLanguageServerWithFallback,
+	suggestGoplsIssueReport,
 	watchLanguageServerConfiguration
 } from './language/goLanguageServer';
 import { lintCode } from './goLint';
@@ -113,6 +114,7 @@ import { VulncheckProvider } from './goVulncheck';
 
 import { Mutex } from './utils/mutex';
 import { GoExtensionContext } from './context';
+import * as commands from './commands';
 
 // TODO: Remove this export. Temporarily exporting the context for import into the
 // legacy DocumentSymbolProvider.
@@ -126,13 +128,6 @@ export const goCtx: GoExtensionContext = {
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
 export let lintDiagnosticCollection: vscode.DiagnosticCollection;
 export let vetDiagnosticCollection: vscode.DiagnosticCollection;
-
-// restartLanguageServer wraps all of the logic needed to restart the
-// language server. It can be used to enable, disable, or otherwise change
-// the configuration of the server.
-export let restartLanguageServer = (reason: RestartReason) => {
-	return;
-};
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
@@ -213,8 +208,26 @@ async function activateContinued(
 	offerToInstallLatestGoVersion();
 	offerToInstallTools();
 
-	// TODO: let configureLanguageServer to return its status.
-	await configureLanguageServer(ctx, goCtx);
+	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.languageserver.restart', async (reason = RestartReason.MANUAL) => {
+			if (reason === RestartReason.MANUAL) {
+				await suggestGoplsIssueReport(
+					goCtx,
+					"Looks like you're about to manually restart the language server.",
+					errorKind.manualRestart
+				);
+			}
+			commands.startLanguageServer(ctx, goCtx)(reason);
+		})
+	);
+
+	// Subscribe to notifications for changes to the configuration
+	// of the language server, even if it's not currently in use.
+	ctx.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
+	);
 
 	const activeDoc = vscode.window.activeTextEditor?.document;
 	if (!goCtx.languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
@@ -942,24 +955,6 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 			installTools(toolsToUpdate, configuredGoVersion);
 		}
 	}
-}
-
-function configureLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-	// Subscribe to notifications for changes to the configuration
-	// of the language server, even if it's not currently in use.
-	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
-	);
-
-	// Set the function that is used to restart the language server.
-	// This is necessary, even if the language server is not currently
-	// in use.
-	restartLanguageServer = async (reason: RestartReason) => {
-		startLanguageServerWithFallback(ctx, goCtx, reason);
-	};
-
-	// Start the language server, or fallback to the default language providers.
-	return startLanguageServerWithFallback(ctx, goCtx, 'activation');
 }
 
 function getCurrentGoPathCommand() {
