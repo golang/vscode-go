@@ -16,7 +16,6 @@ import {
 } from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
-import { Mutex } from '../../src/utils/mutex';
 import { GoExtensionContext } from '../../src/context';
 
 // FakeOutputChannel is a fake output channel used to buffer
@@ -97,8 +96,7 @@ class Env {
 		const goCtx: GoExtensionContext = {
 			lastUserAction: new Date(),
 			crashCount: 0,
-			restartHistory: [],
-			languageServerStartMutex: new Mutex()
+			restartHistory: []
 		};
 		// file path to open.
 		this.fakeOutputChannel = new FakeOutputChannel();

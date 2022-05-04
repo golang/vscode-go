@@ -9,7 +9,6 @@ import vscode = require('vscode');
 import goLanguageServer = require('../../src/language/goLanguageServer');
 import goSurvey = require('../../src/goSurvey');
 import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
-import { Mutex } from '../../src/utils/mutex';
 import { GoExtensionContext } from '../../src/context';
 
 suite('gopls survey tests', () => {
@@ -223,8 +222,7 @@ suite('gopls opt out', () => {
 			const goCtx: GoExtensionContext = {
 				lastUserAction: new Date(),
 				crashCount: 0,
-				restartHistory: [],
-				languageServerStartMutex: new Mutex()
+				restartHistory: []
 			};
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);

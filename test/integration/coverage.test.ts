@@ -13,7 +13,6 @@ import fs = require('fs-extra');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import { Mutex } from '../../src/utils/mutex';
 import { GoExtensionContext } from '../../src/context';
 
 // The ideal test would check that each open editor containing a file with coverage
@@ -30,8 +29,7 @@ suite('Coverage for tests', function () {
 		const goCtx: GoExtensionContext = {
 			lastUserAction: new Date(),
 			crashCount: 0,
-			restartHistory: [],
-			languageServerStartMutex: new Mutex()
+			restartHistory: []
 		};
 		await updateGoVarsFromConfig(goCtx);
 

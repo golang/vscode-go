@@ -8,7 +8,6 @@ import { LanguageClient } from 'vscode-languageclient/node';
 
 import { LanguageServerConfig, Restart, ServerInfo } from './language/goLanguageServer';
 import { LegacyLanguageService } from './language/registerDefaultProviders';
-import { Mutex } from './utils/mutex';
 
 // Global variables used for management of the language client.
 // They are global so that the server can be easily restarted with
@@ -29,5 +28,4 @@ export interface GoExtensionContext {
 	crashCount: number;
 	// Some metrics for automated issue reports:
 	restartHistory: Restart[];
-	languageServerStartMutex: Mutex;
 }

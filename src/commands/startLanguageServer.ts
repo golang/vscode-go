@@ -22,6 +22,9 @@ import {
 	updateRestartHistory
 } from '../language/goLanguageServer';
 import { LegacyLanguageService } from '../language/registerDefaultProviders';
+import { Mutex } from '../utils/mutex';
+
+const languageServerStartMutex = new Mutex();
 
 export function startLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 	return async (reason?: RestartReason) => {
@@ -32,7 +35,7 @@ export function startLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExten
 			updateRestartHistory(goCtx, reason, cfg.enabled);
 		}
 
-		const unlock = await goCtx.languageServerStartMutex.lock();
+		const unlock = await languageServerStartMutex.lock();
 		try {
 			// If the client has already been started, make sure to clear existing
 			// diagnostics and stop it.

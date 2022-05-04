@@ -16,7 +16,6 @@ import { GoExtensionContext } from '../../src/context';
 import { GoRunTestCodeLensProvider } from '../../src/goRunTestCodelens';
 import { subTestAtCursor } from '../../src/goTest';
 import { getCurrentGoPath, getGoVersion } from '../../src/util';
-import { Mutex } from '../../src/utils/mutex';
 
 suite('Code lenses for testing and benchmarking', function () {
 	this.timeout(20000);
@@ -36,8 +35,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		const goCtx: GoExtensionContext = {
 			lastUserAction: new Date(),
 			crashCount: 0,
-			restartHistory: [],
-			languageServerStartMutex: new Mutex()
+			restartHistory: []
 		};
 		await updateGoVarsFromConfig(goCtx);
 

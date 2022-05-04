@@ -112,7 +112,6 @@ import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
 import { VulncheckProvider } from './goVulncheck';
 
-import { Mutex } from './utils/mutex';
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
 
@@ -121,8 +120,7 @@ import * as commands from './commands';
 export const goCtx: GoExtensionContext = {
 	lastUserAction: new Date(),
 	crashCount: 0,
-	restartHistory: [],
-	languageServerStartMutex: new Mutex()
+	restartHistory: []
 };
 
 export let buildDiagnosticCollection: vscode.DiagnosticCollection;
