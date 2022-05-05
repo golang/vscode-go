@@ -10,10 +10,11 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
 import { GoExtensionContext } from './context';
+import { getGoVersion } from './util';
 
 // Start and end dates of the survey.
-export const startDate = new Date('2021-10-27');
-export const endDate = new Date('2021-11-16');
+export const startDate = new Date('May 31 2022 00:00:00 GMT');
+export const endDate = new Date('June 21 2022 00:00:00 GMT');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -86,7 +87,7 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	// is done by generating a random number in the range [0, 1) and checking
 	// if it is < probability.
 	if (cfg.prompt === undefined) {
-		const probability = 0.2;
+		const probability = 0.1;
 		cfg.datePromptComputed = now;
 		cfg.prompt = Math.random() < probability;
 	}
@@ -140,7 +141,10 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_0BwHwKSaeE9Cx2S?s=p';
+				const goV = await getGoVersion();
+				const goVersion = goV ? goV.format(true) : 'na';
+				const useGopls = getGoConfig()?.get('useLanguageServer') === true ? 'true' : 'false';
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_7O3x4IZKiUn0QCO?s=p&go=${goVersion}&gopls=${useGopls}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
