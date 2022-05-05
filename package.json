@@ -230,6 +230,11 @@
         "description": "Runs a unit test at the cursor if one is found, otherwise re-runs the last executed test."
       },
       {
+        "command": "go.test.packageWithRun",
+        "title": "Go: Test Current Package With Custom -run",
+        "description": "Runs unit tests in the package of the current file for custom -run flag."
+      },
+      {
         "command": "go.subtest.cursor",
         "title": "Go: Subtest At Cursor",
         "description": "Runs a sub test at the cursor."

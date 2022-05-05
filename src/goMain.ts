@@ -68,6 +68,7 @@ import {
 	testCurrentFile,
 	testCurrentPackage,
 	testPrevious,
+	testCurrentPackageWithRun,
 	testWorkspace
 } from './goTest';
 import { getConfiguredTools, Tool } from './goTools';
@@ -389,6 +390,14 @@ async function activateContinued(
 			const goConfig = getGoConfig();
 			const isBenchmark = true;
 			testCurrentPackage(goConfig, isBenchmark, args);
+		})
+	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.test.packageWithRun', (args) => {
+			const goConfig = getGoConfig();
+			const isBenchmark = false;
+			testCurrentPackageWithRun(goConfig, isBenchmark, args);
 		})
 	);
 
