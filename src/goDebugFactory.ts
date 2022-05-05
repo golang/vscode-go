@@ -17,7 +17,24 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
 import { envPath, getBinPathFromEnvVar } from './utils/pathUtils';
 
-export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
+export function activate(ctx: vscode.ExtensionContext) {
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	ctx.subscriptions.push(debugOutputChannel);
+
+	const factory = new GoDebugAdapterDescriptorFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
+
+	const tracker = new GoDebugAdapterTrackerFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('go', tracker));
+	if ('dispose' in tracker) {
+		ctx.subscriptions.push(tracker);
+	}
+}
+
+class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
 
 	public createDebugAdapterDescriptor(
@@ -49,7 +66,7 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	}
 }
 
-export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 	constructor(private outputChannel: vscode.OutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {

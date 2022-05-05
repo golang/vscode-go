@@ -23,15 +23,26 @@ import {
 import { extensionInfo } from './config';
 import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
-import { pickProcess, pickProcessByName } from './pickProcess';
+import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
+import { createRegisterCommand } from './commands';
+import { GoExtensionContext } from './context';
 
 let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		ctx.subscriptions.push(
+			vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go'))
+		);
+		const registerCommand = createRegisterCommand(ctx, goCtx);
+		registerCommand('go.debug.pickProcess', () => pickProcess);
+		registerCommand('go.debug.pickGoProcess', () => pickGoProcess);
+	}
+
 	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
