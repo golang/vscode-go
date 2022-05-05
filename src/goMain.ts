@@ -267,8 +267,8 @@ async function activateContinued(
 	addOnChangeActiveTextEditorListeners(ctx);
 	addOnSaveTextDocumentListeners(ctx);
 
-	registerCommand('go.gopath', () => getCurrentGoPathCommand);
-	registerCommand('go.locate.tools', () => getConfiguredGoToolsCommand);
+	registerCommand('go.gopath', commands.getCurrentGoPath);
+	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
 	registerCommand('go.add.tags', () => addTags);
 	registerCommand('go.remove.tags', () => removeTags);
 	registerCommand('go.fill.struct', () => () => runFillStruct(vscode.window.activeTextEditor));
@@ -300,16 +300,7 @@ async function activateContinued(
 	registerCommand('go.test.cancel', () => cancelRunningTests);
 	registerCommand('go.import.add', () => (arg) => addImport(goCtx, arg));
 	registerCommand('go.add.package.workspace', () => addImportToWorkspace);
-
-	registerCommand('go.tools.install', () => async (args) => {
-		if (Array.isArray(args) && args.length) {
-			const goVersion = await getGoVersion();
-			await installTools(args, goVersion);
-			return;
-		}
-		installAllTools();
-	});
-
+	registerCommand('go.tools.install', commands.installTools);
 	registerCommand('go.browse.packages', () => browsePackages);
 
 	ctx.subscriptions.push(
@@ -396,42 +387,8 @@ async function activateContinued(
 	registerCommand('go.test.generate.file', () => goGenerateTests.generateTestCurrentFile);
 	registerCommand('go.test.generate.function', () => goGenerateTests.generateTestCurrentFunction);
 	registerCommand('go.toggle.test.file', () => goGenerateTests.toggleTestFile);
-
-	registerCommand('go.debug.startSession', () => (config) => {
-		let workspaceFolder;
-		if (vscode.window.activeTextEditor) {
-			workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri);
-		}
-
-		return vscode.debug.startDebugging(workspaceFolder, config);
-	});
-
-	registerCommand('go.show.commands', () => () => {
-		const extCommands = getExtensionCommands();
-		extCommands.push({
-			command: 'editor.action.goToDeclaration',
-			title: 'Go to Definition'
-		});
-		extCommands.push({
-			command: 'editor.action.goToImplementation',
-			title: 'Go to Implementation'
-		});
-		extCommands.push({
-			command: 'workbench.action.gotoSymbol',
-			title: 'Go to Symbol in File...'
-		});
-		extCommands.push({
-			command: 'workbench.action.showAllSymbols',
-			title: 'Go to Symbol in Workspace...'
-		});
-		vscode.window.showQuickPick(extCommands.map((x) => x.title)).then((cmd) => {
-			const selectedCmd = extCommands.find((x) => x.title === cmd);
-			if (selectedCmd) {
-				vscode.commands.executeCommand(selectedCmd.command);
-			}
-		});
-	});
-
+	registerCommand('go.debug.startSession', commands.startDebugSession);
+	registerCommand('go.show.commands', commands.showCommands);
 	registerCommand('go.get.package', () => goGetPackage);
 	registerCommand('go.playground', () => playgroundCommand);
 	registerCommand('go.lint.package', () => () => lintCode('package'));
@@ -446,56 +403,8 @@ async function activateContinued(
 	registerCommand('go.extractServerChannel', (_ctx, goCtx) => () => showServerOutputChannel(goCtx));
 	registerCommand('go.workspace.resetState', () => resetWorkspaceState);
 	registerCommand('go.global.resetState', () => resetGlobalState);
-	registerCommand('go.toggle.gc_details', () => () => {
-		if (!goCtx.languageServerIsRunning) {
-			vscode.window.showErrorMessage(
-				'"Go: Toggle gc details" command is available only when the language server is running'
-			);
-			return;
-		}
-		const doc = vscode.window.activeTextEditor?.document.uri.toString();
-		if (!doc || !doc.endsWith('.go')) {
-			vscode.window.showErrorMessage('"Go: Toggle gc details" command cannot run when no Go file is open.');
-			return;
-		}
-		vscode.commands.executeCommand('gc_details', doc).then(undefined, (reason0) => {
-			vscode.commands.executeCommand('gopls.gc_details', doc).then(undefined, (reason1) => {
-				vscode.window.showErrorMessage(
-					`"Go: Toggle gc details" command failed: gc_details:${reason0} gopls_gc_details:${reason1}`
-				);
-			});
-		});
-	});
-
-	registerCommand('go.apply.coverprofile', () => () => {
-		if (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document.fileName.endsWith('.go')) {
-			vscode.window.showErrorMessage('Cannot apply coverage profile when no Go file is open.');
-			return;
-		}
-		const lastCoverProfilePathKey = 'lastCoverProfilePathKey';
-		const lastCoverProfilePath = getFromWorkspaceState(lastCoverProfilePathKey, '');
-		vscode.window
-			.showInputBox({
-				prompt: 'Enter the path to the coverage profile for current package',
-				value: lastCoverProfilePath
-			})
-			.then((coverProfilePath) => {
-				if (!coverProfilePath) {
-					return;
-				}
-				if (!fileExists(coverProfilePath)) {
-					vscode.window.showErrorMessage(`Cannot find the file ${coverProfilePath}`);
-					return;
-				}
-				if (coverProfilePath !== lastCoverProfilePath) {
-					updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
-				}
-				applyCodeCoverageToAllEditors(
-					coverProfilePath,
-					getWorkspaceFolderPath(vscode.window.activeTextEditor?.document.uri)
-				);
-			});
-	});
+	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
+	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
 
 	// Go Enviornment switching commands
 	registerCommand('go.environment.choose', () => chooseGoEnvironment);
@@ -721,96 +630,6 @@ async function suggestUpdates(ctx: vscode.ExtensionContext) {
 		);
 		if (selected === updateToolsCmdText) {
 			installTools(toolsToUpdate, configuredGoVersion);
-		}
-	}
-}
-
-function getCurrentGoPathCommand() {
-	const gopath = getCurrentGoPath();
-	let msg = `${gopath} is the current GOPATH.`;
-	const wasInfered = getGoConfig()['inferGopath'];
-	const root = getWorkspaceFolderPath(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri);
-
-	// not only if it was configured, but if it was successful.
-	if (wasInfered && root && root.indexOf(gopath) === 0) {
-		const inferredFrom = vscode.window.activeTextEditor ? 'current folder' : 'workspace root';
-		msg += ` It is inferred from ${inferredFrom}`;
-	}
-
-	vscode.window.showInformationMessage(msg);
-	return gopath;
-}
-
-async function getConfiguredGoToolsCommand() {
-	outputChannel.show();
-	outputChannel.clear();
-	outputChannel.appendLine('Checking configured tools....');
-	// Tool's path search is done by getBinPathWithPreferredGopath
-	// which searches places in the following order
-	// 1) absolute path for the alternateTool
-	// 2) GOBIN
-	// 3) toolsGopath
-	// 4) gopath
-	// 5) GOROOT
-	// 6) PATH
-	outputChannel.appendLine('GOBIN: ' + process.env['GOBIN']);
-	outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
-	outputChannel.appendLine('gopath: ' + getCurrentGoPath());
-	outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
-	const currentEnvPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
-	outputChannel.appendLine('PATH: ' + currentEnvPath);
-	if (currentEnvPath !== envPath) {
-		outputChannel.appendLine(`PATH (vscode launched with): ${envPath}`);
-	}
-	outputChannel.appendLine('');
-
-	const goVersion = await getGoVersion();
-	const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
-	const goVersionTooOld = goVersion?.lt('1.12') || false;
-
-	outputChannel.appendLine(`\tgo:\t${goVersion?.binaryPath}: ${goVersion?.version}`);
-	const toolsInfo = await Promise.all(
-		allTools.map(async (tool) => {
-			const toolPath = getBinPath(tool.name);
-			// TODO(hyangah): print alternate tool info if set.
-			if (!path.isAbsolute(toolPath)) {
-				// getBinPath returns the absolute path is the tool exists.
-				// (See getBinPathWithPreferredGopath which is called underneath)
-				return `\t${tool.name}:\tnot installed`;
-			}
-			if (goVersionTooOld) {
-				return `\t${tool.name}:\t${toolPath}: unknown version`;
-			}
-			const { goVersion, moduleVersion, debugInfo } = await inspectGoToolVersion(toolPath);
-			if (goVersion || moduleVersion) {
-				return `\t${tool.name}:\t${toolPath}\t(version: ${moduleVersion} built with go: ${goVersion})`;
-			} else {
-				return `\t${tool.name}:\t${toolPath}\t(version: unknown - ${debugInfo})`;
-			}
-		})
-	);
-	toolsInfo.forEach((info) => {
-		outputChannel.appendLine(info);
-	});
-
-	let folders = vscode.workspace.workspaceFolders?.map<{ name: string; path?: string }>((folder) => {
-		return { name: folder.name, path: folder.uri.fsPath };
-	});
-	if (!folders) {
-		folders = [{ name: 'no folder', path: undefined }];
-	}
-
-	outputChannel.appendLine('');
-	outputChannel.appendLine('go env');
-	for (const folder of folders) {
-		outputChannel.appendLine(`Workspace Folder (${folder.name}): ${folder.path}`);
-		try {
-			const out = await getGoEnv(folder.path);
-			// Append '\t' to the beginning of every line (^) of 'out'.
-			// 'g' = 'global matching', and 'm' = 'multi-line matching'
-			outputChannel.appendLine(out.replace(/^/gm, '\t'));
-		} catch (e) {
-			outputChannel.appendLine(`failed to run 'go env': ${e}`);
 		}
 	}
 }

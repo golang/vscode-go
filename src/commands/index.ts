@@ -7,7 +7,14 @@ import * as vscode from 'vscode';
 
 import { GoExtensionContext } from '../context';
 
+export { applyCoverprofile } from './applyCoverprofile';
+export { getConfiguredGoTools } from './getConfiguredGoTools';
+export { getCurrentGoPath } from './getCurrentGoPath';
+export { installTools } from './installTools';
+export { showCommands } from './showCommands';
+export { startDebugSession } from './startDebugSession';
 export { startLanguageServer } from './startLanguageServer';
+export { toggleGCDetails } from './toggleGCDetails';
 
 type CommandCallback<T extends unknown[]> = (...args: T) => Promise<unknown> | unknown;
 

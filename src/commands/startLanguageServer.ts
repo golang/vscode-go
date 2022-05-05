@@ -3,8 +3,10 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import deepEqual from 'deep-equal';
 import * as vscode from 'vscode';
+import deepEqual from 'deep-equal';
+
+import { CommandFactory } from '.';
 import { getGoConfig } from '../config';
 import { GoExtensionContext } from '../context';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
@@ -13,10 +15,12 @@ import {
 	buildLanguageClient,
 	buildLanguageClientOption,
 	buildLanguageServerConfig,
+	errorKind,
 	languageServerUsingDefault,
 	RestartReason,
 	scheduleGoplsSuggestions,
 	stopLanguageClient,
+	suggestGoplsIssueReport,
 	suggestUpdateGopls,
 	toServerInfo,
 	updateRestartHistory
@@ -26,8 +30,8 @@ import { Mutex } from '../utils/mutex';
 
 const languageServerStartMutex = new Mutex();
 
-export function startLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-	return async (reason?: RestartReason) => {
+export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
+	return async (reason: RestartReason = RestartReason.MANUAL) => {
 		const goConfig = getGoConfig();
 		const cfg = buildLanguageServerConfig(goConfig);
 
@@ -37,6 +41,13 @@ export function startLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExten
 
 		const unlock = await languageServerStartMutex.lock();
 		try {
+			if (reason === RestartReason.MANUAL) {
+				await suggestGoplsIssueReport(
+					goCtx,
+					"Looks like you're about to manually restart the language server.",
+					errorKind.manualRestart
+				);
+			}
 			// If the client has already been started, make sure to clear existing
 			// diagnostics and stop it.
 			let cleanStop = true;
@@ -109,7 +120,7 @@ export function startLanguageServer(ctx: vscode.ExtensionContext, goCtx: GoExten
 			unlock();
 		}
 	};
-}
+};
 
 function updateStatus(goCtx: GoExtensionContext, goConfig: vscode.WorkspaceConfiguration, didStart: boolean) {
 	goCtx.languageServerIsRunning = didStart;
