@@ -59,6 +59,7 @@ import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
+import { GoMainCodeLensProvider, runMainFunc } from './goMainCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 import {
 	debugPrevious,
@@ -232,9 +233,11 @@ async function activateContinued(
 		})
 	);
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
+	const mainCodeLensProvider = new GoMainCodeLensProvider();
 	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
 
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
+	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, mainCodeLensProvider));
 	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
 
 	// debug
@@ -506,6 +509,7 @@ async function activateContinued(
 
 			if (updatedGoConfig['enableCodeLens']) {
 				testCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runtest']);
+				mainCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runmain']);
 				referencesCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['references']);
 			}
 
@@ -588,6 +592,12 @@ async function activateContinued(
 			return vscode.debug.startDebugging(workspaceFolder, config);
 		})
 	);
+
+	ctx.subscriptions.push(
+		vscode.commands.registerCommand('go.runMain', (args) => {
+			runMainFunc()
+		})
+	)
 
 	ctx.subscriptions.push(
 		vscode.commands.registerCommand('go.show.commands', () => {
