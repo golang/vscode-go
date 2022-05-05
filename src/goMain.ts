@@ -199,11 +199,8 @@ async function activateContinued(
 
 	registerCommand('go.environment.status', (_ctx, goCtx) => () => expandGoStatusBar(goCtx));
 
-	const testCodeLensProvider = new GoRunTestCodeLensProvider();
-	const referencesCodeLensProvider = new GoReferencesCodeLensProvider();
-
-	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
-	ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
+	GoRunTestCodeLensProvider.activate(ctx);
+	GoReferencesCodeLensProvider.activate(ctx);
 
 	// debug
 	ctx.subscriptions.push(
@@ -304,11 +301,6 @@ async function activateContinued(
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
 				clearCacheForTools();
-			}
-
-			if (updatedGoConfig['enableCodeLens']) {
-				testCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runtest']);
-				referencesCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['references']);
 			}
 
 			if (e.affectsConfiguration('go.formatTool')) {

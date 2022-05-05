@@ -14,6 +14,7 @@ import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { GoReferenceProvider } from './language/legacy/goReferences';
 import { getBinPath } from './util';
 import vscode = require('vscode');
+import { GO_MODE } from './goMode';
 
 const methodRegex = /^func\s+\(\s*\w+\s+\*?\w+\s*\)\s+/;
 
@@ -24,6 +25,22 @@ class ReferencesCodeLens extends CodeLens {
 }
 
 export class GoReferencesCodeLensProvider extends GoBaseCodeLensProvider {
+	static activate(ctx: vscode.ExtensionContext) {
+		const referencesCodeLensProvider = new this();
+		ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
+		ctx.subscriptions.push(
+			vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
+				if (!e.affectsConfiguration('go')) {
+					return;
+				}
+				const updatedGoConfig = getGoConfig();
+				if (updatedGoConfig['enableCodeLens']) {
+					referencesCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['references']);
+				}
+			})
+		);
+	}
+
 	public provideCodeLenses(document: TextDocument, token: CancellationToken): CodeLens[] | Thenable<CodeLens[]> {
 		if (!this.enabled) {
 			return [];

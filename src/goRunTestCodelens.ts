@@ -13,8 +13,26 @@ import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
+import { GoExtensionContext } from './context';
+import { GO_MODE } from './goMode';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
+	static activate(ctx: vscode.ExtensionContext) {
+		const testCodeLensProvider = new this();
+		ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
+		ctx.subscriptions.push(
+			vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
+				if (!e.affectsConfiguration('go')) {
+					return;
+				}
+				const updatedGoConfig = getGoConfig();
+				if (updatedGoConfig['enableCodeLens']) {
+					testCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runtest']);
+				}
+			})
+		);
+	}
+
 	private readonly benchmarkRegex = /^Benchmark.+/;
 
 	public async provideCodeLenses(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
