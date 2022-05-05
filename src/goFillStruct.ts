@@ -19,7 +19,8 @@ interface GoFillStructOutput {
 	code: string;
 }
 
-export function runFillStruct(editor: vscode.TextEditor): Promise<void> {
+export function runFillStruct(editor?: vscode.TextEditor): Promise<void> {
+	if (!editor) return Promise.resolve();
 	const args = getCommonArgs(editor);
 	if (!args) {
 		return Promise.reject('No args');
