@@ -15,7 +15,6 @@ import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
 import {
 	applyCodeCoverage,
-	applyCodeCoverageToAllEditors,
 	initCoverageDecorators,
 	removeCodeCoverageOnFileSave,
 	toggleCoverageCurrentPackage,
@@ -39,19 +38,12 @@ import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
 	inspectGoToolVersion,
-	installAllTools,
 	installTools,
 	offerToInstallTools,
 	promptForMissingTool,
 	updateGoVarsFromConfig
 } from './goInstallTools';
-import {
-	errorKind,
-	RestartReason,
-	showServerOutputChannel,
-	suggestGoplsIssueReport,
-	watchLanguageServerConfiguration
-} from './language/goLanguageServer';
+import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
@@ -60,7 +52,7 @@ import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
 import {
 	debugPrevious,
 	subTestAtCursor,
@@ -76,30 +68,24 @@ import { vetCode } from './goVet';
 import { pickGoProcess, pickProcess } from './pickProcess';
 import {
 	getFromGlobalState,
-	getFromWorkspaceState,
 	resetGlobalState,
 	resetWorkspaceState,
 	setGlobalState,
 	setWorkspaceState,
-	updateGlobalState,
-	updateWorkspaceState
+	updateGlobalState
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import {
 	cleanupTempDir,
 	getBinPath,
-	getCurrentGoPath,
-	getExtensionCommands,
-	getGoEnv,
 	getGoVersion,
 	getToolsGopath,
-	getWorkspaceFolderPath,
 	GoVersion,
 	handleDiagnosticErrors,
 	isGoPathSet,
 	resolvePath
 } from './util';
-import { clearCacheForTools, fileExists, getCurrentGoRoot, dirExists, envPath } from './utils/pathUtils';
+import { clearCacheForTools, dirExists } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import semver = require('semver');
 import vscode = require('vscode');
