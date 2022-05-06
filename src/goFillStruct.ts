@@ -8,6 +8,7 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive, makeMemoizedByteOffsetConverter } from './util';
@@ -19,7 +20,7 @@ interface GoFillStructOutput {
 	code: string;
 }
 
-export function runFillStruct(editor?: vscode.TextEditor): Promise<void> {
+export const runFillStruct: CommandFactory = () => (editor = vscode.window.activeTextEditor) => {
 	if (!editor) return Promise.resolve();
 	const args = getCommonArgs(editor);
 	if (!args) {
@@ -27,7 +28,7 @@ export function runFillStruct(editor?: vscode.TextEditor): Promise<void> {
 	}
 
 	return execFillStruct(editor, args);
-}
+};
 
 function getCommonArgs(editor: vscode.TextEditor): string[] | undefined {
 	if (!editor) {

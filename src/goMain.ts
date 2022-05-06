@@ -30,7 +30,6 @@ import {
 	offerToInstallLatestGoVersion,
 	setEnvironmentVariableCollection
 } from './goEnvironmentStatus';
-import { runFillStruct } from './goFillStruct';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
 import { implCursor } from './goImpl';
@@ -220,10 +219,10 @@ async function activateContinued(
 	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
 	registerCommand('go.add.tags', commands.addTags);
 	registerCommand('go.remove.tags', commands.removeTags);
-	registerCommand('go.fill.struct', () => () => runFillStruct(vscode.window.activeTextEditor));
-	registerCommand('go.impl.cursor', () => implCursor);
-	registerCommand('go.godoctor.extract', () => extractFunction);
-	registerCommand('go.godoctor.var', () => extractVariable);
+	registerCommand('go.fill.struct', commands.runFillStruct);
+	registerCommand('go.impl.cursor', commands.implCursor);
+	registerCommand('go.godoctor.extract', commands.extractFunction);
+	registerCommand('go.godoctor.var', commands.extractVariable);
 	registerCommand('go.test.cursor', () => (args) => testAtCursor(getGoConfig(), 'test', args));
 	registerCommand('go.test.cursorOrPrevious', () => (args) => testAtCursorOrPrevious(getGoConfig(), 'test', args));
 

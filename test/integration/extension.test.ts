@@ -46,6 +46,7 @@ import {
 import cp = require('child_process');
 import os = require('os');
 import { GoExtensionContext } from '../../src/context';
+import { MockExtensionContext } from '../mocks/MockContext';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -1606,7 +1607,13 @@ encountered.
 		const editor = await vscode.window.showTextDocument(textDocument);
 		const selection = new vscode.Selection(12, 15, 12, 15);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		await runFillStruct(ctx, goCtx)(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 
@@ -1619,7 +1626,13 @@ encountered.
 
 		const selection = new vscode.Selection(7, 0, 7, 10);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		await runFillStruct(ctx, goCtx)(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 };

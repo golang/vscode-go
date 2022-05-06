@@ -13,11 +13,12 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
 
-export function implCursor() {
+export const implCursor: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found.');
@@ -45,7 +46,7 @@ export function implCursor() {
 
 			runGoImpl([matches[1], matches[2]], cursor.start, editor);
 		});
-}
+};
 
 function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor) {
 	const goimpl = getBinPath('impl');
