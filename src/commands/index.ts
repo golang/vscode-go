@@ -14,6 +14,7 @@ export { extractFunction, extractVariable } from '../goDoctor';
 export { runFillStruct } from '../goFillStruct';
 export { implCursor } from '../goImpl';
 export { addTags, removeTags } from '../goModifytags';
+export * from '../goTest';
 export { installTools } from './installTools';
 export { showCommands } from './showCommands';
 export { startDebugSession } from './startDebugSession';

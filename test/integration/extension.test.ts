@@ -33,7 +33,7 @@ import { goPlay } from '../../src/goPlayground';
 import { GoSignatureHelpProvider } from '../../src/language/legacy/goSignature';
 import { GoCompletionItemProvider } from '../../src/language/legacy/goSuggest';
 import { getWorkspaceSymbols } from '../../src/language/legacy/goSymbol';
-import { testCurrentFile } from '../../src/goTest';
+import { testCurrentFile } from '../../src/commands';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -679,8 +679,13 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'sample_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-
-		const result = await testCurrentFile(config, false, []);
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		const result = await testCurrentFile(false, () => config)(ctx, goCtx)([]);
 		assert.equal(result, true);
 	});
 
@@ -1507,17 +1512,23 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'testTags', 'hello_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
 
-		const result1 = await testCurrentFile(config1, false, []);
+		const result1 = await testCurrentFile(false, () => config1)(ctx, goCtx)([]);
 		assert.equal(result1, true);
 
-		const result2 = await testCurrentFile(config2, false, []);
+		const result2 = await testCurrentFile(false, () => config2)(ctx, goCtx)([]);
 		assert.equal(result2, true);
 
-		const result3 = await testCurrentFile(config3, false, []);
+		const result3 = await testCurrentFile(false, () => config3)(ctx, goCtx)([]);
 		assert.equal(result3, true);
 
-		const result4 = await testCurrentFile(config4, false, []);
+		const result4 = await testCurrentFile(false, () => config4)(ctx, goCtx)([]);
 		assert.equal(result4, false);
 	});
 

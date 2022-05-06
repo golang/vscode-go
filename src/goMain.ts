@@ -9,7 +9,7 @@
 'use strict';
 
 import * as path from 'path';
-import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
+import { getGoConfig, getGoplsConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -23,7 +23,6 @@ import {
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import * as GoDebugFactory from './goDebugFactory';
-import { extractFunction, extractVariable } from './goDoctor';
 import { toolExecutionEnvironment } from './goEnv';
 import {
 	chooseGoEnvironment,
@@ -32,7 +31,6 @@ import {
 } from './goEnvironmentStatus';
 import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
-import { implCursor } from './goImpl';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
@@ -51,19 +49,9 @@ import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
-import {
-	debugPrevious,
-	subTestAtCursor,
-	testAtCursor,
-	testAtCursorOrPrevious,
-	testCurrentFile,
-	testCurrentPackage,
-	testPrevious,
-	testWorkspace
-} from './goTest';
+
 import { getConfiguredTools, Tool } from './goTools';
 import { vetCode } from './goVet';
-import { pickGoProcess, pickProcess } from './pickProcess';
 import {
 	getFromGlobalState,
 	resetGlobalState,
@@ -85,7 +73,6 @@ import {
 } from './util';
 import { clearCacheForTools, dirExists } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
-import semver = require('semver');
 import vscode = require('vscode');
 import { getFormatTool } from './language/legacy/goFormat';
 import { resetSurveyConfigs, showSurveyConfig } from './goSurvey';
@@ -223,26 +210,19 @@ async function activateContinued(
 	registerCommand('go.impl.cursor', commands.implCursor);
 	registerCommand('go.godoctor.extract', commands.extractFunction);
 	registerCommand('go.godoctor.var', commands.extractVariable);
-	registerCommand('go.test.cursor', () => (args) => testAtCursor(getGoConfig(), 'test', args));
-	registerCommand('go.test.cursorOrPrevious', () => (args) => testAtCursorOrPrevious(getGoConfig(), 'test', args));
+	registerCommand('go.test.cursor', commands.testAtCursor('test'));
+	registerCommand('go.test.cursorOrPrevious', commands.testAtCursorOrPrevious('test'));
+	registerCommand('go.subtest.cursor', commands.subTestAtCursor);
+	registerCommand('go.debug.cursor', commands.testAtCursor('debug'));
+	registerCommand('go.benchmark.cursor', commands.testAtCursor('benchmark'));
+	registerCommand('go.test.package', commands.testCurrentPackage(false));
+	registerCommand('go.benchmark.package', commands.testCurrentPackage(true));
+	registerCommand('go.test.file', commands.testCurrentFile(false));
+	registerCommand('go.benchmark.file', commands.testCurrentFile(true));
+	registerCommand('go.test.workspace', commands.testWorkspace);
+	registerCommand('go.test.previous', commands.testPrevious);
+	registerCommand('go.debug.previous', commands.debugPrevious);
 
-	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
-		GoTestExplorer.setup(ctx);
-	}
-
-	GoExplorerProvider.setup(ctx);
-	VulncheckProvider.setup(ctx, goCtx);
-
-	registerCommand('go.subtest.cursor', () => (args) => subTestAtCursor(getGoConfig(), args));
-	registerCommand('go.debug.cursor', () => (args) => testAtCursor(getGoConfig(), 'debug', args));
-	registerCommand('go.benchmark.cursor', () => (args) => testAtCursor(getGoConfig(), 'benchmark', args));
-	registerCommand('go.test.package', () => (args) => testCurrentPackage(getGoConfig(), false, args));
-	registerCommand('go.benchmark.package', () => (args) => testCurrentPackage(getGoConfig(), true, args));
-	registerCommand('go.test.file', () => (args) => testCurrentFile(getGoConfig(), false, args));
-	registerCommand('go.benchmark.file', () => (args) => testCurrentFile(getGoConfig(), true, args));
-	registerCommand('go.test.workspace', () => (args) => testWorkspace(getGoConfig(), args));
-	registerCommand('go.test.previous', () => testPrevious);
-	registerCommand('go.debug.previous', () => debugPrevious);
 	registerCommand('go.test.coverage', () => toggleCoverageCurrentPackage);
 	registerCommand('go.test.showOutput', () => showTestOutput);
 	registerCommand('go.test.cancel', () => cancelRunningTests);
@@ -250,6 +230,13 @@ async function activateContinued(
 	registerCommand('go.add.package.workspace', () => addImportToWorkspace);
 	registerCommand('go.tools.install', commands.installTools);
 	registerCommand('go.browse.packages', () => browsePackages);
+
+	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
+		GoTestExplorer.setup(ctx);
+	}
+
+	GoExplorerProvider.setup(ctx);
+	VulncheckProvider.setup(ctx, goCtx);
 
 	ctx.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
