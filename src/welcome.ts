@@ -9,37 +9,65 @@
 
 import vscode = require('vscode');
 import path = require('path');
+import semver = require('semver');
 import { extensionId } from './const';
+import { GoExtensionContext } from './context';
+import { extensionInfo } from './config';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
+import { createRegisterCommand } from './commands';
+
 export class WelcomePanel {
+	public static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		const registerCommand = createRegisterCommand(ctx, goCtx);
+		registerCommand('go.welcome', WelcomePanel.createOrShow);
+
+		if (vscode.window.registerWebviewPanelSerializer) {
+			// Make sure we register a serializer in activation event
+			vscode.window.registerWebviewPanelSerializer(WelcomePanel.viewType, {
+				async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel) {
+					WelcomePanel.revive(webviewPanel, ctx.extensionUri);
+				}
+			});
+		}
+
+		// Show the Go welcome page on update.
+		if (!extensionInfo.isInCloudIDE) {
+			showGoWelcomePage();
+		}
+	}
+
 	public static currentPanel: WelcomePanel | undefined;
 
 	public static readonly viewType = 'welcomeGo';
 
-	public static createOrShow(extensionUri: vscode.Uri) {
-		const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
+	public static createOrShow(ctx: Pick<vscode.ExtensionContext, 'extensionUri'>) {
+		return () => {
+			const extensionUri = ctx.extensionUri;
+			const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
 
-		// If we already have a panel, show it.
-		if (WelcomePanel.currentPanel) {
-			WelcomePanel.currentPanel.panel.reveal(column);
-			return;
-		}
-
-		// Otherwise, create a new panel.
-		const panel = vscode.window.createWebviewPanel(
-			WelcomePanel.viewType,
-			'Go for VS Code',
-			column || vscode.ViewColumn.One,
-			{
-				// Enable javascript in the webview
-				enableScripts: true,
-
-				// And restrict the webview to only loading content from our extension's directory.
-				localResourceRoots: [joinPath(extensionUri)]
+			// If we already have a panel, show it.
+			if (WelcomePanel.currentPanel) {
+				WelcomePanel.currentPanel.panel.reveal(column);
+				return;
 			}
-		);
-		panel.iconPath = joinPath(extensionUri, 'media', 'go-logo-blue.png');
 
-		WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri);
+			// Otherwise, create a new panel.
+			const panel = vscode.window.createWebviewPanel(
+				WelcomePanel.viewType,
+				'Go for VS Code',
+				column || vscode.ViewColumn.One,
+				{
+					// Enable javascript in the webview
+					enableScripts: true,
+
+					// And restrict the webview to only loading content from our extension's directory.
+					localResourceRoots: [joinPath(extensionUri)]
+				}
+			);
+			panel.iconPath = joinPath(extensionUri, 'media', 'go-logo-blue.png');
+
+			WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri);
+		};
 	}
 
 	public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
@@ -217,4 +245,40 @@ function joinPath(uri: vscode.Uri, ...pathFragment: string[]): vscode.Uri {
 		throw new Error('[UriError]: cannot call joinPaths on URI without path');
 	}
 	return uri.with({ path: vscode.Uri.file(path.join(uri.fsPath, ...pathFragment)).path });
+}
+
+function showGoWelcomePage() {
+	// Update this list of versions when there is a new version where we want to
+	// show the welcome page on update.
+	const showVersions: string[] = ['0.30.0'];
+	// TODO(hyangah): use the content hash instead of hard-coded string.
+	// https://github.com/golang/vscode-go/issue/1179
+	let goExtensionVersion = '0.30.0';
+	let goExtensionVersionKey = 'go.extensionVersion';
+	if (extensionInfo.isPreview) {
+		goExtensionVersion = '0.0.0';
+		goExtensionVersionKey = 'go.nightlyExtensionVersion';
+	}
+
+	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '');
+
+	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
+		vscode.commands.executeCommand('go.welcome');
+	}
+	if (goExtensionVersion !== savedGoExtensionVersion) {
+		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
+	}
+}
+
+export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
+	if (newVersion === oldVersion) {
+		return false;
+	}
+	const coercedNew = semver.coerce(newVersion);
+	const coercedOld = semver.coerce(oldVersion);
+	if (!coercedNew || !coercedOld) {
+		return true;
+	}
+	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
+	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }

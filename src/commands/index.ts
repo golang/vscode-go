@@ -23,3 +23,9 @@ export type CommandFactory<T extends unknown[] = any[]> = (
 	ctx: vscode.ExtensionContext,
 	goCtx: GoExtensionContext
 ) => CommandCallback<T>;
+
+export function createRegisterCommand(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+	return function registerCommand(name: string, fn: CommandFactory) {
+		ctx.subscriptions.push(vscode.commands.registerCommand(name, fn(ctx, goCtx)));
+	};
+}

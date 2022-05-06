@@ -126,19 +126,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	const cfg = getGoConfig();
 	setLogConfig(cfg['logging']);
 
-	if (vscode.window.registerWebviewPanelSerializer) {
-		// Make sure we register a serializer in activation event
-		vscode.window.registerWebviewPanelSerializer(WelcomePanel.viewType, {
-			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
-				WelcomePanel.revive(webviewPanel, ctx.extensionUri);
-			}
-		});
-	}
-
-	// Show the Go welcome page on update.
-	if (!extensionInfo.isInCloudIDE) {
-		showGoWelcomePage(ctx);
-	}
+	WelcomePanel.activate(ctx, goCtx);
 
 	const configGOROOT = getGoConfig()['goroot'];
 	if (configGOROOT) {
@@ -199,7 +187,7 @@ async function activateContinued(
 
 	initCoverageDecorators(ctx);
 
-	const registerCommand = createRegisterCommand(ctx, goCtx);
+	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
 
@@ -209,7 +197,6 @@ async function activateContinued(
 		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
 	);
 
-	registerCommand('go.welcome', (ctx) => () => WelcomePanel.createOrShow(ctx.extensionUri));
 	registerCommand('go.environment.status', (_ctx, goCtx) => () => expandGoStatusBar(goCtx));
 
 	const testCodeLensProvider = new GoRunTestCodeLensProvider();
@@ -404,42 +391,6 @@ async function activateContinued(
 	});
 
 	return extensionAPI;
-}
-
-function showGoWelcomePage(ctx: vscode.ExtensionContext) {
-	// Update this list of versions when there is a new version where we want to
-	// show the welcome page on update.
-	const showVersions: string[] = ['0.30.0'];
-	// TODO(hyangah): use the content hash instead of hard-coded string.
-	// https://github.com/golang/vscode-go/issue/1179
-	let goExtensionVersion = '0.30.0';
-	let goExtensionVersionKey = 'go.extensionVersion';
-	if (extensionInfo.isPreview) {
-		goExtensionVersion = '0.0.0';
-		goExtensionVersionKey = 'go.nightlyExtensionVersion';
-	}
-
-	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '');
-
-	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
-		WelcomePanel.createOrShow(ctx.extensionUri);
-	}
-	if (goExtensionVersion !== savedGoExtensionVersion) {
-		updateGlobalState(goExtensionVersionKey, goExtensionVersion);
-	}
-}
-
-export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
-	if (newVersion === oldVersion) {
-		return false;
-	}
-	const coercedNew = semver.coerce(newVersion);
-	const coercedOld = semver.coerce(oldVersion);
-	if (!coercedNew || !coercedOld) {
-		return true;
-	}
-	// Both semver.coerce(0.22.0) and semver.coerce(0.22.0-rc.1) will be 0.22.0.
-	return semver.gte(coercedNew, coercedOld) && showVersions.includes(coercedNew.toString());
 }
 
 export function deactivate() {
@@ -664,10 +615,4 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 	} else {
 		delete process.env.GOROOT;
 	}
-}
-
-function createRegisterCommand(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-	return function registerCommand(name: string, fn: commands.CommandFactory) {
-		ctx.subscriptions.push(vscode.commands.registerCommand(name, fn(ctx, goCtx)));
-	};
 }
