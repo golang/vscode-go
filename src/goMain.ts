@@ -47,7 +47,6 @@ import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguratio
 import { lintCode } from './goLint';
 import { logVerbose, setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
-import { addTags, removeTags } from './goModifytags';
 import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
@@ -219,8 +218,8 @@ async function activateContinued(
 
 	registerCommand('go.gopath', commands.getCurrentGoPath);
 	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
-	registerCommand('go.add.tags', () => addTags);
-	registerCommand('go.remove.tags', () => removeTags);
+	registerCommand('go.add.tags', commands.addTags);
+	registerCommand('go.remove.tags', commands.removeTags);
 	registerCommand('go.fill.struct', () => () => runFillStruct(vscode.window.activeTextEditor));
 	registerCommand('go.impl.cursor', () => implCursor);
 	registerCommand('go.godoctor.extract', () => extractFunction);

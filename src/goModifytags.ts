@@ -9,6 +9,7 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
@@ -30,7 +31,7 @@ interface GoTagsConfig {
 	template: string;
 }
 
-export function addTags(commandArgs: GoTagsConfig) {
+export const addTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
 	const args = getCommonArgs();
 	if (!args) {
 		return;
@@ -60,9 +61,9 @@ export function addTags(commandArgs: GoTagsConfig) {
 			runGomodifytags(args);
 		}
 	);
-}
+};
 
-export function removeTags(commandArgs: GoTagsConfig) {
+export const removeTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
 	const args = getCommonArgs();
 	if (!args) {
 		return;
@@ -83,7 +84,7 @@ export function removeTags(commandArgs: GoTagsConfig) {
 		}
 		runGomodifytags(args);
 	});
-}
+};
 
 function getCommonArgs(): string[] {
 	const editor = vscode.window.activeTextEditor;

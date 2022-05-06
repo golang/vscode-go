@@ -10,6 +10,7 @@ import { GoExtensionContext } from '../context';
 export { applyCoverprofile } from './applyCoverprofile';
 export { getConfiguredGoTools } from './getConfiguredGoTools';
 export { getCurrentGoPath } from './getCurrentGoPath';
+export { addTags, removeTags } from '../goModifytags';
 export { installTools } from './installTools';
 export { showCommands } from './showCommands';
 export { startDebugSession } from './startDebugSession';
