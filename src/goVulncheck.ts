@@ -4,10 +4,13 @@
  *--------------------------------------------------------*/
 
 import path from 'path';
-import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
-import { ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { GoExtensionContext } from './context';
+import { getBinPath } from './util';
+import * as cp from 'child_process';
+import { toolExecutionEnvironment } from './goEnv';
+import { killProcessTree } from './utils/processUtils';
+import * as readline from 'readline';
 
 export class VulncheckProvider {
 	static scheme = 'govulncheck';
@@ -69,22 +72,22 @@ export class VulncheckProvider {
 			return;
 		}
 
-		let result = '\nNo known vulnerabilities found.';
+		this.channel.clear();
+		this.channel.appendLine(`cd ${dir}; gopls vulncheck ${pattern}`);
+
+		let result = '';
 		try {
-			const vuln = await vulncheck(goCtx, dir, pattern);
-			if (vuln?.Vuln) {
-				result = vuln.Vuln.map(renderVuln).join('----------------------\n');
+			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
+			if (vuln) {
+				result = vuln.Vuln
+					? vuln.Vuln.map(renderVuln).join('----------------------\n')
+					: 'No known vulnerability found.';
 			}
 		} catch (e) {
-			if (e instanceof Error) {
-				result = e.message;
-			}
 			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
 		}
 
-		result = `DIR=${dir} govulncheck ${pattern}\n${result}`;
-		this.channel.clear();
-		this.channel.append(result);
+		this.channel.appendLine(result);
 		this.channel.show();
 	}
 
@@ -104,26 +107,70 @@ export class VulncheckProvider {
 	}
 }
 
-async function vulncheck(
+// run `gopls vulncheck`.
+export async function vulncheck(
 	goCtx: GoExtensionContext,
 	dir: string,
-	pattern = './...'
-): Promise<VulncheckReponse | undefined> {
+	pattern = './...',
+	channel: { appendLine: (msg: string) => void }
+): Promise<VulncheckResponse> {
 	const { languageClient, serverInfo } = goCtx;
 	const COMMAND = 'gopls.run_vulncheck_exp';
-	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
-		const request = {
-			command: COMMAND,
-			arguments: [
-				{
-					Dir: pathToFileURL(dir).toString(),
-					Pattern: pattern
-				}
-			]
-		};
-		const resp = await languageClient.sendRequest(ExecuteCommandRequest.type, request);
-		return resp;
+	if (!languageClient || !serverInfo?.Commands?.includes(COMMAND)) {
+		throw Promise.reject('this feature requires gopls v0.8.4 or newer');
 	}
+	// TODO: read back the actual package configuration from gopls.
+	const gopls = getBinPath('gopls');
+	const options: vscode.ProgressOptions = {
+		cancellable: true,
+		title: 'Run govulncheck',
+		location: vscode.ProgressLocation.Notification
+	};
+	const task = vscode.window.withProgress<VulncheckResponse>(options, (progress, token) => {
+		const p = cp.spawn(gopls, ['vulncheck', pattern], {
+			cwd: dir,
+			env: toolExecutionEnvironment(vscode.Uri.file(dir))
+		});
+
+		progress.report({ message: `starting command ${gopls} from ${dir}  (pid; ${p.pid})` });
+
+		const d = token.onCancellationRequested(() => {
+			channel.appendLine(`gopls vulncheck (pid: ${p.pid}) is cancelled`);
+			killProcessTree(p);
+			d.dispose();
+		});
+
+		const promise = new Promise<VulncheckResponse>((resolve, reject) => {
+			const rl = readline.createInterface({ input: p.stderr });
+			rl.on('line', (line) => {
+				channel.appendLine(line);
+				const msg = line.match(/^\d+\/\d+\/\d+\s+\d+:\d+:\d+\s+(.*)/);
+				if (msg && msg[1]) {
+					progress.report({ message: msg[1] });
+				}
+			});
+
+			let buf = '';
+			p.stdout.on('data', (chunk) => {
+				buf += chunk;
+			});
+			p.stdout.on('close', () => {
+				try {
+					const res: VulncheckResponse = JSON.parse(buf);
+					resolve(res);
+				} catch (e) {
+					if (token.isCancellationRequested) {
+						reject('analysis cancelled');
+					} else {
+						channel.appendLine(buf);
+						reject(`result in unexpected format: ${e}`);
+					}
+				}
+			});
+		});
+		return promise;
+	});
+	return await task;
 }
 
 const renderVuln = (v: Vuln) => `
@@ -168,7 +215,7 @@ const renderUri = (stack: CallStack) => {
 	return `${stack.URI}#${line}:${stack.Pos.character}`;
 };
 
-interface VulncheckReponse {
+interface VulncheckResponse {
 	Vuln?: Vuln[];
 }
 
