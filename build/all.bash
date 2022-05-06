@@ -50,8 +50,9 @@ run_test() {
   npm test --silent
   npm run lint
 
-  echo "**** Run settings generator ****"
-  go run tools/generate.go -w=false -gopls=true
+  # BUG(github.com/golang/vscode-go/issues/2230): Disable test temporarily.
+  # echo "**** Run settings generator ****"
+  # go run tools/generate.go -w=false -gopls=true
 
   echo "**** Check if vsce works ****"
   vsce package
