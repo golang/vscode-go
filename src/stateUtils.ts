@@ -5,6 +5,7 @@
  *--------------------------------------------------------*/
 
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 
 let globalState: vscode.Memento;
 let workspaceState: vscode.Memento;
@@ -31,9 +32,9 @@ export function getGlobalState() {
 	return globalState;
 }
 
-export function resetGlobalState() {
+export const resetGlobalState: CommandFactory = () => () => {
 	resetStateQuickPick(globalState, updateGlobalState);
-}
+};
 
 export function getFromWorkspaceState(key: string, defaultValue?: any) {
 	if (!workspaceState) {
@@ -57,9 +58,9 @@ export function getWorkspaceState(): vscode.Memento {
 	return workspaceState;
 }
 
-export function resetWorkspaceState() {
+export const resetWorkspaceState: CommandFactory = () => () => {
 	resetStateQuickPick(workspaceState, updateWorkspaceState);
-}
+};
 
 export function getMementoKeys(state: vscode.Memento): string[] {
 	if (!state) {

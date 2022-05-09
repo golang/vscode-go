@@ -18,6 +18,7 @@ import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion, getModuleCache, getWorkspaceFolderPath } from './util';
 import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
+import { CommandFactory } from './commands';
 export let GO111MODULE: string | undefined;
 
 export async function runGoEnv(uri?: vscode.Uri, envvars: string[] = []): Promise<any> {
@@ -191,7 +192,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	});
 }
 
-export async function goModInit() {
+export const goModInit: CommandFactory = () => async () => {
 	outputChannel.clear();
 
 	const moduleName = await vscode.window.showInputBox({
@@ -220,4 +221,4 @@ export async function goModInit() {
 			`Error running "${goRuntimePath} mod init ${moduleName}": See Go output channel for details`
 		);
 	}
-}
+};

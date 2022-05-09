@@ -553,7 +553,13 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentFile();
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		await generateTestCurrentFile(ctx, goCtx)();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -570,7 +576,13 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 6, 0);
-		await generateTestCurrentFunction();
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		await generateTestCurrentFunction(ctx, goCtx)();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -586,7 +598,13 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentPackage();
+		const ctx = new MockExtensionContext() as any;
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		await generateTestCurrentPackage(ctx, goCtx)();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');

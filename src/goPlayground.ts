@@ -11,10 +11,11 @@ import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 
 const TOOL_CMD_NAME = 'goplay';
 
-export const playgroundCommand = () => {
+export const playgroundCommand: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');

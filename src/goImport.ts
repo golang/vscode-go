@@ -17,6 +17,7 @@ import { getImportablePackages } from './goPackages';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 import { GoExtensionContext } from './context';
+import { CommandFactory } from './commands';
 
 const missingToolMsg = 'Missing tool: ';
 
@@ -163,7 +164,7 @@ export function getTextEditForAddImport(arg: string | undefined): vscode.TextEdi
 	}
 }
 
-export function addImport(goCtx: GoExtensionContext, arg: { importPath: string }) {
+export const addImport: CommandFactory = (ctx, goCtx) => (arg: { importPath: string }) => {
 	const { languageClient, serverInfo } = goCtx;
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
@@ -209,9 +210,9 @@ export function addImport(goCtx: GoExtensionContext, arg: { importPath: string }
 			vscode.workspace.applyEdit(edit);
 		}
 	});
-}
+};
 
-export function addImportToWorkspace() {
+export const addImportToWorkspace: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found to determine current package.');
@@ -277,4 +278,4 @@ export function addImportToWorkspace() {
 			{ uri: importPathUri }
 		);
 	});
-}
+};

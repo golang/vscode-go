@@ -5,6 +5,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { buildDiagnosticCollection } from './goMain';
@@ -26,39 +27,41 @@ import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 /**
  * Builds current package or workspace.
  */
-export function buildCode(buildWorkspace?: boolean) {
-	const editor = vscode.window.activeTextEditor;
-	if (!buildWorkspace) {
-		if (!editor) {
-			vscode.window.showInformationMessage('No editor is active, cannot find current package to build');
-			return;
+export function buildCode(buildWorkspace?: boolean): CommandFactory {
+	return () => () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!buildWorkspace) {
+			if (!editor) {
+				vscode.window.showInformationMessage('No editor is active, cannot find current package to build');
+				return;
+			}
+			if (editor.document.languageId !== 'go') {
+				vscode.window.showInformationMessage(
+					'File in the active editor is not a Go file, cannot find current package to build'
+				);
+				return;
+			}
 		}
-		if (editor.document.languageId !== 'go') {
-			vscode.window.showInformationMessage(
-				'File in the active editor is not a Go file, cannot find current package to build'
-			);
-			return;
-		}
-	}
 
-	const documentUri = editor?.document.uri;
-	const goConfig = getGoConfig(documentUri);
+		const documentUri = editor?.document.uri;
+		const goConfig = getGoConfig(documentUri);
 
-	outputChannel.clear(); // Ensures stale output from build on save is cleared
-	diagnosticsStatusBarItem.show();
-	diagnosticsStatusBarItem.text = 'Building...';
+		outputChannel.clear(); // Ensures stale output from build on save is cleared
+		diagnosticsStatusBarItem.show();
+		diagnosticsStatusBarItem.text = 'Building...';
 
-	isModSupported(documentUri).then((isMod) => {
-		goBuild(documentUri, isMod, goConfig, buildWorkspace)
-			.then((errors) => {
-				handleDiagnosticErrors(editor?.document, errors, buildDiagnosticCollection);
-				diagnosticsStatusBarItem.hide();
-			})
-			.catch((err) => {
-				vscode.window.showInformationMessage('Error: ' + err);
-				diagnosticsStatusBarItem.text = 'Build Failed';
-			});
-	});
+		isModSupported(documentUri).then((isMod) => {
+			goBuild(documentUri, isMod, goConfig, buildWorkspace)
+				.then((errors) => {
+					handleDiagnosticErrors(editor?.document, errors, buildDiagnosticCollection);
+					diagnosticsStatusBarItem.hide();
+				})
+				.catch((err) => {
+					vscode.window.showInformationMessage('Error: ' + err);
+					diagnosticsStatusBarItem.text = 'Build Failed';
+				});
+		});
+	};
 }
 
 /**

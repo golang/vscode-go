@@ -182,7 +182,7 @@ async function activateContinued(
 		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
 	);
 
-	registerCommand('go.environment.status', (_ctx, goCtx) => () => expandGoStatusBar(goCtx));
+	registerCommand('go.environment.status', expandGoStatusBar);
 
 	GoRunTestCodeLensProvider.activate(ctx);
 	GoReferencesCodeLensProvider.activate(ctx);
@@ -223,13 +223,13 @@ async function activateContinued(
 	registerCommand('go.test.previous', commands.testPrevious);
 	registerCommand('go.debug.previous', commands.debugPrevious);
 
-	registerCommand('go.test.coverage', () => toggleCoverageCurrentPackage);
+	registerCommand('go.test.coverage', toggleCoverageCurrentPackage);
 	registerCommand('go.test.showOutput', () => showTestOutput);
 	registerCommand('go.test.cancel', () => cancelRunningTests);
-	registerCommand('go.import.add', () => (arg) => addImport(goCtx, arg));
-	registerCommand('go.add.package.workspace', () => addImportToWorkspace);
+	registerCommand('go.import.add', addImport);
+	registerCommand('go.add.package.workspace', addImportToWorkspace);
 	registerCommand('go.tools.install', commands.installTools);
-	registerCommand('go.browse.packages', () => browsePackages);
+	registerCommand('go.browse.packages', browsePackages);
 
 	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
 		GoTestExplorer.setup(ctx);
@@ -313,35 +313,35 @@ async function activateContinued(
 		})
 	);
 
-	registerCommand('go.test.generate.package', () => goGenerateTests.generateTestCurrentPackage);
-	registerCommand('go.test.generate.file', () => goGenerateTests.generateTestCurrentFile);
-	registerCommand('go.test.generate.function', () => goGenerateTests.generateTestCurrentFunction);
-	registerCommand('go.toggle.test.file', () => goGenerateTests.toggleTestFile);
+	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
+	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
+	registerCommand('go.test.generate.function', goGenerateTests.generateTestCurrentFunction);
+	registerCommand('go.toggle.test.file', goGenerateTests.toggleTestFile);
 	registerCommand('go.debug.startSession', commands.startDebugSession);
 	registerCommand('go.show.commands', commands.showCommands);
-	registerCommand('go.get.package', () => goGetPackage);
-	registerCommand('go.playground', () => playgroundCommand);
-	registerCommand('go.lint.package', () => () => lintCode('package'));
-	registerCommand('go.lint.workspace', () => () => lintCode('workspace'));
-	registerCommand('go.lint.file', () => () => lintCode('file'));
-	registerCommand('go.vet.package', () => vetCode);
-	registerCommand('go.vet.workspace', () => () => vetCode(true));
-	registerCommand('go.build.package', () => buildCode);
-	registerCommand('go.build.workspace', () => () => buildCode(true));
-	registerCommand('go.install.package', () => installCurrentPackage);
-	registerCommand('go.run.modinit', () => goModInit);
-	registerCommand('go.extractServerChannel', (_ctx, goCtx) => () => showServerOutputChannel(goCtx));
-	registerCommand('go.workspace.resetState', () => resetWorkspaceState);
-	registerCommand('go.global.resetState', () => resetGlobalState);
+	registerCommand('go.get.package', goGetPackage);
+	registerCommand('go.playground', playgroundCommand);
+	registerCommand('go.lint.package', lintCode('package'));
+	registerCommand('go.lint.workspace', lintCode('workspace'));
+	registerCommand('go.lint.file', lintCode('file'));
+	registerCommand('go.vet.package', vetCode(false));
+	registerCommand('go.vet.workspace', vetCode(true));
+	registerCommand('go.build.package', buildCode(false));
+	registerCommand('go.build.workspace', buildCode(true));
+	registerCommand('go.install.package', installCurrentPackage);
+	registerCommand('go.run.modinit', goModInit);
+	registerCommand('go.extractServerChannel', showServerOutputChannel);
+	registerCommand('go.workspace.resetState', resetWorkspaceState);
+	registerCommand('go.global.resetState', resetGlobalState);
 	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
 	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
 
 	// Go Enviornment switching commands
-	registerCommand('go.environment.choose', () => chooseGoEnvironment);
+	registerCommand('go.environment.choose', chooseGoEnvironment);
 
 	// Survey related commands
-	registerCommand('go.survey.showConfig', (_ctx, goCtx) => () => showSurveyConfig(goCtx));
-	registerCommand('go.survey.resetConfig', () => resetSurveyConfigs);
+	registerCommand('go.survey.showConfig', showSurveyConfig);
+	registerCommand('go.survey.resetConfig', resetSurveyConfigs);
 
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g

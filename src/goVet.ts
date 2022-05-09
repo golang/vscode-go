@@ -5,6 +5,7 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { vetDiagnosticCollection } from './goMain';
@@ -21,35 +22,37 @@ import {
 /**
  * Runs go vet in the current package or workspace.
  */
-export function vetCode(vetWorkspace?: boolean) {
-	const editor = vscode.window.activeTextEditor;
-	if (!editor && !vetWorkspace) {
-		vscode.window.showInformationMessage('No editor is active, cannot find current package to vet');
-		return;
-	}
-	if (editor?.document.languageId !== 'go' && !vetWorkspace) {
-		vscode.window.showInformationMessage(
-			'File in the active editor is not a Go file, cannot find current package to vet'
-		);
-		return;
-	}
+export function vetCode(vetWorkspace?: boolean): CommandFactory {
+	return () => () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor && !vetWorkspace) {
+			vscode.window.showInformationMessage('No editor is active, cannot find current package to vet');
+			return;
+		}
+		if (editor?.document.languageId !== 'go' && !vetWorkspace) {
+			vscode.window.showInformationMessage(
+				'File in the active editor is not a Go file, cannot find current package to vet'
+			);
+			return;
+		}
 
-	const documentUri = editor?.document.uri;
-	const goConfig = getGoConfig(documentUri);
+		const documentUri = editor?.document.uri;
+		const goConfig = getGoConfig(documentUri);
 
-	outputChannel.clear(); // Ensures stale output from vet on save is cleared
-	diagnosticsStatusBarItem.show();
-	diagnosticsStatusBarItem.text = 'Vetting...';
+		outputChannel.clear(); // Ensures stale output from vet on save is cleared
+		diagnosticsStatusBarItem.show();
+		diagnosticsStatusBarItem.text = 'Vetting...';
 
-	goVet(documentUri, goConfig, vetWorkspace)
-		.then((warnings) => {
-			handleDiagnosticErrors(editor?.document, warnings, vetDiagnosticCollection);
-			diagnosticsStatusBarItem.hide();
-		})
-		.catch((err) => {
-			vscode.window.showInformationMessage('Error: ' + err);
-			diagnosticsStatusBarItem.text = 'Vetting Failed';
-		});
+		goVet(documentUri, goConfig, vetWorkspace)
+			.then((warnings) => {
+				handleDiagnosticErrors(editor?.document, warnings, vetDiagnosticCollection);
+				diagnosticsStatusBarItem.hide();
+			})
+			.catch((err) => {
+				vscode.window.showInformationMessage('Error: ' + err);
+				diagnosticsStatusBarItem.text = 'Vetting Failed';
+			});
+	};
 }
 
 /**

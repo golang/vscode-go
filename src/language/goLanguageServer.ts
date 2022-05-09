@@ -56,6 +56,7 @@ import { FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
 import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
+import { CommandFactory } from '../commands';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -1299,7 +1300,7 @@ DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
 	}
 }
 
-export function showServerOutputChannel(goCtx: GoExtensionContext) {
+export const showServerOutputChannel: CommandFactory = (ctx, goCtx) => () => {
 	if (!goCtx.languageServerIsRunning) {
 		vscode.window.showInformationMessage('gopls is not running');
 		return;
@@ -1325,7 +1326,7 @@ export function showServerOutputChannel(goCtx: GoExtensionContext) {
 	if (found === undefined) {
 		vscode.window.showErrorMessage('make sure "gopls (server)" output is showing');
 	}
-}
+};
 
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));

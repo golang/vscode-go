@@ -17,6 +17,7 @@ import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
 import { GoExtensionContext } from './context';
+import { CommandFactory } from './commands';
 
 export const outputChannel = vscode.window.createOutputChannel('Go');
 
@@ -53,7 +54,7 @@ export async function updateGoStatusBar(editor: vscode.TextEditor | undefined) {
 	}
 }
 
-export async function expandGoStatusBar(goCtx: GoExtensionContext) {
+export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
 	const { languageServerIsRunning, serverOutputChannel } = goCtx;
 	const options = [
 		{ label: 'Locate Configured Go Tools', description: 'display go env' },
@@ -112,7 +113,7 @@ export async function expandGoStatusBar(goCtx: GoExtensionContext) {
 			}
 		}
 	});
-}
+};
 
 /**
  * Initialize the status bar item with current Go binary

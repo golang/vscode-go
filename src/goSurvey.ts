@@ -20,6 +20,7 @@ import {
 import { getGoConfig } from './config';
 import { getGoVersion } from './util';
 import { GoExtensionContext } from './context';
+import { CommandFactory } from './commands';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -213,10 +214,10 @@ function getGoplsSurveyConfig(): GoplsSurveyConfig {
 	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
 }
 
-export function resetSurveyConfigs() {
+export const resetSurveyConfigs: CommandFactory = () => () => {
 	flushSurveyConfig(goplsSurveyConfig, null);
 	flushSurveyConfig(developerSurveyConfig, null);
-}
+};
 
 export function flushSurveyConfig(key: string, cfg: any) {
 	if (cfg) {
@@ -251,7 +252,7 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 	}
 }
 
-export async function showSurveyConfig(goCtx: GoExtensionContext) {
+export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
 	// TODO(rstambler): Add developer survey config.
 	outputChannel.appendLine('HaTs Survey Configuration');
 	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
@@ -283,7 +284,7 @@ export async function showSurveyConfig(goCtx: GoExtensionContext) {
 		default:
 			break;
 	}
-}
+};
 
 export const timeMinute = 1000 * 60;
 const timeHour = timeMinute * 60;

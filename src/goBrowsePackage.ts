@@ -10,11 +10,12 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getAllPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
 import { envPath, getCurrentGoRoot } from './utils/pathUtils';
 
-export function browsePackages() {
+export const browsePackages: CommandFactory = () => () => {
 	let workDir = '';
 	let selectedText = '';
 	const editor = vscode.window.activeTextEditor;
@@ -36,7 +37,7 @@ export function browsePackages() {
 	}
 
 	showPackageFiles(selectedText, true, workDir);
-}
+};
 
 function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDir: string) {
 	const goRuntimePath = getBinPath('go');

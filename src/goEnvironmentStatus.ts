@@ -30,6 +30,7 @@ import {
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { installTool } from './goInstallTools';
+import { CommandFactory } from './commands';
 
 export class GoEnvironmentOption implements vscode.QuickPickItem {
 	readonly description: string;
@@ -68,7 +69,7 @@ function canChooseGoEnvironment() {
 /**
  * Present a command palette menu to the user to select their go binary
  */
-export async function chooseGoEnvironment() {
+export const chooseGoEnvironment: CommandFactory = () => async () => {
 	if (!goEnvStatusbarItem) {
 		return;
 	}
@@ -125,7 +126,7 @@ export async function chooseGoEnvironment() {
 	} catch (e) {
 		vscode.window.showErrorMessage((e as Error).message);
 	}
-}
+};
 
 /**
  * update the selected go path and label in the workspace state

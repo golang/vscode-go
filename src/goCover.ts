@@ -11,6 +11,7 @@
 import fs = require('fs');
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
@@ -489,7 +490,7 @@ export function trackCodeCoverageRemovalOnFileChange(e: vscode.TextDocumentChang
  * If current editor has Code coverage applied, then remove it.
  * Else run tests to get the coverage and apply.
  */
-export async function toggleCoverageCurrentPackage() {
+export const toggleCoverageCurrentPackage: CommandFactory = () => async () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -520,7 +521,7 @@ export async function toggleCoverageCurrentPackage() {
 			showTestOutput();
 		}
 	});
-}
+};
 
 export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 	return e.contentChanges.every((change) => {
