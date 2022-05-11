@@ -8,7 +8,6 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { goplsStaticcheckEnabled } from './goTools';
 import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
@@ -17,7 +16,7 @@ import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePa
  * Runs linter on the current file, package or workspace.
  */
 export function lintCode(scope?: string): CommandFactory {
-	return () => () => {
+	return (ctx, goCtx) => () => {
 		const editor = vscode.window.activeTextEditor;
 		if (scope !== 'workspace') {
 			if (!editor) {
@@ -42,7 +41,12 @@ export function lintCode(scope?: string): CommandFactory {
 
 		goLint(documentUri, goConfig, goplsConfig, scope)
 			.then((warnings) => {
-				handleDiagnosticErrors(editor ? editor.document : undefined, warnings, lintDiagnosticCollection);
+				handleDiagnosticErrors(
+					goCtx,
+					editor ? editor.document : undefined,
+					warnings,
+					goCtx.lintDiagnosticCollection
+				);
 				diagnosticsStatusBarItem.hide();
 			})
 			.catch((err) => {

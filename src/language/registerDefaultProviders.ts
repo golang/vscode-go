@@ -20,11 +20,12 @@ import { GoSignatureHelpProvider } from './legacy/goSignature';
 import { GoCompletionItemProvider } from './legacy/goSuggest';
 import { GoWorkspaceSymbolProvider } from './legacy/goSymbol';
 import { GoTypeDefinitionProvider } from './legacy/goTypeDefinition';
+import { GoExtensionContext } from '../context';
 
 export class LegacyLanguageService implements vscode.Disposable {
 	private _disposables: vscode.Disposable[] = [];
 
-	constructor(ctx: vscode.ExtensionContext) {
+	constructor(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 		const completionProvider = new GoCompletionItemProvider(ctx.globalState);
 		this._disposables.push(completionProvider);
 		this._disposables.push(vscode.languages.registerCompletionItemProvider(GO_MODE, completionProvider, '.', '"'));
@@ -48,7 +49,9 @@ export class LegacyLanguageService implements vscode.Disposable {
 			vscode.languages.registerTypeDefinitionProvider(GO_MODE, new GoTypeDefinitionProvider())
 		);
 		this._disposables.push(vscode.languages.registerRenameProvider(GO_MODE, new GoRenameProvider()));
-		this._disposables.push(vscode.workspace.onDidChangeTextDocument(parseLiveFile, null, ctx.subscriptions));
+		this._disposables.push(
+			vscode.workspace.onDidChangeTextDocument((e) => parseLiveFile(goCtx, e), null, ctx.subscriptions)
+		);
 		this._disposables.push(vscode.languages.registerCodeActionsProvider(GO_MODE, new GoCodeActionProvider()));
 	}
 

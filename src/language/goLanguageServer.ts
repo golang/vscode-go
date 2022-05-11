@@ -39,7 +39,6 @@ import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
 import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
 import { GoExtensionContext } from '../context';
-import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from '../goMain';
 import { getTool, Tool } from '../goTools';
 import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
@@ -486,6 +485,7 @@ export async function buildLanguageClient(
 					if (!cfg.features.diagnostics) {
 						return null;
 					}
+					const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
 					// Deduplicate diagnostics with those found by the other tools.
 					removeDuplicateDiagnostics(vetDiagnosticCollection, uri, diagnostics);
 					removeDuplicateDiagnostics(buildDiagnosticCollection, uri, diagnostics);

@@ -10,9 +10,9 @@ import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
 import { getGoConfig } from '../../config';
+import { GoExtensionContext } from '../../context';
 import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool } from '../../goInstallTools';
-import { buildDiagnosticCollection } from '../../goMain';
 import { isModSupported } from '../../goModules';
 import { getBinPath } from '../../util';
 
@@ -50,7 +50,7 @@ export function goLiveErrorsEnabled() {
 
 // parseLiveFile runs the gotype command in live mode to check for any syntactic or
 // semantic errors and reports them immediately
-export function parseLiveFile(e: vscode.TextDocumentChangeEvent) {
+export function parseLiveFile(goCtx: GoExtensionContext, e: vscode.TextDocumentChangeEvent) {
 	if (e.document.isUntitled) {
 		return;
 	}
@@ -65,13 +65,13 @@ export function parseLiveFile(e: vscode.TextDocumentChangeEvent) {
 		clearTimeout(runner);
 	}
 	runner = setTimeout(() => {
-		processFile(e);
+		processFile(goCtx, e);
 		runner = null;
 	}, getGoConfig(e.document.uri)['liveErrors']['delay']);
 }
 
 // processFile does the actual work once the timeout has fired
-async function processFile(e: vscode.TextDocumentChangeEvent) {
+async function processFile(goCtx: GoExtensionContext, e: vscode.TextDocumentChangeEvent) {
 	const isMod = await isModSupported(e.document.uri);
 	if (isMod) {
 		return;
@@ -92,7 +92,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 			return;
 		}
 
-		buildDiagnosticCollection.clear();
+		goCtx.buildDiagnosticCollection?.clear();
 
 		if (err) {
 			// we want to take the error path here because the command we are calling
@@ -117,7 +117,7 @@ async function processFile(e: vscode.TextDocumentChangeEvent) {
 			});
 
 			diagnosticMap.forEach((diagnostics, file) => {
-				buildDiagnosticCollection.set(vscode.Uri.parse(file), diagnostics);
+				goCtx.buildDiagnosticCollection?.set(vscode.Uri.parse(file), diagnostics);
 			});
 		}
 	});

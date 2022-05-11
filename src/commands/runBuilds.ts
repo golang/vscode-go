@@ -5,12 +5,11 @@
 
 import * as vscode from 'vscode';
 
-import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from '../goMain';
 import { check } from '../goCheck';
 import { CommandFactory } from '.';
 import { handleDiagnosticErrors } from '../util';
 
-export const runBuilds: CommandFactory = () => (
+export const runBuilds: CommandFactory = (ctx, goCtx) => (
 	document: vscode.TextDocument,
 	goConfig: vscode.WorkspaceConfiguration
 ) => {
@@ -18,13 +17,14 @@ export const runBuilds: CommandFactory = () => (
 		return;
 	}
 
+	const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
 	buildDiagnosticCollection?.clear();
 	lintDiagnosticCollection?.clear();
 	vetDiagnosticCollection?.clear();
-	check(document.uri, goConfig)
+	check(goCtx, document.uri, goConfig)
 		.then((results) => {
 			results.forEach((result) => {
-				handleDiagnosticErrors(document, result.errors, result.diagnosticCollection);
+				handleDiagnosticErrors(goCtx, document, result.errors, result.diagnosticCollection);
 			});
 		})
 		.catch((err) => {

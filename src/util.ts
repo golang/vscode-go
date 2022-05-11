@@ -14,8 +14,8 @@ import vscode = require('vscode');
 import { NearestNeighborDict, Node } from './avlTree';
 import { getGoConfig } from './config';
 import { extensionId } from './const';
+import { GoExtensionContext } from './context';
 import { toolExecutionEnvironment } from './goEnv';
-import { buildDiagnosticCollection, goCtx, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
@@ -814,12 +814,13 @@ export function runTool(
 }
 
 export function handleDiagnosticErrors(
+	goCtx: GoExtensionContext,
 	document: vscode.TextDocument | undefined,
 	errors: ICheckResult[],
-	diagnosticCollection: vscode.DiagnosticCollection,
+	diagnosticCollection?: vscode.DiagnosticCollection,
 	diagnosticSource?: string
 ) {
-	diagnosticCollection.clear();
+	diagnosticCollection?.clear();
 
 	const diagnosticMap: Map<string, vscode.Diagnostic[]> = new Map();
 
@@ -864,7 +865,7 @@ export function handleDiagnosticErrors(
 		const severity = mapSeverityToVSCodeSeverity(error.severity);
 		const diagnostic = new vscode.Diagnostic(range, error.msg, severity);
 		// vscode uses source for deduping diagnostics.
-		diagnostic.source = diagnosticSource || diagnosticCollection.name;
+		diagnostic.source = diagnosticSource || diagnosticCollection?.name;
 		let diagnostics = diagnosticMap.get(canonicalFile);
 		if (!diagnostics) {
 			diagnostics = [];
@@ -876,6 +877,7 @@ export function handleDiagnosticErrors(
 	diagnosticMap.forEach((newDiagnostics, file) => {
 		const fileUri = vscode.Uri.parse(file);
 
+		const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection, languageClient } = goCtx;
 		if (diagnosticCollection === buildDiagnosticCollection) {
 			// If there are lint/vet warnings on current file, remove the ones co-inciding with the new build errors
 			removeDuplicateDiagnostics(lintDiagnosticCollection, fileUri, newDiagnostics);
@@ -884,13 +886,12 @@ export function handleDiagnosticErrors(
 			// If there are build errors on current file, ignore the new lint/vet warnings co-inciding with them
 			newDiagnostics = deDupeDiagnostics(buildDiagnosticCollection.get(fileUri)!.slice(), newDiagnostics);
 		}
-		const { languageClient } = goCtx;
 		// If there are errors from the language client that are on the current file, ignore the warnings co-inciding
 		// with them.
 		if (languageClient && languageClient.diagnostics?.has(fileUri)) {
 			newDiagnostics = deDupeDiagnostics(languageClient.diagnostics.get(fileUri)!.slice(), newDiagnostics);
 		}
-		diagnosticCollection.set(fileUri, newDiagnostics);
+		diagnosticCollection?.set(fileUri, newDiagnostics);
 	});
 }
 
@@ -899,7 +900,7 @@ export function handleDiagnosticErrors(
  * newDiagnostics on the same line in fileUri.
  */
 export function removeDuplicateDiagnostics(
-	collection: vscode.DiagnosticCollection,
+	collection: vscode.DiagnosticCollection | undefined,
 	fileUri: vscode.Uri,
 	newDiagnostics: vscode.Diagnostic[]
 ) {

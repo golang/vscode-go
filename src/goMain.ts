@@ -85,10 +85,6 @@ export const goCtx: GoExtensionContext = {
 	restartHistory: []
 };
 
-export let buildDiagnosticCollection: vscode.DiagnosticCollection;
-export let lintDiagnosticCollection: vscode.DiagnosticCollection;
-export let vetDiagnosticCollection: vscode.DiagnosticCollection;
-
 export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// Make sure this does not run when running in test.
@@ -181,14 +177,14 @@ async function activateContinued(
 	GoDebugConfigurationProvider.activate(ctx, goCtx);
 	GoDebugFactory.activate(ctx);
 
-	buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
-	ctx.subscriptions.push(buildDiagnosticCollection);
-	lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(
+	goCtx.buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
+	ctx.subscriptions.push(goCtx.buildDiagnosticCollection);
+	goCtx.lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(
 		lintDiagnosticCollectionName(getGoConfig()['lintTool'])
 	);
-	ctx.subscriptions.push(lintDiagnosticCollection);
-	vetDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-vet');
-	ctx.subscriptions.push(vetDiagnosticCollection);
+	ctx.subscriptions.push(goCtx.lintDiagnosticCollection);
+	goCtx.vetDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-vet');
+	ctx.subscriptions.push(goCtx.vetDiagnosticCollection);
 
 	addOnChangeTextDocumentListeners(ctx);
 	addOnChangeActiveTextEditorListeners(ctx);
@@ -286,10 +282,10 @@ async function activateContinued(
 			}
 			if (e.affectsConfiguration('go.lintTool')) {
 				const lintTool = lintDiagnosticCollectionName(updatedGoConfig['lintTool']);
-				if (lintDiagnosticCollection && lintDiagnosticCollection.name !== lintTool) {
-					lintDiagnosticCollection.dispose();
-					lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(lintTool);
-					ctx.subscriptions.push(lintDiagnosticCollection);
+				if (goCtx.lintDiagnosticCollection && goCtx.lintDiagnosticCollection.name !== lintTool) {
+					goCtx.lintDiagnosticCollection.dispose();
+					goCtx.lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(lintTool);
+					ctx.subscriptions.push(goCtx.lintDiagnosticCollection);
 					// TODO: actively maintain our own disposables instead of keeping pushing to ctx.subscription.
 				}
 			}

@@ -474,7 +474,12 @@ It returns the number of bytes written and any write error encountered.
 		);
 
 		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-		handleDiagnosticErrors(file2, warnings, diagnosticCollection);
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		handleDiagnosticErrors(goCtx, file2, warnings, diagnosticCollection);
 
 		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
 		// Both files belong to the same package name, and we want them to be identical.
@@ -518,7 +523,16 @@ It returns the number of bytes written and any write error encountered.
 
 		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
-		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		const diagnostics = await check(
+			goCtx,
+			vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')),
+			config
+		);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
 				[],
@@ -1458,7 +1472,12 @@ encountered.
 				buildTags: { value: tags }
 			}) as vscode.WorkspaceConfiguration;
 
-			const diagnostics = await check(fileUri, cfg);
+			const goCtx: GoExtensionContext = {
+				lastUserAction: new Date(),
+				crashCount: 0,
+				restartHistory: []
+			};
+			const diagnostics = await check(goCtx, fileUri, cfg);
 			return ([] as string[]).concat(
 				...diagnostics.map<string[]>((d) => {
 					return d.errors.map((e) => e.msg) as string[];

@@ -8,7 +8,6 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { vetDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import {
 	getGoVersion,
@@ -23,7 +22,7 @@ import {
  * Runs go vet in the current package or workspace.
  */
 export function vetCode(vetWorkspace?: boolean): CommandFactory {
-	return () => () => {
+	return (ctx, goCtx) => () => {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor && !vetWorkspace) {
 			vscode.window.showInformationMessage('No editor is active, cannot find current package to vet');
@@ -45,7 +44,7 @@ export function vetCode(vetWorkspace?: boolean): CommandFactory {
 
 		goVet(documentUri, goConfig, vetWorkspace)
 			.then((warnings) => {
-				handleDiagnosticErrors(editor?.document, warnings, vetDiagnosticCollection);
+				handleDiagnosticErrors(goCtx, editor?.document, warnings, goCtx.vetDiagnosticCollection);
 				diagnosticsStatusBarItem.hide();
 			})
 			.catch((err) => {

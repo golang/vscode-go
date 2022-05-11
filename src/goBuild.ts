@@ -8,7 +8,6 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { getNonVendorPackages } from './goPackages';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
@@ -28,7 +27,7 @@ import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
  * Builds current package or workspace.
  */
 export function buildCode(buildWorkspace?: boolean): CommandFactory {
-	return () => () => {
+	return (ctx, goCtx) => () => {
 		const editor = vscode.window.activeTextEditor;
 		if (!buildWorkspace) {
 			if (!editor) {
@@ -53,7 +52,7 @@ export function buildCode(buildWorkspace?: boolean): CommandFactory {
 		isModSupported(documentUri).then((isMod) => {
 			goBuild(documentUri, isMod, goConfig, buildWorkspace)
 				.then((errors) => {
-					handleDiagnosticErrors(editor?.document, errors, buildDiagnosticCollection);
+					handleDiagnosticErrors(goCtx, editor?.document, errors, goCtx.buildDiagnosticCollection);
 					diagnosticsStatusBarItem.hide();
 				})
 				.catch((err) => {

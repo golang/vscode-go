@@ -89,7 +89,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 
 			if (!cfg.enabled) {
-				const legacyService = new LegacyLanguageService(ctx);
+				const legacyService = new LegacyLanguageService(ctx, goCtx);
 				goCtx.legacyLanguageService = legacyService;
 				ctx.subscriptions.push(legacyService);
 				updateStatus(goCtx, goConfig, false);

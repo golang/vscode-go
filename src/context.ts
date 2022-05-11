@@ -28,4 +28,7 @@ export interface GoExtensionContext {
 	crashCount: number;
 	// Some metrics for automated issue reports:
 	restartHistory: Restart[];
+	buildDiagnosticCollection?: vscode.DiagnosticCollection;
+	lintDiagnosticCollection?: vscode.DiagnosticCollection;
+	vetDiagnosticCollection?: vscode.DiagnosticCollection;
 }
