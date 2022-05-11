@@ -77,9 +77,7 @@ import { VulncheckProvider } from './goVulncheck';
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
 
-// TODO: Remove this export. Temporarily exporting the context for import into the
-// legacy DocumentSymbolProvider.
-export const goCtx: GoExtensionContext = {
+const goCtx: GoExtensionContext = {
 	lastUserAction: new Date(),
 	crashCount: 0,
 	restartHistory: []
@@ -172,8 +170,8 @@ async function activateContinued(
 
 	registerCommand('go.environment.status', expandGoStatusBar);
 
-	GoRunTestCodeLensProvider.activate(ctx);
-	GoReferencesCodeLensProvider.activate(ctx);
+	GoRunTestCodeLensProvider.activate(ctx, goCtx);
+	GoReferencesCodeLensProvider.activate(ctx, goCtx);
 	GoDebugConfigurationProvider.activate(ctx, goCtx);
 	GoDebugFactory.activate(ctx);
 
@@ -220,7 +218,7 @@ async function activateContinued(
 	registerCommand('go.browse.packages', browsePackages);
 
 	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
-		GoTestExplorer.setup(ctx);
+		GoTestExplorer.setup(ctx, goCtx);
 	}
 
 	GoExplorerProvider.setup(ctx);

@@ -9,6 +9,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
+import { GoExtensionContext } from './context';
 import { isModSupported } from './goModules';
 import {
 	extractInstanceTestName,
@@ -35,7 +36,12 @@ export type TestAtCursorCmd = 'debug' | 'test' | 'benchmark';
 
 class NotFoundError extends Error {}
 
-async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestAtCursorCmd, args: any) {
+async function _testAtCursor(
+	goCtx: GoExtensionContext,
+	goConfig: vscode.WorkspaceConfiguration,
+	cmd: TestAtCursorCmd,
+	args: any
+) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		throw new NotFoundError('No editor is active.');
@@ -45,7 +51,7 @@ async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
 	}
 
 	const getFunctions = cmd === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-	const testFunctions = (await getFunctions(editor.document)) ?? [];
+	const testFunctions = (await getFunctions(goCtx, editor.document)) ?? [];
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const testFunctionName =
@@ -75,9 +81,9 @@ async function _testAtCursor(goConfig: vscode.WorkspaceConfiguration, cmd: TestA
  * @param args
  */
 export function testAtCursor(cmd: TestAtCursorCmd): CommandFactory {
-	return () => (args: any) => {
+	return (ctx, goCtx) => (args: any) => {
 		const goConfig = getGoConfig();
-		_testAtCursor(goConfig, cmd, args).catch((err) => {
+		_testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
 			} else {
@@ -97,7 +103,7 @@ export function testAtCursorOrPrevious(cmd: TestAtCursorCmd): CommandFactory {
 	return (ctx, goCtx) => async (args: any) => {
 		const goConfig = getGoConfig();
 		try {
-			await _testAtCursor(goConfig, cmd, args);
+			await _testAtCursor(goCtx, goConfig, cmd, args);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				const editor = vscode.window.activeTextEditor;
@@ -147,7 +153,7 @@ async function runTestAtCursor(
  * Executes the sub unit test at the primary cursor using `go test`. Output
  * is sent to the 'Go' channel.
  */
-export function subTestAtCursor() {
+export const subTestAtCursor: CommandFactory = (ctx, goCtx) => {
 	return async (args: any) => {
 		const goConfig = getGoConfig();
 		const editor = vscode.window.activeTextEditor;
@@ -162,7 +168,7 @@ export function subTestAtCursor() {
 
 		await editor.document.save();
 		try {
-			const testFunctions = (await getTestFunctions(editor.document)) ?? [];
+			const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
 			// We use functionName if it was provided as argument
 			// Otherwise find any test function containing the cursor.
 			const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
@@ -214,7 +220,7 @@ export function subTestAtCursor() {
 			console.error(err);
 		}
 	};
-}
+};
 
 /**
  * Debugs the test at cursor.
@@ -340,7 +346,7 @@ export const testWorkspace: CommandFactory = () => (args: any) => {
  * @param isBenchmark Boolean flag indicating if these are benchmark tests or not.
  */
 export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): CommandFactory {
-	return () => async (args: string[]) => {
+	return (ctx, goCtx) => async (args: string[]) => {
 		const goConfig = getConfig();
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
@@ -358,7 +364,7 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 		return editor.document
 			.save()
 			.then(() => {
-				return getFunctions(editor.document).then((testFunctions) => {
+				return getFunctions(goCtx, editor.document).then((testFunctions) => {
 					const testConfig: TestConfig = {
 						goConfig,
 						dir: path.dirname(editor.document.fileName),

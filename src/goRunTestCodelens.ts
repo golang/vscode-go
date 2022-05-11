@@ -17,8 +17,8 @@ import { GoExtensionContext } from './context';
 import { GO_MODE } from './goMode';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
-	static activate(ctx: vscode.ExtensionContext) {
-		const testCodeLensProvider = new this();
+	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		const testCodeLensProvider = new this(goCtx);
 		ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
 		ctx.subscriptions.push(
 			vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
@@ -31,6 +31,10 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 				}
 			})
 		);
+	}
+
+	constructor(private readonly goCtx: GoExtensionContext) {
+		super();
 	}
 
 	private readonly benchmarkRegex = /^Benchmark.+/;
@@ -54,7 +58,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	}
 
 	private async getCodeLensForPackage(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
-		const documentSymbolProvider = GoDocumentSymbolProvider();
+		const documentSymbolProvider = GoDocumentSymbolProvider(this.goCtx);
 		const symbols = await documentSymbolProvider.provideDocumentSymbols(document, token);
 		if (!symbols || symbols.length === 0) {
 			return [];
@@ -91,7 +95,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 
 	private async getCodeLensForFunctions(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
 		const testPromise = async (): Promise<CodeLens[]> => {
-			const testFunctions = await getTestFunctions(document, token);
+			const testFunctions = await getTestFunctions(this.goCtx, document, token);
 			if (!testFunctions) {
 				return [];
 			}
@@ -116,7 +120,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 		};
 
 		const benchmarkPromise = async (): Promise<CodeLens[]> => {
-			const benchmarkFunctions = await getBenchmarkFunctions(document, token);
+			const benchmarkFunctions = await getBenchmarkFunctions(this.goCtx, document, token);
 			if (!benchmarkFunctions) {
 				return [];
 			}

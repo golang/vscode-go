@@ -768,7 +768,12 @@ It returns the number of bytes written and any write error encountered.
 	test('Test Outline document symbols', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'outlineTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
-		const symbolProvider = GoDocumentSymbolProvider();
+		const goCtx: GoExtensionContext = {
+			lastUserAction: new Date(),
+			crashCount: 0,
+			restartHistory: []
+		};
+		const symbolProvider = GoDocumentSymbolProvider(goCtx);
 
 		const outlines = await symbolProvider.provideDocumentSymbols(document, dummyCancellationSource.token);
 		const packages = outlines.filter((x) => x.kind === vscode.SymbolKind.Package);

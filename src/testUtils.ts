@@ -21,6 +21,7 @@ import { getBinPath, getCurrentGoPath, getTempFilePath, LineBuffer, resolvePath 
 import { parseEnvFile } from './utils/envUtils';
 import { envPath, expandFilePathInOutput, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
+import { GoExtensionContext } from './context';
 
 const testOutputChannel = vscode.window.createOutputChannel('Go Tests');
 const STATUS_BAR_ITEM_NAME = 'Go Test Cancel';
@@ -141,10 +142,11 @@ export function getTestTags(goConfig: vscode.WorkspaceConfiguration): string {
  * @return test function symbols for the source file.
  */
 export async function getTestFunctions(
+	goCtx: GoExtensionContext,
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
-	const documentSymbolProvider = GoDocumentSymbolProvider(true);
+	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx, true);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
 		return;
@@ -223,10 +225,11 @@ export function findAllTestSuiteRuns(
  * @return benchmark function symbols for the source file.
  */
 export async function getBenchmarkFunctions(
+	goCtx: GoExtensionContext,
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
-	const documentSymbolProvider = GoDocumentSymbolProvider();
+	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
 		return;

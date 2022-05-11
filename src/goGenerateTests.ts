@@ -110,7 +110,7 @@ export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async
 		return false;
 	}
 
-	const functions = await getFunctions(editor.document);
+	const functions = await getFunctions(goCtx, editor.document);
 	const selection = editor.selection;
 	const currentFunction = functions.find((func) => selection && func.range.contains(selection.start));
 
@@ -235,8 +235,8 @@ function generateTests(
 	});
 }
 
-async function getFunctions(doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
-	const documentSymbolProvider = GoDocumentSymbolProvider();
+async function getFunctions(goCtx: GoExtensionContext, doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
+	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	return symbols[0].children.filter((sym) =>
 		[vscode.SymbolKind.Function, vscode.SymbolKind.Method].includes(sym.kind)

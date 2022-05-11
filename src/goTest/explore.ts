@@ -24,6 +24,7 @@ import { dispose, disposeIfEmpty, findItem, GoTest, isInTest, Workspace } from '
 import { GoTestResolver, ProvideSymbols } from './resolve';
 import { GoTestRunner } from './run';
 import { GoTestProfiler } from './profile';
+import { GoExtensionContext } from '../context';
 
 // Set true only if the Testing API is available (VSCode version >= 1.59).
 export const isVscodeTestingAPIAvailable =
@@ -31,12 +32,12 @@ export const isVscodeTestingAPIAvailable =
 	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
 
 export class GoTestExplorer {
-	static setup(context: ExtensionContext): GoTestExplorer {
+	static setup(context: ExtensionContext, goCtx: GoExtensionContext): GoTestExplorer {
 		if (!isVscodeTestingAPIAvailable) throw new Error('VSCode Testing API is unavailable');
 
 		const ctrl = vscode.tests.createTestController('go', 'Go');
-		const symProvider = GoDocumentSymbolProvider(true);
-		const inst = new this(workspace, ctrl, context.workspaceState, (doc, token) =>
+		const symProvider = GoDocumentSymbolProvider(goCtx, true);
+		const inst = new this(goCtx, workspace, ctrl, context.workspaceState, (doc, token) =>
 			symProvider.provideDocumentSymbols(doc, token)
 		);
 
@@ -203,6 +204,7 @@ export class GoTestExplorer {
 	public readonly profiler: GoTestProfiler;
 
 	constructor(
+		private readonly goCtx: GoExtensionContext,
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
 		workspaceState: Memento,
@@ -210,7 +212,7 @@ export class GoTestExplorer {
 	) {
 		this.resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
 		this.profiler = new GoTestProfiler(this.resolver, workspaceState);
-		this.runner = new GoTestRunner(workspace, ctrl, this.resolver, this.profiler);
+		this.runner = new GoTestRunner(goCtx, workspace, ctrl, this.resolver, this.profiler);
 	}
 
 	/* ***** Listeners ***** */

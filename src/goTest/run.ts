@@ -26,6 +26,7 @@ import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
 import { debugTestAtCursor } from '../goTest';
+import { GoExtensionContext } from '../context';
 
 let debugSessionID = 0;
 
@@ -74,6 +75,7 @@ class TestRunOutput implements OutputChannel {
 
 export class GoTestRunner {
 	constructor(
+		private readonly goCtx: GoExtensionContext,
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
 		private readonly resolver: GoTestResolver,
@@ -157,7 +159,7 @@ export class GoTestRunner {
 
 		const goConfig = getGoConfig(test.uri);
 		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-		const testFunctions = await getFunctions(doc, token);
+		const testFunctions = await getFunctions(this.goCtx, doc, token);
 
 		// TODO Can we get output from the debug session, in order to check for
 		// run/pass/fail events?
