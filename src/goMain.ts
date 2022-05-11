@@ -12,7 +12,7 @@ import * as path from 'path';
 import { getGoConfig, getGoplsConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
-import { check, notifyIfGeneratedFile, removeTestStatus } from './goCheck';
+import { notifyIfGeneratedFile, removeTestStatus } from './goCheck';
 import {
 	applyCodeCoverage,
 	initCoverageDecorators,
@@ -61,16 +61,7 @@ import {
 	updateGlobalState
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
-import {
-	cleanupTempDir,
-	getBinPath,
-	getGoVersion,
-	getToolsGopath,
-	GoVersion,
-	handleDiagnosticErrors,
-	isGoPathSet,
-	resolvePath
-} from './util';
+import { cleanupTempDir, getBinPath, getGoVersion, getToolsGopath, GoVersion, isGoPathSet, resolvePath } from './util';
 import { clearCacheForTools, dirExists } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import vscode = require('vscode');
@@ -162,19 +153,20 @@ async function activateContinued(
 
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
 
-	const activeDoc = vscode.window.activeTextEditor?.document;
-	if (!goCtx.languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
-		// Check mod status so that cache is updated and then run build/lint/vet
-		isModSupported(activeDoc.uri).then(() => {
-			runBuilds(activeDoc, getGoConfig());
-		});
-	}
-
 	initCoverageDecorators(ctx);
 
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
+	registerCommand('go.builds.run', commands.runBuilds);
+
+	const activeDoc = vscode.window.activeTextEditor?.document;
+	if (!goCtx.languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
+		// Check mod status so that cache is updated and then run build/lint/vet
+		isModSupported(activeDoc.uri).then(() => {
+			vscode.commands.executeCommand('go.builds.run', activeDoc, getGoConfig(activeDoc.uri));
+		});
+	}
 
 	// Subscribe to notifications for changes to the configuration
 	// of the language server, even if it's not currently in use.
@@ -359,25 +351,6 @@ export function deactivate() {
 	]);
 }
 
-function runBuilds(document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) {
-	if (document.languageId !== 'go') {
-		return;
-	}
-
-	buildDiagnosticCollection.clear();
-	lintDiagnosticCollection.clear();
-	vetDiagnosticCollection.clear();
-	check(document.uri, goConfig)
-		.then((results) => {
-			results.forEach((result) => {
-				handleDiagnosticErrors(document, result.errors, result.diagnosticCollection);
-			});
-		})
-		.catch((err) => {
-			vscode.window.showInformationMessage('Error: ' + err);
-		});
-}
-
 function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 	vscode.workspace.onDidSaveTextDocument(removeCodeCoverageOnFileSave, null, ctx.subscriptions);
 	vscode.workspace.onDidSaveTextDocument(
@@ -404,7 +377,7 @@ function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
 				}
 			}
 			if (vscode.window.visibleTextEditors.some((e) => e.document.fileName === document.fileName)) {
-				runBuilds(document, getGoConfig(document.uri));
+				vscode.commands.executeCommand('go.builds.run', document, getGoConfig(document.uri));
 			}
 		},
 		null,
