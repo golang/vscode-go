@@ -27,7 +27,7 @@ import { MockMemento } from '../mocks/MockMemento';
 
 import ourutil = require('../../src/util');
 import { GoExtensionContext } from '../../src/context';
-import { setGOROOTEnvVar } from '../../src/goMain';
+import { setGOROOTEnvVar } from '../../src/goEnv';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {

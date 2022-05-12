@@ -22,7 +22,7 @@ import {
 } from './goCover';
 import { GoDebugConfigurationProvider } from './goDebugConfiguration';
 import * as GoDebugFactory from './goDebugFactory';
-import { toolExecutionEnvironment } from './goEnv';
+import { setGOROOTEnvVar, toolExecutionEnvironment } from './goEnv';
 import {
 	chooseGoEnvironment,
 	offerToInstallLatestGoVersion,
@@ -35,7 +35,7 @@ import { installCurrentPackage } from './goInstall';
 import { offerToInstallTools, promptForMissingTool, updateGoVarsFromConfig, suggestUpdates } from './goInstallTools';
 import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
-import { logVerbose, setLogConfig } from './goLogging';
+import { setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
@@ -54,7 +54,7 @@ import {
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import { cleanupTempDir, getBinPath, getToolsGopath, isGoPathSet, resolvePath } from './util';
-import { clearCacheForTools, dirExists } from './utils/pathUtils';
+import { clearCacheForTools } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import vscode = require('vscode');
 import { getFormatTool } from './language/legacy/goFormat';
@@ -369,45 +369,6 @@ function lintDiagnosticCollectionName(lintToolName: string) {
 		return 'go-lint';
 	}
 	return `go-${lintToolName}`;
-}
-
-// set GOROOT env var. If necessary, shows a warning.
-export async function setGOROOTEnvVar(configGOROOT: string) {
-	if (!configGOROOT) {
-		return;
-	}
-	const goroot = configGOROOT ? resolvePath(configGOROOT) : undefined;
-
-	const currentGOROOT = process.env['GOROOT'];
-	if (goroot === currentGOROOT) {
-		return;
-	}
-	if (!(await dirExists(goroot ?? ''))) {
-		vscode.window.showWarningMessage(`go.goroot setting is ignored. ${goroot} is not a valid GOROOT directory.`);
-		return;
-	}
-	const neverAgain = { title: "Don't Show Again" };
-	const ignoreGOROOTSettingWarningKey = 'ignoreGOROOTSettingWarning';
-	const ignoreGOROOTSettingWarning = getFromGlobalState(ignoreGOROOTSettingWarningKey);
-	if (!ignoreGOROOTSettingWarning) {
-		vscode.window
-			.showInformationMessage(
-				`"go.goroot" setting (${goroot}) will be applied and set the GOROOT environment variable.`,
-				neverAgain
-			)
-			.then((result) => {
-				if (result === neverAgain) {
-					updateGlobalState(ignoreGOROOTSettingWarningKey, true);
-				}
-			});
-	}
-
-	logVerbose(`setting GOROOT = ${goroot} (old value: ${currentGOROOT}) because "go.goroot": "${configGOROOT}"`);
-	if (goroot) {
-		process.env['GOROOT'] = goroot;
-	} else {
-		delete process.env.GOROOT;
-	}
 }
 
 async function showDeprecationWarning() {
