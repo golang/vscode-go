@@ -13,7 +13,6 @@ import fs = require('fs-extra');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import { GoExtensionContext } from '../../src/context';
 
 // The ideal test would check that each open editor containing a file with coverage
 // information is displayed correctly. We cannot see the applied decorations, so the
@@ -26,12 +25,7 @@ suite('Coverage for tests', function () {
 	let coverFilePath: string;
 
 	suiteSetup(async () => {
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await updateGoVarsFromConfig(goCtx);
+		await updateGoVarsFromConfig({});
 
 		// Set up the test fixtures.
 		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'coverage');

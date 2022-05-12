@@ -81,6 +81,7 @@ export interface ServerInfo {
 
 export function updateRestartHistory(goCtx: GoExtensionContext, reason: RestartReason, enabled: boolean) {
 	// Keep the history limited to 10 elements.
+	goCtx.restartHistory = goCtx.restartHistory ?? [];
 	while (goCtx.restartHistory.length > 10) {
 		goCtx.restartHistory = goCtx.restartHistory.slice(1);
 	}
@@ -89,7 +90,7 @@ export function updateRestartHistory(goCtx: GoExtensionContext, reason: RestartR
 
 function formatRestartHistory(goCtx: GoExtensionContext): string {
 	const result: string[] = [];
-	for (const restart of goCtx.restartHistory) {
+	for (const restart of goCtx.restartHistory ?? []) {
 		result.push(`${restart.timestamp.toUTCString()}: ${restart.reason} (enabled: ${restart.enabled})`);
 	}
 	return result.join('\n');
@@ -404,7 +405,8 @@ export async function buildLanguageClient(
 				},
 				closed: (): CloseAction => {
 					// Allow 5 crashes before shutdown.
-					goCtx.crashCount++;
+					const { crashCount = 0 } = goCtx;
+					goCtx.crashCount = crashCount + 1;
 					if (goCtx.crashCount < 5) {
 						return CloseAction.Restart;
 					}

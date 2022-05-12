@@ -15,7 +15,6 @@ import * as config from '../../src/config';
 import { GoTestResolver } from '../../src/goTest/resolve';
 import * as testUtils from '../../src/testUtils';
 import { GoTest } from '../../src/goTest/utils';
-import { GoExtensionContext } from '../../src/context';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -31,12 +30,7 @@ function newExplorer<T extends GoTestExplorer>(
 ) {
 	const ws = MockTestWorkspace.from(folders, files);
 	const ctrl = new MockTestController();
-	const goCtx: GoExtensionContext = {
-		lastUserAction: new Date(),
-		crashCount: 0,
-		restartHistory: []
-	};
-	const expl = new ctor(goCtx, ws, ctrl, new MockMemento(), getSymbols_Regex);
+	const expl = new ctor({}, ws, ctrl, new MockMemento(), getSymbols_Regex);
 	populateModulePathCache(ws);
 	return { ctrl, expl, ws };
 }
@@ -199,17 +193,11 @@ suite('Go Test Explorer', () => {
 	suite('stretchr', () => {
 		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 		const ctx = MockExtensionContext.new();
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, goCtx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
 			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);

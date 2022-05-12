@@ -14,7 +14,6 @@ import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
 import { MockCfg } from '../mocks/MockCfg';
 import { extensionId } from '../../src/const';
-import { GoExtensionContext } from '../../src/context';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -24,12 +23,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 
 	suiteSetup(async () => {
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await updateGoVarsFromConfig(goCtx);
+		await updateGoVarsFromConfig({});
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
 	});
 

@@ -16,7 +16,6 @@ import {
 } from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
-import { GoExtensionContext } from '../../src/context';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -93,11 +92,6 @@ class Env {
 	}
 
 	public async setup(filePath: string) {
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
 		// file path to open.
 		this.fakeOutputChannel = new FakeOutputChannel();
 		const pkgLoadingDone = this.onMessageInTrace('Finished loading packages.', 60_000);
@@ -110,7 +104,7 @@ class Env {
 		});
 		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
 		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
-		this.languageClient = await buildLanguageClient(goCtx, cfg);
+		this.languageClient = await buildLanguageClient({}, cfg);
 		if (!this.languageClient) {
 			throw new Error('Language client not initialized.');
 		}

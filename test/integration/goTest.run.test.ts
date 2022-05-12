@@ -7,7 +7,6 @@ import { forceDidOpenTextDocument } from './goTest.utils';
 import { GoTestExplorer } from '../../src/goTest/explore';
 import { MockExtensionContext } from '../mocks/MockContext';
 import { GoTest } from '../../src/goTest/utils';
-import { GoExtensionContext } from '../../src/context';
 
 suite('Go Test Runner', () => {
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
@@ -17,17 +16,12 @@ suite('Go Test Runner', () => {
 	suite('Profile', () => {
 		const sandbox = sinon.createSandbox();
 		const ctx = MockExtensionContext.new();
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
 
 		let uri: Uri;
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, goCtx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -104,17 +98,12 @@ suite('Go Test Runner', () => {
 		const sandbox = sinon.createSandbox();
 		const subTestDir = path.join(fixtureDir, 'subTest');
 		const ctx = MockExtensionContext.new();
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
 
 		let uri: Uri;
 		let spy: sinon.SinonSpy<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, goCtx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(subTestDir, 'sub_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);

@@ -23,11 +23,11 @@ export interface GoExtensionContext {
 	serverInfo?: ServerInfo;
 	// lastUserAction is the time of the last user-triggered change.
 	// A user-triggered change is a didOpen, didChange, didSave, or didClose event.
-	lastUserAction: Date;
+	lastUserAction?: Date;
 	serverTraceChannel?: vscode.OutputChannel;
-	crashCount: number;
+	crashCount?: number;
 	// Some metrics for automated issue reports:
-	restartHistory: Restart[];
+	restartHistory?: Restart[];
 	buildDiagnosticCollection?: vscode.DiagnosticCollection;
 	lintDiagnosticCollection?: vscode.DiagnosticCollection;
 	vetDiagnosticCollection?: vscode.DiagnosticCollection;

@@ -67,9 +67,9 @@ export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 	}
 	const callback = async () => {
 		const currentTime = new Date();
-
+		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
-		if (minutesBetween(goCtx.lastUserAction, currentTime) < 1) {
+		if (minutesBetween(lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}

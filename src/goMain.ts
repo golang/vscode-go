@@ -69,11 +69,7 @@ import { VulncheckProvider } from './goVulncheck';
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
 
-const goCtx: GoExtensionContext = {
-	lastUserAction: new Date(),
-	crashCount: 0,
-	restartHistory: []
-};
+const goCtx: GoExtensionContext = {};
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {

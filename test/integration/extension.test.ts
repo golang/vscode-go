@@ -45,7 +45,6 @@ import {
 } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
-import { GoExtensionContext } from '../../src/context';
 import { MockExtensionContext } from '../mocks/MockContext';
 
 const testAll = (isModuleMode: boolean) => {
@@ -66,12 +65,7 @@ const testAll = (isModuleMode: boolean) => {
 		previousEnv = Object.assign({}, process.env);
 		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
 
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await updateGoVarsFromConfig(goCtx);
+		await updateGoVarsFromConfig({});
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
@@ -474,12 +468,7 @@ It returns the number of bytes written and any write error encountered.
 		);
 
 		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		handleDiagnosticErrors(goCtx, file2, warnings, diagnosticCollection);
+		handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
 
 		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
 		// Both files belong to the same package name, and we want them to be identical.
@@ -523,16 +512,7 @@ It returns the number of bytes written and any write error encountered.
 
 		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		const diagnostics = await check(
-			goCtx,
-			vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')),
-			config
-		);
+		const diagnostics = await check({}, vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
 				[],
@@ -568,12 +548,7 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await generateTestCurrentFile(ctx, goCtx)();
+		await generateTestCurrentFile(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -591,12 +566,7 @@ It returns the number of bytes written and any write error encountered.
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 6, 0);
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await generateTestCurrentFunction(ctx, goCtx)();
+		await generateTestCurrentFunction(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -613,12 +583,7 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await generateTestCurrentPackage(ctx, goCtx)();
+		await generateTestCurrentPackage(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -712,12 +677,7 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		const result = await testCurrentFile(false, () => config)(ctx, goCtx)([]);
+		const result = await testCurrentFile(false, () => config)(ctx, {})([]);
 		assert.equal(result, true);
 	});
 
@@ -768,12 +728,7 @@ It returns the number of bytes written and any write error encountered.
 	test('Test Outline document symbols', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'outlineTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		const symbolProvider = GoDocumentSymbolProvider(goCtx);
+		const symbolProvider = GoDocumentSymbolProvider({});
 
 		const outlines = await symbolProvider.provideDocumentSymbols(document, dummyCancellationSource.token);
 		const packages = outlines.filter((x) => x.kind === vscode.SymbolKind.Package);
@@ -1477,12 +1432,7 @@ encountered.
 				buildTags: { value: tags }
 			}) as vscode.WorkspaceConfiguration;
 
-			const goCtx: GoExtensionContext = {
-				lastUserAction: new Date(),
-				crashCount: 0,
-				restartHistory: []
-			};
-			const diagnostics = await check(goCtx, fileUri, cfg);
+			const diagnostics = await check({}, fileUri, cfg);
 			return ([] as string[]).concat(
 				...diagnostics.map<string[]>((d) => {
 					return d.errors.map((e) => e.msg) as string[];
@@ -1555,22 +1505,17 @@ encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
 
-		const result1 = await testCurrentFile(false, () => config1)(ctx, goCtx)([]);
+		const result1 = await testCurrentFile(false, () => config1)(ctx, {})([]);
 		assert.equal(result1, true);
 
-		const result2 = await testCurrentFile(false, () => config2)(ctx, goCtx)([]);
+		const result2 = await testCurrentFile(false, () => config2)(ctx, {})([]);
 		assert.equal(result2, true);
 
-		const result3 = await testCurrentFile(false, () => config3)(ctx, goCtx)([]);
+		const result3 = await testCurrentFile(false, () => config3)(ctx, {})([]);
 		assert.equal(result3, true);
 
-		const result4 = await testCurrentFile(false, () => config4)(ctx, goCtx)([]);
+		const result4 = await testCurrentFile(false, () => config4)(ctx, {})([]);
 		assert.equal(result4, false);
 	});
 
@@ -1661,12 +1606,7 @@ encountered.
 		const selection = new vscode.Selection(12, 15, 12, 15);
 		editor.selection = selection;
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await runFillStruct(ctx, goCtx)(editor);
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 
@@ -1680,12 +1620,7 @@ encountered.
 		const selection = new vscode.Selection(7, 0, 7, 10);
 		editor.selection = selection;
 		const ctx = new MockExtensionContext() as any;
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await runFillStruct(ctx, goCtx)(editor);
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 };

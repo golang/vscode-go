@@ -11,7 +11,6 @@ import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { GoExtensionContext } from '../../src/context';
 import { GoRunTestCodeLensProvider } from '../../src/goRunTestCodelens';
 import { subTestAtCursor } from '../../src/goTest';
 import { getCurrentGoPath, getGoVersion } from '../../src/util';
@@ -25,20 +24,15 @@ suite('Code lenses for testing and benchmarking', function () {
 	let fixturePath: string;
 	let fixtureSourcePath: string;
 
-	let goConfig: vscode.WorkspaceConfiguration;
 	let document: vscode.TextDocument;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const ctx = new MockExtensionContext() as any;
-	const goCtx: GoExtensionContext = {
-		lastUserAction: new Date(),
-		crashCount: 0,
-		restartHistory: []
-	};
 	const cancellationTokenSource = new vscode.CancellationTokenSource();
-	const codeLensProvider = new GoRunTestCodeLensProvider(goCtx);
+	const codeLensProvider = new GoRunTestCodeLensProvider({});
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig(goCtx);
+		await updateGoVarsFromConfig({});
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
@@ -70,21 +64,21 @@ suite('Code lenses for testing and benchmarking', function () {
 	test('Subtests - runs a test with cursor on t.Run line', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(7, 4, 7, 4);
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, true);
 	});
 
 	test('Subtests - runs a test with cursor within t.Run function', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(8, 4, 8, 4);
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, true);
 	});
 
 	test('Subtests - returns false for a failing test', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(11, 4, 11, 4);
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, false);
 	});
 
@@ -92,7 +86,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(17, 4, 17, 4);
 		sinon.stub(vscode.window, 'showInputBox').onFirstCall().resolves(undefined);
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, undefined);
 	});
 
@@ -100,21 +94,21 @@ suite('Code lenses for testing and benchmarking', function () {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(17, 4, 17, 4);
 		sinon.stub(vscode.window, 'showInputBox').onFirstCall().resolves('dynamic test name');
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, false);
 	});
 
 	test('Subtests - does nothing when cursor outside of a test function', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 5, 0);
-		const result = await subTestAtCursor(ctx, goCtx)([]);
+		const result = await subTestAtCursor(ctx, {})([]);
 		assert.equal(result, undefined);
 	});
 
 	test('Subtests - does nothing when no test function covers the cursor and a function name is passed in', async () => {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 5, 0);
-		const result = await subTestAtCursor(ctx, goCtx)({ functionName: 'TestMyFunction' });
+		const result = await subTestAtCursor(ctx, {})({ functionName: 'TestMyFunction' });
 		assert.equal(result, undefined);
 	});
 

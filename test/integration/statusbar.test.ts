@@ -26,17 +26,11 @@ import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 import ourutil = require('../../src/util');
-import { GoExtensionContext } from '../../src/context';
 import { setGOROOTEnvVar } from '../../src/goEnv';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
-		const goCtx: GoExtensionContext = {
-			lastUserAction: new Date(),
-			crashCount: 0,
-			restartHistory: []
-		};
-		await updateGoVarsFromConfig(goCtx); // should initialize the status bar.
+		await updateGoVarsFromConfig({}); // should initialize the status bar.
 	});
 
 	this.afterAll(() => {
