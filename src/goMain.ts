@@ -107,38 +107,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		await setGOROOTEnvVar(configGOROOT);
 	}
 
-	// Present a warning about the deprecation of the go.documentLink setting.
-	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
-	if (experimentalFeatures) {
-		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
-		// all of the settings. See golang/vscode-go#1109 too.
-		// The `diagnostics` setting is still used as a workaround for running custom vet.
-		if (experimentalFeatures['documentLink'] === false) {
-			vscode.window
-				.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-Please use '"gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
-See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut) for more details.`);
-		}
-		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
-		const prompted = getFromGlobalState(promptKey, false);
-		if (!prompted && experimentalFeatures['diagnostics'] === false) {
-			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
-If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).`;
-			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
-			switch (selected) {
-				case "Don't show again":
-					updateGlobalState(promptKey, true);
-			}
-		}
-	}
-
-	return activateContinued(ctx, cfg);
-}
-
-async function activateContinued(
-	ctx: vscode.ExtensionContext,
-	cfg: vscode.WorkspaceConfiguration
-): Promise<ExtensionAPI> {
+	await showDeprecationWarning();
 	await updateGoVarsFromConfig(goCtx);
 
 	suggestUpdates(ctx);
@@ -162,12 +131,6 @@ async function activateContinued(
 		});
 	}
 
-	// Subscribe to notifications for changes to the configuration
-	// of the language server, even if it's not currently in use.
-	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
-	);
-
 	registerCommand('go.environment.status', expandGoStatusBar);
 
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
@@ -183,10 +146,6 @@ async function activateContinued(
 	ctx.subscriptions.push(goCtx.lintDiagnosticCollection);
 	goCtx.vetDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-vet');
 	ctx.subscriptions.push(goCtx.vetDiagnosticCollection);
-
-	addOnChangeTextDocumentListeners(ctx);
-	addOnChangeActiveTextEditorListeners(ctx);
-	addOnSaveTextDocumentListeners(ctx);
 
 	registerCommand('go.gopath', commands.getCurrentGoPath);
 	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
@@ -224,6 +183,63 @@ async function activateContinued(
 	GoExplorerProvider.setup(ctx);
 	VulncheckProvider.setup(ctx, goCtx);
 
+	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
+	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
+	registerCommand('go.test.generate.function', goGenerateTests.generateTestCurrentFunction);
+	registerCommand('go.toggle.test.file', goGenerateTests.toggleTestFile);
+	registerCommand('go.debug.startSession', commands.startDebugSession);
+	registerCommand('go.show.commands', commands.showCommands);
+	registerCommand('go.get.package', goGetPackage);
+	registerCommand('go.playground', playgroundCommand);
+	registerCommand('go.lint.package', lintCode('package'));
+	registerCommand('go.lint.workspace', lintCode('workspace'));
+	registerCommand('go.lint.file', lintCode('file'));
+	registerCommand('go.vet.package', vetCode(false));
+	registerCommand('go.vet.workspace', vetCode(true));
+	registerCommand('go.build.package', buildCode(false));
+	registerCommand('go.build.workspace', buildCode(true));
+	registerCommand('go.install.package', installCurrentPackage);
+	registerCommand('go.run.modinit', goModInit);
+	registerCommand('go.extractServerChannel', showServerOutputChannel);
+	registerCommand('go.workspace.resetState', resetWorkspaceState);
+	registerCommand('go.global.resetState', resetGlobalState);
+	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
+	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
+
+	// Go Enviornment switching commands
+	registerCommand('go.environment.choose', chooseGoEnvironment);
+
+	// Survey related commands
+	registerCommand('go.survey.showConfig', showSurveyConfig);
+	registerCommand('go.survey.resetConfig', resetSurveyConfigs);
+
+	addOnDidChangeConfigListeners(ctx);
+	addOnChangeTextDocumentListeners(ctx);
+	addOnChangeActiveTextEditorListeners(ctx);
+	addOnSaveTextDocumentListeners(ctx);
+
+	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
+		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
+	});
+
+	return extensionAPI;
+}
+
+export function deactivate() {
+	return Promise.all([
+		cancelRunningTests(),
+		killRunningPprof(),
+		Promise.resolve(cleanupTempDir()),
+		Promise.resolve(disposeGoStatusBar())
+	]);
+}
+
+function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
+	// Subscribe to notifications for changes to the configuration
+	// of the language server, even if it's not currently in use.
+	ctx.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
+	);
 	ctx.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
 			if (!e.affectsConfiguration('go')) {
@@ -298,51 +314,6 @@ async function activateContinued(
 			}
 		})
 	);
-
-	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
-	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
-	registerCommand('go.test.generate.function', goGenerateTests.generateTestCurrentFunction);
-	registerCommand('go.toggle.test.file', goGenerateTests.toggleTestFile);
-	registerCommand('go.debug.startSession', commands.startDebugSession);
-	registerCommand('go.show.commands', commands.showCommands);
-	registerCommand('go.get.package', goGetPackage);
-	registerCommand('go.playground', playgroundCommand);
-	registerCommand('go.lint.package', lintCode('package'));
-	registerCommand('go.lint.workspace', lintCode('workspace'));
-	registerCommand('go.lint.file', lintCode('file'));
-	registerCommand('go.vet.package', vetCode(false));
-	registerCommand('go.vet.workspace', vetCode(true));
-	registerCommand('go.build.package', buildCode(false));
-	registerCommand('go.build.workspace', buildCode(true));
-	registerCommand('go.install.package', installCurrentPackage);
-	registerCommand('go.run.modinit', goModInit);
-	registerCommand('go.extractServerChannel', showServerOutputChannel);
-	registerCommand('go.workspace.resetState', resetWorkspaceState);
-	registerCommand('go.global.resetState', resetGlobalState);
-	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
-	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
-
-	// Go Enviornment switching commands
-	registerCommand('go.environment.choose', chooseGoEnvironment);
-
-	// Survey related commands
-	registerCommand('go.survey.showConfig', showSurveyConfig);
-	registerCommand('go.survey.resetConfig', resetSurveyConfigs);
-
-	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
-		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
-	});
-
-	return extensionAPI;
-}
-
-export function deactivate() {
-	return Promise.all([
-		cancelRunningTests(),
-		killRunningPprof(),
-		Promise.resolve(cleanupTempDir()),
-		Promise.resolve(disposeGoStatusBar())
-	]);
 }
 
 function addOnSaveTextDocumentListeners(ctx: vscode.ExtensionContext) {
@@ -538,5 +509,32 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 		process.env['GOROOT'] = goroot;
 	} else {
 		delete process.env.GOROOT;
+	}
+}
+
+async function showDeprecationWarning() {
+	// Present a warning about the deprecation of the go.documentLink setting.
+	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
+	if (experimentalFeatures) {
+		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
+		// all of the settings. See golang/vscode-go#1109 too.
+		// The `diagnostics` setting is still used as a workaround for running custom vet.
+		if (experimentalFeatures['documentLink'] === false) {
+			vscode.window
+				.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
+	Please use '"gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
+	See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut) for more details.`);
+		}
+		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
+		const prompted = getFromGlobalState(promptKey, false);
+		if (!prompted && experimentalFeatures['diagnostics'] === false) {
+			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
+	If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).`;
+			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
+			switch (selected) {
+				case "Don't show again":
+					updateGlobalState(promptKey, true);
+			}
+		}
 	}
 }
