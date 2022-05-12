@@ -20,7 +20,6 @@ import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
 import { allToolsInformation } from '../../src/goToolsInformation';
-import { listOutdatedTools } from '../../src/goMain';
 import * as goInstallTools from '../../src/goInstallTools';
 import * as utilModule from '../../src/util';
 
@@ -295,7 +294,7 @@ suite('listOutdatedTools', () => {
 		const toolsToCheck = Object.keys(tools).map((tool) => getToolAtVersion(tool));
 
 		const configuredGoVersion = goVersion ? fakeGoVersion(goVersion) : undefined;
-		const toolsToUpdate = await listOutdatedTools(configuredGoVersion, toolsToCheck);
+		const toolsToUpdate = await goInstallTools.listOutdatedTools(configuredGoVersion, toolsToCheck);
 		return toolsToUpdate.map((tool) => tool.name).filter((tool) => !!tool);
 	}
 
