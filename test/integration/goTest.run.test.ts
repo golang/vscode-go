@@ -170,6 +170,6 @@ suite('Go Test Runner', () => {
 			console.log('Attempt to run subtest and other test');
 			assert(await testExplorer.runner.run({ include: [tSub, tOther] }), 'Failed to execute `go test`');
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		});
+		}).timeout(4000);
 	});
 });
