@@ -1,0 +1,42 @@
+/*---------------------------------------------------------
+ * Copyright 2022 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
+
+.log {
+	font-weight: lighter;
+}
+
+.vuln {
+	text-align: left;
+	padding-bottom: 1em;
+}
+
+.vuln-desc {
+	padding-top: 0.5em;
+	padding-bottom: 0.5em;
+}
+
+.vuln-details {
+	padding-bottom: 0.5em;
+}
+
+details summary {
+	cursor: pointer;
+	position: relative;
+}
+
+details summary>* {
+	display: inline;
+	position: relative;
+}
+
+.stacks {
+	padding: 1em;
+}
+
+.stack {
+	padding: 1em;
+	font-size: var(--vscode-editor-font-size);
+	font-family: var(--vscode-editor-font-family);
+}

@@ -11,6 +11,126 @@ import * as cp from 'child_process';
 import { toolExecutionEnvironment } from './goEnv';
 import { killProcessTree } from './utils/processUtils';
 import * as readline from 'readline';
+import { URI } from 'vscode-uri';
+
+export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvider {
+	public static readonly viewType = 'vulncheck.view';
+
+	public static register({ extensionUri, subscriptions }: vscode.ExtensionContext): VulncheckResultViewProvider {
+		const provider = new VulncheckResultViewProvider(extensionUri);
+		subscriptions.push(vscode.window.registerCustomEditorProvider(VulncheckResultViewProvider.viewType, provider));
+		return provider;
+	}
+
+	constructor(private readonly extensionUri: vscode.Uri) {}
+
+	/**
+	 * Called when our custom editor is opened.
+	 */
+	public async resolveCustomTextEditor(
+		document: vscode.TextDocument,
+		webviewPanel: vscode.WebviewPanel,
+		_: vscode.CancellationToken // eslint-disable-line @typescript-eslint/no-unused-vars
+	): Promise<void> {
+		// Setup initial content for the webview
+		webviewPanel.webview.options = { enableScripts: true };
+		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+
+		// Receive message from the webview.
+		webviewPanel.webview.onDidReceiveMessage(this.handleMessage);
+
+		function updateWebview() {
+			webviewPanel.webview.postMessage({ type: 'update', text: document.getText() });
+		}
+
+		// Hook up event handlers so that we can synchronize the webview with the text document.
+		//
+		// The text document acts as our model, so we have to sync change in the document to our
+		// editor and sync changes in the editor back to the document.
+		//
+		// Remember that a single text document can also be shared between multiple custom
+		// editors (this happens for example when you split a custom editor)
+		const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
+			if (e.document.uri.toString() === document.uri.toString()) {
+				updateWebview();
+			}
+		});
+
+		// Make sure we get rid of the listener when our editor is closed.
+		webviewPanel.onDidDispose(() => {
+			changeDocumentSubscription.dispose();
+		});
+
+		updateWebview();
+	}
+
+	/**
+	 * Get the static html used for the editor webviews.
+	 */
+	private getHtmlForWebview(webview: vscode.Webview): string {
+		const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media');
+		// Local path to script and css for the webview
+		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.js'));
+		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'reset.css'));
+		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vscode.css'));
+		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.css'));
+
+		// Use a nonce to whitelist which scripts can be run
+		const nonce = getNonce();
+
+		return /* html */ `
+			<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<!--
+				Use a content security policy to only allow loading images from https or from our extension directory,
+				and only allow scripts that have a specific nonce.
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<link href="${styleResetUri}" rel="stylesheet" />
+				<link href="${styleVSCodeUri}" rel="stylesheet" />
+				<link href="${styleMainUri}" rel="stylesheet" />
+				<title>Vulnerability Report - govulncheck</title>
+			</head>
+			<body>
+			    <div class="log"></div>
+				<div class="vulns"></div>
+				
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+			</html>`;
+	}
+
+	private handleMessage(e: { type: string; target?: string }): void {
+		switch (e.type) {
+			case 'open':
+				{
+					if (!e.target) return;
+					const uri = safeURIParse(e.target);
+					if (!uri || !uri.scheme) return;
+					if (uri.scheme === 'https') {
+						vscode.env.openExternal(uri);
+					} else if (uri.scheme === 'file') {
+						const line = uri.query ? Number(uri.query.split(':')[0]) : undefined;
+						const range = line ? new vscode.Range(line, 0, line, 0) : undefined;
+						vscode.window.showTextDocument(
+							vscode.Uri.from({ scheme: uri.scheme, path: uri.path }),
+							// prefer the first column to present the source.
+							{ viewColumn: vscode.ViewColumn.One, selection: range }
+						);
+					}
+				}
+				return;
+			case 'snapshot-result':
+				// response for `snapshot-request`.
+				return;
+			default:
+				console.log(`unrecognized type message: ${e.type}`);
+		}
+	}
+}
 
 export class VulncheckProvider {
 	static scheme = 'govulncheck';
@@ -255,4 +375,21 @@ interface CallStack {
 		line: number;
 		character: number;
 	};
+}
+
+function getNonce() {
+	let text = '';
+	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	for (let i = 0; i < 32; i++) {
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	}
+	return text;
+}
+
+function safeURIParse(s: string): URI | undefined {
+	try {
+		return URI.parse(s);
+	} catch (_) {
+		return undefined;
+	}
 }
