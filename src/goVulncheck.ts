@@ -4,6 +4,7 @@
  *--------------------------------------------------------*/
 
 import path from 'path';
+import fs from 'fs';
 import * as vscode from 'vscode';
 import { GoExtensionContext } from './context';
 import { getBinPath } from './util';
@@ -12,6 +13,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { killProcessTree } from './utils/processUtils';
 import * as readline from 'readline';
 import { URI } from 'vscode-uri';
+import { promisify } from 'util';
 
 export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'vulncheck.view';
@@ -195,26 +197,39 @@ export class VulncheckProvider {
 		this.channel.clear();
 		this.channel.appendLine(`cd ${dir}; gopls vulncheck ${pattern}`);
 
-		let result = '';
 		try {
 			const start = new Date();
 			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
 
 			if (vuln) {
+				fillAffectedPkgs(vuln.Vuln);
+
 				// record run info.
 				vuln.Start = start;
 				vuln.Duration = Date.now() - start.getTime();
 				vuln.Dir = dir;
 				vuln.Pattern = pattern;
-				result = vuln.Vuln
-					? vuln.Vuln.map(renderVuln).join('----------------------\n')
-					: 'No known vulnerability found.';
+
+				// write to file and visualize it!
+				const fname = path.join(dir, `vulncheck-${Date.now()}.vulncheck.json`);
+				const writeFile = promisify(fs.writeFile);
+				await writeFile(fname, JSON.stringify(vuln));
+				const uri = URI.file(fname);
+				const viewColumn = vscode.ViewColumn.Beside;
+				vscode.commands.executeCommand(
+					'vscode.openWith',
+					uri,
+					VulncheckResultViewProvider.viewType,
+					viewColumn
+				);
+				this.channel.appendLine(`Vulncheck - result wrote in ${fname}`);
+			} else {
+				this.channel.appendLine('Vulncheck - found no vulnerability');
 			}
 		} catch (e) {
 			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
 			this.channel.appendLine(`Vulncheck failed: ${e}`);
 		}
-		this.channel.appendLine(result);
 		this.channel.show();
 	}
 
@@ -300,48 +315,6 @@ export async function vulncheck(
 	return await task;
 }
 
-const renderVuln = (v: Vuln) => `
-ID:               ${v.ID}
-Aliases:          ${v.Aliases?.join(', ') ?? 'None'}
-Symbol:           ${v.Symbol}
-Pkg Path:         ${v.PkgPath}
-Mod Path:         ${v.ModPath}
-URL:              ${v.URL}
-Current Version:  ${v.CurrentVersion}
-Fixed Version:    ${v.FixedVersion}
-
-${v.Details}
-${renderStack(v)}`;
-
-const renderStack = (v: Vuln) => {
-	const content = [];
-	for (const stack of v.CallStacks ?? []) {
-		for (const [, line] of stack.entries()) {
-			content.push(`\t${line.Name}`);
-			const loc = renderUri(line);
-			if (loc) {
-				content.push(`\t\t${loc}`);
-			}
-		}
-		content.push('');
-	}
-	return content.join('\n');
-};
-
-const renderUri = (stack: CallStack) => {
-	if (!stack.URI) {
-		// generated file or dummy location may not have a file name.
-		return '';
-	}
-	const parsed = vscode.Uri.parse(stack.URI);
-	const line = stack.Pos.line + 1; // Position uses 0-based line number.
-	const folder = vscode.workspace.getWorkspaceFolder(parsed);
-	if (folder) {
-		return `${parsed.path}:${line}:${stack.Pos.character}`;
-	}
-	return `${stack.URI}#${line}:${stack.Pos.character}`;
-};
-
 interface VulncheckReport {
 	// Vulns populated by gopls vulncheck run.
 	Vuln?: Vuln[];
@@ -366,6 +339,10 @@ interface Vuln {
 	FixedVersion: string;
 	CallStacks?: CallStack[][];
 	CallStacksSummary?: string[];
+
+	// Derived from call stacks.
+	// TODO(hyangah): add to gopls vulncheck.
+	AffectedPkgs?: string[];
 }
 
 interface CallStack {
@@ -392,4 +369,34 @@ function safeURIParse(s: string): URI | undefined {
 	} catch (_) {
 		return undefined;
 	}
+}
+
+// Computes the AffectedPkgs attribute if it's not present.
+// Exported for testing.
+// TODO(hyangah): move this logic to gopls vulncheck or govulncheck.
+export function fillAffectedPkgs(vulns: Vuln[] | undefined): Vuln[] {
+	if (!vulns) return [];
+
+	const re = new RegExp(/^(\S+)\/([^/\s]+)$/);
+	vulns.forEach((vuln) => {
+		// If it's already set by gopls vulncheck, great!
+		if (vuln.AffectedPkgs) return;
+
+		const affected = new Set<string>();
+		vuln.CallStacks?.forEach((cs) => {
+			if (!cs || cs.length === 0) {
+				return;
+			}
+			const name = cs[0].Name || '';
+			const m = name.match(re);
+			if (!m) {
+				name && affected.add(name);
+			} else {
+				const pkg = m[2] && m[2].split('.')[0];
+				affected.add(`${m[1]}/${pkg}`);
+			}
+		});
+		vuln.AffectedPkgs = Array.from(affected);
+	});
+	return vulns;
 }

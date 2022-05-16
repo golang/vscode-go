@@ -12,6 +12,7 @@
       "URL": "https://pkg.go.dev/vuln/GO-2021-0113",
       "CurrentVersion": "v0.0.0-20170915032832-14c0d48ead0c",
       "FixedVersion": "v0.3.7",
+      "AffectedPkgs": ["github.com/golang/vscode-go/test/testdata/vuln"],
       "CallStacks": [
         [
           {
@@ -34,9 +35,6 @@
       ],
       "CallStackSummaries": [
         "github.com/golang/vscode-go/test/testdata/vuln.main calls golang.org/x/text/language.Parse"
-      ],
-      "AffectedPkgs": [
-        "github.com/golang/vscode-go/test/testdata/vuln"
       ]
     }
   ],

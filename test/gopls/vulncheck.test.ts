@@ -50,9 +50,14 @@ suite('vulncheck result viewer tests', () => {
 
 		assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
 		assert(res.target && res.target.includes('GO-2021-0113'), res.target);
+		assert(
+			res.target &&
+				res.target.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
+			res.target
+		);
 	});
 
-	test('handles invalid input', async () => {
+	test('handles empty input', async () => {
 		const webviewPanel = _register(
 			vscode.window.createWebviewPanel(webviewId, 'title', { viewColumn: vscode.ViewColumn.One }, {})
 		);
@@ -74,6 +79,8 @@ suite('vulncheck result viewer tests', () => {
 		assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
 		assert(!res.target, res.target);
 	});
+
+	// TODO: test corrupted/incomplete json file handling.
 });
 
 function getMessage<R = { type: string; target?: string }>(webview: vscode.WebviewPanel): Promise<R> {
@@ -84,3 +91,44 @@ function getMessage<R = { type: string; target?: string }>(webview: vscode.Webvi
 		});
 	});
 }
+suite('fillAffectedPkgs', () => {
+	test('compute from the first call stack entry', async () => {
+		const data = JSON.parse(`{
+		"Vuln": [{
+			"CallStacks": [
+				[
+				  {
+					"Name": "github.com/golang/vscode-go/test/testdata/vuln.main",
+					"URI": "file:///vuln/test.go",
+					"Pos": { "line": 9, "character": 0 }
+				  },
+				  {
+					"Name": "golang.org/x/text/language.Parse",
+					"URI": "file:///foo/bar.go",
+					"Pos": { "line": 227, "character": 0 }
+				  }
+				]
+			]}]}`);
+		goVulncheck.fillAffectedPkgs(data.Vuln);
+		assert.deepStrictEqual(data.Vuln[0].AffectedPkgs, ['github.com/golang/vscode-go/test/testdata/vuln']);
+	});
+
+	test('callstacks missing', async () => {
+		const data = JSON.parse('{ "Vuln": [{}] }');
+		goVulncheck.fillAffectedPkgs(data.Vuln);
+		assert.deepStrictEqual(data.Vuln[0].AffectedPkgs, []);
+	});
+
+	test('callstacks empty', async () => {
+		const data = JSON.parse('{ "Vuln": [{"CallStacks": []}] }');
+		goVulncheck.fillAffectedPkgs(data.Vuln);
+		assert.deepStrictEqual(data.Vuln[0].AffectedPkgs, []);
+	});
+
+	test('first call stack entry is missing Name', async () => {
+		const data = JSON.parse(`{
+		"Vuln": [{ "CallStacks": [ [ { "URI": "file:///vuln/test.go" } ] ]}]}`);
+		goVulncheck.fillAffectedPkgs(data.Vuln);
+		assert.deepStrictEqual(data.Vuln[0].AffectedPkgs, []);
+	});
+});

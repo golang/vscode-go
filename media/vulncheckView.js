@@ -94,6 +94,7 @@
 			<tr><td>Package</td><td>${vuln.PkgPath}</td></tr>
 			<tr><td>Current Version</td><td>${moduleVersion(vuln.ModPath, vuln.CurrentVersion)}</td></tr>
 			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)}</td></tr>
+			<tr><td>Affecting</td><td>${vuln.AffectedPkgs?.join('<br>')}</td></tr>
 			`;
 			element.appendChild(details);
 
