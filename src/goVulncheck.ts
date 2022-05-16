@@ -77,16 +77,23 @@ export class VulncheckProvider {
 
 		let result = '';
 		try {
+			const start = new Date();
 			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
+
 			if (vuln) {
+				// record run info.
+				vuln.Start = start;
+				vuln.Duration = Date.now() - start.getTime();
+				vuln.Dir = dir;
+				vuln.Pattern = pattern;
 				result = vuln.Vuln
 					? vuln.Vuln.map(renderVuln).join('----------------------\n')
 					: 'No known vulnerability found.';
 			}
 		} catch (e) {
 			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
+			this.channel.appendLine(`Vulncheck failed: ${e}`);
 		}
-
 		this.channel.appendLine(result);
 		this.channel.show();
 	}
@@ -113,7 +120,7 @@ export async function vulncheck(
 	dir: string,
 	pattern = './...',
 	channel: { appendLine: (msg: string) => void }
-): Promise<VulncheckResponse> {
+): Promise<VulncheckReport> {
 	const { languageClient, serverInfo } = goCtx;
 	const COMMAND = 'gopls.run_vulncheck_exp';
 	if (!languageClient || !serverInfo?.Commands?.includes(COMMAND)) {
@@ -126,7 +133,7 @@ export async function vulncheck(
 		title: 'Run govulncheck',
 		location: vscode.ProgressLocation.Notification
 	};
-	const task = vscode.window.withProgress<VulncheckResponse>(options, (progress, token) => {
+	const task = vscode.window.withProgress<VulncheckReport>(options, (progress, token) => {
 		const p = cp.spawn(gopls, ['vulncheck', pattern], {
 			cwd: dir,
 			env: toolExecutionEnvironment(vscode.Uri.file(dir))
@@ -140,7 +147,7 @@ export async function vulncheck(
 			d.dispose();
 		});
 
-		const promise = new Promise<VulncheckResponse>((resolve, reject) => {
+		const promise = new Promise<VulncheckReport>((resolve, reject) => {
 			const rl = readline.createInterface({ input: p.stderr });
 			rl.on('line', (line) => {
 				channel.appendLine(line);
@@ -156,7 +163,7 @@ export async function vulncheck(
 			});
 			p.stdout.on('close', () => {
 				try {
-					const res: VulncheckResponse = JSON.parse(buf);
+					const res: VulncheckReport = JSON.parse(buf);
 					resolve(res);
 				} catch (e) {
 					if (token.isCancellationRequested) {
@@ -215,8 +222,16 @@ const renderUri = (stack: CallStack) => {
 	return `${stack.URI}#${line}:${stack.Pos.character}`;
 };
 
-interface VulncheckResponse {
+interface VulncheckReport {
+	// Vulns populated by gopls vulncheck run.
 	Vuln?: Vuln[];
+
+	// analysis run information.
+	Pattern?: string;
+	Dir?: string;
+
+	Start?: Date;
+	Duration?: number; // milliseconds
 }
 
 interface Vuln {
@@ -230,6 +245,7 @@ interface Vuln {
 	CurrentVersion: string;
 	FixedVersion: string;
 	CallStacks?: CallStack[][];
+	CallStacksSummary?: string[];
 }
 
 interface CallStack {
