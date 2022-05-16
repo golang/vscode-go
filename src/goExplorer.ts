@@ -22,17 +22,19 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	private activeFolder?: vscode.WorkspaceFolder;
 	private activeDocument?: vscode.TextDocument;
 
-	static setup({ subscriptions }: vscode.ExtensionContext) {
-		const provider = new this();
+	static setup(ctx: vscode.ExtensionContext) {
+		const provider = new this(ctx);
 		const {
 			window: { registerTreeDataProvider },
 			commands: { registerCommand, executeCommand }
 		} = vscode;
-		subscriptions.push(registerTreeDataProvider('go.explorer', provider));
-		subscriptions.push(registerCommand('go.explorer.refresh', () => provider.update(true)));
-		subscriptions.push(registerCommand('go.explorer.open', (item) => provider.open(item)));
-		subscriptions.push(registerCommand('go.workspace.editEnv', (item) => provider.editEnv(item)));
-		subscriptions.push(registerCommand('go.workspace.resetEnv', (item) => provider.resetEnv(item)));
+		ctx.subscriptions.push(
+			registerTreeDataProvider('go.explorer', provider),
+			registerCommand('go.explorer.refresh', () => provider.update(true)),
+			registerCommand('go.explorer.open', (item) => provider.open(item)),
+			registerCommand('go.workspace.editEnv', (item) => provider.editEnv(item)),
+			registerCommand('go.workspace.resetEnv', (item) => provider.resetEnv(item))
+		);
 		executeCommand('setContext', 'go.showExplorer', true);
 		return provider;
 	}
@@ -40,16 +42,18 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | void>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-	constructor() {
+	constructor(ctx: vscode.ExtensionContext) {
 		this.update();
-		vscode.window.onDidChangeActiveTextEditor(() => this.update());
-		vscode.workspace.onDidChangeWorkspaceFolders(() => this.update());
-		vscode.workspace.onDidChangeConfiguration(() => this.update(true));
-		vscode.workspace.onDidCloseTextDocument((doc) => {
-			if (!this.activeFolder) {
-				this.goEnvCache.delete(vscodeUri.Utils.dirname(doc.uri).toString());
-			}
-		});
+		ctx.subscriptions.push(
+			vscode.window.onDidChangeActiveTextEditor(() => this.update()),
+			vscode.workspace.onDidChangeWorkspaceFolders(() => this.update()),
+			vscode.workspace.onDidChangeConfiguration(() => this.update(true)),
+			vscode.workspace.onDidCloseTextDocument((doc) => {
+				if (!this.activeFolder) {
+					this.goEnvCache.delete(vscodeUri.Utils.dirname(doc.uri).toString());
+				}
+			})
+		);
 	}
 
 	getTreeItem(element: vscode.TreeItem) {
