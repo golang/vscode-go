@@ -2753,6 +2753,17 @@
           "when": "go.hasProfiles"
         }
       ]
-    }
+    },
+    "customEditors": [
+			{
+				"viewType": "vulncheck.view",
+				"displayName": "Vulnerability Report",
+				"selector": [
+					{
+						"filenamePattern": "*.vulncheck.json"
+					}
+				]
+			}
+		]
   }
 }
