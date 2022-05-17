@@ -186,7 +186,8 @@ suite('Go Test Explorer', () => {
 					doc.contents = contents;
 					await expl._didChange({
 						document: doc,
-						contentChanges: []
+						contentChanges: [],
+						reason: undefined
 					});
 				}
 
@@ -333,7 +334,11 @@ suite('Go Test Explorer', () => {
 					expectedTests
 				);
 
-				await explorer.runner.run({ include: [tests[0]] });
+				await explorer.runner.run({
+					include: [tests[0]],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 				assert.deepStrictEqual(runStub.lastCall.args[0].functions, ['TestFoo']);
 			});
@@ -350,7 +355,11 @@ suite('Go Test Explorer', () => {
 					expectedTests
 				);
 
-				await explorer.runner.run({ include: [tests[0]] });
+				await explorer.runner.run({
+					include: [tests[0]],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 2, 'Expected goTest to be called twice');
 				assert.deepStrictEqual(runStub.firstCall.args[0].functions, ['TestFoo']);
 				assert.deepStrictEqual(runStub.secondCall.args[0].functions, ['BenchmarkBar']);
@@ -393,7 +402,11 @@ suite('Go Test Explorer', () => {
 					.filter((x) => GoTest.parseId(x.id).name)[0];
 				assert(test, 'Could not find test');
 
-				await explorer.runner.run({ include: [test] });
+				await explorer.runner.run({
+					include: [test],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
 				const subTest = test.children.get('file:///src/proj/main_test.go?test#TestFoo%2FBar');
@@ -413,7 +426,11 @@ suite('Go Test Explorer', () => {
 					.filter((x) => GoTest.parseId(x.id).name)[0];
 				assert(test, 'Could not find test');
 
-				await explorer.runner.run({ include: [test] });
+				await explorer.runner.run({
+					include: [test],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
 				const subTest = test.children.get('file:///src/proj/main_test.go?test#TestFoo%2FBar');

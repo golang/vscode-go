@@ -123,7 +123,7 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 }
 
 export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
-	let selected = await vscode.window.showInformationMessage(
+	const selected = await vscode.window.showInformationMessage(
 		// TODO(rstambler): Figure out how to phrase this.
 		`Looks like you are coding in Go! Would you like to help ensure that Go is meeting your needs
 by participating in this 10-minute survey before ${endDate.toDateString()}?`,
@@ -153,10 +153,10 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 
 			vscode.window.showInformationMessage("No problem! We'll ask you again another time.");
 			break;
-		case 'Never':
+		case 'Never': {
 			cfg.prompt = false;
 
-			selected = await vscode.window.showInformationMessage(
+			const selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
 If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' to false.`,
 				'Open Settings'
@@ -169,6 +169,7 @@ If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' t
 					break;
 			}
 			break;
+		}
 		default:
 			// If the user closes the prompt without making a selection, treat it
 			// like a "Not now" response.

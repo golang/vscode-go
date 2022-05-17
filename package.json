@@ -73,7 +73,7 @@
     "@types/node": "13.13.46",
     "@types/semver": "7.3.4",
     "@types/sinon": "9.0.11",
-    "@types/vscode": "1.59.0",
+    "@types/vscode": "1.67.0",
     "@vscode/test-electron": "2.0.2",
     "adm-zip": "0.4.16",
     "esbuild": "0.12.21",
@@ -89,7 +89,7 @@
     "yarn": "1.22.10"
   },
   "engines": {
-    "vscode": "^1.59.0"
+    "vscode": "^1.67.0"
   },
   "activationEvents": [
     "onLanguage:go",

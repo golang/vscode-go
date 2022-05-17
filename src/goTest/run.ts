@@ -71,6 +71,7 @@ class TestRunOutput implements OutputChannel {
 	show(...args: unknown[]) {}
 	hide() {}
 	dispose() {}
+	replace() {}
 }
 
 export class GoTestRunner {
@@ -400,7 +401,7 @@ export class GoTestRunner {
 	async collectTests(
 		item: TestItem,
 		explicitlyIncluded: boolean,
-		excluded: TestItem[],
+		excluded: readonly TestItem[],
 		functions: Map<TestItem, CollectedTest[]>,
 		files: Set<TestItem>
 	) {

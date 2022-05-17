@@ -152,7 +152,7 @@ async function promptForGoplsSurvey(
 	cfg: GoplsSurveyConfig = {},
 	now: Date
 ): Promise<GoplsSurveyConfig> {
-	let selected = await vscode.window.showInformationMessage(
+	const selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
 		'Yes',
@@ -182,10 +182,10 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 
 			vscode.window.showInformationMessage("No problem! We'll ask you again another time.");
 			break;
-		case 'Never':
+		case 'Never': {
 			cfg.prompt = false;
 
-			selected = await vscode.window.showInformationMessage(
+			const selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
 To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setting.`,
 				'Open Settings'
@@ -198,6 +198,7 @@ To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setti
 					break;
 			}
 			break;
+		}
 		default:
 			// If the user closes the prompt without making a selection, treat it
 			// like a "Not now" response.

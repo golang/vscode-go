@@ -20,6 +20,7 @@ import {
 	TestRunProfile,
 	TestRunProfileKind,
 	TestRunRequest,
+	TestTag,
 	TextDocument,
 	TextLine,
 	Uri,
@@ -77,13 +78,15 @@ class MockTestItem implements TestItem {
 		this.idNum = MockTestItem.idNum;
 		MockTestItem.idNum++;
 	}
+	tags: readonly TestTag[] = [];
+	sortText?: string | undefined;
 
 	parent: TestItem | undefined;
 	canResolveChildren = false;
 	busy = false;
 	description?: string;
-	range?: Range;
-	error?: string | MarkdownString;
+	range: Range | undefined;
+	error: string | MarkdownString | undefined;
 	runnable = false;
 	debuggable = false;
 
@@ -105,8 +108,9 @@ class MockTestRunProfile implements TestRunProfile {
 		public runHandler: TestRunHandler,
 		public isDefault: boolean
 	) {}
+	tag: TestTag | undefined;
 
-	configureHandler?: () => void;
+	configureHandler(): void {}
 	dispose(): void {}
 }
 
@@ -134,6 +138,7 @@ export class MockTestController implements TestController {
 	items = new MockTestCollection(this);
 
 	resolveHandler?: (item: TestItem | undefined) => void | Thenable<void>;
+	refreshHandler: ((token: CancellationToken) => void | Thenable<void>) | undefined;
 
 	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
 		return new MockTestRun();
