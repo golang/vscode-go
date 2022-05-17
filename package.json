@@ -59,8 +59,8 @@
     "vscode-debugadapter": "1.45.0",
     "vscode-debugadapter-testsupport": "1.45.0",
     "vscode-debugprotocol": "1.45.0",
-    "vscode-languageclient": "7.0.0",
-    "vscode-languageserver-protocol": "3.16.0",
+    "vscode-languageclient": "8.0.1",
+    "vscode-languageserver-protocol": "3.17.1",
     "vscode-uri": "3.0.3",
     "web-request": "1.0.7"
   },

@@ -15,7 +15,6 @@ import { LegacyLanguageService } from './language/registerDefaultProviders';
 export interface GoExtensionContext {
 	languageClient?: LanguageClient;
 	legacyLanguageService?: LegacyLanguageService;
-	languageServerDisposable?: vscode.Disposable;
 	latestConfig?: LanguageServerConfig;
 	serverOutputChannel?: vscode.OutputChannel;
 	languageServerIsRunning?: boolean;

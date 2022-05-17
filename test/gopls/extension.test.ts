@@ -109,9 +109,8 @@ class Env {
 		if (!this.languageClient) {
 			throw new Error('Language client not initialized.');
 		}
-		this.disposables.push(this.languageClient.start());
 
-		await this.languageClient.onReady();
+		await this.languageClient.start();
 		await this.openDoc(filePath);
 		await pkgLoadingDone;
 	}

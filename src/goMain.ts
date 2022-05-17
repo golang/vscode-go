@@ -215,6 +215,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 export function deactivate() {
 	return Promise.all([
+		goCtx.languageClient?.stop(),
 		cancelRunningTests(),
 		killRunningPprof(),
 		Promise.resolve(cleanupTempDir()),

@@ -26,6 +26,7 @@ import {
 	HandleDiagnosticsSignature,
 	InitializeError,
 	InitializeResult,
+	LanguageClientOptions,
 	Message,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
@@ -33,7 +34,7 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { LanguageClient } from 'vscode-languageclient/node';
+import { LanguageClient, ServerOptions } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
@@ -268,8 +269,10 @@ const race = function (promise: Promise<unknown>, timeoutInMilliseconds: number)
 };
 
 // exported for testing.
-export async function stopLanguageClient(goCtx: GoExtensionContext): Promise<boolean> {
+export async function stopLanguageClient(goCtx: GoExtensionContext) {
 	const c = goCtx.languageClient;
+	goCtx.crashCount = 0;
+	goCtx.languageClient = undefined;
 	if (!c) return false;
 
 	if (c.diagnostics) {
@@ -284,9 +287,7 @@ export async function stopLanguageClient(goCtx: GoExtensionContext): Promise<boo
 		await race(c.stop(), 2000);
 	} catch (e) {
 		c.outputChannel?.appendLine(`Failed to stop client: ${e}`);
-		return false;
 	}
-	return true;
 }
 
 export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
@@ -367,7 +368,7 @@ export async function buildLanguageClient(
 			command: cfg.path,
 			args: ['-mode=stdio', ...cfg.flags],
 			options: { env: cfg.env }
-		},
+		} as ServerOptions,
 		{
 			initializationOptions: goplsWorkspaceConfig,
 			documentSelector,
@@ -393,29 +394,29 @@ export async function buildLanguageClient(
 				return false;
 			},
 			errorHandler: {
-				error: (error: Error, message: Message, count: number): ErrorAction => {
+				error: (error: Error, message: Message, count: number) => {
 					// Allow 5 crashes before shutdown.
 					if (count < 5) {
-						return ErrorAction.Continue;
+						return { action: ErrorAction.Continue };
 					}
 					vscode.window.showErrorMessage(
 						`Error communicating with the language server: ${error}: ${message}.`
 					);
-					return ErrorAction.Shutdown;
+					return { action: ErrorAction.Shutdown };
 				},
-				closed: (): CloseAction => {
+				closed: () => {
 					// Allow 5 crashes before shutdown.
 					const { crashCount = 0 } = goCtx;
 					goCtx.crashCount = crashCount + 1;
 					if (goCtx.crashCount < 5) {
-						return CloseAction.Restart;
+						return { action: CloseAction.Restart };
 					}
 					suggestGoplsIssueReport(
 						goCtx,
 						'The connection to gopls has been closed. The gopls server may have crashed.',
 						errorKind.crash
 					);
-					return CloseAction.DoNotRestart;
+					return { action: CloseAction.DoNotRestart };
 				}
 			},
 			middleware: {
@@ -555,19 +556,19 @@ export async function buildLanguageClient(
 				},
 				// Keep track of the last file change in order to not prompt
 				// user if they are actively working.
-				didOpen: (e, next) => {
+				didOpen: async (e, next) => {
 					goCtx.lastUserAction = new Date();
 					next(e);
 				},
-				didChange: (e, next) => {
+				didChange: async (e, next) => {
 					goCtx.lastUserAction = new Date();
 					next(e);
 				},
-				didClose: (e, next) => {
+				didClose: async (e, next) => {
 					goCtx.lastUserAction = new Date();
 					next(e);
 				},
-				didSave: (e, next) => {
+				didSave: async (e, next) => {
 					goCtx.lastUserAction = new Date();
 					next(e);
 				},
@@ -601,7 +602,7 @@ export async function buildLanguageClient(
 					}
 				}
 			}
-		}
+		} as LanguageClientOptions
 	);
 	return c;
 }

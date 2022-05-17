@@ -4,7 +4,6 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import deepEqual from 'deep-equal';
 
 import { CommandFactory } from '.';
 import { getGoConfig } from '../config';
@@ -50,13 +49,8 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 			// If the client has already been started, make sure to clear existing
 			// diagnostics and stop it.
-			let cleanStop = true;
 			if (goCtx.languageClient) {
-				cleanStop = await stopLanguageClient(goCtx);
-				if (goCtx.languageServerDisposable) {
-					goCtx.languageServerDisposable.dispose();
-					goCtx.languageServerDisposable = undefined;
-				}
+				await stopLanguageClient(goCtx);
 			}
 
 			// Before starting the language server, make sure to deregister any
@@ -96,23 +90,9 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				return;
 			}
 
-			// Check if we should recreate the language client.
-			// This may be necessary if the user has changed settings
-			// in their config, or previous session wasn't stopped cleanly.
-			if (!cleanStop || !deepEqual(goCtx.latestConfig, cfg)) {
-				// Track the latest config used to start the language server,
-				// and rebuild the language client.
-				goCtx.languageClient = await buildLanguageClient(goCtx, buildLanguageClientOption(goCtx, cfg));
-				goCtx.crashCount = 0;
-			}
-
-			const disposable = goCtx.languageClient?.start();
-			if (disposable) {
-				goCtx.languageServerDisposable = disposable;
-				ctx.subscriptions.push(goCtx.languageServerDisposable);
-			}
-			await goCtx.languageClient?.onReady();
-			goCtx.serverInfo = toServerInfo(goCtx.languageClient?.initializeResult);
+			goCtx.languageClient = await buildLanguageClient(goCtx, buildLanguageClientOption(goCtx, cfg));
+			await goCtx.languageClient.start();
+			goCtx.serverInfo = toServerInfo(goCtx.languageClient.initializeResult);
 			updateStatus(goCtx, goConfig, true);
 			console.log(`Server: ${JSON.stringify(goCtx.serverInfo, null, 2)}`);
 		} finally {
