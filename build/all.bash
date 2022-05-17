@@ -45,7 +45,6 @@ run_test() {
   echo "**** Run test ****"
   df -h | grep shm
   npm ci
-  npm run typecheck
   npm run compile
   npm run unit-test
   npm test --silent
