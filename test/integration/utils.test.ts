@@ -28,7 +28,7 @@ suite('utils Tests', () => {
 
 	test('build GoVersion', () => {
 		// [input, wantFormat, wantFormatIncludePrerelease, wantIsValid]
-		const testCases: [string | undefined, string, string, boolean][] = [
+		const testCases: [string, string, string, boolean][] = [
 			[
 				'go version devel go1.17-756fd56bbf Thu Apr 29 01:15:34 2021 +0000 darwin/amd64',
 				'devel 1.17-756fd56bbf',
@@ -42,7 +42,6 @@ suite('utils Tests', () => {
 			['go version go1.15.3-beta.1 darwin/amd64', '1.15.3', '1.15.3-beta.1', true],
 			['go version go1.15.3-beta.1.2.3 foobar/amd64', '1.15.3', '1.15.3-beta.1.2.3', true],
 			['go version go10.0.1 js/amd64', 'unknown', 'unknown', false],
-			[undefined, 'unknown', 'unknown', false],
 			['something wrong', 'unknown', 'unknown', false]
 		];
 		for (const [input, wantFormat, wantFormatIncludePrerelease, wantIsValid] of testCases) {
@@ -159,14 +158,14 @@ suite('Duplicate Diagnostics Tests', () => {
 
 		removeDuplicateDiagnostics(diagnosticCollection, uri1, newDiagnostics);
 
-		assert.strictEqual(diagnosticCollection.get(uri1).length, want1.length);
+		assert.strictEqual(diagnosticCollection.get(uri1)?.length, want1.length);
 		for (let i = 0; i < want1.length; i++) {
-			assert.strictEqual(diagnosticCollection.get(uri1)[i], want1[i]);
+			assert.strictEqual(diagnosticCollection.get(uri1)?.[i], want1[i]);
 		}
 
-		assert.strictEqual(diagnosticCollection.get(uri2).length, want2.length);
+		assert.strictEqual(diagnosticCollection.get(uri2)?.length, want2.length);
 		for (let i = 0; i < want2.length; i++) {
-			assert.strictEqual(diagnosticCollection.get(uri2)[i], want2[i]);
+			assert.strictEqual(diagnosticCollection.get(uri2)?.[i], want2[i]);
 		}
 	});
 });

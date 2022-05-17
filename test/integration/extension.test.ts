@@ -135,12 +135,12 @@ const testAll = (isModuleMode: boolean) => {
 		const definitionInfo = await provider.provideDefinition(textDocument, position, dummyCancellationSource.token);
 
 		assert.equal(
-			definitionInfo.uri.path.toLowerCase(),
+			definitionInfo?.uri.path.toLowerCase(),
 			uri.path.toLowerCase(),
-			`${definitionInfo.uri.path} is not the same as ${uri.path}`
+			`${definitionInfo?.uri.path} is not the same as ${uri.path}`
 		);
-		assert.equal(definitionInfo.range.start.line, 6);
-		assert.equal(definitionInfo.range.start.character, 5);
+		assert.equal(definitionInfo?.range.start.line, 6);
+		assert.equal(definitionInfo?.range.start.character, 5);
 	}
 
 	async function testSignatureHelpProvider(
@@ -187,6 +187,7 @@ const testAll = (isModuleMode: boolean) => {
 				if (expectedDocumentation != null) {
 					expectedHover += expectedDocumentation;
 				}
+				assert(res);
 				assert.equal(res.contents.length, 1);
 				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
 			})
@@ -474,6 +475,8 @@ It returns the number of bytes written and any write error encountered.
 		// Both files belong to the same package name, and we want them to be identical.
 		const file1Diagnostics = diagnosticCollection.get(file1.uri);
 		const file2Diagnostics = diagnosticCollection.get(file2.uri);
+		assert(file1Diagnostics);
+		assert(file2Diagnostics);
 		assert(file1Diagnostics.length > 0);
 		assert(file2Diagnostics.length > 0);
 		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
@@ -1534,6 +1537,7 @@ encountered.
 		const expectedText = document.getText() + fixEOL(document.eol, '\n' + 'import (\n\t"bytes"\n)\n');
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		return vscode.workspace.applyEdit(edit).then(() => {
 			assert.equal(
@@ -1555,6 +1559,7 @@ encountered.
 			.replace(fixEOL(eol, '\t"fmt"\n\t"math"'), fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1574,6 +1579,7 @@ encountered.
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1590,6 +1596,7 @@ encountered.
 			.replace(fixEOL(eol, 'import "math"'), fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);

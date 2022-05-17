@@ -52,7 +52,7 @@ suite('Go Test Runner', () => {
 			assert(test, 'No tests found');
 
 			assert(
-				await testExplorer.runner.run({ include: [test] }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run({ include: [test] }, undefined, { kind: 'cpu' }),
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
@@ -79,7 +79,7 @@ suite('Go Test Runner', () => {
 			console.log(`running ${tests.length} tests`);
 
 			assert(
-				await testExplorer.runner.run({ include: tests }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run({ include: tests }, undefined, { kind: 'cpu' }),
 				'Failed to execute `go test`'
 			);
 			console.log('verify we got expected calls');

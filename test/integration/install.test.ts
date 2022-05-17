@@ -77,7 +77,7 @@ suite('Installation Tests', function () {
 	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean, withGOBIN?: boolean) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
-		let proxyDir: string;
+		let proxyDir: string | undefined;
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
 			proxyDir = buildFakeProxy(testCases);
@@ -137,6 +137,8 @@ suite('Installation Tests', function () {
 
 		if (withLocalProxy) {
 			sandbox.assert.calledWith(configStub);
+			// proxyDir should be set when withLocalProxy = true
+			assert(proxyDir);
 			rmdirRecursive(proxyDir);
 		}
 	}

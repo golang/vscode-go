@@ -63,7 +63,7 @@ suite('Debug Environment Variable Merge Test', () => {
 			program: filePath
 		});
 
-		const actual = config.env;
+		const actual = config?.env;
 		assert.deepStrictEqual(actual, expected);
 	}
 
@@ -221,7 +221,7 @@ suite('Debug Configuration Merge User Settings', () => {
 
 	suite("merge 'go' config from settings.json", () => {
 		test('default settings are applied', async () => {
-			const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+			const defaultConfig = vscode.extensions.getExtension(extensionId)?.packageJSON.contributes.configuration
 				.properties['go.delveConfig'].properties;
 
 			// Run resolveDebugConfiguration with the default workspace settings.
@@ -234,7 +234,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			};
 
 			const defaultResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg1);
-
+			assert(defaultResult);
 			assert.strictEqual(defaultResult.showGlobalVariables, defaultConfig.showGlobalVariables.default);
 			assert.strictEqual(defaultResult.showRegisters, defaultConfig.showRegisters.default);
 			assert.strictEqual(defaultResult.hideSystemGoroutines, defaultConfig.hideSystemGoroutines.default);
@@ -280,6 +280,8 @@ suite('Debug Configuration Merge User Settings', () => {
 
 			const filledResult = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg2);
 
+			assert(filledResult);
+			assert(emptyResult);
 			assert.strictEqual(filledResult.name, emptyResult.name);
 			assert.strictEqual(filledResult.type, emptyResult.type);
 			assert.strictEqual(filledResult.mode, emptyResult.mode);
@@ -329,6 +331,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
+			assert(result);
 			assert.strictEqual(result.apiVersion, 1);
 			assert.strictEqual(result.showGlobalVariables, true);
 			assert.strictEqual(result.showRegisters, true);
@@ -392,6 +395,7 @@ suite('Debug Configuration Merge User Settings', () => {
 			};
 
 			const result = await debugConfigProvider.resolveDebugConfiguration(undefined, cfg);
+			assert(result);
 			assert.strictEqual(result.apiVersion, 2);
 			assert.strictEqual(result.showGlobalVariables, false);
 			assert.strictEqual(result.showRegisters, false);
@@ -665,7 +669,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
@@ -691,7 +695,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 			cwd,
 			output,
 			__buildDir
-		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config)!;
 		assert.deepStrictEqual(
 			{ program, cwd, output, __buildDir },
 			{
@@ -717,7 +721,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
@@ -742,7 +746,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
@@ -766,7 +770,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, __buildDir },
 			{
@@ -780,7 +784,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 	test('empty, undefined paths are not affected', () => {
 		writeEmptyFile(path.join(workspaceDir, 'bar_test.go'));
 
-		const config = debugConfig('dlv-dap');
+		const config: vscode.DebugConfiguration = debugConfig('dlv-dap');
 		config.program = 'bar_test.go';
 		config.cwd = '';
 		delete config.output;
@@ -795,7 +799,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 			cwd,
 			output,
 			__buildDir
-		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config)!;
 		assert.deepStrictEqual(
 			{ program, cwd, output, __buildDir },
 			{
@@ -815,7 +819,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 			cwd,
 			output,
 			__buildDir
-		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config);
+		} = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, config)!;
 		assert.deepStrictEqual(
 			{ program, cwd, output, __buildDir },
 			{
@@ -839,7 +843,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			workspaceFolder,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, output },
 			{
@@ -856,7 +860,7 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		const { program, cwd, output } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			undefined,
 			config
-		);
+		)!;
 		assert.deepStrictEqual(
 			{ program, cwd, output },
 			{

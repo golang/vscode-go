@@ -107,7 +107,7 @@ describe('#setSelectedGo()', function () {
 	});
 	this.afterEach(async () => {
 		await setSelectedGo(goOption, false);
-		sandbox.restore();
+		sandbox!.restore();
 	});
 
 	it('should update the workspace memento storage', async () => {

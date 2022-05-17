@@ -818,7 +818,7 @@ export async function suggestUpdates() {
 }
 
 // exported for testing
-export async function listOutdatedTools(configuredGoVersion: GoVersion, allTools: Tool[]): Promise<Tool[]> {
+export async function listOutdatedTools(configuredGoVersion: GoVersion | undefined, allTools: Tool[]): Promise<Tool[]> {
 	if (!configuredGoVersion || !configuredGoVersion.sv) {
 		return [];
 	}

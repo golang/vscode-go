@@ -136,7 +136,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['remote/pkg/mod/!foo!bar/test@v1.0.2/test.go']
 		};
 
-		const localPath = path.join(process.env.GOPATH, 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
+		const localPath = path.join(process.env.GOPATH ?? '', 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -161,7 +161,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['!foo!bar/test@v1.0.2/test.go']
 		};
 
-		const localPath = path.join(process.env.GOPATH, 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
+		const localPath = path.join(process.env.GOPATH ?? '', 'pkg/mod/!foo!bar/test@v1.0.2/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -186,7 +186,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['remote/gopath/src/foobar/test@v1.0.2-abcde-34/test.go']
 		};
 
-		const localPath = path.join(process.env.GOPATH, 'src', 'foobar/test@v1.0.2-abcde-34/test.go');
+		const localPath = path.join(process.env.GOPATH ?? '', 'src', 'foobar/test@v1.0.2-abcde-34/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -211,7 +211,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['foobar/test@v1.0.2/test.go']
 		};
 
-		const localPath = path.join(process.env.GOPATH, 'src', 'foobar/test@v1.0.2/test.go');
+		const localPath = path.join(process.env.GOPATH ?? '', 'src', 'foobar/test@v1.0.2/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -236,7 +236,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['remote/goroot/src/foobar/test@v1.0.2/test.go']
 		};
 
-		const localPath = path.join(process.env.GOROOT, 'src', 'foobar/test@v1.0.2/test.go');
+		const localPath = path.join(process.env.GOROOT ?? '', 'src', 'foobar/test@v1.0.2/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -261,7 +261,7 @@ suite('GoDebugSession Tests', async () => {
 			Files: ['foobar/test@v1.0.2/test.go']
 		};
 
-		const localPath = path.join(process.env.GOROOT, 'src', 'foobar/test@v1.0.2/test.go');
+		const localPath = path.join(process.env.GOROOT ?? '', 'src', 'foobar/test@v1.0.2/test.go');
 		const existsSyncStub = sinon.stub(fileSystem, 'existsSync');
 		existsSyncStub.withArgs(localPath).returns(true);
 
@@ -329,7 +329,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	};
 
 	let dc: DebugClient;
-	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket;
+	let dlvDapAdapter: DelveDAPDebugAdapterOnSocket | null;
 	let dapTraced = false;
 
 	setup(async () => {
@@ -1755,9 +1755,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			}
 
 			// Skip the proper disconnect sequence started with a disconnect request.
-			await dlvDapAdapter.dispose(1);
-			dc = undefined;
-			let stat: fs.Stats = null;
+			await dlvDapAdapter?.dispose(1);
+			dc = undefined!;
+			let stat: fs.Stats | null = null;
 			try {
 				const fsstat = util.promisify(fs.stat);
 				const maxAttempts = 2;
@@ -1946,10 +1946,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
 			await dc.stop();
-			dc = undefined;
+			dc = undefined!;
 			const dapLog = fs.readFileSync(DELVE_LOG)?.toString();
 			const preamble =
-				debugConfig.console === 'integratedTerminal' || debugConfig.console === 'externalTerminal'
+				debugConfig?.console === 'integratedTerminal' || debugConfig?.console === 'externalTerminal'
 					? 'DAP server for a predetermined client'
 					: 'DAP server listening at';
 			assert(
@@ -1975,7 +1975,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				await dc.initializeRequest();
 				assert.fail('dlv dap started normally, wanted the invalid logDest to cause failure');
 			} catch (error) {
-				assert(error?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
+				assert((error as Error)?.message.includes(wantedErrorMessage), `unexpected error: ${error}`);
 			}
 		}
 		test('relative path as logDest triggers an error', async function () {
@@ -2208,14 +2208,17 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		}
 		testNumber++;
 
-		let debugConfig = await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		let debugConfig: DebugConfiguration | null | undefined = await debugConfigProvider.resolveDebugConfiguration(
+			undefined,
+			config
+		);
 		debugConfig = await debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
 			undefined,
-			debugConfig
+			debugConfig!
 		);
 
 		if (isDlvDap) {
-			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig);
+			dlvDapAdapter = await DelveDAPDebugAdapterOnSocket.create(debugConfig!);
 			const port = await dlvDapAdapter.serve();
 			await dc.start(port); // This will connect to the adapter's port.
 		}
@@ -2253,13 +2256,13 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';
-	private _rawData: Buffer;
-	private _contentLength: number;
-	private _writableStream: NodeJS.WritableStream;
-	private _server: net.Server;
-	private _port: number; // port for the thin adapter.
+	private _rawData?: Buffer;
+	private _contentLength?: number;
+	private _writableStream?: NodeJS.WritableStream;
+	private _server?: net.Server;
+	private _port?: number; // port for the thin adapter.
 
-	public serve(): Promise<number> {
+	public serve(): Promise<number | undefined> {
 		return new Promise(async (resolve, reject) => {
 			this._port = await getPort();
 			this._server = net.createServer((c) => {
@@ -2294,7 +2297,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 	// handleRunInTerminal spawns the requested command and simulates RunInTerminal
 	// handler implementation inside an editor.
-	private _dlvInTerminal: cp.ChildProcess;
+	private _dlvInTerminal: cp.ChildProcess | undefined;
 	private handleRunInTerminal(m: vscode.DebugProtocolMessage) {
 		const m0 = m as any;
 		if (m0['type'] !== 'request' || m0['command'] !== 'runInTerminal') {
@@ -2346,7 +2349,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 		}
 		this._disposed = true;
 		this.log('adapter disposing');
-		await this._server.close();
+		await this._server?.close();
 		await super.dispose(timeoutMS);
 		this.log('adapter disposed');
 	}
@@ -2371,12 +2374,12 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	// Code from
 	// https://github.com/microsoft/vscode-debugadapter-node/blob/2235a2227d1a439372be578cd3f55e15211851b7/testSupport/src/protocolClient.ts#L100-L132
 	private _handleData(data: Buffer): void {
-		this._rawData = Buffer.concat([this._rawData, data]);
+		this._rawData = Buffer.concat([this._rawData!, data]);
 
 		// eslint-disable-next-line no-constant-condition
 		while (true) {
-			if (this._contentLength >= 0) {
-				if (this._rawData.length >= this._contentLength) {
+			if (this._contentLength! >= 0) {
+				if (this._rawData.length >= this._contentLength!) {
 					const message = this._rawData.toString('utf8', 0, this._contentLength);
 					this._rawData = this._rawData.slice(this._contentLength);
 					this._contentLength = -1;
@@ -2386,7 +2389,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 							const msg: DebugProtocol.ProtocolMessage = JSON.parse(message);
 							this.handleMessage(msg);
 						} catch (e) {
-							throw new Error('Error handling data: ' + (e && e.message));
+							throw new Error('Error handling data: ' + (e && (e as Error).message));
 						}
 					}
 					continue; // there may be more complete messages to process

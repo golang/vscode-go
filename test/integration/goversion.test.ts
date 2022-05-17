@@ -57,7 +57,7 @@ describe('#getLatestGoVersion()', function () {
 	});
 
 	this.afterEach(async () => {
-		sandbox.restore();
+		sandbox!.restore();
 	});
 
 	it('should get latest go versions from golang.org/dl with empty cache', async () => {

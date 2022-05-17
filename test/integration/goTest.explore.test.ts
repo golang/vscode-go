@@ -103,7 +103,9 @@ suite('Go Test Explorer', () => {
 				const { workspace, files, open, expect } = cases[name];
 				const { ctrl, expl, ws } = newExplorer(workspace, files, DUT);
 
-				await expl._didOpen(ws.fs.files.get(open));
+				const doc = ws.fs.files.get(open);
+				assert(doc);
+				await expl._didOpen(doc);
 
 				assertTestItems(ctrl.items, expect);
 			});
@@ -172,12 +174,15 @@ suite('Go Test Explorer', () => {
 				const { workspace, files, open, changes, expect } = cases[name];
 				const { ctrl, expl, ws } = newExplorer(workspace, files, DUT);
 
-				await expl._didOpen(ws.fs.files.get(open));
+				const doc = ws.fs.files.get(open);
+				assert(doc);
+				await expl._didOpen(doc);
 
 				assertTestItems(ctrl.items, expect.before);
 
 				for (const [file, contents] of changes) {
 					const doc = ws.fs.files.get(file);
+					assert(doc);
 					doc.contents = contents;
 					await expl._didChange({
 						document: doc,
@@ -360,7 +365,7 @@ suite('Go Test Explorer', () => {
 				runStub = sandbox.stub(testUtils, 'goTest');
 				runStub.callsFake((cfg) => {
 					// Trigger creation of dynamic subtest
-					cfg.goTestOutputConsumer({
+					cfg.goTestOutputConsumer?.({
 						Test: 'TestFoo/Bar',
 						Action: 'run'
 					});

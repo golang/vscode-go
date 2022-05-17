@@ -47,7 +47,9 @@ export class MockCfg implements vscode.WorkspaceConfiguration {
 					break;
 				}
 			}
-			i.workspaceValue = v;
+			if (i) {
+				i.workspaceValue = v;
+			}
 		}
 		return i;
 	}

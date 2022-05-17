@@ -60,7 +60,7 @@ class MockTestCollection implements TestItemCollection {
 		this.m.delete(id);
 	}
 
-	get(id: string): TestItem {
+	get(id: string): TestItem | undefined {
 		return this.m.get(id);
 	}
 
@@ -79,13 +79,13 @@ class MockTestItem implements TestItem {
 	}
 
 	parent: TestItem | undefined;
-	canResolveChildren: boolean;
-	busy: boolean;
+	canResolveChildren = false;
+	busy = false;
 	description?: string;
 	range?: Range;
 	error?: string | MarkdownString;
-	runnable: boolean;
-	debuggable: boolean;
+	runnable = false;
+	debuggable = false;
 
 	children: MockTestCollection = new MockTestCollection(this);
 
@@ -133,7 +133,7 @@ export class MockTestController implements TestController {
 	label = 'Go';
 	items = new MockTestCollection(this);
 
-	resolveHandler?: (item: TestItem) => void | Thenable<void>;
+	resolveHandler?: (item: TestItem | undefined) => void | Thenable<void>;
 
 	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
 		return new MockTestRun();
@@ -143,7 +143,7 @@ export class MockTestController implements TestController {
 		label: string,
 		kind: TestRunProfileKind,
 		runHandler: TestRunHandler,
-		isDefault?: boolean
+		isDefault = false
 	): TestRunProfile {
 		return new MockTestRunProfile(label, kind, runHandler, isDefault);
 	}
@@ -201,7 +201,7 @@ export class MockTestWorkspace implements Workspace {
 			const entry: DirEntry = [path.basename(uri.path), child];
 			const dir = uri.with({ path: path.dirname(uri.path) });
 			if (dirs.has(dir.toString())) {
-				dirs.get(dir.toString()).push(entry);
+				dirs.get(dir.toString())?.push(entry);
 				return;
 			}
 
@@ -234,7 +234,9 @@ export class MockTestWorkspace implements Workspace {
 	constructor(public workspaceFolders: WorkspaceFolder[], public fs: MockTestFileSystem) {}
 
 	openTextDocument(uri: Uri): Thenable<TextDocument> {
-		return Promise.resolve(this.fs.files.get(uri.toString()));
+		const doc = this.fs.files.get(uri.toString());
+		if (!doc) throw Error('doc not found');
+		return Promise.resolve(doc);
 	}
 
 	getWorkspaceFolder(uri: Uri): WorkspaceFolder {

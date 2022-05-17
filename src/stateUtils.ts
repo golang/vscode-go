@@ -86,7 +86,7 @@ async function resetStateQuickPick(state: vscode.Memento, updateFn: (key: string
 	}
 }
 
-export function resetItemsState(items: string[], updateFn: (key: string, value: any) => Thenable<void>) {
+export function resetItemsState(items: string[] | undefined, updateFn: (key: string, value: any) => Thenable<void>) {
 	if (!items) {
 		return;
 	}

@@ -117,7 +117,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		assert.equal(codeLenses.length, 4);
 		const wantCommands = ['go.test.package', 'go.test.file', 'go.test.cursor', 'go.debug.cursor'];
 		for (let i = 0; i < codeLenses.length; i++) {
-			assert.equal(codeLenses[i].command.command, wantCommands[i]);
+			assert.equal(codeLenses[i].command?.command, wantCommands[i]);
 		}
 	});
 
@@ -135,7 +135,7 @@ suite('Code lenses for testing and benchmarking', function () {
 			'go.debug.cursor'
 		];
 		for (let i = 0; i < codeLenses.length; i++) {
-			assert.equal(codeLenses[i].command.command, wantCommands[i]);
+			assert.equal(codeLenses[i].command?.command, wantCommands[i]);
 		}
 	});
 
@@ -147,8 +147,8 @@ suite('Code lenses for testing and benchmarking', function () {
 		const found = [] as string[];
 		for (let i = 0; i < codeLenses.length; i++) {
 			const lens = codeLenses[i];
-			if (lens.command.command === 'go.test.cursor') {
-				found.push(lens.command.arguments[0].functionName);
+			if (lens.command?.command === 'go.test.cursor') {
+				found.push(lens.command.arguments?.[0].functionName);
 			}
 		}
 		found.sort();
@@ -176,8 +176,8 @@ suite('Code lenses for testing and benchmarking', function () {
 		const found = [] as string[];
 		for (let i = 0; i < codeLenses.length; i++) {
 			const lens = codeLenses[i];
-			if (lens.command.command === 'go.test.cursor') {
-				found.push(lens.command.arguments[0].functionName);
+			if (lens.command?.command === 'go.test.cursor') {
+				found.push(lens.command.arguments?.[0].functionName);
 			}
 		}
 		found.sort();

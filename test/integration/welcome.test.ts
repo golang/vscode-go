@@ -61,10 +61,11 @@ suite('WelcomePanel Tests', () => {
 
 suite('joinPath Tests', () => {
 	test('WelcomePanel dataroot is set as expected', () => {
-		const uri = vscode.extensions.getExtension(extensionId).extensionUri;
+		const uri = vscode.extensions.getExtension(extensionId)?.extensionUri;
+		assert(uri);
 		WelcomePanel.createOrShow({ extensionUri: uri })();
-		const got = WelcomePanel.currentPanel.dataroot;
+		const got = WelcomePanel.currentPanel?.dataroot;
 		const want = vscode.Uri.joinPath(uri, 'media');
-		assert.strictEqual(got.toString(), want.toString());
+		assert.strictEqual(got?.toString(), want.toString());
 	});
 });
