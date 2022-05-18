@@ -194,8 +194,8 @@ suite('Code lenses for testing and benchmarking', function () {
 		const found = [] as string[];
 		for (let i = 0; i < codeLenses.length; i++) {
 			const lens = codeLenses[i];
-			if (lens.command.command === 'go.test.cursor') {
-				found.push(lens.command.arguments[0].functionName);
+			if (lens.command?.command === 'go.test.cursor') {
+				found.push(lens.command.arguments?.[0].functionName);
 			}
 		}
 		found.sort();
