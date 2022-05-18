@@ -258,3 +258,7 @@ Edit the Go Env for the active workspace.
 ### `Go: Reset Workspace Env`
 
 Reset the Go Env for the active workspace.
+
+### `Go: Run Vulncheck (Experimental)`
+
+Run go vulncheck.

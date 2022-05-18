@@ -23,7 +23,7 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	const defaultConfigInspector = getGoConfig().inspect(CHECK_FOR_UPDATES);
 
 	test('default is as expected', () => {
-		const { key, defaultValue, globalValue, workspaceValue } = defaultConfigInspector;
+		const { key, defaultValue, globalValue, workspaceValue } = defaultConfigInspector ?? {};
 		assert.deepStrictEqual(
 			{ key, defaultValue, globalValue, workspaceValue },
 			{
@@ -120,10 +120,10 @@ suite('gopls update tests', () => {
 		const latestPrereleaseVersionTimestamp = moment('2020-05-20', 'YYYY-MM-DD');
 
 		// name, usersVersion, acceptPrerelease, want
-		const testCases: [string, string, boolean, semver.SemVer][] = [
+		const testCases: [string, string, boolean, semver.SemVer | null][] = [
 			['outdated, tagged', 'v0.3.1', false, latestVersion],
 			['outdated, tagged (pre-release)', '0.3.1', true, latestPrereleaseVersion],
-			['up-to-date, tagged', latestVersion.format(), false, null],
+			['up-to-date, tagged', latestVersion?.format() ?? '', false, null],
 			['up-to-date tagged (pre-release)', 'v0.4.0', true, latestPrereleaseVersion],
 			['developer version', '(devel)', false, null],
 			['developer version (pre-release)', '(devel)', true, null],
@@ -167,11 +167,12 @@ suite('gopls update tests', () => {
 				if (version === latestPrereleaseVersion) {
 					return latestPrereleaseVersionTimestamp;
 				}
+				return null;
 			});
 			const got = await lsp.shouldUpdateLanguageServer(tool, {
 				enabled: true,
 				path: 'bad/path/to/gopls',
-				version: null,
+				version: undefined,
 				checkForUpdates: 'proxy',
 				env: {},
 				features: {
@@ -201,7 +202,7 @@ suite('version comparison', () => {
 		assert.strictEqual(
 			expected,
 			got,
-			`hard-coded minimum: ${tool.latestVersion.toString()} vs localVersion: ${moduleVersion}`
+			`hard-coded minimum: ${tool.latestVersion?.toString()} vs localVersion: ${moduleVersion}`
 		);
 	}
 
@@ -210,24 +211,24 @@ suite('version comparison', () => {
 	});
 
 	test('local delve is the minimum required version', async () => {
-		await testShouldUpdateTool(false, 'v' + latestVersion.toString());
+		await testShouldUpdateTool(false, 'v' + latestVersion?.toString());
 	});
 
 	test('local delve is newer', async () => {
-		await testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
+		await testShouldUpdateTool(false, `v${latestVersion?.major}.${(latestVersion?.minor ?? 0) + 1}.0`);
 	});
 
 	test('local delve is slightly older', async () => {
 		await testShouldUpdateTool(
 			true,
-			`v${latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
+			`v${latestVersion?.major}.${latestVersion?.minor}.${latestVersion?.patch}-0.20201231000000-5360c6286949`
 		);
 	});
 
 	test('local delve is slightly newer', async () => {
 		await testShouldUpdateTool(
 			false,
-			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.30211231000000-5360c6286949`
+			`v{$latestVersion.major}.${latestVersion?.minor}.${latestVersion?.patch}-0.30211231000000-5360c6286949`
 		);
 	});
 

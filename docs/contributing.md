@@ -15,6 +15,7 @@ Our canonical Git repository is located at https://go.googlesource.com/vscode-go
   * [Test](#test)
   * [Sideload](#sideload)
 * [Mail your change for review](#mail-your-change-for-review)
+  * [Presubmit test in CI](#presubmit-test-in-ci)
 
 ## Before you start coding
 
@@ -187,7 +188,18 @@ The easiest way to start is by reading this [detailed guide for contributing to 
 
 Once you've sent out your change, a maintainer will take a look at your contribution within a few weeks. If you don't hear back, feel free to ping the issue or send a message to the [#vscode-dev] channel of the [Gophers Slack].
 
-<!-- TODO: Kokoro setup details -->
+### Presubmit Test in CI
+
+When you mail your CL or upload a new patch to an existing CL, *AND*
+you or a fellow contributor assigns the `Run-TryBot=+1` label in Gerrit, the test command defined in 
+`build/all.bash` will run by `Kokoro`, which is Jenkins-like Google infrastructure
+for running Dockerized tests. `Kokoro` will post the result as a comment, and add its `TryBot-Result`
+vote after each test run completes.
+
+To force a re-run of the Kokoro CI,
+  * Remove `TryBot-Result` vote (hover over the label, and click the trashcan icon).
+  * Reply in Gerrit with the comment "kokoro rerun". Make sure to keep the `Run-TryBot` +1 vote.
+
 
 [#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
 [Gophers Slack]: https://invite.slack.golangbridge.org/

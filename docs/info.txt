@@ -1,0 +1,1 @@
+This directory contains the source of the github.com/golang/vscode-go/wiki.

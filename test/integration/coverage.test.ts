@@ -25,7 +25,7 @@ suite('Coverage for tests', function () {
 	let coverFilePath: string;
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig();
+		await updateGoVarsFromConfig({});
 
 		// Set up the test fixtures.
 		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'coverage');

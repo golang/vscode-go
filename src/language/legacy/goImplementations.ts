@@ -41,7 +41,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 		document: vscode.TextDocument,
 		position: vscode.Position,
 		token: vscode.CancellationToken
-	): Thenable<vscode.Definition> {
+	): Thenable<vscode.Definition | null> | undefined {
 		// To keep `guru implements` fast we want to restrict the scope of the search to current workspace
 		// If no workspace is open, then no-op
 		const root = getWorkspaceFolderPath(document.uri);
@@ -58,7 +58,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 			return;
 		}
 
-		return new Promise<vscode.Definition>((resolve, reject) => {
+		return new Promise((resolve, reject) => {
 			if (token.isCancellationRequested) {
 				return resolve(null);
 			}

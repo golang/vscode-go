@@ -10,10 +10,12 @@ import { isAbsolute } from 'path';
 import { CancellationToken, CodeLens, Range, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoBaseCodeLensProvider } from './goBaseCodelens';
-import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { GoReferenceProvider } from './language/legacy/goReferences';
 import { getBinPath } from './util';
 import vscode = require('vscode');
+import { GO_MODE } from './goMode';
+import { GoExtensionContext } from './context';
 
 const methodRegex = /^func\s+\(\s*\w+\s+\*?\w+\s*\)\s+/;
 
@@ -24,6 +26,26 @@ class ReferencesCodeLens extends CodeLens {
 }
 
 export class GoReferencesCodeLensProvider extends GoBaseCodeLensProvider {
+	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		const referencesCodeLensProvider = new this(goCtx);
+		ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, referencesCodeLensProvider));
+		ctx.subscriptions.push(
+			vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
+				if (!e.affectsConfiguration('go')) {
+					return;
+				}
+				const updatedGoConfig = getGoConfig();
+				if (updatedGoConfig['enableCodeLens']) {
+					referencesCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['references']);
+				}
+			})
+		);
+	}
+
+	constructor(private readonly goCtx: GoExtensionContext) {
+		super();
+	}
+
 	public provideCodeLenses(document: TextDocument, token: CancellationToken): CodeLens[] | Thenable<CodeLens[]> {
 		if (!this.enabled) {
 			return [];
@@ -89,7 +111,7 @@ export class GoReferencesCodeLensProvider extends GoBaseCodeLensProvider {
 		document: TextDocument,
 		token: CancellationToken
 	): Promise<vscode.DocumentSymbol[]> {
-		const symbolProvider = new GoDocumentSymbolProvider();
+		const symbolProvider = GoDocumentSymbolProvider(this.goCtx);
 		const isTestFile = document.fileName.endsWith('_test.go');
 		const symbols = await symbolProvider.provideDocumentSymbols(document, token);
 		return symbols[0].children.filter((symbol) => {

@@ -5,7 +5,7 @@
 
 import vscode = require('vscode');
 import assert from 'assert';
-import { shouldShowGoWelcomePage } from '../../src/goMain';
+import { shouldShowGoWelcomePage } from '../../src/welcome';
 import { extensionId } from '../../src/const';
 import { WelcomePanel } from '../../src/welcome';
 
@@ -62,7 +62,7 @@ suite('WelcomePanel Tests', () => {
 suite('joinPath Tests', () => {
 	test('WelcomePanel dataroot is set as expected', () => {
 		const uri = vscode.extensions.getExtension(extensionId).extensionUri;
-		WelcomePanel.createOrShow(uri);
+		WelcomePanel.createOrShow({ extensionUri: uri })();
 		const got = WelcomePanel.currentPanel.dataroot;
 		const want = vscode.Uri.joinPath(uri, 'media');
 		assert.strictEqual(got.toString(), want.toString());

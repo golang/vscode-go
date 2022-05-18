@@ -1,3 +1,34 @@
+## v0.33.0 - 1 May, 2022
+
+📣 [Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It is now the default with the [Go Nightly](docs/nightly.md) and will become the default for the stable releases in mid 2022.
+
+### Changes
+
+* `staticcheck`: if go 1.16.x or older is used in installing tools, the extension chooses `staticcheck@v0.2.2`. In order to use the latest version of `staticcheck` while working on projects that require older versions of go, you can utilize the `"go.toolsManagement.go"` setting to specify a newer version of go for tool installation. ([Issue 2162](https://github.com/golang/vscode-go/issues/2162))
+
+* `go-outline`: `go-outline` is no longer required when `gopls` (v0.8.2+) is used.
+
+* Activation: the extension defers commands and feature provider registrations until it runs `go version` and `go env`, and starts `gopls`. [This change](https://go-review.googlesource.com/c/vscode-go/+/398155) prevent the extension prematually export its features, but may result in a slight increase in extension activation time if those commands run slow.
+
+* Survey: we show the Gopls opt-out survey prompt only when users change the setting to disable `gopls`.
+
+* Test Explorer: fixed a bug in `go.mod` file parsing ([Issue 2171](https://github.com/golang/vscode-go/issues/2171))
+
+* Debugging: we removed the informational popup at the start of remote attach session with `dlv-dap`. ([Issue 2018](https://github.com/golang/vscode-go/issues/2018))
+
+### Experimental features
+
+This version includes two highly experimental features. They are still
+in early stage and we are looking forward to hearing more user feedback.
+
+* [Go Explorer view](docs/ui.md#go-explorer-view): it displays environment variables and information about tools used by the extension. ([Issue 2049](https://github.com/golang/vscode-go/issues/2049))
+
+* `Go: Run Vulncheck (Experimental)` command: it runs the `govulncheck` command embedded in `gopls`, which identifies known vulnerabilities by call graph traversal and module dependency analysis. ([Issue 2096](https://github.com/golang/vscode-go/issues/2096))
+
+### Thanks
+
+@jamalc, @polinasok, @dlipovetsky, @vladdoster, @suzmue, @hyangah
+
 ## v0.32.0 - 8 Mar, 2022
 
 This version includes features to enhance Go 1.18 support. It works best when paired with the latest Go Language Server ([`gopls` v0.8.0+](https://github.com/golang/tools/releases/tag/gopls%2Fv0.8.0)) and Delve ([`dlv` v1.8.0+](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#changelog)).

@@ -30,6 +30,7 @@ import {
 import vscode = require('vscode');
 import WebRequest = require('web-request');
 import { installTool } from './goInstallTools';
+import { CommandFactory } from './commands';
 
 export class GoEnvironmentOption implements vscode.QuickPickItem {
 	readonly description: string;
@@ -38,7 +39,7 @@ export class GoEnvironmentOption implements vscode.QuickPickItem {
 	}
 }
 
-export let terminalCreationListener: vscode.Disposable;
+export let terminalCreationListener: vscode.Disposable | undefined;
 
 let environmentVariableCollection: vscode.EnvironmentVariableCollection;
 export function setEnvironmentVariableCollection(env: vscode.EnvironmentVariableCollection) {
@@ -68,7 +69,7 @@ function canChooseGoEnvironment() {
 /**
  * Present a command palette menu to the user to select their go binary
  */
-export async function chooseGoEnvironment() {
+export const chooseGoEnvironment: CommandFactory = () => async () => {
 	if (!goEnvStatusbarItem) {
 		return;
 	}
@@ -79,7 +80,7 @@ export async function chooseGoEnvironment() {
 	}
 
 	// fetch default go and uninstalled go versions
-	let defaultOption: GoEnvironmentOption;
+	let defaultOption: GoEnvironmentOption | undefined;
 	let uninstalledOptions: GoEnvironmentOption[];
 	let goSDKOptions: GoEnvironmentOption[];
 	try {
@@ -89,7 +90,7 @@ export async function chooseGoEnvironment() {
 			getSDKGoOptions()
 		]);
 	} catch (e) {
-		vscode.window.showErrorMessage(e.message);
+		vscode.window.showErrorMessage((e as Error).message);
 		return;
 	}
 
@@ -123,9 +124,9 @@ export async function chooseGoEnvironment() {
 	try {
 		await setSelectedGo(selection);
 	} catch (e) {
-		vscode.window.showErrorMessage(e.message);
+		vscode.window.showErrorMessage((e as Error).message);
 	}
-}
+};
 
 /**
  * update the selected go path and label in the workspace state
@@ -163,7 +164,7 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 			return false;
 		}
 		const newGoBin = fixDriveCasingInWindows(newGoUris[0].fsPath);
-		const oldGoBin = fixDriveCasingInWindows(path.join(defaultUri.fsPath, correctBinname('go')));
+		const oldGoBin = fixDriveCasingInWindows(path.join(defaultUri?.fsPath ?? '', correctBinname('go')));
 
 		if (newGoBin === oldGoBin) {
 			return false;
@@ -172,12 +173,16 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 			vscode.window.showErrorMessage(`${newGoBin} is not an executable`);
 			return false;
 		}
-		const newGo = await getGoVersion(newGoBin);
-		if (!newGo || !newGo.isValid()) {
-			vscode.window.showErrorMessage(`failed to get "${newGoBin} version", invalid Go binary`);
-			return false;
+		let newGo: GoVersion | undefined;
+		try {
+			newGo = await getGoVersion(newGoBin);
+			await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
+		} catch (e) {
+			if (!newGo || !newGo.isValid()) {
+				vscode.window.showErrorMessage(`failed to get "${newGoBin} version", invalid Go binary:\n${e}`);
+				return false;
+			}
 		}
-		await updateWorkspaceState('selectedGo', new GoEnvironmentOption(newGo.binaryPath, formatGoVersion(newGo)));
 	}
 	// prompt the user to reload the window.
 	// promptReload defaults to true and should only be false for tests.
@@ -468,7 +473,7 @@ async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 		const dlPath = `golang.org/dl/${result.version}`;
 		const label = result.version.replace('go', 'Go ');
 		return [...opts, new GoEnvironmentOption(dlPath, label, false)];
-	}, []);
+	}, [] as GoEnvironmentOption[]);
 }
 
 export const latestGoVersionKey = 'latestGoVersions';

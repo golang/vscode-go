@@ -17,7 +17,7 @@ export function getGoplsConfig(uri?: vscode.Uri) {
 	return getConfig('gopls', uri);
 }
 
-function getConfig(section: string, uri?: vscode.Uri) {
+function getConfig(section: string, uri?: vscode.Uri | null) {
 	if (!uri) {
 		if (vscode.window.activeTextEditor) {
 			uri = vscode.window.activeTextEditor.document.uri;

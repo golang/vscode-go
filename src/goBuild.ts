@@ -5,9 +5,9 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { buildDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { getNonVendorPackages } from './goPackages';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
@@ -26,39 +26,41 @@ import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 /**
  * Builds current package or workspace.
  */
-export function buildCode(buildWorkspace?: boolean) {
-	const editor = vscode.window.activeTextEditor;
-	if (!buildWorkspace) {
-		if (!editor) {
-			vscode.window.showInformationMessage('No editor is active, cannot find current package to build');
-			return;
+export function buildCode(buildWorkspace?: boolean): CommandFactory {
+	return (ctx, goCtx) => () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!buildWorkspace) {
+			if (!editor) {
+				vscode.window.showInformationMessage('No editor is active, cannot find current package to build');
+				return;
+			}
+			if (editor.document.languageId !== 'go') {
+				vscode.window.showInformationMessage(
+					'File in the active editor is not a Go file, cannot find current package to build'
+				);
+				return;
+			}
 		}
-		if (editor.document.languageId !== 'go') {
-			vscode.window.showInformationMessage(
-				'File in the active editor is not a Go file, cannot find current package to build'
-			);
-			return;
-		}
-	}
 
-	const documentUri = editor ? editor.document.uri : null;
-	const goConfig = getGoConfig(documentUri);
+		const documentUri = editor?.document.uri;
+		const goConfig = getGoConfig(documentUri);
 
-	outputChannel.clear(); // Ensures stale output from build on save is cleared
-	diagnosticsStatusBarItem.show();
-	diagnosticsStatusBarItem.text = 'Building...';
+		outputChannel.clear(); // Ensures stale output from build on save is cleared
+		diagnosticsStatusBarItem.show();
+		diagnosticsStatusBarItem.text = 'Building...';
 
-	isModSupported(documentUri).then((isMod) => {
-		goBuild(documentUri, isMod, goConfig, buildWorkspace)
-			.then((errors) => {
-				handleDiagnosticErrors(editor ? editor.document : null, errors, buildDiagnosticCollection);
-				diagnosticsStatusBarItem.hide();
-			})
-			.catch((err) => {
-				vscode.window.showInformationMessage('Error: ' + err);
-				diagnosticsStatusBarItem.text = 'Build Failed';
-			});
-	});
+		isModSupported(documentUri).then((isMod) => {
+			goBuild(documentUri, isMod, goConfig, buildWorkspace)
+				.then((errors) => {
+					handleDiagnosticErrors(goCtx, editor?.document, errors, goCtx.buildDiagnosticCollection);
+					diagnosticsStatusBarItem.hide();
+				})
+				.catch((err) => {
+					vscode.window.showInformationMessage('Error: ' + err);
+					diagnosticsStatusBarItem.text = 'Build Failed';
+				});
+		});
+	};
 }
 
 /**
@@ -70,7 +72,7 @@ export function buildCode(buildWorkspace?: boolean) {
  * @param buildWorkspace If true builds code in all workspace.
  */
 export async function goBuild(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri | undefined,
 	isMod: boolean,
 	goConfig: vscode.WorkspaceConfiguration,
 	buildWorkspace?: boolean
@@ -91,13 +93,14 @@ export async function goBuild(
 	};
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
-	const cwd = buildWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const cwd = buildWorkspace && currentWorkspace ? currentWorkspace : path.dirname(fileUri?.fsPath ?? '');
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
 	}
 
 	// Skip building if cwd is in the module cache
-	if (isMod && cwd.startsWith(getModuleCache())) {
+	const cache = getModuleCache();
+	if (isMod && cache && cwd.startsWith(cache)) {
 		return [];
 	}
 
@@ -133,7 +136,7 @@ export async function goBuild(
 				currentWorkspace,
 				'error',
 				true,
-				null,
+				'',
 				buildEnv,
 				true,
 				tokenSource.token
@@ -162,10 +165,10 @@ export async function goBuild(
 	running = true;
 	return runTool(
 		buildArgs.concat('-o', tmpPath, importPath),
-		cwd,
+		cwd ?? '',
 		'error',
 		true,
-		null,
+		'',
 		buildEnv,
 		true,
 		tokenSource.token

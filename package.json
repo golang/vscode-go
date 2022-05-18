@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.33.0-dev",
+  "version": "0.34.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -38,9 +38,10 @@
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
     "bundle-watch": "npm run bundle -- --sourcemap --watch",
-    "test-compile": "tsc -p ./",
+    "test-compile": "tsc -p ./tsconfig.build.json",
+    "typecheck": "tsc -p ./tsconfig.strict.json --noEmit",
     "compile": "npm run bundle",
-    "watch": "tsc -watch -p ./",
+    "watch": "tsc -watch -p ./tsconfig.build.json",
     "test": "npm run test-compile && node ./out/test/runTest.js",
     "lint": "gts lint src test",
     "fix-lint": "gts fix src test",
@@ -53,7 +54,7 @@
     "diff": "4.0.2",
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
-    "moment": "2.29.1",
+    "moment": "2.29.2",
     "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
@@ -85,7 +86,7 @@
     "sinon": "9.2.4",
     "ts-loader": "7.0.5",
     "tslint": "6.1.3",
-    "typescript": "3.9.9",
+    "typescript": "4.6.4",
     "yarn": "1.22.10"
   },
   "engines": {
@@ -516,6 +517,12 @@
         "description": "Reset the Go Env for the active workspace.",
         "icon": "$(settings-remove)",
         "enablement": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "go.vulncheck.run",
+        "title": "Go: Run Vulncheck (Experimental)",
+        "description": "Run go vulncheck.",
+        "enablement": "go.goplsIsRunning"
       }
     ],
     "breakpoints": [
@@ -663,7 +670,7 @@
               },
               "env": {
                 "type": "object",
-                "description": "Environment variables passed to the program.",
+                "description": "Environment variables passed to the launched debuggee program. Format as string key:value pairs. Merged with `envFile` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`.",
                 "default": {}
               },
               "substitutePath": {
@@ -730,7 +737,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths",
+                "description": "Absolute path to a file containing environment variable definitions, formatted as string key=value pairs. Multiple files can be specified by provided an array of absolute paths. Merged with `env` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`. ",
                 "default": ""
               },
               "backend": {
@@ -1465,7 +1472,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
         "go.gocodeFlags": {
@@ -2736,7 +2743,8 @@
         {
           "id": "go.explorer",
           "name": "go",
-          "icon": "media/go-logo-white.svg"
+          "icon": "media/go-logo-white.svg",
+          "when": "go.showExplorer"
         }
       ],
       "test": [

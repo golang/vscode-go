@@ -14,9 +14,11 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { GoDocumentSymbolProvider } from './language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
+import { CommandFactory } from './commands';
+import { GoExtensionContext } from './context';
 
 const generatedWord = 'Generated ';
 
@@ -43,7 +45,7 @@ function checkActiveEditor(): vscode.TextEditor | undefined {
 /**
  * Toggles between file in current active editor and the corresponding test file.
  */
-export function toggleTestFile(): void {
+export const toggleTestFile: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('Cannot toggle test file. No editor selected.');
@@ -67,48 +69,50 @@ export function toggleTestFile(): void {
 		}
 	}
 	vscode.commands.executeCommand('vscode.open', vscode.Uri.file(targetFilePath));
-}
+};
 
-export function generateTestCurrentPackage(): Promise<boolean> {
+export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 	return generateTests(
+		ctx,
+		goCtx,
 		{
 			dir: path.dirname(editor.document.uri.fsPath),
 			isTestFile: editor.document.fileName.endsWith('_test.go')
 		},
 		getGoConfig(editor.document.uri)
 	);
-}
+};
 
-export function generateTestCurrentFile(): Promise<boolean> {
+export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 
 	return generateTests(
+		ctx,
+		goCtx,
 		{
 			dir: editor.document.uri.fsPath,
 			isTestFile: editor.document.fileName.endsWith('_test.go')
 		},
 		getGoConfig(editor.document.uri)
 	);
-}
+};
 
-export async function generateTestCurrentFunction(): Promise<boolean> {
+export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async () => {
 	const editor = checkActiveEditor();
 	if (!editor) {
-		return;
+		return false;
 	}
 
-	const functions = await getFunctions(editor.document);
+	const functions = await getFunctions(goCtx, editor.document);
 	const selection = editor.selection;
-	const currentFunction: vscode.DocumentSymbol = functions.find(
-		(func) => selection && func.range.contains(selection.start)
-	);
+	const currentFunction = functions.find((func) => selection && func.range.contains(selection.start));
 
 	if (!currentFunction) {
 		vscode.window.showInformationMessage('No function found at cursor.');
@@ -124,6 +128,8 @@ export async function generateTestCurrentFunction(): Promise<boolean> {
 	}
 
 	return generateTests(
+		ctx,
+		goCtx,
 		{
 			dir: editor.document.uri.fsPath,
 			func: funcName,
@@ -131,7 +137,7 @@ export async function generateTestCurrentFunction(): Promise<boolean> {
 		},
 		getGoConfig(editor.document.uri)
 	);
-}
+};
 
 /**
  * Input to goTests.
@@ -152,7 +158,12 @@ interface Config {
 	isTestFile?: boolean;
 }
 
-function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): Promise<boolean> {
+function generateTests(
+	ctx: vscode.ExtensionContext,
+	goCtx: GoExtensionContext,
+	conf: Config,
+	goConfig: vscode.WorkspaceConfiguration
+): Promise<boolean> {
 	return new Promise<boolean>((resolve, reject) => {
 		const cmd = getBinPath('gotests');
 		let args = ['-w'];
@@ -211,22 +222,22 @@ function generateTests(conf: Config, goConfig: vscode.WorkspaceConfiguration): P
 				outputChannel.append(message);
 
 				if (testsGenerated && !conf.isTestFile) {
-					toggleTestFile();
+					toggleTestFile(ctx, goCtx)();
 				}
 
 				return resolve(true);
 			} catch (e) {
-				vscode.window.showInformationMessage(e.msg);
-				outputChannel.append(e.msg);
+				vscode.window.showInformationMessage((e as any).msg);
+				outputChannel.append((e as any).msg);
 				reject(e);
 			}
 		});
 	});
 }
 
-async function getFunctions(doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
-	const documentSymbolProvider = new GoDocumentSymbolProvider();
-	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, null);
+async function getFunctions(goCtx: GoExtensionContext, doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
+	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	return symbols[0].children.filter((sym) =>
 		[vscode.SymbolKind.Function, vscode.SymbolKind.Method].includes(sym.kind)
 	);

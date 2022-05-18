@@ -105,7 +105,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 	}
 	const args = ['version'];
 	processes.forEach((item) => {
-		if (item.executable?.length > 0) {
+		if (item.executable) {
 			args.push(item.executable);
 		}
 	});
@@ -117,7 +117,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 
 	const goProcesses: AttachItem[] = [];
 	processes.forEach((item) => {
-		if (goProcessExecutables.indexOf(item.executable) >= 0) {
+		if (item.executable && goProcessExecutables.indexOf(item.executable) >= 0) {
 			item.isGo = true;
 			goProcesses.push(item);
 		}
@@ -133,7 +133,7 @@ export function parseGoVersionOutput(stdout: string): string[] {
 	const lines = stdout.toString().split('\n');
 	lines.forEach((line) => {
 		const match = line.match(goVersionRegexp);
-		if (match?.length > 0) {
+		if (match && match.length > 0) {
 			const exe = line.substr(0, line.length - match[0].length);
 			goProcessExes.push(exe);
 		}
@@ -194,8 +194,8 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 
 async function runCommand(
 	processCmd: ProcessListCommand
-): Promise<{ err: cp.ExecException; stdout: string; stderr: string }> {
-	return await new Promise<{ err: cp.ExecException; stdout: string; stderr: string }>((resolve) => {
+): Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }> {
+	return await new Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }>((resolve) => {
 		cp.execFile(processCmd.command, processCmd.args, (err, stdout, stderr) => {
 			resolve({ err, stdout, stderr });
 		});

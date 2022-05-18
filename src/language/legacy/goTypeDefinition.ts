@@ -47,7 +47,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 		}
 		position = adjustedPos[2];
 
-		return new Promise<vscode.Definition>((resolve, reject) => {
+		return new Promise<vscode.Definition | null>((resolve, reject) => {
 			const goGuru = getBinPath('guru');
 			if (!path.isAbsolute(goGuru)) {
 				promptForMissingTool('guru');
@@ -84,9 +84,9 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 						}
 
 						// Fall back to position of declaration
-						return definitionLocation(document, position, null, false, token).then(
+						return definitionLocation(document, position, undefined, false, token).then(
 							(definitionInfo) => {
-								if (definitionInfo === null || definitionInfo.file === null) {
+								if (!definitionInfo || !definitionInfo.file) {
 									return null;
 								}
 								const definitionResource = vscode.Uri.file(definitionInfo.file);
@@ -95,7 +95,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 							},
 							(err) => {
 								const miss = parseMissingError(err);
-								if (miss[0]) {
+								if (miss[0] && miss[1]) {
 									promptForMissingTool(miss[1]);
 								} else if (err) {
 									return Promise.reject(err);
@@ -123,7 +123,7 @@ export class GoTypeDefinitionProvider implements vscode.TypeDefinitionProvider {
 				}
 			});
 			if (process.pid) {
-				process.stdin.end(getFileArchive(document));
+				process.stdin?.end(getFileArchive(document));
 			}
 			token.onCancellationRequested(() => killProcessTree(process));
 		});

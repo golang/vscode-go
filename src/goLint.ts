@@ -5,47 +5,55 @@
 
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { lintDiagnosticCollection } from './goMain';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { goplsStaticcheckEnabled } from './goTools';
 import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
+
 /**
  * Runs linter on the current file, package or workspace.
  */
-export function lintCode(scope?: string) {
-	const editor = vscode.window.activeTextEditor;
-	if (scope !== 'workspace') {
-		if (!editor) {
-			vscode.window.showInformationMessage('No editor is active, cannot find current package to lint');
-			return;
+export function lintCode(scope?: string): CommandFactory {
+	return (ctx, goCtx) => () => {
+		const editor = vscode.window.activeTextEditor;
+		if (scope !== 'workspace') {
+			if (!editor) {
+				vscode.window.showInformationMessage('No editor is active, cannot find current package to lint');
+				return;
+			}
+			if (editor.document.languageId !== 'go') {
+				vscode.window.showInformationMessage(
+					'File in the active editor is not a Go file, cannot find current package to lint'
+				);
+				return;
+			}
 		}
-		if (editor.document.languageId !== 'go') {
-			vscode.window.showInformationMessage(
-				'File in the active editor is not a Go file, cannot find current package to lint'
-			);
-			return;
-		}
-	}
 
-	const documentUri = editor ? editor.document.uri : null;
-	const goConfig = getGoConfig(documentUri);
-	const goplsConfig = getGoplsConfig(documentUri);
+		const documentUri = editor ? editor.document.uri : undefined;
+		const goConfig = getGoConfig(documentUri);
+		const goplsConfig = getGoplsConfig(documentUri);
 
-	outputChannel.clear(); // Ensures stale output from lint on save is cleared
-	diagnosticsStatusBarItem.show();
-	diagnosticsStatusBarItem.text = 'Linting...';
+		outputChannel.clear(); // Ensures stale output from lint on save is cleared
+		diagnosticsStatusBarItem.show();
+		diagnosticsStatusBarItem.text = 'Linting...';
 
-	goLint(documentUri, goConfig, goplsConfig, scope)
-		.then((warnings) => {
-			handleDiagnosticErrors(editor ? editor.document : null, warnings, lintDiagnosticCollection);
-			diagnosticsStatusBarItem.hide();
-		})
-		.catch((err) => {
-			vscode.window.showInformationMessage('Error: ' + err);
-			diagnosticsStatusBarItem.text = 'Linting Failed';
-		});
+		goLint(documentUri, goConfig, goplsConfig, scope)
+			.then((warnings) => {
+				handleDiagnosticErrors(
+					goCtx,
+					editor ? editor.document : undefined,
+					warnings,
+					goCtx.lintDiagnosticCollection
+				);
+				diagnosticsStatusBarItem.hide();
+			})
+			.catch((err) => {
+				vscode.window.showInformationMessage('Error: ' + err);
+				diagnosticsStatusBarItem.text = 'Linting Failed';
+			});
+	};
 }
 
 /**
@@ -56,7 +64,7 @@ export function lintCode(scope?: string) {
  * @param scope Scope in which to run the linter.
  */
 export function goLint(
-	fileUri: vscode.Uri,
+	fileUri: vscode.Uri | undefined,
 	goConfig: vscode.WorkspaceConfiguration,
 	goplsConfig: vscode.WorkspaceConfiguration,
 	scope?: string
@@ -78,7 +86,7 @@ export function goLint(
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
 
-	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri.fsPath);
+	const cwd = scope === 'workspace' && currentWorkspace ? currentWorkspace : path.dirname(fileUri?.fsPath ?? '');
 
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
@@ -128,8 +136,8 @@ export function goLint(
 		args.push('./...');
 		outputChannel.appendLine(`Starting linting the current workspace at ${currentWorkspace}`);
 	} else if (scope === 'file') {
-		args.push(fileUri.fsPath);
-		outputChannel.appendLine(`Starting linting the current file at ${fileUri.fsPath}`);
+		args.push(fileUri?.fsPath ?? '');
+		outputChannel.appendLine(`Starting linting the current file at ${fileUri?.fsPath}`);
 	} else {
 		outputChannel.appendLine(`Starting linting the current package at ${cwd}`);
 	}

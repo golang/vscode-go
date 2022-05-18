@@ -17,7 +17,7 @@ import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { logVerbose } from './goLogging';
-import { restartLanguageServer } from './goMain';
+import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
 	containsTool,
@@ -42,6 +42,7 @@ import {
 import { correctBinname, envPath, executableFileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
+import { RestartReason } from './language/goLanguageServer';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
@@ -56,7 +57,7 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	let allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 
 	// exclude tools replaced by alternateTools.
-	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools');
+	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
 	allTools = allTools.filter((tool) => {
 		return !alternateTools[tool.name];
 	});
@@ -96,20 +97,24 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	);
 }
 
-export async function getGoForInstall(goVersion?: GoVersion, silent?: boolean): Promise<GoVersion> {
+export async function getGoForInstall(goVersion: GoVersion, silent?: boolean): Promise<GoVersion> {
 	const configured = getGoConfig().get<string>('toolsManagement.go');
 	if (!configured) {
 		return goVersion;
 	}
 	if (executableFileExists(configured)) {
-		const go = await getGoVersion(configured);
-		if (go) return go;
+		try {
+			const go = await getGoVersion(configured);
+			if (go) return go;
+		} finally {
+			if (!silent) {
+				outputChannel.appendLine(
+					`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
+				);
+			}
+		}
 	}
-	if (!silent) {
-		outputChannel.appendLine(
-			`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
-		);
-	}
+
 	return goVersion;
 }
 
@@ -150,7 +155,7 @@ export async function installTools(
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
 		const p = toolsGopath
-			.split(path.delimiter)
+			?.split(path.delimiter)
 			.map((e) => path.join(e, 'bin'))
 			.join(path.delimiter);
 		installingMsg += `${p}`;
@@ -160,7 +165,7 @@ export async function installTools(
 	// This ensures that users get the latest tagged version, rather than master,
 	// which may be unstable.
 	let modulesOff = false;
-	if (goVersion.lt('1.11')) {
+	if (goVersion?.lt('1.11')) {
 		modulesOff = true;
 	} else {
 		installingMsg += ' in module mode.';
@@ -186,7 +191,7 @@ export async function installTools(
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls') {
 			// Restart the language server if a new binary has been installed.
-			restartLanguageServer('installation');
+			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
 		}
 	}
 
@@ -221,7 +226,7 @@ async function tmpDirForToolInstallation() {
 }
 
 // installTool installs the specified tool.
-export async function installTool(tool: ToolAtVersion): Promise<string> {
+export async function installTool(tool: ToolAtVersion): Promise<string | undefined> {
 	const goVersion = await getGoForInstall(await getGoVersion());
 	const envForTools = toolInstallationEnvironment();
 
@@ -233,7 +238,7 @@ async function installToolWithGo(
 	goVersion: GoVersion, // go version to be used for installation.
 	envForTools: NodeJS.Dict<string>,
 	modulesOn: boolean
-): Promise<string> {
+): Promise<string | undefined> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
 		const reason = await tool.close(envForTools);
@@ -249,7 +254,7 @@ async function installToolWithGo(
 	if (!modulesOn) {
 		importPath = getImportPath(tool, goVersion);
 	} else {
-		let version: semver.SemVer | string | undefined = tool.version;
+		let version: semver.SemVer | string | undefined | null = tool.version;
 		if (!version) {
 			if (tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
 				version = await latestToolVersion(tool, true);
@@ -261,7 +266,7 @@ async function installToolWithGo(
 	}
 
 	try {
-		if (!modulesOn || goVersion.lt('1.16') || hasModSuffix(tool)) {
+		if (!modulesOn || goVersion?.lt('1.16') || hasModSuffix(tool)) {
 			await installToolWithGoGet(tool, goVersion, env, modulesOn, importPath);
 		} else {
 			await installToolWithGoInstall(goVersion, env, importPath);
@@ -278,7 +283,7 @@ async function installToolWithGo(
 async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<string>, importPath: string) {
 	// Unlike installToolWithGoGet, `go install` in module mode
 	// can run in the current directory safely. So, use the user-specified go tool path.
-	const goBinary = goVersion.binaryPath || getBinPath('go');
+	const goBinary = goVersion?.binaryPath || getBinPath('go');
 	const opts = {
 		env,
 		cwd: getWorkspaceFolderPath()
@@ -302,7 +307,11 @@ async function installToolWithGoGet(
 	// (which can be a wrapper script that switches 'go').
 	const goBinary = getCurrentGoRoot()
 		? path.join(getCurrentGoRoot(), 'bin', correctBinname('go'))
-		: goVersion.binaryPath;
+		: goVersion?.binaryPath;
+	if (!goBinary) {
+		vscode.window.showErrorMessage('Go binary not found.');
+		return;
+	}
 
 	// Build the arguments list for the tool installation.
 	const args = ['get', '-x'];
@@ -328,6 +337,7 @@ async function installToolWithGoGet(
 		env,
 		cwd: toolsTmpDir
 	};
+
 	try {
 		const execFile = util.promisify(cp.execFile);
 		logVerbose(`$ ${goBinary} ${args.join(' ')} (cwd: ${opts.cwd})`);
@@ -503,7 +513,7 @@ export async function promptForUpdatingTool(
 	}
 }
 
-export function updateGoVarsFromConfig(): Promise<void> {
+export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void> {
 	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
@@ -561,7 +571,7 @@ export function updateGoVarsFromConfig(): Promise<void> {
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoStatusBar();
+				initGoStatusBar(goCtx);
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();
@@ -629,16 +639,16 @@ export async function offerToInstallTools() {
 
 function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
 	const keys = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
-	return Promise.all<Tool>(
+	return Promise.all(
 		keys.map(
 			(tool) =>
-				new Promise<Tool>((resolve, reject) => {
+				new Promise<Tool | null>((resolve, reject) => {
 					const toolPath = getBinPath(tool.name);
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
 		)
 	).then((res) => {
-		return res.filter((x) => x != null);
+		return res.filter((x): x is Tool => x != null);
 	});
 }
 
@@ -737,7 +747,7 @@ async function defaultInspectGoToolVersion(
 			...
 		*/
 		const lines = stdout.split('\n', 3);
-		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)[1];
+		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)?.[1];
 		const moduleVersion = lines[2].split(/\s+/)[3];
 		return { goVersion, moduleVersion };
 	} catch (e) {
@@ -772,4 +782,98 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 
 	// TODO(hyangah): figure out when to check if a version newer than
 	// tool.latestVersion is released when checkForUpdates === 'proxy'
+}
+
+export async function suggestUpdates() {
+	const configuredGoVersion = await getGoVersion();
+	if (!configuredGoVersion || configuredGoVersion.lt('1.12')) {
+		// User is using an ancient or a dev version of go. Don't suggest updates -
+		// user should know what they are doing.
+		return;
+	}
+
+	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
+	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
+	if (toolsToUpdate.length === 0) {
+		return;
+	}
+
+	// If the user has opted in to automatic tool updates, we can update
+	// without prompting.
+	const toolsManagementConfig = getGoConfig()['toolsManagement'];
+	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
+		installTools(toolsToUpdate, configuredGoVersion, true);
+	} else {
+		const updateToolsCmdText = 'Update tools';
+		const selected = await vscode.window.showWarningMessage(
+			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${
+				configuredGoVersion.version
+			}`,
+			updateToolsCmdText
+		);
+		if (selected === updateToolsCmdText) {
+			installTools(toolsToUpdate, configuredGoVersion);
+		}
+	}
+}
+
+// exported for testing
+export async function listOutdatedTools(configuredGoVersion: GoVersion, allTools: Tool[]): Promise<Tool[]> {
+	if (!configuredGoVersion || !configuredGoVersion.sv) {
+		return [];
+	}
+
+	const { major, minor } = configuredGoVersion.sv;
+
+	const oldTools = await Promise.all(
+		allTools.map(async (tool) => {
+			const toolPath = getBinPath(tool.name);
+			if (!path.isAbsolute(toolPath)) {
+				return;
+			}
+			const m = await inspectGoToolVersion(toolPath);
+			if (!m) {
+				console.log(`failed to get go tool version: ${toolPath}`);
+				return;
+			}
+			const { goVersion } = m;
+			if (!goVersion) {
+				// TODO: we cannot tell whether the tool was compiled with a newer version of go
+				// or compiled in an unconventional way.
+				return;
+			}
+			const toolGoVersion = new GoVersion('', `go version ${goVersion} os/arch`);
+			if (!toolGoVersion || !toolGoVersion.sv) {
+				return tool;
+			}
+			if (
+				major > toolGoVersion.sv.major ||
+				(major === toolGoVersion.sv.major && minor > toolGoVersion.sv.minor)
+			) {
+				return tool;
+			}
+			// special case: if the tool was compiled with beta or rc, and the current
+			// go version is a stable version, let's ask to recompile.
+			if (
+				major === toolGoVersion.sv.major &&
+				minor === toolGoVersion.sv.minor &&
+				(goVersion.includes('beta') || goVersion.includes('rc')) &&
+				// We assume tools compiled with different rc/beta need to be recompiled.
+				// We test the inequality by checking whether the exact beta or rc version
+				// appears in the `go version` output. e.g.,
+				//   configuredGoVersion.version      	goVersion(tool)		update
+				//   'go version go1.18 ...'    		'go1.18beta1'		Yes
+				//   'go version go1.18beta1 ...'		'go1.18beta1'		No
+				//   'go version go1.18beta2 ...'		'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18beta1'		Yes
+				//   'go version go1.18rc1 ...'			'go1.18'			No
+				//   'go version devel go1.18-deadbeaf ...'	'go1.18beta1'	No (* rare)
+				!configuredGoVersion.version.includes(goVersion)
+			) {
+				return tool;
+			}
+			return;
+		})
+	);
+	return oldTools.filter((tool): tool is Tool => !!tool);
 }

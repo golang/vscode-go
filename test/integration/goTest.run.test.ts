@@ -21,7 +21,7 @@ suite('Go Test Runner', () => {
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -103,7 +103,7 @@ suite('Go Test Runner', () => {
 		let spy: sinon.SinonSpy<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(subTestDir, 'sub_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -170,6 +170,6 @@ suite('Go Test Runner', () => {
 			console.log('Attempt to run subtest and other test');
 			assert(await testExplorer.runner.run({ include: [tSub, tOther] }), 'Failed to execute `go test`');
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		});
+		}).timeout(4000);
 	});
 });

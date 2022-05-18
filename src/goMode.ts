@@ -7,9 +7,14 @@
 
 import vscode = require('vscode');
 
-export const GO_MODE: vscode.DocumentFilter = { language: 'go', scheme: 'file' };
-export const GO_MOD_MODE: vscode.DocumentFilter = { language: 'go.mod', scheme: 'file' };
-export const GO_SUM_MODE: vscode.DocumentFilter = { language: 'go.sum', scheme: 'file' };
+interface Filter extends vscode.DocumentFilter {
+	language: string;
+	scheme: string;
+}
+
+export const GO_MODE: Filter = { language: 'go', scheme: 'file' };
+export const GO_MOD_MODE: Filter = { language: 'go.mod', scheme: 'file' };
+export const GO_SUM_MODE: Filter = { language: 'go.sum', scheme: 'file' };
 
 export function isGoFile(document: vscode.TextDocument): boolean {
 	if (

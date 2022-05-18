@@ -17,7 +17,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         version: ['stable', 'insiders']
-        go: ['1.15', '1.16', '1.17', '1.18.0-beta2']
+        go: ['1.15', '1.16', '1.17', '1.18']
 
     steps:
       - name: Clone repository
@@ -52,7 +52,7 @@ jobs:
         run: npm run unit-test
 
       - name: Run tests
-        uses: GabrielBB/xvfb-action@v1.0
+        uses: GabrielBB/xvfb-action@86d97bde4a65fe9b290c0b3fb92c2c4ed0e5302d
         with:
           run: npm run test
         env:

@@ -9,9 +9,9 @@ provides rich language support for the
 [Go programming language](https://golang.org/).
 
 📣
-[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer.
-We plan to enable this as the default in early 2022 to enhance remote debugging with the same
-[debugging features](docs/debugging.md) that are already in use for local debugging.
+[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
+[debugging features](docs/debugging.md) that are already in use for local debugging. It is now the default with the
+[Go Nightly](docs/nightly.md) build of the extension and will become the default for the stable releases in mid 2022.
 We recommend switching your remote attach configurations in `launch.json` to use
 `"debugAdapter":"dlv-dap"` now to verify that this works for you.
 Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
@@ -82,6 +82,13 @@ extension.
 **⚠️ Note**: the default syntax highlighting for Go files is provided by a
 [TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS
 Code, not by this extension.
+
+For better syntax highlighting, we recommend enabling
+[semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
+by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uisemantictokens).
+    ```
+    "gopls": { "ui.semanticTokens": true }
+    ```
 
 ## Tools
 

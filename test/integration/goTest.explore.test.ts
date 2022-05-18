@@ -30,7 +30,7 @@ function newExplorer<T extends GoTestExplorer>(
 ) {
 	const ws = MockTestWorkspace.from(folders, files);
 	const ctrl = new MockTestController();
-	const expl = new ctor(ws, ctrl, new MockMemento(), getSymbols_Regex);
+	const expl = new ctor({}, ws, ctrl, new MockMemento(), getSymbols_Regex);
 	populateModulePathCache(ws);
 	return { ctrl, expl, ws };
 }
@@ -193,12 +193,11 @@ suite('Go Test Explorer', () => {
 	suite('stretchr', () => {
 		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 		const ctx = MockExtensionContext.new();
-
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
 			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);

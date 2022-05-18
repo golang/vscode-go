@@ -13,12 +13,12 @@ import { getGoplsConfig } from './config';
 import { goBuild } from './goBuild';
 import { buildLanguageServerConfig } from './language/goLanguageServer';
 import { goLint } from './goLint';
-import { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } from './goMain';
 import { isModSupported } from './goModules';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
 import { goVet } from './goVet';
 import { getTestFlags, goTest, TestConfig } from './testUtils';
 import { ICheckResult } from './util';
+import { GoExtensionContext } from './context';
 
 const STATUS_BAR_ITEM_NAME = 'Go Test';
 const statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ITEM_NAME, vscode.StatusBarAlignment.Left);
@@ -56,7 +56,11 @@ interface IToolCheckResults {
 	errors: ICheckResult[];
 }
 
-export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfiguration): Promise<IToolCheckResults[]> {
+export function check(
+	goCtx: GoExtensionContext,
+	fileUri: vscode.Uri,
+	goConfig: vscode.WorkspaceConfiguration
+): Promise<IToolCheckResults[]> {
 	diagnosticsStatusBarItem.hide();
 	outputChannel.clear();
 	const runningToolsPromises = [];
@@ -88,7 +92,13 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 		return testPromise;
 	};
 
-	if (!disableBuildAndVet && !!goConfig['buildOnSave'] && goConfig['buildOnSave'] !== 'off') {
+	const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
+	if (
+		buildDiagnosticCollection &&
+		!disableBuildAndVet &&
+		!!goConfig['buildOnSave'] &&
+		goConfig['buildOnSave'] !== 'off'
+	) {
 		runningToolsPromises.push(
 			isModSupported(fileUri)
 				.then((isMod) => goBuild(fileUri, isMod, goConfig, goConfig['buildOnSave'] === 'workspace'))
@@ -111,7 +121,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 		});
 	}
 
-	if (!!goConfig['lintOnSave'] && goConfig['lintOnSave'] !== 'off') {
+	if (lintDiagnosticCollection && !!goConfig['lintOnSave'] && goConfig['lintOnSave'] !== 'off') {
 		const goplsConfig = getGoplsConfig(fileUri);
 		runningToolsPromises.push(
 			goLint(fileUri, goConfig, goplsConfig, goConfig['lintOnSave']).then((errors) => ({
@@ -121,7 +131,7 @@ export function check(fileUri: vscode.Uri, goConfig: vscode.WorkspaceConfigurati
 		);
 	}
 
-	if (!disableBuildAndVet && !!goConfig['vetOnSave'] && goConfig['vetOnSave'] !== 'off') {
+	if (vetDiagnosticCollection && !disableBuildAndVet && !!goConfig['vetOnSave'] && goConfig['vetOnSave'] !== 'off') {
 		runningToolsPromises.push(
 			goVet(fileUri, goConfig, goConfig['vetOnSave'] === 'workspace').then((errors) => ({
 				diagnosticCollection: vetDiagnosticCollection,

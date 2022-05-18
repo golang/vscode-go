@@ -13,7 +13,7 @@ import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goSurvey.GoplsSurveyConfig, boolean][] = [
+		const testCases: [goSurvey.GoplsSurveyConfig, boolean | undefined][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -99,7 +99,7 @@ suite('developer survey tests', () => {
 
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goDeveloperSurvey.DeveloperSurveyConfig, boolean][] = [
+		const testCases: [goDeveloperSurvey.DeveloperSurveyConfig, boolean | undefined][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -221,8 +221,9 @@ suite('gopls opt out', () => {
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);
 			const flushGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'flushGoplsOptOutConfig');
+			sandbox.stub(vscode.env, 'openExternal').resolves(true);
 
-			await goLanguageServer.promptAboutGoplsOptOut();
+			await goLanguageServer.promptAboutGoplsOptOut({});
 			assert.strictEqual(stub.callCount, wantCount, 'unexpected call count');
 			sandbox.assert.called(getGoplsOptOutConfigStub);
 			sandbox.assert.calledOnce(flushGoplsOptOutConfigStub);
@@ -230,7 +231,7 @@ suite('gopls opt out', () => {
 			if (choice === 'Yes') assert.strictEqual(got.prompt, false, 'unexpected prompt config stored');
 			if (wantCount > 0)
 				assert(
-					got.lastDatePrompted >= today,
+					got.lastDatePrompted && got.lastDatePrompted >= today,
 					`unexpected lastDatePrompted: ${JSON.stringify(got.lastDatePrompted)}`
 				);
 		});

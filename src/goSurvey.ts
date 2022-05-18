@@ -7,7 +7,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion, lastUserAction, latestConfig } from './language/goLanguageServer';
+import { getLocalGoplsVersion } from './language/goLanguageServer';
 import { outputChannel } from './goStatus';
 import { extensionId } from './const';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
@@ -18,6 +18,9 @@ import {
 	promptForDeveloperSurvey
 } from './goDeveloperSurvey';
 import { getGoConfig } from './config';
+import { getGoVersion } from './util';
+import { GoExtensionContext } from './context';
+import { CommandFactory } from './commands';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -47,7 +50,7 @@ export interface GoplsSurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForGoplsSurvey() {
+export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -64,13 +67,13 @@ export function maybePromptForGoplsSurvey() {
 	}
 	const callback = async () => {
 		const currentTime = new Date();
-
+		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
 		if (minutesBetween(lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForGoplsSurvey(cfg, now);
+		cfg = await promptForGoplsSurvey(goCtx, cfg, now);
 		if (cfg) {
 			flushSurveyConfig(goplsSurveyConfig, cfg);
 		}
@@ -79,7 +82,7 @@ export function maybePromptForGoplsSurvey() {
 	setTimeout(callback, ms);
 }
 
-export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig | undefined {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -144,7 +147,11 @@ function randomIntInRange(min: number, max: number): number {
 	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
-async function promptForGoplsSurvey(cfg: GoplsSurveyConfig, now: Date): Promise<GoplsSurveyConfig> {
+async function promptForGoplsSurvey(
+	goCtx: GoExtensionContext,
+	cfg: GoplsSurveyConfig = {},
+	now: Date
+): Promise<GoplsSurveyConfig> {
 	let selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
@@ -159,11 +166,14 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 	switch (selected) {
 		case 'Yes':
 			{
+				const { latestConfig } = goCtx;
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const goplsEnabled = latestConfig.enabled;
+				const goplsEnabled = latestConfig?.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}`;
+				const goV = await getGoVersion();
+				const goVersion = goV ? (goV.isDevel ? 'devel' : goV.format(true)) : 'na';
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}&go=${goVersion}&os=${process.platform}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
@@ -204,10 +214,10 @@ function getGoplsSurveyConfig(): GoplsSurveyConfig {
 	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
 }
 
-export function resetSurveyConfigs() {
+export const resetSurveyConfigs: CommandFactory = () => () => {
 	flushSurveyConfig(goplsSurveyConfig, null);
 	flushSurveyConfig(developerSurveyConfig, null);
-}
+};
 
 export function flushSurveyConfig(key: string, cfg: any) {
 	if (cfg) {
@@ -242,7 +252,7 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 	}
 }
 
-export async function showSurveyConfig() {
+export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
 	// TODO(rstambler): Add developer survey config.
 	outputChannel.appendLine('HaTs Survey Configuration');
 	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
@@ -255,10 +265,10 @@ export async function showSurveyConfig() {
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(getGoplsSurveyConfig(), new Date());
+			promptForGoplsSurvey(goCtx, getGoplsSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForGoplsSurvey();
+			maybePromptForGoplsSurvey(goCtx);
 			break;
 		default:
 			break;
@@ -269,12 +279,12 @@ export async function showSurveyConfig() {
 			promptForDeveloperSurvey(getDeveloperSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForDeveloperSurvey();
+			maybePromptForDeveloperSurvey(goCtx);
 			break;
 		default:
 			break;
 	}
-}
+};
 
 export const timeMinute = 1000 * 60;
 const timeHour = timeMinute * 60;

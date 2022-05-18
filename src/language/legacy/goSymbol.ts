@@ -51,7 +51,7 @@ export class GoWorkspaceSymbolProvider implements vscode.WorkspaceSymbolProvider
 				const pos = new vscode.Position(decl.line, decl.character);
 				const symbolInfo = new vscode.SymbolInformation(
 					decl.name,
-					kind,
+					kind!,
 					new vscode.Range(pos, pos),
 					vscode.Uri.file(decl.path),
 					''
@@ -59,14 +59,13 @@ export class GoWorkspaceSymbolProvider implements vscode.WorkspaceSymbolProvider
 				symbols.push(symbolInfo);
 			}
 		};
-		const root = getWorkspaceFolderPath(
-			vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri
-		);
+		const root =
+			getWorkspaceFolderPath(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri) ?? '';
 		const goConfig = getGoConfig();
 
 		if (!root && !goConfig.gotoSymbol.includeGoroot) {
 			vscode.window.showInformationMessage('No workspace is open to find symbols.');
-			return;
+			return Promise.resolve([]);
 		}
 
 		return getWorkspaceSymbols(root, query, token, goConfig).then((results) => {
@@ -103,7 +102,7 @@ export function getWorkspaceSymbols(
 	}
 
 	return Promise.all(calls)
-		.then(([...results]) => <GoSymbolDeclaration[]>[].concat(...results))
+		.then(([...results]) => <GoSymbolDeclaration[]>[].concat(...(results as any)))
 		.catch((err: Error) => {
 			if (err && (<any>err).code === 'ENOENT') {
 				promptForMissingTool('go-symbols');
@@ -112,6 +111,7 @@ export function getWorkspaceSymbols(
 				promptForUpdatingTool('go-symbols');
 				return getWorkspaceSymbols(workspacePath, query, token, goConfig, false);
 			}
+			return [];
 		});
 }
 

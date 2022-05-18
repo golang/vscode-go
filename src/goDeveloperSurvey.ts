@@ -8,12 +8,13 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { lastUserAction } from './language/goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
+import { GoExtensionContext } from './context';
+import { getGoVersion } from './util';
 
 // Start and end dates of the survey.
-export const startDate = new Date('2021-10-27');
-export const endDate = new Date('2021-11-16');
+export const startDate = new Date('May 31 2022 00:00:00 GMT');
+export const endDate = new Date('June 21 2022 00:00:00 GMT');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -35,7 +36,7 @@ export interface DeveloperSurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForDeveloperSurvey() {
+export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -52,13 +53,13 @@ export function maybePromptForDeveloperSurvey() {
 	}
 	const callback = async () => {
 		const currentTime = new Date();
-
+		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
 		if (minutesBetween(lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForDeveloperSurvey(cfg, now);
+		cfg = await promptForDeveloperSurvey(cfg ?? {}, now);
 		if (cfg) {
 			flushSurveyConfig(developerSurveyConfig, cfg);
 		}
@@ -69,7 +70,7 @@ export function maybePromptForDeveloperSurvey() {
 // shouldPromptForSurvey decides if we should prompt the given user to take the
 // survey. It returns the DeveloperSurveyConfig if we should prompt, and
 // undefined if we should not prompt.
-export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig | undefined {
 	// TODO(rstambler): Merge checks for surveys into a setting.
 
 	// Don't prompt if the survey hasn't started or is over.
@@ -86,7 +87,7 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	// is done by generating a random number in the range [0, 1) and checking
 	// if it is < probability.
 	if (cfg.prompt === undefined) {
-		const probability = 0.2;
+		const probability = 0.1;
 		cfg.datePromptComputed = now;
 		cfg.prompt = Math.random() < probability;
 	}
@@ -140,7 +141,10 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_0BwHwKSaeE9Cx2S?s=p';
+				const goV = await getGoVersion();
+				const goVersion = goV ? goV.format(true) : 'na';
+				const useGopls = getGoConfig()?.get('useLanguageServer') === true ? 'true' : 'false';
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_7O3x4IZKiUn0QCO?s=p&go=${goVersion}&gopls=${useGopls}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;

@@ -39,11 +39,11 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 		});
 		return env;
 	} catch (e) {
-		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
+		throw new Error(`Cannot load environment variables from file ${envFilePath}: ${e}`);
 	}
 }
 
-export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
+export function parseEnvFiles(envFiles: string[] | string | undefined): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
 		fileEnvs.push(parseEnvFile(envFiles));

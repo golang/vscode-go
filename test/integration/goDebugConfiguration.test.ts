@@ -7,7 +7,7 @@ import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import { getGoConfig } from '../../src/config';
+import { getGoConfig, extensionInfo } from '../../src/config';
 import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
@@ -23,7 +23,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig();
+		await updateGoVarsFromConfig({});
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
 	});
 
@@ -915,7 +915,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test("default debugAdapter for remote mode should be always 'legacy'", async () => {
+	test("default debugAdapter for remote mode should be 'legacy' when not in Preview mode", async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -925,7 +925,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = 'legacy'; // Remote mode defaults to legacy mode.
+		const want = extensionInfo.isPreview ? 'dlv-dap' : 'legacy';
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);

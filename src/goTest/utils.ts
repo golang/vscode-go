@@ -96,12 +96,13 @@ export function forEachAsync<T>(
 
 export function dispose(resolver: GoTestResolver, item: vscode.TestItem) {
 	resolver.all.delete(item.id);
-	item.parent.children.delete(item.id);
+	item.parent?.children.delete(item.id);
 }
 
 // Dispose of the item if it has no children, recursively. This facilitates
 // cleaning up package/file trees that contain no tests.
-export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) {
+export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem | undefined) {
+	if (!item) return;
 	// Don't dispose of empty top-level items
 	const { kind } = GoTest.parseId(item.id);
 	if (kind === 'module' || kind === 'workspace' || (kind === 'package' && !item.parent)) {
@@ -114,4 +115,15 @@ export function disposeIfEmpty(resolver: GoTestResolver, item: vscode.TestItem) 
 
 	dispose(resolver, item);
 	disposeIfEmpty(resolver, item.parent);
+}
+
+// The 'name' group captures the module name, and the unnamed group ignores any comment that might follow the name.
+const moduleNameRegex = /^module.(?<name>.*?)(?:\s|\/\/|$)/mu;
+
+export function findModuleName(goModContent: string): string {
+	const match = goModContent.toString().match(moduleNameRegex);
+	if (match === null) {
+		throw new Error('failed to find module name in go.mod');
+	}
+	return match.groups?.name ?? '';
 }

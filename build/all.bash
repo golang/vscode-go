@@ -45,16 +45,23 @@ run_test() {
   echo "**** Run test ****"
   df -h | grep shm
   npm ci
+  npm run typecheck
   npm run compile
   npm run unit-test
   npm test --silent
   npm run lint
 
-  echo "**** Run settings generator ****"
-  go run tools/generate.go -w=false -gopls=true
+  # BUG(github.com/golang/vscode-go/issues/2230): Disable test temporarily.
+  # echo "**** Run settings generator ****"
+  # go run tools/generate.go -w=false -gopls=true
 
   echo "**** Check if vsce works ****"
   vsce package
+
+  echo "**** Run Go tests ****"
+  go test ./...
+  # TODO(hyangah): see if go clean -modcache makes kokoro builder happy
+  go clean -modcache
 }
 
 run_test_in_docker() {
