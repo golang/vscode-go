@@ -185,4 +185,21 @@ suite('Code lenses for testing and benchmarking', function () {
 		// Results should match `go test -list`.
 		assert.deepStrictEqual(found, ['Fuzz', 'FuzzFunc', 'TestGo118']);
 	});
+
+	test('Test codelenses skip TestMain', async () => {
+		const uri = vscode.Uri.file(path.join(fixturePath, 'testmain/testmain_test.go'));
+		const testDocument = await vscode.workspace.openTextDocument(uri);
+		const codeLenses = await codeLensProvider.provideCodeLenses(testDocument, cancellationTokenSource.token);
+		assert.equal(codeLenses.length, 4, JSON.stringify(codeLenses, null, 2));
+		const found = [] as string[];
+		for (let i = 0; i < codeLenses.length; i++) {
+			const lens = codeLenses[i];
+			if (lens.command.command === 'go.test.cursor') {
+				found.push(lens.command.arguments[0].functionName);
+			}
+		}
+		found.sort();
+		// Results should match `go test -list`.
+		assert.deepStrictEqual(found, ['TestNotMain']);
+	});
 });
