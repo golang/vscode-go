@@ -143,7 +143,7 @@ suite('Code lenses for testing and benchmarking', function () {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'codelens2_test.go'));
 		const benchmarkDocument = await vscode.workspace.openTextDocument(uri);
 		const codeLenses = await codeLensProvider.provideCodeLenses(benchmarkDocument, cancellationTokenSource.token);
-		assert.equal(codeLenses.length, 18, JSON.stringify(codeLenses, null, 2));
+		assert.equal(codeLenses.length, 20, JSON.stringify(codeLenses, null, 2));
 		const found = [] as string[];
 		for (let i = 0; i < codeLenses.length; i++) {
 			const lens = codeLenses[i];
@@ -159,6 +159,7 @@ suite('Code lenses for testing and benchmarking', function () {
 			'Test',
 			'Test1Function',
 			'TestFunction',
+			'TestMain',
 			'Test_foobar',
 			'TestΣυνάρτηση',
 			'Test함수'
@@ -183,5 +184,22 @@ suite('Code lenses for testing and benchmarking', function () {
 		found.sort();
 		// Results should match `go test -list`.
 		assert.deepStrictEqual(found, ['Fuzz', 'FuzzFunc', 'TestGo118']);
+	});
+
+	test('Test codelenses skip TestMain', async () => {
+		const uri = vscode.Uri.file(path.join(fixturePath, 'testmain/testmain_test.go'));
+		const testDocument = await vscode.workspace.openTextDocument(uri);
+		const codeLenses = await codeLensProvider.provideCodeLenses(testDocument, cancellationTokenSource.token);
+		assert.equal(codeLenses.length, 4, JSON.stringify(codeLenses, null, 2));
+		const found = [] as string[];
+		for (let i = 0; i < codeLenses.length; i++) {
+			const lens = codeLenses[i];
+			if (lens.command.command === 'go.test.cursor') {
+				found.push(lens.command.arguments[0].functionName);
+			}
+		}
+		found.sort();
+		// Results should match `go test -list`.
+		assert.deepStrictEqual(found, ['TestNotMain']);
 	});
 });
