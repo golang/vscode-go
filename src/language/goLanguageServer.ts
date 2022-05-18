@@ -8,7 +8,6 @@
 'use strict';
 
 import cp = require('child_process');
-import deepEqual = require('deep-equal');
 import fs = require('fs');
 import moment = require('moment');
 import path = require('path');
@@ -625,7 +624,7 @@ export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource?: 
 		// select only the field whose current value comes from non-default setting.
 		if (
 			!c ||
-			!deepEqual(c.defaultValue, value) ||
+			!util.isDeepStrictEqual(c.defaultValue, value) ||
 			// c.defaultValue !== value would be most likely sufficient, except
 			// when gopls' default becomes different from extension's default.
 			// So, we also forward the key if ever explicitely stated in one of the
