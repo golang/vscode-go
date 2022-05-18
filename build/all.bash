@@ -42,26 +42,25 @@ go_binaries_info() {
 }
 
 run_test() {
-  echo "**** Run test ****"
   df -h | grep shm
-  npm ci
-  npm run compile
-  npm run unit-test
-  npm test --silent
-  npm run lint
 
-  # BUG(github.com/golang/vscode-go/issues/2230): Disable test temporarily.
-  # echo "**** Run settings generator ****"
-  # go run tools/generate.go -w=false -gopls=true
-
-  echo "**** Check if vsce works ****"
-  vsce package
+  echo "**** Run settings generator ****"
+  go run ./tools/generate.go -w=false -gopls=true
 
   echo "**** Run Go tests ****"
   go test ./...
-  # TODO(hyangah): see if go clean -modcache makes kokoro builder happy
-  go clean -modcache
+
+  echo "**** Test build ****"
+  npm ci
+  npm run compile
+
+  echo "**** Run test ****"
+  npm run unit-test
+  npm test --silent
+
+  npm run lint
 }
+
 
 run_test_in_docker() {
   echo "**** Building the docker image ***"
