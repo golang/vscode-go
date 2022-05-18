@@ -29,7 +29,8 @@ suite('vulncheck result viewer tests', () => {
 		vscode.Disposable.from(...disposables).dispose();
 	});
 
-	test('populates webview', async () => {
+	test('populates webview', async function () {
+		this.timeout(5000);
 		const webviewPanel = _register(
 			vscode.window.createWebviewPanel(webviewId, 'title', { viewColumn: vscode.ViewColumn.One }, {})
 		);
