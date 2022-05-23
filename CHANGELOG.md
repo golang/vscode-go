@@ -1,3 +1,13 @@
+## v0.33.1 - 24 May, 2022
+
+This is the last release that supports Visual Studio Code 1.66 or older.
+We plan to add support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) in the next release and the change requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
+
+### Changes
+
+* Updated settings to be in sync with `gopls@v0.8.4`. See [the release note](https://github.com/golang/tools/releases/tag/gopls%2Fv0.8.4) to learn new features like the `//go:embed` analyzer, and improved hover for imported packages.
+* Prepared for 2022 mid-year Go developer survey.
+
 ## v0.33.0 - 1 May, 2022
 
 📣 [Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It is now the default with the [Go Nightly](docs/nightly.md) and will become the default for the stable releases in mid 2022.
