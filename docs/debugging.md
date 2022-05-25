@@ -354,11 +354,13 @@ When the target program needs to read from STDIN or access terminals (`tty`), us
 
 The Go extension delegates interaction with terminals to VS Code [using Debug Adapter Protocol's `RunInTerminal` functionality](https://github.com/golang/vscode-go/discussions/1626). For configuring VS Code's terminal related behavior, see VS Code's [documentation](https://code.visualstudio.com/docs/editor/integrated-terminal).
 
-### Debugging a program as root
+### Debugging programs and tests as root
 
-In order to run and debug a program running as root, the debugger (`dlv`) must run with root privilege, too. You can start the debug session with root privilege utilizing the `"asRoot"` AND `"console"` launch options. This is currently supported only on Linux and Mac.
+In order to run and debug a program or a package test running as root, the debugger (`dlv`) must run with root privilege, too. You can start the debug session with root privilege utilizing the `"asRoot"` AND `"console"` launch options. This is currently supported only on Linux and Mac.
 
 When `asRoot` is true, the Go extension will use the `sudo` command to run `dlv`. Since `sudo` may ask you to enter password, the debug session needs [terminal access](#handling-stdin) so set `"console": "integratedTerminal"` or `"console": "externalTerminal"` in the launch configuration.
+
+#### Debug a program as root
 
 For example, the following launch configuration will start `myprogram` and debug it by running `sudo dlv dap` command in the integrated terminal.
 
@@ -391,6 +393,7 @@ In `.vscode/tasks.json`:
     "tasks": [
         {
             "label": "go: build (debug)",
+            "type": "shell",
             "command": "go",
             "args": [
                 "build",
@@ -400,7 +403,7 @@ In `.vscode/tasks.json`:
             ],
             "options": {
                 "cwd": "${fileDirname}"
-            }
+            },
             ...
         }
     ]
@@ -408,6 +411,8 @@ In `.vscode/tasks.json`:
 ```
 
 The `-gcflags=all=-N -l` flag tells the `go build` command to preserve the debug information. The `-o` flag causes the compiled binary to be placed in `"${fileDirname}/__debug_bin"`. Extra build flags and environment variables *used for build* should be configured here as `args` or `options`'s `env` settings.
+
+It might be useful to add `__debug_bin` to your `.gitignore` to avoid debugging binaries getting checked-in into your repository.
 
 Then, configure the launch config to run the task before starting debugging.
 
@@ -429,6 +434,56 @@ In `.vscode/launch.json`:
 ```
 
 Settings (`args`, `cwd`, `env`, ...) configured in the above `launch.json` will only apply when *running* the compiled binary, not when building the binary.
+
+#### Debug a package test as root
+
+To debug package tests as root add the following launch and task configurations.
+
+In `.vscode/tasks.json`:
+```json
+    ...
+    "tasks": [
+        {
+            ...
+        },
+        {
+            "label": "go test (debug)",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "test",
+                "-c",
+                "-o",
+                "${fileDirname}/__debug_bin"
+            ],
+            "options": {
+                "cwd": "${fileDirname}",
+            },
+            ...
+        }
+    ]
+```
+
+In `.vscode/launch.json`:
+```json
+    ...
+    "configurations": [
+        {
+            ...
+        },
+        {
+            "name": "Debug Package Test as root",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "program": "${fileDirname}/__debug_bin",
+            "cwd": "${fileDirname}",
+            "console": "integratedTerminal",
+            "preLaunchTask": "go test (debug)"
+        }
+    ]
+```
 
 ### Manually installing `dlv`
 
