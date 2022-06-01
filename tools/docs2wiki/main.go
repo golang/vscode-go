@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 )
 
 var writeFlag = flag.Bool("w", false, "Overwrite new file contents to disk.")
@@ -28,13 +29,15 @@ func main() {
 		errorf("Usage: %v <dir>", os.Args[0])
 		os.Exit(1)
 	}
-	if err := rewriteLinks(flag.Arg(0), *writeFlag); err != nil {
+
+	genFooter := footerGenerator("https://github.com/golang/vscode-go/edit/master/docs/")
+	if err := rewriteLinks(flag.Arg(0), genFooter, *writeFlag); err != nil {
 		errorf("failed to rewrite links: %v", err)
 		os.Exit(1)
 	}
 }
 
-func rewriteLinks(dir string, overwrite bool) error {
+func rewriteLinks(dir string, genFooter func(srcPath string) []byte, overwrite bool) error {
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -55,6 +58,10 @@ func rewriteLinks(dir string, overwrite bool) error {
 		}
 		converted := stripTitleInPage(data)
 		converted = markdownLink2WikiLink(converted)
+		if name != "_Footer.md" && name != "_Sidebar.md" {
+			relPath, _ := filepath.Rel(dir, path)
+			converted = append(converted, genFooter(filepath.ToSlash(relPath))...)
+		}
 		if overwrite {
 			return ioutil.WriteFile(path, converted, 0644)
 		}
@@ -128,3 +135,19 @@ func markdownLink2WikiLink(src []byte) []byte {
 func errorf(format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", a...)
 }
+
+func footerGenerator(sourceEditURL string) func(string) []byte {
+	return func(srcPath string) []byte {
+		editURL := sourceEditURL + srcPath
+		buf := new(bytes.Buffer)
+		footerTmpl.Execute(buf, editURL)
+		return buf.Bytes()
+	}
+}
+
+var footerTmpl = template.Must(template.New("footer").Parse(`
+
+---
+[*✏️ Want to contribute to this wiki?*]({{.}})
+
+Update [the source]({{.}}) and send a PR.`))

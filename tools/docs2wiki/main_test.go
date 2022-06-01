@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -29,7 +30,8 @@ func TestRewriteLinks(t *testing.T) {
 			// which we will read back for comparison against tt.want.
 			// With overwrite=false, rewriteLinks just prints out the diff
 			// which will be difficult to test.
-			err := rewriteLinks(dir, true)
+			genFooter := func(string) []byte { return nil }
+			err := rewriteLinks(dir, genFooter, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,3 +84,30 @@ var wikiStyle = `
 
 [This doesn't change](https://go.dev/foo.md)
 [Untouchable.md](foo)`
+
+func TestGenFooter(t *testing.T) {
+	const editURLPrefix = "https://source.com/edit/docs/"
+
+	for _, tt := range []struct{ filename, wantURL string }{
+		{filename: "doc.md", wantURL: editURLPrefix + "doc.md"},
+		{filename: "sub/doc.md", wantURL: editURLPrefix + "sub/doc.md"},
+	} {
+		dir := prepareTestData(t, tt.filename, "")
+		defer os.RemoveAll(dir)
+
+		genFooter := footerGenerator(editURLPrefix)
+		err := rewriteLinks(dir, genFooter, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// rewriteLinks overwrites the original file,
+		// so reread the content for comparison.
+		got, err := ioutil.ReadFile(filepath.Join(dir, tt.filename))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(got), tt.wantURL) {
+			t.Errorf("missing %s, got:\n%s", tt.wantURL, got)
+		}
+	}
+}
