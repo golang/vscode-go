@@ -8,10 +8,15 @@ on:
       - 'docs/**'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
 jobs:
   # This workflow contains a single job called "build"
   publish:
     # The type of runner that the job will run on
+    permissions:
+      contents: write  # for Git to git push
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
