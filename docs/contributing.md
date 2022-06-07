@@ -63,8 +63,6 @@ The debugging feature documentation has a dedicated section for tips for develop
     code .
     ```
 
-3) Make sure the `window.openFoldersInNewWindow` setting is not `"on"`.
-
 #### Lint
 
 You can run `npm run lint` on the command-line to check for lint errors in your program. You can also use the [TSLint](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-tslint-plugin) plugin to see errors as you code.
