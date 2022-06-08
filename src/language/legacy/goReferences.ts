@@ -96,7 +96,7 @@ export class GoReferenceProvider implements vscode.ReferenceProvider {
 				}
 			});
 			if (process.pid) {
-				process.stdin.end(getFileArchive(document));
+				process.stdin?.end(getFileArchive(document));
 			}
 			token.onCancellationRequested(() => killProcessTree(process));
 		});

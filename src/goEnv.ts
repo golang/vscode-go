@@ -9,6 +9,8 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';
 import { logVerbose } from './goLogging';
+import { dirExists } from './utils/pathUtils';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 
 // toolInstallationEnvironment returns the environment in which tools should
 // be installed. It always returns a new object.
@@ -36,7 +38,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 					break;
 			}
 		});
-		return;
+		return {};
 	}
 	env['GOPATH'] = toolsGopath;
 
@@ -88,4 +90,43 @@ function newEnvironment(uri?: vscode.Uri, addProcessEnv = true): NodeJS.Dict<str
 		env['HTTPS_PROXY'] = httpProxy;
 	}
 	return env;
+}
+
+// set GOROOT env var. If necessary, shows a warning.
+export async function setGOROOTEnvVar(configGOROOT: string) {
+	if (!configGOROOT) {
+		return;
+	}
+	const goroot = configGOROOT ? resolvePath(configGOROOT) : undefined;
+
+	const currentGOROOT = process.env['GOROOT'];
+	if (goroot === currentGOROOT) {
+		return;
+	}
+	if (!(await dirExists(goroot ?? ''))) {
+		vscode.window.showWarningMessage(`go.goroot setting is ignored. ${goroot} is not a valid GOROOT directory.`);
+		return;
+	}
+	const neverAgain = { title: "Don't Show Again" };
+	const ignoreGOROOTSettingWarningKey = 'ignoreGOROOTSettingWarning';
+	const ignoreGOROOTSettingWarning = getFromGlobalState(ignoreGOROOTSettingWarningKey);
+	if (!ignoreGOROOTSettingWarning) {
+		vscode.window
+			.showInformationMessage(
+				`"go.goroot" setting (${goroot}) will be applied and set the GOROOT environment variable.`,
+				neverAgain
+			)
+			.then((result) => {
+				if (result === neverAgain) {
+					updateGlobalState(ignoreGOROOTSettingWarningKey, true);
+				}
+			});
+	}
+
+	logVerbose(`setting GOROOT = ${goroot} (old value: ${currentGOROOT}) because "go.goroot": "${configGOROOT}"`);
+	if (goroot) {
+		process.env['GOROOT'] = goroot;
+	} else {
+		delete process.env.GOROOT;
+	}
 }

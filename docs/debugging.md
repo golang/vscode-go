@@ -343,6 +343,148 @@ VS Code implements a generic, language-agnostic debugger UI based on [Debug Adap
 
 For information on debugging using the legacy debug adapter, please see the old [Debugging Documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging.md). Note that many new or enhanced features discussed in this document may not be available with the legacy debug adapter.
 
+### Handling STDIN
+
+The Go extension and `dlv` started as a subprocess of the extension do not have access to `tty`. The Go extension captures and forwards STDOUT/STDERR of the debug program to VS Code, so they can appear in `DEBUG OUTPUT` panel. But this arrangement does not handle STDIN.
+
+When the target program needs to read from STDIN or access terminals (`tty`), use the `"console"` launch option that controls where the `dlv` debugger and the target process run:
+
+* `integratedTerminal` for the terminal inside VS Code
+* `externalTerminal` for the terminal outside VS Code
+
+The Go extension delegates interaction with terminals to VS Code [using Debug Adapter Protocol's `RunInTerminal` functionality](https://github.com/golang/vscode-go/discussions/1626). For configuring VS Code's terminal related behavior, see VS Code's [documentation](https://code.visualstudio.com/docs/editor/integrated-terminal).
+
+### Debugging programs and tests as root
+
+In order to run and debug a program or a package test running as root, the debugger (`dlv`) must run with root privilege, too. You can start the debug session with root privilege utilizing the `"asRoot"` AND `"console"` launch options. This is currently supported only on Linux and Mac.
+
+When `asRoot` is true, the Go extension will use the `sudo` command to run `dlv`. Since `sudo` may ask you to enter password, the debug session needs [terminal access](#handling-stdin) so set `"console": "integratedTerminal"` or `"console": "externalTerminal"` in the launch configuration.
+
+#### Debug a program as root
+
+For example, the following launch configuration will start `myprogram` and debug it by running `sudo dlv dap` command in the integrated terminal.
+
+```json
+{
+    "name": "Launch as Root",
+    "request": "launch",
+    "mode": "exec",
+    "asRoot": true,
+    "program": "${workspaceRoot}/myprogram",
+    "console": "integratedTerminal",
+    ...
+}
+```
+
+The `asRoot` setting can be used with `auto`/`test`/`debug` launch modes that **build** the target binary to debug. That means the `go` command will be invoked as root to compile the binary, too. This can cause issues:
+
+* by default, `sudo` does not preserve the user's current environment variables (see documentations about sudo's `--preserve-env` option). For example, `PATH` or library paths required for build may be different.
+* Go environment variable settings usually associated in the home directory are different.
+* Module/build caches used during build as root may be different from the caches used in your normal build. If they are the same, you may encounter permission errors due to cache data written to the caches as root.
+
+Instead, you can arrange the `exec` launch mode to work with a pre-launch [task](https://code.visualstudio.com/docs/editor/tasks).
+
+First, configure a debug build task to compile the target binary.
+
+In `.vscode/tasks.json`:
+```json
+{
+    ...
+    "tasks": [
+        {
+            "label": "go: build (debug)",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "build",
+                "-gcflags=all=-N -l",
+                "-o",
+                "${fileDirname}/__debug_bin"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            ...
+        }
+    ]
+}
+```
+
+The `-gcflags=all=-N -l` flag tells the `go build` command to preserve the debug information. The `-o` flag causes the compiled binary to be placed in `"${fileDirname}/__debug_bin"`. Extra build flags and environment variables *used for build* should be configured here as `args` or `options`'s `env` settings.
+
+It might be useful to add `__debug_bin` to your `.gitignore` to avoid debugging binaries getting checked-in into your repository.
+
+Then, configure the launch config to run the task before starting debugging.
+
+In `.vscode/launch.json`:
+```json
+    ...
+    "configurations": [
+        {
+            "name": "Launch Package as root",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "console": "integratedTerminal",
+            "program": "${fileDirname}/__debug_bin",
+            "preLaunchTask": "go: build (debug)",
+        }
+    ]
+```
+
+Settings (`args`, `cwd`, `env`, ...) configured in the above `launch.json` will only apply when *running* the compiled binary, not when building the binary.
+
+#### Debug a package test as root
+
+To debug package tests as root add the following launch and task configurations.
+
+In `.vscode/tasks.json`:
+```json
+    ...
+    "tasks": [
+        {
+            ...
+        },
+        {
+            "label": "go test (debug)",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "test",
+                "-c",
+                "-o",
+                "${fileDirname}/__debug_bin"
+            ],
+            "options": {
+                "cwd": "${fileDirname}",
+            },
+            ...
+        }
+    ]
+```
+
+In `.vscode/launch.json`:
+```json
+    ...
+    "configurations": [
+        {
+            ...
+        },
+        {
+            "name": "Debug Package Test as root",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "asRoot": true,
+            "program": "${fileDirname}/__debug_bin",
+            "cwd": "${fileDirname}",
+            "console": "integratedTerminal",
+            "preLaunchTask": "go test (debug)"
+        }
+    ]
+```
+
 ### Manually installing `dlv`
 
 On rare occasions, you may want to install `dlv` by yourself instead of letting the extension handle its installation.

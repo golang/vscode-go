@@ -20,6 +20,7 @@ import {
 	TestRunProfile,
 	TestRunProfileKind,
 	TestRunRequest,
+	TestTag,
 	TextDocument,
 	TextLine,
 	Uri,
@@ -60,7 +61,7 @@ class MockTestCollection implements TestItemCollection {
 		this.m.delete(id);
 	}
 
-	get(id: string): TestItem {
+	get(id: string): TestItem | undefined {
 		return this.m.get(id);
 	}
 
@@ -77,15 +78,17 @@ class MockTestItem implements TestItem {
 		this.idNum = MockTestItem.idNum;
 		MockTestItem.idNum++;
 	}
+	tags: readonly TestTag[] = [];
+	sortText?: string | undefined;
 
 	parent: TestItem | undefined;
-	canResolveChildren: boolean;
-	busy: boolean;
+	canResolveChildren = false;
+	busy = false;
 	description?: string;
-	range?: Range;
-	error?: string | MarkdownString;
-	runnable: boolean;
-	debuggable: boolean;
+	range: Range | undefined;
+	error: string | MarkdownString | undefined;
+	runnable = false;
+	debuggable = false;
 
 	children: MockTestCollection = new MockTestCollection(this);
 
@@ -105,8 +108,9 @@ class MockTestRunProfile implements TestRunProfile {
 		public runHandler: TestRunHandler,
 		public isDefault: boolean
 	) {}
+	tag: TestTag | undefined;
 
-	configureHandler?: () => void;
+	configureHandler(): void {}
 	dispose(): void {}
 }
 
@@ -133,7 +137,8 @@ export class MockTestController implements TestController {
 	label = 'Go';
 	items = new MockTestCollection(this);
 
-	resolveHandler?: (item: TestItem) => void | Thenable<void>;
+	resolveHandler?: (item: TestItem | undefined) => void | Thenable<void>;
+	refreshHandler: ((token: CancellationToken) => void | Thenable<void>) | undefined;
 
 	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
 		return new MockTestRun();
@@ -143,7 +148,7 @@ export class MockTestController implements TestController {
 		label: string,
 		kind: TestRunProfileKind,
 		runHandler: TestRunHandler,
-		isDefault?: boolean
+		isDefault = false
 	): TestRunProfile {
 		return new MockTestRunProfile(label, kind, runHandler, isDefault);
 	}
@@ -201,7 +206,7 @@ export class MockTestWorkspace implements Workspace {
 			const entry: DirEntry = [path.basename(uri.path), child];
 			const dir = uri.with({ path: path.dirname(uri.path) });
 			if (dirs.has(dir.toString())) {
-				dirs.get(dir.toString()).push(entry);
+				dirs.get(dir.toString())?.push(entry);
 				return;
 			}
 
@@ -234,7 +239,9 @@ export class MockTestWorkspace implements Workspace {
 	constructor(public workspaceFolders: WorkspaceFolder[], public fs: MockTestFileSystem) {}
 
 	openTextDocument(uri: Uri): Thenable<TextDocument> {
-		return Promise.resolve(this.fs.files.get(uri.toString()));
+		const doc = this.fs.files.get(uri.toString());
+		if (!doc) throw Error('doc not found');
+		return Promise.resolve(doc);
 	}
 
 	getWorkspaceFolder(uri: Uri): WorkspaceFolder {

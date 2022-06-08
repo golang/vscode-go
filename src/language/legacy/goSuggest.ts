@@ -65,7 +65,7 @@ interface GoCodeSuggestion {
 class ExtendedCompletionItem extends vscode.CompletionItem {
 	public package?: string;
 	public receiver?: string;
-	public fileName: string;
+	public fileName!: string;
 }
 
 const lineCommentFirstWordRegex = /^\s*\/\/\s+[\S]*$/;
@@ -77,10 +77,10 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 	private killMsgShown = false;
 	private setGocodeOptions = true;
 	private isGoMod = false;
-	private globalState: vscode.Memento;
-	private previousFile: string;
-	private previousFileDir: string;
-	private gocodeFlags: string[];
+	private globalState: vscode.Memento | undefined;
+	private previousFile?: string;
+	private previousFileDir?: string;
+	private gocodeFlags?: string[];
 	private excludeDocs = false;
 
 	constructor(globalState?: vscode.Memento) {
@@ -213,8 +213,9 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 						const pkgPath = this.getPackagePathFromLine(lineTillCurrentPosition);
 						if (pkgPath.length === 1) {
 							// Now that we have the package path, import it right after the "package" statement
-							const v = parseFilePrelude(vscode.window.activeTextEditor.document.getText());
+							const v = parseFilePrelude(vscode.window.activeTextEditor?.document.getText() ?? '');
 							const pkg = v.pkg;
+							if (!pkg) return;
 							const posToAddImport = document.offsetAt(new vscode.Position(pkg.start + 1, 0));
 							const textToAdd = `import "${pkgPath[0]}"\n`;
 							inputText =
@@ -301,7 +302,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			let stderr = '';
 
 			// stamblerre/gocode does not support -unimported-packages flags.
-			if (this.isGoMod) {
+			if (this.isGoMod && this.gocodeFlags) {
 				const unimportedPkgIndex = this.gocodeFlags.indexOf('-unimported-packages');
 				if (unimportedPkgIndex >= 0) {
 					this.gocodeFlags.splice(unimportedPkgIndex, 1);
@@ -309,14 +310,14 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 			}
 
 			// -exclude-docs is something we use internally and is not related to gocode
-			const excludeDocsIndex = this.gocodeFlags.indexOf('-exclude-docs');
-			if (excludeDocsIndex >= 0) {
+			const excludeDocsIndex = this.gocodeFlags?.indexOf('-exclude-docs') ?? -1;
+			if (excludeDocsIndex >= 0 && this.gocodeFlags) {
 				this.gocodeFlags.splice(excludeDocsIndex, 1);
 				this.excludeDocs = true;
 			}
 
 			// Spawn `gocode` process
-			const p = cp.spawn(gocode, [...this.gocodeFlags, 'autocomplete', filename, '' + offset], { env });
+			const p = cp.spawn(gocode, [...(this.gocodeFlags || []), 'autocomplete', filename, '' + offset], { env });
 			p.stdout.on('data', (data) => (stdout += data));
 			p.stderr.on('data', (data) => (stderr += data));
 			p.on('error', (err) => {
@@ -526,7 +527,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 							)
 							.then((selected) => {
 								if (selected === "Don't show again") {
-									this.globalState.update(gocodeNoSupportForgbMsgKey, true);
+									this.globalState?.update(gocodeNoSupportForgbMsgKey, true);
 								}
 							});
 					}
@@ -537,7 +538,7 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
 				const existingOptions = stdout.split(/\r\n|\n/);
 				const optionsToSet: string[][] = [];
 				const setOption = () => {
-					const [name, value] = optionsToSet.pop();
+					const [name, value] = optionsToSet.pop() ?? [];
 					cp.execFile(gocode, ['set', name, value], { env }, () => {
 						if (optionsToSet.length) {
 							setOption();
@@ -603,14 +604,17 @@ export class GoCompletionItemProvider implements vscode.CompletionItemProvider, 
  * @param document The current document
  * @param position The cursor position
  */
-function getCommentCompletion(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem {
+function getCommentCompletion(
+	document: vscode.TextDocument,
+	position: vscode.Position
+): vscode.CompletionItem | undefined {
 	const lineText = document.lineAt(position.line).text;
 	const lineTillCurrentPosition = lineText.substr(0, position.character);
 	// triggering completions in comments on exported members
 	if (lineCommentFirstWordRegex.test(lineTillCurrentPosition) && position.line + 1 < document.lineCount) {
 		const nextLine = document.lineAt(position.line + 1).text.trim();
 		const memberType = nextLine.match(exportedMemberRegex);
-		let suggestionItem: vscode.CompletionItem;
+		let suggestionItem: vscode.CompletionItem | undefined;
 		if (memberType && memberType.length === 4) {
 			suggestionItem = new vscode.CompletionItem(memberType[3], vscodeKindFromGoCodeClass(memberType[1], ''));
 		}

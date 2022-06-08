@@ -25,6 +25,7 @@ class FakeOutputChannel implements vscode.OutputChannel {
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
 	public dispose = sinon.fake(); // no-empty
+	public replace = sinon.fake(); // no-empty
 
 	private buf = [] as string[];
 
@@ -65,14 +66,14 @@ class FakeOutputChannel implements vscode.OutputChannel {
 // Currently, this works only in module-aware mode.
 class Env {
 	public languageClient?: LanguageClient;
-	private fakeOutputChannel: FakeOutputChannel;
+	private fakeOutputChannel?: FakeOutputChannel;
 	private disposables = [] as { dispose(): any }[];
 
 	public flushTrace(print: boolean) {
 		if (print) {
-			console.log(this.fakeOutputChannel.toString());
+			console.log(this.fakeOutputChannel?.toString());
 		}
-		this.fakeOutputChannel.clear();
+		this.fakeOutputChannel?.clear();
 	}
 
 	// This is a hack to check the progress of package loading.
@@ -84,7 +85,7 @@ class Env {
 				this.flushTrace(true);
 				reject(`Timed out while waiting for '${msg}'`);
 			}, timeoutMS);
-			this.fakeOutputChannel.onPattern(msg, () => {
+			this.fakeOutputChannel?.onPattern(msg, () => {
 				clearTimeout(timeout);
 				resolve();
 			});
@@ -104,10 +105,12 @@ class Env {
 		});
 		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
 		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
-		this.languageClient = await buildLanguageClient(cfg);
-		this.disposables.push(this.languageClient.start());
+		this.languageClient = await buildLanguageClient({}, cfg);
+		if (!this.languageClient) {
+			throw new Error('Language client not initialized.');
+		}
 
-		await this.languageClient.onReady();
+		await this.languageClient.start();
 		await this.openDoc(filePath);
 		await pkgLoadingDone;
 	}
@@ -148,7 +151,7 @@ suite('Go Extension Tests With Gopls', function () {
 		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 		// I don't know why but this.currentTest.state does not have the expected value when
 		// used with teardown.
-		env.flushTrace(this.currentTest.state === 'failed');
+		env.flushTrace(this.currentTest?.state === 'failed');
 	});
 
 	test('HoverProvider', async () => {
@@ -204,7 +207,7 @@ suite('Go Extension Tests With Gopls', function () {
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string][] = [['fmt.P<>', new vscode.Position(19, 6), 'Print']];
 		for (const [name, position, wantFilterText] of testCases) {
-			let list: vscode.CompletionList<vscode.CompletionItem>;
+			let list: vscode.CompletionList<vscode.CompletionItem> | undefined;
 			// Query completion items. We expect the hard coded filter text hack
 			// has been applied and gopls returns an incomplete list by default
 			// to avoid reordering by vscode. But, if the query is made before
@@ -225,7 +228,7 @@ suite('Go Extension Tests With Gopls', function () {
 				console.log(`${new Date()}: retrying...`);
 			}
 			// Confirm that the hardcoded filter text hack has been applied.
-			if (!list.isIncomplete) {
+			if (!list || !list.isIncomplete) {
 				assert.fail('gopls should provide an incomplete list by default');
 			}
 

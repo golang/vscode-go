@@ -27,7 +27,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 		document: TextDocument,
 		position: Position,
 		token: CancellationToken
-	): Promise<SignatureHelp> {
+	): Promise<SignatureHelp | null> {
 		let goConfig = this.goConfig || getGoConfig(document.uri);
 
 		const theCall = this.walkBackwardsToBeginningOfCall(document, position);
@@ -45,7 +45,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 				// The definition was not found
 				return null;
 			}
-			if (res.line === callerPos.line) {
+			if (res.line === callerPos?.line) {
 				// This must be a function definition
 				return null;
 			}
@@ -54,8 +54,8 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 				return null;
 			}
 			const result = new SignatureHelp();
-			let sig: string;
-			let si: SignatureInformation;
+			let sig: string | undefined;
+			let si: SignatureInformation | undefined;
 			if (res.toolUsed === 'godef') {
 				// declaration is of the form "Add func(a int, b int) int"
 				const nameEnd = declarationText.indexOf(' ');
@@ -71,8 +71,9 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 					declarationText = declarationText.substring(funcNameStart);
 				}
 				si = new SignatureInformation(declarationText, res.doc);
-				sig = declarationText.substring(res.name.length);
+				sig = declarationText.substring(res.name?.length ?? 0);
 			}
+			if (!si || !sig) return result;
 			si.parameters = getParametersAndReturnType(sig).params.map(
 				(paramText) => new ParameterInformation(paramText)
 			);
@@ -93,7 +94,7 @@ export class GoSignatureHelpProvider implements SignatureHelpProvider {
 			}
 			position = position.translate(0, -1);
 		}
-		return null;
+		return position;
 	}
 
 	/**

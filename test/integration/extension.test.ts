@@ -27,17 +27,13 @@ import { getTextEditForAddImport, listPackages } from '../../src/goImport';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { buildLanguageServerConfig } from '../../src/language/goLanguageServer';
 import { goLint } from '../../src/goLint';
-import {
-	documentSymbols,
-	GoDocumentSymbolProvider,
-	GoOutlineImportsOptions
-} from '../../src/language/legacy/goOutline';
-import { getAllPackages } from '../../src/goPackages';
+import { documentSymbols, GoOutlineImportsOptions } from '../../src/language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from '../../src/goDocumentSymbols';
 import { goPlay } from '../../src/goPlayground';
 import { GoSignatureHelpProvider } from '../../src/language/legacy/goSignature';
 import { GoCompletionItemProvider } from '../../src/language/legacy/goSuggest';
 import { getWorkspaceSymbols } from '../../src/language/legacy/goSymbol';
-import { testCurrentFile } from '../../src/goTest';
+import { testCurrentFile } from '../../src/commands';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -49,6 +45,7 @@ import {
 } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
+import { MockExtensionContext } from '../mocks/MockContext';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -68,7 +65,7 @@ const testAll = (isModuleMode: boolean) => {
 		previousEnv = Object.assign({}, process.env);
 		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
 
-		await updateGoVarsFromConfig();
+		await updateGoVarsFromConfig({});
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
@@ -138,12 +135,12 @@ const testAll = (isModuleMode: boolean) => {
 		const definitionInfo = await provider.provideDefinition(textDocument, position, dummyCancellationSource.token);
 
 		assert.equal(
-			definitionInfo.uri.path.toLowerCase(),
+			definitionInfo?.uri.path.toLowerCase(),
 			uri.path.toLowerCase(),
-			`${definitionInfo.uri.path} is not the same as ${uri.path}`
+			`${definitionInfo?.uri.path} is not the same as ${uri.path}`
 		);
-		assert.equal(definitionInfo.range.start.line, 6);
-		assert.equal(definitionInfo.range.start.character, 5);
+		assert.equal(definitionInfo?.range.start.line, 6);
+		assert.equal(definitionInfo?.range.start.character, 5);
 	}
 
 	async function testSignatureHelpProvider(
@@ -190,6 +187,7 @@ const testAll = (isModuleMode: boolean) => {
 				if (expectedDocumentation != null) {
 					expectedHover += expectedDocumentation;
 				}
+				assert(res);
 				assert.equal(res.contents.length, 1);
 				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
 			})
@@ -471,12 +469,14 @@ It returns the number of bytes written and any write error encountered.
 		);
 
 		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-		handleDiagnosticErrors(file2, warnings, diagnosticCollection);
+		handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
 
 		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
 		// Both files belong to the same package name, and we want them to be identical.
 		const file1Diagnostics = diagnosticCollection.get(file1.uri);
 		const file2Diagnostics = diagnosticCollection.get(file2.uri);
+		assert(file1Diagnostics);
+		assert(file2Diagnostics);
 		assert(file1Diagnostics.length > 0);
 		assert(file2Diagnostics.length > 0);
 		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
@@ -515,7 +515,7 @@ It returns the number of bytes written and any write error encountered.
 
 		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
-		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
+		const diagnostics = await check({}, vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
 				[],
@@ -550,7 +550,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentFile();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentFile(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -567,7 +568,8 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 6, 0);
-		await generateTestCurrentFunction();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentFunction(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -583,7 +585,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentPackage();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentPackage(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -676,8 +679,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'sample_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-
-		const result = await testCurrentFile(config, false, []);
+		const ctx = new MockExtensionContext() as any;
+		const result = await testCurrentFile(false, () => config)(ctx, {})([]);
 		assert.equal(result, true);
 	});
 
@@ -728,7 +731,7 @@ It returns the number of bytes written and any write error encountered.
 	test('Test Outline document symbols', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'outlineTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
-		const symbolProvider = new GoDocumentSymbolProvider();
+		const symbolProvider = GoDocumentSymbolProvider({});
 
 		const outlines = await symbolProvider.provideDocumentSymbols(document, dummyCancellationSource.token);
 		const packages = outlines.filter((x) => x.kind === vscode.SymbolKind.Package);
@@ -1432,7 +1435,7 @@ encountered.
 				buildTags: { value: tags }
 			}) as vscode.WorkspaceConfiguration;
 
-			const diagnostics = await check(fileUri, cfg);
+			const diagnostics = await check({}, fileUri, cfg);
 			return ([] as string[]).concat(
 				...diagnostics.map<string[]>((d) => {
 					return d.errors.map((e) => e.msg) as string[];
@@ -1504,17 +1507,18 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'testTags', 'hello_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const ctx = new MockExtensionContext() as any;
 
-		const result1 = await testCurrentFile(config1, false, []);
+		const result1 = await testCurrentFile(false, () => config1)(ctx, {})([]);
 		assert.equal(result1, true);
 
-		const result2 = await testCurrentFile(config2, false, []);
+		const result2 = await testCurrentFile(false, () => config2)(ctx, {})([]);
 		assert.equal(result2, true);
 
-		const result3 = await testCurrentFile(config3, false, []);
+		const result3 = await testCurrentFile(false, () => config3)(ctx, {})([]);
 		assert.equal(result3, true);
 
-		const result4 = await testCurrentFile(config4, false, []);
+		const result4 = await testCurrentFile(false, () => config4)(ctx, {})([]);
 		assert.equal(result4, false);
 	});
 
@@ -1533,6 +1537,7 @@ encountered.
 		const expectedText = document.getText() + fixEOL(document.eol, '\n' + 'import (\n\t"bytes"\n)\n');
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		return vscode.workspace.applyEdit(edit).then(() => {
 			assert.equal(
@@ -1554,6 +1559,7 @@ encountered.
 			.replace(fixEOL(eol, '\t"fmt"\n\t"math"'), fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1573,6 +1579,7 @@ encountered.
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1589,6 +1596,7 @@ encountered.
 			.replace(fixEOL(eol, 'import "math"'), fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1604,7 +1612,8 @@ encountered.
 		const editor = await vscode.window.showTextDocument(textDocument);
 		const selection = new vscode.Selection(12, 15, 12, 15);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 
@@ -1617,7 +1626,8 @@ encountered.
 
 		const selection = new vscode.Selection(7, 0, 7, 10);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 };

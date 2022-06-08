@@ -43,7 +43,7 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 	}
 }
 
-export function parseEnvFiles(envFiles: string[] | string): { [key: string]: string } {
+export function parseEnvFiles(envFiles: string[] | string | undefined): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
 		fileEnvs.push(parseEnvFile(envFiles));

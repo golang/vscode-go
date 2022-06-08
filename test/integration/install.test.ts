@@ -20,7 +20,6 @@ import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
 import { allToolsInformation } from '../../src/goToolsInformation';
-import { listOutdatedTools } from '../../src/goMain';
 import * as goInstallTools from '../../src/goInstallTools';
 import * as utilModule from '../../src/util';
 
@@ -78,7 +77,7 @@ suite('Installation Tests', function () {
 	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean, withGOBIN?: boolean) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
-		let proxyDir: string;
+		let proxyDir: string | undefined;
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
 			proxyDir = buildFakeProxy(testCases);
@@ -138,6 +137,8 @@ suite('Installation Tests', function () {
 
 		if (withLocalProxy) {
 			sandbox.assert.calledWith(configStub);
+			// proxyDir should be set when withLocalProxy = true
+			assert(proxyDir);
 			rmdirRecursive(proxyDir);
 		}
 	}
@@ -295,7 +296,7 @@ suite('listOutdatedTools', () => {
 		const toolsToCheck = Object.keys(tools).map((tool) => getToolAtVersion(tool));
 
 		const configuredGoVersion = goVersion ? fakeGoVersion(goVersion) : undefined;
-		const toolsToUpdate = await listOutdatedTools(configuredGoVersion, toolsToCheck);
+		const toolsToUpdate = await goInstallTools.listOutdatedTools(configuredGoVersion, toolsToCheck);
 		return toolsToUpdate.map((tool) => tool.name).filter((tool) => !!tool);
 	}
 

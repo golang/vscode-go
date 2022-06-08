@@ -23,7 +23,7 @@ export function getSymbols_Regex(doc: TextDocument, token: unknown): Thenable<Do
 export function populateModulePathCache(workspace: MockTestWorkspace) {
 	function walk(dir: Uri, modpath?: string) {
 		const dirs: Uri[] = [];
-		for (const [name, type] of workspace.fs.dirs.get(dir.toString())) {
+		for (const [name, type] of workspace.fs.dirs.get(dir.toString()) ?? []) {
 			const uri = dir.with({ path: path.join(dir.path, name) });
 			if (type === FileType.Directory) {
 				dirs.push(uri);

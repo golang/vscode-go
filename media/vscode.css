@@ -1,0 +1,45 @@
+/*---------------------------------------------------------
+ * Copyright 2022 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
+
+:root {
+	--container-paddding: 20px;
+	--input-padding-vertical: 6px;
+	--input-padding-horizontal: 4px;
+	--input-margin-vertical: 4px;
+	--input-margin-horizontal: 0;
+}
+
+body {
+	padding: 0 var(--container-paddding);
+	color: var(--vscode-foreground);
+	font-size: var(--vscode-font-size);
+	font-weight: var(--vscode-font-weight);
+	font-family: var(--vscode-font-family);
+	background-color: var(--vscode-editor-background);
+}
+
+body>*,
+form>* {
+	margin-block-start: var(--input-margin-vertical);
+	margin-block-end: var(--input-margin-vertical);
+}
+
+*:focus {
+	outline-color: var(--vscode-focusBorder) !important;
+}
+
+a {
+	color: var(--vscode-textLink-foreground);
+}
+
+a:hover,
+a:active {
+	color: var(--vscode-textLink-activeForeground);
+}
+
+code {
+	font-size: var(--vscode-editor-font-size);
+	font-family: var(--vscode-editor-font-family);
+}

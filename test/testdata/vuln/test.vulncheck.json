@@ -1,0 +1,45 @@
+{
+  "Vuln": [
+    {
+      "ID": "GO-2021-0113",
+      "Details": "Due to improper index calculation, an incorrectly formatted language tag can cause Parse\nto panic via an out of bounds read. If Parse is used to process untrusted user inputs,\nthis may be used as a vector for a denial of service attack.\n",
+      "Aliases": [
+        "CVE-2021-38561"
+      ],
+      "Symbol": "Parse",
+      "PkgPath": "golang.org/x/text/language",
+      "ModPath": "golang.org/x/text",
+      "URL": "https://pkg.go.dev/vuln/GO-2021-0113",
+      "CurrentVersion": "v0.0.0-20170915032832-14c0d48ead0c",
+      "FixedVersion": "v0.3.7",
+      "AffectedPkgs": ["github.com/golang/vscode-go/test/testdata/vuln"],
+      "CallStacks": [
+        [
+          {
+            "Name": "github.com/golang/vscode-go/test/testdata/vuln.main",
+            "URI": "file:///Users/hakim/projects/vscode-go/test/testdata/vuln/test.go",
+            "Pos": {
+              "line": 9,
+              "character": 0
+            }
+          },
+          {
+            "Name": "golang.org/x/text/language.Parse",
+            "URI": "file:///Users/hakim/go/pkg/mod/golang.org/x/text@v0.0.0-20170915032832-14c0d48ead0c/language/parse.go",
+            "Pos": {
+              "line": 227,
+              "character": 0
+            }
+          }
+        ]
+      ],
+      "CallStackSummaries": [
+        "github.com/golang/vscode-go/test/testdata/vuln.main calls golang.org/x/text/language.Parse"
+      ]
+    }
+  ],
+  "Start": "2022-05-16T13:43:54.437Z",
+  "Duration": 1407,
+  "Dir": "/Users/hakim/projects/vscode-go/test/testdata/vuln",
+  "Pattern": "./..."
+}

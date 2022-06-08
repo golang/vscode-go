@@ -36,6 +36,7 @@ export class Edit {
 	constructor(action: number, start: Position) {
 		this.action = action;
 		this.start = start;
+		this.end = start;
 		this.text = '';
 	}
 

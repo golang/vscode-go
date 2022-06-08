@@ -23,15 +23,26 @@ import {
 import { extensionInfo } from './config';
 import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
-import { pickProcess, pickProcessByName } from './pickProcess';
+import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
+import { createRegisterCommand } from './commands';
+import { GoExtensionContext } from './context';
 
 let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		ctx.subscriptions.push(
+			vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go'))
+		);
+		const registerCommand = createRegisterCommand(ctx, goCtx);
+		registerCommand('go.debug.pickProcess', () => pickProcess);
+		registerCommand('go.debug.pickGoProcess', () => pickGoProcess);
+	}
+
 	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
@@ -121,7 +132,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): Promise<vscode.DebugConfiguration> {
+	): Promise<vscode.DebugConfiguration | undefined> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json
@@ -155,14 +166,14 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
-		const defaultConfig = vscode.extensions.getExtension(extensionId).packageJSON.contributes.configuration
+		const defaultConfig = vscode.extensions.getExtension(extensionId)?.packageJSON.contributes.configuration
 			.properties['go.delveConfig'].properties;
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
 		// If debugAdapter is not provided in launch.json, see if it's in settings.json.
 		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
-			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter');
+			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter') ?? {};
 			// user configured the default debug adapter through settings.json.
 			if (globalValue !== undefined || workspaceValue !== undefined) {
 				debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
@@ -206,8 +217,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (
 			debugAdapter === 'dlv-dap' &&
 			(debugConfiguration.hasOwnProperty('dlvLoadConfig') ||
-				goConfig.inspect('delveConfig.dlvLoadConfig').globalValue !== undefined ||
-				goConfig.inspect('delveConfig.dlvLoadConfig').workspaceValue !== undefined)
+				goConfig.inspect('delveConfig.dlvLoadConfig')?.globalValue !== undefined ||
+				goConfig.inspect('delveConfig.dlvLoadConfig')?.workspaceValue !== undefined)
 		) {
 			this.showWarning(
 				'ignoreDebugDlvConfigWithDlvDapWarning',
@@ -240,7 +251,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		if (debugAdapter !== 'dlv-dap' && debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
-			if (vscode.workspace.workspaceFolders?.length > 1) {
+			if (vscode.workspace.workspaceFolders?.length ?? 0 > 1) {
 				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
 			}
 		}
@@ -394,7 +405,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): vscode.DebugConfiguration {
+	): vscode.DebugConfiguration | null {
 		const debugAdapter = debugConfiguration['debugAdapter'];
 		if (debugAdapter === '') {
 			return null;

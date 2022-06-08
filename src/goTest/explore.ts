@@ -18,12 +18,13 @@ import {
 	WorkspaceFoldersChangeEvent
 } from 'vscode';
 import vscode = require('vscode');
-import { GoDocumentSymbolProvider } from '../language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from '../goDocumentSymbols';
 import { outputChannel } from '../goStatus';
 import { dispose, disposeIfEmpty, findItem, GoTest, isInTest, Workspace } from './utils';
 import { GoTestResolver, ProvideSymbols } from './resolve';
 import { GoTestRunner } from './run';
 import { GoTestProfiler } from './profile';
+import { GoExtensionContext } from '../context';
 
 // Set true only if the Testing API is available (VSCode version >= 1.59).
 export const isVscodeTestingAPIAvailable =
@@ -31,12 +32,12 @@ export const isVscodeTestingAPIAvailable =
 	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
 
 export class GoTestExplorer {
-	static setup(context: ExtensionContext): GoTestExplorer {
+	static setup(context: ExtensionContext, goCtx: GoExtensionContext): GoTestExplorer {
 		if (!isVscodeTestingAPIAvailable) throw new Error('VSCode Testing API is unavailable');
 
 		const ctrl = vscode.tests.createTestController('go', 'Go');
-		const symProvider = new GoDocumentSymbolProvider(true);
-		const inst = new this(workspace, ctrl, context.workspaceState, (doc, token) =>
+		const symProvider = GoDocumentSymbolProvider(goCtx, true);
+		const inst = new this(goCtx, workspace, ctrl, context.workspaceState, (doc, token) =>
 			symProvider.provideDocumentSymbols(doc, token)
 		);
 
@@ -96,7 +97,7 @@ export class GoTestExplorer {
 				if (!options) return;
 
 				try {
-					await inst.runner.run(new TestRunRequest([item]), null, options);
+					await inst.runner.run(new TestRunRequest([item]), undefined, options);
 				} catch (error) {
 					const m = 'Failed to execute tests';
 					outputChannel.appendLine(`${m}: ${error}`);
@@ -203,6 +204,7 @@ export class GoTestExplorer {
 	public readonly profiler: GoTestProfiler;
 
 	constructor(
+		private readonly goCtx: GoExtensionContext,
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
 		workspaceState: Memento,
@@ -210,7 +212,7 @@ export class GoTestExplorer {
 	) {
 		this.resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
 		this.profiler = new GoTestProfiler(this.resolver, workspaceState);
-		this.runner = new GoTestRunner(workspace, ctrl, this.resolver, this.profiler);
+		this.runner = new GoTestRunner(goCtx, workspace, ctrl, this.resolver, this.profiler);
 	}
 
 	/* ***** Listeners ***** */
@@ -242,7 +244,7 @@ export class GoTestExplorer {
 				return;
 			}
 
-			const ws = this.workspace.getWorkspaceFolder(item.uri);
+			const ws = item.uri && this.workspace.getWorkspaceFolder(item.uri);
 			if (!ws) {
 				dispose(this.resolver, item);
 			}
@@ -255,13 +257,13 @@ export class GoTestExplorer {
 
 	protected async didDeleteFile(file: Uri) {
 		const id = GoTest.id(file, 'file');
-		function find(children: TestItemCollection): TestItem {
+		function find(children: TestItemCollection): TestItem | undefined {
 			return findItem(children, (item) => {
 				if (item.id === id) {
 					return item;
 				}
 
-				if (!file.path.startsWith(item.uri.path)) {
+				if (!item.uri || !file.path.startsWith(item.uri.path)) {
 					return;
 				}
 

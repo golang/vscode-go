@@ -9,6 +9,7 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
@@ -30,7 +31,7 @@ interface GoTagsConfig {
 	template: string;
 }
 
-export function addTags(commandArgs: GoTagsConfig) {
+export const addTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
 	const args = getCommonArgs();
 	if (!args) {
 		return;
@@ -60,9 +61,9 @@ export function addTags(commandArgs: GoTagsConfig) {
 			runGomodifytags(args);
 		}
 	);
-}
+};
 
-export function removeTags(commandArgs: GoTagsConfig) {
+export const removeTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
 	const args = getCommonArgs();
 	if (!args) {
 		return;
@@ -83,17 +84,17 @@ export function removeTags(commandArgs: GoTagsConfig) {
 		}
 		runGomodifytags(args);
 	});
-}
+};
 
 function getCommonArgs(): string[] {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
-		return;
+		return [];
 	}
 	if (!editor.document.fileName.endsWith('.go')) {
 		vscode.window.showInformationMessage('Current file is not a Go file.');
-		return;
+		return [];
 	}
 	const args = ['-modified', '-file', editor.document.fileName, '-format', 'json'];
 	if (
@@ -113,7 +114,7 @@ function getCommonArgs(): string[] {
 	return args;
 }
 
-function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Thenable<string[]> {
+function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Thenable<(string | undefined)[]> {
 	const tags = commandArgs && commandArgs.hasOwnProperty('tags') ? commandArgs['tags'] : config['tags'];
 	const options = commandArgs && commandArgs.hasOwnProperty('options') ? commandArgs['options'] : config['options'];
 	const promptForTags =
@@ -163,6 +164,9 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 function runGomodifytags(args: string[]) {
 	const gomodifytags = getBinPath('gomodifytags');
 	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		return;
+	}
 	const input = getFileArchive(editor.document);
 	const p = cp.execFile(gomodifytags, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {
@@ -181,11 +185,11 @@ function runGomodifytags(args: string[]) {
 			return;
 		}
 		const output = <GomodifytagsOutput>JSON.parse(stdout);
-		vscode.window.activeTextEditor.edit((editBuilder) => {
+		editor.edit((editBuilder) => {
 			editBuilder.replace(new vscode.Range(output.start - 1, 0, output.end, 0), output.lines.join('\n') + '\n');
 		});
 	});
 	if (p.pid) {
-		p.stdin.end(input);
+		p.stdin?.end(input);
 	}
 }

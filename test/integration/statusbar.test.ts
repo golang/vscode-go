@@ -26,11 +26,11 @@ import { getWorkspaceState, setWorkspaceState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
 
 import ourutil = require('../../src/util');
-import { setGOROOTEnvVar } from '../../src/goMain';
+import { setGOROOTEnvVar } from '../../src/goEnv';
 
 describe('#initGoStatusBar()', function () {
 	this.beforeAll(async () => {
-		await updateGoVarsFromConfig(); // should initialize the status bar.
+		await updateGoVarsFromConfig({}); // should initialize the status bar.
 	});
 
 	this.afterAll(() => {
@@ -107,7 +107,7 @@ describe('#setSelectedGo()', function () {
 	});
 	this.afterEach(async () => {
 		await setSelectedGo(goOption, false);
-		sandbox.restore();
+		sandbox!.restore();
 	});
 
 	it('should update the workspace memento storage', async () => {

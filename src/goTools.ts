@@ -36,15 +36,15 @@ export interface Tool {
 	// latestVersion and latestVersionTimestamp are hardcoded default values
 	// for the last known version of the given tool. We also hardcode values
 	// for the latest known pre-release of the tool for the Nightly extension.
-	latestVersion?: semver.SemVer;
+	latestVersion?: semver.SemVer | null;
 	latestVersionTimestamp?: moment.Moment;
-	latestPrereleaseVersion?: semver.SemVer;
+	latestPrereleaseVersion?: semver.SemVer | null;
 	latestPrereleaseVersionTimestamp?: moment.Moment;
 
 	// minimumGoVersion and maximumGoVersion set the range for the versions of
 	// Go with which this tool can be used.
-	minimumGoVersion?: semver.SemVer;
-	maximumGoVersion?: semver.SemVer;
+	minimumGoVersion?: semver.SemVer | null;
+	maximumGoVersion?: semver.SemVer | null;
 
 	// close performs any shutdown tasks that a tool must execute before a new
 	// version is installed. It returns a string containing an error message on
@@ -67,7 +67,7 @@ export interface ToolAtVersion extends Tool {
  */
 export function getImportPath(tool: Tool, goVersion: GoVersion): string {
 	// For older versions of Go, install the older version of gocode.
-	if (tool.name === 'gocode' && goVersion.lt('1.10')) {
+	if (tool.name === 'gocode' && goVersion?.lt('1.10')) {
 		return 'github.com/nsf/gocode';
 	}
 	return tool.importPath;
@@ -75,7 +75,7 @@ export function getImportPath(tool: Tool, goVersion: GoVersion): string {
 
 export function getImportPathWithVersion(
 	tool: Tool,
-	version: semver.SemVer | string | undefined,
+	version: semver.SemVer | string | undefined | null,
 	goVersion: GoVersion
 ): string {
 	const importPath = getImportPath(tool, goVersion);
@@ -129,7 +129,7 @@ export function getConfiguredTools(
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
 	// no longer working (or we remove the legacy language feature providers completely).
-	const useLanguageServer = goConfig['useLanguageServer'] && goVersion.gt('1.11');
+	const useLanguageServer = goConfig['useLanguageServer'] && goVersion?.gt('1.11');
 
 	const tools: Tool[] = [];
 	function maybeAddTool(name: string) {
@@ -166,7 +166,7 @@ export function getConfiguredTools(
 	}
 
 	// gocode-gomod needed in go 1.11 & higher
-	if (goVersion.gt('1.10')) {
+	if (goVersion?.gt('1.10')) {
 		maybeAddTool('gocode-gomod');
 	}
 

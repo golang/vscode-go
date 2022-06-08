@@ -21,7 +21,7 @@ suite('Go Test Runner', () => {
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -52,7 +52,15 @@ suite('Go Test Runner', () => {
 			assert(test, 'No tests found');
 
 			assert(
-				await testExplorer.runner.run({ include: [test] }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run(
+					{
+						include: [test],
+						exclude: undefined,
+						profile: undefined
+					},
+					undefined,
+					{ kind: 'cpu' }
+				),
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
@@ -64,7 +72,14 @@ suite('Go Test Runner', () => {
 			const tests = Array.from(testExplorer.resolver.allItems).filter((x) => GoTest.parseId(x.id).name);
 			assert(tests, 'No tests found');
 
-			assert(await testExplorer.runner.run({ include: tests }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: tests,
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
 			assert.deepStrictEqual(
 				stub.lastCall.args[0].functions,
@@ -79,7 +94,15 @@ suite('Go Test Runner', () => {
 			console.log(`running ${tests.length} tests`);
 
 			assert(
-				await testExplorer.runner.run({ include: tests }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run(
+					{
+						include: tests,
+						exclude: undefined,
+						profile: undefined
+					},
+					undefined,
+					{ kind: 'cpu' }
+				),
 				'Failed to execute `go test`'
 			);
 			console.log('verify we got expected calls');
@@ -103,7 +126,7 @@ suite('Go Test Runner', () => {
 		let spy: sinon.SinonSpy<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(subTestDir, 'sub_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -129,7 +152,14 @@ suite('Go Test Runner', () => {
 
 			// Run TestMain
 			console.log('Run TestMain');
-			assert(await testExplorer.runner.run({ include: [tMain] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tMain],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 1, 'expected one call to goTest');
 
 			// Verify TestMain was run
@@ -152,7 +182,14 @@ suite('Go Test Runner', () => {
 
 			// Run subtest by itself
 			console.log('Run subtest by itself');
-			assert(await testExplorer.runner.run({ include: [tSub] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tSub],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 1, 'expected one call to goTest');
 
 			// Verify TestMain/Sub was run
@@ -168,8 +205,15 @@ suite('Go Test Runner', () => {
 
 			// Attempt to run subtest and other test - should not work
 			console.log('Attempt to run subtest and other test');
-			assert(await testExplorer.runner.run({ include: [tSub, tOther] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tSub, tOther],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		});
+		}).timeout(4000);
 	});
 });

@@ -29,12 +29,12 @@ import { killProcessTree } from '../../utils/processUtils';
 const missingToolMsg = 'Missing tool: ';
 
 export interface GoDefinitionInformation {
-	file: string;
+	file?: string;
 	line: number;
 	column: number;
-	doc: string;
+	doc?: string;
 	declarationlines: string[];
-	name: string;
+	name?: string;
 	toolUsed: string;
 }
 
@@ -63,10 +63,10 @@ interface GuruDefinitionOuput {
 export function definitionLocation(
 	document: vscode.TextDocument,
 	position: vscode.Position,
-	goConfig: vscode.WorkspaceConfiguration,
+	goConfig: vscode.WorkspaceConfiguration | undefined,
 	includeDocs: boolean,
 	token: vscode.CancellationToken
-): Promise<GoDefinitionInformation> {
+): Promise<GoDefinitionInformation | null> {
 	const adjustedPos = adjustWordPosition(document, position);
 	if (!adjustedPos[0]) {
 		return Promise.resolve(null);
@@ -113,7 +113,7 @@ export function adjustWordPosition(
 		word.match(/^\d+.?\d+$/) ||
 		goKeywords.indexOf(word) > 0
 	) {
-		return [false, null, null];
+		return [false, null!, null!];
 	}
 	if (position.isEqual(wordRange.end) && position.isAfter(wordRange.start)) {
 		position = position.translate(0, -1);
@@ -128,7 +128,7 @@ function definitionLocation_godef(
 	token: vscode.CancellationToken,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	useReceivers = true
-): Promise<GoDefinitionInformation> {
+): Promise<GoDefinitionInformation | null> {
 	const godefTool = 'godef';
 	const godefPath = getBinPath(godefTool);
 	if (!path.isAbsolute(godefPath)) {
@@ -137,12 +137,12 @@ function definitionLocation_godef(
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = toolExecutionEnvironment();
 	env['GOROOT'] = getCurrentGoRoot();
-	let p: cp.ChildProcess;
+	let p: cp.ChildProcess | null | undefined;
 	if (token) {
-		token.onCancellationRequested(() => killProcessTree(p));
+		token.onCancellationRequested(() => p && killProcessTree(p));
 	}
 
-	return new Promise<GoDefinitionInformation>((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		// Spawn `godef` process
 		const args = ['-t', '-i', '-f', input.document.fileName, '-o', offset.toString()];
 		// if (useReceivers) {
@@ -189,8 +189,8 @@ function definitionLocation_godef(
 					column: +col - 1,
 					declarationlines: lines.slice(1),
 					toolUsed: 'godef',
-					doc: null,
-					name: null
+					doc: undefined,
+					name: undefined
 				};
 				if (!input.includeDocs || godefImportDefinitionRegex.test(definitionInformation.declarationlines[0])) {
 					return resolve(definitionInformation);
@@ -212,7 +212,7 @@ function definitionLocation_godef(
 			}
 		});
 		if (p.pid) {
-			p.stdin.end(input.document.getText());
+			p.stdin?.end(input.document.getText());
 		}
 	});
 }
@@ -221,19 +221,19 @@ function definitionLocation_gogetdoc(
 	input: GoDefinitionInput,
 	token: vscode.CancellationToken,
 	useTags: boolean
-): Promise<GoDefinitionInformation> {
+): Promise<GoDefinitionInformation | null> {
 	const gogetdoc = getBinPath('gogetdoc');
 	if (!path.isAbsolute(gogetdoc)) {
 		return Promise.reject(missingToolMsg + 'gogetdoc');
 	}
 	const offset = byteOffsetAt(input.document, input.position);
 	const env = toolExecutionEnvironment();
-	let p: cp.ChildProcess;
+	let p: cp.ChildProcess | null | undefined;
 	if (token) {
-		token.onCancellationRequested(() => killProcessTree(p));
+		token.onCancellationRequested(() => p && killProcessTree(p));
 	}
 
-	return new Promise<GoDefinitionInformation>((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		const gogetdocFlagsWithoutTags = [
 			'-u',
 			'-json',
@@ -266,7 +266,7 @@ function definitionLocation_gogetdoc(
 				const goGetDocOutput = <GoGetDocOuput>JSON.parse(stdout.toString());
 				const match = /(.*):(\d+):(\d+)/.exec(goGetDocOutput.pos);
 				const definitionInfo: GoDefinitionInformation = {
-					file: null,
+					file: undefined,
 					line: 0,
 					column: 0,
 					toolUsed: 'gogetdoc',
@@ -286,7 +286,7 @@ function definitionLocation_gogetdoc(
 			}
 		});
 		if (p.pid) {
-			p.stdin.end(getFileArchive(input.document));
+			p.stdin?.end(getFileArchive(input.document));
 		}
 	});
 }
@@ -321,13 +321,13 @@ function definitionLocation_guru(
 					const guruOutput = <GuruDefinitionOuput>JSON.parse(stdout.toString());
 					const match = /(.*):(\d+):(\d+)/.exec(guruOutput.objpos);
 					const definitionInfo: GoDefinitionInformation = {
-						file: null,
+						file: undefined,
 						line: 0,
 						column: 0,
 						toolUsed: 'guru',
 						declarationlines: [guruOutput.desc],
-						doc: null,
-						name: null
+						doc: undefined,
+						name: undefined
 					};
 					if (!match) {
 						return resolve(definitionInfo);
@@ -343,12 +343,12 @@ function definitionLocation_guru(
 			}
 		);
 		if (p.pid) {
-			p.stdin.end(getFileArchive(input.document));
+			p.stdin?.end(getFileArchive(input.document));
 		}
 	});
 }
 
-export function parseMissingError(err: any): [boolean, string] {
+export function parseMissingError(err: any): [boolean, string | null] {
 	if (err) {
 		// Prompt for missing tool is located here so that the
 		// prompts dont show up on hover or signature help
@@ -360,7 +360,7 @@ export function parseMissingError(err: any): [boolean, string] {
 }
 
 export class GoDefinitionProvider implements vscode.DefinitionProvider {
-	private goConfig: vscode.WorkspaceConfiguration = null;
+	private goConfig: vscode.WorkspaceConfiguration | undefined;
 
 	constructor(goConfig?: vscode.WorkspaceConfiguration) {
 		this.goConfig = goConfig;
@@ -370,10 +370,10 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 		document: vscode.TextDocument,
 		position: vscode.Position,
 		token: vscode.CancellationToken
-	): Thenable<vscode.Location> {
+	): Thenable<vscode.Location | null> {
 		return definitionLocation(document, position, this.goConfig, false, token).then(
 			(definitionInfo) => {
-				if (definitionInfo === null || definitionInfo.file === null) {
+				if (!definitionInfo || !definitionInfo.file) {
 					return null;
 				}
 				const definitionResource = vscode.Uri.file(definitionInfo.file);
@@ -382,7 +382,7 @@ export class GoDefinitionProvider implements vscode.DefinitionProvider {
 			},
 			(err) => {
 				const miss = parseMissingError(err);
-				if (miss[0]) {
+				if (miss[0] && miss[1]) {
 					promptForMissingTool(miss[1]);
 				} else if (err) {
 					return Promise.reject(err);

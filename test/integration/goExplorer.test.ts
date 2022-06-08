@@ -31,13 +31,13 @@ suite('GoExplorerProvider', () => {
 	});
 
 	test('env tree', async () => {
-		const [env] = await explorer.getChildren();
+		const [env] = await explorer.getChildren()!;
 		assert.strictEqual(env.label, 'env');
 		assert.strictEqual(env.contextValue, 'go:explorer:envtree');
 	});
 
 	test('env tree items', async () => {
-		const [env] = await explorer.getChildren();
+		const [env] = await explorer.getChildren()!;
 		const [goenv, gomod] = (await explorer.getChildren(env)) as { key: string; value: string }[];
 		assert.strictEqual(goenv.key, 'GOENV');
 		assert.strictEqual(gomod.key, 'GOMOD');
@@ -45,7 +45,7 @@ suite('GoExplorerProvider', () => {
 	});
 
 	test('tools tree', async () => {
-		const [, tools] = await explorer.getChildren();
+		const [, tools] = await explorer.getChildren()!;
 		assert(tools.label === 'tools');
 		assert.strictEqual(tools.contextValue, 'go:explorer:tools');
 	});
@@ -54,11 +54,11 @@ suite('GoExplorerProvider', () => {
 		const goVersion = await getGoVersion();
 		const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
 		const expectTools = allTools.map((t) => t.name);
-		const [, tools] = await explorer.getChildren();
+		const [, tools] = await explorer.getChildren()!;
 		const items = (await explorer.getChildren(tools)) as TreeItem[];
 		for (const idx in items) {
 			assert(
-				items[idx].label.toString().startsWith(expectTools[idx]),
+				items[idx].label?.toString().startsWith(expectTools[idx]),
 				`Unexpected tool tree item with label "${items[idx].label}"`
 			);
 		}
