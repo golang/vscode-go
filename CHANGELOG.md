@@ -1,3 +1,7 @@
+## v0.34.0 - 22 June, 2022
+
+This release adds support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) and requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
+
 ## v0.33.1 - 24 May, 2022
 
 This is the last release that supports Visual Studio Code 1.66 or older.
