@@ -405,13 +405,7 @@ It returns the number of bytes written and any write error encountered.
 		await testHoverProvider(config, testCases);
 	});
 
-	test('Linting - concurrent process cancelation', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
-		}
-
+	test('Linting - concurrent process cancelation', async () => {
 		const util = require('../../src/util');
 		const processutil = require('../../src/utils/processUtils');
 		sinon.spy(util, 'runTool');
@@ -440,12 +434,7 @@ It returns the number of bytes written and any write error encountered.
 		);
 	});
 
-	test('Linting - lint errors with multiple open files', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
-		}
+	test('Linting - lint errors with multiple open files', async () => {
 		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
 		// This adjustment applies only to the text documents known to vscode. This test checks
 		// the adjustment is made consistently across multiple open text documents.
@@ -482,13 +471,7 @@ It returns the number of bytes written and any write error encountered.
 		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
 	});
 
-	test('Error checking', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
-		}
-
+	test('Error checking', async () => {
 		const config = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
@@ -515,7 +498,15 @@ It returns the number of bytes written and any write error encountered.
 
 		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
-		const diagnostics = await check({}, vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
+		const diagnostics = await check(
+			{
+				buildDiagnosticCollection: vscode.languages.createDiagnosticCollection('buildtest'),
+				lintDiagnosticCollection: vscode.languages.createDiagnosticCollection('linttest'),
+				vetDiagnosticCollection: vscode.languages.createDiagnosticCollection('vettest')
+			},
+			vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')),
+			config
+		);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
 				[],
