@@ -6,7 +6,7 @@ These debugging features are possible by using [Delve](https://github.com/go-del
 The Go extension has been communicating with Delve through a custom debug adapter program (`legacy` mode).
 As the new [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap) has become available (since Delve v1.6.1), the Go extension is transitioning to deprecate the legacy debug adapter in favor of direct communication with Delve via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
 
- 📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve integration is enabled for _local_ _debugging_ by default. For [_remote_ _debugging_](#remote-debugging) it is the default in [Go Nightly](docs/nightly.md) and is
+ 📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve integration is enabled for _local_ _debugging_ by default. For [_remote_ _debugging_](#remote-debugging) it is the default in [Go Nightly](nightly.md) and is
  available with stable builds on demand with `"debugAdapter": "dlv-dap"` attribute in `launch.json` or `settings.json`!**
 
 Many features and settings described in this document may be available only with the new `dlv-dap` mode.
@@ -39,7 +39,7 @@ The easiest way to update `dlv` on demand is to use the `"Go: Install/Update Too
 
 Once `dlv` is installed on your system, the extension will prompt you for update whenever installing a newer version is necessary (usually after the Go extension upgrade). You can set the `go.toolsManagement.autoUpdate` setting so the extension can update `dlv` automatically for you.
 
-If you need to install `dlv` manually outside of VS Code (for example, you are building a dev container with necessary tools preinstalled, or install `dlv` built from the tree head), follow the instruction in [Manually installing `dlv`](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#manually-installing-dlv).
+If you need to install `dlv` manually outside of VS Code (for example, you are building a dev container with necessary tools preinstalled, or install `dlv` built from the tree head), follow the instruction in [Manually installing `dlv`](debugging.md#manually-installing-dlv).
 
 💡 The extension used to install a dev version of `dlv` as a separate binary (known as `dlv-dap`). As Delve DAP is stable and the transition work is near completion, from v0.31.0 (to be released in Jan 2022), the extension will switch to use `dlv`, instead of the `dlv-dap` binary. It is safe to delete `dlv-dap` installed on the system after v0.31.0 release.
  
@@ -341,7 +341,7 @@ VS Code implements a generic, language-agnostic debugger UI based on [Debug Adap
 
 <p align="center"><img src="images/vscode-go-debug-arch.png" alt="vscode-go debug architecture"> </p>
 
-For information on debugging using the legacy debug adapter, please see the old [Debugging Documentation](https://github.com/golang/vscode-go/blob/master/docs/debugging.md). Note that many new or enhanced features discussed in this document may not be available with the legacy debug adapter.
+For information on debugging using the legacy debug adapter, please see the old [Debugging Documentation](debugging.md). Note that many new or enhanced features discussed in this document may not be available with the legacy debug adapter.
 
 ### Handling STDIN
 
@@ -489,7 +489,7 @@ In `.vscode/launch.json`:
 
 On rare occasions, you may want to install `dlv` by yourself instead of letting the extension handle its installation.
 
-First, find where the Go extension finds tools. Like [other tools the extension uses](https://github.com/golang/vscode-go/blob/master/docs/tools.md#tools), the Go extension searches the `dlv` executable from `${GOPATH}/bin`, `${GOBIN}` and `${PATH}`  (or `Path` in Windows). So, install `dlv` in the directory. The easiest way to check the tool installation location the Go extension uses is currently by running the `Go: Locate Configured Go Tools` command from the command palette (⇧+⌘+P or Ctrl+Shift+P).
+First, find where the Go extension finds tools. Like [other tools the extension uses](tools.md#tools), the Go extension searches the `dlv` executable from `${GOPATH}/bin`, `${GOBIN}` and `${PATH}`  (or `Path` in Windows). So, install `dlv` in the directory. The easiest way to check the tool installation location the Go extension uses is currently by running the `Go: Locate Configured Go Tools` command from the command palette (⇧+⌘+P or Ctrl+Shift+P).
 
 If your Go version is 1.16 or newer:
 
@@ -529,7 +529,7 @@ In this mode the user must first manually start a [`dlv --headless`](https://git
 
 The [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api) can now be used with both `"debugAdapter": "legacy"` (default value) and `"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli) via `dlv connect`. The `--accept-multiclient` flag makes this a multi-use server that persists on `Disconnect` from a client and allows repeated connections from any of the aforementioned clients. A combination of `--accept-multiclient --continue` flags can be used to resume process execution on start-up. Please see `dlv --help` and `dlv [command] --help` for dlv's command-line options.
 
-We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a try and to [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If you need to use the `legacy` mode, pleasse also see the [legacy remote debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging-legacy.md#remote-debugging) documentation.
+We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a try and to [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If you need to use the `legacy` mode, pleasse also see the [legacy remote debugging](debugging-legacy.md#remote-debugging) documentation.
 
 For example, start external headless server:
 ```
@@ -611,9 +611,9 @@ The suggestions below are intended to help you troubleshoot any problems you enc
 
 1. Read documentation and [FAQs](#faqs). Also check the [Delve FAQ](https://github.com/go-delve/delve/blob/master/Documentation/faq.md) in case the problem is mentioned there.
 1. Check your `launch.json` configuration. Often error messages appearing in the DEBUG CONSOLE panel reveal issues.
-1. Update Delve (`dlv`) to pick up most recent bug fixes. Follow [the instruction](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#staying-up-to-date).
+1. Update Delve (`dlv`) to pick up most recent bug fixes. Follow [the instruction](debugging.md#staying-up-to-date).
 1. Check if you can reproduce the issue with `dlv`, the command line tool from the integrated terminal. <!-- TODO(vscode-go): add instructions https://github.com/golang/vscode-go/issues/1931 --> If it's reproducible when using `dlv`, take a look at the [Delve project issue tracker](https://github.com/go-delve/delve/issues).
-1. Capture [logs](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#collecting-logs) and inspect them.
+1. Capture [logs](debugging.md#collecting-logs) and inspect them.
 1. Look at the [existing debugging issues](https://github.com/golang/vscode-go/labels/Debug) if similar issues were reported.
 1. If none of these solve your problem, please [open a new issue](#reporting-issues).
 
@@ -651,7 +651,7 @@ This problem often occurs when the source location used in compiling the debugge
 
 ### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration.
 
-The "debug test" CodeLens and the [test UI](https://github.com/golang/vscode-go/blob/master/docs/features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
+The "debug test" CodeLens and the [test UI](features.md#test-and-benchmark) do not use the `launch.json` configuration ([Issue 855](https://github.com/golang/vscode-go/issues/855)). As a workaround, use the `go.delveConfig` setting and the `go.testFlags` setting. Please note that these all apply to all debug sessions unless overwritten by a specific `launch.json` configuration.
 
 ### Starting a debug session fails with `decoding dwarf section info at offset 0x0: too short` or `could not open debug info` error.
 
@@ -692,7 +692,7 @@ The logging will appear in the `Go Debug` output channel (Command Palette -> "Vi
 
 The core part of Delve DAP implementation is in the [`service/dap`](https://github.com/go-delve/delve/tree/master/service/dap) package. Follow Delve project's [contribution guideline](https://github.com/go-delve/delve/blob/master/CONTRIBUTING.md#contributing-code) to send PRs.
 
-Code for integration with the Go extension is mostly in [`src/goDebugFactory.ts`](https://github.com/golang/vscode-go/blob/master/src/goDebugFactory.ts) and tests are in [`test/integration/goDebug.test.ts`](https://github.com/golang/vscode-go/blob/master/test/integration/goDebug.test.ts). Please take a look at VS Code Go project's [contribution guideline](https://github.com/golang/vscode-go/blob/master/docs/contributing.md) to learn about how to prepare a change and send it for review.
+Code for integration with the Go extension is mostly in [`src/goDebugFactory.ts`](https://github.com/golang/vscode-go/blob/master/src/goDebugFactory.ts) and tests are in [`test/integration/goDebug.test.ts`](https://github.com/golang/vscode-go/blob/master/test/integration/goDebug.test.ts). Please take a look at VS Code Go project's [contribution guideline](contributing.md) to learn about how to prepare a change and send it for review.
 
 ### Testing
 

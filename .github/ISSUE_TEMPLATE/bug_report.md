@@ -13,8 +13,8 @@ For asking questions, see:
 - [`#vscode` channel in Gophers Slack](https://invite.slack.golangbridge.org/messages/vscode)
 
 Before filing an issue, please review our troubleshooting guides
-* [Troubleshooting problems with debugging](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#troubleshooting)
-* [Troubleshooting other problems](https://github.com/golang/vscode-go/tree/master/docs/troubleshooting.md)
+* [Troubleshooting problems with debugging](https://github.com/golang/vscode-go/wiki/debugging#troubleshooting)
+* [Troubleshooting other problems](https://github.com/golang/vscode-go/wiki/troubleshooting)
 
 Please answer these questions before submitting your issue. Thanks!
 -->

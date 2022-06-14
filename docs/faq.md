@@ -10,7 +10,7 @@ not by this extension.
 
 For better syntax highlighting (including generics support), we recommend enabling
 [semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
-by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uisemantictokens).
+by turning on [Gopls' `ui.semanticTokens` setting](settings.md#uisemantictokens).
 
 ```json
 "gopls": { "ui.semanticTokens": true }

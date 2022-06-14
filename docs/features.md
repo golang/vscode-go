@@ -129,9 +129,9 @@ Predefined snippets for quick coding. These snippets will appear as completion s
 
 Format code and organize imports, either manually or on save.
 
-The extension formats Go code, organizes imports, and removes unused imports by default. For different behavior, please override per-language default settings following [the instruction](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#formatting-code-and-organizing-imports).
+The extension formats Go code, organizes imports, and removes unused imports by default. For different behavior, please override per-language default settings following [the instruction](advanced.md#formatting-code-and-organizing-imports).
 
-When organizing imports, the imported packages are grouped in the default `goimports` style. In order to group some packages after 3rd-party packages, use [`"gopls": { "formatting.local": <comma-separated imports prefix>}`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#formattinglocal).
+When organizing imports, the imported packages are grouped in the default `goimports` style. In order to group some packages after 3rd-party packages, use [`"gopls": { "formatting.local": <comma-separated imports prefix>}`](settings.md#formattinglocal).
 
 #### Add import
 

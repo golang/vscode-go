@@ -18,7 +18,7 @@ The extension checks for the availability of the new Go release by periodically 
 ### [`gopls`]
 [`gopls`] is the official Go [language server](https://langserver.org/) developed by the Go team. It is the default backend for most of this extension's IntelliSense, code navigation, code editing, and diagnostics features. When the extension starts, it spawns a `gopls` instance in server mode for each VS Code project.
 
-`gopls` uses the `go` command to analyze your code. The extension automatically propagates necessary settings such as  `"go.buildFlags"`, `"go.buildTags"`, `"go.toolsEnvVars"` and the path to the right `go` command to `gopls`. No extra settings should be necessary, but when you need to adjust `gopls`'s behavior further (e.g., enable more advanced analysis features), please see [all the settings for `gopls`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#settings-for-gopls).
+`gopls` uses the `go` command to analyze your code. The extension automatically propagates necessary settings such as  `"go.buildFlags"`, `"go.buildTags"`, `"go.toolsEnvVars"` and the path to the right `go` command to `gopls`. No extra settings should be necessary, but when you need to adjust `gopls`'s behavior further (e.g., enable more advanced analysis features), please see [all the settings for `gopls`](settings.md#settings-for-gopls).
 
 If you encounter issues with `gopls`, please read the [troubleshooting guide](troubleshooting.md#collect-gopls-information). If you want to run the extension without the language server, you can disable it by setting `"go.useLanguageServer": false`.
 
