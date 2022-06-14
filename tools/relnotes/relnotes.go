@@ -278,16 +278,6 @@ func mdPrintReleaseComments(changes []*generic.Changelist) {
 	}
 }
 
-// clPackage returns the package name from the CL's commit message,
-// or "??" if it's formatted unconventionally.
-func clPackage(cl *maintner.GerritCL) string {
-	subj := cl.Subject()
-	if i := strings.Index(subj, ":"); i != -1 {
-		return subj[:i]
-	}
-	return "??"
-}
-
 var relNoteRx = regexp.MustCompile(`RELNOTES?=(.+)`)
 
 func parseRelNote(s string) string {
@@ -314,7 +304,7 @@ func mdPrintContributors(cls map[*maintner.GerritCL]bool) {
 	for changelist := range cls {
 		author, err := fetchCLAuthorName(changelist, *project)
 		if err != nil {
-			log.Fatal("Error fetching Github information for %s: %v\n", changelist.Owner(), err)
+			log.Fatalf("Error fetching Github information for %s: %v\n", changelist.Owner(), err)
 		}
 		usernames = append(usernames, author)
 	}
@@ -390,7 +380,7 @@ func unique(input []string) []string {
 		m[entry] = true
 	}
 	var list []string
-	for key, _ := range m {
+	for key := range m {
 		list = append(list, key)
 	}
 	sort.Strings(list)
