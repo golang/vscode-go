@@ -2,6 +2,26 @@
 
 This release adds support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) and requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
 
+### Features
+This release includes improvements to the `Go: Run Vulncheck (Experimental)` command ([Issue 2185](https://github.com/golang/vscode-go/issues/2185), [2186](https://github.com/golang/vscode-go/issues/2186), [2214](https://github.com/golang/vscode-go/issues/2214)). Use it to find security issues in your dependencies.
+
+### Documentation
+Documentation for vscode-go can now be found on the [wiki](https://github.com/golang/vscode-go/wiki) ([Issue 2094](https://github.com/golang/vscode-go/issues/2094)).
+
+Thanks @thediveo for updating the debugging documentation!
+
+### Bug Fixes
+`TestMain(m *testing.M)` is no longer treated as a test ([Issue 482](https://github.com/golang/vscode-go/issues/482), [2039](https://github.com/golang/vscode-go/issues/2039))
+
+### Code Health
+- Enabled strict type checking ([Issue 57](https://github.com/golang/vscode-go/issues/57))
+- Updated release notes generation script to improve release process automation
+- Fixed bugs in testing
+
+### Thanks
+
+Thank you for your contribution, @hyangah, @jamalc, @polinasok, @suzmue, @thediveo, and @dle8!
+
 ## v0.33.1 - 24 May, 2022
 
 This is the last release that supports Visual Studio Code 1.66 or older.
