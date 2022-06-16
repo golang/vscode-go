@@ -170,7 +170,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	GoExplorerProvider.setup(ctx);
 	VulncheckProvider.setup(ctx, goCtx);
-	VulncheckResultViewProvider.register(ctx);
+	VulncheckResultViewProvider.register(ctx, goCtx);
 
 	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
 	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);

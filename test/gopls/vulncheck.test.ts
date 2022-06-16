@@ -21,7 +21,7 @@ suite('vulncheck result viewer tests', () => {
 	let provider: goVulncheck.VulncheckResultViewProvider;
 
 	setup(() => {
-		provider = new goVulncheck.VulncheckResultViewProvider(extensionUri);
+		provider = new goVulncheck.VulncheckResultViewProvider(extensionUri, {});
 	});
 
 	teardown(async () => {

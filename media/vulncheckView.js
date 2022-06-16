@@ -16,12 +16,18 @@
 
 	vulnsContainer.addEventListener('click', (event) => {
 		let node = event && event.target;
+		let handled = false;
+		console.log(`${node.type} ${node.tagName} ${node.className} ${node.id} data:${node.dataset?.target} dir:${node.dataset?.dir}`);
 		if (node?.tagName === 'A' && node.href) {
 			// Ask vscode to handle link opening.
 			vscode.postMessage({ type: 'open', target: node.href });
+		} else if (node?.tagName === 'SPAN' && node.className === 'vuln-fix' && node.dataset?.target && node.dataset?.dir) {
+			vscode.postMessage({ type: 'fix', target: node.dataset?.target, dir: node.dataset?.dir });
+		}
+
+		if (handled) {
 			event.preventDefault();
 			event.stopPropagation();
-			return;
 		}
 	});
 
@@ -35,6 +41,13 @@
 			return `<a href="https://pkg.go.dev/${mod}@${ver}">${mod}@${ver}</a>`;
 		}
 		return 'N/A'
+	}
+
+	function offerUpgrade(/** @type {string} */dir, /** @type {string} */mod, /** @type {string|undefined} */ver) {
+		if (dir && mod && ver) {
+			return ` [<span class="vuln-fix" data-target="${mod}@${ver}" data-dir="${dir}">go get</span> | <span class="vuln-fix" data-target="${mod}@latest" data-dir="${dir}">go get latest</span>]`
+		}
+		return '';
 	}
 
 	function snapshotContent() {
@@ -102,7 +115,7 @@
 			details.innerHTML = `
 			<tr><td>Package</td><td>${vuln.PkgPath}</td></tr>
 			<tr><td>Found in Version</td><td>${moduleVersion(vuln.ModPath, vuln.CurrentVersion)}</td></tr>
-			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)}</td></tr>
+			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)} ${offerUpgrade(json.Dir, vuln.ModPath, vuln.FixedVersion)}</td></tr>
 			<tr><td>Affecting</td><td>${vuln.AffectedPkgs?.join('<br>')}</td></tr>
 			`;
 			element.appendChild(details);
