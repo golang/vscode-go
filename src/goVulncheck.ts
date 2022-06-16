@@ -97,9 +97,9 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				<title>Vulnerability Report - govulncheck</title>
 			</head>
 			<body>
-			    <div class="log"></div>
+				<div class="log"></div>
 				<div class="vulns"></div>
-				
+				<div class="unaffecting"></div>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
@@ -201,7 +201,7 @@ export class VulncheckProvider {
 			const start = new Date();
 			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
 
-			if (vuln) {
+			if (vuln?.Vuln?.length) {
 				fillAffectedPkgs(vuln.Vuln);
 
 				// record run info.
@@ -222,7 +222,7 @@ export class VulncheckProvider {
 					VulncheckResultViewProvider.viewType,
 					viewColumn
 				);
-				this.channel.appendLine(`Vulncheck - result wrote in ${fname}`);
+				this.channel.appendLine(`Vulncheck - result written in ${fname}`);
 			} else {
 				this.channel.appendLine('Vulncheck - found no vulnerability');
 			}
