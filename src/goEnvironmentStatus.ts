@@ -374,17 +374,13 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promi
 
 	// append the goroot to the beginning of the PATH so it takes precedence
 	// TODO: add support for more terminal names
-	// this assumes all non-windows shells are bash-like.
-	if (terminal.name.toLowerCase() === 'cmd') {
-		terminal.sendText(`set PATH=${gorootBin};%Path%`, true);
-		terminal.sendText('cls');
-	} else if (['powershell', 'pwsh'].includes(terminal.name.toLowerCase())) {
+	if (vscode.env.shell.search(/(powershell|pwsh)$/i) !== -1) {
 		terminal.sendText(`$env:Path="${gorootBin};$env:Path"`, true);
 		terminal.sendText('clear');
-	} else if (terminal.name.toLowerCase() === 'fish') {
+	} else if (vscode.env.shell.search(/fish$/i) !== -1) {
 		terminal.sendText(`set -gx PATH ${gorootBin} $PATH`);
 		terminal.sendText('clear');
-	} else if (['bash', 'sh', 'zsh', 'ksh'].includes(terminal.name.toLowerCase())) {
+	} else if (vscode.env.shell.search(/\/(bash|sh|zsh|ksh)$/i) !== -1) {
 		terminal.sendText(`export PATH=${gorootBin}:$PATH`, true);
 		terminal.sendText('clear');
 	}

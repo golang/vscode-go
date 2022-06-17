@@ -9,9 +9,9 @@ provides rich language support for the
 [Go programming language](https://golang.org/).
 
 📣
-[Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
-[debugging features](docs/debugging.md) that are already in use for local debugging. It is now the default with the
-[Go Nightly](docs/nightly.md) build of the extension and will become the default for the stable releases in mid 2022.
+[Remote attach debugging](https://github.com/golang/vscode-go/wiki/debugging#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
+[debugging features](https://github.com/golang/vscode-go/wiki/debugging) that are already in use for local debugging. It is now the default with the
+[Go Nightly](https://github.com/golang/vscode-go/wiki/nightly) build of the extension and will become the default for the stable releases in mid 2022.
 We recommend switching your remote attach configurations in `launch.json` to use
 `"debugAdapter":"dlv-dap"` now to verify that this works for you.
 Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
@@ -29,7 +29,7 @@ extension fits your needs and enhances your development experience.
   * [Go installation guide]. This extension works best with Go 1.14+.
   * [Managing extensions in VS Code].
 * **Step 2.** To activate the extension, open any directory or workspace
-  containing Go code. Once activated, the [Go status bar](docs/ui.md) will
+  containing Go code. Once activated, the [Go status bar](https://github.com/golang/vscode-go/wiki/ui) will
   appear in the bottom left corner of the window and show the recognized Go
   version.
 * **Step 3.** The extension depends on [a set of extra command-line tools](#tools).
@@ -46,7 +46,7 @@ You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
 
 Please be sure to learn more about the many [features](#features) of this
 extension, as well as how to [customize](#customization) them. Take a look at
-[Troubleshooting](docs/troubleshooting.md) and [Help](#ask-for-help) for further
+[Troubleshooting](https://github.com/golang/vscode-go/wiki/troubleshooting) and [Help](#ask-for-help) for further
 guidance.
 
 If you are new to Go, [this article](https://golang.org/doc/code.html) provides
@@ -72,7 +72,7 @@ In addition to integrated editing features, the extension provides several
 commands for working with Go files. You can access any of these by opening the
 Command Palette (`Ctrl+Shift+P` on Linux/Windows and `Cmd+Shift+P` on Mac), and
 then typing in the command name. See the
-[full list of commands](docs/commands.md#detailed-list) provided by this
+[full list of commands](https://github.com/golang/vscode-go/wiki/commands#detailed-list) provided by this
 extension.
 
 <p align=center>
@@ -85,7 +85,7 @@ Code, not by this extension.
 
 For better syntax highlighting, we recommend enabling
 [semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
-by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uisemantictokens).
+by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vscode-go/wiki/settings#uisemantictokens).
     ```
     "gopls": { "ui.semanticTokens": true }
     ```
@@ -94,7 +94,7 @@ by turning on [Gopls' `ui.semanticTokens` setting](https://github.com/golang/vsc
 
 The extension uses a few command-line tools developed by the Go community. In
 particular, `go`, `gopls`, and `dlv` **must** be installed for this extension
-to work correctly. See the [tools documentation](docs/tools.md) for a complete
+to work correctly. See the [tools documentation](https://github.com/golang/vscode-go/wiki/tools) for a complete
 list of tools the extension depends on.
 
 In order to locate these command-line tools, the extension searches
@@ -128,16 +128,16 @@ workspace layouts].
 
 The extension needs no configuration and should work out of the box. However,
 you may wish to adjust settings to customize its behavior. Please see the
-[settings documentation](docs/settings.md) for a comprehensive list of settings.
-See [advanced topics](docs/advanced.md) for further customizations and unique
+[settings documentation](https://github.com/golang/vscode-go/wiki/settings) for a comprehensive list of settings.
+See [advanced topics](https://github.com/golang/vscode-go/wiki/advanced) for further customizations and unique
 use cases.
 
 ## Troubleshooting
 
 If the extension isn't working as you expect, you can take a look at our
 troubleshooting guides. There is one for [general
-troubleshooting](docs/troubleshooting.md), and another specifically for
-[troubleshooting the debugging feature](docs/debugging.md#troubleshooting).
+troubleshooting](https://github.com/golang/vscode-go/wiki/troubleshooting), and another specifically for
+[troubleshooting the debugging feature](https://github.com/golang/vscode-go/wiki/debugging#troubleshooting).
 
 ## Ask for help
 
@@ -154,13 +154,13 @@ Go.
 
 If you'd like to get early access to new features and bug fixes, you can use the
 nightly build of this extension. Learn how to install it in by reading the
-[Go Nightly documentation](docs/nightly.md).
+[Go Nightly documentation](https://github.com/golang/vscode-go/wiki/nightly).
 
 ## Contributing
 
 We welcome your contributions and thank you for working to improve the Go
 development experience in VS Code. If you would like to help work on the VS Code
-Go extension, please see our [contribution guide](docs/contributing.md). It
+Go extension, please see our [contribution guide](https://github.com/golang/vscode-go/wiki/contributing). It
 explains how to build and run the extension locally, and describes the process
 of sending a contribution.
 
@@ -181,14 +181,14 @@ conduct-related issue, please mail conduct@golang.org.
 [VS Code Go extension]: https://marketplace.visualstudio.com/items?itemName=golang.go
 [Go installation guide]: https://golang.org/doc/install
 ["Getting started with VS Code Go"]: https://youtu.be/1MXIGYrMk80
-[IntelliSense]: https://github.com/golang/vscode-go/blob/master/docs/features.md#intellisense
-[code navigation]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-navigation
-[code editing]: https://github.com/golang/vscode-go/blob/master/docs/features.md#code-editing
-[diagnostics]: https://github.com/golang/vscode-go/blob/master/docs/features.md#diagnostics
-[testing]: https://github.com/golang/vscode-go/blob/master/docs/features.md##run-and-test-in-the-editor
-[debugging]: https://github.com/golang/vscode-go/blob/master/docs/debugging.md#features
-[full feature breakdown]: https://github.com/golang/vscode-go/blob/master/docs/features.md
+[IntelliSense]: https://github.com/golang/vscode-go/wiki/features#intellisense
+[code navigation]: https://github.com/golang/vscode-go/wiki/features#code-navigation
+[code editing]: https://github.com/golang/vscode-go/wiki/features#code-editing
+[diagnostics]: https://github.com/golang/vscode-go/wiki/features#diagnostics
+[testing]: https://github.com/golang/vscode-go/wiki/features#run-and-test-in-the-editor
+[debugging]: https://github.com/golang/vscode-go/wiki/debugging#features
+[full feature breakdown]: https://github.com/golang/vscode-go/wiki/features
 [workspace documentation]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
-[`Go: Install/Update Tools` command]: https://github.com/golang/vscode-go/blob/master/docs/commands.md#go-installupdate-tools
+[`Go: Install/Update Tools` command]: https://github.com/golang/vscode-go/wiki/commands#go-installupdate-tools
 [documentation about supported workspace layouts]: https://github.com/golang/tools/blob/master/gopls/doc/workspace.md
 [Workspace Folders]: https://code.visualstudio.com/docs/editor/multi-root-workspaces

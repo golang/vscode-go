@@ -4,7 +4,7 @@ This extension is highly configurable, and as such, offers a number of settings.
 
 To navigate to your settings, open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
 
-For tuning the features provided by `gopls`, see the [section](https://github.com/golang/vscode-go/blob/master/docs/settings.md#settings-for-gopls) for `gopls` settings.
+For tuning the features provided by `gopls`, see the [section](settings.md#settings-for-gopls) for `gopls` settings.
 
 ## Latest changes
 
