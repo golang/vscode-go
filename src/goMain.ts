@@ -102,13 +102,13 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	offerToInstallLatestGoVersion();
 	offerToInstallTools();
 
+	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
+	registerCommand('go.languageserver.restart', commands.startLanguageServer);
+
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
 
 	initCoverageDecorators(ctx);
 
-	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
-
-	registerCommand('go.languageserver.restart', commands.startLanguageServer);
 	registerCommand('go.builds.run', commands.runBuilds);
 
 	const activeDoc = vscode.window.activeTextEditor?.document;
