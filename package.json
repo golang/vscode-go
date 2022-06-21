@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.34.0-dev",
+  "version": "0.35.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
