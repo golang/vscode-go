@@ -2043,6 +2043,41 @@
           "scope": "resource",
           "type": "boolean"
         },
+        "go.inlayHints.assignVariableTypes": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for variable types in assign statements.",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralFields": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for composite literal field names.",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralTypes": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for composite literal types.",
+          "default": false
+        },
+        "go.inlayHints.constantValues": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for constant values.",
+          "default": false
+        },
+        "go.inlayHints.functionTypeParameters": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for implicit type parameters on generic functions.",
+          "default": false
+        },
+        "go.inlayHints.parameterNames": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for parameter names.",
+          "default": false
+        },
+        "go.inlayHints.rangeVariableTypes": {
+          "type": "boolean",
+          "description": "Enable/disable inlay hints for variable types in range statements.",
+          "default": false
+        },
         "gopls": {
           "type": "object",
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",

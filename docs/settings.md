@@ -278,6 +278,41 @@ Default: `false`
 Infer GOPATH from the workspace root. This is ignored when using Go Modules.
 
 Default: `false`
+### `go.inlayHints.assignVariableTypes`
+
+Enable/disable inlay hints for variable types in assign statements.
+
+Default: `false`
+### `go.inlayHints.compositeLiteralFields`
+
+Enable/disable inlay hints for composite literal field names.
+
+Default: `false`
+### `go.inlayHints.compositeLiteralTypes`
+
+Enable/disable inlay hints for composite literal types.
+
+Default: `false`
+### `go.inlayHints.constantValues`
+
+Enable/disable inlay hints for constant values.
+
+Default: `false`
+### `go.inlayHints.functionTypeParameters`
+
+Enable/disable inlay hints for implicit type parameters on generic functions.
+
+Default: `false`
+### `go.inlayHints.parameterNames`
+
+Enable/disable inlay hints for parameter names.
+
+Default: `false`
+### `go.inlayHints.rangeVariableTypes`
+
+Enable/disable inlay hints for variable types in range statements.
+
+Default: `false`
 ### `go.installDependenciesWhenBuilding`
 
 If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.
