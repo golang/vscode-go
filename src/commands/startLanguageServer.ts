@@ -39,6 +39,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 		}
 
 		const unlock = await languageServerStartMutex.lock();
+		goCtx.latestConfig = cfg;
 		try {
 			if (reason === RestartReason.MANUAL) {
 				await suggestGoplsIssueReport(
@@ -52,6 +53,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			if (goCtx.languageClient) {
 				await stopLanguageClient(goCtx);
 			}
+			updateStatus(goCtx, goConfig, false);
 
 			// Before starting the language server, make sure to deregister any
 			// currently registered language providers.
@@ -100,7 +102,6 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			console.log(msg);
 			goCtx.serverOutputChannel?.append(msg);
 		} finally {
-			goCtx.latestConfig = cfg;
 			unlock();
 		}
 	};

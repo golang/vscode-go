@@ -56,6 +56,7 @@ import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/f
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
 import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 import { CommandFactory } from '../commands';
+import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -360,6 +361,11 @@ export async function buildLanguageClient(
 		{ language: 'gotmpl', scheme: 'file' }
 	];
 
+	// when initialization is failed after the connection is established,
+	// we want to handle the connection close error case specially. Capture the error
+	// in initializationFailedHandler and handle it in the connectionCloseHandler.
+	let initializationError: WebRequest.ResponseError<InitializeError> | undefined = undefined;
+
 	const c = new LanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
@@ -381,41 +387,56 @@ export async function buildLanguageClient(
 			traceOutputChannel: cfg.traceOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
-				vscode.window.showErrorMessage(
-					`The language server is not able to serve any features. Initialization failed: ${error}. `
-				);
-				suggestGoplsIssueReport(
-					goCtx,
-					'The gopls server failed to initialize',
-					errorKind.initializationFailure,
-					error
-				);
+				initializationError = error;
 				return false;
 			},
 			errorHandler: {
 				error: (error: Error, message: Message, count: number) => {
 					// Allow 5 crashes before shutdown.
 					if (count < 5) {
-						return { action: ErrorAction.Continue };
+						return {
+							message: '', // suppresses error popups
+							action: ErrorAction.Continue
+						};
 					}
-					vscode.window.showErrorMessage(
-						`Error communicating with the language server: ${error}: ${message}.`
-					);
-					return { action: ErrorAction.Shutdown };
+					return {
+						action: ErrorAction.Shutdown
+					};
 				},
 				closed: () => {
+					if (initializationError !== undefined) {
+						suggestGoplsIssueReport(
+							goCtx,
+							'The gopls server failed to initialize.',
+							errorKind.initializationFailure,
+							initializationError
+						);
+						initializationError = undefined;
+						// In case of initialization failure, do not try to restart.
+						return {
+							message: 'The gopls server failed to initialize.',
+							action: CloseAction.DoNotRestart
+						};
+					}
+
 					// Allow 5 crashes before shutdown.
 					const { crashCount = 0 } = goCtx;
 					goCtx.crashCount = crashCount + 1;
 					if (goCtx.crashCount < 5) {
-						return { action: CloseAction.Restart };
+						return {
+							message: '', // suppresses error popups
+							action: CloseAction.Restart
+						};
 					}
 					suggestGoplsIssueReport(
 						goCtx,
 						'The connection to gopls has been closed. The gopls server may have crashed.',
 						errorKind.crash
 					);
-					return { action: CloseAction.DoNotRestart };
+					updateLanguageServerIconGoStatusBar(false, true);
+					return {
+						action: CloseAction.DoNotRestart
+					};
 				}
 			},
 			middleware: {
