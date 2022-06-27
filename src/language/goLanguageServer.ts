@@ -798,6 +798,12 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		env: toolExecutionEnvironment(),
 		checkForUpdates: getCheckForToolsUpdatesConfig(goConfig)
 	};
+	// user has opted out of using the language server.
+	if (!cfg.enabled) {
+		return cfg;
+	}
+
+	// locate the configured language server tool.
 	const languageServerPath = getLanguageServerToolPath();
 	if (!languageServerPath) {
 		// Assume the getLanguageServerToolPath will show the relevant
@@ -807,10 +813,6 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 	}
 	cfg.path = languageServerPath;
 	cfg.serverName = getToolFromToolPath(cfg.path) ?? '';
-
-	if (!cfg.enabled) {
-		return cfg;
-	}
 
 	// Get the mtime of the language server binary so that we always pick up
 	// the right version.
