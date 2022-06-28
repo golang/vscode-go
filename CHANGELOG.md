@@ -1,3 +1,13 @@
+## v0.34.1 - 30 June, 2022
+
+A list of all issues and changes can be found in the [v0.34.1 milestone](https://github.com/golang/vscode-go/milestone/48) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.0...v0.34.1).
+
+### Bug Fix
+- Fixed (Issue [2300](https://github.com/golang/vscode-go/issues/2300)) that prevented the extension from complete activation when the language server fails to start.
+
+### Thanks
+Thank you for your contribution, @jamalc, @hyangh!
+
 ## v0.34.0 - 22 June, 2022
 
 This release adds support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) and requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
