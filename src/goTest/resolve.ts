@@ -24,7 +24,7 @@ import { getCurrentGoPath } from '../util';
 import { getGoConfig } from '../config';
 import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, findModuleName, isInTest, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
-import { importsTestify } from '../testUtils';
+import { isPackageTestify } from '../testUtils';
 
 export type ProvideSymbols = (doc: TextDocument, token?: CancellationToken) => Thenable<DocumentSymbol[]>;
 
@@ -205,7 +205,7 @@ export class GoTestResolver {
 		const seen = new Set<string>();
 		const item = await this.getFile(doc.uri);
 		const symbols = await this.provideDocumentSymbols(doc);
-		const testify = importsTestify(symbols);
+		const testify = await isPackageTestify(this.provideDocumentSymbols, doc);
 		for (const symbol of symbols) {
 			await this.processSymbol(doc, item, seen, testify, symbol);
 		}
