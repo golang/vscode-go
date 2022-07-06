@@ -10,7 +10,6 @@
 import cp = require('child_process');
 import path = require('path');
 import util = require('util');
-import fs = require('fs');
 import vscode = require('vscode');
 
 import { applyCodeCoverageToAllEditors } from './goCover';
@@ -150,8 +149,6 @@ export async function getTestFunctions(
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx, true);
-
-	const testify = await isPackageTestify(documentSymbolProvider.provideDocumentSymbols, doc, token);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
 	if (!symbols || symbols.length === 0) {
 		return;
@@ -161,6 +158,10 @@ export async function getTestFunctions(
 		return;
 	}
 	const children = symbol.children;
+
+	// With gopls dymbol provider symbols, the symbols have the imports of all
+	// the package, so suite tests from all files will be found.
+	const testify = importsTestify(symbols);
 	return children.filter(
 		(sym) =>
 			(sym.kind === vscode.SymbolKind.Function || sym.kind === vscode.SymbolKind.Method) &&
@@ -588,35 +589,6 @@ export function cancelRunningTests(): Thenable<boolean> {
 	});
 }
 
-export type ProvideSymbols = (
-	doc: vscode.TextDocument,
-	token?: vscode.CancellationToken
-) => Thenable<vscode.DocumentSymbol[]>;
-
-/**
- * Returns whether a file in the package imports testify.
- */
-export async function isPackageTestify(
-	symbolsProvier: ProvideSymbols,
-	doc: vscode.TextDocument,
-	token?: vscode.CancellationToken | undefined
-) {
-	const fsReaddir = util.promisify(fs.readdir);
-
-	// Get all the package documents.
-	const packageDir = path.parse(doc.fileName).dir;
-	const packageFilenames = await fsReaddir(packageDir);
-	const packageDocs = await Promise.all(
-		packageFilenames.map((e) => path.join(packageDir, e)).map(vscode.workspace.openTextDocument)
-	);
-
-	// Parse the symbols of each document.
-	const docSymbols = await Promise.all(packageDocs.map((e) => symbolsProvier(e, token)));
-
-	// One file is enough.
-	return docSymbols.some(importsTestify);
-}
-
 /**
  * Get the test target arguments.
  *
@@ -671,7 +643,7 @@ function removeRunFlag(flags: string[]): void {
 	}
 }
 
-function importsTestify(syms: vscode.DocumentSymbol[]): boolean {
+export function importsTestify(syms: vscode.DocumentSymbol[]): boolean {
 	if (!syms || syms.length === 0 || !syms[0]) {
 		return false;
 	}
