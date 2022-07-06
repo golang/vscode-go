@@ -1194,22 +1194,22 @@
         "go.formatTool": {
           "type": "string",
           "default": "default",
-          "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
+          "description": "When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.",
           "scope": "resource",
           "enum": [
             "default",
             "gofmt",
             "goimports",
             "goformat",
-            "gofumpt",
-            "gofumports"
+            "gofumpt"
           ],
+          "additionalItems": true,
           "enumDescriptions": [
             "If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.",
-            "Formats the file according to the standard Go style.",
-            "Organizes imports and formats the file with gofmt.",
+            "Formats the file according to the standard Go style. (not applicable when the language server is enabled)",
+            "Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)",
             "Configurable gofmt, see https://github.com/mbenkmann/goformat.",
-            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt.",
+            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. (not applicable when the language server is enabled)",
             "Applies gofumpt formatting and organizes imports."
           ]
         },
