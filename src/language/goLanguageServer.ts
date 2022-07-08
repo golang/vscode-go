@@ -676,7 +676,7 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 
 	const buildFlags = [] as string[];
 	if (goWorkspaceConfig?.buildFlags) {
-		buildFlags.push(...goWorkspaceConfig?.buildFlags);
+		buildFlags.push(...goWorkspaceConfig.buildFlags);
 	}
 	if (goWorkspaceConfig?.buildTags && buildFlags.indexOf('-tags') === -1) {
 		buildFlags.push('-tags', goWorkspaceConfig?.buildTags);
