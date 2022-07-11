@@ -52,7 +52,7 @@
     "diff": "4.0.2",
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
-    "moment": "2.29.2",
+    "moment": "2.29.4",
     "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
