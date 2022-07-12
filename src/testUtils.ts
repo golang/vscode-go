@@ -158,6 +158,9 @@ export async function getTestFunctions(
 		return;
 	}
 	const children = symbol.children;
+
+	// With gopls dymbol provider symbols, the symbols have the imports of all
+	// the package, so suite tests from all files will be found.
 	const testify = importsTestify(symbols);
 	return children.filter(
 		(sym) =>

@@ -102,5 +102,5 @@ async function listImports(
 		]
 	};
 	const resp = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
-	return resp.Imports;
+	return resp.PackageImports;
 }
