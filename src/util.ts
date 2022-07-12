@@ -606,7 +606,7 @@ export function timeout(millis: number): Promise<void> {
 }
 
 /**
- * Expands ~ to homedir in non-Windows platform and resolves 
+ * Expands ~ to homedir in non-Windows platform and resolves
  * ${workspaceFolder}, ${workspaceRoot} and ${workspaceFolderBasename}
  */
 export function resolvePath(inputPath: string, workspaceFolder?: string): string {
