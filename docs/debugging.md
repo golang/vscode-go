@@ -581,7 +581,7 @@ Use the following `launch` configuration to tell `dlv` to execute a binary preco
   "mode": "exec",
   "program": "/absolute/path/to/remote/workspace/program/executable",
   "substitutePath": [
-      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      { "from": "${workspaceFolder}", "to": "/path/to/remote/workspace" },
       ...
   ]
 }
