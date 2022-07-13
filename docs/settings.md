@@ -273,36 +273,85 @@ Default: `false`
 ### `go.inlayHints.assignVariableTypes`
 
 Enable/disable inlay hints for variable types in assign statements.
+```go
+
+i /*int*/, j /*int*/ := 0, len(r)-1
+```
 
 Default: `false`
 ### `go.inlayHints.compositeLiteralFields`
 
 Enable/disable inlay hints for composite literal field names.
+```go
+
+for _, c := range []struct {in, want string}{
+	{/*in:*/ "Hello, world", /*want:*/ "dlrow ,olleH"},
+	{/*in:*/ "Hello, 世界", /*want:*/ "界世 ,olleH"},
+	{/*in:*/ "", /*want:*/ ""},
+} {
+	...
+}
+```
 
 Default: `false`
 ### `go.inlayHints.compositeLiteralTypes`
 
 Enable/disable inlay hints for composite literal types.
+```go
+
+for _, c := range []struct {in, want string}{
+	/*struct{ in, want string }*/{"Hello, world", "dlrow ,olleH"},
+	/*struct{ in, want string }*/{"Hello, 世界", "界世 ,olleH"},
+	/*struct{ in, want string }*/{"", ""},
+} {
+	...
+}
+```
 
 Default: `false`
 ### `go.inlayHints.constantValues`
 
 Enable/disable inlay hints for constant values.
+```go
+
+const (
+	KindNone   = iota	/*= 0*/
+	KindPrint	/*= 1*/
+	KindPrintf	/*= 2*/
+	KindErrorf	/*= 3*/
+)
+```
 
 Default: `false`
 ### `go.inlayHints.functionTypeParameters`
 
 Enable/disable inlay hints for implicit type parameters on generic functions.
+```go
+
+func myFunc[T any](a T) { ... }
+
+func main() {
+	myFunc/*[int]*/(1)
+}
+```
 
 Default: `false`
 ### `go.inlayHints.parameterNames`
 
 Enable/disable inlay hints for parameter names.
+```go
+
+http.HandleFunc(/*pattern:*/ "/", /*handler:*/ indexHandler)
+```
 
 Default: `false`
 ### `go.inlayHints.rangeVariableTypes`
 
 Enable/disable inlay hints for variable types in range statements.
+```go
+
+for k /*int*/, v /*string*/ := range []string{} { ... }
+```
 
 Default: `false`
 ### `go.installDependenciesWhenBuilding`

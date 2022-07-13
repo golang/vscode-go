@@ -2045,37 +2045,37 @@
         },
         "go.inlayHints.assignVariableTypes": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for variable types in assign statements.",
+          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements.\n```go\n\ni /*int*/, j /*int*/ := 0, len(r)-1\n```",
           "default": false
         },
         "go.inlayHints.compositeLiteralFields": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for composite literal field names.",
+          "markdownDescription": "Enable/disable inlay hints for composite literal field names.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t{/*in:*/ \"Hello, world\", /*want:*/ \"dlrow ,olleH\"},\n\t{/*in:*/ \"Hello, 世界\", /*want:*/ \"界世 ,olleH\"},\n\t{/*in:*/ \"\", /*want:*/ \"\"},\n} {\n\t...\n}\n```",
           "default": false
         },
         "go.inlayHints.compositeLiteralTypes": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for composite literal types.",
+          "markdownDescription": "Enable/disable inlay hints for composite literal types.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t/*struct{ in, want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t/*struct{ in, want string }*/{\"Hello, 世界\", \"界世 ,olleH\"},\n\t/*struct{ in, want string }*/{\"\", \"\"},\n} {\n\t...\n}\n```",
           "default": false
         },
         "go.inlayHints.constantValues": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for constant values.",
+          "markdownDescription": "Enable/disable inlay hints for constant values.\n```go\n\nconst (\n\tKindNone   = iota\t/*= 0*/\n\tKindPrint\t/*= 1*/\n\tKindPrintf\t/*= 2*/\n\tKindErrorf\t/*= 3*/\n)\n```",
           "default": false
         },
         "go.inlayHints.functionTypeParameters": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for implicit type parameters on generic functions.",
+          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions.\n```go\n\nfunc myFunc[T any](a T) { ... }\n\nfunc main() {\n\tmyFunc/*[int]*/(1)\n}\n```",
           "default": false
         },
         "go.inlayHints.parameterNames": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for parameter names.",
+          "markdownDescription": "Enable/disable inlay hints for parameter names.\n```go\n\nhttp.HandleFunc(/*pattern:*/ \"/\", /*handler:*/ indexHandler)\n```",
           "default": false
         },
         "go.inlayHints.rangeVariableTypes": {
           "type": "boolean",
-          "description": "Enable/disable inlay hints for variable types in range statements.",
+          "markdownDescription": "Enable/disable inlay hints for variable types in range statements.\n```go\n\nfor k /*int*/, v /*string*/ := range []string{} { ... }\n```",
           "default": false
         },
         "gopls": {
