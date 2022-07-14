@@ -676,7 +676,7 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 
 	const buildFlags = [] as string[];
 	if (goWorkspaceConfig?.buildFlags) {
-		buildFlags.push(...goWorkspaceConfig?.buildFlags);
+		buildFlags.push(...goWorkspaceConfig.buildFlags);
 	}
 	if (goWorkspaceConfig?.buildTags && buildFlags.indexOf('-tags') === -1) {
 		buildFlags.push('-tags', goWorkspaceConfig?.buildTags);
@@ -685,6 +685,7 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 	if (buildFlags.length > 0 && goplsWorkspaceConfig['build.buildFlags'] === undefined) {
 		goplsWorkspaceConfig['build.buildFlags'] = buildFlags;
 	}
+
 	return goplsWorkspaceConfig;
 }
 
@@ -705,6 +706,7 @@ async function adjustGoplsWorkspaceConfiguration(
 	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource);
 	// note: workspaceConfig is a modifiable, valid object.
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
+	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, getGoConfig(resource));
 
 	// Only modify the user's configurations for the Nightly.
 	if (!extensionInfo.isPreview) {
@@ -714,6 +716,19 @@ async function adjustGoplsWorkspaceConfiguration(
 		workspaceConfig['allExperiments'] = true;
 	}
 	return workspaceConfig;
+}
+
+async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
+	const goplsVersion = await getLocalGoplsVersion(cfg);
+	if (!goplsVersion) return;
+	const version = semver.parse(goplsVersion.version);
+	if ((version?.compare('0.8.4') ?? 1) > 0) {
+		const { inlayHints } = goConfig;
+		if (inlayHints) {
+			goplsConfig['ui.inlayhint.hints'] = { ...inlayHints };
+		}
+	}
+	return goplsConfig;
 }
 
 // createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens

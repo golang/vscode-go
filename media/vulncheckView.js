@@ -12,15 +12,22 @@
 
 	const logContainer = /** @type {HTMLElement} */ (document.querySelector('.log'));
 	const vulnsContainer = /** @type {HTMLElement} */ (document.querySelector('.vulns'));
+	const unaffectingContainer = /** @type {HTMLElement} */ (document.querySelector('.unaffecting'));
 
 	vulnsContainer.addEventListener('click', (event) => {
 		let node = event && event.target;
+		let handled = false;
+		console.log(`${node.type} ${node.tagName} ${node.className} ${node.id} data:${node.dataset?.target} dir:${node.dataset?.dir}`);
 		if (node?.tagName === 'A' && node.href) {
 			// Ask vscode to handle link opening.
 			vscode.postMessage({ type: 'open', target: node.href });
+		} else if (node?.tagName === 'SPAN' && node.className === 'vuln-fix' && node.dataset?.target && node.dataset?.dir) {
+			vscode.postMessage({ type: 'fix', target: node.dataset?.target, dir: node.dataset?.dir });
+		}
+
+		if (handled) {
 			event.preventDefault();
 			event.stopPropagation();
-			return;
 		}
 	});
 
@@ -36,8 +43,20 @@
 		return 'N/A'
 	}
 
+	function offerUpgrade(/** @type {string} */dir, /** @type {string} */mod, /** @type {string|undefined} */ver) {
+		if (dir && mod && ver) {
+			return ` [<span class="vuln-fix" data-target="${mod}@${ver}" data-dir="${dir}">go get</span> | <span class="vuln-fix" data-target="${mod}@latest" data-dir="${dir}">go get latest</span>]`
+		}
+		return '';
+	}
+
 	function snapshotContent() {
-		return vulnsContainer.innerHTML;
+		const res = {
+			'log': logContainer.innerHTML,
+			'vulns': vulnsContainer.innerHTML,
+			'unaffecting': unaffectingContainer.innerHTML
+		};
+		return JSON.stringify(res);
 	}
 
 	/**
@@ -61,16 +80,19 @@
 			return durationMillisec ? `${startDate} (took ${durationMillisec} msec)` : `${startDate}`;
 		}
 
+		const vulns = json.Vuln || [];
+		const affecting = vulns.filter((v) => v.CallStackSummaries?.length);
+		const unaffecting = vulns.filter((v) => !v.CallStackSummaries?.length);
+		
 		runLog.innerHTML = `
 <tr><td>Dir:</td><td>${json.Dir || ''}</td></tr>
 <tr><td>Pattern:</td><td>${json.Pattern || ''}</td></tr>
-<tr><td>Analyzed at:</td><td>${timeinfo(json.Start, json.Duration)}</td></tr>`;
+<tr><td>Analyzed at:</td><td>${timeinfo(json.Start, json.Duration)}</td></tr>
+<tr><td>Found ${affecting?.length || 0} known vulnerabilities</td></tr>`;
 		logContainer.appendChild(runLog);
 
-		const vulns = json.Vuln || [];
 		vulnsContainer.innerHTML = '';
-
-		vulns.forEach((vuln) => {
+		affecting.forEach((vuln) => {
 			const element = document.createElement('div');
 			element.className = 'vuln';
 			vulnsContainer.appendChild(element);
@@ -92,8 +114,8 @@
 			details.className = 'vuln-details'
 			details.innerHTML = `
 			<tr><td>Package</td><td>${vuln.PkgPath}</td></tr>
-			<tr><td>Current Version</td><td>${moduleVersion(vuln.ModPath, vuln.CurrentVersion)}</td></tr>
-			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)}</td></tr>
+			<tr><td>Found in Version</td><td>${moduleVersion(vuln.ModPath, vuln.CurrentVersion)}</td></tr>
+			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)} ${offerUpgrade(json.Dir, vuln.ModPath, vuln.FixedVersion)}</td></tr>
 			<tr><td>Affecting</td><td>${vuln.AffectedPkgs?.join('<br>')}</td></tr>
 			`;
 			element.appendChild(details);
@@ -131,6 +153,20 @@
 			examples.appendChild(callstacksContainer);
 			element.appendChild(examples);
 		});
+
+		unaffectingContainer.innerText = '';
+		if (unaffecting.length > 0) {
+			unaffectingContainer.innerHTML = '<hr></hr><p>These vulnerabilities exist in required modules, but no vulnerable symbols are used.<br>No action is required. For more information, visit <a href="https://pkg.go.dev/vuln">https://pkg.go.dev/vuln</a></p>';
+
+			const details = document.createElement('table');
+			unaffecting.forEach((vuln) => {
+				const row = document.createElement('tr');
+				row.className = 'vuln-details'
+				row.innerHTML = `<tr><td>${vuln.ModPath}</td><td><a href="${vuln.URL}">${vuln.ID}</a></td></tr>`;
+				details.appendChild(row);
+			});
+			unaffectingContainer.appendChild(details);
+		}
 	}
 
 	// Message Passing between Extension and Webview

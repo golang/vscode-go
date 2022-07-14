@@ -36,6 +36,13 @@
       "CallStackSummaries": [
         "github.com/golang/vscode-go/test/testdata/vuln.main calls golang.org/x/text/language.Parse"
       ]
+    },
+    {
+      "ID": "GO-2021-0000",
+      "Details": "Bogus Report",
+      "Symbol": "Parse",
+      "ModPath": "golang.org/x/text",
+      "URL": "https://pkg.go.dev/vuln/GO-2021-0000"
     }
   ],
   "Start": "2022-05-16T13:43:54.437Z",

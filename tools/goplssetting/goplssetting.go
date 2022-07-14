@@ -17,6 +17,10 @@ import (
 	"strings"
 )
 
+var skipHierarchy map[string]bool = map[string]bool{
+	"ui.inlayhint": true,
+}
+
 // Generate reads package.json and updates the gopls settings section
 // based on `gopls api-json` output. This function requires `jq` to
 // manipulate package.json.
@@ -212,6 +216,9 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 	}
 	properties := map[string]*Object{}
 	for _, hierarchy := range sorted {
+		if skip := skipHierarchy[hierarchy]; skip {
+			continue
+		}
 		for _, opt := range m[hierarchy] {
 			doc := opt.Doc
 			if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {

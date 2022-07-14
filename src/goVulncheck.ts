@@ -14,17 +14,22 @@ import { killProcessTree } from './utils/processUtils';
 import * as readline from 'readline';
 import { URI } from 'vscode-uri';
 import { promisify } from 'util';
+import { runGoEnv } from './goModules';
+import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 
 export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'vulncheck.view';
 
-	public static register({ extensionUri, subscriptions }: vscode.ExtensionContext): VulncheckResultViewProvider {
-		const provider = new VulncheckResultViewProvider(extensionUri);
+	public static register(
+		{ extensionUri, subscriptions }: vscode.ExtensionContext,
+		goCtx: GoExtensionContext
+	): VulncheckResultViewProvider {
+		const provider = new VulncheckResultViewProvider(extensionUri, goCtx);
 		subscriptions.push(vscode.window.registerCustomEditorProvider(VulncheckResultViewProvider.viewType, provider));
 		return provider;
 	}
 
-	constructor(private readonly extensionUri: vscode.Uri) {}
+	constructor(private readonly extensionUri: vscode.Uri, private readonly goCtx: GoExtensionContext) {}
 
 	/**
 	 * Called when our custom editor is opened.
@@ -39,7 +44,7 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
 		// Receive message from the webview.
-		webviewPanel.webview.onDidReceiveMessage(this.handleMessage);
+		webviewPanel.webview.onDidReceiveMessage(this.handleMessage, this);
 
 		function updateWebview() {
 			webviewPanel.webview.postMessage({ type: 'update', text: document.getText() });
@@ -97,15 +102,15 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				<title>Vulnerability Report - govulncheck</title>
 			</head>
 			<body>
-			    <div class="log"></div>
+				<div class="log"></div>
 				<div class="vulns"></div>
-				
+				<div class="unaffecting"></div>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
 	}
 
-	private handleMessage(e: { type: string; target?: string }): void {
+	private async handleMessage(e: { type: string; target?: string; dir?: string }): Promise<void> {
 		switch (e.type) {
 			case 'open':
 				{
@@ -125,6 +130,16 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 					}
 				}
 				return;
+			case 'fix':
+				{
+					if (!e.target || !e.dir) return;
+					const modFile = await getGoModFile(vscode.Uri.file(e.dir));
+					if (modFile) {
+						await goplsUpgradeDependency(this.goCtx, vscode.Uri.file(modFile), [e.target], false);
+						// TODO: run go mod tidy?
+					}
+				}
+				return;
 			case 'snapshot-result':
 				// response for `snapshot-request`.
 				return;
@@ -132,6 +147,38 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				console.log(`unrecognized type message: ${e.type}`);
 		}
 	}
+}
+
+const GOPLS_UPGRADE_DEPENDENCY = 'gopls.upgrade_dependency';
+async function goplsUpgradeDependency(
+	goCtx: GoExtensionContext,
+	goModFileUri: vscode.Uri,
+	goCmdArgs: string[],
+	addRequire: boolean
+): Promise<void> {
+	const { languageClient } = goCtx;
+	const uri = languageClient?.code2ProtocolConverter.asUri(goModFileUri);
+	const params: ExecuteCommandParams = {
+		command: GOPLS_UPGRADE_DEPENDENCY,
+		arguments: [
+			{
+				URI: uri,
+				GoCmdArgs: goCmdArgs,
+				AddRequire: addRequire
+			}
+		]
+	};
+	return await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
+}
+
+async function getGoModFile(dir: vscode.Uri): Promise<string | undefined> {
+	try {
+		const p = await runGoEnv(dir, ['GOMOD']);
+		return p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
+	} catch (e) {
+		vscode.window.showErrorMessage(`Failed to find 'go.mod' for ${dir}: ${e}`);
+	}
+	return;
 }
 
 export class VulncheckProvider {
@@ -201,7 +248,7 @@ export class VulncheckProvider {
 			const start = new Date();
 			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
 
-			if (vuln) {
+			if (vuln?.Vuln?.length) {
 				fillAffectedPkgs(vuln.Vuln);
 
 				// record run info.
@@ -222,7 +269,7 @@ export class VulncheckProvider {
 					VulncheckResultViewProvider.viewType,
 					viewColumn
 				);
-				this.channel.appendLine(`Vulncheck - result wrote in ${fname}`);
+				this.channel.appendLine(`Vulncheck - result written in ${fname}`);
 			} else {
 				this.channel.appendLine('Vulncheck - found no vulnerability');
 			}

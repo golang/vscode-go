@@ -223,16 +223,8 @@ Default:
 Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.
 ### `go.formatTool`
 
-Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
-Allowed Options:
-
-* `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
-* `gofmt`: Formats the file according to the standard Go style.
-* `goimports`: Organizes imports and formats the file with gofmt.
-* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
-* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt.
-* `gofumports`: Applies gofumpt formatting and organizes imports.
-
+When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.<br/>
+Allowed Options: `default`, `gofmt`, `goimports`, `goformat`, `gofumpt`
 
 Default: `"default"`
 ### `go.generateTestsFlags`
@@ -276,6 +268,90 @@ Default: `false`
 ### `go.inferGopath`
 
 Infer GOPATH from the workspace root. This is ignored when using Go Modules.
+
+Default: `false`
+### `go.inlayHints.assignVariableTypes`
+
+Enable/disable inlay hints for variable types in assign statements.
+```go
+
+i /*int*/, j /*int*/ := 0, len(r)-1
+```
+
+Default: `false`
+### `go.inlayHints.compositeLiteralFields`
+
+Enable/disable inlay hints for composite literal field names.
+```go
+
+for _, c := range []struct {in, want string}{
+	{/*in:*/ "Hello, world", /*want:*/ "dlrow ,olleH"},
+	{/*in:*/ "Hello, 世界", /*want:*/ "界世 ,olleH"},
+	{/*in:*/ "", /*want:*/ ""},
+} {
+	...
+}
+```
+
+Default: `false`
+### `go.inlayHints.compositeLiteralTypes`
+
+Enable/disable inlay hints for composite literal types.
+```go
+
+for _, c := range []struct {in, want string}{
+	/*struct{ in, want string }*/{"Hello, world", "dlrow ,olleH"},
+	/*struct{ in, want string }*/{"Hello, 世界", "界世 ,olleH"},
+	/*struct{ in, want string }*/{"", ""},
+} {
+	...
+}
+```
+
+Default: `false`
+### `go.inlayHints.constantValues`
+
+Enable/disable inlay hints for constant values.
+```go
+
+const (
+	KindNone   = iota	/*= 0*/
+	KindPrint	/*= 1*/
+	KindPrintf	/*= 2*/
+	KindErrorf	/*= 3*/
+)
+```
+
+Default: `false`
+### `go.inlayHints.functionTypeParameters`
+
+Enable/disable inlay hints for implicit type parameters on generic functions.
+```go
+
+func myFunc[T any](a T) { ... }
+
+func main() {
+	myFunc/*[int]*/(1)
+}
+```
+
+Default: `false`
+### `go.inlayHints.parameterNames`
+
+Enable/disable inlay hints for parameter names.
+```go
+
+http.HandleFunc(/*pattern:*/ "/", /*handler:*/ indexHandler)
+```
+
+Default: `false`
+### `go.inlayHints.rangeVariableTypes`
+
+Enable/disable inlay hints for variable types in range statements.
+```go
+
+for k /*int*/, v /*string*/ := range []string{} { ... }
+```
 
 Default: `false`
 ### `go.installDependenciesWhenBuilding`
@@ -736,7 +812,7 @@ Example Usage:
 | `deepequalerrors` | check for calls of reflect.DeepEqual on error values <br/> The deepequalerrors checker looks for calls of the form: <br/>     reflect.DeepEqual(err1, err2) <br/> where err1 and err2 are errors. Using reflect.DeepEqual to compare errors is discouraged. <br/> Default: `true` |
 | `embed` | check for //go:embed directive import <br/> This analyzer checks that the embed package is imported when source code contains //go:embed comment directives. The embed package must be imported for //go:embed directives to function.import _ "embed". <br/> Default: `true` |
 | `errorsas` | report passing non-pointer or non-error values to errors.As <br/> The errorsas analysis reports calls to errors.As where the type of the second argument is not a pointer to a type implementing error. <br/> Default: `true` |
-| `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the optimal order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> <br/> Default: `false` |
+| `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the most compact order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> Be aware that the most compact order is not always the most efficient. In rare cases it may cause two variables each updated by its own goroutine to occupy the same CPU cache line, inducing a form of memory contention known as "false sharing" that slows down both goroutines. <br/> <br/> Default: `false` |
 | `fillreturns` | suggest fixes for errors due to an incorrect number of return values <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre>will turn into <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> <br/> Default: `true` |
 | `fillstruct` | note incomplete struct initializations <br/> This analyzer provides diagnostics for any struct literals that do not have any fields initialized. Because the suggested fix for this analysis is expensive to compute, callers should compute it separately, using the SuggestedFix function below. <br/> <br/> Default: `true` |
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |

@@ -21,6 +21,16 @@
 	padding-bottom: 0.5em;
 }
 
+.vuln-fix:hover,
+.vuln-fix:active {
+	color: var(--vscode-textLink-activeForeground);
+}
+.vuln-fix {
+	cursor:pointer;
+	color: var(--vscode-textLink-foreground);
+	text-decoration:underline;
+}
+
 details summary {
 	cursor: pointer;
 	position: relative;

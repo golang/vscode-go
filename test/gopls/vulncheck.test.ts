@@ -21,7 +21,7 @@ suite('vulncheck result viewer tests', () => {
 	let provider: goVulncheck.VulncheckResultViewProvider;
 
 	setup(() => {
-		provider = new goVulncheck.VulncheckResultViewProvider(extensionUri);
+		provider = new goVulncheck.VulncheckResultViewProvider(extensionUri, {});
 	});
 
 	teardown(async () => {
@@ -49,11 +49,22 @@ suite('vulncheck result viewer tests', () => {
 		const res = await watcher;
 
 		assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
-		assert(res.target && res.target.includes('GO-2021-0113'), res.target);
+		// res.target type is defined in vulncheckView.js.
+		const { log = '', vulns = '', unaffecting = '' } = JSON.parse(res.target ?? '{}');
+
 		assert(
-			res.target &&
-				res.target.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
-			res.target
+			log.includes('Found 1 known vulnerabilities'),
+			`expected "1 known vulnerabilities", got ${JSON.stringify(res.target)}`
+		);
+		assert(
+			vulns.includes('GO-2021-0113') &&
+				vulns.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
+			`expected "Affecting" section, got ${JSON.stringify(res.target)}`
+		);
+		// Unaffecting vulnerability's detail is omitted, but its ID is reported.
+		assert(
+			unaffecting.includes('GO-2021-0000') && unaffecting.includes('golang.org/x/text'),
+			`expected reports about unaffecting vulns, got ${JSON.stringify(res.target)}`
 		);
 	});
 
@@ -77,7 +88,8 @@ suite('vulncheck result viewer tests', () => {
 		webviewPanel.webview.postMessage({ type: 'snapshot-request' });
 		const res = await watcher;
 		assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
-		assert(!res.target, res.target);
+		const { log = '', vulns = '', unaffecting = '' } = JSON.parse(res.target ?? '{}');
+		assert(!log && !vulns && !unaffecting, res.target);
 	});
 
 	// TODO: test corrupted/incomplete json file handling.

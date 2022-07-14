@@ -1,3 +1,19 @@
+## v0.35.0 - 13 July, 2022
+
+A list of all issues and changes can be found in the [v0.35.0 milestone](https://github.com/golang/vscode-go/milestone/47) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.1...v0.35.0).
+
+### Features
+- This release adds support for inlay hints ([Issue 1631](https://github.com/golang/vscode-go/issues/1631)).
+- Add logic to support ${workspaceFolderBasename} substitution in extension settings ([Issue 2310](https://github.com/golang/vscode-go/issues/2310)).
+- Add support for multi-file test suite ([Issue 1130](https://github.com/golang/vscode-go/issues/1130)).
+- Add support for custom formatters.
+
+### Bug Fix
+- Fixed (Issue [2339](https://github.com/golang/vscode-go/issues/#2339)) that prevented updating delve on arm64 Macs.
+
+### Thanks
+Thank you for your contribution, @hyangah, @nirhaas, @bentekkie, @jamalc, and @suzmue.
+
 ## v0.34.1 - 30 June, 2022
 
 A list of all issues and changes can be found in the [v0.34.1 milestone](https://github.com/golang/vscode-go/milestone/48) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.0...v0.34.1).

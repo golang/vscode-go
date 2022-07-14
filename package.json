@@ -1,7 +1,8 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.34.1",
+  "version": "0.35.0",
+  "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -51,7 +52,7 @@
     "diff": "4.0.2",
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
-    "moment": "2.29.2",
+    "moment": "2.29.4",
     "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
@@ -76,7 +77,7 @@
     "esbuild": "0.12.21",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
-    "gts": "3.1.0",
+    "gts": "4.0.0",
     "mocha": "9.2.0",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
@@ -1193,22 +1194,22 @@
         "go.formatTool": {
           "type": "string",
           "default": "default",
-          "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
+          "description": "When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.",
           "scope": "resource",
           "enum": [
             "default",
             "gofmt",
             "goimports",
             "goformat",
-            "gofumpt",
-            "gofumports"
+            "gofumpt"
           ],
+          "additionalItems": true,
           "enumDescriptions": [
             "If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.",
-            "Formats the file according to the standard Go style.",
-            "Organizes imports and formats the file with gofmt.",
+            "Formats the file according to the standard Go style. (not applicable when the language server is enabled)",
+            "Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)",
             "Configurable gofmt, see https://github.com/mbenkmann/goformat.",
-            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt.",
+            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. (not applicable when the language server is enabled)",
             "Applies gofumpt formatting and organizes imports."
           ]
         },
@@ -2042,6 +2043,41 @@
           "scope": "resource",
           "type": "boolean"
         },
+        "go.inlayHints.assignVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements.\n```go\n\ni /*int*/, j /*int*/ := 0, len(r)-1\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralFields": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal field names.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t{/*in:*/ \"Hello, world\", /*want:*/ \"dlrow ,olleH\"},\n\t{/*in:*/ \"Hello, 世界\", /*want:*/ \"界世 ,olleH\"},\n\t{/*in:*/ \"\", /*want:*/ \"\"},\n} {\n\t...\n}\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal types.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t/*struct{ in, want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t/*struct{ in, want string }*/{\"Hello, 世界\", \"界世 ,olleH\"},\n\t/*struct{ in, want string }*/{\"\", \"\"},\n} {\n\t...\n}\n```",
+          "default": false
+        },
+        "go.inlayHints.constantValues": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for constant values.\n```go\n\nconst (\n\tKindNone   = iota\t/*= 0*/\n\tKindPrint\t/*= 1*/\n\tKindPrintf\t/*= 2*/\n\tKindErrorf\t/*= 3*/\n)\n```",
+          "default": false
+        },
+        "go.inlayHints.functionTypeParameters": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions.\n```go\n\nfunc myFunc[T any](a T) { ... }\n\nfunc main() {\n\tmyFunc/*[int]*/(1)\n}\n```",
+          "default": false
+        },
+        "go.inlayHints.parameterNames": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for parameter names.\n```go\n\nhttp.HandleFunc(/*pattern:*/ \"/\", /*handler:*/ indexHandler)\n```",
+          "default": false
+        },
+        "go.inlayHints.rangeVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in range statements.\n```go\n\nfor k /*int*/, v /*string*/ := range []string{} { ... }\n```",
+          "default": false
+        },
         "gopls": {
           "type": "object",
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
@@ -2277,7 +2313,7 @@
                 },
                 "fieldalignment": {
                   "type": "boolean",
-                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the optimal order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n",
+                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the most compact order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n\nBe aware that the most compact order is not always the most efficient.\nIn rare cases it may cause two variables each updated by its own goroutine\nto occupy the same CPU cache line, inducing a form of memory contention\nknown as \"false sharing\" that slows down both goroutines.\n",
                   "default": false
                 },
                 "fillreturns": {

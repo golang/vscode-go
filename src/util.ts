@@ -606,7 +606,8 @@ export function timeout(millis: number): Promise<void> {
 }
 
 /**
- * Expands ~ to homedir in non-Windows platform and resolves ${workspaceFolder} or ${workspaceRoot}
+ * Expands ~ to homedir in non-Windows platform and resolves
+ * ${workspaceFolder}, ${workspaceRoot} and ${workspaceFolderBasename}
  */
 export function resolvePath(inputPath: string, workspaceFolder?: string): string {
 	if (!inputPath || !inputPath.trim()) {
@@ -621,6 +622,7 @@ export function resolvePath(inputPath: string, workspaceFolder?: string): string
 
 	if (workspaceFolder) {
 		inputPath = inputPath.replace(/\${workspaceFolder}|\${workspaceRoot}/g, workspaceFolder);
+		inputPath = inputPath.replace(/\${workspaceFolderBasename}/g, path.basename(workspaceFolder));
 	}
 	return resolveHomeDir(inputPath);
 }
