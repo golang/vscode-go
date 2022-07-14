@@ -16,7 +16,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { outputChannel } from './goStatus';
-import { getBinPath } from './util';
+import { getBinPath, resolvePath } from './util';
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
 
@@ -175,6 +175,12 @@ function generateTests(
 				continue;
 			}
 			if (flag === '-only') {
+				i++;
+				continue;
+			}
+			if (i + 1 < goGenerateTestsFlags.length && (flag === '-template_dir' || flag === '-template_params_file')) {
+				const configFilePath = resolvePath(goGenerateTestsFlags[i + 1]);
+				args.push(flag, configFilePath);
 				i++;
 				continue;
 			}
