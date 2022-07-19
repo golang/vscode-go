@@ -30,10 +30,12 @@ jobs:
          cache: 'npm'
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
          go-version: ${{ matrix.go }}
          stable: '!contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")'
+         check-latest: true
+         cache: true
 
       - name: Install dependencies
         run: npm ci
