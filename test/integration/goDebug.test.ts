@@ -32,6 +32,7 @@ import { killProcessTree, killProcess } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
 import { TimestampedLogger } from '../../src/goLogging';
+import { affectedByIssue832 } from './testutils';
 
 // For debugging test and streaming the trace instead of buffering, set this.
 const PRINT_TO_CONSOLE = false;
@@ -1728,7 +1729,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		// has a chance to clean up.
 		// BUG(https://github.com/golang/vscode-go/issues/1993)
 		test('should cleanup when stopped', async function () {
-			if (!isDlvDap) {
+			if (!isDlvDap || affectedByIssue832()) {
 				this.skip();
 			}
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
@@ -1990,6 +1991,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('substitute path', () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		// TODO(suzmue): add unit tests for substitutePath.
 		let tmpDir: string;
 

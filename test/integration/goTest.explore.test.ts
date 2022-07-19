@@ -15,6 +15,7 @@ import * as config from '../../src/config';
 import { GoTestResolver } from '../../src/goTest/resolve';
 import * as testUtils from '../../src/testUtils';
 import { GoTest } from '../../src/goTest/utils';
+import { affectedByIssue832 } from './testutils';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -56,6 +57,9 @@ async function forceResolve(resolver: GoTestResolver, item?: TestItem) {
 
 suite('Go Test Explorer', () => {
 	suite('Document opened', () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		class DUT extends GoTestExplorer {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);
@@ -113,6 +117,9 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('Document edited', async () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		class DUT extends GoTestExplorer {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);
@@ -224,6 +231,9 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('settings', () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		const sandbox = sinon.createSandbox();
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

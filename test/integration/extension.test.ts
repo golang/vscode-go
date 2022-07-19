@@ -46,6 +46,7 @@ import {
 import cp = require('child_process');
 import os = require('os');
 import { MockExtensionContext } from '../mocks/MockContext';
+import { affectedByIssue832 } from './testutils';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -741,7 +742,10 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(interfaces[0].name, 'circle');
 	});
 
-	test('Test listPackages', async () => {
+	test('Test listPackages', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
@@ -793,7 +797,10 @@ It returns the number of bytes written and any write error encountered.
 		});
 	});
 
-	test('Workspace Symbols', () => {
+	test('Workspace Symbols', function () {
+		if (affectedByIssue832()) {
+			this.skip(); // frequent timeout on windows
+		}
 		const workspacePath = path.join(fixturePath, 'vendoring');
 		const configWithoutIgnoringFolders = Object.create(getGoConfig(), {
 			gotoSymbol: {
@@ -861,7 +868,11 @@ It returns the number of bytes written and any write error encountered.
 		return Promise.all([withIgnoringFolders, withoutIgnoringFolders, withIncludingGoroot, withoutIncludingGoroot]);
 	});
 
-	test('Test Completion', async () => {
+	test('Test Completion', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
+
 		const printlnDoc = `Println formats using the default formats for its operands and writes to
 standard output. Spaces are always added between operands and a newline is
 appended. It returns the number of bytes written and any write error
@@ -911,7 +922,10 @@ encountered.
 		await Promise.all(promises);
 	});
 
-	test('Test Completion Snippets For Functions', async () => {
+	test('Test Completion Snippets For Functions', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'snippets.go'));
 		const baseConfig = getGoConfig();
@@ -1176,7 +1190,7 @@ encountered.
 	});
 
 	test('Test Completion on unimported packages', async function () {
-		if (isModuleMode) {
+		if (isModuleMode || affectedByIssue832()) {
 			this.skip();
 		}
 		// gocode-gomod does not handle unimported package completion.
@@ -1212,7 +1226,10 @@ encountered.
 		await Promise.all(promises);
 	});
 
-	test('Test Completion on unimported packages (multiple)', async () => {
+	test('Test Completion on unimported packages (multiple)', async function () {
+		if (affectedByIssue832()) {
+			this.skip();
+		}
 		const config = Object.create(getGoConfig(), {
 			gocodeFlags: { value: ['-builtin'] }
 		});
