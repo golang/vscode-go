@@ -1,4 +1,11 @@
-## v0.35.0 - 13 July, 2022
+## v0.35.1 - 19 July, 2022
+
+A list of all issues and changes can be found in the [v0.35.1 milestone](https://github.com/golang/vscode-go/milestone/50) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.0...v0.35.1).
+
+### Bug Fix
+- Disabled experimental gopls features (e.g. semantic highlighting).
+
+## v0.35.0 - 18 July, 2022
 
 A list of all issues and changes can be found in the [v0.35.0 milestone](https://github.com/golang/vscode-go/milestone/47) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.1...v0.35.0).
 
