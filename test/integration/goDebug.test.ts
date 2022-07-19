@@ -1926,7 +1926,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			tmpDir = fs.mkdtempSync(path.join(tmpdir(), 'logDestTest'));
 		});
 		suiteTeardown(() => {
-			rmdirRecursive(tmpDir);
+			tryRmdirRecursive(tmpDir);
 		});
 
 		test('logs are written to logDest file', async function () {
@@ -1998,7 +1998,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		suiteTeardown(() => {
-			rmdirRecursive(tmpDir);
+			tryRmdirRecursive(tmpDir);
 		});
 
 		function copyDirectory(name: string) {
@@ -2030,13 +2030,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 
 			suiteTeardown(() => {
-				rmdirRecursive(goBuildOutput);
+				tryRmdirRecursive(goBuildOutput);
 			});
 
 			async function copyBuildDelete(program: string): Promise<{ program: string; output: string }> {
 				const wd = copyDirectory(program);
 				const output = await buildGoProgram(wd, path.join(goBuildOutput, program));
-				rmdirRecursive(wd);
+				tryRmdirRecursive(wd);
 				return { program: wd, output };
 			}
 
@@ -2081,7 +2081,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 
 			suiteTeardown(() => {
-				rmdirRecursive(helloWorldLocal);
+				tryRmdirRecursive(helloWorldLocal);
 			});
 
 			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
@@ -2149,7 +2149,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 			suiteTeardown(() => {
 				fs.unlinkSync(symlinkPath);
-				rmdirRecursive(realPath);
+				tryRmdirRecursive(realPath);
 			});
 			test('should stop on a breakpoint', async function () {
 				if (!isDlvDap) this.skip(); // BUG: the legacy adapter fails with 'breakpoint verification mismatch' error.
@@ -2427,4 +2427,12 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function tryRmdirRecursive(dir: string) {
+	try {
+		rmdirRecursive(dir);
+	} catch (e) {
+		console.log(`failed to delete ${dir}: ${e}`);
+	}
 }
