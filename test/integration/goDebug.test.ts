@@ -1212,21 +1212,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			]);
 		}
 
-		test('should set breakpoints during next', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
+		// Skip this test because it is flaky.
+		test.skip('should set breakpoints during next', async () => {
 			await setBreakpointsWhileRunningStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
 		});
 
-		test('should set breakpoints during step out', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
-
+		// Skip this test because it is flaky.
+		test.skip('should set breakpoints during step out', async () => {
 			await setBreakpointsWhileRunningStep(async () => {
 				await Promise.all([dc.stepInRequest({ threadId: 1 }), dc.assertStoppedLocation('step', {})]);
 
