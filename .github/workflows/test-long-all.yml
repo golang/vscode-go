@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
          go-version: ${{ matrix.go }}
-         stable: '!contains(${{ matrix.go }}, "beta") && !contains(${{ matrix.go }}, "rc")'
          check-latest: true
          cache: true
 
