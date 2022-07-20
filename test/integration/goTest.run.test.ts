@@ -118,6 +118,10 @@ suite('Go Test Runner', () => {
 	});
 
 	suite('Subtest', () => {
+		// WARNING: each call to testExplorer.runner.run triggers one or more
+		// `go test` command runs (testUtils.goTest is spied, not mocked or replaced).
+		// Each `go test` command invocation can take seconds on slow machines.
+		// As we add more cases, the timeout should be increased accordingly.
 		const sandbox = sinon.createSandbox();
 		const subTestDir = path.join(fixtureDir, 'subTest');
 		const ctx = MockExtensionContext.new();
@@ -214,6 +218,6 @@ suite('Go Test Runner', () => {
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		}).timeout(4000);
+		}).timeout(10000);
 	});
 });
