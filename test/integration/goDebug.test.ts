@@ -439,7 +439,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		// an initialized event.
 		await Promise.all([
 			new Promise<void>(async (resolve) => {
-				console.log(`Setting up attach request for ${JSON.stringify(debugConfig)}.`);
+				const debugConfigCopy = Object.assign({}, debugConfig);
+				delete debugConfigCopy.env;
+				console.log(`Setting up attach request for ${JSON.stringify(debugConfigCopy)}.`);
 				const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 				assert.ok(attachResult.success);
 				resolve();
@@ -556,6 +558,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('env', () => {
+		if (!isDlvDap) {
+			return;
+		}
+
 		let sandbox: sinon.SinonSandbox;
 
 		setup(() => {
@@ -620,6 +626,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('launch', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		test('should run program to the end', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -828,6 +837,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('set current working directory', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		test('should debug program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
@@ -994,6 +1006,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('remote attach', () => {
+		if (withConsole) {
+			return;
+		}
 		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
@@ -1093,6 +1108,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
+
+		// stop here for integrated terminal test mode.
+		if (withConsole) {
+			return;
+		}
 
 		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
@@ -1298,6 +1318,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('conditionalBreakpoints', () => {
+		if (withConsole) {
+			return;
+		}
 		test('should stop on conditional breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
@@ -1432,6 +1455,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('panicBreakpoints', () => {
+		if (withConsole) {
+			return;
+		}
 		test('should stop on panic', async () => {
 			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'panic');
 
@@ -1519,6 +1545,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('disconnect', () => {
+		if (withConsole) {
+			return;
+		}
 		// The teardown code for the Go Debug Adapter test suite issues a disconnectRequest.
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
@@ -1775,6 +1804,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('switch goroutine', () => {
+		if (withConsole) {
+			return;
+		}
 		async function continueAndFindParkedGoroutine(file: string): Promise<number> {
 			// Find a goroutine that is stopped in parked.
 			const bp = getBreakpointLocation(file, 8);
@@ -1915,6 +1947,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('logDest attribute tests', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
 		let tmpDir: string;
@@ -1986,7 +2021,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('substitute path', () => {
-		if (affectedByIssue832()) {
+		if (withConsole || affectedByIssue832()) {
 			return;
 		}
 		// TODO(suzmue): add unit tests for substitutePath.
