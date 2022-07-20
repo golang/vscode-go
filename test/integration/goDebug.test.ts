@@ -2226,6 +2226,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 };
 
 suite('Go Debug Adapter Tests (legacy)', function () {
+	if (affectedByIssue832()) {
+		return;
+	}
 	this.timeout(60_000);
 	testAll(this.ctx, false);
 });
