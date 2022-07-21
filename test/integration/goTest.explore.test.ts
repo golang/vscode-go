@@ -57,9 +57,6 @@ async function forceResolve(resolver: GoTestResolver, item?: TestItem) {
 
 suite('Go Test Explorer', () => {
 	suite('Document opened', () => {
-		if (affectedByIssue832()) {
-			return;
-		}
 		class DUT extends GoTestExplorer {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);
@@ -117,9 +114,6 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('Document edited', async () => {
-		if (affectedByIssue832()) {
-			return;
-		}
 		class DUT extends GoTestExplorer {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);

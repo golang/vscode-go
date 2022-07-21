@@ -24,14 +24,14 @@ export function populateModulePathCache(workspace: MockTestWorkspace) {
 	function walk(dir: Uri, modpath?: string) {
 		const dirs: Uri[] = [];
 		for (const [name, type] of workspace.fs.dirs.get(dir.toString()) ?? []) {
-			const uri = dir.with({ path: path.join(dir.path, name) });
+			const uri = Uri.file(path.join(dir.fsPath, name));
 			if (type === FileType.Directory) {
 				dirs.push(uri);
 			} else if (name === 'go.mod') {
-				modpath = dir.path;
+				modpath = dir.fsPath;
 			}
 		}
-		packagePathToGoModPathMap[dir.path] = modpath || '';
+		packagePathToGoModPathMap[dir.fsPath] = modpath || '';
 		for (const dir of dirs) {
 			walk(dir, modpath);
 		}

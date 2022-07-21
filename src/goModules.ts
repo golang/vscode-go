@@ -48,8 +48,12 @@ export function isModSupported(fileuri?: vscode.Uri, isDir?: boolean): Promise<b
 	return getModFolderPath(fileuri, isDir).then((modPath) => !!modPath);
 }
 
+// packagePathToGoModPathMap is a cache that maps from a file path (of a package directory)
+// to the module root directory path (directory of `go env GOMOD`) if the file belongs to a module.
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
+// getModFolderPath returns the module root of the file. '' or undefined value indicates
+// the file is outside of any module or Go module is disabled.
 export async function getModFolderPath(fileuri?: vscode.Uri, isDir?: boolean): Promise<string | undefined> {
 	const pkgUri = isDir ? fileuri : fileuri && vscodeUri.Utils.dirname(fileuri);
 	const pkgPath = pkgUri?.fsPath ?? '';
