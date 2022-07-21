@@ -22,7 +22,6 @@
 			"outFiles": [
                 "${workspaceFolder}/dist/**/*.js"
             ],
-			"stopOnEntry": false,
 			"sourceMaps": true,
 			"smartStep": true,
 			"preLaunchTask": "npm: bundle-dev",
@@ -33,7 +32,6 @@
 		{
 			"name": "Launch as server",
 			"type": "node",
-			"protocol": "inspector",
 			"request": "launch",
 			"program": "${workspaceFolder}/dist/debugAdapter.js",
 			"args": [
@@ -64,14 +62,9 @@
 				"VSCODE_GO_IN_TEST": "1",  // Disable code that shouldn't be used in test
 				"MOCHA_TIMEOUT": "999999",
 			},
-			"stopOnEntry": false,
 			"sourceMaps": true,
 			"smartStep": true,
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js",
-				"${workspaceFolder}/out/test/**/*.js"
-			],
-			"preLaunchTask": "npm: watch"
+			"preLaunchTask": "npm: watch",			
 		},
 		{
 			"name": "Launch Extension Tests with Gopls",
@@ -89,12 +82,7 @@
 			"env": {
 				"VSCODE_GO_IN_TEST": "1"  // Disable code that shouldn't be used in test
 			},
-			"stopOnEntry": false,
 			"sourceMaps": true,
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js",
-				"${workspaceFolder}/out/test/**/*.js"
-			],
 			"preLaunchTask": "npm: watch",
 		},
 		{
