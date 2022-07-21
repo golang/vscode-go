@@ -8,7 +8,6 @@ import { GoTestResolver } from '../../src/goTest/resolve';
 import { GoTest, GoTestKind } from '../../src/goTest/utils';
 import { MockTestController, MockTestWorkspace } from '../mocks/MockTest';
 import { getSymbols_Regex, populateModulePathCache } from './goTest.utils';
-import { affectedByIssue832 } from './testutils';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -26,9 +25,6 @@ function setup(folders: string[], files: Files) {
 }
 
 suite('Go Test Resolver', () => {
-	if (affectedByIssue832()) {
-		return;
-	}
 	interface TC extends TestCase {
 		item?: ([string, string, GoTestKind] | [string, string, GoTestKind, string])[];
 		expect: string[];
