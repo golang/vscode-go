@@ -15,7 +15,6 @@ import * as config from '../../src/config';
 import { GoTestResolver } from '../../src/goTest/resolve';
 import * as testUtils from '../../src/testUtils';
 import { GoTest } from '../../src/goTest/utils';
-import { affectedByIssue832 } from './testutils';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -225,9 +224,6 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('settings', () => {
-		if (affectedByIssue832()) {
-			return;
-		}
 		const sandbox = sinon.createSandbox();
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
