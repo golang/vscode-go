@@ -104,6 +104,9 @@ suite('Installation Tests', function () {
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
 		const goVersion = await getGoVersion();
+
+		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
+
 		await installTools(missingTools, goVersion);
 
 		// Confirm that each expected tool has been installed.
