@@ -328,12 +328,16 @@ export class GoTestResolver {
 			}
 
 			if (nested) {
-				const bits = parent.uri ? path.relative(parent.uri.path, uri.path).split(path.sep) : [];
+				const bits = parent.uri ? path.relative(parent.uri.fsPath, uri.fsPath).split(path.sep) : [];
 				while (bits.length > 1) {
 					if (!parent.uri?.path) continue;
 					const dir = bits.shift();
 					if (!dir) continue;
-					const dirUri = uri.with({ path: path.join(parent.uri.path, dir), query: '', fragment: '' });
+					const dirUri = uri.with({
+						path: Uri.file(path.join(parent.uri.fsPath, dir)).path,
+						query: '',
+						fragment: ''
+					});
 					parent = this.getOrCreateItem(parent, dir, dirUri, 'package');
 				}
 			}
