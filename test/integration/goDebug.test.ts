@@ -413,14 +413,45 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		if (continueOnStart) {
 			args.push('--continue');
 		}
-		const childProcess = cp.spawn(toolPath, args, {
-			cwd: serverFolder,
-			env: { PORT: `${serverPort}`, ...process.env }
-		});
 
-		// Give dlv a few seconds to start.
-		await new Promise((resolve) => setTimeout(resolve, 10_000));
-		return childProcess;
+		const promise = new Promise<cp.ChildProcess>((resolve, reject) => {
+			const p = cp.spawn(toolPath, args, {
+				cwd: serverFolder,
+				env: { PORT: `${serverPort}`, ...process.env }
+			});
+
+			let started = false;
+			const timeoutToken: NodeJS.Timer = setTimeout(() => {
+				console.log(`dlv debug server (PID: ${p.pid}) is not responding`);
+				reject(new Error('timed out while waiting for DAP server to start'));
+			}, 30_000);
+
+			const stopWaitingForServerToStart = () => {
+				clearTimeout(timeoutToken);
+				started = true;
+				resolve(p);
+			};
+
+			if (continueOnStart) {
+				// wait till helloWorldServer starts and prints its log message to STDERR.
+				p.stderr.on('data', (chunk) => {
+					const msg = chunk.toString();
+					if (!started && msg.includes('helloWorldServer starting to listen on')) {
+						stopWaitingForServerToStart();
+					}
+					console.log(msg);
+				});
+			} else {
+				p.stdout.on('data', (chunk) => {
+					const msg = chunk.toString();
+					if (!started && msg.includes('listening at:')) {
+						stopWaitingForServerToStart();
+					}
+					console.log(msg);
+				});
+			}
+		});
+		return promise;
 	}
 
 	/**
