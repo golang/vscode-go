@@ -191,11 +191,7 @@ export async function installTools(
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls') {
 			// Restart the language server if a new binary has been installed.
-			try {
-				vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
-			} catch (e) {
-				vscode.window.showErrorMessage(`Failed to start language server: ${e}`);
-			}
+			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
 		}
 	}
 
