@@ -13,7 +13,6 @@ import { getConfiguredTools } from '../../src/goTools';
 import { getGoVersion } from '../../src/util';
 import { resolveHomeDir } from '../../src/utils/pathUtils';
 import { MockExtensionContext } from '../mocks/MockContext';
-import { affectedByIssue832 } from './testutils';
 
 suite('GoExplorerProvider', () => {
 	const fixtureDir = path.join(__dirname, '../../../test/testdata/baseTest');
@@ -37,15 +36,12 @@ suite('GoExplorerProvider', () => {
 		assert.strictEqual(env.contextValue, 'go:explorer:envtree');
 	});
 
-	test('env tree items', async function () {
-		if (affectedByIssue832()) {
-			this.skip();
-		}
+	test('env tree items', async () => {
 		const [env] = await explorer.getChildren()!;
 		const [goenv, gomod] = (await explorer.getChildren(env)) as { key: string; value: string }[];
 		assert.strictEqual(goenv.key, 'GOENV');
 		assert.strictEqual(gomod.key, 'GOMOD');
-		assert.strictEqual(resolveHomeDir(gomod.value), `${fixtureDir}/go.mod`);
+		assert.strictEqual(resolveHomeDir(gomod.value), path.join(fixtureDir, 'go.mod'));
 	});
 
 	test('tools tree', async () => {
