@@ -86,7 +86,8 @@
     "yarn": "1.22.10"
   },
   "engines": {
-    "vscode": "^1.67.0"
+    "vscode": "^1.67.0",
+    "node": ">=12.0.0"
   },
   "activationEvents": [
     "onLanguage:go",
