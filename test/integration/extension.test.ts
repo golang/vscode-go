@@ -1128,6 +1128,9 @@ encountered.
 	});
 
 	test('Test No Completion Snippets For Functions', async () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'nosnippets.go'));
 		const baseConfig = getGoConfig();
