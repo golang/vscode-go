@@ -511,6 +511,24 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	}
 
 	/**
+	 * Helper function to create a promise that's resolved when
+	 * output event with any of the provided strings is observed.
+	 */
+	async function waitForOutputMessage(dc: DebugClient, ...patterns: string[]): Promise<DebugProtocol.Event> {
+		return await new Promise<DebugProtocol.Event>((resolve, reject) => {
+			dc.on('output', (event) => {
+				for (const pattern of patterns) {
+					if (event.body.output.includes(pattern)) {
+						// Resolve when we have found the event that we want.
+						resolve(event);
+						return;
+					}
+				}
+			});
+		});
+	}
+
+	/**
 	 * Helper function to assert that a variable has a particular value.
 	 * This should be called when the program is stopped.
 	 *
@@ -775,7 +793,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				this.skip(); // not working in dlv-dap.
 			}
 
-			// TODO(hyangah): why does it take 30sec?
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -785,13 +802,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
-			try {
-				await initializeDebugConfig(config);
-				await dc.initializeRequest();
-			} catch (err) {
-				return;
-			}
-			throw new Error('does not report error on invalid delve flag');
+
+			await initializeDebugConfig(config);
+
+			await Promise.race([
+				// send an initialize request, which triggers launchDelveDAP
+				// from the thin adapter. We expect no response.
+				dc.initializeRequest().then(() => Promise.reject('unexpected initialization success')),
+				// we expect the useful error message.
+				waitForOutputMessage(dc, 'Error: unknown flag: --invalid')
+			]);
 		});
 
 		test('should run program with showLog=false and logOutput specified', async () => {
@@ -951,15 +971,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		async function waitForHelloGoodbyeOutput(dc: DebugClient): Promise<DebugProtocol.Event> {
-			return await new Promise<DebugProtocol.Event>((resolve, reject) => {
-				dc.on('output', (event) => {
-					if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
-						// Resolve when we have found the event that we want.
-						resolve(event);
-						return;
-					}
-				});
-			});
+			return waitForOutputMessage(dc, 'Hello, World!\n', 'Goodbye, World.\n');
 		}
 
 		test('should run program with cwd set (noDebug)', async () => {
