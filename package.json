@@ -2049,41 +2049,6 @@
           "scope": "resource",
           "type": "boolean"
         },
-        "go.inlayHints.assignVariableTypes": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements.\n```go\n\ni /*int*/, j /*int*/ := 0, len(r)-1\n```",
-          "default": false
-        },
-        "go.inlayHints.compositeLiteralFields": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for composite literal field names.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t{/*in:*/ \"Hello, world\", /*want:*/ \"dlrow ,olleH\"},\n\t{/*in:*/ \"Hello, 世界\", /*want:*/ \"界世 ,olleH\"},\n\t{/*in:*/ \"\", /*want:*/ \"\"},\n} {\n\t...\n}\n```",
-          "default": false
-        },
-        "go.inlayHints.compositeLiteralTypes": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for composite literal types.\n```go\n\nfor _, c := range []struct {in, want string}{\n\t/*struct{ in, want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t/*struct{ in, want string }*/{\"Hello, 世界\", \"界世 ,olleH\"},\n\t/*struct{ in, want string }*/{\"\", \"\"},\n} {\n\t...\n}\n```",
-          "default": false
-        },
-        "go.inlayHints.constantValues": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for constant values.\n```go\n\nconst (\n\tKindNone   = iota\t/*= 0*/\n\tKindPrint\t/*= 1*/\n\tKindPrintf\t/*= 2*/\n\tKindErrorf\t/*= 3*/\n)\n```",
-          "default": false
-        },
-        "go.inlayHints.functionTypeParameters": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions.\n```go\n\nfunc myFunc[T any](a T) { ... }\n\nfunc main() {\n\tmyFunc/*[int]*/(1)\n}\n```",
-          "default": false
-        },
-        "go.inlayHints.parameterNames": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for parameter names.\n```go\n\nhttp.HandleFunc(/*pattern:*/ \"/\", /*handler:*/ indexHandler)\n```",
-          "default": false
-        },
-        "go.inlayHints.rangeVariableTypes": {
-          "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for variable types in range statements.\n```go\n\nfor k /*int*/, v /*string*/ := range []string{} { ... }\n```",
-          "default": false
-        },
         "gopls": {
           "type": "object",
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
@@ -2195,6 +2160,11 @@
                   "type": "boolean",
                   "markdownDescription": "Regenerates cgo definitions.",
                   "default": true
+                },
+                "run_vulncheck_exp": {
+                  "type": "boolean",
+                  "markdownDescription": "Run vulnerability check (`govulncheck`).",
+                  "default": false
                 },
                 "test": {
                   "type": "boolean",
@@ -2442,6 +2412,11 @@
                   "markdownDescription": "check for common mistaken usages of tests and examples\n\nThe tests checker walks Test, Benchmark and Example functions checking\nmalformed names, wrong signatures and examples documenting non-existent\nidentifiers.\n\nPlease see the documentation for package testing in golang.org/pkg/testing\nfor the conventions that are enforced for Tests, Benchmarks, and Examples.",
                   "default": true
                 },
+                "timeformat": {
+                  "type": "boolean",
+                  "markdownDescription": "check for calls of (time.Time).Format or time.Parse with 2006-02-01\n\nThe timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm)\nformat. Internationally, \"yyyy-dd-mm\" does not occur in common calendar date\nstandards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended.\n",
+                  "default": true
+                },
                 "undeclaredname": {
                   "type": "boolean",
                   "markdownDescription": "suggested fixes for \"undeclared name: <>\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"undeclared name: <>\". It will either insert a new statement,\nsuch as:\n\n\"<> := \"\n\nor a new function declaration, such as:\n\nfunc <>(inferred parameters) {\n\tpanic(\"implement me!\")\n}\n",
@@ -2471,6 +2446,11 @@
                   "type": "boolean",
                   "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side effects,\nso it is always a mistake to discard the result. This analyzer reports\ncalls to certain functions in which the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
                   "default": true
+                },
+                "unusedvariable": {
+                  "type": "boolean",
+                  "markdownDescription": "check for unused variables\n\nThe unusedvariable analyzer suggests fixes for unused variables errors.\n",
+                  "default": false
                 },
                 "unusedwrite": {
                   "type": "boolean",
@@ -2551,7 +2531,7 @@
             },
             "ui.documentation.linkTarget": {
               "type": "string",
-              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n",
+              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n\nModules matching the GOPRIVATE environment variable will not have\ndocumentation links in hover.\n",
               "default": "pkg.go.dev",
               "scope": "resource"
             },
@@ -2611,6 +2591,18 @@
               "default": "Dynamic",
               "scope": "resource"
             },
+            "ui.noSemanticNumber": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "ui.noSemanticString": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) noSemanticString turns off the sending of the semantic token 'string'\n",
+              "default": false,
+              "scope": "resource"
+            },
             "ui.semanticTokens": {
               "type": "boolean",
               "markdownDescription": "(Experimental) semanticTokens controls whether the LSP server will send\nsemantic tokens to the client.\n",
@@ -2624,6 +2616,41 @@
               "scope": "resource"
             }
           }
+        },
+        "go.inlayHints.assignVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralFields": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal field names:\n```go\n\t{/*in: */\"Hello, world\", /*want: */\"dlrow ,olleH\"}\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t/*struct{ in string; want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```",
+          "default": false
+        },
+        "go.inlayHints.constantValues": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota/* = 0*/\n\t\tKindPrint/*  = 1*/\n\t\tKindPrintf/* = 2*/\n\t\tKindErrorf/* = 3*/\n\t)\n```",
+          "default": false
+        },
+        "go.inlayHints.functionTypeParameters": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo/*[int, string]*/(1, \"hello\")\n```",
+          "default": false
+        },
+        "go.inlayHints.parameterNames": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for parameter names:\n```go\n\tparseInt(/* str: */ \"123\", /* radix: */ 8)\n```",
+          "default": false
+        },
+        "go.inlayHints.rangeVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in range statements:\n```go\n\tfor k/* int*/, v/* string*/ := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```",
+          "default": false
         }
       }
     },
