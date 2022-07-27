@@ -136,6 +136,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	ctx.subscriptions.push(goCtx.vetDiagnosticCollection);
 
 	registerCommand('go.gopath', commands.getCurrentGoPath);
+	registerCommand('go.goroot', commands.getCurrentGoRoot);
 	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
 	registerCommand('go.add.tags', commands.addTags);
 	registerCommand('go.remove.tags', commands.removeTags);
