@@ -95,6 +95,7 @@
     "workspaceContains:*/*.go",
     "workspaceContains:*/*/*.go",
     "onCommand:go.gopath",
+    "onCommand:go.goroot",
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
@@ -210,6 +211,11 @@
         "command": "go.gopath",
         "title": "Go: Current GOPATH",
         "description": "See the currently set GOPATH."
+      },
+      {
+        "command": "go.goroot",
+        "title": "Go: Current GOROOT",
+        "description": "See the currently set GOROOT."
       },
       {
         "command": "go.locate.tools",

@@ -27,6 +27,10 @@ Finally, you can also see a full list by using a meta command: `Go: Show All Com
 
 See the currently set GOPATH.
 
+### `Go: Current GOROOT`
+
+See the currently set GOROOT.
+
 ### `Go: Locate Configured Go Tools`
 
 List all the Go tools being used by this extension along with their locations.
