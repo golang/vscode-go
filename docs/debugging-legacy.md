@@ -143,7 +143,7 @@ in your launch configuration. This property supports multiple tags, which you ca
 
 ### Specifying other build flags
 
-The flags specified in `buildFlags` and `env.GOFLAGS` are passed to the Go compiler when building your program for debugging. Delve adds `-gcflags='all=-N -l'` to the list of build flags to disable optimizations. User specified buildFlags conflict with this setting, so the extension removes them ([Issue #117](https://github.com/golang/vscode-go/issues/117)). If you wish to debug a program using custom `-gcflags`, build the program using `go build` and launch using `exec` mode:
+The flags specified in `buildFlags` and `env.GOFLAGS` are passed to the Go compiler when building your program for debugging. Delve adds `-gcflags=all="-N -l"` to the list of build flags to disable optimizations. User specified buildFlags conflict with this setting, so the extension removes them ([Issue #117](https://github.com/golang/vscode-go/issues/117)). If you wish to debug a program using custom `-gcflags`, build the program using `go build` and launch using `exec` mode:
 
 ```json
 {
