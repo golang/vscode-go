@@ -2091,7 +2091,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		async function buildGoProgram(cwd: string, outputFile: string): Promise<string> {
 			const goRuntimePath = getBinPath('go');
 			const execFile = util.promisify(cp.execFile);
-			const child = await execFile(goRuntimePath, ['build', '-o', outputFile, "--gcflags='all=-N -l'", '.'], {
+			const child = await execFile(goRuntimePath, ['build', '-o', outputFile, '--gcflags=all=-N -l', '.'], {
 				cwd
 			});
 			if (child.stderr.length > 0) {

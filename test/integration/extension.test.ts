@@ -152,7 +152,7 @@ const testAll = (isModuleMode: boolean) => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'gogetdocTestData', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 
-		const promises = testCases.map(([position, expected, expectedDoc, expectedParams]) =>
+		const promises = testCases.map(([position, expected, expectedDocPrefix, expectedParams]) =>
 			provider.provideSignatureHelp(textDocument, position, dummyCancellationSource.token).then((sigHelp) => {
 				assert.ok(
 					sigHelp,
@@ -160,7 +160,10 @@ const testAll = (isModuleMode: boolean) => {
 				);
 				assert.equal(sigHelp.signatures.length, 1, 'unexpected number of overloads');
 				assert.equal(sigHelp.signatures[0].label, expected);
-				assert.equal(sigHelp.signatures[0].documentation, expectedDoc);
+				assert(
+					sigHelp.signatures[0].documentation?.toString().startsWith(expectedDocPrefix),
+					`expected doc starting with ${expectedDocPrefix}, got ${JSON.stringify(sigHelp.signatures[0])}`
+				);
 				assert.equal(sigHelp.signatures[0].parameters.length, expectedParams.length);
 				for (let i = 0; i < expectedParams.length; i++) {
 					assert.equal(sigHelp.signatures[0].parameters[i].label, expectedParams[i]);
@@ -190,7 +193,10 @@ const testAll = (isModuleMode: boolean) => {
 				}
 				assert(res);
 				assert.equal(res.contents.length, 1);
-				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
+				assert(
+					(<vscode.MarkdownString>res.contents[0]).value.startsWith(expectedHover),
+					`expected hover starting with ${expectedHover}, got ${JSON.stringify(res.contents[0])}`
+				);
 			})
 		);
 		return Promise.all(promises);
@@ -227,11 +233,7 @@ const testAll = (isModuleMode: boolean) => {
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -240,7 +242,7 @@ encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -278,10 +280,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -290,7 +289,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -323,11 +322,7 @@ It returns the number of bytes written and any write error encountered.
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println func(a ...interface{}) (n int, err error)'
 			: 'Println func(a ...any) (n int, err error)';
@@ -340,7 +335,7 @@ encountered.
 			[new vscode.Position(28, 16), null, null], // inside a number
 			[new vscode.Position(22, 5), 'main func()', '\n'],
 			[new vscode.Position(40, 23), 'import (math "math")', null],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(23, 4),
 				'print func(txt string)',
@@ -364,10 +359,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func Println(a ...interface{}) (n int, err error)'
 			: 'func Println(a ...any) (n int, err error)';
@@ -388,7 +380,7 @@ It returns the number of bytes written and any write error encountered.
 				'package math',
 				'Package math provides basic constants and mathematical functions.\n\nThis package does not guarantee bit-identical results across architectures.\n'
 			],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(27, 14),
 				'type ABC struct {\n    a int\n    b int\n    c int\n}',
@@ -878,11 +870,7 @@ It returns the number of bytes written and any write error encountered.
 			this.skip(); // timeout on windows
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func(a ...interface{}) (n int, err error)'
 			: 'func(a ...any) (n int, err error)';
@@ -890,7 +878,7 @@ encountered.
 		const provider = new GoCompletionItemProvider();
 		const testCases: [vscode.Position, string, string | null, string | null][] = [
 			[new vscode.Position(7, 4), 'fmt', 'fmt', null],
-			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDoc]
+			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDocPrefix]
 		];
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
@@ -912,15 +900,20 @@ encountered.
 					if (!resolvedItemResult) {
 						return;
 					}
-					if (resolvedItemResult instanceof vscode.CompletionItem) {
-						if (resolvedItemResult.documentation) {
-							assert.equal((<vscode.MarkdownString>resolvedItemResult.documentation).value, expectedDoc);
+					const resolvedItem =
+						resolvedItemResult instanceof vscode.CompletionItem
+							? resolvedItemResult
+							: await resolvedItemResult;
+					if (resolvedItem?.documentation) {
+						const got = (<vscode.MarkdownString>resolvedItem.documentation).value;
+						if (expectedDoc) {
+							assert(
+								got.startsWith(expectedDoc),
+								`expected doc starting with ${expectedDoc}, got ${got}`
+							);
+						} else {
+							assert.equal(got, expectedDoc);
 						}
-						return;
-					}
-					const resolvedItem = await resolvedItemResult;
-					if (resolvedItem) {
-						assert.equal((<vscode.MarkdownString>resolvedItem.documentation).value, expectedDoc);
 					}
 				})
 		);
