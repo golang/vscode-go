@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest] # TODO: reenable macos-latest
         version: ['stable']
-        go: ['1.16', '1.17', '1.18', '1.19.0-rc.2']
+        go: ['1.16', '1.17', '1.18', '1.19']
 
     steps:
       - name: Clone repository
