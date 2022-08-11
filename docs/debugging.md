@@ -568,7 +568,7 @@ Start a `dlv dap` server ready to accept a client request to launch or attach to
 $ dlv dap --listen=:12345
 ```
 
-Use the following `launch` configuration to tell `dlv` to execute a binary precompiled with `go build -gcflags='all=-N -l'`:
+Use the following `launch` configuration to tell `dlv` to execute a binary precompiled with `go build -gcflags=all="-N -l"`:
 
 ```json5
 {
@@ -581,7 +581,7 @@ Use the following `launch` configuration to tell `dlv` to execute a binary preco
   "mode": "exec",
   "program": "/absolute/path/to/remote/workspace/program/executable",
   "substitutePath": [
-      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      { "from": "${workspaceFolder}", "to": "/path/to/remote/workspace" },
       ...
   ]
 }
@@ -655,7 +655,7 @@ The "debug test" CodeLens and the [test UI](features.md#test-and-benchmark) do n
 
 ### Starting a debug session fails with `decoding dwarf section info at offset 0x0: too short` or `could not open debug info` error.
 
-These errors indicate that your binary was built with linker flags that stripped the symbol table (`-s`) or the DWARF debug information (`-w`), making debugging impossible. If the binary is built while launching the session, make sure your `launch.json` configuration does not contain `"buildFlags": "--ldflags '-s -w'"`. If you use `debug test` or Test Explorer, check `go.buildFlags` in `settings.json`. If the binary is built externally, check the command-line flags and do not use `go run`. Unlike `go build`, `go run` passes `-s -w` to the linker under the hood. If you try to attach to such a binary with a debugger, it will fail with one of the above errors (see Go Issue [24833](https://github.com/golang/go/issues/24833)). Instead let dlv build the binary for you or use `go build -gcflags='all=-N -l'`.
+These errors indicate that your binary was built with linker flags that stripped the symbol table (`-s`) or the DWARF debug information (`-w`), making debugging impossible. If the binary is built while launching the session, make sure your `launch.json` configuration does not contain `"buildFlags": "--ldflags '-s -w'"`. If you use `debug test` or Test Explorer, check `go.buildFlags` in `settings.json`. If the binary is built externally, check the command-line flags and do not use `go run`. Unlike `go build`, `go run` passes `-s -w` to the linker under the hood. If you try to attach to such a binary with a debugger, it will fail with one of the above errors (see Go Issue [24833](https://github.com/golang/go/issues/24833)). Instead let dlv build the binary for you or use `go build -gcflags=all="-N -l"`.
 
 ## Reporting Issues
 

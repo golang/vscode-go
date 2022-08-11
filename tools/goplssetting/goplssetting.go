@@ -17,10 +17,6 @@ import (
 	"strings"
 )
 
-var skipHierarchy map[string]bool = map[string]bool{
-	"ui.inlayhint": true,
-}
-
 // Generate reads package.json and updates the gopls settings section
 // based on `gopls api-json` output. This function requires `jq` to
 // manipulate package.json.
@@ -185,22 +181,21 @@ func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
 			return v[i].Name < v[j].Name
 		})
 	}
-	properties, err := collectProperties(seen)
+	goplsProperties, goProperties, err := collectProperties(seen)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(map[string]*Object{
-		"gopls": {
-			Type:                 "object",
-			MarkdownDescription:  "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
-			Scope:                "resource",
-			AdditionalProperties: false,
-			Properties:           properties,
-		},
-	})
+	goProperties["gopls"] = &Object{
+		Type:                 "object",
+		MarkdownDescription:  "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
+		Scope:                "resource",
+		AdditionalProperties: false,
+		Properties:           goplsProperties,
+	}
+	return json.Marshal(goProperties)
 }
 
-func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
+func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goProperties map[string]*Object, err error) {
 	var sorted []string
 	var containsEmpty bool
 	for k := range m {
@@ -214,9 +209,23 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 	if containsEmpty {
 		sorted = append(sorted, "")
 	}
-	properties := map[string]*Object{}
+	goplsProperties, goProperties = map[string]*Object{}, map[string]*Object{}
 	for _, hierarchy := range sorted {
-		if skip := skipHierarchy[hierarchy]; skip {
+		if hierarchy == "ui.inlayhint" {
+			for _, opt := range m[hierarchy] {
+				for _, k := range opt.EnumKeys.Keys {
+					unquotedName, err := strconv.Unquote(k.Name)
+					if err != nil {
+						return nil, nil, err
+					}
+					key := "go.inlayHints." + unquotedName
+					goProperties[key] = &Object{
+						MarkdownDescription: k.Doc,
+						Type:                "boolean",
+						Default:             formatDefault(k.Default, "boolean"),
+					}
+				}
+			}
 			continue
 		}
 		for _, opt := range m[hierarchy] {
@@ -237,7 +246,7 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 				for _, v := range opt.EnumValues {
 					unquotedName, err := strconv.Unquote(v.Value)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					obj.Enum = append(obj.Enum, unquotedName)
 					obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
@@ -251,7 +260,7 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 				for _, k := range opt.EnumKeys.Keys {
 					unquotedName, err := strconv.Unquote(k.Name)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					obj.Properties[unquotedName] = &Object{
 						Type:                propertyType(opt.EnumKeys.ValueType),
@@ -267,10 +276,10 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 			if hierarchy != "" {
 				key = hierarchy + "." + key
 			}
-			properties[key] = obj
+			goplsProperties[key] = obj
 		}
 	}
-	return properties, nil
+	return goplsProperties, goProperties, nil
 }
 
 func formatOptionDefault(opt *OptionJSON) interface{} {

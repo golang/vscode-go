@@ -1,3 +1,14 @@
+## v0.35.2 - 15 Aug, 2022
+A list of all issues and changes can be found in the [v0.35.2 milestone](https://github.com/golang/vscode-go/milestone/51) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.1...v0.35.2).
+
+### Changes
+
+This release includes a new [go.goroot command](https://github.com/golang/vscode-go/issues/2379), [fixes](https://github.com/golang/vscode-go/issues/2342) to the `Generate Tests` commands, and improvements for windows users.
+
+### Thanks
+
+Thank you for your contribution, @OrBin, @Ras96, @hyangah, @jamalcarvalho, and @suzmue!
+
 ## v0.35.1 - 19 July, 2022
 
 A list of all issues and changes can be found in the [v0.35.1 milestone](https://github.com/golang/vscode-go/milestone/50) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.0...v0.35.1).

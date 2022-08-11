@@ -272,85 +272,68 @@ Infer GOPATH from the workspace root. This is ignored when using Go Modules.
 Default: `false`
 ### `go.inlayHints.assignVariableTypes`
 
-Enable/disable inlay hints for variable types in assign statements.
+Enable/disable inlay hints for variable types in assign statements:
 ```go
-
-i /*int*/, j /*int*/ := 0, len(r)-1
+	i/* int*/, j/* int*/ := 0, len(r)-1
 ```
 
 Default: `false`
 ### `go.inlayHints.compositeLiteralFields`
 
-Enable/disable inlay hints for composite literal field names.
+Enable/disable inlay hints for composite literal field names:
 ```go
-
-for _, c := range []struct {in, want string}{
-	{/*in:*/ "Hello, world", /*want:*/ "dlrow ,olleH"},
-	{/*in:*/ "Hello, 世界", /*want:*/ "界世 ,olleH"},
-	{/*in:*/ "", /*want:*/ ""},
-} {
-	...
-}
+	{/*in: */"Hello, world", /*want: */"dlrow ,olleH"}
 ```
 
 Default: `false`
 ### `go.inlayHints.compositeLiteralTypes`
 
-Enable/disable inlay hints for composite literal types.
+Enable/disable inlay hints for composite literal types:
 ```go
-
-for _, c := range []struct {in, want string}{
-	/*struct{ in, want string }*/{"Hello, world", "dlrow ,olleH"},
-	/*struct{ in, want string }*/{"Hello, 世界", "界世 ,olleH"},
-	/*struct{ in, want string }*/{"", ""},
-} {
-	...
-}
+	for _, c := range []struct {
+		in, want string
+	}{
+		/*struct{ in string; want string }*/{"Hello, world", "dlrow ,olleH"},
+	}
 ```
 
 Default: `false`
 ### `go.inlayHints.constantValues`
 
-Enable/disable inlay hints for constant values.
+Enable/disable inlay hints for constant values:
 ```go
-
-const (
-	KindNone   = iota	/*= 0*/
-	KindPrint	/*= 1*/
-	KindPrintf	/*= 2*/
-	KindErrorf	/*= 3*/
-)
+	const (
+		KindNone   Kind = iota/* = 0*/
+		KindPrint/*  = 1*/
+		KindPrintf/* = 2*/
+		KindErrorf/* = 3*/
+	)
 ```
 
 Default: `false`
 ### `go.inlayHints.functionTypeParameters`
 
-Enable/disable inlay hints for implicit type parameters on generic functions.
+Enable/disable inlay hints for implicit type parameters on generic functions:
 ```go
-
-func myFunc[T any](a T) { ... }
-
-func main() {
-	myFunc/*[int]*/(1)
-}
+	myFoo/*[int, string]*/(1, "hello")
 ```
 
 Default: `false`
 ### `go.inlayHints.parameterNames`
 
-Enable/disable inlay hints for parameter names.
+Enable/disable inlay hints for parameter names:
 ```go
-
-http.HandleFunc(/*pattern:*/ "/", /*handler:*/ indexHandler)
+	parseInt(/* str: */ "123", /* radix: */ 8)
 ```
 
 Default: `false`
 ### `go.inlayHints.rangeVariableTypes`
 
-Enable/disable inlay hints for variable types in range statements.
+Enable/disable inlay hints for variable types in range statements:
 ```go
-
-for k /*int*/, v /*string*/ := range []string{} { ... }
+	for k/* int*/, v/* string*/ := range []string{} {
+		fmt.Println(k, v)
+	}
 ```
 
 Default: `false`
@@ -744,6 +727,7 @@ Example Usage:
 | `gc_details` | Toggle the calculation of gc annotations. <br/> Default: `false` |
 | `generate` | Runs `go generate` for a given directory. <br/> Default: `true` |
 | `regenerate_cgo` | Regenerates cgo definitions. <br/> Default: `true` |
+| `run_vulncheck_exp` | Run vulnerability check (`govulncheck`). <br/> Default: `false` |
 | `test` | Runs `go test` for a specific set of test or benchmark functions. <br/> Default: `false` |
 | `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
 | `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
@@ -837,12 +821,14 @@ Example Usage:
 | `stubmethods` | stub methods analyzer <br/> This analyzer generates method stubs for concrete types in order to implement a target interface <br/> Default: `true` |
 | `testinggoroutine` | report calls to (*testing.T).Fatal from goroutines started by a test. <br/> Functions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and Skip{,f,Now} methods of *testing.T, must be called from the test goroutine itself. This checker detects calls to these functions that occur within a goroutine started by the test. For example: <br/> func TestFoo(t *testing.T) {     go func() {         t.Fatal("oops") // error: (*T).Fatal called from non-test goroutine     }() } <br/> <br/> Default: `true` |
 | `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
+| `timeformat` | check for calls of (time.Time).Format or time.Parse with 2006-02-01 <br/> The timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm) format. Internationally, "yyyy-dd-mm" does not occur in common calendar date standards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended. <br/> <br/> Default: `true` |
 | `undeclaredname` | suggested fixes for "undeclared name: <>" <br/> This checker provides suggested fixes for type errors of the type "undeclared name: <>". It will either insert a new statement, such as: <br/> "<> := " <br/> or a new function declaration, such as: <br/> func <>(inferred parameters) { <pre>panic("implement me!")</pre>} <br/> <br/> Default: `true` |
 | `unmarshal` | report passing non-pointer or non-interface values to unmarshal <br/> The unmarshal analysis reports calls to functions such as json.Unmarshal in which the argument type is not a pointer or an interface. <br/> Default: `true` |
 | `unreachable` | check for unreachable code <br/> The unreachable analyzer finds statements that execution can never reach because they are preceded by an return statement, a call to panic, an infinite loop, or similar constructs. <br/> Default: `true` |
 | `unsafeptr` | check for invalid conversions of uintptr to unsafe.Pointer <br/> The unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer to convert integers to pointers. A conversion from uintptr to unsafe.Pointer is invalid if it implies that there is a uintptr-typed word in memory that holds a pointer value, because that word will be invisible to stack copying and to the garbage collector. <br/> Default: `true` |
 | `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To reduce false positives it ignores: - methods - parameters that do not have a name or are underscored - functions in test files - functions with empty bodies or those with just a return stmt <br/> Default: `false` |
 | `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. This analyzer reports calls to certain functions in which the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
+| `unusedvariable` | check for unused variables <br/> The unusedvariable analyzer suggests fixes for unused variables errors. <br/> <br/> Default: `false` |
 | `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }<br/>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }<br/>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> <br/> Default: `false` |
 | `useany` | check for constraints that could be simplified to "any" <br/> Default: `false` |
 ### `ui.diagnostic.annotations`
@@ -912,6 +898,9 @@ It might be one of:
 
 If company chooses to use its own `godoc.org`, its address can be used as well.
 
+Modules matching the GOPRIVATE environment variable will not have
+documentation links in hover.
+
 
 Default: `"pkg.go.dev"`
 ### `ui.documentation.linksInHover`
@@ -962,6 +951,18 @@ just "Foo.Field".
 
 
 Default: `"Dynamic"`
+### `ui.noSemanticNumber`
+
+(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'
+
+
+Default: `false`
+### `ui.noSemanticString`
+
+(Experimental) noSemanticString turns off the sending of the semantic token 'string'
+
+
+Default: `false`
 ### `ui.semanticTokens`
 
 (Experimental) semanticTokens controls whether the LSP server will send

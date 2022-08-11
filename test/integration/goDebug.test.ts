@@ -32,6 +32,7 @@ import { killProcessTree, killProcess } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
 import { TimestampedLogger } from '../../src/goLogging';
+import { affectedByIssue832 } from './testutils';
 
 // For debugging test and streaming the trace instead of buffering, set this.
 const PRINT_TO_CONSOLE = false;
@@ -412,14 +413,45 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		if (continueOnStart) {
 			args.push('--continue');
 		}
-		const childProcess = cp.spawn(toolPath, args, {
-			cwd: serverFolder,
-			env: { PORT: `${serverPort}`, ...process.env }
-		});
 
-		// Give dlv a few seconds to start.
-		await new Promise((resolve) => setTimeout(resolve, 10_000));
-		return childProcess;
+		const promise = new Promise<cp.ChildProcess>((resolve, reject) => {
+			const p = cp.spawn(toolPath, args, {
+				cwd: serverFolder,
+				env: { PORT: `${serverPort}`, ...process.env }
+			});
+
+			let started = false;
+			const timeoutToken: NodeJS.Timer = setTimeout(() => {
+				console.log(`dlv debug server (PID: ${p.pid}) is not responding`);
+				reject(new Error('timed out while waiting for DAP server to start'));
+			}, 30_000);
+
+			const stopWaitingForServerToStart = () => {
+				clearTimeout(timeoutToken);
+				started = true;
+				resolve(p);
+			};
+
+			if (continueOnStart) {
+				// wait till helloWorldServer starts and prints its log message to STDERR.
+				p.stderr.on('data', (chunk) => {
+					const msg = chunk.toString();
+					if (!started && msg.includes('helloWorldServer starting to listen on')) {
+						stopWaitingForServerToStart();
+					}
+					console.log(msg);
+				});
+			} else {
+				p.stdout.on('data', (chunk) => {
+					const msg = chunk.toString();
+					if (!started && msg.includes('listening at:')) {
+						stopWaitingForServerToStart();
+					}
+					console.log(msg);
+				});
+			}
+		});
+		return promise;
 	}
 
 	/**
@@ -438,7 +470,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		// an initialized event.
 		await Promise.all([
 			new Promise<void>(async (resolve) => {
-				console.log(`Setting up attach request for ${JSON.stringify(debugConfig)}.`);
+				const debugConfigCopy = Object.assign({}, debugConfig);
+				delete debugConfigCopy.env;
+				console.log(`Setting up attach request for ${JSON.stringify(debugConfigCopy)}.`);
 				const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 				assert.ok(attachResult.success);
 				resolve();
@@ -474,6 +508,24 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		await new Promise((res) => setTimeout(res, 1_000));
 		action();
 		await assertStoppedLocation;
+	}
+
+	/**
+	 * Helper function to create a promise that's resolved when
+	 * output event with any of the provided strings is observed.
+	 */
+	async function waitForOutputMessage(dc: DebugClient, ...patterns: string[]): Promise<DebugProtocol.Event> {
+		return await new Promise<DebugProtocol.Event>((resolve, reject) => {
+			dc.on('output', (event) => {
+				for (const pattern of patterns) {
+					if (event.body.output.includes(pattern)) {
+						// Resolve when we have found the event that we want.
+						resolve(event);
+						return;
+					}
+				}
+			});
+		});
 	}
 
 	/**
@@ -555,6 +607,10 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('env', () => {
+		if (!isDlvDap) {
+			return;
+		}
+
 		let sandbox: sinon.SinonSandbox;
 
 		setup(() => {
@@ -619,6 +675,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('launch', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		test('should run program to the end', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
@@ -734,7 +793,6 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				this.skip(); // not working in dlv-dap.
 			}
 
-			// TODO(hyangah): why does it take 30sec?
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 			const config = {
 				name: 'Launch',
@@ -744,13 +802,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				program: PROGRAM,
 				dlvFlags: ['--invalid']
 			};
-			try {
-				await initializeDebugConfig(config);
-				await dc.initializeRequest();
-			} catch (err) {
-				return;
-			}
-			throw new Error('does not report error on invalid delve flag');
+
+			await initializeDebugConfig(config);
+
+			await Promise.race([
+				// send an initialize request, which triggers launchDelveDAP
+				// from the thin adapter. We expect no response.
+				dc.initializeRequest().then(() => Promise.reject('unexpected initialization success')),
+				// we expect the useful error message.
+				waitForOutputMessage(dc, 'Error: unknown flag: --invalid')
+			]);
 		});
 
 		test('should run program with showLog=false and logOutput specified', async () => {
@@ -827,6 +888,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('set current working directory', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		test('should debug program with cwd set', async () => {
 			const WD = path.join(DATA_ROOT, 'cwdTest');
 			const PROGRAM = path.join(WD, 'cwdTest');
@@ -907,15 +971,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		async function waitForHelloGoodbyeOutput(dc: DebugClient): Promise<DebugProtocol.Event> {
-			return await new Promise<DebugProtocol.Event>((resolve, reject) => {
-				dc.on('output', (event) => {
-					if (event.body.output === 'Hello, World!\n' || event.body.output === 'Goodbye, World.\n') {
-						// Resolve when we have found the event that we want.
-						resolve(event);
-						return;
-					}
-				});
-			});
+			return waitForOutputMessage(dc, 'Hello, World!\n', 'Goodbye, World.\n');
 		}
 
 		test('should run program with cwd set (noDebug)', async () => {
@@ -993,6 +1049,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('remote attach', () => {
+		if (withConsole) {
+			return;
+		}
 		let childProcess: cp.ChildProcess;
 		let server: number;
 		let debugConfig: DebugConfiguration;
@@ -1092,6 +1151,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			const debugConfig = await initializeDebugConfig(config);
 			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
 		});
+
+		// stop here for integrated terminal test mode.
+		if (withConsole) {
+			return;
+		}
 
 		test('stopped for a breakpoint set during initialization (remote attach)', async () => {
 			const FILE = path.join(DATA_ROOT, 'helloWorldServer', 'main.go');
@@ -1211,21 +1275,16 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			]);
 		}
 
-		test('should set breakpoints during next', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
+		// Skip this test because it is flaky.
+		test.skip('should set breakpoints during next', async () => {
 			await setBreakpointsWhileRunningStep(async () => {
 				const nextResponse = await dc.nextRequest({ threadId: 1 });
 				assert.ok(nextResponse.success);
 			});
 		});
 
-		test('should set breakpoints during step out', async function () {
-			if (!isDlvDap) {
-				this.skip();
-			}
-
+		// Skip this test because it is flaky.
+		test.skip('should set breakpoints during step out', async () => {
 			await setBreakpointsWhileRunningStep(async () => {
 				await Promise.all([dc.stepInRequest({ threadId: 1 }), dc.assertStoppedLocation('step', {})]);
 
@@ -1302,6 +1361,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('conditionalBreakpoints', () => {
+		if (withConsole) {
+			return;
+		}
 		test('should stop on conditional breakpoint', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'condbp');
 			const FILE = path.join(DATA_ROOT, 'condbp', 'condbp.go');
@@ -1436,6 +1498,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('panicBreakpoints', () => {
+		if (withConsole) {
+			return;
+		}
 		test('should stop on panic', async () => {
 			const PROGRAM_WITH_EXCEPTION = path.join(DATA_ROOT, 'panic');
 
@@ -1523,6 +1588,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('disconnect', () => {
+		if (withConsole) {
+			return;
+		}
 		// The teardown code for the Go Debug Adapter test suite issues a disconnectRequest.
 		// In order for these tests to pass, the debug adapter must not fail if a
 		// disconnectRequest is sent after it has already disconnected.
@@ -1728,7 +1796,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		// has a chance to clean up.
 		// BUG(https://github.com/golang/vscode-go/issues/1993)
 		test('should cleanup when stopped', async function () {
-			if (!isDlvDap) {
+			if (!isDlvDap || affectedByIssue832()) {
 				this.skip();
 			}
 			const PROGRAM = path.join(DATA_ROOT, 'loop');
@@ -1779,6 +1847,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('switch goroutine', () => {
+		if (withConsole) {
+			return;
+		}
 		async function continueAndFindParkedGoroutine(file: string): Promise<number> {
 			// Find a goroutine that is stopped in parked.
 			const bp = getBreakpointLocation(file, 8);
@@ -1919,6 +1990,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('logDest attribute tests', () => {
+		if (!isDlvDap) {
+			return;
+		}
 		const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 
 		let tmpDir: string;
@@ -1926,7 +2000,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			tmpDir = fs.mkdtempSync(path.join(tmpdir(), 'logDestTest'));
 		});
 		suiteTeardown(() => {
-			rmdirRecursive(tmpDir);
+			tryRmdirRecursive(tmpDir);
 		});
 
 		test('logs are written to logDest file', async function () {
@@ -1990,6 +2064,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	});
 
 	suite('substitute path', () => {
+		if (withConsole || affectedByIssue832()) {
+			return;
+		}
 		// TODO(suzmue): add unit tests for substitutePath.
 		let tmpDir: string;
 
@@ -1998,7 +2075,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		suiteTeardown(() => {
-			rmdirRecursive(tmpDir);
+			tryRmdirRecursive(tmpDir);
 		});
 
 		function copyDirectory(name: string) {
@@ -2014,7 +2091,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		async function buildGoProgram(cwd: string, outputFile: string): Promise<string> {
 			const goRuntimePath = getBinPath('go');
 			const execFile = util.promisify(cp.execFile);
-			const child = await execFile(goRuntimePath, ['build', '-o', outputFile, "--gcflags='all=-N -l'", '.'], {
+			const child = await execFile(goRuntimePath, ['build', '-o', outputFile, '--gcflags=all=-N -l', '.'], {
 				cwd
 			});
 			if (child.stderr.length > 0) {
@@ -2030,13 +2107,13 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 
 			suiteTeardown(() => {
-				rmdirRecursive(goBuildOutput);
+				tryRmdirRecursive(goBuildOutput);
 			});
 
 			async function copyBuildDelete(program: string): Promise<{ program: string; output: string }> {
 				const wd = copyDirectory(program);
 				const output = await buildGoProgram(wd, path.join(goBuildOutput, program));
-				rmdirRecursive(wd);
+				tryRmdirRecursive(wd);
 				return { program: wd, output };
 			}
 
@@ -2081,7 +2158,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 
 			suiteTeardown(() => {
-				rmdirRecursive(helloWorldLocal);
+				tryRmdirRecursive(helloWorldLocal);
 			});
 
 			test('stopped for a breakpoint set during initialization using substitutePath (remote attach)', async () => {
@@ -2149,7 +2226,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 			suiteTeardown(() => {
 				fs.unlinkSync(symlinkPath);
-				rmdirRecursive(realPath);
+				tryRmdirRecursive(realPath);
 			});
 			test('should stop on a breakpoint', async function () {
 				if (!isDlvDap) this.skip(); // BUG: the legacy adapter fails with 'breakpoint verification mismatch' error.
@@ -2227,6 +2304,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 };
 
 suite('Go Debug Adapter Tests (legacy)', function () {
+	if (affectedByIssue832()) {
+		return;
+	}
 	this.timeout(60_000);
 	testAll(this.ctx, false);
 });
@@ -2427,4 +2507,12 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function tryRmdirRecursive(dir: string) {
+	try {
+		rmdirRecursive(dir);
+	} catch (e) {
+		console.log(`failed to delete ${dir}: ${e}`);
+	}
 }

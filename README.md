@@ -24,17 +24,22 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-* **Step 1.** If you haven't done so already, install [Go](https://golang.org)
-  and the [VS Code Go extension].
-  * [Go installation guide]. This extension works best with Go 1.14+.
-  * [Managing extensions in VS Code].
-* **Step 2.** To activate the extension, open any directory or workspace
-  containing Go code. Once activated, the [Go status bar](https://github.com/golang/vscode-go/wiki/ui) will
-  appear in the bottom left corner of the window and show the recognized Go
-  version.
-* **Step 3.** The extension depends on [a set of extra command-line tools](#tools).
-  If they are missing, the extension will show the "⚠️ Analysis Tools Missing"
-  warning. Click the notification to complete the installation.
+1.  Install [Go](https://golang.org) 1.14 or newer if you haven't already.
+
+1.  Install the [VS Code Go extension].
+
+1.  Open any directory or workspace containing Go code to automatically activate
+    the extension. The
+    [Go status bar](https://github.com/golang/vscode-go/wiki/ui) appears in the
+    bottom left corner of the window and displays your Go version.
+
+1.  The extension depends on `go`, `gopls`, `dlv` and other optional tools. If
+    any of the dependencies are missing, the ⚠️ `Analysis Tools Missing` warning
+    is displayed. Click on the warning to download dependencies.
+
+    See the
+    [tools documentation](https://github.com/golang/vscode-go/wiki/tools) for a
+    complete list of tools the extension depends on.
 
 <p align="center">
 <img src="docs/images/installtools.gif" width=75%>
@@ -44,23 +49,32 @@ extension fits your needs and enhances your development experience.
 
 You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
 
-Please be sure to learn more about the many [features](#features) of this
-extension, as well as how to [customize](#customization) them. Take a look at
-[Troubleshooting](https://github.com/golang/vscode-go/wiki/troubleshooting) and [Help](#ask-for-help) for further
-guidance.
+## What's next
+
+* Explore more [features](#features) of the VS Code Go extension.
+* Learn how to [customize](#customization) your settings.
+* Solve issues with
+  [Troubleshooting](https://github.com/golang/vscode-go/wiki/troubleshooting).
+* [file an issue](https://github.com/golang/vscode-go/issues/new/choose) for
+  problems with the extension.
+* Start a [GitHub discussion](https://github.com/golang/vscode-go/discussions)
+  or get help on [Stack Overflow].
 
 If you are new to Go, [this article](https://golang.org/doc/code.html) provides
 the overview on Go code organization and basic `go` commands. Watch ["Getting
 started with VS Code Go"] for an explanation of how to build your first Go
 application using VS Code Go.
 
-## Features
+## Feature highlights
 
-This extension provides many features, including [IntelliSense],
-[code navigation], and [code editing] support. It also shows [diagnostics] as
-you work and provides enhanced support for [testing] and [debugging] your
-programs. See the [full feature breakdown] for more details and to learn how to
-tune its behavior.
+* [IntelliSense] - Results appear for symbols as you type.
+* [Code navigation] - Jump to or peek at a symbol's declaration.
+* [Code editing] - Support for saved snippets, formatting and code organization,
+  and automatic organization of imports.
+* [Diagnostics] -  Build, vet, and lint errors shown as you type or on save.
+* Enhanced support for [testing] and [debugging]
+
+See the [full feature breakdown] for more details.
 
 <p align=center>
 <img src="docs/images/completion-signature-help.gif" width=75%>
@@ -182,8 +196,8 @@ conduct-related issue, please mail conduct@golang.org.
 [Go installation guide]: https://golang.org/doc/install
 ["Getting started with VS Code Go"]: https://youtu.be/1MXIGYrMk80
 [IntelliSense]: https://github.com/golang/vscode-go/wiki/features#intellisense
-[code navigation]: https://github.com/golang/vscode-go/wiki/features#code-navigation
-[code editing]: https://github.com/golang/vscode-go/wiki/features#code-editing
+[Code navigation]: https://github.com/golang/vscode-go/wiki/features#code-navigation
+[Code editing]: https://github.com/golang/vscode-go/wiki/features#code-editing
 [diagnostics]: https://github.com/golang/vscode-go/wiki/features#diagnostics
 [testing]: https://github.com/golang/vscode-go/wiki/features#run-and-test-in-the-editor
 [debugging]: https://github.com/golang/vscode-go/wiki/debugging#features

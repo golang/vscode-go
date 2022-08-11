@@ -46,6 +46,7 @@ import {
 import cp = require('child_process');
 import os = require('os');
 import { MockExtensionContext } from '../mocks/MockContext';
+import { affectedByIssue832 } from './testutils';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -151,7 +152,7 @@ const testAll = (isModuleMode: boolean) => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'gogetdocTestData', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 
-		const promises = testCases.map(([position, expected, expectedDoc, expectedParams]) =>
+		const promises = testCases.map(([position, expected, expectedDocPrefix, expectedParams]) =>
 			provider.provideSignatureHelp(textDocument, position, dummyCancellationSource.token).then((sigHelp) => {
 				assert.ok(
 					sigHelp,
@@ -159,7 +160,10 @@ const testAll = (isModuleMode: boolean) => {
 				);
 				assert.equal(sigHelp.signatures.length, 1, 'unexpected number of overloads');
 				assert.equal(sigHelp.signatures[0].label, expected);
-				assert.equal(sigHelp.signatures[0].documentation, expectedDoc);
+				assert(
+					sigHelp.signatures[0].documentation?.toString().startsWith(expectedDocPrefix),
+					`expected doc starting with ${expectedDocPrefix}, got ${JSON.stringify(sigHelp.signatures[0])}`
+				);
 				assert.equal(sigHelp.signatures[0].parameters.length, expectedParams.length);
 				for (let i = 0; i < expectedParams.length; i++) {
 					assert.equal(sigHelp.signatures[0].parameters[i].label, expectedParams[i]);
@@ -189,7 +193,10 @@ const testAll = (isModuleMode: boolean) => {
 				}
 				assert(res);
 				assert.equal(res.contents.length, 1);
-				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
+				assert(
+					(<vscode.MarkdownString>res.contents[0]).value.startsWith(expectedHover),
+					`expected hover starting with ${expectedHover}, got ${JSON.stringify(res.contents[0])}`
+				);
 			})
 		);
 		return Promise.all(promises);
@@ -226,11 +233,7 @@ const testAll = (isModuleMode: boolean) => {
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -239,7 +242,7 @@ encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -277,10 +280,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -289,7 +289,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -322,11 +322,7 @@ It returns the number of bytes written and any write error encountered.
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println func(a ...interface{}) (n int, err error)'
 			: 'Println func(a ...any) (n int, err error)';
@@ -339,7 +335,7 @@ encountered.
 			[new vscode.Position(28, 16), null, null], // inside a number
 			[new vscode.Position(22, 5), 'main func()', '\n'],
 			[new vscode.Position(40, 23), 'import (math "math")', null],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(23, 4),
 				'print func(txt string)',
@@ -363,10 +359,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func Println(a ...interface{}) (n int, err error)'
 			: 'func Println(a ...any) (n int, err error)';
@@ -387,7 +380,7 @@ It returns the number of bytes written and any write error encountered.
 				'package math',
 				'Package math provides basic constants and mathematical functions.\n\nThis package does not guarantee bit-identical results across architectures.\n'
 			],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(27, 14),
 				'type ABC struct {\n    a int\n    b int\n    c int\n}',
@@ -435,40 +428,45 @@ It returns the number of bytes written and any write error encountered.
 	});
 
 	test('Linting - lint errors with multiple open files', async () => {
-		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
-		// This adjustment applies only to the text documents known to vscode. This test checks
-		// the adjustment is made consistently across multiple open text documents.
-		const file1 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
-		);
-		const file2 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
-		);
-		const warnings = await goLint(
-			file2.uri,
-			Object.create(getGoConfig(), {
-				lintTool: { value: 'staticcheck' },
-				lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
-				// staticcheck skips debatable checks such as ST1003 by default,
-				// but this test depends on ST1003 (MixedCaps package name) presented in both files
-				// in the same package. So, enable that.
-			}),
-			Object.create(getGoplsConfig(), {}),
-			'package'
-		);
+		try {
+			// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
+			// This adjustment applies only to the text documents known to vscode. This test checks
+			// the adjustment is made consistently across multiple open text documents.
+			const file1 = await vscode.workspace.openTextDocument(
+				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
+			);
+			const file2 = await vscode.workspace.openTextDocument(
+				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
+			);
+			console.log('start linting');
+			const warnings = await goLint(
+				file2.uri,
+				Object.create(getGoConfig(), {
+					lintTool: { value: 'staticcheck' },
+					lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
+					// staticcheck skips debatable checks such as ST1003 by default,
+					// but this test depends on ST1003 (MixedCaps package name) presented in both files
+					// in the same package. So, enable that.
+				}),
+				Object.create(getGoplsConfig(), {}),
+				'package'
+			);
 
-		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-		handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
+			const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
+			handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
 
-		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
-		// Both files belong to the same package name, and we want them to be identical.
-		const file1Diagnostics = diagnosticCollection.get(file1.uri);
-		const file2Diagnostics = diagnosticCollection.get(file2.uri);
-		assert(file1Diagnostics);
-		assert(file2Diagnostics);
-		assert(file1Diagnostics.length > 0);
-		assert(file2Diagnostics.length > 0);
-		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
+			// The first diagnostic message for each file should be about the use of MixedCaps in package name.
+			// Both files belong to the same package name, and we want them to be identical.
+			const file1Diagnostics = diagnosticCollection.get(file1.uri);
+			const file2Diagnostics = diagnosticCollection.get(file2.uri);
+			assert(file1Diagnostics);
+			assert(file2Diagnostics);
+			assert(file1Diagnostics.length > 0);
+			assert(file2Diagnostics.length > 0);
+			assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
+		} catch (e) {
+			assert.fail(`failed to lint: ${e}`);
+		}
 	});
 
 	test('Error checking', async () => {
@@ -741,7 +739,10 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(interfaces[0].name, 'circle');
 	});
 
-	test('Test listPackages', async () => {
+	test('Test listPackages', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
@@ -793,7 +794,10 @@ It returns the number of bytes written and any write error encountered.
 		});
 	});
 
-	test('Workspace Symbols', () => {
+	test('Workspace Symbols', function () {
+		if (affectedByIssue832()) {
+			this.skip(); // frequent timeout on windows
+		}
 		const workspacePath = path.join(fixturePath, 'vendoring');
 		const configWithoutIgnoringFolders = Object.create(getGoConfig(), {
 			gotoSymbol: {
@@ -861,12 +865,12 @@ It returns the number of bytes written and any write error encountered.
 		return Promise.all([withIgnoringFolders, withoutIgnoringFolders, withIncludingGoroot, withoutIncludingGoroot]);
 	});
 
-	test('Test Completion', async () => {
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+	test('Test Completion', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
+
+		const printlnDocPrefix = 'Println formats using the default formats for its operands';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func(a ...interface{}) (n int, err error)'
 			: 'func(a ...any) (n int, err error)';
@@ -874,7 +878,7 @@ encountered.
 		const provider = new GoCompletionItemProvider();
 		const testCases: [vscode.Position, string, string | null, string | null][] = [
 			[new vscode.Position(7, 4), 'fmt', 'fmt', null],
-			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDoc]
+			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDocPrefix]
 		];
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
@@ -896,22 +900,30 @@ encountered.
 					if (!resolvedItemResult) {
 						return;
 					}
-					if (resolvedItemResult instanceof vscode.CompletionItem) {
-						if (resolvedItemResult.documentation) {
-							assert.equal((<vscode.MarkdownString>resolvedItemResult.documentation).value, expectedDoc);
+					const resolvedItem =
+						resolvedItemResult instanceof vscode.CompletionItem
+							? resolvedItemResult
+							: await resolvedItemResult;
+					if (resolvedItem?.documentation) {
+						const got = (<vscode.MarkdownString>resolvedItem.documentation).value;
+						if (expectedDoc) {
+							assert(
+								got.startsWith(expectedDoc),
+								`expected doc starting with ${expectedDoc}, got ${got}`
+							);
+						} else {
+							assert.equal(got, expectedDoc);
 						}
-						return;
-					}
-					const resolvedItem = await resolvedItemResult;
-					if (resolvedItem) {
-						assert.equal((<vscode.MarkdownString>resolvedItem.documentation).value, expectedDoc);
 					}
 				})
 		);
 		await Promise.all(promises);
 	});
 
-	test('Test Completion Snippets For Functions', async () => {
+	test('Test Completion Snippets For Functions', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'snippets.go'));
 		const baseConfig = getGoConfig();
@@ -1109,6 +1121,9 @@ encountered.
 	});
 
 	test('Test No Completion Snippets For Functions', async () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'nosnippets.go'));
 		const baseConfig = getGoConfig();
@@ -1176,7 +1191,7 @@ encountered.
 	});
 
 	test('Test Completion on unimported packages', async function () {
-		if (isModuleMode) {
+		if (isModuleMode || affectedByIssue832()) {
 			this.skip();
 		}
 		// gocode-gomod does not handle unimported package completion.
@@ -1212,7 +1227,10 @@ encountered.
 		await Promise.all(promises);
 	});
 
-	test('Test Completion on unimported packages (multiple)', async () => {
+	test('Test Completion on unimported packages (multiple)', async function () {
+		if (affectedByIssue832()) {
+			this.skip();
+		}
 		const config = Object.create(getGoConfig(), {
 			gocodeFlags: { value: ['-builtin'] }
 		});

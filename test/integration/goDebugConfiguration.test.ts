@@ -14,6 +14,7 @@ import { rmdirRecursive } from '../../src/util';
 import goEnv = require('../../src/goEnv');
 import { MockCfg } from '../mocks/MockCfg';
 import { extensionId } from '../../src/const';
+import { affectedByIssue832 } from './testutils';
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -630,6 +631,9 @@ suite('Debug Configuration With Invalid Program', () => {
 });
 
 suite('Debug Configuration Converts Relative Paths', () => {
+	if (affectedByIssue832()) {
+		return;
+	}
 	const debugConfigProvider = new GoDebugConfigurationProvider();
 
 	let workspaceDir = '';

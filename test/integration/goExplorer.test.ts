@@ -41,7 +41,7 @@ suite('GoExplorerProvider', () => {
 		const [goenv, gomod] = (await explorer.getChildren(env)) as { key: string; value: string }[];
 		assert.strictEqual(goenv.key, 'GOENV');
 		assert.strictEqual(gomod.key, 'GOMOD');
-		assert.strictEqual(resolveHomeDir(gomod.value), `${fixtureDir}/go.mod`);
+		assert.strictEqual(resolveHomeDir(gomod.value), path.join(fixtureDir, 'go.mod'));
 	});
 
 	test('tools tree', async () => {

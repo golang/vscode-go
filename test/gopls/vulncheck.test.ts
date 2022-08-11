@@ -29,44 +29,60 @@ suite('vulncheck result viewer tests', () => {
 		vscode.Disposable.from(...disposables).dispose();
 	});
 
-	test('populates webview', async function () {
-		this.timeout(5000);
-		const webviewPanel = _register(
-			vscode.window.createWebviewPanel(webviewId, 'title', { viewColumn: vscode.ViewColumn.One }, {})
-		);
-		const source = path.join(fixtureDir, 'test.vulncheck.json');
-		const doc = await vscode.workspace.openTextDocument(source);
-		const canceller = new vscode.CancellationTokenSource();
-		_register(canceller);
+	test('populates webview', async () => {
+		const doTest = async (tag: string) => {
+			const webviewPanel = _register(
+				vscode.window.createWebviewPanel(webviewId, 'title', { viewColumn: vscode.ViewColumn.One }, {})
+			);
+			const source = path.join(fixtureDir, 'test.vulncheck.json');
+			const doc = await vscode.workspace.openTextDocument(source);
+			console.timeLog(tag, 'opened document');
+			const canceller = new vscode.CancellationTokenSource();
+			_register(canceller);
 
-		const watcher = getMessage<{ type: string; target?: string }>(webviewPanel);
+			const watcher = getMessage<{ type: string; target?: string }>(webviewPanel);
 
-		await provider.resolveCustomTextEditor(doc, webviewPanel, canceller.token);
-		webviewPanel.reveal();
+			await provider.resolveCustomTextEditor(doc, webviewPanel, canceller.token);
+			console.timeLog(tag, 'resolved custom text editor');
 
-		// Trigger snapshotContent that sends `snapshot-result` as a result.
-		webviewPanel.webview.postMessage({ type: 'snapshot-request' });
-		const res = await watcher;
+			webviewPanel.reveal();
 
-		assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
-		// res.target type is defined in vulncheckView.js.
-		const { log = '', vulns = '', unaffecting = '' } = JSON.parse(res.target ?? '{}');
+			// Trigger snapshotContent that sends `snapshot-result` as a result.
+			webviewPanel.webview.postMessage({ type: 'snapshot-request' });
+			console.timeLog(tag, 'posted snapshot-request');
 
-		assert(
-			log.includes('Found 1 known vulnerabilities'),
-			`expected "1 known vulnerabilities", got ${JSON.stringify(res.target)}`
-		);
-		assert(
-			vulns.includes('GO-2021-0113') &&
-				vulns.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
-			`expected "Affecting" section, got ${JSON.stringify(res.target)}`
-		);
-		// Unaffecting vulnerability's detail is omitted, but its ID is reported.
-		assert(
-			unaffecting.includes('GO-2021-0000') && unaffecting.includes('golang.org/x/text'),
-			`expected reports about unaffecting vulns, got ${JSON.stringify(res.target)}`
-		);
-	});
+			const res = await watcher;
+			console.timeLog(tag, 'received message');
+
+			assert.deepStrictEqual(res.type, 'snapshot-result', `want snapshot-result, got ${JSON.stringify(res)}`);
+			// res.target type is defined in vulncheckView.js.
+			const { log = '', vulns = '', unaffecting = '' } = JSON.parse(res.target ?? '{}');
+
+			assert(
+				log.includes('Found 1 known vulnerabilities'),
+				`expected "1 known vulnerabilities", got ${JSON.stringify(res.target)}`
+			);
+			assert(
+				vulns.includes('GO-2021-0113') &&
+					vulns.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
+				`expected "Affecting" section, got ${JSON.stringify(res.target)}`
+			);
+			// Unaffecting vulnerability's detail is omitted, but its ID is reported.
+			assert(
+				unaffecting.includes('GO-2021-0000') && unaffecting.includes('golang.org/x/text'),
+				`expected reports about unaffecting vulns, got ${JSON.stringify(res.target)}`
+			);
+		};
+		try {
+			console.time('populates-webview');
+			await doTest('populates-webview');
+		} catch (e) {
+			console.timeLog('populates-webview', `error thrown: ${e}`);
+			throw e;
+		} finally {
+			console.timeEnd('populates-webview');
+		}
+	}).timeout(5_000);
 
 	test('handles empty input', async () => {
 		const webviewPanel = _register(
