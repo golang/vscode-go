@@ -156,7 +156,7 @@
 
 		unaffectingContainer.innerText = '';
 		if (unaffecting.length > 0) {
-			unaffectingContainer.innerHTML = '<hr></hr><p>These vulnerabilities exist in required modules, but no vulnerable symbols are used.<br>No action is required. For more information, visit <a href="https://pkg.go.dev/vuln">https://pkg.go.dev/vuln</a></p>';
+			unaffectingContainer.innerHTML = '<hr></hr><p>The vulnerabilities below are in packages that you import, but your code does not appear to call any vulnerable functions. You may not need to take any action. See <a href="https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck">https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck</a> for details.';
 
 			const details = document.createElement('table');
 			unaffecting.forEach((vuln) => {

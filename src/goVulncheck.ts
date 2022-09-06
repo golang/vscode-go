@@ -102,6 +102,9 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				<title>Vulnerability Report - govulncheck</title>
 			</head>
 			<body>
+			    Vulncheck is an experimental tool.<br>
+				Share feedback at <a href="https://go.dev/s/vsc-vulncheck-feedback">go.dev/s/vsc-vulncheck-feedback</a>.
+
 				<div class="log"></div>
 				<div class="vulns"></div>
 				<div class="unaffecting"></div>
@@ -242,6 +245,7 @@ export class VulncheckProvider {
 		}
 
 		this.channel.clear();
+		this.channel.show();
 		this.channel.appendLine(`cd ${dir}; gopls vulncheck ${pattern}`);
 
 		try {
@@ -352,7 +356,7 @@ export async function vulncheck(
 						reject('analysis cancelled');
 					} else {
 						channel.appendLine(buf);
-						reject(`result in unexpected format: ${e}`);
+						reject('vulncheck failed: see govulncheck OUTPUT');
 					}
 				}
 			});
