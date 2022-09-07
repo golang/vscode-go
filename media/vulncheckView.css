@@ -15,6 +15,20 @@
 	padding-bottom: 1em;
 }
 
+.vuln-icon-info, .vuln-icon-warning {
+	padding-right: 1em;
+	font-size: 14px;
+	display: inline;
+}
+
+.vuln-icon-info {
+	color: var(--vscode-list-warningForeground);
+}
+
+.vuln-icon-warning {
+	color: var(--vscode-list-errorForeground);
+}
+
 .vuln-desc {
 	padding-top: 0.5em;
 	padding-bottom: 0.5em;

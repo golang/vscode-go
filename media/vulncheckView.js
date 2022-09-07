@@ -114,7 +114,7 @@ Found ${affecting?.length || 0} known vulnerabilities.`;
 
 			// TITLE - Vuln ID
 			const title = document.createElement('h2');
-			title.innerHTML = `<a href="${vuln.URL}">${vuln.ID}</a>`;
+			title.innerHTML = `<div class="vuln-icon-warning"><i class="codicon codicon-warning"></i></div><a href="${vuln.URL}">${vuln.ID}</a>`;
 			title.className = 'vuln-title';
 			element.appendChild(title);
 
@@ -191,7 +191,7 @@ for details.
 
 				// TITLE - Vuln ID
 				const title = document.createElement('h2');
-				title.innerHTML = `<a href="${vuln.URL}">${vuln.ID}</a>`;
+				title.innerHTML = `<div class="vuln-icon-info"><i class="codicon codicon-info"></i></div><a href="${vuln.URL}">${vuln.ID}</a>`;
 				title.className = 'vuln-title';
 				element.appendChild(title);
 

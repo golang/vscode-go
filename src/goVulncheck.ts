@@ -81,6 +81,9 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'reset.css'));
 		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vscode.css'));
 		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.css'));
+		const codiconsUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+		);
 
 		// Use a nonce to whitelist which scripts can be run
 		const nonce = getNonce();
@@ -94,11 +97,15 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				Use a content security policy to only allow loading images from https or from our extension directory,
 				and only allow scripts that have a specific nonce.
 				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<!--
+					Use a content security policy to only allow loading specific resources in the webview
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<link href="${styleResetUri}" rel="stylesheet" />
 				<link href="${styleVSCodeUri}" rel="stylesheet" />
 				<link href="${styleMainUri}" rel="stylesheet" />
+				<link href="${codiconsUri}" rel="stylesheet" />
 				<title>Vulnerability Report - govulncheck</title>
 			</head>
 			<body>
