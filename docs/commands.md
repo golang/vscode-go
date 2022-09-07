@@ -263,6 +263,6 @@ Edit the Go Env for the active workspace.
 
 Reset the Go Env for the active workspace.
 
-### `Go: Run Vulncheck (Experimental)`
+### `Go: Run Vulncheck (Preview)`
 
-Run go vulncheck.
+Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.

@@ -523,8 +523,8 @@
       },
       {
         "command": "go.vulncheck.run",
-        "title": "Go: Run Vulncheck (Experimental)",
-        "description": "Run go vulncheck.",
+        "title": "Go: Run Vulncheck (Preview)",
+        "description": "Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.",
         "enablement": "go.goplsIsRunning"
       }
     ],
