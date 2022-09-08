@@ -13,6 +13,7 @@
 	const logContainer = /** @type {HTMLElement} */ (document.querySelector('.log'));
 	const vulnsContainer = /** @type {HTMLElement} */ (document.querySelector('.vulns'));
 	const unaffectingContainer = /** @type {HTMLElement} */ (document.querySelector('.unaffecting'));
+	const debugContainer = /** @type {HTMLElement} */ (document.querySelector('.debug'));
 
 	vulnsContainer.addEventListener('click', (event) => {
 		let node = event && event.target;
@@ -91,28 +92,20 @@
 		}
 		errorContainer.style.display = 'none';
 
-		logContainer.innerHTML = '';
-		const runLog = document.createElement('table');
 		const timeinfo = (startDate, durationMillisec) => {
 			if (!startDate) { return '' }
 			return durationMillisec ? `${startDate} (took ${durationMillisec} msec)` : `${startDate}`;
 		}
+		debugContainer.innerHTML = `Analyzed at: ${timeinfo(json.Start, json.Duration)}`;
 
 		const vulns = json.Vuln || [];
 		const affecting = vulns.filter((v) => v.CallStackSummaries?.length);
 		const unaffecting = vulns.filter((v) => !v.CallStackSummaries?.length);
 
-		runLog.innerHTML = `
-<tr><td>Dir:</td><td>${json.Dir || ''}</td></tr>
-<tr><td>Pattern:</td><td>${json.Pattern || ''}</td></tr>
-<tr><td>Analyzed at:</td><td>${timeinfo(json.Start, json.Duration)}</td></tr>
-<tr><td>Found</td><td>${affecting?.length || 0} known vulnerabilities</td></tr>`;
-		if (unaffecting?.length > 0) {
-			runLog.innerHTML += `<tr><td>Found</td><td>${unaffecting.length} informational vulnerabilities</td></tr>`
-		}
-
-		logContainer.appendChild(runLog);
-
+		logContainer.innerHTML = `
+<pre>cd ${json.Dir || ''}; govulncheck ${json.Pattern || ''}</pre>
+Found ${affecting?.length || 0} known vulnerabilities.`;
+		
 		vulnsContainer.innerHTML = '';
 		affecting.forEach((vuln) => {
 			const element = document.createElement('div');

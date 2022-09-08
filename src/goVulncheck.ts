@@ -108,6 +108,7 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				<div class="log"></div>
 				<div class="vulns"></div>
 				<div class="unaffecting"></div>
+				<div class="debug"></div>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;

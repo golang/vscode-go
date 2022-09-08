@@ -3,12 +3,13 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-.log,
+.debug,
 .info {
 	font-weight: lighter;
 	padding-bottom: 1em;
 }
 
+.log,
 .vuln {
 	text-align: left;
 	padding-bottom: 1em;
