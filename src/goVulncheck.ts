@@ -223,7 +223,7 @@ export class VulncheckProvider {
 	}
 
 	private async runInternal(goCtx: GoExtensionContext) {
-		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
+		const pick = await vscode.window.showQuickPick(['Current Package', 'Current Module', 'Workspace']);
 		let dir, pattern: string;
 		const document = vscode.window.activeTextEditor?.document;
 		switch (pick) {
@@ -240,6 +240,14 @@ export class VulncheckProvider {
 				}
 				dir = path.dirname(document.fileName);
 				pattern = '.';
+				break;
+			case 'Current Module':
+				dir = await moduleDir(document);
+				if (!dir) {
+					vscode.window.showErrorMessage('vulncheck error: no current module');
+					return;
+				}
+				pattern = './...';
 				break;
 			case 'Workspace':
 				dir = await this.activeDir();
@@ -306,6 +314,18 @@ export class VulncheckProvider {
 		}
 		return dir;
 	}
+}
+
+async function moduleDir(document: vscode.TextDocument | undefined) {
+	const docDir = document && document.fileName && path.dirname(document.fileName);
+	if (!docDir) {
+		return;
+	}
+	const modFile = await getGoModFile(vscode.Uri.file(docDir));
+	if (!modFile) {
+		return;
+	}
+	return path.dirname(modFile);
 }
 
 // run `gopls vulncheck`.
