@@ -196,7 +196,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
 	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
 
-	// Go Enviornment switching commands
+	// Go Environment switching commands
 	registerCommand('go.environment.choose', chooseGoEnvironment);
 
 	// Survey related commands
