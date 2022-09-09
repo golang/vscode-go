@@ -1925,7 +1925,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			},
 			(err) => {
 				// No need to repeatedly show the error pop-up when expressions
-				// are continiously reevaluated in the Watch panel, which
+				// are continuously reevaluated in the Watch panel, which
 				// already displays errors.
 				this.sendErrorResponse(
 					response,

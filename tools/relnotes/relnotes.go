@@ -34,7 +34,7 @@ var (
 	filterDirs          = flag.String("dirs", "", "comma-separated list of directories that should be touched for a CL to be considered relevant")
 	sinceCL             = flag.Int("cl", -1, "the gerrit change number of the first CL to include in the output. Only changes submitted more recently than 'cl' will be included.")
 	project             = flag.String("project", "vscode-go", "name of the golang project")
-	exclFile            = flag.String("exclude-from", "", "optional path to changelog MD file. If specified, any 'CL NNNN' occurence in the content will cause that CL to be excluded from this tool's output.")
+	exclFile            = flag.String("exclude-from", "", "optional path to changelog MD file. If specified, any 'CL NNNN' occurrence in the content will cause that CL to be excluded from this tool's output.")
 	semanticVersion     = flag.String("semver", "", "the semantic version of the new release")
 	githubTokenFilePath = flag.String("token", "", "the absolute path to the github token file")
 )
