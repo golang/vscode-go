@@ -81,9 +81,7 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'reset.css'));
 		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vscode.css'));
 		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.css'));
-		const codiconsUri = webview.asWebviewUri(
-			vscode.Uri.joinPath(this.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
-		);
+		const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'codicon.css'));
 
 		// Use a nonce to whitelist which scripts can be run
 		const nonce = getNonce();
