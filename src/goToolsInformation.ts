@@ -12,7 +12,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		replacedByGopls: true,
 		description: 'Auto-completion, does not work with modules',
-		close: gocodeClose
+		close: gocodeClose,
+		defaultVersion: 'v0.0.0-20200405233807-4acdcbdea79d'
 	},
 	'gocode-gomod': {
 		name: 'gocode-gomod',
@@ -21,7 +22,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		replacedByGopls: true,
 		description: 'Auto-completion, works with modules',
-		minimumGoVersion: semver.coerce('1.11')
+		minimumGoVersion: semver.coerce('1.11'),
+		defaultVersion: 'v1.0.0'
 	},
 	'go-outline': {
 		name: 'go-outline',
@@ -29,7 +31,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/ramya-rao-a/go-outline',
 		replacedByGopls: true,
 		isImportant: true,
-		description: 'Go to symbol in file' // GoDocumentSymbolProvider, used by 'run test' codelens
+		description: 'Go to symbol in file', // GoDocumentSymbolProvider, used by 'run test' codelens
+		defaultVersion: 'v1.0.0'
 	},
 	'go-symbols': {
 		name: 'go-symbols',
@@ -37,7 +40,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/acroca/go-symbols',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Go to symbol in workspace'
+		description: 'Go to symbol in workspace',
+		defaultVersion: 'v0.1.1'
 	},
 	'guru': {
 		name: 'guru',
@@ -61,7 +65,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/fatih/gomodifytags',
 		replacedByGopls: false,
 		isImportant: false,
-		description: 'Modify tags on structs'
+		description: 'Modify tags on structs',
+		defaultVersion: 'v1.16.0'
 	},
 	'goplay': {
 		name: 'goplay',
@@ -69,7 +74,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/haya14busa/goplay',
 		replacedByGopls: false,
 		isImportant: false,
-		description: 'The Go playground'
+		description: 'The Go playground',
+		defaultVersion: 'v1.0.0'
 	},
 	'impl': {
 		name: 'impl',
@@ -77,7 +83,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/josharian/impl',
 		replacedByGopls: false,
 		isImportant: false,
-		description: 'Stubs for interfaces'
+		description: 'Stubs for interfaces',
+		defaultVersion: 'v1.1.0'
 	},
 	'gotype-live': {
 		name: 'gotype-live',
@@ -85,7 +92,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/tylerb/gotype-live',
 		replacedByGopls: true, // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
 		isImportant: false,
-		description: 'Show errors as you type'
+		description: 'Show errors as you type',
+		defaultVersion: 'v0.0.0-20200426224044-fc0b594a8b09'
 	},
 	'godef': {
 		name: 'godef',
@@ -93,7 +101,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/rogpeppe/godef',
 		replacedByGopls: true,
 		isImportant: true,
-		description: 'Go to definition'
+		description: 'Go to definition',
+		defaultVersion: 'v1.1.2'
 	},
 	'gogetdoc': {
 		name: 'gogetdoc',
@@ -101,7 +110,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/zmb3/gogetdoc',
 		replacedByGopls: true,
 		isImportant: true,
-		description: 'Go to definition & text shown on hover'
+		description: 'Go to definition & text shown on hover',
+		defaultVersion: 'v0.0.0-20190228002656-b37376c5da6a'
 	},
 	'gofumports': {
 		name: 'gofumports',
@@ -118,7 +128,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'mvdan.cc/gofumpt',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.4.0'
 	},
 	'goimports': {
 		name: 'goimports',
@@ -134,7 +145,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/sqs/goreturns',
 		replacedByGopls: true,
 		isImportant: true,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.0.0-20181028201513-538ac6014518'
 	},
 	'goformat': {
 		name: 'goformat',
@@ -142,7 +154,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'winterdrache.de/goformat/goformat',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Formatter'
+		description: 'Formatter',
+		defaultVersion: 'v0.0.0-20180512004123-256ef38c4271'
 	},
 	'gotests': {
 		name: 'gotests',
@@ -151,7 +164,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Generate unit tests',
-		minimumGoVersion: semver.coerce('1.9')
+		minimumGoVersion: semver.coerce('1.9'),
+		defaultVersion: 'v1.6.0'
 	},
 	// TODO(github.com/golang/vscode-go/issues/189): consider disabling lint when gopls is turned on.
 	'golint': {
@@ -177,14 +191,16 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/golangci/golangci-lint',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Linter'
+		description: 'Linter',
+		defaultVersion: 'v1.49.0'
 	},
 	'revive': {
 		name: 'revive',
 		importPath: 'github.com/mgechev/revive',
 		modulePath: 'github.com/mgechev/revive',
 		isImportant: true,
-		description: 'Linter'
+		description: 'Linter',
+		defaultVersion: 'v1.2.3'
 	},
 	'gopls': {
 		name: 'gopls',
@@ -217,7 +233,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/davidrjenni/reftools',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Fill structs with defaults'
+		description: 'Fill structs with defaults',
+		defaultVersion: 'v0.0.0-20210213085015-40322ffdc2e4'
 	},
 	'godoctor': {
 		name: 'godoctor',
@@ -225,6 +242,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/godoctor/godoctor',
 		replacedByGopls: true,
 		isImportant: false,
-		description: 'Extract to functions and variables'
+		description: 'Extract to functions and variables',
+		defaultVersion: 'v0.0.0-20220520165350-b665b8ff3f35'
 	}
 };
