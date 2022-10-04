@@ -78,7 +78,7 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	const selected = await vscode.window.showQuickPick(
 		allTools.map((x) => {
 			const item: vscode.QuickPickItem = {
-				label: x.name,
+				label: `${x.name}@${x.defaultVersion || 'latest'}`,
 				description: x.description
 			};
 			return item;

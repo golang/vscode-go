@@ -103,7 +103,8 @@ export function containsString(tools: Tool[], toolName: string): boolean {
 }
 
 export function getTool(name: string): Tool {
-	return allToolsInformation[name];
+	const [n] = name.split('@');
+	return allToolsInformation[n];
 }
 
 export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtVersion {
