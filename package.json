@@ -285,6 +285,11 @@
         "category": "Test"
       },
       {
+        "command": "go.test.showProfileFile",
+        "title": "Go: Show pprof file",
+        "description": "Internal use. Open a pprof profile file."
+      },
+      {
         "command": "go.benchmark.package",
         "title": "Go: Benchmark Package",
         "description": "Runs all benchmarks in the package of the current file."
@@ -2673,6 +2678,10 @@
         },
         {
           "command": "go.test.deleteProfile",
+          "when": "false"
+        },
+        {
+          "command": "go.test.showProfileFile",
           "when": "false"
         },
         {

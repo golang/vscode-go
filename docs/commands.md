@@ -79,6 +79,10 @@ Run a test and capture a profile
 
 Delete selected profile
 
+### `Go: Show pprof file`
+
+Internal use. Open a pprof profile file.
+
 ### `Go: Benchmark Package`
 
 Runs all benchmarks in the package of the current file.

@@ -122,6 +122,10 @@ export class GoTestProfiler {
 		await runs[0].show();
 	}
 
+	showFile(file: string) {
+		return show(file);
+	}
+
 	// Tests that have been profiled
 	get tests() {
 		const items = Array.from(this.runs.keys());
@@ -298,7 +302,7 @@ class ProfileTreeDataProvider implements TreeDataProvider<TreeElement> {
 			item.contextValue = 'go:test:file';
 			item.command = {
 				title: 'Open',
-				command: 'vscode.open',
+				command: 'go.test.showProfileFile',
 				arguments: [element.uri]
 			};
 			return item;
