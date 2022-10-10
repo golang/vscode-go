@@ -15,6 +15,7 @@ import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat
 import { goLiveErrorsEnabled } from './language/legacy/goLiveErrors';
 import { allToolsInformation } from './goToolsInformation';
 import { getBinPath, GoVersion } from './util';
+import { toolInstallationEnvironment } from './goEnv';
 
 export interface Tool {
 	name: string;
@@ -86,10 +87,14 @@ export function getImportPathWithVersion(
 			return importPath + '@' + version;
 		}
 	}
-	// staticcheck requires go1.17+ after v0.3.0.
-	// (golang/vscode-go#2162)
-	if (goVersion.lt('1.17') && tool.name === 'staticcheck') {
-		return importPath + '@v0.2.2';
+	if (tool.name === 'staticcheck') {
+		if (goVersion.lt('1.17')) return importPath + '@v0.2.2';
+	}
+	if (tool.name === 'gofumpt') {
+		if (goVersion.lt('1.18')) return importPath + '@v0.2.1';
+	}
+	if (tool.name === 'golangci-lint') {
+		if (goVersion.lt('1.18')) return importPath + '@v1.47.3';
 	}
 	return importPath + '@latest';
 }
