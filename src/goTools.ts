@@ -95,6 +95,9 @@ export function getImportPathWithVersion(
 	if (tool.name === 'golangci-lint') {
 		if (goVersion.lt('1.18')) return importPath + '@v1.47.3';
 	}
+	if (tool.defaultVersion) {
+		return importPath + '@' + tool.defaultVersion;
+	}
 	return importPath + '@latest';
 }
 

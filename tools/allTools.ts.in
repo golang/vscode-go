@@ -30,7 +30,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Go to symbol in file', // GoDocumentSymbolProvider, used by 'run test' codelens
-		defaultVersion: 'v1.0.0'
+		defaultVersion: 'v0.0.0-20210608161538-9736a4bde949'
 	},
 	'go-symbols': {
 		name: 'go-symbols',
