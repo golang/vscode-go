@@ -37,7 +37,7 @@ func Test_pickVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for goMinorVersion, want := range tt.want {
-				if got := pickVersion(goMinorVersion, tt.versions); got != want {
+				if got := pickVersion(goMinorVersion, tt.versions, "latest"); got != want {
 					t.Errorf("pickVersion(go 1.%v) = %v, want %v", goMinorVersion, got, want)
 				}
 			}
