@@ -1633,11 +1633,6 @@
         "go.enableCodeLens": {
           "type": "object",
           "properties": {
-            "references": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead."
-            },
             "runtest": {
               "type": "boolean",
               "default": true,
@@ -1646,7 +1641,6 @@
           },
           "additionalProperties": false,
           "default": {
-            "references": false,
             "runtest": true
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",

@@ -208,13 +208,11 @@ Default:
 Feature level setting to enable/disable code lens for references and run/debug tests
 | Properties | Description |
 | --- | --- |
-| `references` | If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead. <br/> Default: `false` |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
 
 Default:
 ```
 {
-	"references" :	false,
 	"runtest" :	true,
 }
 ```
