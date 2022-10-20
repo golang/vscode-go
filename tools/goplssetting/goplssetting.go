@@ -166,7 +166,7 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("jq run failed (%v): %s", err, &stderr)
 	}
-	return stdout.Bytes(), nil
+	return bytes.TrimSpace(stdout.Bytes()), nil
 }
 
 // asVSCodeSettings converts the given options to match the VS Code settings
