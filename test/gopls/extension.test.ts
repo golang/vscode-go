@@ -116,11 +116,20 @@ class Env {
 	}
 
 	public async teardown() {
-		await this.languageClient?.stop();
-		for (const d of this.disposables) {
-			d.dispose();
+		try {
+			await this.languageClient?.stop(1_000); // 1s timeout
+		} catch (e) {
+			console.log(`failed to stop gopls within 1sec: ${e}`);
+		} finally {
+			if (this.languageClient?.isRunning()) {
+				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
+				this.flushTrace(true);
+			}
+			for (const d of this.disposables) {
+				d.dispose();
+			}
+			this.languageClient = undefined;
 		}
-		this.languageClient = undefined;
 	}
 
 	public async openDoc(...paths: string[]) {
