@@ -56,8 +56,12 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 					return Promise.resolve([]);
 				}
 				if (err) {
+					// TODO(hyangah): investigate why this console.log is not visible at all in dev console.
+					// Ideally, this error message should be accessible through one of the output channels.
 					console.log(err);
-					return Promise.reject('Check the console in dev tools to find errors when formatting.');
+					return Promise.reject(
+						`Check the console in dev tools to find errors when formatting with ${formatTool}`
+					);
 				}
 			}
 		);
@@ -70,13 +74,12 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 		token: vscode.CancellationToken
 	): Thenable<vscode.TextEdit[]> {
 		const formatCommandBinPath = getBinPath(formatTool);
+		if (!path.isAbsolute(formatCommandBinPath)) {
+			promptForMissingTool(formatTool);
+			return Promise.reject('failed to find tool ' + formatTool);
+		}
 
 		return new Promise<vscode.TextEdit[]>((resolve, reject) => {
-			if (!path.isAbsolute(formatCommandBinPath)) {
-				promptForMissingTool(formatTool);
-				return reject();
-			}
-
 			const env = toolExecutionEnvironment();
 			const cwd = path.dirname(document.fileName);
 			let stdout = '';
