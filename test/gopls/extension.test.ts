@@ -286,11 +286,8 @@ suite('Go Extension Tests With Gopls', function () {
 		}
 	});
 
-	test('Nonexistent formatter', async () => {
+	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
 		const config = require('../../src/config');
-		const goConfig = Object.create(getGoConfig(), {
-			formatTool: { value: 'nonexistent' } // this should make the formatter fail.
-		}) as vscode.WorkspaceConfiguration;
 		sandbox.stub(config, 'getGoConfig').returns(goConfig);
 
 		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'), goConfig);
@@ -308,7 +305,26 @@ suite('Go Extension Tests With Gopls', function () {
 			);
 			assert.fail(`formatter unexpectedly succeeded and returned a result: ${JSON.stringify(result)}`);
 		} catch (e) {
-			assert(`${e}`.includes('errors when formatting with nonexistent'), `${e}`);
+			assert(`${e}`.includes(`errors when formatting with ${customFormatter}`), `${e}`);
 		}
+	}
+
+	test('Nonexistent formatter', async () => {
+		const customFormatter = 'nonexistent';
+		const goConfig = Object.create(getGoConfig(), {
+			formatTool: { value: customFormatter } // this should make the formatter fail.
+		}) as vscode.WorkspaceConfiguration;
+
+		await testCustomFormatter(goConfig, customFormatter);
+	});
+
+	test('Custom formatter', async () => {
+		const customFormatter = 'coolCustomFormatter';
+		const goConfig = Object.create(getGoConfig(), {
+			formatTool: { value: 'custom' }, // this should make the formatter fail.
+			alternateTools: { value: { customFormatter: customFormatter } } // this should make the formatter fail.
+		}) as vscode.WorkspaceConfiguration;
+
+		await testCustomFormatter(goConfig, customFormatter);
 	});
 });

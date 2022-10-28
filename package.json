@@ -1206,23 +1206,23 @@
         "go.formatTool": {
           "type": "string",
           "default": "default",
-          "description": "When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.",
+          "markdownDescription": "When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.",
           "scope": "resource",
           "enum": [
             "default",
             "gofmt",
             "goimports",
             "goformat",
-            "gofumpt"
+            "gofumpt",
+            "custom"
           ],
-          "additionalItems": true,
-          "enumDescriptions": [
+          "markdownEnumDescriptions": [
             "If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.",
             "Formats the file according to the standard Go style. (not applicable when the language server is enabled)",
             "Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)",
             "Configurable gofmt, see https://github.com/mbenkmann/goformat.",
-            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. (not applicable when the language server is enabled)",
-            "Applies gofumpt formatting and organizes imports."
+            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)",
+            "Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT."
           ]
         },
         "go.formatFlags": {
@@ -2030,15 +2030,15 @@
               "default": "gopls",
               "description": "Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary."
             },
-            "go-outline": {
-              "type": "string",
-              "default": "go-outline",
-              "description": "Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary."
-            },
             "dlv": {
               "type": "string",
               "default": "dlv",
               "description": "Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary."
+            },
+            "customFormatter": {
+              "type": "string",
+              "default": "",
+              "markdownDescription": "Custom formatter to use instead of the language server. This should be used with the `custom` option in `#go.formatTool#`."
             }
           },
           "additionalProperties": true

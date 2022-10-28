@@ -51,9 +51,9 @@ Default:
 Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.
 | Properties | Description |
 | --- | --- |
+| `customFormatter` | Custom formatter to use instead of the language server. This should be used with the `custom` option in `#go.formatTool#`. <br/> Default: `""` |
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
-| `go-outline` | Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary. <br/> Default: `"go-outline"` |
 | `gopls` | Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary. <br/> Default: `"gopls"` |
 ### `go.autocompleteUnimportedPackages`
 
@@ -221,8 +221,16 @@ Default:
 Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.
 ### `go.formatTool`
 
-When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.<br/>
-Allowed Options: `default`, `gofmt`, `goimports`, `goformat`, `gofumpt`
+When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.<br/>
+Allowed Options:
+
+* `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
+* `gofmt`: Formats the file according to the standard Go style. (not applicable when the language server is enabled)
+* `goimports`: Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)
+* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
+* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)
+* `custom`: Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT.
+
 
 Default: `"default"`
 ### `go.generateTestsFlags`
