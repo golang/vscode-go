@@ -374,6 +374,12 @@ export function declinedToolInstall(toolName: string) {
 
 export async function promptForMissingTool(toolName: string) {
 	const tool = getTool(toolName);
+	if (!tool) {
+		vscode.window.showWarningMessage(
+			`${toolName} is not found. Please make sure it is installed and available in the PATH ${envPath}`
+		);
+		return;
+	}
 
 	// If user has declined to install this tool, don't prompt for it.
 	if (declinedToolInstall(toolName)) {
@@ -444,6 +450,9 @@ export async function promptForUpdatingTool(
 	message?: string
 ) {
 	const tool = getTool(toolName);
+	if (!tool) {
+		return; // not a tool known to us.
+	}
 	const toolVersion = { ...tool, version: newVersion }; // ToolWithVersion
 
 	// If user has declined to update, then don't prompt.
@@ -737,9 +746,9 @@ async function defaultInspectGoToolVersion(
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 
 		   if the binary was built with a dev version of go, in module mode.
-		    /Users/hakim/go/bin/gopls: devel go1.18-41f485b9a7 Mon Jan 31 13:43:52 2022 +0000
+			/Users/hakim/go/bin/gopls: devel go1.18-41f485b9a7 Mon Jan 31 13:43:52 2022 +0000
 			path    golang.org/x/tools/gopls
-            mod     golang.org/x/tools/gopls        v0.8.0-pre.1    h1:6iHi9bCJ8XndQtBEFFG/DX+eTJrf2lKFv4GI3zLeDOo=
+			mod     golang.org/x/tools/gopls        v0.8.0-pre.1    h1:6iHi9bCJ8XndQtBEFFG/DX+eTJrf2lKFv4GI3zLeDOo=
 			...
 		*/
 		const lines = stdout.split('\n', 3);
