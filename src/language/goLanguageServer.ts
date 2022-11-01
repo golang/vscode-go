@@ -17,7 +17,6 @@ import vscode = require('vscode');
 import {
 	CancellationToken,
 	CloseAction,
-	CompletionItemKind,
 	ConfigurationParams,
 	ConfigurationRequest,
 	ErrorAction,
@@ -51,7 +50,7 @@ import {
 } from '../util';
 import { getToolFromToolPath } from '../utils/pathUtils';
 import WebRequest = require('web-request');
-import { FoldingContext } from 'vscode';
+import { CompletionItemKind, FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
 import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
@@ -712,7 +711,7 @@ async function adjustGoplsWorkspaceConfiguration(
 	if (!extensionInfo.isPreview) {
 		return workspaceConfig;
 	}
-	if (!workspaceConfig['allExperiments']) {
+	if (workspaceConfig && !workspaceConfig['allExperiments']) {
 		workspaceConfig['allExperiments'] = true;
 	}
 	return workspaceConfig;
