@@ -38,6 +38,7 @@ NG=$(echo "${ALL_LICENSES}" | jq '
   "Apache-2.0": 1,
   "BSD-2-Clause": 1,
   "BSD-3-Clause": 1,
+  "CC-BY-4.0": 1,
   "ISC": 1,
   "MIT": 1,
   "Unlicense": 1,
