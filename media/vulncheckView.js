@@ -13,6 +13,7 @@
 	const logContainer = /** @type {HTMLElement} */ (document.querySelector('.log'));
 	const vulnsContainer = /** @type {HTMLElement} */ (document.querySelector('.vulns'));
 	const unaffectingContainer = /** @type {HTMLElement} */ (document.querySelector('.unaffecting'));
+	const debugContainer = /** @type {HTMLElement} */ (document.querySelector('.debug'));
 
 	vulnsContainer.addEventListener('click', (event) => {
 		let node = event && event.target;
@@ -36,14 +37,32 @@
 	errorContainer.className = 'error'
 	errorContainer.style.display = 'none'
 
-	function moduleVersion(/** @type {string} */mod, /** @type {string|undefined} */ver) {
-		if (ver) {
-			return `<a href="https://pkg.go.dev/${mod}@${ver}">${mod}@${ver}</a>`;
+	function packageVersion(/** @type {string} */mod, /** @type {string} */pkg, /** @type {string|undefined} */ver) {
+		if (!ver) {
+			return 'N/A';
 		}
-		return 'N/A'
+
+		if (mod === 'stdlib' && ver.startsWith('v')) {
+			ver = `go${ver.slice(1)}`;
+		}
+		return `<a href="https://pkg.go.dev/${pkg}@${ver}">${pkg}@${ver}</a>`;
+	}
+
+	function modVersion(/** @type {string} */mod, /** @type {string|undefined} */ver) {
+		if (!ver) {
+			return 'N/A';
+		}
+
+		if (mod === 'stdlib' && ver.startsWith('v')) {
+			ver = `go${ver.slice(1)}`;
+		}
+		return `<a href="https://pkg.go.dev/${mod}@${ver}">${mod}@${ver}</a>`;
 	}
 
 	function offerUpgrade(/** @type {string} */dir, /** @type {string} */mod, /** @type {string|undefined} */ver) {
+		if (mod === 'stdlib') {
+			return '';
+		}
 		if (dir && mod && ver) {
 			return ` [<span class="vuln-fix" data-target="${mod}@${ver}" data-dir="${dir}">go get</span> | <span class="vuln-fix" data-target="${mod}@latest" data-dir="${dir}">go get latest</span>]`
 		}
@@ -73,24 +92,20 @@
 		}
 		errorContainer.style.display = 'none';
 
-		logContainer.innerHTML = '';
-		const runLog = document.createElement('table');
 		const timeinfo = (startDate, durationMillisec) => {
 			if (!startDate) { return '' }
 			return durationMillisec ? `${startDate} (took ${durationMillisec} msec)` : `${startDate}`;
 		}
+		debugContainer.innerHTML = `Analyzed at: ${timeinfo(json.Start, json.Duration)}`;
 
 		const vulns = json.Vuln || [];
 		const affecting = vulns.filter((v) => v.CallStackSummaries?.length);
 		const unaffecting = vulns.filter((v) => !v.CallStackSummaries?.length);
-		
-		runLog.innerHTML = `
-<tr><td>Dir:</td><td>${json.Dir || ''}</td></tr>
-<tr><td>Pattern:</td><td>${json.Pattern || ''}</td></tr>
-<tr><td>Analyzed at:</td><td>${timeinfo(json.Start, json.Duration)}</td></tr>
-<tr><td>Found ${affecting?.length || 0} known vulnerabilities</td></tr>`;
-		logContainer.appendChild(runLog);
 
+		logContainer.innerHTML = `
+<pre>cd ${json.Dir || ''}; govulncheck ${json.Pattern || ''}</pre>
+Found ${affecting?.length || 0} known vulnerabilities.`;
+		
 		vulnsContainer.innerHTML = '';
 		affecting.forEach((vuln) => {
 			const element = document.createElement('div');
@@ -99,7 +114,7 @@
 
 			// TITLE - Vuln ID
 			const title = document.createElement('h2');
-			title.innerHTML = `<a href="${vuln.URL}">${vuln.ID}</a>`;
+			title.innerHTML = `<div class="vuln-icon-warning"><i class="codicon codicon-warning"></i></div><a href="${vuln.URL}">${vuln.ID}</a>`;
 			title.className = 'vuln-title';
 			element.appendChild(title);
 
@@ -114,8 +129,8 @@
 			details.className = 'vuln-details'
 			details.innerHTML = `
 			<tr><td>Package</td><td>${vuln.PkgPath}</td></tr>
-			<tr><td>Found in Version</td><td>${moduleVersion(vuln.ModPath, vuln.CurrentVersion)}</td></tr>
-			<tr><td>Fixed Version</td><td>${moduleVersion(vuln.ModPath, vuln.FixedVersion)} ${offerUpgrade(json.Dir, vuln.ModPath, vuln.FixedVersion)}</td></tr>
+			<tr><td>Found in Version</td><td>${packageVersion(vuln.ModPath, vuln.PkgPath, vuln.CurrentVersion)}</td></tr>
+			<tr><td>Fixed Version</td><td>${packageVersion(vuln.ModPath, vuln.PkgPath, vuln.FixedVersion)} ${offerUpgrade(json.Dir, vuln.ModPath, vuln.FixedVersion)}</td></tr>
 			<tr><td>Affecting</td><td>${vuln.AffectedPkgs?.join('<br>')}</td></tr>
 			`;
 			element.appendChild(details);
@@ -156,16 +171,50 @@
 
 		unaffectingContainer.innerText = '';
 		if (unaffecting.length > 0) {
-			unaffectingContainer.innerHTML = '<hr></hr><p>These vulnerabilities exist in required modules, but no vulnerable symbols are used.<br>No action is required. For more information, visit <a href="https://pkg.go.dev/vuln">https://pkg.go.dev/vuln</a></p>';
+			const notice = document.createElement('div');
+			notice.className = 'info';
+			notice.innerHTML = `
+<hr></hr>The vulnerabilities below are in packages that you import, 
+but your code does not appear to call any vulnerable functions. 
+You may not need to take any action. See 
+<a href="https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck">
+https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck</a>
+for details.
+`;
 
-			const details = document.createElement('table');
+			unaffectingContainer.appendChild(notice);
+
 			unaffecting.forEach((vuln) => {
-				const row = document.createElement('tr');
-				row.className = 'vuln-details'
-				row.innerHTML = `<tr><td>${vuln.ModPath}</td><td><a href="${vuln.URL}">${vuln.ID}</a></td></tr>`;
-				details.appendChild(row);
+				const element = document.createElement('div');
+				element.className = 'vuln';
+				unaffectingContainer.appendChild(element);
+
+				// TITLE - Vuln ID
+				const title = document.createElement('h2');
+				title.innerHTML = `<div class="vuln-icon-info"><i class="codicon codicon-info"></i></div><a href="${vuln.URL}">${vuln.ID}</a>`;
+				title.className = 'vuln-title';
+				element.appendChild(title);
+
+				// DESCRIPTION - short text (aliases)
+				const desc = document.createElement('p');
+				desc.innerHTML = Array.isArray(vuln.Aliases) && vuln.Aliases.length ? `${vuln.Details} (${vuln.Aliases.join(', ')})` : vuln.Details;
+				desc.className = 'vuln-desc';
+				element.appendChild(desc);
+
+				// DETAILS - dump of all details
+				// TODO(hyangah):
+				//   - include the current version & package name when gopls provides them.
+				//   - offer upgrade like affect vulnerabilities. We will need to install another event listener
+				//     on unaffectingContainer. See vulnsContainer.addEventListener.
+				const details = document.createElement('table');
+				details.className = 'vuln-details'
+				if (vuln.FixedVersion) {
+					details.innerHTML = `<tr><td>Fixed Version</td><td>${modVersion(vuln.ModPath, vuln.FixedVersion)}</td></tr>`;
+				} else {
+					details.innerHTML = `<tr><td>Fixed Version</td><td>unavailable for ${vuln.ModPath}</td></tr>`;
+				}
+				element.appendChild(details);
 			});
-			unaffectingContainer.appendChild(details);
 		}
 	}
 

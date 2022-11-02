@@ -130,6 +130,12 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(
+			vscode.commands.registerCommand('go.test.showProfileFile', async (file: Uri) => {
+				return inst.profiler.showFile(file.fsPath);
+			})
+		);
+
+		context.subscriptions.push(
 			workspace.onDidChangeConfiguration(async (x) => {
 				try {
 					await inst.didChangeConfiguration(x);

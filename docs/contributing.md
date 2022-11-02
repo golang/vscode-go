@@ -69,13 +69,13 @@ You can run `npm run lint` on the command-line to check for lint errors in your 
 
 ### Run
 
-To run the extension with your patch, open the Run view (`Ctrl+Shift+D`), select `Launch Extension`, and click the Play button (`F5`).
+To run the extension with your patch, open the Run view (`Ctrl+Shift+D` or `⌘+⇧+D`), select `Launch Extension`, and click the Play button (`F5`).
 
 This will open a new VS Code window with the title `[Extension Development Host]`. You can then open a folder that contains Go code and try out your changes.
 
 You can also set breakpoints to debug your change.
 
-If you make subsequent edits in the codebase, you can reload (`Ctrl+R`) the `[Extension Development Host]` instance of VS Code, which will load the new code. The debugger will automatically reattach.
+If you make subsequent edits in the codebase, you can reload (`Ctrl+R` or `⌘+R`) the `[Extension Development Host]` instance of VS Code, which will load the new code. The debugger will automatically reattach.
 
 ## Test
 

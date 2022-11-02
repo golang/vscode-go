@@ -81,6 +81,7 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'reset.css'));
 		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vscode.css'));
 		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.css'));
+		const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'codicon.css'));
 
 		// Use a nonce to whitelist which scripts can be run
 		const nonce = getNonce();
@@ -94,17 +95,25 @@ export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvi
 				Use a content security policy to only allow loading images from https or from our extension directory,
 				and only allow scripts that have a specific nonce.
 				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<!--
+					Use a content security policy to only allow loading specific resources in the webview
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<link href="${styleResetUri}" rel="stylesheet" />
 				<link href="${styleVSCodeUri}" rel="stylesheet" />
 				<link href="${styleMainUri}" rel="stylesheet" />
+				<link href="${codiconsUri}" rel="stylesheet" />
 				<title>Vulnerability Report - govulncheck</title>
 			</head>
 			<body>
+			    Vulncheck is an experimental tool.<br>
+				Share feedback at <a href="https://go.dev/s/vsc-vulncheck-feedback">go.dev/s/vsc-vulncheck-feedback</a>.
+
 				<div class="log"></div>
 				<div class="vulns"></div>
 				<div class="unaffecting"></div>
+				<div class="debug"></div>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
@@ -212,7 +221,7 @@ export class VulncheckProvider {
 	}
 
 	private async runInternal(goCtx: GoExtensionContext) {
-		const pick = await vscode.window.showQuickPick(['Current Package', 'Workspace']);
+		const pick = await vscode.window.showQuickPick(['Current Package', 'Current Module', 'Workspace']);
 		let dir, pattern: string;
 		const document = vscode.window.activeTextEditor?.document;
 		switch (pick) {
@@ -230,6 +239,14 @@ export class VulncheckProvider {
 				dir = path.dirname(document.fileName);
 				pattern = '.';
 				break;
+			case 'Current Module':
+				dir = await moduleDir(document);
+				if (!dir) {
+					vscode.window.showErrorMessage('vulncheck error: no current module');
+					return;
+				}
+				pattern = './...';
+				break;
 			case 'Workspace':
 				dir = await this.activeDir();
 				pattern = './...';
@@ -242,6 +259,7 @@ export class VulncheckProvider {
 		}
 
 		this.channel.clear();
+		this.channel.show();
 		this.channel.appendLine(`cd ${dir}; gopls vulncheck ${pattern}`);
 
 		try {
@@ -294,6 +312,18 @@ export class VulncheckProvider {
 		}
 		return dir;
 	}
+}
+
+async function moduleDir(document: vscode.TextDocument | undefined) {
+	const docDir = document && document.fileName && path.dirname(document.fileName);
+	if (!docDir) {
+		return;
+	}
+	const modFile = await getGoModFile(vscode.Uri.file(docDir));
+	if (!modFile) {
+		return;
+	}
+	return path.dirname(modFile);
 }
 
 // run `gopls vulncheck`.
@@ -352,7 +382,7 @@ export async function vulncheck(
 						reject('analysis cancelled');
 					} else {
 						channel.appendLine(buf);
-						reject(`result in unexpected format: ${e}`);
+						reject('vulncheck failed: see govulncheck OUTPUT');
 					}
 				}
 			});

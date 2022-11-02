@@ -208,13 +208,11 @@ Default:
 Feature level setting to enable/disable code lens for references and run/debug tests
 | Properties | Description |
 | --- | --- |
-| `references` | If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead. <br/> Default: `false` |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
 
 Default:
 ```
 {
-	"references" :	false,
 	"runtest" :	true,
 }
 ```
@@ -612,16 +610,20 @@ relative to the workspace folder. They are evaluated in order, and
 the last filter that applies to a path controls whether it is included.
 The path prefix can be empty, so an initial `-` excludes everything.
 
+DirectoryFilters also supports the `**` operator to match 0 or more directories.
+
 Examples:
 
-Exclude node_modules: `-node_modules`
+Exclude node_modules at current depth: `-node_modules`
+
+Exclude node_modules at any depth: `-**/node_modules`
 
 Include only project_a: `-` (exclude everything), `+project_a`
 
 Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
 
-Default: `["-node_modules"]`
+Default: `["-**/node_modules"]`
 ### `build.env`
 
 env adds environment variables to external commands run by `gopls`, most notably `go list`.
@@ -653,8 +655,10 @@ Default: `true`
 
 (Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
 package metadata to provide editor features if the go command fails to
-load packages for some reason (like an invalid go.mod file). This will
-eventually be the default behavior, and this setting will be removed.
+load packages for some reason (like an invalid go.mod file).
+
+Deprecated: this setting is deprecated and will be removed in a future
+version of gopls (https://go.dev/issue/55333).
 
 
 Default: `false`
@@ -662,6 +666,9 @@ Default: `false`
 
 (Experimental) experimentalWorkspaceModule opts a user into the experimental support
 for multi-module workspaces.
+
+Deprecated: this feature is deprecated and will be removed in a future
+version of gopls (https://go.dev/issue/55331).
 
 
 Default: `false`
@@ -681,6 +688,29 @@ References and Rename will miss results in such packages.
 
 
 Default: `"Normal"`
+### `build.standaloneTags`
+
+standaloneTags specifies a set of build constraints that identify
+individual Go source files that make up the entire main package of an
+executable.
+
+A common example of standalone main files is the convention of using the
+directive `//go:build ignore` to denote files that are not intended to be
+included in any package, for example because they are invoked directly by
+the developer using `go run`.
+
+Gopls considers a file to be a standalone main file if and only if it has
+package name "main" and has a build directive of the exact form
+"//go:build tag" or "// +build tag", where tag is among the list of tags
+configured by this setting. Notably, if the build constraint is more
+complicated than a simple tag (such as the composite constraint
+`//go:build tag && go1.18`), the file is not considered to be a standalone
+main file.
+
+This setting is only supported when gopls is built with Go 1.16 or later.
+
+
+Default: `["ignore"]`
 ### `build.templateExtensions`
 
 templateExtensions gives the extensions of file names that are treateed
@@ -768,8 +798,8 @@ Default: `false`
 
 analyses specify analyses that the user would like to enable or disable.
 A map of the names of analysis passes that should be enabled/disabled.
-A full list of analyzers that gopls uses can be found
-[here](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).
+A full list of analyzers that gopls uses can be found in
+[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).
 
 Example Usage:
 
@@ -802,7 +832,7 @@ Example Usage:
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
 | `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> <br/> Default: `true` |
 | `infertypeargs` | check for unnecessary type arguments in call expressions <br/> Explicit type arguments may be omitted from call expressions if they can be inferred from function arguments, or from other type arguments: <br/> <pre>func f[T any](T) {}<br/><br/><br/>func _() {<br/>	f[string]("foo") // string could be inferred<br/>}</pre><br/> <br/> Default: `true` |
-| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer checks for references to loop variables from within a function literal inside the loop body. It checks only instances where the function literal is called in a defer or go statement that is the last statement in the loop body, as otherwise we would need whole program analysis. <br/> For example: <br/> <pre>for i, v := range s {<br/>	go func() {<br/>		println(i, v) // not what you might expect<br/>	}()<br/>}</pre><br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
+| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer checks for references to loop variables from within a function literal inside the loop body. It checks for patterns where access to a loop variable is known to escape the current loop iteration:  1. a call to go or defer at the end of the loop body  2. a call to golang.org/x/sync/errgroup.Group.Go at the end of the loop body <br/> The analyzer only considers references in the last statement of the loop body as it is not deep enough to understand the effects of subsequent statements which might render the reference benign. <br/> For example: <br/> <pre>for i, v := range s {<br/>	go func() {<br/>		println(i, v) // not what you might expect<br/>	}()<br/>}</pre><br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
 | `lostcancel` | check cancel func returned by context.WithCancel is called <br/> The cancellation function returned by context.WithCancel, WithTimeout, and WithDeadline must be called or the new context will remain live until its parent context is cancelled. (The background context is never cancelled.) <br/> Default: `true` |
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
 | `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> <br/> Default: `false` |
@@ -863,11 +893,16 @@ file system notifications.
 
 This option must be set to a valid duration string, for example `"100ms"`.
 
+Deprecated: this setting is deprecated and will be removed in a future
+version of gopls (https://go.dev/issue/55332)
+
 
 Default: `"0s"`
 ### `ui.diagnostic.staticcheck`
 
 (Experimental) staticcheck enables additional analyses from staticcheck.io.
+These analyses are documented on
+[Staticcheck's website](https://staticcheck.io/docs/checks/).
 
 
 Default: `false`

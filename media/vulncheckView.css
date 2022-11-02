@@ -3,13 +3,30 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-.log {
+.debug,
+.info {
 	font-weight: lighter;
+	padding-bottom: 1em;
 }
 
+.log,
 .vuln {
 	text-align: left;
 	padding-bottom: 1em;
+}
+
+.vuln-icon-info, .vuln-icon-warning {
+	padding-right: 1em;
+	font-size: 14px;
+	display: inline;
+}
+
+.vuln-icon-info {
+	color: var(--vscode-list-warningForeground);
+}
+
+.vuln-icon-warning {
+	color: var(--vscode-list-errorForeground);
 }
 
 .vuln-desc {

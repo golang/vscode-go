@@ -35,6 +35,7 @@ This document describes the features supported by this extension.
   * [Run your code](#run-your-code)
   * [Test and benchmark](#test-and-benchmark)
   * [Code coverage](#code-coverage)
+  * [Profiling](#profiling)
 * [Debug your code](#debugging)
 * [Other](#other)
   * [Go Playground](#go-playground)
@@ -220,13 +221,21 @@ Behind the scenes, the `Debug: Start without Debugging` command calls `go run`. 
 
 ### Test and benchmark
 
-[Test UI](https://code.visualstudio.com/api/extension-guides/testing) and [Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests and benchmarks for a given function, file, package, or workspace. Alternatively, the same functionality is available through a set of commands: [`Go: Test Function At Cursor`](commands.md#go-test-function-at-cursor), [`Go: Test File`](commands.md#go-test-file), [`Go: Test Package`](commands.md#go-test-package), and [`Go: Test All Packages in Workspace`](commands.md#go-test-all-packages-in-workspace).
+[Test UI](https://code.visualstudio.com/api/extension-guides/testing) and [Code lenses](https://code.visualstudio.com/blogs/2017/02/12/code-lens-roundup) allow users to easily run tests, benchmarks, and profiles for a given function, file, package, or workspace.
+
+Alternatively, the same functionality is available through a set of commands: [`Go: Test Function At Cursor`](commands.md#go-test-function-at-cursor), [`Go: Test File`](commands.md#go-test-file), [`Go: Test Package`](commands.md#go-test-package), and [`Go: Test All Packages in Workspace`](commands.md#go-test-all-packages-in-workspace).
 
 <div style="text-align: center;"><img src="images/testexplorer.gif" alt="Testing UI" style="width: 75%"> </div>
 
 ### Code Coverage
 
 Show code coverage in the editor, either after running a test or on-demand. This can be done via the commands: [`Go: Apply Cover Profile`](commands.md#go-apply-cover-profile) and [`Go: Toggle Test Coverage in Current Package`](commands.md#go-toggle-test-coverage-in-current-package).
+
+### Profiling
+
+"Go Test: Profile" menu in [Test UI](https://code.visualstudio.com/api/extension-guides/testing) collects CPU/Memory/Mutex profiles and allows visualizing them using pprof (`go tool pprof`).
+
+<div style="text-align: center;"><img src="images/testexplorer-pprof.gif" alt="Profiling" style="width: 75%"> </div>
 
 ## [Debugging](debugging.md)
 

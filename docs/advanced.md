@@ -61,6 +61,11 @@ etc.). The `"go.alternateTools"` setting provides a way to configure the
 extension to use different tool location, for example a wrapper with a different
 name.
 
+The extension uses pinned versions of command-line tools. See the pinned versions
+in tools information
+[here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts).
+To use an alternate version of a tool install it manually with with go install.
+
 ## Using a custom linter
 
 A commonly customized feature is the linter, which is the tool used to provide

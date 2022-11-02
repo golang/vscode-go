@@ -48,6 +48,7 @@
   },
   "extensionDependencies": [],
   "dependencies": {
+    "@vscode/codicons": "0.0.32",
     "diff": "4.0.2",
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
@@ -77,7 +78,7 @@
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
     "gts": "4.0.0",
-    "mocha": "9.2.0",
+    "mocha": "9.2.2",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
     "ts-loader": "7.0.5",
@@ -281,6 +282,11 @@
         "shortTitle": "Delete",
         "description": "Delete selected profile",
         "category": "Test"
+      },
+      {
+        "command": "go.test.showProfileFile",
+        "title": "Go: Show pprof file",
+        "description": "Internal use. Open a pprof profile file."
       },
       {
         "command": "go.benchmark.package",
@@ -522,8 +528,8 @@
       },
       {
         "command": "go.vulncheck.run",
-        "title": "Go: Run Vulncheck (Experimental)",
-        "description": "Run go vulncheck.",
+        "title": "Go: Run Vulncheck (Preview)",
+        "description": "Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.",
         "enablement": "go.goplsIsRunning"
       }
     ],
@@ -1631,11 +1637,6 @@
         "go.enableCodeLens": {
           "type": "object",
           "properties": {
-            "references": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead."
-            },
             "runtest": {
               "type": "boolean",
               "default": true,
@@ -1644,7 +1645,6 @@
           },
           "additionalProperties": false,
           "default": {
-            "references": false,
             "runtest": true
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
@@ -2073,9 +2073,9 @@
             },
             "build.directoryFilters": {
               "type": "array",
-              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nDirectoryFilters also supports the `**` operator to match 0 or more directories.\n\nExamples:\n\nExclude node_modules at current depth: `-node_modules`\n\nExclude node_modules at any depth: `-**/node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
               "default": [
-                "-node_modules"
+                "-**/node_modules"
               ],
               "scope": "resource"
             },
@@ -2098,13 +2098,13 @@
             },
             "build.experimentalUseInvalidMetadata": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file). This will\neventually be the default behavior, and this setting will be removed.\n",
+              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file).\n\nDeprecated: this setting is deprecated and will be removed in a future\nversion of gopls (https://go.dev/issue/55333).\n",
               "default": false,
               "scope": "resource"
             },
             "build.experimentalWorkspaceModule": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
+              "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n\nDeprecated: this feature is deprecated and will be removed in a future\nversion of gopls (https://go.dev/issue/55331).\n",
               "default": false,
               "scope": "resource"
             },
@@ -2120,6 +2120,14 @@
                 ""
               ],
               "default": "Normal",
+              "scope": "resource"
+            },
+            "build.standaloneTags": {
+              "type": "array",
+              "markdownDescription": "standaloneTags specifies a set of build constraints that identify\nindividual Go source files that make up the entire main package of an\nexecutable.\n\nA common example of standalone main files is the convention of using the\ndirective `//go:build ignore` to denote files that are not intended to be\nincluded in any package, for example because they are invoked directly by\nthe developer using `go run`.\n\nGopls considers a file to be a standalone main file if and only if it has\npackage name \"main\" and has a build directive of the exact form\n\"//go:build tag\" or \"// +build tag\", where tag is among the list of tags\nconfigured by this setting. Notably, if the build constraint is more\ncomplicated than a simple tag (such as the composite constraint\n`//go:build tag && go1.18`), the file is not considered to be a standalone\nmain file.\n\nThis setting is only supported when gopls is built with Go 1.16 or later.\n",
+              "default": [
+                "ignore"
+              ],
               "scope": "resource"
             },
             "build.templateExtensions": {
@@ -2223,7 +2231,7 @@
             },
             "ui.diagnostic.analyses": {
               "type": "object",
-              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found\n[here](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
+              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found in\n[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
               "scope": "resource",
               "properties": {
                 "asmdecl": {
@@ -2318,7 +2326,7 @@
                 },
                 "loopclosure": {
                   "type": "boolean",
-                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer checks for references to loop variables from within a\nfunction literal inside the loop body. It checks only instances where\nthe function literal is called in a defer or go statement that is the\nlast statement in the loop body, as otherwise we would need whole\nprogram analysis.\n\nFor example:\n\n\tfor i, v := range s {\n\t\tgo func() {\n\t\t\tprintln(i, v) // not what you might expect\n\t\t}()\n\t}\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
+                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer checks for references to loop variables from within a function\nliteral inside the loop body. It checks for patterns where access to a loop\nvariable is known to escape the current loop iteration:\n 1. a call to go or defer at the end of the loop body\n 2. a call to golang.org/x/sync/errgroup.Group.Go at the end of the loop body\n\nThe analyzer only considers references in the last statement of the loop body\nas it is not deep enough to understand the effects of subsequent statements\nwhich might render the reference benign.\n\nFor example:\n\n\tfor i, v := range s {\n\t\tgo func() {\n\t\t\tprintln(i, v) // not what you might expect\n\t\t}()\n\t}\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
                   "default": true
                 },
                 "lostcancel": {
@@ -2498,13 +2506,13 @@
             },
             "ui.diagnostic.experimentalWatchedFileDelay": {
               "type": "string",
-              "markdownDescription": "(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits\nfor additional workspace/didChangeWatchedFiles notifications to arrive,\nbefore processing all such notifications in a single batch. This is\nintended for use by LSP clients that don't support their own batching of\nfile system notifications.\n\nThis option must be set to a valid duration string, for example `\"100ms\"`.\n",
+              "markdownDescription": "(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits\nfor additional workspace/didChangeWatchedFiles notifications to arrive,\nbefore processing all such notifications in a single batch. This is\nintended for use by LSP clients that don't support their own batching of\nfile system notifications.\n\nThis option must be set to a valid duration string, for example `\"100ms\"`.\n\nDeprecated: this setting is deprecated and will be removed in a future\nversion of gopls (https://go.dev/issue/55332)\n",
               "default": "0s",
               "scope": "resource"
             },
             "ui.diagnostic.staticcheck": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\n",
+              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\nThese analyses are documented on\n[Staticcheck's website](https://staticcheck.io/docs/checks/).\n",
               "default": false,
               "scope": "resource"
             },
@@ -2669,6 +2677,10 @@
         },
         {
           "command": "go.test.deleteProfile",
+          "when": "false"
+        },
+        {
+          "command": "go.test.showProfileFile",
           "when": "false"
         },
         {

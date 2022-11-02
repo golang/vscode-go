@@ -86,10 +86,17 @@ export function getImportPathWithVersion(
 			return importPath + '@' + version;
 		}
 	}
-	// staticcheck requires go1.17+ after v0.3.0.
-	// (golang/vscode-go#2162)
-	if (goVersion.lt('1.17') && tool.name === 'staticcheck') {
-		return importPath + '@v0.2.2';
+	if (tool.name === 'staticcheck') {
+		if (goVersion.lt('1.17')) return importPath + '@v0.2.2';
+	}
+	if (tool.name === 'gofumpt') {
+		if (goVersion.lt('1.18')) return importPath + '@v0.2.1';
+	}
+	if (tool.name === 'golangci-lint') {
+		if (goVersion.lt('1.18')) return importPath + '@v1.47.3';
+	}
+	if (tool.defaultVersion) {
+		return importPath + '@' + tool.defaultVersion;
 	}
 	return importPath + '@latest';
 }
@@ -103,7 +110,8 @@ export function containsString(tools: Tool[], toolName: string): boolean {
 }
 
 export function getTool(name: string): Tool {
-	return allToolsInformation[name];
+	const [n] = name.split('@');
+	return allToolsInformation[n];
 }
 
 export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtVersion {

@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,8 +24,9 @@ type finalVersion struct {
 }
 
 var tools = []struct {
-	path string
-	dest string
+	path          string
+	dest          string
+	preferPreview bool
 	// versions is a list of supportedVersions sorted by
 	// goMinorVersion. If we want to pin a tool's version
 	// add a fake entry with a large goMinorVersion
@@ -33,32 +35,32 @@ var tools = []struct {
 	versions []finalVersion
 }{
 	// TODO: auto-generate based on allTools.ts.in.
-	{"golang.org/x/tools/gopls", "", nil},
-	{"github.com/acroca/go-symbols", "", nil},
-	{"github.com/cweill/gotests/gotests", "", nil},
-	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", nil},
-	{"github.com/haya14busa/goplay/cmd/goplay", "", nil},
-	{"github.com/stamblerre/gocode", "gocode-gomod", nil},
-	{"github.com/mdempsky/gocode", "", nil},
-	{"github.com/ramya-rao-a/go-outline", "", nil},
-	{"github.com/rogpeppe/godef", "", nil},
-	{"github.com/sqs/goreturns", "", nil},
-	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", nil},
-	{"github.com/zmb3/gogetdoc", "", nil},
-	{"honnef.co/go/tools/cmd/staticcheck", "", []finalVersion{{16, "v0.2.2"}}},
-	{"golang.org/x/tools/cmd/gorename", "", nil},
-	{"github.com/go-delve/delve/cmd/dlv", "", nil},
+	{"golang.org/x/tools/gopls", "", true, nil},
+	{"github.com/acroca/go-symbols", "", false, nil},
+	{"github.com/cweill/gotests/gotests", "", false, nil},
+	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
+	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
+	{"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
+	{"github.com/mdempsky/gocode", "", false, nil},
+	{"github.com/ramya-rao-a/go-outline", "", false, nil},
+	{"github.com/rogpeppe/godef", "", false, nil},
+	{"github.com/sqs/goreturns", "", false, nil},
+	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
+	{"github.com/zmb3/gogetdoc", "", false, nil},
+	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}}},
+	{"golang.org/x/tools/cmd/gorename", "", false, nil},
+	{"github.com/go-delve/delve/cmd/dlv", "", false, nil},
 }
 
 // pickVersion returns the version to install based on the supported
 // version list.
-func pickVersion(goMinorVersion int, versions []finalVersion) string {
+func pickVersion(goMinorVersion int, versions []finalVersion, defaultVersion string) string {
 	for _, v := range versions {
 		if goMinorVersion <= v.goMinorVersion {
 			return v.version
 		}
 	}
-	return "latest"
+	return defaultVersion
 }
 
 func main() {
@@ -137,7 +139,7 @@ func installTools(binDir string, goMinorVersion int) error {
 	}
 	env := append(os.Environ(), "GO111MODULE=on")
 	for _, tool := range tools {
-		ver := pickVersion(goMinorVersion, tool.versions)
+		ver := pickVersion(goMinorVersion, tool.versions, pickLatest(tool.path, tool.preferPreview))
 		path := tool.path + "@" + ver
 		cmd := exec.Command("go", installCmd, path)
 		cmd.Env = env
@@ -165,4 +167,19 @@ func binName(toolPath string) string {
 		return b + ".exe"
 	}
 	return b
+}
+
+func pickLatest(toolPath string, preferPreview bool) string {
+	if !preferPreview {
+		return "latest" // should we pick the pinned version in allTools.ts.in?
+	}
+	out, err := exec.Command("go", "list", "-m", "--versions", toolPath).Output()
+	if err != nil {
+		exitf("failed to find a suitable version for %q: %v", toolPath, err)
+	}
+	versions := bytes.Split(out, []byte(" "))
+	if len(versions) == 0 {
+		exitf("failed to find a suitable version for %q: %s", toolPath, out)
+	}
+	return string(bytes.TrimSpace(versions[len(versions)-1]))
 }

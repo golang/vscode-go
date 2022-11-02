@@ -116,11 +116,20 @@ class Env {
 	}
 
 	public async teardown() {
-		await this.languageClient?.stop();
-		for (const d of this.disposables) {
-			d.dispose();
+		try {
+			await this.languageClient?.stop(1_000); // 1s timeout
+		} catch (e) {
+			console.log(`failed to stop gopls within 1sec: ${e}`);
+		} finally {
+			if (this.languageClient?.isRunning()) {
+				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
+				this.flushTrace(true);
+			}
+			for (const d of this.disposables) {
+				d.dispose();
+			}
+			this.languageClient = undefined;
 		}
-		this.languageClient = undefined;
 	}
 
 	public async openDoc(...paths: string[]) {
@@ -205,8 +214,12 @@ suite('Go Extension Tests With Gopls', function () {
 
 	test('Completion middleware', async () => {
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
-		const testCases: [string, vscode.Position, string][] = [['fmt.P<>', new vscode.Position(19, 6), 'Print']];
-		for (const [name, position, wantFilterText] of testCases) {
+		const testCases: [string, vscode.Position, string, vscode.CompletionItemKind][] = [
+			['fmt.P<>', new vscode.Position(19, 6), 'Print', vscode.CompletionItemKind.Function],
+			['xyz.H<>', new vscode.Position(41, 13), 'Hello', vscode.CompletionItemKind.Method]
+		];
+
+		for (const [name, position, wantFilterText, wantItemKind] of testCases) {
 			let list: vscode.CompletionList<vscode.CompletionItem> | undefined;
 			// Query completion items. We expect the hard coded filter text hack
 			// has been applied and gopls returns an incomplete list by default
@@ -237,6 +250,7 @@ suite('Go Extension Tests With Gopls', function () {
 			// Alternative is to directly query the language client, but that will
 			// prevent us from detecting problems caused by issues between the language
 			// client library and the vscode.
+			let itemKindFound = false;
 			for (const item of list.items) {
 				if (item.kind === vscode.CompletionItemKind.Snippet) {
 					continue;
@@ -248,6 +262,9 @@ suite('Go Extension Tests With Gopls', function () {
 						`(got ${item.filterText ?? item.label}, want ${wantFilterText})\n` +
 						`${JSON.stringify(item, null, 2)}`
 				);
+				if (item.kind === wantItemKind) {
+					itemKindFound = true;
+				}
 				if (
 					item.kind === vscode.CompletionItemKind.Method ||
 					item.kind === vscode.CompletionItemKind.Function
@@ -258,6 +275,7 @@ suite('Go Extension Tests With Gopls', function () {
 					);
 				}
 			}
+			assert(itemKindFound, `failed to find expected item kind ${wantItemKind}: got ${JSON.stringify(list)}`);
 		}
 	});
 

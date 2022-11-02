@@ -79,6 +79,10 @@ Run a test and capture a profile
 
 Delete selected profile
 
+### `Go: Show pprof file`
+
+Internal use. Open a pprof profile file.
+
 ### `Go: Benchmark Package`
 
 Runs all benchmarks in the package of the current file.
@@ -263,6 +267,6 @@ Edit the Go Env for the active workspace.
 
 Reset the Go Env for the active workspace.
 
-### `Go: Run Vulncheck (Experimental)`
+### `Go: Run Vulncheck (Preview)`
 
-Run go vulncheck.
+Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.

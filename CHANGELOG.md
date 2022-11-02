@@ -1,3 +1,21 @@
+## v0.36.0 - 4 Nov, 2022
+A list of all issues and changes can be found in the [v0.36.0 milestone](https://github.com/golang/vscode-go/milestone/52) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.2...v0.36.0).
+
+### Changes
+- From this release, the extension will download specific versions of 3rd party tools installed with the "Go: Install/Update Tools" command. This is to enhance stability and security. The "Go: Install/Upate Tools" command will present the versions the extension will install. To install a different version of a tool, use `go install` command from the terminal instead. ([Issue 1850](https://github.com/golang/vscode-go/issues/1850))
+- The default gopls version was updated to v0.10.1 and the settings were updated accordingly. See the [release note of gopls v0.10.0](https://github.com/golang/tools/releases/tag/gopls%2Fv0.10.0) to learn about notable changes and new features.
+- Typing `vars` will now offer a completion snippet that expands it to a `var (...)` block containing multiple variables. ([PR 2481](https://github.com/golang/vscode-go/pull/2481))
+- The setting to enable the "references" codelens, `go.enableCodeLens.references`, is now hidden. The feature remained broken for a while, so we plan to remove it in a future release. Please see [Issue 2509](https://github.com/golang/vscode-go/issues#2509) for details.
+- When debugging tests, the extension will open the "Debug Console". ([Issue 2409](https://github.com/golang/vscode-go/issues/2409))
+
+### Fixes
+- Fixed [Issue 2525](https://github.com/golang/vscode-go/issues/2525) that prevented triggering of parameter hints after method autocompletion. Users can enable/disable this parameter hints popup with the `"editor.parameterHints.enabled"` setting.
+- Fixed [test profie feature](https://github.com/golang/vscode-go/wiki/features#profiling) ([CL 440530](https://go-review.googlesource.com/c/vscode-go/+/440530)).
+- Removed dev dependency affected by CVE-2022-3517.
+
+### Thanks
+Thank you for your contribution, @suzmue, @fatoboist, @cuishuang, @jamalc, @karthikraobr, @pjweinbgo, @firelizzard18, @hyangah!
+
 ## v0.35.2 - 15 Aug, 2022
 A list of all issues and changes can be found in the [v0.35.2 milestone](https://github.com/golang/vscode-go/milestone/51) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.1...v0.35.2).
 

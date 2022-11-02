@@ -196,7 +196,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.toggle.gc_details', commands.toggleGCDetails);
 	registerCommand('go.apply.coverprofile', commands.applyCoverprofile);
 
-	// Go Enviornment switching commands
+	// Go Environment switching commands
 	registerCommand('go.environment.choose', chooseGoEnvironment);
 
 	// Survey related commands
@@ -371,27 +371,63 @@ function lintDiagnosticCollectionName(lintToolName: string) {
 }
 
 async function showDeprecationWarning() {
-	// Present a warning about the deprecation of the go.documentLink setting.
-	const experimentalFeatures = getGoConfig()['languageServerExperimentalFeatures'];
+	const cfg = getGoConfig();
+	const experimentalFeatures = cfg['languageServerExperimentalFeatures'];
 	if (experimentalFeatures) {
 		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
 		// all of the settings. See golang/vscode-go#1109 too.
 		// The `diagnostics` setting is still used as a workaround for running custom vet.
-		if (experimentalFeatures['documentLink'] === false) {
-			vscode.window
-				.showErrorMessage(`The 'go.languageServerExperimentalFeature.documentLink' setting is now deprecated.
-	Please use '"gopls": {"ui.navigation.importShortcut": "Definition" }' instead.
-	See [the settings doc](https://github.com/golang/vscode-go/blob/master/docs/settings.md#uinavigationimportshortcut) for more details.`);
-		}
 		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
 		const prompted = getFromGlobalState(promptKey, false);
 		if (!prompted && experimentalFeatures['diagnostics'] === false) {
 			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
-	If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).`;
+	If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://go.dev/s/vscode-issue/50).`;
 			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
 			switch (selected) {
 				case "Don't show again":
 					updateGlobalState(promptKey, true);
+			}
+		}
+	}
+	const codelensFeatures = cfg['enableCodeLens'];
+	if (codelensFeatures && codelensFeatures['references']) {
+		const promptKey = 'promptedCodeLensReferencesFeatureDeprecation';
+		const prompted = getFromGlobalState(promptKey, false);
+		if (!prompted) {
+			const msg =
+				"The 'go.enableCodeLens.references' setting will be removed soon. Please see [Issue 2509](https://go.dev/s/vscode-issue/2509).";
+			const selected = await vscode.window.showWarningMessage(msg, 'Update Settings', "Don't show again");
+			switch (selected) {
+				case 'Update Settings':
+					{
+						const { globalValue, workspaceValue, workspaceFolderValue } = cfg.inspect<{
+							[key: string]: boolean;
+						}>('enableCodeLens') || {
+							globalValue: undefined,
+							workspaceValue: undefined,
+							workspaceFolderValue: undefined
+						};
+						if (globalValue && globalValue['references']) {
+							delete globalValue.references;
+							cfg.update('enableCodeLens', globalValue, vscode.ConfigurationTarget.Global);
+						}
+						if (workspaceValue && workspaceValue['references']) {
+							delete workspaceValue.references;
+							cfg.update('enableCodeLens', workspaceValue, vscode.ConfigurationTarget.Workspace);
+						}
+						if (workspaceFolderValue && workspaceFolderValue['references']) {
+							delete workspaceFolderValue.references;
+							cfg.update(
+								'enableCodeLens',
+								workspaceFolderValue,
+								vscode.ConfigurationTarget.WorkspaceFolder
+							);
+						}
+					}
+					break;
+				case "Don't show again":
+					updateGlobalState(promptKey, true);
+					break;
 			}
 		}
 	}

@@ -59,7 +59,7 @@ suite('vulncheck result viewer tests', () => {
 			const { log = '', vulns = '', unaffecting = '' } = JSON.parse(res.target ?? '{}');
 
 			assert(
-				log.includes('Found 1 known vulnerabilities'),
+				log.includes('1 known vulnerabilities'),
 				`expected "1 known vulnerabilities", got ${JSON.stringify(res.target)}`
 			);
 			assert(
@@ -67,7 +67,7 @@ suite('vulncheck result viewer tests', () => {
 					vulns.includes('<td>Affecting</td><td>github.com/golang/vscode-go/test/testdata/vuln</td>'),
 				`expected "Affecting" section, got ${JSON.stringify(res.target)}`
 			);
-			// Unaffecting vulnerability's detail is omitted, but its ID is reported.
+			// Unaffecting vulnerability's ID is reported.
 			assert(
 				unaffecting.includes('GO-2021-0000') && unaffecting.includes('golang.org/x/text'),
 				`expected reports about unaffecting vulns, got ${JSON.stringify(res.target)}`

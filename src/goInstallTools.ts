@@ -78,7 +78,7 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	const selected = await vscode.window.showQuickPick(
 		allTools.map((x) => {
 			const item: vscode.QuickPickItem = {
-				label: x.name,
+				label: `${x.name}@${x.defaultVersion || 'latest'}`,
 				description: x.description
 			};
 			return item;
@@ -255,12 +255,8 @@ async function installToolWithGo(
 		importPath = getImportPath(tool, goVersion);
 	} else {
 		let version: semver.SemVer | string | undefined | null = tool.version;
-		if (!version) {
-			if (tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
-				version = await latestToolVersion(tool, true);
-			} else if (tool.defaultVersion) {
-				version = tool.defaultVersion;
-			}
+		if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
+			version = await latestToolVersion(tool, true);
 		}
 		importPath = getImportPathWithVersion(tool, version, goVersion);
 	}
@@ -421,7 +417,7 @@ export async function promptForMissingTool(toolName: string) {
 	}
 	const cmd = goVersion.lt('1.16')
 		? `go get -v ${getImportPath(tool, goVersion)}`
-		: `go install -v ${getImportPathWithVersion(tool, tool.defaultVersion, goVersion)}`;
+		: `go install -v ${getImportPathWithVersion(tool, undefined, goVersion)}`;
 	const selected = await vscode.window.showErrorMessage(
 		`The "${tool.name}" command is not available. Run "${cmd}" to install.`,
 		...installOptions

@@ -64,17 +64,26 @@ suite('Installation Tests', function () {
 		for (const p of [tmpToolsGopath, tmpToolsGopath2]) {
 			envForTest['GOPATH'] = p;
 			const execFile = util.promisify(cp.execFile);
-			await execFile(goRuntimePath, ['clean', '-modcache'], {
-				env: envForTest
-			});
-			rmdirRecursive(p);
+			try {
+				await execFile(goRuntimePath, ['clean', '-modcache'], {
+					env: envForTest
+				});
+				rmdirRecursive(p);
+			} catch (e) {
+				console.log(`failed to clean module cache directory: ${e}`);
+			}
 		}
 	});
 
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
 	// If withGOBIN is true, the test will set GOBIN env var.
-	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean, withGOBIN?: boolean) {
+	async function runTest(
+		testCases: installationTestCase[],
+		withLocalProxy?: boolean,
+		withGOBIN?: boolean,
+		withGoVersion?: string
+	) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
 		let proxyDir: string | undefined;
@@ -86,7 +95,10 @@ suite('Installation Tests', function () {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),
 						GOSUMDB: 'off',
-						GOBIN: gobin
+						GOBIN: gobin,
+						// Build environment may have GOMODCACHE set. Avoid writing
+						// fake data to it.
+						GOMODCACHE: path.join(tmpToolsGopath, 'pkg', 'mod')
 					}
 				},
 				gopath: { value: toolsGopath }
@@ -103,11 +115,15 @@ suite('Installation Tests', function () {
 		}
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
-		const goVersion = await getGoVersion();
+		const goVersion = withGoVersion
+			? /* we want a fake go version, but need the real 'go' binary to run `go install` */
+			  new GoVersion(getBinPath('go'), `go version ${withGoVersion} amd64/linux`)
+			: await getGoVersion();
 
 		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
 
-		await installTools(missingTools, goVersion);
+		const failures = await installTools(missingTools, goVersion);
+		assert(!failures || failures.length === 0, `installTools failed: ${JSON.stringify(failures)}`);
 
 		// Confirm that each expected tool has been installed.
 		const checks: Promise<void>[] = [];
@@ -180,6 +196,24 @@ suite('Installation Tests', function () {
 		);
 	});
 
+	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
+	test('Install gofumpt with old go', async () => {
+		await runTest(
+			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: 'v0.2.1' }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go1.17' // Go Version
+		);
+	});
+
+	test('Install gofumpt with new go', async () => {
+		await runTest(
+			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: gofumptDefault }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go1.18' // Go Version
+		);
+	});
 	test('Install all tools via GOPROXY', async () => {
 		// Only run this test if we are in CI before a Nightly release.
 		if (!shouldRunSlowTests()) {
