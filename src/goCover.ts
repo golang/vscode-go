@@ -261,13 +261,25 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 
 				// and fill in coveragePath
 				const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
+				// When line directive is used this information is artificial and
+				// the source code file can be non-existent or wrong (go.dev/issues/41222).
+				// There is no perfect way to guess whether the line/col in coverage profile
+				// is bogus. At least, we know that 0 or negative values are not true line/col.
+				const startLine = parseInt(parse[2], 10);
+				const startCol = parseInt(parse[3], 10);
+				const endLine = parseInt(parse[4], 10);
+				const endCol = parseInt(parse[5], 10);
+				if (startLine < 1 || startCol < 1 || endLine < 1 || endCol < 1) {
+					return;
+				}
 				const range = new vscode.Range(
 					// Convert lines and columns to 0-based
-					parseInt(parse[2], 10) - 1,
-					parseInt(parse[3], 10) - 1,
-					parseInt(parse[4], 10) - 1,
-					parseInt(parse[5], 10) - 1
+					startLine - 1,
+					startCol - 1,
+					endLine - 1,
+					endCol - 1
 				);
+
 				const counts = parseInt(parse[7], 10);
 				// If is Covered (CoverCount > 0)
 				if (counts > 0) {
