@@ -1,4 +1,4 @@
-## v0.36.0 - 4 Nov, 2022
+## v0.36.0 - 7 Nov, 2022
 A list of all issues and changes can be found in the [v0.36.0 milestone](https://github.com/golang/vscode-go/milestone/52) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.2...v0.36.0).
 
 ### Changes
