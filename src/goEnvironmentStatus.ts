@@ -187,8 +187,11 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 	// prompt the user to reload the window.
 	// promptReload defaults to true and should only be false for tests.
 	if (promptReload) {
-		const choice = await vscode.window.showInformationMessage(
+		const choice = await vscode.window.showWarningMessage(
 			'Please reload the window to finish applying Go version changes.',
+			{
+				modal: true
+			},
 			'Reload Window'
 		);
 		if (choice === 'Reload Window') {
