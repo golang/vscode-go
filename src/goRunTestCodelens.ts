@@ -95,27 +95,43 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 
 	private async getCodeLensForFunctions(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
 		const testPromise = async (): Promise<CodeLens[]> => {
+			const codelens: CodeLens[] = [];
+
 			const testFunctions = await getTestFunctions(this.goCtx, document, token);
 			if (!testFunctions) {
-				return [];
+				return codelens;
 			}
-			const codelens: CodeLens[] = [];
-			for (const f of testFunctions) {
+
+			const addLens = (range: vscode.Range, functionName: string) => {
 				codelens.push(
-					new CodeLens(f.range, {
+					new CodeLens(range, {
 						title: 'run test',
 						command: 'go.test.cursor',
-						arguments: [{ functionName: f.name }]
-					})
-				);
-				codelens.push(
-					new CodeLens(f.range, {
+						arguments: [{ functionName }]
+					}),
+					new CodeLens(range, {
 						title: 'debug test',
 						command: 'go.debug.cursor',
-						arguments: [{ functionName: f.name }]
+						arguments: [{ functionName }]
 					})
 				);
+			};
+
+			const simpleRunRegex = /t.Run\("([^"]+)",/;
+
+			for (const f of testFunctions) {
+				addLens(f.range, f.name);
+
+				for (let i = f.range.start.line; i < f.range.end.line; i++) {
+					const line = document.lineAt(i);
+					const simpleMatch = line.text.match(simpleRunRegex);
+
+					if (simpleMatch) {
+						addLens(line.range, f.name + '/' + simpleMatch[1]);
+					}
+				}
 			}
+
 			return codelens;
 		};
 
