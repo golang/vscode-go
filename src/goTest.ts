@@ -14,6 +14,7 @@ import { isModSupported } from './goModules';
 import {
 	extractInstanceTestName,
 	findAllTestSuiteRuns,
+	escapeSubTestName,
 	getBenchmarkFunctions,
 	getTestFlags,
 	getTestFunctionDebugArgs,
@@ -33,6 +34,7 @@ let lastDebugConfig: vscode.DebugConfiguration | undefined;
 let lastDebugWorkspaceFolder: vscode.WorkspaceFolder | undefined;
 
 export type TestAtCursorCmd = 'debug' | 'test' | 'benchmark';
+export type SubTestAtCursorCmd = Exclude<TestAtCursorCmd, 'benchmark'>;
 
 class NotFoundError extends Error {}
 
@@ -68,6 +70,81 @@ async function _testAtCursor(
 		return debugTestAtCursor(editor, testFunctionName, testFunctions, goConfig);
 	} else if (cmd === 'benchmark' || cmd === 'test') {
 		return runTestAtCursor(editor, testFunctionName, testFunctions, goConfig, cmd, args);
+	} else {
+		throw new Error(`Unsupported command: ${cmd}`);
+	}
+}
+
+async function _subTestAtCursor(
+	goCtx: GoExtensionContext,
+	goConfig: vscode.WorkspaceConfiguration,
+	cmd: SubTestAtCursorCmd,
+	args: any
+) {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showInformationMessage('No editor is active.');
+		return;
+	}
+	if (!editor.document.fileName.endsWith('_test.go')) {
+		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
+		return;
+	}
+
+	await editor.document.save();
+	const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
+	// We use functionName if it was provided as argument
+	// Otherwise find any test function containing the cursor.
+	const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
+	const testFunctionName =
+		args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
+
+	if (!testFunctionName || currentTestFunctions.length === 0) {
+		vscode.window.showInformationMessage('No test function found at cursor.');
+		return;
+	}
+
+	let subTestName: string | undefined = args?.subTestName;
+
+	if (!subTestName) {
+		const testFunction = currentTestFunctions[0];
+		const simpleRunRegex = /t.Run\("([^"]+)",/;
+		const runRegex = /t.Run\(/;
+		let lineText: string;
+		let runMatch: RegExpMatchArray | null | undefined;
+		let simpleMatch: RegExpMatchArray | null | undefined;
+		for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
+			lineText = editor.document.lineAt(i).text;
+			simpleMatch = lineText.match(simpleRunRegex);
+			runMatch = lineText.match(runRegex);
+			if (simpleMatch || (runMatch && !simpleMatch)) {
+				break;
+			}
+		}
+
+		if (!simpleMatch) {
+			const input = await vscode.window.showInputBox({
+				prompt: 'Enter sub test name'
+			});
+			if (input) {
+				subTestName = input;
+			} else {
+				vscode.window.showInformationMessage('No subtest function with a simple subtest name found at cursor.');
+				return;
+			}
+		} else {
+			subTestName = simpleMatch[1];
+		}
+	}
+
+	await editor.document.save();
+
+	const escapedName = escapeSubTestName(testFunctionName, subTestName);
+
+	if (cmd === 'debug') {
+		return debugTestAtCursor(editor, escapedName, testFunctions, goConfig);
+	} else if (cmd === 'test') {
+		return runTestAtCursor(editor, escapedName, testFunctions, goConfig, cmd, args);
 	} else {
 		throw new Error(`Unsupported command: ${cmd}`);
 	}
@@ -150,77 +227,23 @@ async function runTestAtCursor(
 }
 
 /**
- * Executes the sub unit test at the primary cursor using `go test`. Output
- * is sent to the 'Go' channel.
+ * Executes the sub unit test at the primary cursor.
+ *
+ * @param cmd Whether the command is test or debug.
  */
-export const subTestAtCursor: CommandFactory = (ctx, goCtx) => {
-	return async (args: any) => {
-		const goConfig = getGoConfig();
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			vscode.window.showInformationMessage('No editor is active.');
-			return;
-		}
-		if (!editor.document.fileName.endsWith('_test.go')) {
-			vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
-			return;
-		}
-
-		await editor.document.save();
+export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
+	return (_, goCtx) => async (args: string[]) => {
 		try {
-			const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
-			// We use functionName if it was provided as argument
-			// Otherwise find any test function containing the cursor.
-			const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
-			const testFunctionName =
-				args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
-
-			if (!testFunctionName || currentTestFunctions.length === 0) {
-				vscode.window.showInformationMessage('No test function found at cursor.');
-				return;
-			}
-
-			const testFunction = currentTestFunctions[0];
-			const simpleRunRegex = /t.Run\("([^"]+)",/;
-			const runRegex = /t.Run\(/;
-			let lineText: string;
-			let runMatch: RegExpMatchArray | null | undefined;
-			let simpleMatch: RegExpMatchArray | null | undefined;
-			for (let i = editor.selection.start.line; i >= testFunction.range.start.line; i--) {
-				lineText = editor.document.lineAt(i).text;
-				simpleMatch = lineText.match(simpleRunRegex);
-				runMatch = lineText.match(runRegex);
-				if (simpleMatch || (runMatch && !simpleMatch)) {
-					break;
-				}
-			}
-
-			let subtest: string;
-			if (!simpleMatch) {
-				const input = await vscode.window.showInputBox({
-					prompt: 'Enter sub test name'
-				});
-				if (input) {
-					subtest = input;
-				} else {
-					vscode.window.showInformationMessage(
-						'No subtest function with a simple subtest name found at cursor.'
-					);
-					return;
-				}
-			} else {
-				subtest = simpleMatch[1];
-			}
-
-			const subTestName = testFunctionName + '/' + subtest;
-
-			return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
+			await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
 		} catch (err) {
-			vscode.window.showInformationMessage('Unable to run subtest: ' + (err as any).toString());
-			console.error(err);
+			if (err instanceof NotFoundError) {
+				vscode.window.showInformationMessage(err.message);
+			} else {
+				console.error(err);
+			}
 		}
 	};
-};
+}
 
 /**
  * Debugs the test at cursor.
