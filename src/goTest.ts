@@ -234,7 +234,7 @@ async function runTestAtCursor(
 export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
 	return (_, goCtx) => async (args: string[]) => {
 		try {
-			await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
+			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);

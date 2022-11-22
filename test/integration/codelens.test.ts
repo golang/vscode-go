@@ -114,8 +114,17 @@ suite('Code lenses for testing and benchmarking', function () {
 
 	test('Test codelenses', async () => {
 		const codeLenses = await codeLensProvider.provideCodeLenses(document, cancellationTokenSource.token);
-		assert.equal(codeLenses.length, 4);
-		const wantCommands = ['go.test.package', 'go.test.file', 'go.test.cursor', 'go.debug.cursor'];
+		assert.equal(codeLenses.length, 8);
+		const wantCommands = [
+			'go.test.package',
+			'go.test.file',
+			'go.test.cursor',
+			'go.debug.cursor',
+			'go.subtest.cursor',
+			'go.debug.subtest.cursor',
+			'go.subtest.cursor',
+			'go.debug.subtest.cursor'
+		];
 		for (let i = 0; i < codeLenses.length; i++) {
 			assert.equal(codeLenses[i].command?.command, wantCommands[i]);
 		}
