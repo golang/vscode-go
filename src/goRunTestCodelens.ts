@@ -102,32 +102,43 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 				return codelens;
 			}
 
-			const addLens = (range: vscode.Range, functionName: string) => {
+			const simpleRunRegex = /t.Run\("([^"]+)",/;
+
+			for (const f of testFunctions) {
+				const functionName = f.name;
+
 				codelens.push(
-					new CodeLens(range, {
+					new CodeLens(f.range, {
 						title: 'run test',
 						command: 'go.test.cursor',
 						arguments: [{ functionName }]
 					}),
-					new CodeLens(range, {
+					new CodeLens(f.range, {
 						title: 'debug test',
 						command: 'go.debug.cursor',
 						arguments: [{ functionName }]
 					})
 				);
-			};
-
-			const simpleRunRegex = /t.Run\("([^"]+)",/;
-
-			for (const f of testFunctions) {
-				addLens(f.range, f.name);
 
 				for (let i = f.range.start.line; i < f.range.end.line; i++) {
 					const line = document.lineAt(i);
 					const simpleMatch = line.text.match(simpleRunRegex);
 
 					if (simpleMatch) {
-						addLens(line.range, f.name + '/' + simpleMatch[1]);
+						const subTestName = simpleMatch[1];
+
+						codelens.push(
+							new CodeLens(line.range, {
+								title: 'run test',
+								command: 'go.subtest.cursor',
+								arguments: [{ functionName, subTestName }]
+							}),
+							new CodeLens(line.range, {
+								title: 'debug test',
+								command: 'go.debug.subtest.cursor',
+								arguments: [{ functionName, subTestName }]
+							})
+						);
 					}
 				}
 			}
