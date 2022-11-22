@@ -47,6 +47,10 @@ Runs a unit test at the cursor if one is found, otherwise re-runs the last execu
 
 Runs a sub test at the cursor.
 
+### `Go: Debug Subtest At Cursor`
+
+Debug a sub test at the cursor.
+
 ### `Go: Benchmark Function At Cursor`
 
 Runs a benchmark at the cursor.
