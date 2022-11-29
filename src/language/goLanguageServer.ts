@@ -333,6 +333,9 @@ export function buildLanguageClientOption(
 		if (!goCtx.serverTraceChannel) {
 			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
 		}
+		if (!goCtx.govulncheckOutputChannel) {
+			goCtx.govulncheckOutputChannel = vscode.window.createOutputChannel('govulncheck');
+		}
 	}
 	return Object.assign(
 		{

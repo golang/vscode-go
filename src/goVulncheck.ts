@@ -193,7 +193,7 @@ async function getGoModFile(dir: vscode.Uri): Promise<string | undefined> {
 export class VulncheckProvider {
 	static scheme = 'govulncheck';
 	static setup({ subscriptions }: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-		const channel = vscode.window.createOutputChannel('govulncheck');
+		const channel = goCtx.govulncheckOutputChannel || vscode.window.createOutputChannel('govulncheck');
 		const instance = new this(channel);
 		subscriptions.push(
 			vscode.commands.registerCommand('go.vulncheck.run', async () => {
