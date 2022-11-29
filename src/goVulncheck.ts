@@ -334,9 +334,9 @@ export async function vulncheck(
 	channel: { appendLine: (msg: string) => void }
 ): Promise<VulncheckReport> {
 	const { languageClient, serverInfo } = goCtx;
-	const COMMAND = 'gopls.run_vulncheck_exp';
+	const COMMAND = 'gopls.run_govulncheck';
 	if (!languageClient || !serverInfo?.Commands?.includes(COMMAND)) {
-		throw Promise.reject('this feature requires gopls v0.8.4 or newer');
+		throw new Error('this feature requires gopls v0.10.2 or newer');
 	}
 	// TODO: read back the actual package configuration from gopls.
 	const gopls = getBinPath('gopls');
