@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { escapeSubTestName } from '../../src/subTestUtils';
 
-suite.only('escapeSubTestName Tests', () => {
+suite('escapeSubTestName Tests', () => {
 	test('correctly escapes sub tests', () => {
 		const tt = [
 			{
