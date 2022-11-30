@@ -11,10 +11,10 @@ import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
 import { isModSupported } from './goModules';
+import { escapeSubTestName } from './subTestUtils';
 import {
 	extractInstanceTestName,
 	findAllTestSuiteRuns,
-	escapeSubTestName,
 	getBenchmarkFunctions,
 	getTestFlags,
 	getTestFunctionDebugArgs,
