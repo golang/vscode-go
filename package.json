@@ -250,6 +250,11 @@
         "description": "Runs a sub test at the cursor."
       },
       {
+        "command": "go.debug.subtest.cursor",
+        "title": "Go: Debug Subtest At Cursor",
+        "description": "Debug a sub test at the cursor."
+      },
+      {
         "command": "go.benchmark.cursor",
         "title": "Go: Benchmark Function At Cursor",
         "description": "Runs a benchmark at the cursor."
