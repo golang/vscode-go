@@ -124,6 +124,9 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 					const line = document.lineAt(i);
 					const simpleMatch = line.text.match(simpleRunRegex);
 
+					// BUG: this does not handle nested subtests. This should
+					// be solved once codelens is handled by gopls and not by
+					// vscode.
 					if (simpleMatch) {
 						const subTestName = simpleMatch[1];
 
