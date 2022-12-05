@@ -659,17 +659,6 @@ comprehensively test.
 
 
 Default: `true`
-### `build.experimentalUseInvalidMetadata`
-
-(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
-package metadata to provide editor features if the go command fails to
-load packages for some reason (like an invalid go.mod file).
-
-Deprecated: this setting is deprecated and will be removed in a future
-version of gopls (https://go.dev/issue/55333).
-
-
-Default: `false`
 ### `build.experimentalWorkspaceModule`
 
 (Experimental) experimentalWorkspaceModule opts a user into the experimental support
@@ -765,7 +754,7 @@ Example Usage:
 | `gc_details` | Toggle the calculation of gc annotations. <br/> Default: `false` |
 | `generate` | Runs `go generate` for a given directory. <br/> Default: `true` |
 | `regenerate_cgo` | Regenerates cgo definitions. <br/> Default: `true` |
-| `run_vulncheck_exp` | Run vulnerability check (`govulncheck`). <br/> Default: `false` |
+| `run_govulncheck` | Run vulnerability check (`govulncheck`). <br/> Default: `false` |
 | `test` | Runs `go test` for a specific set of test or benchmark functions. <br/> Default: `false` |
 | `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
 | `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
@@ -840,7 +829,7 @@ Example Usage:
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
 | `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> <br/> Default: `true` |
 | `infertypeargs` | check for unnecessary type arguments in call expressions <br/> Explicit type arguments may be omitted from call expressions if they can be inferred from function arguments, or from other type arguments: <br/> <pre>func f[T any](T) {}<br/><br/><br/>func _() {<br/>	f[string]("foo") // string could be inferred<br/>}</pre><br/> <br/> Default: `true` |
-| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer checks for references to loop variables from within a function literal inside the loop body. It checks for patterns where access to a loop variable is known to escape the current loop iteration:  1. a call to go or defer at the end of the loop body  2. a call to golang.org/x/sync/errgroup.Group.Go at the end of the loop body <br/> The analyzer only considers references in the last statement of the loop body as it is not deep enough to understand the effects of subsequent statements which might render the reference benign. <br/> For example: <br/> <pre>for i, v := range s {<br/>	go func() {<br/>		println(i, v) // not what you might expect<br/>	}()<br/>}</pre><br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
+| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer reports places where a function literal references the iteration variable of an enclosing loop, and the loop calls the function in such a way (e.g. with go or defer) that it may outlive the loop iteration and possibly observe the wrong value of the variable. <br/> In this example, all the deferred functions run after the loop has completed, so all observe the final value of v. <br/>     for _, v := range list {         defer func() {             use(v) // incorrect         }()     } <br/> One fix is to create a new variable for each iteration of the loop: <br/>     for _, v := range list {         v := v // new var per iteration         defer func() {             use(v) // ok         }()     } <br/> The next example uses a go statement and has a similar problem. In addition, it has a data race because the loop updates v concurrent with the goroutines accessing it. <br/>     for _, v := range elem {         go func() {             use(v)  // incorrect, and a data race         }()     } <br/> A fix is the same as before. The checker also reports problems in goroutines started by golang.org/x/sync/errgroup.Group. A hard-to-spot variant of this form is common in parallel tests: <br/>     func Test(t *testing.T) {         for _, test := range tests {             t.Run(test.name, func(t *testing.T) {                 t.Parallel()                 use(test) // incorrect, and a data race             })         }     } <br/> The t.Parallel() call causes the rest of the function to execute concurrent with the loop. <br/> The analyzer reports references only in the last statement, as it is not deep enough to understand the effects of subsequent statements that might render the reference benign. ("Last statement" is defined recursively in compound statements such as if, switch, and select.) <br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
 | `lostcancel` | check cancel func returned by context.WithCancel is called <br/> The cancellation function returned by context.WithCancel, WithTimeout, and WithDeadline must be called or the new context will remain live until its parent context is cancelled. (The background context is never cancelled.) <br/> Default: `true` |
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
 | `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> <br/> Default: `false` |
@@ -914,6 +903,18 @@ These analyses are documented on
 
 
 Default: `false`
+### `ui.diagnostic.vulncheck`
+
+(Experimental) vulncheck enables vulnerability scanning.
+<br/>
+Allowed Options:
+
+* `Imports`: `"Imports"`: In Imports mode, `gopls` will report vulnerabilities that affect packages
+directly and indirectly used by the analyzed main module.
+* `Off`: `"Off"`: Disable vulnerability analysis.
+
+
+Default: `"Off"`
 ### `ui.documentation.hoverKind`
 
 hoverKind controls the information that appears in the hover text.
