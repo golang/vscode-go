@@ -1,7 +1,7 @@
 import assert = require('assert');
 import path = require('path');
 import sinon = require('sinon');
-import { Uri, workspace } from 'vscode';
+import { Range, TestItem, Uri, workspace } from 'vscode';
 import * as testUtils from '../../src/testUtils';
 import { forceDidOpenTextDocument } from './goTest.utils';
 import { GoTestExplorer } from '../../src/goTest/explore';
@@ -12,6 +12,46 @@ suite('Go Test Runner', () => {
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 
 	let testExplorer: GoTestExplorer;
+
+	suite('parseOutput', () => {
+		const ctx = MockExtensionContext.new();
+		suiteSetup(async () => {
+			testExplorer = GoTestExplorer.setup(ctx, {});
+		});
+		suiteTeardown(() => ctx.teardown());
+
+		function testParseOutput(output: string, expected: { file: string; line: number; msg: string }[]) {
+			const uri = Uri.parse('file:///path/to/mod/file.go');
+			const id = GoTest.id(uri, 'test', 'TestXXX');
+			const ti = { id, uri, range: new Range(1, 0, 100, 0) } as TestItem;
+			const testMsgs = testExplorer.runner.parseOutput(ti, [output]);
+			const got = testMsgs.map((m) => {
+				return {
+					file: m.location?.uri.fsPath,
+					line: m.location?.range.start.line,
+					msg: m.message
+				};
+			});
+			assert.strictEqual(JSON.stringify(got), JSON.stringify(expected));
+		}
+		test('no line info ', () => testParseOutput(' foo \n', []));
+		test('file path without preceding space', () => testParseOutput('file.go:7: foo\n', [])); // valid test message starts with a space.
+		test('valid test message format', () =>
+			testParseOutput('  file.go:7: foo\n', [{ file: '/path/to/mod/file.go', line: 6, msg: 'foo\n' }]));
+		test('message without ending newline', () =>
+			testParseOutput(
+				'  file.go:7: foo ', // valid test message contains a new line.
+				[]
+			));
+		test('user print message before test message', () =>
+			testParseOutput('random print file.go:8: foo\n', [
+				{ file: '/path/to/mod/file.go', line: 7, msg: 'foo\n' }
+			]));
+		test('multiple file locs in one line', () =>
+			testParseOutput('file.go:1: line1 . file.go:2: line2 \n', [
+				{ file: '/path/to/mod/file.go', line: 1, msg: 'line2 \n' }
+			]));
+	});
 
 	suite('Profile', () => {
 		const sandbox = sinon.createSandbox();
