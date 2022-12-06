@@ -64,8 +64,6 @@ import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
-import { VulncheckProvider, VulncheckResultViewProvider } from './goVulncheck';
-
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
 
@@ -170,8 +168,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	}
 
 	GoExplorerProvider.setup(ctx);
-	VulncheckProvider.setup(ctx, goCtx);
-	VulncheckResultViewProvider.register(ctx, goCtx);
 
 	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
 	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
