@@ -60,7 +60,7 @@ import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
-import { VulncheckReport, writeVulns } from '../goVulncheck2';
+import { VulncheckReport, writeVulns } from '../goVulncheck';
 
 export interface LanguageServerConfig {
 	serverName: string;

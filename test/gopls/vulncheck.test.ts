@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 import assert from 'assert';
 import path = require('path');
-import { VulncheckReport, writeVulns } from '../../src/goVulncheck2';
+import { VulncheckReport, writeVulns } from '../../src/goVulncheck';
 import fs = require('fs');
 
 suite('vulncheck output', () => {
