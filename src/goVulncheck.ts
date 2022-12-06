@@ -2,7 +2,8 @@
  * Copyright 2022 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-
+import path = require('path');
+import vscode = require('vscode');
 function moduleVersion(mod: string, ver: string | undefined) {
 	if (!ver) {
 		return 'N/A';
@@ -263,4 +264,80 @@ interface Position {
 	Offset?: number; // offset, starting at 0
 	Line?: number; // line number, starting at 1
 	Column?: number; // column number, starting at 1 (byte count)
+}
+
+// VulncheckOutputLinkProvider linkifies govulncheck output.
+export class VulncheckOutputLinkProvider implements vscode.DocumentLinkProvider {
+	static activate(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
+		ctx.subscriptions.push(
+			vscode.languages.registerDocumentLinkProvider(
+				{ language: 'govulncheck' },
+				new VulncheckOutputLinkProvider()
+			)
+		);
+	}
+
+	provideDocumentLinks(
+		document: vscode.TextDocument,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		_token: vscode.CancellationToken
+	): vscode.ProviderResult<vscode.DocumentLink[]> {
+		try {
+			return this.unsafeProvideDocumentLinks(document);
+		} catch (e) {
+			console.log(`failed to linkify govulncheck output result: ${e}`);
+		}
+		return [];
+	}
+
+	unsafeProvideDocumentLinks(document: vscode.TextDocument): vscode.ProviderResult<vscode.DocumentLink[]> {
+		const ret = [] as vscode.DocumentLink[];
+		let cwd = '';
+		for (let i = 0; i < document.lineCount; i++) {
+			const readLine = document.lineAt(i);
+
+			// govulncheck ./... for file:///foo/go.mod.
+			const cmdPattern = readLine.text.match(/^govulncheck\s+\S+\s+for\s+(file:.*\.mod)/);
+			if (cmdPattern && cmdPattern[1]) {
+				cwd = path.dirname(vscode.Uri.parse(cmdPattern[1]).fsPath);
+				continue;
+			}
+
+			// Found Version: and Fixed Version:
+			const foundOrFixedVersionPattern = readLine.text.match(/^(?:Found|Fixed) Version:\s+(\S+@\S+)$/);
+			if (foundOrFixedVersionPattern && foundOrFixedVersionPattern[1]) {
+				const modVersion = foundOrFixedVersionPattern[1];
+				const start = readLine.text.indexOf(modVersion);
+				const end = start + modVersion.length;
+				const link = new vscode.DocumentLink(
+					new vscode.Range(i, start, i, end),
+					vscode.Uri.parse(`https://pkg.go.dev/${modVersion}`)
+				);
+				link.tooltip = `https://pkg.go.dev/${modVersion}`;
+				ret.push(link);
+				continue;
+			}
+
+			// Position at file (e.g. file.go:1:2)
+			const filePosPattern = readLine.text.match(/(?:-\s+|\s+\()(\S+\.go):(\d+)(?::(\d+)){0,1}/);
+			if (filePosPattern && filePosPattern[1]) {
+				let fname = filePosPattern[1];
+				if (!path.isAbsolute(fname)) {
+					fname = path.join(cwd, fname);
+				}
+				if (path.isAbsolute(fname)) {
+					const line = filePosPattern[2];
+					const col = filePosPattern[3];
+					const fragment = col ? { fragment: `L${line},${col}` } : { fragment: `L${line}` };
+					const uri = vscode.Uri.file(fname).with(fragment);
+					const start = readLine.text.indexOf(filePosPattern[1]);
+					const end = readLine.text.indexOf(filePosPattern[0]) + filePosPattern[0].length;
+					const link = new vscode.DocumentLink(new vscode.Range(i, start, i, end), uri);
+					ret.push(link);
+				}
+				continue;
+			}
+		}
+		return ret;
+	}
 }

@@ -4,10 +4,12 @@
  *--------------------------------------------------------*/
 import assert from 'assert';
 import path = require('path');
-import { VulncheckReport, writeVulns } from '../../src/goVulncheck';
+import vscode = require('vscode');
+import { VulncheckOutputLinkProvider, VulncheckReport, writeVulns } from '../../src/goVulncheck';
 import fs = require('fs');
+import { CancellationTokenSource } from 'vscode-languageserver-protocol';
 
-suite('vulncheck output', () => {
+suite('writeVulns', () => {
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'vuln');
 
 	function testWriteVulns(res: VulncheckReport | undefined | null, expected: string | RegExp[]) {
@@ -63,5 +65,85 @@ suite('vulncheck output', () => {
 			/Fixed Version: golang\.org\/x\/text@v0\.3\.8/s,
 			/Package: golang\.org\/x\/text\/language/s
 		]);
+	});
+});
+
+const vulncheckOutput = `
+govulncheck ./... for file:///Users/foo/module3/go.mod
+08:10:27 Loading packages...
+08:10:28 Loaded 2 packages and their dependencies
+08:10:30 Found 1 affecting vulns and 0 unaffecting vulns in imported packages
+
+Found 1 affecting vulnerability.
+--------------------------------------------------------------------------------
+⚠ GO-2020-0040 (https://pkg.go.dev/vuln/GO-2020-0040)
+
+Due to unchecked type assertions, maliciously crafted messages can cause panics, which may be used as a denial of service vector. (CVE-2020-36562)
+
+Found Version: github.com/shiyanhui/dht@v0.0.0-20201219151056-5a20f3199263
+Fixed Version: N/A
+
+- lib/lib.go:28:21: module3/lib.Run$2 calls github.com/shiyanhui/dht.DHT.GetPeers
+	module3/lib.Run
+		(/home/user/module3/lib/lib.go:25)
+	module3/lib.Run$2
+		(/home/user/module3/lib/lib.go:28)`;
+
+suite.only('VulncheckOutputLinkProvider', () => {
+	let doc: vscode.TextDocument;
+	let links: vscode.DocumentLink[] | undefined | null;
+
+	suiteSetup(async () => {
+		doc = await vscode.workspace.openTextDocument({ content: vulncheckOutput, language: 'govulncheck' });
+
+		const p = new VulncheckOutputLinkProvider();
+		const tokenSrc = new CancellationTokenSource();
+		links = await p.provideDocumentLinks(doc, tokenSrc.token);
+		tokenSrc.dispose();
+	});
+
+	function checkExist(word: string, targetPattern: RegExp, tooltip?: string) {
+		assert(
+			links?.some((link) => {
+				const words = doc.getText(link.range);
+
+				return (
+					words.includes(word) &&
+					// TODO(hyangah): test the full URI matching. Currently, we do partial checking
+					// since behavior on windows needs more inspection.
+					link.target?.toString().search(targetPattern) &&
+					(!tooltip || link.tooltip === tooltip)
+				);
+			}),
+			`failed to find ${word} ${targetPattern} ${tooltip || ''}\n${JSON.stringify(links)}`
+		);
+	}
+	function checkNotExist(word: string) {
+		assert(
+			!links?.some((link) => {
+				const words = doc.getText(link.range);
+				return words === word;
+			}),
+			`got ${word} that shouldn't exist.\n${JSON.stringify(links)}`
+		);
+	}
+	test('provides links', () => {
+		assert(links, 'links are empty');
+	});
+	test('linkify relative file link', () => {
+		checkExist('lib/lib.go:28:21', /module3.*lib.go#L28,21/);
+	});
+	test('linkify Found Version', () => {
+		checkExist(
+			'github.com/shiyanhui/dht@v0.0.0-20201219151056-5a20f3199263',
+			/pkg\.go\.dev\/github\.com\//,
+			'https://pkg.go.dev/github.com/shiyanhui/dht@v0.0.0-20201219151056-5a20f3199263'
+		);
+	});
+	test('linkify Fixed Version', () => {
+		checkNotExist('N/A');
+	});
+	test('linkify absolute paths', () => {
+		checkExist('/home/user/module3/lib/lib.go', /lib.go#L28/);
 	});
 });
