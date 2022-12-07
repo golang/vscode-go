@@ -2516,20 +2516,6 @@
               "default": false,
               "scope": "resource"
             },
-            "ui.diagnostic.vulncheck": {
-              "type": "string",
-              "markdownDescription": "(Experimental) vulncheck enables vulnerability scanning.\n",
-              "enum": [
-                "Imports",
-                "Off"
-              ],
-              "markdownEnumDescriptions": [
-                "`\"Imports\"`: In Imports mode, `gopls` will report vulnerabilities that affect packages\ndirectly and indirectly used by the analyzed main module.\n",
-                "`\"Off\"`: Disable vulnerability analysis.\n"
-              ],
-              "default": "Off",
-              "scope": "resource"
-            },
             "ui.documentation.hoverKind": {
               "type": "string",
               "markdownDescription": "hoverKind controls the information that appears in the hover text.\nSingleLine and Structured are intended for use only by authors of editor plugins.\n",
@@ -2637,6 +2623,20 @@
               "scope": "resource"
             }
           }
+        },
+        "go.diagnostic.vulncheck": {
+          "type": "string",
+          "markdownDescription": "(Experimental) vulncheck enables vulnerability scanning.\n",
+          "enum": [
+            "Imports",
+            "Off"
+          ],
+          "markdownEnumDescriptions": [
+            "`\"Imports\"`: In Imports mode, `gopls` will report vulnerabilities that affect packages\ndirectly and indirectly used by the analyzed main module.\n",
+            "`\"Off\"`: Disable vulnerability analysis.\n"
+          ],
+          "default": "Off",
+          "scope": "resource"
         },
         "go.inlayHints.assignVariableTypes": {
           "type": "boolean",

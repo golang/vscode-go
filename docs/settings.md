@@ -151,6 +151,18 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag. <br/> Default: `false` |
 | `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not. <br/> Default: `false` |
 | `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request). |
+### `go.diagnostic.vulncheck`
+
+(Experimental) vulncheck enables vulnerability scanning.
+<br/>
+Allowed Options:
+
+* `Imports`: `"Imports"`: In Imports mode, `gopls` will report vulnerabilities that affect packages
+directly and indirectly used by the analyzed main module.
+* `Off`: `"Off"`: Disable vulnerability analysis.
+
+
+Default: `"Off"`
 ### `go.disableConcurrentTests`
 
 If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
@@ -903,18 +915,6 @@ These analyses are documented on
 
 
 Default: `false`
-### `ui.diagnostic.vulncheck`
-
-(Experimental) vulncheck enables vulnerability scanning.
-<br/>
-Allowed Options:
-
-* `Imports`: `"Imports"`: In Imports mode, `gopls` will report vulnerabilities that affect packages
-directly and indirectly used by the analyzed main module.
-* `Off`: `"Off"`: Disable vulnerability analysis.
-
-
-Default: `"Off"`
 ### `ui.documentation.hoverKind`
 
 hoverKind controls the information that appears in the hover text.

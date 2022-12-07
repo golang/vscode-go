@@ -788,8 +788,10 @@ async function adjustGoplsWorkspaceConfiguration(
 
 	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource);
 	// note: workspaceConfig is a modifiable, valid object.
-	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
-	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, getGoConfig(resource));
+	const goConfig = getGoConfig(resource);
+	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, goConfig);
+	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, goConfig);
+	workspaceConfig = await passVulncheckConfigToGopls(cfg, workspaceConfig, goConfig);
 
 	// Only modify the user's configurations for the Nightly.
 	if (!extensionInfo.isPreview) {
@@ -803,12 +805,25 @@ async function adjustGoplsWorkspaceConfiguration(
 
 async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
 	const goplsVersion = await getLocalGoplsVersion(cfg);
-	if (!goplsVersion) return;
+	if (!goplsVersion) return goplsConfig ?? {};
 	const version = semver.parse(goplsVersion.version);
 	if ((version?.compare('0.8.4') ?? 1) > 0) {
 		const { inlayHints } = goConfig;
 		if (inlayHints) {
 			goplsConfig['ui.inlayhint.hints'] = { ...inlayHints };
+		}
+	}
+	return goplsConfig;
+}
+
+async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
+	const goplsVersion = await getLocalGoplsVersion(cfg);
+	if (!goplsVersion) return goplsConfig ?? {};
+	const version = semver.parse(goplsVersion.version);
+	if ((version?.compare('0.10.1') ?? 1) > 0) {
+		const vulncheck = goConfig.get('diagnostic.vulncheck');
+		if (vulncheck) {
+			goplsConfig['ui.vulncheck'] = vulncheck;
 		}
 	}
 	return goplsConfig;

@@ -229,49 +229,15 @@ func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goPropertie
 			continue
 		}
 		for _, opt := range m[hierarchy] {
-			doc := opt.Doc
-			if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
-				doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+			obj, err := toObject(opt)
+			if err != nil {
+				return nil, nil, err
 			}
-			obj := &Object{
-				MarkdownDescription: doc,
-				// TODO: are all gopls settings in the resource scope?
-				Scope: "resource",
-				// TODO: consider 'additionalProperties' if gopls api-json
-				// outputs acceptable properties.
-				// TODO: deprecation attribute
+			// TODO(hyangah): move diagnostic to all go.diagnostic.
+			if hierarchy == "ui.diagnostic" && opt.Name == "vulncheck" {
+				goProperties["go.diagnostic.vulncheck"] = obj
+				continue
 			}
-			// Handle any enum types.
-			if opt.Type == "enum" {
-				for _, v := range opt.EnumValues {
-					unquotedName, err := strconv.Unquote(v.Value)
-					if err != nil {
-						return nil, nil, err
-					}
-					obj.Enum = append(obj.Enum, unquotedName)
-					obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
-				}
-			}
-			// Handle any objects whose keys are enums.
-			if len(opt.EnumKeys.Keys) > 0 {
-				if obj.Properties == nil {
-					obj.Properties = map[string]*Object{}
-				}
-				for _, k := range opt.EnumKeys.Keys {
-					unquotedName, err := strconv.Unquote(k.Name)
-					if err != nil {
-						return nil, nil, err
-					}
-					obj.Properties[unquotedName] = &Object{
-						Type:                propertyType(opt.EnumKeys.ValueType),
-						MarkdownDescription: k.Doc,
-						Default:             formatDefault(k.Default, opt.EnumKeys.ValueType),
-					}
-				}
-			}
-			obj.Type = propertyType(opt.Type)
-			obj.Default = formatOptionDefault(opt)
-
 			key := opt.Name
 			if hierarchy != "" {
 				key = hierarchy + "." + key
@@ -280,6 +246,53 @@ func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goPropertie
 		}
 	}
 	return goplsProperties, goProperties, nil
+}
+
+func toObject(opt *OptionJSON) (*Object, error) {
+	doc := opt.Doc
+	if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
+		doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+	}
+	obj := &Object{
+		MarkdownDescription: doc,
+		// TODO: are all gopls settings in the resource scope?
+		Scope: "resource",
+		// TODO: consider 'additionalProperties' if gopls api-json
+		// outputs acceptable properties.
+		// TODO: deprecation attribute
+	}
+	// Handle any enum types.
+	if opt.Type == "enum" {
+		for _, v := range opt.EnumValues {
+			unquotedName, err := strconv.Unquote(v.Value)
+			if err != nil {
+				return nil, err
+			}
+			obj.Enum = append(obj.Enum, unquotedName)
+			obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
+		}
+	}
+	// Handle any objects whose keys are enums.
+	if len(opt.EnumKeys.Keys) > 0 {
+		if obj.Properties == nil {
+			obj.Properties = map[string]*Object{}
+		}
+		for _, k := range opt.EnumKeys.Keys {
+			unquotedName, err := strconv.Unquote(k.Name)
+			if err != nil {
+				return nil, err
+			}
+			obj.Properties[unquotedName] = &Object{
+				Type:                propertyType(opt.EnumKeys.ValueType),
+				MarkdownDescription: k.Doc,
+				Default:             formatDefault(k.Default, opt.EnumKeys.ValueType),
+			}
+		}
+	}
+	obj.Type = propertyType(opt.Type)
+	obj.Default = formatOptionDefault(opt)
+
+	return obj, nil
 }
 
 func formatOptionDefault(opt *OptionJSON) interface{} {
