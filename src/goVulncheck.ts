@@ -4,6 +4,9 @@
  *--------------------------------------------------------*/
 import path = require('path');
 import vscode = require('vscode');
+import { URI } from 'vscode-uri';
+import { getGoConfig } from './config';
+
 function moduleVersion(mod: string, ver: string | undefined) {
 	if (!ver) {
 		return 'N/A';
@@ -329,7 +332,7 @@ export class VulncheckOutputLinkProvider implements vscode.DocumentLinkProvider 
 					const line = filePosPattern[2];
 					const col = filePosPattern[3];
 					const fragment = col ? { fragment: `L${line},${col}` } : { fragment: `L${line}` };
-					const uri = vscode.Uri.file(fname).with(fragment);
+					const uri = URI.file(fname).with(fragment);
 					const start = readLine.text.indexOf(filePosPattern[1]);
 					const end = readLine.text.indexOf(filePosPattern[0]) + filePosPattern[0].length;
 					const link = new vscode.DocumentLink(new vscode.Range(i, start, i, end), uri);
@@ -340,4 +343,35 @@ export class VulncheckOutputLinkProvider implements vscode.DocumentLinkProvider 
 		}
 		return ret;
 	}
+}
+
+export const toggleVulncheckCommandFactory = () => () => {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		return;
+	}
+	const documentUri = editor?.document.uri;
+	toggleVulncheckCommand(documentUri);
+};
+
+function toggleVulncheckCommand(uri?: URI) {
+	const goCfgName = 'diagnostic.vulncheck';
+	const cfg = getGoConfig(uri);
+	const { globalValue, workspaceValue, workspaceFolderValue } = cfg.inspect(goCfgName) || {};
+	if (workspaceFolderValue) {
+		const newValue = workspaceFolderValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue);
+		return;
+	}
+	if (workspaceValue) {
+		const newValue = workspaceValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue, false);
+		return;
+	}
+	if (globalValue) {
+		const newValue = globalValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue, true);
+		return;
+	}
+	cfg.update(goCfgName, 'Imports');
 }

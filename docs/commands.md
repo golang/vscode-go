@@ -151,6 +151,10 @@ install/update the required go packages
 
 Toggles between file in current active editor and the corresponding test file.
 
+### `Go: Toggle Vulncheck`
+
+Toggle the display of vulnerability analysis in dependencies.
+
 ### `Go: Add Tags To Struct Fields`
 
 Add tags configured in go.addTags setting to selected struct using gomodifytags

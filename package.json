@@ -386,6 +386,11 @@
         "description": "Toggles between file in current active editor and the corresponding test file."
       },
       {
+        "command": "go.vulncheck.toggle",
+        "title": "Go: Toggle Vulncheck",
+        "description": "Toggle the display of vulnerability analysis in dependencies."
+      },
+      {
         "command": "go.add.tags",
         "title": "Go: Add Tags To Struct Fields",
         "description": "Add tags configured in go.addTags setting to selected struct using gomodifytags"

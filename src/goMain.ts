@@ -66,7 +66,7 @@ import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
-import { VulncheckOutputLinkProvider } from './goVulncheck';
+import { toggleVulncheckCommandFactory, VulncheckOutputLinkProvider } from './goVulncheck';
 
 const goCtx: GoExtensionContext = {};
 
@@ -211,6 +211,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	// Vulncheck output link provider.
 	VulncheckOutputLinkProvider.activate(ctx);
+	registerCommand('go.vulncheck.toggle', toggleVulncheckCommandFactory);
 
 	return extensionAPI;
 }
