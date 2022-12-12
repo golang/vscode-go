@@ -68,7 +68,7 @@ export function writeVulns(
 			outputChannel.appendLine(`Found Version: ${moduleVersion(mod.Path, mod.FoundVersion)}`);
 			outputChannel.appendLine(`Fixed Version: ${moduleVersion(mod.Path, mod.FixedVersion)}`);
 			mod.Packages?.forEach((pkg) => {
-				outputChannel.appendLine('');
+				outputChannel.appendLine('\nCall stacks in your code:');
 				pkg.CallStacks?.forEach((cs, index) => {
 					// TODO: the position info embedded in the cs.Summary is relative to
 					// the directory gopls ran the vulnchek.
@@ -347,9 +347,6 @@ export class VulncheckOutputLinkProvider implements vscode.DocumentLinkProvider 
 
 export const toggleVulncheckCommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
-	if (!editor) {
-		return;
-	}
 	const documentUri = editor?.document.uri;
 	toggleVulncheckCommand(documentUri);
 };

@@ -40,32 +40,31 @@
 		"affecting": {
 			"comment": "vulnerability heading",
 			"match": "^(⚠) (\\S+) \\((https://[^)]+)\\)",
-			"name": "markup.heading.2.govulncheck",
+			"name": "markup.heading.1.govulncheck",
 			"captures": {
 				"1": {
-					"name": "markup.bold.severity.govulncheck"
+					"name": "token.error-token.severity.govulncheck"
 				},
 				"2": {
-					"name": "markup.bold.vulnid.govulncheck"
+					"name": "token.error-token.vulnid.govulncheck"
 				},
 				"3": {
-					"name": "entity.bold.link.govulncheck"
+					"name": "entity.link.govulncheck"
 				}
 			}
 		},
 		"unaffecting": {
 			"comment": "vulnerability heading",
 			"match": "^(ⓘ) (\\S+) \\((https://[^)]+)\\)",
-			"name": "markup.heading.2.govulncheck",
 			"captures": {
 				"1": {
-					"name": "markup.severity.govulncheck"
+					"name": "token.info-token.severity.govulncheck"
 				},
 				"2": {
-					"name": "markup.vulnid.govulncheck"
+					"name": "token.info-token.vulnid.govulncheck"
 				},
 				"3": {
-					"name": "markup.link.govulncheck"
+					"name": "entity.link.govulncheck"
 				}
 			}
 		},

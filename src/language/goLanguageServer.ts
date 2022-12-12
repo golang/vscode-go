@@ -499,8 +499,16 @@ export async function buildLanguageClient(
 					try {
 						if (command === 'gopls.run_govulncheck' && args.length) {
 							await vscode.workspace.saveAll(false);
+							// TODO: move this output printing to goVulncheck.ts.
 							govulncheckOutputChannel?.replace(`govulncheck ./... for ${args[0].URI}\n`);
+							govulncheckOutputChannel?.appendLine('govulncheck is an experimental tool.');
+							govulncheckOutputChannel?.appendLine(
+								'Share feedback at https://go.dev/s/vsc-vulncheck-feedback.\n'
+							);
 							govulncheckOutputChannel?.show();
+						}
+						if (command === 'gopls.tidy') {
+							await vscode.workspace.saveAll(false);
 						}
 						const res = await next(command, args);
 						if (command === 'gopls.run_govulncheck') {
