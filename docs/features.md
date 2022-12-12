@@ -32,6 +32,7 @@ This document describes the features supported by this extension.
   * [Build errors](#build-errors)
   * [Vet and extra analyses](#vet-and-extra-analyses)
   * [Lint errors](#lint-errors)
+  * [Vulnerabilities in dependencies](#analyze-vulnerabilities-in-dependencies)
 * [Code Lenses](#code-lenses)
 * [Run and test in the editor](#run-and-test-in-the-editor)
   * [Run your code](#run-your-code)
@@ -258,6 +259,29 @@ The Go language server (`gopls`) reports [`vet`](https://pkg.go.dev/cmd/vet) err
 You can configure an extra linter to run on file save. This behavior is configurable through the [`"go.lintOnSave"`](settings.md#go.lintOnSave) setting.
 
 The default lint tool is [`staticcheck`]. Popular alternative linters such as [`golint`], [`golangci-lint`] and [`revive`] can be used instead by configuring the [`"go.lintTool"`](settings.md#go.lintTool) setting. For a complete overview of linter options, see the [documentation for diagnostic tools](tools.md#diagnostics).
+
+### Analyze vulnerabilities in dependencies
+
+The extension checks the 3rd party dependencies in your code and surfaces vulnerabilities known to the [Go vulnerability database](https://vuln.go.dev). There are two modes that complement each other.
+
+* Import-based analysis: this can be enabled using the [`"go.diagnostic.vulncheck": "Imports"`](settings.md#go.diagnostic.vulncheck) setting. You can turn on and off this analysis conveniently with the ["Go: Toggle Vulncheck"](commands.md#go-toggle-vulncheck) command. In this mode, `gopls` reports vulnerabilities that affect packages directly and indirectly used by your code. The diagnostics are reported in the `go.mod` file along with quick fixes to help upgrading vulnerable modules.
+
+* `Govulncheck` analysis: this is based on the [`golang.org/x/vuln/cmd/govulncheck`](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) tool, which is embedded in `gopls`. This provides a low-noise, reliable way to inspect known vulnerabilities. This only surfaces vulnerabilities that actually affect your code, based on which functions in your code are transitively calling vulnerable functions. This can be accessible by the `gopls` [`run_govulncheck`](settings.md#uicodelenses) code lens. The import-based analysis result also provides the `"Run govulncheck to verify"` option as a quick fix. 
+
+<div style="text-align: center;"><img src="images/vulncheck.gif" alt="Vulncheck">
+<em>Go: Toggle Vulncheck</em> <a href="https://user-images.githubusercontent.com/4999471/206977512-a821107d-9ffb-4456-9b27-6a6a4f900ba6.mp4">(vulncheck.mp4)</a> </div>
+
+These features require _`gopls` v0.11.0 or newer_.
+
+Please share your feedback at https://go.dev/s/vsc-vulncheck-feedback.
+Report a bug and feature request in [our issue tracker](https://github.com/golang/vscode-go/issues/new).
+
+**Notes and Caveats**
+
+- The import-based analysis uses the list of packages in the workspace modules, which may be different from what you see from `go.mod` files if `go.work` or module `replace`/`exclude` is used.
+- The govulncheck analysis result can become stale as you modify code or the Go vulnerability database is updated. In order to invalidate the analysis results manually, use the [`"Reset go.mod diagnostics"`] codelens shown on the top of the `go.mod` file. Otherwise, the result will be automatically invalidated after an hour.
+- These features currently don't report vulnerabilities in the standard libraries or tool chains. We are still investigating UX on where to surface the findings and how to help users handle the issues.
+- The extension does not scan private packages nor send any information on private modules. All the analysis is done by pulling a list of known vulnerable modules from the Go vulnerability database and then computing the intersection locally.
 
 ## Run and test in the editor
 
