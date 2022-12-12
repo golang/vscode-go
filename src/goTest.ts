@@ -17,10 +17,12 @@ import {
 	getBenchmarkFunctions,
 	getTestFlags,
 	getTestFunctionDebugArgs,
+	getSuiteToTestMap,
 	getTestFunctions,
 	getTestTags,
 	goTest,
-	TestConfig
+	TestConfig,
+	SuiteToTestMap
 } from './testUtils';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
@@ -52,6 +54,7 @@ async function _testAtCursor(
 
 	const getFunctions = cmd === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
 	const testFunctions = (await getFunctions(goCtx, editor.document)) ?? [];
+	const suiteToTest = await getSuiteToTestMap(goCtx, editor.document);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const testFunctionName =
@@ -65,9 +68,9 @@ async function _testAtCursor(
 	await editor.document.save();
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, testFunctionName, testFunctions, goConfig);
+		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig);
 	} else if (cmd === 'benchmark' || cmd === 'test') {
-		return runTestAtCursor(editor, testFunctionName, testFunctions, goConfig, cmd, args);
+		return runTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
 		throw new Error(`Unsupported command: ${cmd}`);
 	}
@@ -125,13 +128,14 @@ async function runTestAtCursor(
 	editor: vscode.TextEditor,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
+	suiteToTest: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: TestAtCursorCmd,
 	args: any
 ) {
 	const testConfigFns = [testFunctionName];
 	if (cmd !== 'benchmark' && extractInstanceTestName(testFunctionName)) {
-		testConfigFns.push(...findAllTestSuiteRuns(editor.document, testFunctions).map((t) => t.name));
+		testConfigFns.push(...findAllTestSuiteRuns(editor.document, testFunctions, suiteToTest).map((t) => t.name));
 	}
 
 	const isMod = await isModSupported(editor.document.uri);
@@ -169,6 +173,7 @@ export const subTestAtCursor: CommandFactory = (ctx, goCtx) => {
 		await editor.document.save();
 		try {
 			const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
+			const suiteToTest = await getSuiteToTestMap(goCtx, editor.document);
 			// We use functionName if it was provided as argument
 			// Otherwise find any test function containing the cursor.
 			const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
@@ -214,7 +219,7 @@ export const subTestAtCursor: CommandFactory = (ctx, goCtx) => {
 
 			const subTestName = testFunctionName + '/' + subtest;
 
-			return await runTestAtCursor(editor, subTestName, testFunctions, goConfig, 'test', args);
+			return await runTestAtCursor(editor, subTestName, testFunctions, suiteToTest, goConfig, 'test', args);
 		} catch (err) {
 			vscode.window.showInformationMessage('Unable to run subtest: ' + (err as any).toString());
 			console.error(err);
@@ -236,11 +241,12 @@ export async function debugTestAtCursor(
 	editorOrDocument: vscode.TextEditor | vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
+	suiteToFunc: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
 	sessionID?: string
 ) {
 	const doc = 'document' in editorOrDocument ? editorOrDocument.document : editorOrDocument;
-	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions);
+	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);
