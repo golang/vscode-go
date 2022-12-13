@@ -186,11 +186,20 @@ export class WelcomePanel {
 			<div class="Announcement">
 				<img src="${announceURI}" alt="announce" class="Announcement-image" />
 				<p>
-					New! <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md#remote-debugging">Remote
-					attach debugging</a> is now available on demand via Delve's native DAP implementation with Delve v1.7.3 or newer.
-					We plan to enable this as the default in early 2022 to enhance remote debugging with the same
-					<a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">debugging features</a>
-                    that are already in use for local debugging.
+					New!
+					We are excited to announce a new
+					<a href="https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies">code analysis feature</a>
+					that surfaces known vulnerabilities in your dependencies.
+					<br>
+					This vulncheck analyzer is backed by <a href="https://go.dev/security/vulndb">
+					Go's vulnerability database</a> and the Go language server's integration of
+					<a href="https://golang.org/x/vuln/cmd/govulncheck"><code>govulncheck</code></a>.
+					Read <a href="https://go.dev/blog/vuln">"Go's support for vulnerability management"</a>
+					to learn about the Go team's approach to helping Go developers secure their open-source dependencies.
+					Please share your feedback at
+					<a href="https://go.dev/s/vsc-vulncheck-feedback">go.dev/s/vsc-vulncheck-feedback</a>,
+					and report a bug in
+					<a href="https://github.com/golang/vscode-go/issues/new">our issue tracker</a>.
 				</p>
 			</div>
 
@@ -250,10 +259,10 @@ function joinPath(uri: vscode.Uri, ...pathFragment: string[]): vscode.Uri {
 function showGoWelcomePage() {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
-	const showVersions: string[] = ['0.30.0'];
+	const showVersions: string[] = ['0.37.0'];
 	// TODO(hyangah): use the content hash instead of hard-coded string.
 	// https://github.com/golang/vscode-go/issue/1179
-	let goExtensionVersion = '0.30.0';
+	let goExtensionVersion = '0.37.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (extensionInfo.isPreview) {
 		goExtensionVersion = '0.0.0';

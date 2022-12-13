@@ -67,13 +67,10 @@ export function getMementoKeys(state: vscode.Memento): string[] {
 		return [];
 	}
 	// tslint:disable-next-line: no-empty
-	if ((state as any)._value) {
-		const keys = Object.keys((state as any)._value);
-		// Filter out keys with undefined values, so they are not shown
-		// in the quick pick menu.
-		return keys.filter((key) => state.get(key) !== undefined);
-	}
-	return [];
+	const keys = state.keys();
+	// Filter out keys with undefined values, so they are not shown
+	// in the quick pick menu.
+	return keys.filter((key) => state.get(key) !== undefined);
 }
 
 async function resetStateQuickPick(state: vscode.Memento, updateFn: (key: string, value: any) => Thenable<void>) {
