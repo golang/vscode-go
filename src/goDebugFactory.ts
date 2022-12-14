@@ -643,13 +643,8 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 	const dlvArgs = new Array<string>();
 	dlvArgs.push('dap');
 
-	// TODO(hyangah): if Go version is higher than what the delve can support, we need to warn users.
-
 	// When duplicate flags are specified,
 	// dlv doesn't mind but accepts the last flag value.
-	// Add user-specified dlv flags first except
-	//  --check-go-version that we want to disable by default but allow users to override.
-	dlvArgs.push('--check-go-version=false');
 	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
 		dlvArgs.push(...launchAttachArgs.dlvFlags);
 	}

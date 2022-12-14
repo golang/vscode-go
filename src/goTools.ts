@@ -188,9 +188,9 @@ export function getConfiguredTools(
 			break;
 	}
 
-	// Only add format tools if the language server is disabled and the
+	// Only add format tools if the language server is disabled or the
 	// format tool is known to us.
-	if (goConfig['useLanguageServer'] === false && !usingCustomFormatTool(goConfig)) {
+	if (goConfig['useLanguageServer'] === false || usingCustomFormatTool(goConfig)) {
 		maybeAddTool(getFormatTool(goConfig));
 	}
 

@@ -1,0 +1,27 @@
+{
+	"Vulns": [
+		{
+			"OSV": {
+				"id": "GO-2022-1059",
+				"details": "Vulnerable!",
+				"database_specific": {
+					"url": "https://pkg.go.dev/vuln/GO-2022-1059"
+				}
+			},
+			"Modules": [
+				{
+					"Path": "golang.org/x/text",
+					"FoundVersion": "v0.3.7",
+					"FixedVersion": "v0.3.8",
+					"Packages": [
+						{
+							"Path": "golang.org/x/text/language",
+							"CallStacks": null
+						}
+					]
+				}
+			]
+		}
+	],
+	"Mode": "govulncheck"
+}

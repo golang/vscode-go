@@ -2,478 +2,373 @@
  * Copyright 2022 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-
-import path from 'path';
-import fs from 'fs';
-import * as vscode from 'vscode';
-import { GoExtensionContext } from './context';
-import { getBinPath } from './util';
-import * as cp from 'child_process';
-import { toolExecutionEnvironment } from './goEnv';
-import { killProcessTree } from './utils/processUtils';
-import * as readline from 'readline';
+import path = require('path');
+import vscode = require('vscode');
 import { URI } from 'vscode-uri';
-import { promisify } from 'util';
-import { runGoEnv } from './goModules';
-import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
+import { getGoConfig } from './config';
 
-export class VulncheckResultViewProvider implements vscode.CustomTextEditorProvider {
-	public static readonly viewType = 'vulncheck.view';
-
-	public static register(
-		{ extensionUri, subscriptions }: vscode.ExtensionContext,
-		goCtx: GoExtensionContext
-	): VulncheckResultViewProvider {
-		const provider = new VulncheckResultViewProvider(extensionUri, goCtx);
-		subscriptions.push(vscode.window.registerCustomEditorProvider(VulncheckResultViewProvider.viewType, provider));
-		return provider;
+function moduleVersion(mod: string, ver: string | undefined) {
+	if (!ver) {
+		return 'N/A';
 	}
-
-	constructor(private readonly extensionUri: vscode.Uri, private readonly goCtx: GoExtensionContext) {}
-
-	/**
-	 * Called when our custom editor is opened.
-	 */
-	public async resolveCustomTextEditor(
-		document: vscode.TextDocument,
-		webviewPanel: vscode.WebviewPanel,
-		_: vscode.CancellationToken // eslint-disable-line @typescript-eslint/no-unused-vars
-	): Promise<void> {
-		// Setup initial content for the webview
-		webviewPanel.webview.options = { enableScripts: true };
-		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
-
-		// Receive message from the webview.
-		webviewPanel.webview.onDidReceiveMessage(this.handleMessage, this);
-
-		function updateWebview() {
-			webviewPanel.webview.postMessage({ type: 'update', text: document.getText() });
-		}
-
-		// Hook up event handlers so that we can synchronize the webview with the text document.
-		//
-		// The text document acts as our model, so we have to sync change in the document to our
-		// editor and sync changes in the editor back to the document.
-		//
-		// Remember that a single text document can also be shared between multiple custom
-		// editors (this happens for example when you split a custom editor)
-		const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
-			if (e.document.uri.toString() === document.uri.toString()) {
-				updateWebview();
-			}
-		});
-
-		// Make sure we get rid of the listener when our editor is closed.
-		webviewPanel.onDidDispose(() => {
-			changeDocumentSubscription.dispose();
-		});
-
-		updateWebview();
+	if (mod === 'stdlib') {
+		return `go${ver.replace(/^(v|go)/, '')}`;
 	}
-
-	/**
-	 * Get the static html used for the editor webviews.
-	 */
-	private getHtmlForWebview(webview: vscode.Webview): string {
-		const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media');
-		// Local path to script and css for the webview
-		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.js'));
-		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'reset.css'));
-		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vscode.css'));
-		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'vulncheckView.css'));
-		const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'codicon.css'));
-
-		// Use a nonce to whitelist which scripts can be run
-		const nonce = getNonce();
-
-		return /* html */ `
-			<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="UTF-8">
-				<!--
-				Use a content security policy to only allow loading images from https or from our extension directory,
-				and only allow scripts that have a specific nonce.
-				-->
-				<!--
-					Use a content security policy to only allow loading specific resources in the webview
-				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<link href="${styleResetUri}" rel="stylesheet" />
-				<link href="${styleVSCodeUri}" rel="stylesheet" />
-				<link href="${styleMainUri}" rel="stylesheet" />
-				<link href="${codiconsUri}" rel="stylesheet" />
-				<title>Vulnerability Report - govulncheck</title>
-			</head>
-			<body>
-			    Vulncheck is an experimental tool.<br>
-				Share feedback at <a href="https://go.dev/s/vsc-vulncheck-feedback">go.dev/s/vsc-vulncheck-feedback</a>.
-
-				<div class="log"></div>
-				<div class="vulns"></div>
-				<div class="unaffecting"></div>
-				<div class="debug"></div>
-				<script nonce="${nonce}" src="${scriptUri}"></script>
-			</body>
-			</html>`;
-	}
-
-	private async handleMessage(e: { type: string; target?: string; dir?: string }): Promise<void> {
-		switch (e.type) {
-			case 'open':
-				{
-					if (!e.target) return;
-					const uri = safeURIParse(e.target);
-					if (!uri || !uri.scheme) return;
-					if (uri.scheme === 'https') {
-						vscode.env.openExternal(uri);
-					} else if (uri.scheme === 'file') {
-						const line = uri.query ? Number(uri.query.split(':')[0]) : undefined;
-						const range = line ? new vscode.Range(line, 0, line, 0) : undefined;
-						vscode.window.showTextDocument(
-							vscode.Uri.from({ scheme: uri.scheme, path: uri.path }),
-							// prefer the first column to present the source.
-							{ viewColumn: vscode.ViewColumn.One, selection: range }
-						);
-					}
-				}
-				return;
-			case 'fix':
-				{
-					if (!e.target || !e.dir) return;
-					const modFile = await getGoModFile(vscode.Uri.file(e.dir));
-					if (modFile) {
-						await goplsUpgradeDependency(this.goCtx, vscode.Uri.file(modFile), [e.target], false);
-						// TODO: run go mod tidy?
-					}
-				}
-				return;
-			case 'snapshot-result':
-				// response for `snapshot-request`.
-				return;
-			default:
-				console.log(`unrecognized type message: ${e.type}`);
-		}
-	}
+	return `${mod}@${ver}`;
 }
 
-const GOPLS_UPGRADE_DEPENDENCY = 'gopls.upgrade_dependency';
-async function goplsUpgradeDependency(
-	goCtx: GoExtensionContext,
-	goModFileUri: vscode.Uri,
-	goCmdArgs: string[],
-	addRequire: boolean
-): Promise<void> {
-	const { languageClient } = goCtx;
-	const uri = languageClient?.code2ProtocolConverter.asUri(goModFileUri);
-	const params: ExecuteCommandParams = {
-		command: GOPLS_UPGRADE_DEPENDENCY,
-		arguments: [
-			{
-				URI: uri,
-				GoCmdArgs: goCmdArgs,
-				AddRequire: addRequire
-			}
-		]
-	};
-	return await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
-}
+// writeVulns generates human-readable vulnerability report from the VulncheckReport
+// and write to the outputChannel.
+export function writeVulns(
+	res: VulncheckReport | undefined | null,
+	outputChannel: { appendLine(value: string): void }
+) {
+	outputChannel.appendLine('');
 
-async function getGoModFile(dir: vscode.Uri): Promise<string | undefined> {
-	try {
-		const p = await runGoEnv(dir, ['GOMOD']);
-		return p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
-	} catch (e) {
-		vscode.window.showErrorMessage(`Failed to find 'go.mod' for ${dir}: ${e}`);
-	}
-	return;
-}
-
-export class VulncheckProvider {
-	static scheme = 'govulncheck';
-	static setup({ subscriptions }: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-		const channel = vscode.window.createOutputChannel('govulncheck');
-		const instance = new this(channel);
-		subscriptions.push(
-			vscode.commands.registerCommand('go.vulncheck.run', async () => {
-				instance.run(goCtx);
-			})
-		);
-		return instance;
-	}
-
-	constructor(private channel: vscode.OutputChannel) {}
-
-	private running = false;
-
-	async run(goCtx: GoExtensionContext) {
-		if (this.running) {
-			vscode.window.showWarningMessage('another vulncheck is in progress');
-			return;
-		}
-		try {
-			this.running = true;
-			await this.runInternal(goCtx);
-		} finally {
-			this.running = false;
-		}
-	}
-
-	private async runInternal(goCtx: GoExtensionContext) {
-		const pick = await vscode.window.showQuickPick(['Current Package', 'Current Module', 'Workspace']);
-		let dir, pattern: string;
-		const document = vscode.window.activeTextEditor?.document;
-		switch (pick) {
-			case 'Current Package':
-				if (!document) {
-					vscode.window.showErrorMessage('vulncheck error: no current package');
-					return;
-				}
-				if (document.languageId !== 'go') {
-					vscode.window.showErrorMessage(
-						'File in the active editor is not a Go file, cannot find current package to check.'
-					);
-					return;
-				}
-				dir = path.dirname(document.fileName);
-				pattern = '.';
-				break;
-			case 'Current Module':
-				dir = await moduleDir(document);
-				if (!dir) {
-					vscode.window.showErrorMessage('vulncheck error: no current module');
-					return;
-				}
-				pattern = './...';
-				break;
-			case 'Workspace':
-				dir = await this.activeDir();
-				pattern = './...';
-				break;
-			default:
-				return;
-		}
-		if (!dir) {
-			return;
-		}
-
-		this.channel.clear();
-		this.channel.show();
-		this.channel.appendLine(`cd ${dir}; gopls vulncheck ${pattern}`);
-
-		try {
-			const start = new Date();
-			const vuln = await vulncheck(goCtx, dir, pattern, this.channel);
-
-			if (vuln?.Vuln?.length) {
-				fillAffectedPkgs(vuln.Vuln);
-
-				// record run info.
-				vuln.Start = start;
-				vuln.Duration = Date.now() - start.getTime();
-				vuln.Dir = dir;
-				vuln.Pattern = pattern;
-
-				// write to file and visualize it!
-				const fname = path.join(dir, `vulncheck-${Date.now()}.vulncheck.json`);
-				const writeFile = promisify(fs.writeFile);
-				await writeFile(fname, JSON.stringify(vuln));
-				const uri = URI.file(fname);
-				const viewColumn = vscode.ViewColumn.Beside;
-				vscode.commands.executeCommand(
-					'vscode.openWith',
-					uri,
-					VulncheckResultViewProvider.viewType,
-					viewColumn
-				);
-				this.channel.appendLine(`Vulncheck - result written in ${fname}`);
-			} else {
-				this.channel.appendLine('Vulncheck - found no vulnerability');
-			}
-		} catch (e) {
-			vscode.window.showErrorMessage(`error running vulncheck: ${e}`);
-			this.channel.appendLine(`Vulncheck failed: ${e}`);
-		}
-		this.channel.show();
-	}
-
-	private async activeDir() {
-		const folders = vscode.workspace.workspaceFolders;
-		if (!folders || folders.length === 0) return;
-		let dir: string | undefined = '';
-		if (folders.length === 1) {
-			dir = folders[0].uri.path;
-		} else {
-			const pick = await vscode.window.showQuickPick(
-				folders.map((f) => ({ label: f.name, description: f.uri.path }))
-			);
-			dir = pick?.description;
-		}
-		return dir;
-	}
-}
-
-async function moduleDir(document: vscode.TextDocument | undefined) {
-	const docDir = document && document.fileName && path.dirname(document.fileName);
-	if (!docDir) {
+	if (!res) {
+		outputChannel.appendLine('Error - invalid vulncheck result.'); // TODO(hyangah): ask to open an issue.
 		return;
 	}
-	const modFile = await getGoModFile(vscode.Uri.file(docDir));
-	if (!modFile) {
+	if (!res.Vulns || res.Vulns.length === 0) {
+		outputChannel.appendLine('No vulnerability found.');
 		return;
 	}
-	return path.dirname(modFile);
-}
 
-// run `gopls vulncheck`.
-export async function vulncheck(
-	goCtx: GoExtensionContext,
-	dir: string,
-	pattern = './...',
-	channel: { appendLine: (msg: string) => void }
-): Promise<VulncheckReport> {
-	const { languageClient, serverInfo } = goCtx;
-	const COMMAND = 'gopls.run_vulncheck_exp';
-	if (!languageClient || !serverInfo?.Commands?.includes(COMMAND)) {
-		throw Promise.reject('this feature requires gopls v0.8.4 or newer');
-	}
-	// TODO: read back the actual package configuration from gopls.
-	const gopls = getBinPath('gopls');
-	const options: vscode.ProgressOptions = {
-		cancellable: true,
-		title: 'Run govulncheck',
-		location: vscode.ProgressLocation.Notification
-	};
-	const task = vscode.window.withProgress<VulncheckReport>(options, (progress, token) => {
-		const p = cp.spawn(gopls, ['vulncheck', pattern], {
-			cwd: dir,
-			env: toolExecutionEnvironment(vscode.Uri.file(dir))
-		});
-
-		progress.report({ message: `starting command ${gopls} from ${dir}  (pid; ${p.pid})` });
-
-		const d = token.onCancellationRequested(() => {
-			channel.appendLine(`gopls vulncheck (pid: ${p.pid}) is cancelled`);
-			killProcessTree(p);
-			d.dispose();
-		});
-
-		const promise = new Promise<VulncheckReport>((resolve, reject) => {
-			const rl = readline.createInterface({ input: p.stderr });
-			rl.on('line', (line) => {
-				channel.appendLine(line);
-				const msg = line.match(/^\d+\/\d+\/\d+\s+\d+:\d+:\d+\s+(.*)/);
-				if (msg && msg[1]) {
-					progress.report({ message: msg[1] });
-				}
-			});
-
-			let buf = '';
-			p.stdout.on('data', (chunk) => {
-				buf += chunk;
-			});
-			p.stdout.on('close', () => {
-				try {
-					const res: VulncheckReport = JSON.parse(buf);
-					resolve(res);
-				} catch (e) {
-					if (token.isCancellationRequested) {
-						reject('analysis cancelled');
-					} else {
-						channel.appendLine(buf);
-						reject('vulncheck failed: see govulncheck OUTPUT');
-					}
-				}
+	const affecting = res.Vulns.filter((v) => {
+		return v.Modules?.some((m) => {
+			return m.Packages?.some((p) => {
+				return p.CallStacks?.some((cs) => {
+					return cs.Frames && cs.Frames.length > 0;
+				});
 			});
 		});
-		return promise;
 	});
-	return await task;
+	const unaffecting = res.Vulns.filter((v) => !affecting.includes(v));
+
+	switch (affecting.length) {
+		case 0:
+			outputChannel.appendLine('No vulnerability found.');
+			break;
+		case 1:
+			outputChannel.appendLine(`Found ${affecting.length} affecting vulnerability.`);
+			outputChannel.appendLine('-'.repeat(80));
+			break;
+		default:
+			outputChannel.appendLine(`Found ${affecting.length} affecting vulnerabilities.`);
+			outputChannel.appendLine('-'.repeat(80));
+			break;
+	}
+
+	affecting.forEach((vuln) => {
+		outputChannel.appendLine(`⚠ ${vuln.OSV.id} (https://pkg.go.dev/vuln/${vuln.OSV.id})`);
+		const desc = (vuln.OSV.details || '').trimRight();
+		const aliases = vuln.OSV.aliases?.length ? ` (${vuln.OSV.aliases.join(', ')})` : '';
+		outputChannel.appendLine(`\n${desc}${aliases}\n`);
+		vuln.Modules?.forEach((mod) => {
+			outputChannel.appendLine(`Found Version: ${moduleVersion(mod.Path, mod.FoundVersion)}`);
+			outputChannel.appendLine(`Fixed Version: ${moduleVersion(mod.Path, mod.FixedVersion)}`);
+			mod.Packages?.forEach((pkg) => {
+				outputChannel.appendLine('\nCall stacks in your code:');
+				pkg.CallStacks?.forEach((cs, index) => {
+					// TODO: the position info embedded in the cs.Summary is relative to
+					// the directory gopls ran the vulnchek.
+					// Instead replace with workspace-relative paths.
+					outputChannel.appendLine(`- ${cs.Summary}`);
+					// Print the first trace (index === 0) as an example.
+					// TODO(hyangah): allow users to see example traces for all detected vulnerable symbols.
+					if (index === 0 && cs.Frames) {
+						const last = cs.Frames.length - 1;
+						cs.Frames?.forEach((f, index) => {
+							// Skip the last frame that just carries the vulnerable symbol.
+							// This info is already included in cs.Summary.
+							if (last === index) return;
+							const line = f.Position?.Line || 1;
+							// TODO: shorten f.Position.Filename (e.g. workspace relative path, and home directory ~ relative path)
+							const pos = f.Position?.Filename ? `${f.Position.Filename}:${line}` : ' - ';
+							const name = f.RecvType ? `${f.RecvType}.${f.FuncName}` : `${f.PkgPath}.${f.FuncName}`;
+							outputChannel.appendLine(`\t${name}\n\t\t(${pos})`);
+						});
+					}
+				});
+			});
+		});
+		outputChannel.appendLine('-'.repeat(80));
+	});
+
+	if (unaffecting.length) {
+		outputChannel.appendLine(`
+# The vulnerabilities below are in packages that you import, but your code does
+# not appear to call any vulnerable functions. You may not need to take any
+# action. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for details.
+`);
+
+		switch (unaffecting.length) {
+			case 1:
+				outputChannel.appendLine(`Found ${unaffecting.length} unused vulnerability.`);
+				break;
+			default:
+				outputChannel.appendLine(`Found ${unaffecting.length} unused vulnerabilities.`);
+				break;
+		}
+		outputChannel.appendLine('-'.repeat(80));
+	}
+
+	unaffecting.forEach((vuln) => {
+		outputChannel.appendLine(`ⓘ ${vuln.OSV.id} (https://pkg.go.dev/vuln/${vuln.OSV.id})`);
+		const desc = (vuln.OSV.details || '').trimRight();
+		const aliases = vuln.OSV.aliases?.length ? ` (${vuln.OSV.aliases.join(', ')})` : '';
+		outputChannel.appendLine(`\n${desc}${aliases}\n`);
+		vuln.Modules?.forEach((mod) => {
+			outputChannel.appendLine(`Found Version: ${moduleVersion(mod.Path, mod.FoundVersion)}`);
+			outputChannel.appendLine(`Fixed Version: ${moduleVersion(mod.Path, mod.FixedVersion)}`);
+			mod.Packages?.forEach((pkg) => {
+				outputChannel.appendLine(`Package: ${pkg.Path}`);
+			});
+		});
+		outputChannel.appendLine('-'.repeat(80));
+	});
 }
 
-interface VulncheckReport {
+// VulncheckReport is the JSON data type of gopls's vulncheck result.
+export interface VulncheckReport {
 	// Vulns populated by gopls vulncheck run.
-	Vuln?: Vuln[];
+	Vulns?: Vuln[];
 
-	// analysis run information.
-	Pattern?: string;
-	Dir?: string;
-
-	Start?: Date;
-	Duration?: number; // milliseconds
+	Mode?: 'govulncheck' | 'imports';
 }
 
+// Vuln represents a single OSV entry.
 interface Vuln {
-	ID: string;
-	Details: string;
-	Aliases: string[];
-	Symbol: string;
-	PkgPath: string;
-	ModPath: string;
-	URL: string;
-	CurrentVersion: string;
-	FixedVersion: string;
-	CallStacks?: CallStack[][];
-	CallStacksSummary?: string[];
+	// OSV contains all data from the OSV entry for this vulnerability.
+	OSV: OSVEntry;
 
-	// Derived from call stacks.
-	// TODO(hyangah): add to gopls vulncheck.
-	AffectedPkgs?: string[];
+	// Modules contains all of the modules in the OSV entry where a
+	// vulnerable package is imported by the target source code or binary.
+	//
+	// For example, a module M with two packages M/p1 and M/p2, where only p1
+	// is vulnerable, will appear in this list if and only if p1 is imported by
+	// the target source code or binary.
+	Modules: Module[];
+
+	AffectedPackages?: string[];
+}
+
+interface OSVEntry {
+	id: string;
+	published?: string;
+	aliases?: string[];
+	details?: string;
+	affected?: Affected[];
+}
+
+interface Affected {
+	package: Package;
+	ecosystem_specific?: EcosystemSpecific;
+}
+
+interface EcosystemSpecificImport {
+	path: string;
+	goos?: string[];
+	goarch?: string[];
+	symbols?: string[];
+}
+
+interface EcosystemSpecific {
+	imports?: EcosystemSpecificImport[];
+}
+
+interface Package {
+	name: string;
+}
+
+interface Module {
+	// Path is the module path of the module containing the vulnerability.
+	//
+	// Importable packages in the standard library will have the path "stdlib".
+	Path: string;
+
+	// FoundVersion is the module version where the vulnerability was found.
+	FoundVersion?: string;
+
+	// FixedVersion is the module version where the vulnerability was
+	// fixed. If there are multiple fixed versions in the OSV report, this will
+	// be the latest fixed version.
+	//
+	// This is empty if a fix is not available.
+	FixedVersion?: string;
+
+	// Packages contains all the vulnerable packages in OSV entry that are
+	// imported by the target source code or binary.
+	//
+	// For example, given a module M with two packages M/p1 and M/p2, where
+	// both p1 and p2 are vulnerable, p1 and p2 will each only appear in this
+	// list they are individually imported by the target source code or binary.
+	Packages?: Package[];
+}
+
+interface Package {
+	// Path is the import path of the package containing the vulnerability.
+	Path: string;
+
+	// CallStacks contains a representative call stack for each
+	// vulnerable symbol that is called.
+	//
+	// For vulnerabilities found from binary analysis, only CallStack.Symbol
+	// will be provided.
+	//
+	// For non-affecting vulnerabilities reported from the source mode
+	// analysis, this will be empty.
+	CallStacks?: CallStack[];
 }
 
 interface CallStack {
-	Name: string;
-	URI: string;
-	Pos: {
-		line: number;
-		character: number;
-	};
+	// Symbol is the name of the detected vulnerable function
+	// or method.
+	//
+	// This follows the naming convention in the OSV report.
+	Symbol?: string;
+
+	// Summary is a one-line description of the callstack, used by the
+	// default govulncheck mode.
+	//
+	// Example: module3.main calls github.com/shiyanhui/dht.DHT.Run
+	Summary?: string;
+
+	// Frames contains an entry for each stack in the call stack.
+	//
+	// Frames are sorted starting from the entry point to the
+	// imported vulnerable symbol. The last frame in Frames should match
+	// Symbol.
+	Frames?: StackFrame[];
 }
 
-function getNonce() {
-	let text = '';
-	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-	for (let i = 0; i < 32; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
+interface StackFrame {
+	// PackagePath is the import path.
+	PkgPath: string;
+
+	// FuncName is the function name.
+	FuncName?: string;
+
+	// RecvType is the fully qualified receiver type,
+	// if the called symbol is a method.
+	//
+	// The client can create the final symbol name by
+	// prepending RecvType to FuncName.
+	RecvType?: string;
+
+	// Position describes an arbitrary source position
+	// including the file, line, and column location.
+	// A Position is valid if the line number is > 0.
+	Position?: Position;
+}
+
+interface Position {
+	Filename?: string; // filename, if any
+	Offset?: number; // offset, starting at 0
+	Line?: number; // line number, starting at 1
+	Column?: number; // column number, starting at 1 (byte count)
+}
+
+// VulncheckOutputLinkProvider linkifies govulncheck output.
+export class VulncheckOutputLinkProvider implements vscode.DocumentLinkProvider {
+	static activate(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
+		ctx.subscriptions.push(
+			vscode.languages.registerDocumentLinkProvider(
+				{ language: 'govulncheck' },
+				new VulncheckOutputLinkProvider()
+			)
+		);
 	}
-	return text;
-}
 
-function safeURIParse(s: string): URI | undefined {
-	try {
-		return URI.parse(s);
-	} catch (_) {
-		return undefined;
+	provideDocumentLinks(
+		document: vscode.TextDocument,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		_token: vscode.CancellationToken
+	): vscode.ProviderResult<vscode.DocumentLink[]> {
+		try {
+			return this.unsafeProvideDocumentLinks(document);
+		} catch (e) {
+			console.log(`failed to linkify govulncheck output result: ${e}`);
+		}
+		return [];
+	}
+
+	unsafeProvideDocumentLinks(document: vscode.TextDocument): vscode.ProviderResult<vscode.DocumentLink[]> {
+		const ret = [] as vscode.DocumentLink[];
+		let cwd = '';
+		for (let i = 0; i < document.lineCount; i++) {
+			const readLine = document.lineAt(i);
+
+			// govulncheck ./... for file:///foo/go.mod.
+			const cmdPattern = readLine.text.match(/^govulncheck\s+\S+\s+for\s+(file:.*\.mod)/);
+			if (cmdPattern && cmdPattern[1]) {
+				cwd = path.dirname(vscode.Uri.parse(cmdPattern[1]).fsPath);
+				continue;
+			}
+
+			// Found Version: and Fixed Version:
+			const foundOrFixedVersionPattern = readLine.text.match(/^(?:Found|Fixed) Version:\s+(\S+@\S+)$/);
+			if (foundOrFixedVersionPattern && foundOrFixedVersionPattern[1]) {
+				const modVersion = foundOrFixedVersionPattern[1];
+				const start = readLine.text.indexOf(modVersion);
+				const end = start + modVersion.length;
+				const link = new vscode.DocumentLink(
+					new vscode.Range(i, start, i, end),
+					vscode.Uri.parse(`https://pkg.go.dev/${modVersion}`)
+				);
+				link.tooltip = `https://pkg.go.dev/${modVersion}`;
+				ret.push(link);
+				continue;
+			}
+
+			// Position at file (e.g. file.go:1:2)
+			const filePosPattern = readLine.text.match(/(?:-\s+|\s+\()(\S+\.go):(\d+)(?::(\d+)){0,1}/);
+			if (filePosPattern && filePosPattern[1]) {
+				let fname = filePosPattern[1];
+				if (!path.isAbsolute(fname)) {
+					fname = path.join(cwd, fname);
+				}
+				if (path.isAbsolute(fname)) {
+					const line = filePosPattern[2];
+					const col = filePosPattern[3];
+					const fragment = col ? { fragment: `L${line},${col}` } : { fragment: `L${line}` };
+					const uri = URI.file(fname).with(fragment);
+					const start = readLine.text.indexOf(filePosPattern[1]);
+					const end = readLine.text.indexOf(filePosPattern[0]) + filePosPattern[0].length;
+					const link = new vscode.DocumentLink(new vscode.Range(i, start, i, end), uri);
+					ret.push(link);
+				}
+				continue;
+			}
+		}
+		return ret;
 	}
 }
 
-// Computes the AffectedPkgs attribute if it's not present.
-// Exported for testing.
-// TODO(hyangah): move this logic to gopls vulncheck or govulncheck.
-export function fillAffectedPkgs(vulns: Vuln[] | undefined): Vuln[] {
-	if (!vulns) return [];
+export const toggleVulncheckCommandFactory = () => () => {
+	const editor = vscode.window.activeTextEditor;
+	const documentUri = editor?.document.uri;
+	toggleVulncheckCommand(documentUri);
+};
 
-	const re = new RegExp(/^(\S+)\/([^/\s]+)$/);
-	vulns.forEach((vuln) => {
-		// If it's already set by gopls vulncheck, great!
-		if (vuln.AffectedPkgs) return;
-
-		const affected = new Set<string>();
-		vuln.CallStacks?.forEach((cs) => {
-			if (!cs || cs.length === 0) {
-				return;
-			}
-			const name = cs[0].Name || '';
-			const m = name.match(re);
-			if (!m) {
-				name && affected.add(name);
-			} else {
-				const pkg = m[2] && m[2].split('.')[0];
-				affected.add(`${m[1]}/${pkg}`);
-			}
-		});
-		vuln.AffectedPkgs = Array.from(affected);
-	});
-	return vulns;
+function toggleVulncheckCommand(uri?: URI) {
+	const goCfgName = 'diagnostic.vulncheck';
+	const cfg = getGoConfig(uri);
+	const { globalValue, workspaceValue, workspaceFolderValue } = cfg.inspect(goCfgName) || {};
+	if (workspaceFolderValue) {
+		const newValue = workspaceFolderValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue);
+		return;
+	}
+	if (workspaceValue) {
+		const newValue = workspaceValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue, false);
+		return;
+	}
+	if (globalValue) {
+		const newValue = globalValue === 'Imports' ? 'Off' : 'Imports';
+		cfg.update(goCfgName, newValue, true);
+		return;
+	}
+	cfg.update(goCfgName, 'Imports');
 }

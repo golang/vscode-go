@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -171,6 +171,12 @@
         "aliases": [
           "Go Template File"
         ]
+      },
+      {
+        "id": "govulncheck",
+        "aliases": [
+          "Govulncheck Output"
+        ]
       }
     ],
     "grammars": [
@@ -188,6 +194,11 @@
         "language": "go.sum",
         "scopeName": "go.sum",
         "path": "./syntaxes/go.sum.tmGrammar.json"
+      },
+      {
+        "language": "govulncheck",
+        "scopeName": "govulncheck",
+        "path": "./syntaxes/govulncheck.tmGrammar.json"
       }
     ],
     "snippets": [
@@ -236,6 +247,11 @@
         "command": "go.subtest.cursor",
         "title": "Go: Subtest At Cursor",
         "description": "Runs a sub test at the cursor."
+      },
+      {
+        "command": "go.debug.subtest.cursor",
+        "title": "Go: Debug Subtest At Cursor",
+        "description": "Debug a sub test at the cursor."
       },
       {
         "command": "go.benchmark.cursor",
@@ -372,6 +388,11 @@
         "command": "go.toggle.test.file",
         "title": "Go: Toggle Test File",
         "description": "Toggles between file in current active editor and the corresponding test file."
+      },
+      {
+        "command": "go.vulncheck.toggle",
+        "title": "Go: Toggle Vulncheck",
+        "description": "Toggle the display of vulnerability analysis in dependencies."
       },
       {
         "command": "go.add.tags",
@@ -525,12 +546,6 @@
         "description": "Reset the Go Env for the active workspace.",
         "icon": "$(settings-remove)",
         "enablement": "workspaceFolderCount > 0"
-      },
-      {
-        "command": "go.vulncheck.run",
-        "title": "Go: Run Vulncheck (Preview)",
-        "description": "Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.",
-        "enablement": "go.goplsIsRunning"
       }
     ],
     "breakpoints": [
@@ -1205,23 +1220,23 @@
         "go.formatTool": {
           "type": "string",
           "default": "default",
-          "description": "When the language server is enabled and one of default/gofmt/goimports/gofumpt is chosen, the language server will handle formatting. Otherwise, the extension will use the specified tool for formatting.",
+          "markdownDescription": "When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.",
           "scope": "resource",
           "enum": [
             "default",
             "gofmt",
             "goimports",
             "goformat",
-            "gofumpt"
+            "gofumpt",
+            "custom"
           ],
-          "additionalItems": true,
-          "enumDescriptions": [
+          "markdownEnumDescriptions": [
             "If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.",
             "Formats the file according to the standard Go style. (not applicable when the language server is enabled)",
             "Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)",
             "Configurable gofmt, see https://github.com/mbenkmann/goformat.",
-            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. (not applicable when the language server is enabled)",
-            "Applies gofumpt formatting and organizes imports."
+            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)",
+            "Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT."
           ]
         },
         "go.formatFlags": {
@@ -2029,15 +2044,15 @@
               "default": "gopls",
               "description": "Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary."
             },
-            "go-outline": {
-              "type": "string",
-              "default": "go-outline",
-              "description": "Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary."
-            },
             "dlv": {
               "type": "string",
               "default": "dlv",
               "description": "Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary."
+            },
+            "customFormatter": {
+              "type": "string",
+              "default": "",
+              "markdownDescription": "Custom formatter to use instead of the language server. This should be used with the `custom` option in `#go.formatTool#`."
             }
           },
           "additionalProperties": true
@@ -2094,12 +2109,6 @@
               "type": "boolean",
               "markdownDescription": "(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key\nfor package type information to increase cache hits. This setting removes\nthe user's environment, build flags, and working directory from the cache\nkey, which should be a safe change as all relevant inputs into the type\nchecking pass are already hashed into the key. This is temporarily guarded\nby an experiment because caching behavior is subtle and difficult to\ncomprehensively test.\n",
               "default": true,
-              "scope": "resource"
-            },
-            "build.experimentalUseInvalidMetadata": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file).\n\nDeprecated: this setting is deprecated and will be removed in a future\nversion of gopls (https://go.dev/issue/55333).\n",
-              "default": false,
               "scope": "resource"
             },
             "build.experimentalWorkspaceModule": {
@@ -2168,7 +2177,7 @@
                   "markdownDescription": "Regenerates cgo definitions.",
                   "default": true
                 },
-                "run_vulncheck_exp": {
+                "run_govulncheck": {
                   "type": "boolean",
                   "markdownDescription": "Run vulnerability check (`govulncheck`).",
                   "default": false
@@ -2326,7 +2335,7 @@
                 },
                 "loopclosure": {
                   "type": "boolean",
-                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer checks for references to loop variables from within a function\nliteral inside the loop body. It checks for patterns where access to a loop\nvariable is known to escape the current loop iteration:\n 1. a call to go or defer at the end of the loop body\n 2. a call to golang.org/x/sync/errgroup.Group.Go at the end of the loop body\n\nThe analyzer only considers references in the last statement of the loop body\nas it is not deep enough to understand the effects of subsequent statements\nwhich might render the reference benign.\n\nFor example:\n\n\tfor i, v := range s {\n\t\tgo func() {\n\t\t\tprintln(i, v) // not what you might expect\n\t\t}()\n\t}\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
+                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer reports places where a function literal references the\niteration variable of an enclosing loop, and the loop calls the function\nin such a way (e.g. with go or defer) that it may outlive the loop\niteration and possibly observe the wrong value of the variable.\n\nIn this example, all the deferred functions run after the loop has\ncompleted, so all observe the final value of v.\n\n    for _, v := range list {\n        defer func() {\n            use(v) // incorrect\n        }()\n    }\n\nOne fix is to create a new variable for each iteration of the loop:\n\n    for _, v := range list {\n        v := v // new var per iteration\n        defer func() {\n            use(v) // ok\n        }()\n    }\n\nThe next example uses a go statement and has a similar problem.\nIn addition, it has a data race because the loop updates v\nconcurrent with the goroutines accessing it.\n\n    for _, v := range elem {\n        go func() {\n            use(v)  // incorrect, and a data race\n        }()\n    }\n\nA fix is the same as before. The checker also reports problems\nin goroutines started by golang.org/x/sync/errgroup.Group.\nA hard-to-spot variant of this form is common in parallel tests:\n\n    func Test(t *testing.T) {\n        for _, test := range tests {\n            t.Run(test.name, func(t *testing.T) {\n                t.Parallel()\n                use(test) // incorrect, and a data race\n            })\n        }\n    }\n\nThe t.Parallel() call causes the rest of the function to execute\nconcurrent with the loop.\n\nThe analyzer reports references only in the last statement,\nas it is not deep enough to understand the effects of subsequent\nstatements that might render the reference benign.\n(\"Last statement\" is defined recursively in compound\nstatements such as if, switch, and select.)\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
                   "default": true
                 },
                 "lostcancel": {
@@ -2624,6 +2633,20 @@
             }
           }
         },
+        "go.diagnostic.vulncheck": {
+          "type": "string",
+          "markdownDescription": "(Experimental) vulncheck enables vulnerability scanning.\n",
+          "enum": [
+            "Imports",
+            "Off"
+          ],
+          "markdownEnumDescriptions": [
+            "`\"Imports\"`: In Imports mode, `gopls` will report vulnerabilities that affect packages\ndirectly and indirectly used by the analyzed main module.\n",
+            "`\"Off\"`: Disable vulnerability analysis.\n"
+          ],
+          "default": "Off",
+          "scope": "resource"
+        },
         "go.inlayHints.assignVariableTypes": {
           "type": "boolean",
           "markdownDescription": "Enable/disable inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```",
@@ -2837,17 +2860,6 @@
           "when": "go.hasProfiles"
         }
       ]
-    },
-    "customEditors": [
-      {
-        "viewType": "vulncheck.view",
-        "displayName": "Vulnerability Report",
-        "selector": [
-          {
-            "filenamePattern": "*.vulncheck.json"
-          }
-        ]
-      }
-    ]
+    }
   }
 }

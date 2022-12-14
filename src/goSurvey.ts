@@ -7,20 +7,21 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion } from './language/goLanguageServer';
-import { outputChannel } from './goStatus';
+import { CommandFactory } from './commands';
+import { getGoConfig } from './config';
 import { extensionId } from './const';
-import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
+import { GoExtensionContext } from './context';
 import {
 	developerSurveyConfig,
 	getDeveloperSurveyConfig,
 	maybePromptForDeveloperSurvey,
 	promptForDeveloperSurvey
 } from './goDeveloperSurvey';
-import { getGoConfig } from './config';
+import { outputChannel } from './goStatus';
+import { getLocalGoplsVersion } from './language/goLanguageServer';
+import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
 import { getGoVersion } from './util';
-import { GoExtensionContext } from './context';
-import { CommandFactory } from './commands';
+import { promptNext4Weeks } from './utils/randomDayutils';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -35,7 +36,7 @@ export interface GoplsSurveyConfig {
 	promptThisMonth?: boolean;
 
 	// dateToPromptThisMonth is the date on which we should prompt the user
-	// this month.
+	// this month. (It is no longer necessarily in the current month.)
 	dateToPromptThisMonth?: Date;
 
 	// dateComputedPromptThisMonth is the date on which the values of
@@ -113,38 +114,26 @@ export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsS
 	if (cfg.dateComputedPromptThisMonth) {
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
+		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 28) {
 			return cfg;
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
 	// the range [0, 1) and checking if it is < probability.
-	// We then randomly pick a day in the rest of the month on which to prompt
-	// the user.
+	// We then randomly pick a day in the next 4 weeks to prompt the user.
 	// Probability is set based on the # of responses received, and will be
 	// decreased if we begin receiving > 200 responses/month.
 	const probability = 0.06;
 	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
-		// end is the last day of the month, day is the random day of the
-		// month on which to prompt.
-		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-		const day = randomIntInRange(now.getUTCDate(), end.getUTCDate());
-		cfg.dateToPromptThisMonth = new Date(now.getFullYear(), now.getMonth(), day);
+		cfg.dateToPromptThisMonth = promptNext4Weeks(now);
 	} else {
 		cfg.dateToPromptThisMonth = undefined;
 	}
 	cfg.dateComputedPromptThisMonth = now;
 	flushSurveyConfig(goplsSurveyConfig, cfg);
 	return cfg;
-}
-
-// randomIntInRange returns a random integer between min and max, inclusive.
-function randomIntInRange(min: number, max: number): number {
-	const low = Math.ceil(min);
-	const high = Math.floor(max);
-	return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
 async function promptForGoplsSurvey(

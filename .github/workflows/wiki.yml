@@ -46,7 +46,7 @@ jobs:
           go run ./tools/docs2wiki -w ./docs
           cd ..
           cd wiki
-          diff -ruN --exclude=.git . ../vscode-go/docs > ../mypatch || patch -p3 -E -f < ../mypatch
+          rm -r ./* && cp -r ../vscode-go/docs/* .
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .

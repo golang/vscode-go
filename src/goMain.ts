@@ -64,10 +64,9 @@ import extensionAPI from './extensionAPI';
 import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
-import { VulncheckProvider, VulncheckResultViewProvider } from './goVulncheck';
-
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
+import { toggleVulncheckCommandFactory, VulncheckOutputLinkProvider } from './goVulncheck';
 
 const goCtx: GoExtensionContext = {};
 
@@ -146,8 +145,9 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.godoctor.var', commands.extractVariable);
 	registerCommand('go.test.cursor', commands.testAtCursor('test'));
 	registerCommand('go.test.cursorOrPrevious', commands.testAtCursorOrPrevious('test'));
-	registerCommand('go.subtest.cursor', commands.subTestAtCursor);
+	registerCommand('go.subtest.cursor', commands.subTestAtCursor('test'));
 	registerCommand('go.debug.cursor', commands.testAtCursor('debug'));
+	registerCommand('go.debug.subtest.cursor', commands.subTestAtCursor('debug'));
 	registerCommand('go.benchmark.cursor', commands.testAtCursor('benchmark'));
 	registerCommand('go.test.package', commands.testCurrentPackage(false));
 	registerCommand('go.benchmark.package', commands.testCurrentPackage(true));
@@ -170,8 +170,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	}
 
 	GoExplorerProvider.setup(ctx);
-	VulncheckProvider.setup(ctx, goCtx);
-	VulncheckResultViewProvider.register(ctx, goCtx);
 
 	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
 	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
@@ -211,6 +209,10 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
 	});
+
+	// Vulncheck output link provider.
+	VulncheckOutputLinkProvider.activate(ctx);
+	registerCommand('go.vulncheck.toggle', toggleVulncheckCommandFactory);
 
 	return extensionAPI;
 }

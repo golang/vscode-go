@@ -47,6 +47,10 @@ Runs a unit test at the cursor if one is found, otherwise re-runs the last execu
 
 Runs a sub test at the cursor.
 
+### `Go: Debug Subtest At Cursor`
+
+Debug a sub test at the cursor.
+
 ### `Go: Benchmark Function At Cursor`
 
 Runs a benchmark at the cursor.
@@ -150,6 +154,10 @@ install/update the required go packages
 ### `Go: Toggle Test File`
 
 Toggles between file in current active editor and the corresponding test file.
+
+### `Go: Toggle Vulncheck`
+
+Toggle the display of vulnerability analysis in dependencies.
 
 ### `Go: Add Tags To Struct Fields`
 
@@ -266,7 +274,3 @@ Edit the Go Env for the active workspace.
 ### `Go: Reset Workspace Env`
 
 Reset the Go Env for the active workspace.
-
-### `Go: Run Vulncheck (Preview)`
-
-Run vulnerability check. See https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck for more details about the analysis.

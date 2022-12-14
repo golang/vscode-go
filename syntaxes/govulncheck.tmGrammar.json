@@ -1,0 +1,123 @@
+{
+	"scopeName": "govulncheck",
+	"patterns": [
+		{
+			"include": "#log"
+		},
+		{
+			"include": "#info"
+		},
+		{
+			"include": "#affecting"
+		},
+		{
+			"include": "#unaffecting"
+		},
+		{
+			"include": "#callstack"
+		},
+		{
+			"include": "#callstacklong"
+		},
+		{
+			"include": "#frame"
+		},
+		{
+			"include": "#framePosition"
+		}
+	],
+	"repository": {
+		"log": {
+			"comment": "log",
+			"match": "^\\d{2}:\\d{2}:\\d{2} \\S.*$",
+			"name": "comment.govulncheck"
+		},
+		"info": {
+			"comment": "info",
+			"match": "^# .*",
+			"name": "comment.govulncheck"
+		},
+		"affecting": {
+			"comment": "vulnerability heading",
+			"match": "^(⚠) (\\S+) \\((https://[^)]+)\\)",
+			"name": "markup.heading.1.govulncheck",
+			"captures": {
+				"1": {
+					"name": "token.error-token.severity.govulncheck"
+				},
+				"2": {
+					"name": "token.error-token.vulnid.govulncheck"
+				},
+				"3": {
+					"name": "entity.link.govulncheck"
+				}
+			}
+		},
+		"unaffecting": {
+			"comment": "vulnerability heading",
+			"match": "^(ⓘ) (\\S+) \\((https://[^)]+)\\)",
+			"captures": {
+				"1": {
+					"name": "token.info-token.severity.govulncheck"
+				},
+				"2": {
+					"name": "token.info-token.vulnid.govulncheck"
+				},
+				"3": {
+					"name": "entity.link.govulncheck"
+				}
+			}
+		},
+		"callstacklong": {
+			"comment": "callstack",
+			"match": "^\\- (\\S+) (\\S+) calls ([^,]+), which eventually calls (\\S+)",
+			"name": "markup.list.unnumbered.callstack.summary.govulncheck",
+			"captures": {
+				"1": {
+					"name": "markup.link.callstack.position.govulncheck"
+				},
+				"2": {
+					"name": "markup.italic.raw.callstack.symbol.govulncheck"
+				},
+				"3": {
+					"name": "markup.italic.callstack.symbol.govulncheck"
+				},
+				"4": {
+					"name": "markup.italic.callstack.symbol.govulncheck"
+				}
+			}
+		},
+		"callstack": {
+			"comment": "callstack",
+			"match": "^\\- (\\S+) (\\S+) calls ([^,]+)$",
+			"name": "markup.list.unnumbered.callstack.summary.govulncheck",
+			"captures": {
+				"1": {
+					"name": "markup.link.callstack.position.govulncheck"
+				},
+				"2": {
+					"name": "markup.italic.raw.callstack.symbol.govulncheck"
+				},
+				"3": {
+					"name": "markup.italic.callstack.symbol.govulncheck"
+				}
+			}
+		},
+		"frame": {
+			"comment": "frame",
+			"match": "^\\t(\\S+)",
+			"name": "markup.list.unnumbered.fram.govulncheck",
+			"captures": {
+				"1": { "name": "markup.italic.raw.callstack.symbol.govulncheck"}
+			}
+		},
+		"framePosition": {
+			"comment": "frame position info",
+			"match": "^\\t\\t(\\([^)]+\\))",
+			"name": "markup.list.unnumbered.frame.govulncheck",
+			"captures": {
+				"1": { "name": "comment.govulncheck"}
+			}
+		}
+	}
+}

@@ -20,12 +20,15 @@ import {
 	ConfigurationParams,
 	ConfigurationRequest,
 	ErrorAction,
+	ExecuteCommandParams,
+	ExecuteCommandRequest,
 	ExecuteCommandSignature,
 	HandleDiagnosticsSignature,
 	InitializeError,
 	InitializeResult,
 	LanguageClientOptions,
 	Message,
+	ProgressToken,
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentFormattingEditsSignature,
@@ -56,6 +59,8 @@ import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMi
 import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
+import { URI } from 'vscode-uri';
+import { VulncheckReport, writeVulns } from '../goVulncheck';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -333,6 +338,9 @@ export function buildLanguageClientOption(
 		if (!goCtx.serverTraceChannel) {
 			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
 		}
+		if (!goCtx.govulncheckOutputChannel) {
+			goCtx.govulncheckOutputChannel = vscode.window.createOutputChannel('govulncheck', 'govulncheck');
+		}
 	}
 	return Object.assign(
 		{
@@ -343,12 +351,35 @@ export function buildLanguageClientOption(
 	);
 }
 
+export class GoLanguageClient extends LanguageClient implements vscode.Disposable {
+	constructor(
+		id: string,
+		name: string,
+		serverOptions: ServerOptions,
+		clientOptions: LanguageClientOptions,
+		private onDidChangeVulncheckResultEmitter: vscode.EventEmitter<VulncheckEvent>
+	) {
+		super(id, name, serverOptions, clientOptions);
+	}
+
+	dispose() {
+		this.onDidChangeVulncheckResultEmitter.dispose();
+	}
+	public get onDidChangeVulncheckResult(): vscode.Event<VulncheckEvent> {
+		return this.onDidChangeVulncheckResultEmitter.event;
+	}
+}
+
+type VulncheckEvent = {
+	URI?: URI;
+};
+
 // buildLanguageClient returns a language client built using the given language server config.
 // The returned language client need to be started before use.
 export async function buildLanguageClient(
 	goCtx: GoExtensionContext,
 	cfg: BuildLanguageClientOption
-): Promise<LanguageClient> {
+): Promise<GoLanguageClient> {
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
@@ -365,7 +396,11 @@ export async function buildLanguageClient(
 	// in initializationFailedHandler and handle it in the connectionCloseHandler.
 	let initializationError: WebRequest.ResponseError<InitializeError> | undefined = undefined;
 
-	const c = new LanguageClient(
+	const govulncheckOutputChannel = goCtx.govulncheckOutputChannel;
+	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
+	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
+
+	const c = new GoLanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
 		{
@@ -439,10 +474,52 @@ export async function buildLanguageClient(
 				}
 			},
 			middleware: {
+				handleWorkDoneProgress: async (token, params, next) => {
+					switch (params.kind) {
+						case 'begin':
+							break;
+						case 'report':
+							if (pendingVulncheckProgressToken.has(token) && params.message) {
+								govulncheckOutputChannel?.appendLine(params.message);
+							}
+							break;
+						case 'end':
+							if (pendingVulncheckProgressToken.has(token)) {
+								const out = pendingVulncheckProgressToken.get(token);
+								pendingVulncheckProgressToken.delete(token);
+								if (params.message === 'completed') {
+									// success. In case of failure, it will be 'failed'
+									onDidChangeVulncheckResultEmitter.fire({ URI: out.URI });
+								}
+							}
+					}
+					next(token, params);
+				},
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
 					try {
-						return await next(command, args);
+						if (command === 'gopls.run_govulncheck' && args.length) {
+							await vscode.workspace.saveAll(false);
+							// TODO: move this output printing to goVulncheck.ts.
+							govulncheckOutputChannel?.replace(`govulncheck ./... for ${args[0].URI}\n`);
+							govulncheckOutputChannel?.appendLine('govulncheck is an experimental tool.');
+							govulncheckOutputChannel?.appendLine(
+								'Share feedback at https://go.dev/s/vsc-vulncheck-feedback.\n'
+							);
+							govulncheckOutputChannel?.show();
+						}
+						if (command === 'gopls.tidy') {
+							await vscode.workspace.saveAll(false);
+						}
+						const res = await next(command, args);
+						if (command === 'gopls.run_govulncheck') {
+							const progressToken = res.Token;
+							if (progressToken) {
+								pendingVulncheckProgressToken.set(progressToken, args[0]);
+							}
+						}
+						return res;
 					} catch (e) {
+						// TODO: how to print ${e} reliably???
 						const answer = await vscode.window.showErrorMessage(
 							`Command '${command}' failed: ${e}.`,
 							'Show Trace'
@@ -621,8 +698,23 @@ export async function buildLanguageClient(
 					}
 				}
 			}
-		} as LanguageClientOptions
+		} as LanguageClientOptions,
+		onDidChangeVulncheckResultEmitter
 	);
+	onDidChangeVulncheckResultEmitter.event(async (e: VulncheckEvent) => {
+		if (!govulncheckOutputChannel) return;
+		if (!e || !e.URI) {
+			govulncheckOutputChannel.appendLine(`unexpected vulncheck event: ${JSON.stringify(e)}`);
+			return;
+		}
+
+		try {
+			const res = await goplsFetchVulncheckResult(goCtx, e.URI.toString());
+			writeVulns(res, govulncheckOutputChannel);
+		} catch (e) {
+			govulncheckOutputChannel.appendLine(`Fetching govulncheck output from gopls failed ${e}`);
+		}
+	});
 	return c;
 }
 
@@ -704,8 +796,10 @@ async function adjustGoplsWorkspaceConfiguration(
 
 	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource);
 	// note: workspaceConfig is a modifiable, valid object.
-	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, getGoConfig(resource));
-	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, getGoConfig(resource));
+	const goConfig = getGoConfig(resource);
+	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, goConfig);
+	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, goConfig);
+	workspaceConfig = await passVulncheckConfigToGopls(cfg, workspaceConfig, goConfig);
 
 	// Only modify the user's configurations for the Nightly.
 	if (!extensionInfo.isPreview) {
@@ -719,12 +813,25 @@ async function adjustGoplsWorkspaceConfiguration(
 
 async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
 	const goplsVersion = await getLocalGoplsVersion(cfg);
-	if (!goplsVersion) return;
+	if (!goplsVersion) return goplsConfig ?? {};
 	const version = semver.parse(goplsVersion.version);
 	if ((version?.compare('0.8.4') ?? 1) > 0) {
 		const { inlayHints } = goConfig;
 		if (inlayHints) {
 			goplsConfig['ui.inlayhint.hints'] = { ...inlayHints };
+		}
+	}
+	return goplsConfig;
+}
+
+async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
+	const goplsVersion = await getLocalGoplsVersion(cfg);
+	if (!goplsVersion) return goplsConfig ?? {};
+	const version = semver.parse(goplsVersion.version);
+	if ((version?.compare('0.10.1') ?? 1) > 0) {
+		const vulncheck = goConfig.get('diagnostic.vulncheck');
+		if (vulncheck) {
+			goplsConfig['ui.vulncheck'] = vulncheck;
 		}
 	}
 	return goplsConfig;
@@ -1473,4 +1580,15 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 export function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
 	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
 	return useLanguageServer?.globalValue === undefined && useLanguageServer?.workspaceValue === undefined;
+}
+
+const GOPLS_FETCH_VULNCHECK_RESULT = 'gopls.fetch_vulncheck_result';
+async function goplsFetchVulncheckResult(goCtx: GoExtensionContext, uri: string): Promise<VulncheckReport> {
+	const { languageClient } = goCtx;
+	const params: ExecuteCommandParams = {
+		command: GOPLS_FETCH_VULNCHECK_RESULT,
+		arguments: [{ URI: uri }]
+	};
+	const res = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
+	return res[uri];
 }

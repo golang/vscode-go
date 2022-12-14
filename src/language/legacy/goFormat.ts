@@ -39,7 +39,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 		// Handle issues:
 		//  https://github.com/Microsoft/vscode-go/issues/613
 		//  https://github.com/Microsoft/vscode-go/issues/630
-		if (formatTool === 'goimports' || formatTool === 'goreturns' || formatTool === 'gofumports') {
+		if (formatTool === 'goimports' || formatTool === 'goreturns') {
 			formatFlags.push('-srcdir', filename);
 		}
 
@@ -56,8 +56,12 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 					return Promise.resolve([]);
 				}
 				if (err) {
+					// TODO(hyangah): investigate why this console.log is not visible at all in dev console.
+					// Ideally, this error message should be accessible through one of the output channels.
 					console.log(err);
-					return Promise.reject('Check the console in dev tools to find errors when formatting.');
+					return Promise.reject(
+						`Check the console in dev tools to find errors when formatting with ${formatTool}`
+					);
 				}
 			}
 		);
@@ -70,13 +74,12 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 		token: vscode.CancellationToken
 	): Thenable<vscode.TextEdit[]> {
 		const formatCommandBinPath = getBinPath(formatTool);
-
+		if (!path.isAbsolute(formatCommandBinPath)) {
+			// executable not found.
+			promptForMissingTool(formatTool);
+			return Promise.reject('failed to find tool ' + formatTool);
+		}
 		return new Promise<vscode.TextEdit[]>((resolve, reject) => {
-			if (!path.isAbsolute(formatCommandBinPath)) {
-				promptForMissingTool(formatTool);
-				return reject();
-			}
-
 			const env = toolExecutionEnvironment();
 			const cwd = path.dirname(document.fileName);
 			let stdout = '';
@@ -91,7 +94,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			p.on('error', (err) => {
 				if (err && (<any>err).code === 'ENOENT') {
 					promptForMissingTool(formatTool);
-					return reject();
+					return reject(`failed to find format tool: ${formatTool}`);
 				}
 			});
 			p.on('close', (code) => {
@@ -136,8 +139,12 @@ export function usingCustomFormatTool(goConfig: { [key: string]: any }): boolean
 }
 
 export function getFormatTool(goConfig: { [key: string]: any }): string {
-	if (goConfig['formatTool'] === 'default') {
+	const formatTool = goConfig['formatTool'];
+	if (formatTool === 'default') {
 		return 'goimports';
 	}
-	return goConfig['formatTool'];
+	if (formatTool === 'custom') {
+		return goConfig['alternateTools']['customFormatter'] || 'goimports';
+	}
+	return formatTool;
 }
