@@ -1,11 +1,11 @@
 ## v0.37.0 - 19 Dec, 2022
 
-This release includes a new [code analysis feature](https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies) that surfaces known vulnerabilities in your dependencies. This vulncheck analyzer is backed by [Go's vulnerability database](https://go.dev/security/vulndb) and the Go language server's integration of [`govulncheck`](https://golang.org/x/vuln/cmd/govulncheck").
+This release includes new [static analysis features](https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies) that report known vulnerabilities in your dependencies. These vulncheck analysis tools are backed by [Go's vulnerability database](https://go.dev/security/vulndb) and the Go language server's integration of [`govulncheck`](https://golang.org/x/vuln/cmd/govulncheck").
 Read [Go's support for vulnerability management](https://go.dev/blog/vuln) to learn about the Go team's approach to helping Go developers secure their open-source dependencies.
 
 ### Changes
 - The new "Go: Toggle Vulncheck" command enables/disables imports-based vulnerability analysis. This requires gopls v0.11.0 or newer.
-- Test and debug test codelenses are added to some subtests if the test names can be determined. ([Issue 2536](https://github.com/golang/vscode-go/issues/2536))
+- Test and debug test code lenses are added to some subtests if the test names can be determined. ([Issue 2536](https://github.com/golang/vscode-go/issues/2536))
 - Gopls settings was updated to match gopls@v0.11.0.
 - `"go.formatTool"` setting accepts a special value `"custom"`, which causes the extension to use the custom formatter configured with the setting `"go.alternateTools": { "customFormatter": <your custom tool name> }`. ([Issue 2503](https://github.com/golang/vscode-go/issues/2503))
 - The experimental "Go: Run Vulncheck (exp)" command was removed.
@@ -14,7 +14,7 @@ Read [Go's support for vulnerability management](https://go.dev/blog/vuln) to le
 ### Fixes
 - The editor survey prompt logic was adjusted for uniform sampling. ([Issue 2545](https://github.com/golang/vscode-go/issues/2545))
 - Fixed the crash bug when handling coverage profiles involving go `//line`-directive. ([Issue 2453](https://github.com/golang/vscode-go/issues/2453))
-- Updated dependencies to address GHSA-3rfm-jhwj-7488 and GHSA-hrpp-h998-j3pp.
+- Updated dependencies to address [CVE-2022-37603](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-37603) and [CVE-2022-24999](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-24999).
 
 ### Thanks
 
