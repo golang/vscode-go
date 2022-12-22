@@ -25,6 +25,10 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 	constructor(private readonly goCtx: GoExtensionContext, private includeImports?: boolean) {}
 
 	public async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
+		// TODO(suzmue): consider providing an interface for providing document symbols that only requires
+		// the URI. Getting a TextDocument from a filename requires opening the file, which can lead to
+		// files being opened that were not requested by the user in order to get information that we just
+		// need the URI to access.
 		if (typeof this.includeImports !== 'boolean') {
 			const gotoSymbolConfig = getGoConfig(document.uri)['gotoSymbol'];
 			this.includeImports = gotoSymbolConfig ? gotoSymbolConfig['includeImports'] : false;
