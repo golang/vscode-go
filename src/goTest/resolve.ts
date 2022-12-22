@@ -233,6 +233,21 @@ export class GoTestResolver {
 		vscode.commands.executeCommand('setContext', 'go.tests', items);
 	}
 
+	// Retrieve or create an item for a Go file.
+	public async getFile(uri: Uri): Promise<TestItem> {
+		const dir = path.dirname(uri.path);
+		const pkg = await this.getPackage(uri.with({ path: dir, query: '', fragment: '' }));
+		const existing = this.getItem(pkg, uri, 'file');
+		if (existing) {
+			return existing;
+		}
+
+		const label = path.basename(uri.path);
+		const item = this.getOrCreateItem(pkg, label, uri, 'file');
+		item.canResolveChildren = true;
+		return item;
+	}
+
 	/* ***** Private ***** */
 
 	private shouldSetRange(item: TestItem): boolean {
@@ -371,21 +386,6 @@ export class GoTestResolver {
 			item = this.getOrCreateItem(undefined, label, uri, 'package');
 		}
 
-		item.canResolveChildren = true;
-		return item;
-	}
-
-	// Retrieve or create an item for a Go file.
-	private async getFile(uri: Uri): Promise<TestItem> {
-		const dir = path.dirname(uri.path);
-		const pkg = await this.getPackage(uri.with({ path: dir, query: '', fragment: '' }));
-		const existing = this.getItem(pkg, uri, 'file');
-		if (existing) {
-			return existing;
-		}
-
-		const label = path.basename(uri.path);
-		const item = this.getOrCreateItem(pkg, label, uri, 'file');
 		item.canResolveChildren = true;
 		return item;
 	}

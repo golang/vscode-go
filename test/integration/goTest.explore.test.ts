@@ -60,11 +60,16 @@ suite('Go Test Explorer', () => {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);
 			}
+
+			async _didCreate(doc: TextDocument) {
+				await this.didCreateFile(doc.uri);
+			}
 		}
 
 		interface TC extends TestCase {
-			open: string;
-			expect: string[];
+			uri: string;
+			expectCreate: string[];
+			expectOpen: string[];
 		}
 
 		const cases: Record<string, TC> = {
@@ -76,8 +81,9 @@ suite('Go Test Explorer', () => {
 					'/src/proj/bar_test.go': 'package main\nfunc TestBar(*testing.T) {}',
 					'/src/proj/baz/main_test.go': 'package main\nfunc TestBaz(*testing.T) {}'
 				},
-				open: 'file:///src/proj/foo_test.go',
-				expect: [
+				uri: 'file:///src/proj/foo_test.go',
+				expectCreate: ['file:///src/proj?module', 'file:///src/proj/foo_test.go?file'],
+				expectOpen: [
 					'file:///src/proj?module',
 					'file:///src/proj/foo_test.go?file',
 					'file:///src/proj/foo_test.go?test#TestFoo'
@@ -89,8 +95,9 @@ suite('Go Test Explorer', () => {
 					'/src/proj/go.mod': 'module test',
 					'/src/proj/foo_test.go': 'package main\nfunc TestFoo(*testing.T) {}'
 				},
-				open: 'file:///src/proj/foo_test.go',
-				expect: [
+				uri: 'file:///src/proj/foo_test.go',
+				expectCreate: ['file:///src/proj?module', 'file:///src/proj/foo_test.go?file'],
+				expectOpen: [
 					'file:///src/proj?module',
 					'file:///src/proj/foo_test.go?file',
 					'file:///src/proj/foo_test.go?test#TestFoo'
@@ -100,14 +107,17 @@ suite('Go Test Explorer', () => {
 
 		for (const name in cases) {
 			test(name, async () => {
-				const { workspace, files, open, expect } = cases[name];
+				const { workspace, files, uri: uri, expectCreate: expectCreate, expectOpen: expectOpen } = cases[name];
 				const { ctrl, expl, ws } = newExplorer(workspace, files, DUT);
 
-				const doc = ws.fs.files.get(open);
+				const doc = ws.fs.files.get(uri);
 				assert(doc);
-				await expl._didOpen(doc);
 
-				assertTestItems(ctrl.items, expect);
+				await expl._didCreate(doc);
+				assertTestItems(ctrl.items, expectCreate);
+
+				await expl._didOpen(doc);
+				assertTestItems(ctrl.items, expectOpen);
 			});
 		}
 	});
