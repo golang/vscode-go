@@ -530,6 +530,16 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 				// No op
 			}
 		}
+		if (inferredGopath) {
+			// inferred GOPATH must not have go.mod in it.
+			try {
+				if (fs.existsSync(path.join(inferredGopath, 'go.mod'))) {
+					inferredGopath = '';
+				}
+			} catch (e) {
+				// No op
+			}
+		}
 		if (inferredGopath && process.env['GOPATH'] && inferredGopath !== process.env['GOPATH']) {
 			inferredGopath += path.delimiter + process.env['GOPATH'];
 		}
