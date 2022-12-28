@@ -47,7 +47,9 @@ var tools = []struct {
 	{"github.com/sqs/goreturns", "", false, nil},
 	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
 	{"github.com/zmb3/gogetdoc", "", false, nil},
-	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}}},
+	// TODO(hakim): After staticcheck for go1.20 is released, change back to []finalVersion{{16, "v0.2.2"}, {17, "v0.3.3"}}.
+	// https://github.com/golang/vscode-go/issues/2589
+	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}, {17, "v0.3.3"}, {1000, "v0.4.0-0.dev.0.20221209223220-58c4d7e4b720"}}},
 	{"golang.org/x/tools/cmd/gorename", "", false, nil},
 	{"github.com/go-delve/delve/cmd/dlv", "", false, []finalVersion{{16, "v1.8.3"}, {17, "v1.9.1"}}},
 }
