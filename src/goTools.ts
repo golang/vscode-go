@@ -88,6 +88,7 @@ export function getImportPathWithVersion(
 	}
 	if (tool.name === 'staticcheck') {
 		if (goVersion.lt('1.17')) return importPath + '@v0.2.2';
+		if (goVersion.lt('1.18')) return importPath + '@v0.3.3';
 	}
 	if (tool.name === 'gofumpt') {
 		if (goVersion.lt('1.18')) return importPath + '@v0.2.1';
