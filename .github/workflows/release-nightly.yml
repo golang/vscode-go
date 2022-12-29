@@ -55,9 +55,7 @@ jobs:
         run: npm run unit-test
 
       - name: Run tests
-        uses: GabrielBB/xvfb-action@86d97bde4a65fe9b290c0b3fb92c2c4ed0e5302d
-        with:
-          run: npm run test
+        run: xvfb-run -a npm run test
         env:
           CODE_VERSION: 'insiders'
           VSCODEGO_BEFORE_RELEASE_TESTS: true
