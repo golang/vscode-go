@@ -82,7 +82,7 @@
     "mocha": "9.2.2",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
-    "ts-loader": "7.0.5",
+    "ts-loader": "9.4.2",
     "typescript": "4.6.4",
     "yarn": "1.22.10"
   },
