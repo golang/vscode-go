@@ -15,8 +15,8 @@ import * as sinon from 'sinon';
 import * as proxy from '../../src/goDebugFactory';
 import * as vscode from 'vscode';
 import { DebugConfiguration, DebugProtocolMessage } from 'vscode';
-import { DebugClient } from 'vscode-debugadapter-testsupport';
-import { ILocation } from 'vscode-debugadapter-testsupport/lib/debugClient';
+import { DebugClient } from '@vscode/debugadapter-testsupport';
+import { ILocation } from '@vscode/debugadapter-testsupport/lib/debugClient';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import {
 	Delve,
