@@ -13,8 +13,8 @@ import { GoExtensionContext } from './context';
 import { getGoVersion } from './util';
 
 // Start and end dates of the survey.
-export const startDate = new Date('May 31 2022 00:00:00 GMT');
-export const endDate = new Date('June 21 2022 00:00:00 GMT');
+export const startDate = new Date('Jan 18 2023 00:00:00 GMT');
+export const endDate = new Date('Feb 8 2023 00:00:00 GMT');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -124,9 +124,8 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 
 export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
 	const selected = await vscode.window.showInformationMessage(
-		// TODO(rstambler): Figure out how to phrase this.
-		`Looks like you are coding in Go! Would you like to help ensure that Go is meeting your needs
-by participating in this 10-minute survey before ${endDate.toDateString()}?`,
+		`"Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
+by participating in this 10-minute Go Developer Survey (2023 Winter) before ${endDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
@@ -141,10 +140,7 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const goV = await getGoVersion();
-				const goVersion = goV ? goV.format(true) : 'na';
-				const useGopls = getGoConfig()?.get('useLanguageServer') === true ? 'true' : 'false';
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_7O3x4IZKiUn0QCO?s=p&go=${goVersion}&gopls=${useGopls}`;
+				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_bNnbAtFZ0vfRTH8?s=p`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
