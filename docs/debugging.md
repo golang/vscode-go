@@ -6,13 +6,15 @@ activities using
 [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
 
 These debugging features are possible by using
-[Delve](https://github.com/go-delve/delve), the Go debugger. The Go extension
-has been communicating with Delve through a custom debug adapter program
-(`legacy` mode). As the new
+[Delve](https://github.com/go-delve/delve), the Go debugger.
+
+Previously, the Go extension communicated with Delve through a custom debug
+adaptor program (`legacy` mode). Since
 [`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap)
-has become available (since Delve v1.6.1), the Go extension is transitioning to
-deprecate the legacy debug adapter in favor of direct communication with Delve
-via [DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
+is available, the Go extension is transitioning to deprecate the legacy debug
+adapter in favor of direct communication with Delve via
+[DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
+
 
  📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve
  integration is enabled for _local_ _debugging_ by default. For
@@ -25,7 +27,7 @@ the new `dlv-dap` mode. For troubleshooting and configuring the legacy debug
 adapter, see
 [the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
 
-## Getting Started
+## Get started
 
 Open a file to debug (either `package main` source file or the test file) in the
 editor, and select the `Run and Debug` button from
@@ -36,69 +38,63 @@ from
 [the Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette)
 (Linux/Windows: Ctrl+Shift+P, Mac: ⇧+⌘+P).
 
-When no configuration is configured yet (no `.vscode/launch.json` file), the
-extension will choose a default configuration based on the file open in the
-editor.
-
 If you already have launch configurations for the project
 (`.vscode/launch.json`), the Run view will display the configuration list to
 choose from.
 
-<p align="center"> <img src="images/dlvdap-install.gif" alt="Delve Install"
-width="75%"><!--TODO: update image--> <br/> <em>❗ When you start debugging for
+When no configuration is configured yet (no `.vscode/launch.json` file), the
+extension will choose a default configuration based on the file open in the
+editor.
+
+❗ When you start debugging for
 the first time or if the `dlv` executable on your system is too old to support
-DAP, the extension may ask to install or update Delve. Please follow the
-instructions to install, and then start the debugging session again (i.e.
-selecting the source file, pressing F5 or click the codelens).</em> </p>
+DAP, the Go extension may ask to install or update Delve. Follow the
+instructions to install it, and then start the debugging session again.
 
-<div style="text-align: center;"></div>
+<p align="center"> <img src="images/dlvdap-install.gif" alt="Delve Install"
+width="75%"><!--TODO: update image--> <br/>  </p>
 
-Watch
-["Go: Writing and debugging fast, reliable, and efficient software"](https://www.youtube.com/watch?v=6r08zGi38Tk&list=PLj6YeMhvp2S40Q-TEPEKOeypLvTVd5uME&index=1)
-to learn more about debugging features.
+To learn more about debugging in Go, watch
+[Go: Writing and debugging fast, reliable, and efficient software](https://www.youtube.com/watch?v=6r08zGi38Tk&list=PLj6YeMhvp2S40Q-TEPEKOeypLvTVd5uME&index=1).
 
-Please review [the Features section](#features) that provides an overview of the
-debug UI and available features.
+Review the [Features](#features) section for an overview of
+the Go Extension's debug UI and available features.
 
-### Staying Up-To-Date
+### Stay up to date
 
 [Delve’s native DAP implementation](https://github.com/go-delve/delve/tree/master/service/dap)
-is under active development, so take advantage of the most recent features and
-bug fixes by installing the latest version of Delve.
-
-The easiest way to update `dlv` on demand is to use the
-`"Go: Install/Update Tools"` command from the Command Palette (Linux/Windows:
-Ctrl+Shift+P, Mac: ⇧+⌘+P). The command will show `dlv` in the tool list.
+is under active development. Take advantage of the most recent features and bug
+fixes by installing the latest version of `dlv` using the
+**`Go:Install/Update`** Tools command from the Command Palette (Linux/Windows:
+`Ctrl`+`Shift`+`P`, Mac: `Command`+`Shift`+`P`). The command will show `dlv` in
+the tool list.
 
 Once `dlv` is installed on your system, the extension will prompt you for update
-whenever installing a newer version is necessary (usually after the Go extension
-upgrade). You can set the `go.toolsManagement.autoUpdate` setting so the
-extension can update `dlv` automatically for you.
+whenever installing a newer version is necessary. You can set the
+`go.toolsManagement.autoUpdate` setting so the extension can update `dlv`
+automatically for you.
 
-If you need to install `dlv` manually outside of VS Code (for example, you are
-building a dev container with necessary tools preinstalled, or install `dlv`
-built from the tree head), follow the instruction in
-[Manually installing `dlv`](debugging.md#manually-installing-dlv).
+If you need to install `dlv` manually outside of VS Code, follow the instruction
+in [Manually installing `dlv`](debugging.md#manually-installing-dlv). An example
+of a situation where manual installation might be needed is if you are building
+a dev container with the necessary tools preinstalled, or installing `dlv` built
+from the tree head.
 
-💡 The extension used to install a dev version of `dlv` as a separate binary
-(known as `dlv-dap`). As Delve DAP is stable and the transition work is near
-completion, from v0.31.0 (to be released in Jan 2022), the extension will switch
-to use `dlv`, instead of the `dlv-dap` binary. It is safe to delete `dlv-dap`
-installed on the system after v0.31.0 release.
+### Switch to legacy debug adapter
 
-### Switching to legacy debug adapter
+Note: The extension still uses the legacy debug adapter for remote debugging.
 
-If you need to use the legacy debug adapter (`legacy` mode) by default, add the
-following in your VSCode settings.
+If you need to use the legacy debug adapter for local debugging (`legacy` mode)
+by default, add the following in your VSCode settings.
 
-Note that the extension still uses the legacy debug adapter for remote
-debugging.
-
-```
+```json
     "go.delveConfig": {
         "debugAdapter": "legacy",
     }
 ```
+
+When `mode` is set to `remote` you must explicitly set `debugAdapter` to
+`dlv-dap` to override the legacy adapter default.
 
 If you want to switch to `legacy` for only a subset of your launch
 configurations, you can use
@@ -106,8 +102,8 @@ configurations, you can use
 `"dlv-dap"` and `"legacy"` mode.
 
 If you chose to switch to legacy because of bugs or limitations in the new debug
-adapter, please [open an issue](https://github.com/golang/vscode-go/issues/new)
-to help us improve the new debug adapter.
+adapter, [open an issue](https://github.com/golang/vscode-go/issues/new)
+to help us improve.
 
 ## Features
 
@@ -118,39 +114,48 @@ breakpoints, and other activities that aren't language-dependent, review
 ### Configure
 
 When you need more than the default debugging setup, you can create a launch
-configuration file for the project by clicking the "create a launch.json file"
-link in
-[the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view).
-Then, choose from the debug configuration drop-down menu. VS Code will create a
-`launch.json` file in a .vscode folder in your workspace (project root folder)
-or in your
-[user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration)
-or
-[workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
+configuration file for the project.
 
-If you already have a `launch.json` for your project, you can open it using
-`Open launch.json`.
+To create a configuration file:
 
-To add a new configuration to an existing `launch.json`, choose the "Add
-Configuration…" button to invoke the snippet IntelliSense.
+1. In the
+   [the Run view](https://code.visualstudio.com/docs/editor/debugging#_run-view),
+   click "create a launch.json file"
+1. Choose **Go: Launch Package** from the debug configuration drop-down menu. VS
+   Code will create a `launch.json` file in a .vscode folder in your workspace
+   (project root folder) or in your
+   [user settings](https://code.visualstudio.com/docs/editor/debugging#_global-launch-configuration)
+   or
+   [workspace settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_workspace-launch-configurations).
 
 <p align="center">
-<img src="images/create-launch-json.gif" alt="Create launch.json" width="75%">
+<img src="images/create-launch-json.gif" alt="Create a launch.json configuration file." width="75%">
 </p>
+
+If you already have a `launch.json` for your project, you can open it using the
+Command Palette **Open launch.json** command.
+
+To add a new configuration to an existing `launch.json` file:
+
+1. Open your `launch.json` file using the Command Palette **Open launch.json**
+   command.
+1. Click the **Add Configuration** button to invoke the snippet IntelliSense.
 
 There are many configuration attributes (see
 [the Launch.json attributes](#launchjson-attributes) section). IntelliSense in
-VS Code’s launch.json editor will help you navigate available options and
+VS Code’s `launch.json` editor will help you navigate available options and
 documentation.
 
 ### Launch
 
-You can choose "Start Debugging (F5)" and "Run Without Debugging (^F5)" a.k.a
-the `noDebug` mode. This feature uses a `launch` request type configuration. Its
-`program` attribute needs to be either the go file or folder of the main package
-or test file. In this mode, the Go extension will start the debug session by
-building and launching the program. The launched program will be terminated when
-the debug session ends.
+To launch and debug your project, select **Run** > **Start Debugging (F5)**.
+
+The launch feature uses a `launch` request type configuration in your
+`launch.json` file. Its `program` attribute needs to be the absolute path to
+either the Go file, or folder containing the main package or test file. In this
+mode, the Go extension will start the debug session by building and launching
+the program. The launched program will be terminated when the debug session
+ends.
 
 * Supported modes
   * `debug`: build and debug a main package
@@ -161,14 +166,13 @@ the debug session ends.
   * `auto`: automatically choose between `debug` and `test` depending on the
     open file
 
-⚠️ If a `port` attribute is added to any of the launch configurations, it will
-signal VS Code that instead of launching the debug server internally, it should
-connect to an external user-specified `dlv dap` server at `host:port` and launch
-the target there. See ["Remote Debugging"](#remote-debugging) for more details).
+⚠️ For ["Remote Debugging"](#remote-debugging), add the `port` attribute to the
+launch configuration. VS Code will connect to the external user-specified
+`dlv dap` server at `host:port` and launch the target there.
 
-The `program` attribute must point to the absolute path to the package or binary
-to debug in the remote host’s file system even when `substitutePath` is
-specified.
+For remote debugging, the `program` attribute must point to the absolute path to
+the package or binary to debug in the remote host’s file system even when
+`substitutePath` is specified.
 
 ### Attach
 
@@ -176,10 +180,11 @@ You can use this configuration to attach to a running process or a running debug
 session.
 
 * Supported modes
-  * `local`: attaches to a local process
+  * `local`: attaches to a local process.
     * The binary must be built with `go build -gcflags=all="-N -l"` to disable
       inlining and optimizations that can interfere with debugging.
-  * `remote`: attaches to an in-progress debug session run by an external server
+  * `remote`: attaches to an in-progress debug session run by an external
+    server.
 
 You can debug an already running program using the `local` mode type
 configuration. The Go extension will start `dlv dap` and configure it to attach
@@ -197,11 +202,10 @@ following options:
 <img src="images/attach.gif" alt="Attach to a running process" width="75%">
 </p>
 
-NOTE: If a `port` attribute is added to a local attach configuration, it will
-signal VS Code that instead of launching the debug server internally, it should
-connect to an external user-specified `dlv dap` server at `host:port` and attach
-to the target there. The process resolution features will only work if localhost
-is used. See ["Remote Debugging"](#remote-debugging) for more details).
+NOTE: For remote debugging, add the `port` attribute to
+the launch configuration. VS Code will connect to the external user-specified
+`dlv dap` server at `host:port` and attach to the target there.See
+["remote debugging"](#remote-debugging) for more details).
 
 You can connect to an already running remote debug session using the `remote`
 mode. Specify optional `host` and required `port` for the external
@@ -211,7 +215,7 @@ details).
 
 When you end an attach debug session, the debug UI allows you to choose to:
 
-* [DEFAULT] Disconnect: disconnect the client and
+* [DEFAULT] Disconnect: disconnect the client and:
   * `local`: leave the target process running (dlv terminates).
   * `remote`: let dlv decide if it can continue running (`--accept-multiclient`
     mode only); if so, the target will stay in halted or running state it was in
@@ -226,7 +230,7 @@ When you end an attach debug session, the debug UI allows you to choose to:
 
 <!-- TODO:[SupportSuspendDebuggee](https://code.visualstudio.com/updates/v1_56#_disconnect-debugger-and-keep-debuggee-suspended) -->
 
-### Debug Actions
+### Debug actions
 
 Once a debug session starts, the Debug toolbar will appear on the top of the
 editor.
@@ -234,6 +238,8 @@ editor.
 <p align="center">
 <img src="images/debug-toolbar.png" alt="Debug Tool Bar" width="30%">
 </p>
+
+The available commands are:
 
 * Continue / Pause F5
 * Step Over (aka `next` in Delve) F10
@@ -292,7 +298,7 @@ configure breakpoints.
   interpolated. For the list of acceptable expressions and syntax, see
   [Delve's documentation](https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md#expressions).
 
-### Data Inspection
+### Data inspection
 
 You can inspect variables in the VARIABLES section of the Run view or by
 hovering over their source in the editor. Variable values and expression
@@ -368,7 +374,7 @@ default, that is the current top-most frame.
   over variables outside the selected frame’s function may present incorrect
   information.
 
-### Call Stack
+### Call stack
 
 You can inspect all goroutines and their stacks in the CALL STACK section. The
 CALL STACK section UI allows switching between goroutines or selecting a
@@ -417,7 +423,7 @@ see the list of supported commands and dynamically adjustable settings.
 
 ## Configuration
 
-### Launch.json Attributes
+### Launch.json attributes
 
 There are many attributes that you can adjust in the launch and attach debug
 configuration. The following general attributes are mandatory for all launch
@@ -477,7 +483,7 @@ the absolute path to the workspace root folder. When appropriate, the Go
 extension will resolve relative paths or home directory (~) before sending the
 configuration to `dlv dap`.
 
-### **Debugging symlink directories**
+### Debug symlink directories
 
 Since the debugger and go compiler use the actual filenames, extra configuration
 is required to debug symlinked directories. Use the `substitutePath` property to
@@ -538,9 +544,9 @@ your feedback.
 
 <p align="center"><img src="images/dlv-load-config-warning.png" alt="dlvLoadConfig is invalid" width="50%"> </p>
 
-## Advanced Topics
+## Advanced topics
 
-### Go Debug Extension Architecture Overview
+### Go debug extension architecture overview
 
 VS Code implements a generic, language-agnostic debugger UI based on
 [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/)
@@ -576,7 +582,7 @@ The Go extension delegates interaction with terminals to VS Code
 For configuring VS Code's terminal related behavior, see VS Code's
 [documentation](https://code.visualstudio.com/docs/editor/integrated-terminal).
 
-### Debugging programs and tests as root
+### Debug programs and tests as root
 
 In order to run and debug a program or a package test running as root, the
 debugger (`dlv`) must run with root privilege, too. You can start the debug
@@ -732,7 +738,7 @@ In `.vscode/launch.json`:
     ]
 ```
 
-### Manually installing `dlv`
+### Manually install `dlv`
 
 On rare occasions, you may want to install `dlv` by yourself instead of letting
 the extension handle its installation.
@@ -772,7 +778,7 @@ If you want to explicitly specify the location of the delve binary, use the
 }
 ```
 
-### Remote Debugging
+### Remote debugging
 
 > If you are able to use the
 > [Remote Development](https://aka.ms/vscode-remote/download/extension)
@@ -792,7 +798,7 @@ also be used on a local machine with server started in an external terminal
 With the introduction of `dlv dap` users now have two options for remote (i.e.
 external) debugging.
 
-#### Connecting to Headless Delve with Target Specified at Server Start-Up
+#### Connect to headless delve with target specified at server start-up
 
 In this mode the user must first manually start a
 [`dlv --headless`](https://github.com/go-delve/delve/tree/master/Documentation/api)
@@ -843,7 +849,7 @@ Connect to it with a remote attach configuration in your `launch.json`:
 }
 ```
 
-#### Connecting to Delve DAP with Target Specified at Client Start-Up
+#### Connect to delve dap with target specified at client start-up
 
 In this mode the user must first manually start a
 [`dlv dap` server](https://github.com/go-delve/delve/blob/master/Documentation/usage/dlv_dap.md)
@@ -912,7 +918,7 @@ use:
   process is running, so make sure to run the `dlv` command from the directory
   you would run the `go build` or `go test` command.
 
-### Running Debugee Externally
+### Run debugee externally
 
 Sometimes you might like to launch the program for debugging outside of VS Code
 (e.g. as a workaround of the missing `console` support to enter stdin via an
@@ -1033,7 +1039,7 @@ such a binary with a debugger, it will fail with one of the above errors (see Go
 Issue [24833](https://github.com/golang/go/issues/24833)). Instead let dlv build
 the binary for you or use `go build -gcflags=all="-N -l"`.
 
-## Reporting Issues
+## Report issues
 
 When you are having issues in `dlv-dap` mode, first check if the problems are
 reproducible after updating `dlv` and using the most recent version of `dlv`.
@@ -1052,7 +1058,7 @@ following information.
 * Instructions to reproduce the issue (code snippets, your `launch.json`, screenshot)
 * DAP trace (See [the instruction](#collecting-logs))
 
-### Collecting Logs
+### Collect logs
 
 ```json5
 {
@@ -1074,7 +1080,7 @@ The logging will appear in the `Go Debug` output channel (Command Palette ->
 debug logs may contain sensitive information. Please review the logs carefully
 before sharing debug logs.
 
-## Developing
+## Development
 
 ### Code location
 
