@@ -1,3 +1,14 @@
+## v0.37.1 - 17 Jan, 2023
+
+### Fixes
+- Fixed spurious file creation bugs on branch switches. ([Issue 2570](https://github.com/golang/vscode-go/issues/2570))
+
+### Changes
+- Added promotion for the annual Go developer survey (2023 Winter).
+
+### Thanks
+Thank you for your contribution, @suzmue!
+
 ## v0.37.0 - 19 Dec, 2022
 
 This release includes new [static analysis features](https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies) that report known vulnerabilities in your dependencies. These vulncheck analysis tools are backed by [Go's vulnerability database](https://go.dev/security/vulndb) and the Go language server's integration of [`govulncheck`](https://golang.org/x/vuln/cmd/govulncheck").
