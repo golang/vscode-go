@@ -34,6 +34,8 @@
     "multi-root ready"
   ],
   "scripts": {
+    "clean": "rm -rf ./dist/* && rm *.vsix",
+    "package": "vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
@@ -73,6 +75,7 @@
     "@types/vscode": "1.67.0",
     "@vscode/debugadapter-testsupport": "1.58.0",
     "@vscode/test-electron": "2.2.0",
+    "@vscode/vsce": "2.16.0",
     "adm-zip": "0.4.16",
     "esbuild": "0.12.21",
     "fs-extra": "9.1.0",
