@@ -39,7 +39,6 @@ import { setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
-import { GoReferencesCodeLensProvider } from './goReferencesCodelens';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
 
@@ -121,7 +120,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.environment.status', expandGoStatusBar);
 
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
-	GoReferencesCodeLensProvider.activate(ctx, goCtx);
 	GoDebugConfigurationProvider.activate(ctx, goCtx);
 	GoDebugFactory.activate(ctx);
 
@@ -388,48 +386,6 @@ async function showDeprecationWarning() {
 			switch (selected) {
 				case "Don't show again":
 					updateGlobalState(promptKey, true);
-			}
-		}
-	}
-	const codelensFeatures = cfg['enableCodeLens'];
-	if (codelensFeatures && codelensFeatures['references']) {
-		const promptKey = 'promptedCodeLensReferencesFeatureDeprecation';
-		const prompted = getFromGlobalState(promptKey, false);
-		if (!prompted) {
-			const msg =
-				"The 'go.enableCodeLens.references' setting will be removed soon. Please see [Issue 2509](https://go.dev/s/vscode-issue/2509).";
-			const selected = await vscode.window.showWarningMessage(msg, 'Update Settings', "Don't show again");
-			switch (selected) {
-				case 'Update Settings':
-					{
-						const { globalValue, workspaceValue, workspaceFolderValue } = cfg.inspect<{
-							[key: string]: boolean;
-						}>('enableCodeLens') || {
-							globalValue: undefined,
-							workspaceValue: undefined,
-							workspaceFolderValue: undefined
-						};
-						if (globalValue && globalValue['references']) {
-							delete globalValue.references;
-							cfg.update('enableCodeLens', globalValue, vscode.ConfigurationTarget.Global);
-						}
-						if (workspaceValue && workspaceValue['references']) {
-							delete workspaceValue.references;
-							cfg.update('enableCodeLens', workspaceValue, vscode.ConfigurationTarget.Workspace);
-						}
-						if (workspaceFolderValue && workspaceFolderValue['references']) {
-							delete workspaceFolderValue.references;
-							cfg.update(
-								'enableCodeLens',
-								workspaceFolderValue,
-								vscode.ConfigurationTarget.WorkspaceFolder
-							);
-						}
-					}
-					break;
-				case "Don't show again":
-					updateGlobalState(promptKey, true);
-					break;
 			}
 		}
 	}
