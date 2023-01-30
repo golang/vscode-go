@@ -10,7 +10,6 @@ import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
 import { GoExtensionContext } from './context';
-import { getGoVersion } from './util';
 
 // Start and end dates of the survey.
 export const startDate = new Date('Jan 18 2023 00:00:00 GMT');
@@ -140,7 +139,7 @@ by participating in this 10-minute Go Developer Survey (2023 Winter) before ${en
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_bNnbAtFZ0vfRTH8?s=p`;
+				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_bNnbAtFZ0vfRTH8?s=p';
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
