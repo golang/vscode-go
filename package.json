@@ -2061,6 +2061,12 @@
           },
           "additionalProperties": true
         },
+        "go.tasks.provideDefault": {
+          "default": true,
+          "description": "enable the default go build/test task provider.",
+          "scope": "window",
+          "type": "boolean"
+        },
         "go.terminal.activateEnvironment": {
           "default": true,
           "description": "Apply the Go & PATH environment variables used by the extension to all integrated terminals.",
@@ -2864,6 +2870,54 @@
           "when": "go.hasProfiles"
         }
       ]
-    }
+    },
+    "taskDefinitions": [
+      {
+        "type": "go",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "the name of go task"
+          },
+          "command": {
+            "type": "string",
+            "description": "go command to run",
+            "enum": [
+              "build",
+              "test"
+            ],
+            "enumDescriptions": [
+              "go build",
+              "go test"
+            ],
+            "default": "build"
+          },
+          "args": {
+            "type": "array",
+            "description": "additional arguments to pass to the go command (including the build target)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "type": "object",
+            "description": "additional command options",
+            "properties": {
+              "cwd": {
+                "type": "string",
+                "description": "the current working directory of the executed program or script. If omitted Code's current workspace root is used."
+              },
+              "env": {
+                "type": "object",
+                "markdownDescription": "Environment variables in the format of \"name\": \"value\"."
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

@@ -362,11 +362,24 @@ export function clearGoRuntimeBaseFromPATH() {
 	environmentVariableCollection?.delete(pathEnvVar);
 }
 
+function isTerminalOptions(
+	opts: vscode.TerminalOptions | vscode.ExtensionTerminalOptions
+): opts is vscode.TerminalOptions {
+	return 'shellPath' in opts;
+}
+
 /**
  * update the PATH variable in the given terminal to default to the currently selected Go
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promise<void> {
-	if (!terminal) {
+	if (
+		!terminal ||
+		// don't interfere if this terminal was created to run a Go task (goTaskProvider.ts).
+		// Go task uses ProcessExecution which results in the terminal having `go` or `go.exe`
+		// as its shellPath.
+		(isTerminalOptions(terminal.creationOptions) &&
+			path.basename(terminal.creationOptions.shellPath || '') === correctBinname('go'))
+	) {
 		return;
 	}
 	const gorootBin = path.join(getCurrentGoRoot(), 'bin');
