@@ -31,7 +31,9 @@
     "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
-    "multi-root ready"
+    "multi-root ready",
+    "golang",
+    "gopls"
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm *.vsix",
