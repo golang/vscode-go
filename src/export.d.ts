@@ -8,7 +8,7 @@ export { ToolAtVersion } from './goTools';
 
 export interface CommandInvocation {
 	binPath: string;
-	args?: string[];
+	args?: string[] | string;
 	env?: Object;
 	cwd?: string;
 }
