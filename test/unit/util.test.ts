@@ -58,7 +58,7 @@ suite('util tests', () => {
 			{
 				test: 'UnmatchedDoubleQuotes',
 				args: ['something "', '" something'],
-				want: 'args string has unmatched double quotes (").'
+				want: 'args string has unmatched double quotes (")'
 			}
 		];
 
