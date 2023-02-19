@@ -21,7 +21,7 @@ suite('util tests', () => {
 				want: ['value 1', 'value 2', 'value3', 'value4']
 			},
 			{
-				test: 'InnerQuotes',
+				test: 'SingleSurroundingDoubleQuotes',
 				args: [`' "text" '`],
 				want: [' "text" ']
 			},
@@ -31,13 +31,23 @@ suite('util tests', () => {
 				want: [` 'text' `]
 			},
 			{
+				test: 'EscapedQuotes',
+				args: [`\\'a \\'b \\"c \\"d`],
+				want: [`'a`, `'b`, '"c', '"d']
+			},
+			{
+				test: 'EscapedQuotesInsideQuotes',
+				args: [`'a\\' b\\"'  "\\'c \\"d"`],
+				want: [`a' b"`, `'c "d`]
+			},
+			{
 				test: 'Null',
 				args: [`''`, '""'],
 				want: ['']
 			},
 			{
 				test: 'Empty',
-				args: [' '],
+				args: ['', ' ', '  '],
 				want: [] as string[]
 			},
 			{
