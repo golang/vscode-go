@@ -2344,7 +2344,12 @@ export class GoDebugSession extends LoggingDebugSession {
 				variablesReference: 0
 			};
 		} else if (v.kind === GoReflectKind.Ptr) {
-			if (v.children[0].addr === 0) {
+			if (!v.children[0]) {
+				return {
+					result: 'unknown <' + v.type + '>',
+					variablesReference: 0
+				};
+			} else if (v.children[0].addr === 0) {
 				return {
 					result: 'nil <' + v.type + '>',
 					variablesReference: 0
