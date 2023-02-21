@@ -2346,7 +2346,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		} else if (v.kind === GoReflectKind.Ptr) {
 			if (!v.children[0]) {
 				return {
-					result: 'gone <' + v.type + '>',
+					result: 'unknown <' + v.type + '>',
 					variablesReference: 0
 				};
 			} else if (v.children[0].addr === 0) {
