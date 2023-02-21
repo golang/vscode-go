@@ -1013,6 +1013,49 @@ culprits are remote debugging where the program is built in the remote location,
 use of symbolic links, or use of `-trimpath` build flags. In this case,
 configure the `substitutePath` attribute in your launch configuration.
 
+#### Trimpath tips
+
+If you are using `-trimpath` to build your program, you need to add entries to substitute
+path to let the debugger know how to map the package paths that are compiled in the
+binary to the files that you are looking at in the editor.
+
+Here are some tips for configuring substitutePath. This assumes that your program is using module mode, which is the default.
+
+One rule that you will need will map your main module. The mapping will map `"from"` the file path to the directory containing the module, `"to"` the module path.
+
+You will also need to create a similar mapping for all dependencies. These include modules
+in the module cache, vendored modules, and the standard library.
+
+```json
+"substitutePath": [
+  // Main module.
+  {
+   "from": "${workspaceFolder}",
+   "to": "moduleName",
+  },
+  // Module cache paths.
+  {
+   "from": "${env:HOME}/go/pkg/mod/github.com",
+   "to": "github.com",
+  },
+  {
+   "from": "${env:HOME}/go/pkg/mod/golang.org",
+   "to": "golang.org",
+  },
+  ...
+  // Standard library paths.
+  // This rule should come last since the empty "to" will match every path.
+  { "from": "/path/to/local/goroot/pkg" , "to": ""}
+ ],
+```
+
+Since rules are applied both from client to server and server to client,
+rules with an empty string will be applied to *all* paths that it sees, so even
+dependencies will be mapped to `"/path/to/module"`.
+
+We plan to make this easier in the future. Progress can be tracked
+in the issue tracker [golang/vscode-go#1985](https://github.com/golang/vscode-go/issues/1985).
+
 ### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration
 
 The "debug test" CodeLens and the [test UI](features.md#test-and-benchmark) do
