@@ -79,7 +79,7 @@
     "@vscode/test-electron": "2.2.0",
     "@vscode/vsce": "2.16.0",
     "adm-zip": "0.4.16",
-    "esbuild": "0.12.21",
+    "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
     "gts": "4.0.0",
