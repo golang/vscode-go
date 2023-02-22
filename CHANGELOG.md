@@ -1,3 +1,25 @@
+## v0.38.0 - 23 Feb, 2023
+
+This release adds default `go` tasks to help build and test your Go projects.
+
+A list of all issues and changes can be found in the [v0.38.0 milestone](https://github.com/golang/vscode-go/milestone/50) and [commit history](https://github.com/golang/vscode-go/compare/v0.37.1...v0.38.0).
+
+### Changes
+- Added default go task provider ([Issue 194](https://github.com/golang/vscode-go/issues/194)) <!-- CL 467697 -->
+- Updated pinned golangci-lint version to fix memory leak issue with Go 1.20 ([Issue 2654](https://github.com/golang/vscode-go/issues/2654))
+- gopls releases will now have a staged rollout in VS Code ([CL 468497](http://go.dev/cl/468497)) <!-- CL 468497 -->
+- Added extension keywords to make this extension easier to find in the VS Code Extension Marketplace ([Issue 2657](https://github.com/golang/vscode-go/issues/2657)) <!-- CL 467698 -->
+- Deleted the broken references codelens code ([Issue 2519](https://github.com/golang/vscode-go/issues/2519)) <!-- CL 464098 -->
+- Added support to handle missing variables in legacy debug adapter gracefully ([Issue 2397](https://github.com/golang/vscode-go/issues/2397)) <!-- CL 462289 -->
+
+### Development process updates
+- Upgraded esbuild to support s390x ([Issue 2668](https://github.com/golang/vscode-go/issues/2668)) <!-- CL 469915 -->
+- Use --profile-temp for testing with clean env ([Issue 2458](https://github.com/golang/vscode-go/issues/2458)) <!-- CL 468496 -->
+
+### Thanks
+
+Thank you for your contribution, @ankon, @hyangah, @jamalc, and @suzmue!
+
 ## v0.37.1 - 17 Jan, 2023
 
 ### Fixes

@@ -123,7 +123,7 @@ When `gopls`'s semantic tokens feature is enabled, `gopls` also provides semanti
 ## Inlay Hints
 
 Inlay hints render additional inline information to source code to help you understand what the code does.
-They can be enabled/disabled with the `editor.inlayHints.enabled` setting in combination with settings to enable inlay hints types.
+They can be enabled/disabled with the `editor.inlayHints.enabled` setting in combination with `go.inlayHints` [settings](settings.md#go.inlayHints.assignVariableTypes) to enable inlay hints types.
 
 ### Variable types in assign statements
 

@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest] # TODO: reenable macos-latest
         version: ['stable']
-        go: ['1.16', '1.17', '1.18', '1.19']
+        go: ['1.17', '1.18', '1.19', '1.20']
 
     steps:
       - name: Clone repository
@@ -41,7 +41,6 @@ jobs:
       - name: Compile
         run: npm run vscode:prepublish
 
-      # TODO: use `go install` when we all move to 1.16+ (see build/all.bash)
       - name: Install Go tools (Modules mode)
         run: |
             go version
@@ -53,10 +52,14 @@ jobs:
       - name: Run unit tests
         run: npm run unit-test
         
-      - name: Run tests
-        uses: GabrielBB/xvfb-action@86d97bde4a65fe9b290c0b3fb92c2c4ed0e5302d
-        with:
-          run: npm run test
+      - name: Run tests (Linux)
+        run: xvfb-run -a npm run test
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        env:
+          CODE_VERSION: ${{ matrix.version }}
+      - name: Run tests (Windows/Mac)
+        run: npm run test
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         env:
           CODE_VERSION: ${{ matrix.version }}
       

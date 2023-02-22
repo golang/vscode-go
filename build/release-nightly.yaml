@@ -1,0 +1,15 @@
+steps:
+# TODO: check build/test status
+#
+# Install dependencies
+- name: node
+  entrypoint: npm
+  args: ['ci']
+# Build .vsix
+- name: node
+  entrypoint: npm
+  args: ['run', 'package']
+artifacts:
+  objects:
+    location: 'gs://$PROJECT_ID/nightly/$BUILD_ID'
+    paths: ['*.vsix']

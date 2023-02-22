@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.37.1",
+  "version": "0.38.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -30,9 +30,13 @@
     "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
-    "multi-root ready"
+    "multi-root ready",
+    "golang",
+    "gopls"
   ],
   "scripts": {
+    "clean": "rm -rf ./dist/* && rm *.vsix",
+    "package": "vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
@@ -48,7 +52,6 @@
   },
   "extensionDependencies": [],
   "dependencies": {
-    "@vscode/codicons": "0.0.32",
     "diff": "4.0.2",
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
@@ -56,7 +59,6 @@
     "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
-    "vscode-debugadapter-testsupport": "1.45.0",
     "vscode-debugprotocol": "1.45.0",
     "vscode-languageclient": "8.0.1",
     "vscode-languageserver-protocol": "3.17.1",
@@ -72,16 +74,17 @@
     "@types/semver": "7.3.4",
     "@types/sinon": "9.0.11",
     "@types/vscode": "1.67.0",
-    "@vscode/test-electron": "2.0.2",
+    "@vscode/debugadapter-testsupport": "1.58.0",
+    "@vscode/test-electron": "2.2.0",
+    "@vscode/vsce": "2.16.0",
     "adm-zip": "0.4.16",
-    "esbuild": "0.12.21",
+    "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
     "gts": "4.0.0",
     "mocha": "9.2.2",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
-    "ts-loader": "7.0.5",
     "typescript": "4.6.4",
     "yarn": "1.22.10"
   },
@@ -2057,6 +2060,12 @@
           },
           "additionalProperties": true
         },
+        "go.tasks.provideDefault": {
+          "default": true,
+          "description": "enable the default go build/test task provider.",
+          "scope": "window",
+          "type": "boolean"
+        },
         "go.terminal.activateEnvironment": {
           "default": true,
           "description": "Apply the Go & PATH environment variables used by the extension to all integrated terminals.",
@@ -2860,6 +2869,54 @@
           "when": "go.hasProfiles"
         }
       ]
-    }
+    },
+    "taskDefinitions": [
+      {
+        "type": "go",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "the name of go task"
+          },
+          "command": {
+            "type": "string",
+            "description": "go command to run",
+            "enum": [
+              "build",
+              "test"
+            ],
+            "enumDescriptions": [
+              "go build",
+              "go test"
+            ],
+            "default": "build"
+          },
+          "args": {
+            "type": "array",
+            "description": "additional arguments to pass to the go command (including the build target)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "type": "object",
+            "description": "additional command options",
+            "properties": {
+              "cwd": {
+                "type": "string",
+                "description": "the current working directory of the executed program or script. If omitted Code's current workspace root is used."
+              },
+              "env": {
+                "type": "object",
+                "markdownDescription": "Environment variables in the format of \"name\": \"value\"."
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

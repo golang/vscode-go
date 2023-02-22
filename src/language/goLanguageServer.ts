@@ -61,6 +61,7 @@ import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
 import { VulncheckReport, writeVulns } from '../goVulncheck';
+import { createHash } from 'crypto';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -120,6 +121,35 @@ export class Restart {
 	}
 }
 
+// computes a bigint fingerprint of the machine id.
+function hashMachineID(salt?: string): number {
+	const hash = createHash('md5').update(`${vscode.env.machineId}${salt}`).digest('hex');
+	return parseInt(hash.substring(0, 8), 16);
+}
+
+// returns true if the proposed upgrade version is mature, or we are selected for staged rollout.
+export async function okForStagedRollout(
+	tool: Tool,
+	ver: semver.SemVer,
+	hashFn: (key?: string) => number
+): Promise<boolean> {
+	// patch release is relatively safe to upgrade. Moreover, the patch
+	// can carry a fix for security which is better to apply sooner.
+	if (ver.patch !== 0 || ver.prerelease?.length > 0) return true;
+
+	const published = await getTimestampForVersion(tool, ver);
+	if (!published) return true;
+
+	const days = daysBetween(new Date(), published.toDate());
+	if (days <= 1) {
+		return hashFn(ver.version) % 100 < 10; // upgrade with 10% chance for the first day.
+	}
+	if (days <= 3) {
+		return hashFn(ver.version) % 100 < 30; // upgrade with 30% chance for the first 3 days.
+	}
+	return true;
+}
+
 // scheduleGoplsSuggestions sets timeouts for the various gopls-specific
 // suggestions. We check user's gopls versions once per day to prompt users to
 // update to the latest version. We also check if we should prompt users to
@@ -142,9 +172,13 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 		// without prompting.
 		const toolsManagementConfig = getGoConfig()['toolsManagement'];
 		if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
-			const goVersion = await getGoVersion();
-			const toolVersion = { ...tool, version: versionToUpdate }; // ToolWithVersion
-			await installTools([toolVersion], goVersion, true);
+			if (extensionInfo.isPreview || (await okForStagedRollout(tool, versionToUpdate, hashMachineID))) {
+				const goVersion = await getGoVersion();
+				const toolVersion = { ...tool, version: versionToUpdate }; // ToolWithVersion
+				await installTools([toolVersion], goVersion, true);
+			} else {
+				console.log(`gopls ${versionToUpdate} is too new, try to update later`);
+			}
 		} else {
 			promptForUpdatingTool(tool.name, versionToUpdate);
 		}

@@ -59,13 +59,13 @@ suite('Installation Tests', function () {
 
 		// Clean up the temporary GOPATH. To delete the module cache, run `go clean -modcache`.
 		const goRuntimePath = getBinPath('go');
-		const envForTest = Object.assign({}, process.env);
-
 		for (const p of [tmpToolsGopath, tmpToolsGopath2]) {
+			const envForTest = Object.assign({}, process.env);
 			envForTest['GOPATH'] = p;
+			envForTest['GOMODCACHE'] = path.join(p, 'pkg', 'mod');
 			const execFile = util.promisify(cp.execFile);
 			try {
-				await execFile(goRuntimePath, ['clean', '-modcache'], {
+				await execFile(goRuntimePath, ['clean', '-x', '-modcache'], {
 					env: envForTest
 				});
 				rmdirRecursive(p);

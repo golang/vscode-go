@@ -484,7 +484,8 @@ const testAll = (isModuleMode: boolean) => {
 			{
 				line: 11,
 				severity: 'warning',
-				msg: 'undeclared name: prin (compile)'
+				// From v0.4.0, staticcheck uses 'undefined:' as the prefix of this error.
+				msg: /(?:undeclared name|undefined): prin \(compile\)/
 			}
 		];
 		// If a user has enabled diagnostics via a language server,
@@ -518,7 +519,7 @@ const testAll = (isModuleMode: boolean) => {
 				return (
 					expectedItem.line === diag.line &&
 					expectedItem.severity === diag.severity &&
-					expectedItem.msg === diag.msg
+					diag.msg.match(expectedItem.msg)
 				);
 			});
 		});

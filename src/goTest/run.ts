@@ -27,6 +27,7 @@ import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
 import { debugTestAtCursor } from '../goTest';
 import { GoExtensionContext } from '../context';
+import path = require('path');
 
 let debugSessionID = 0;
 
@@ -634,7 +635,7 @@ export class GoTestRunner {
 				for (const { message, location } of messages) {
 					const loc = `${location?.uri}:${location?.range.start.line}`;
 					if (merged.has(loc)) {
-						merged.get(loc)!.message += '\n' + message;
+						merged.get(loc)!.message += '' + message;
 					} else {
 						merged.set(loc, { message, location });
 					}
@@ -660,6 +661,9 @@ export class GoTestRunner {
 		}
 	}
 
+	// parseOutput returns build/test error messages associated with source locations.
+	// Location info is inferred heuristically by applying a simple pattern matching
+	// over the output strings from `go test -json` `output` type action events.
 	parseOutput(test: TestItem, output: string[]): TestMessage[] {
 		const messages: TestMessage[] = [];
 
@@ -679,11 +683,27 @@ export class GoTestRunner {
 
 		let current: Location | undefined;
 		if (!test.uri) return messages;
-		const dir = Uri.joinPath(test.uri, '..');
+		const dir = Uri.joinPath(test.uri, '..').fsPath;
+		// TODO(hyangah): handle panic messages specially.
+
+		// Extract the location info from output message.
+		// This is not trivial since both the test output and any output/print
+		// from the tested program are reported as `output` type test events
+		// and not distinguishable. stdout/stderr output from the tested program
+		// makes this more trickier.
+		//
+		// Here we assume that test output messages are line-oriented, precede
+		// with a file name and line number, and end with new lines.
 		for (const line of output) {
-			const m = line.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
+			// ^(?:.*\s+|\s*) - non-greedy match of any chars followed by a space or, a space.
+			// (?<file>\S+\.go):(?<line>\d+):  - gofile:line: followed by a space.
+			// (?<message>.\n)$ - all remaining message up to $.
+			const m = line.match(/^.*\s+(?<file>\S+\.go):(?<line>\d+): (?<message>.*\n)$/);
 			if (m?.groups) {
-				const file = Uri.joinPath(dir, m.groups.file);
+				const file =
+					m.groups.file && path.isAbsolute(m.groups.file)
+						? Uri.file(m.groups.file)
+						: Uri.file(path.join(dir, m.groups.file));
 				const ln = Number(m.groups.line) - 1; // VSCode uses 0-based line numbering (internally)
 				current = new Location(file, new Position(ln, 0));
 				messages.push({ message: m.groups.message, location: current });

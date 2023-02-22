@@ -47,9 +47,9 @@ var tools = []struct {
 	{"github.com/sqs/goreturns", "", false, nil},
 	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
 	{"github.com/zmb3/gogetdoc", "", false, nil},
-	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}}},
+	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}, {17, "v0.3.3"}}},
 	{"golang.org/x/tools/cmd/gorename", "", false, nil},
-	{"github.com/go-delve/delve/cmd/dlv", "", false, nil},
+	{"github.com/go-delve/delve/cmd/dlv", "", false, []finalVersion{{16, "v1.8.3"}, {17, "v1.9.1"}}},
 }
 
 // pickVersion returns the version to install based on the supported
