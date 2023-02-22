@@ -843,7 +843,7 @@ Connect to it with a remote attach configuration in your `launch.json`:
     "port": 12345,
     "host": "127.0.0.1", // can skip for localhost
     "substitutePath": [
-      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      { "from": "${workspaceFolder}", "to": "/path/to/remote/workspace" },
       ...
   ]
 }
