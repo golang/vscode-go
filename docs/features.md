@@ -112,8 +112,20 @@ Quickly toggle between a file and its corresponding test file by using the [`Go:
 
 The default syntax highlighting for Go files is implemented in Visual Studio Code using TextMate grammar, not by this extension.
 
-If you are using `gopls`, you can enable [Semantic Highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide) for more accurate syntax highlighting based on semantic tokenization using `"gopls": { "ui.semanticTokens": true }`.
+If you are using `gopls`, you can enable [Semantic Highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide) for more accurate syntax highlighting based on semantic tokenization using this setting:
 
+```
+"gopls": {
+  "ui.semanticTokens": true,
+
+  // you can optionally turn on these features for more colors
+  // see https://go.dev/issue/45753 and https://go.dev/issue/45792 
+  "ui.noSemanticString": true,  // delegates string syntax highlighting to vscode
+  "ui.noSemanticNumber": true,  // delegates number syntax highlighting to vscode
+}
+```
+
+ 
 ### Go template syntax highlighting
 
 When `gopls`'s semantic tokens feature is enabled, `gopls` also provides semantic tokens for Go template files (language identifier: `gotmpl`). By default, the extension associates all `*.tmpl` or `*.gotmpl` files in the workspace with `gotmpl` language. Users can override the language mode by using Visual Studio Code's UI or the `"files.associations"` setting. See [Visual Studio Code's doc](https://code.visualstudio.com/docs/languages/overview#_changing-the-language-for-the-selected-file) for more details.
