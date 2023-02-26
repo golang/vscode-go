@@ -125,7 +125,6 @@ If you are using `gopls`, you can enable [Semantic Highlighting](https://code.vi
 }
 ```
 
- 
 ### Go template syntax highlighting
 
 When `gopls`'s semantic tokens feature is enabled, `gopls` also provides semantic tokens for Go template files (language identifier: `gotmpl`). By default, the extension associates all `*.tmpl` or `*.gotmpl` files in the workspace with `gotmpl` language. Users can override the language mode by using Visual Studio Code's UI or the `"files.associations"` setting. See [Visual Studio Code's doc](https://code.visualstudio.com/docs/languages/overview#_changing-the-language-for-the-selected-file) for more details.
