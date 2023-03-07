@@ -192,7 +192,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.51.0'
+		defaultVersion: 'v1.51.2'
 	},
 	'revive': {
 		name: 'revive',
