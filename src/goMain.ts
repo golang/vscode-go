@@ -67,6 +67,8 @@ import { GoExtensionContext } from './context';
 import * as commands from './commands';
 import { toggleVulncheckCommandFactory, VulncheckOutputLinkProvider } from './goVulncheck';
 import { MethodGenerationProvider, goGenerateMethod } from './goGenerateMethod';
+import { GoTaskProvider } from './goTaskProvider';
+
 
 const goCtx: GoExtensionContext = {};
 
@@ -214,6 +216,8 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	vscode.languages.setLanguageConfiguration(GO_MODE.language, {
 		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g
 	});
+
+	GoTaskProvider.setup(ctx, vscode.workspace);
 
 	// Vulncheck output link provider.
 	VulncheckOutputLinkProvider.activate(ctx);
