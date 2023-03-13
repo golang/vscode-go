@@ -11,4 +11,7 @@
 	},
 	"editor.insertSpaces": false,
 	"typescript.tsdk": "node_modules\\typescript\\lib",
+	"yaml.schemas": {
+		"https://json.schemastore.org/workflows.json": "vscode-vfs://github%2B7b2276223a312c22726566223a7b2274797065223a362c226964223a226d6173746572227d7d/golang/vscode-go/.github/ISSUE_TEMPLATE/config.yml"
+	},
 }
