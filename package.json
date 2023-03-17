@@ -1113,6 +1113,11 @@
       "type": "object",
       "title": "Go",
       "properties": {
+        "go.showWelcome": {
+          "type": "boolean",
+          "default": true,
+          "description": "Specifies whether to show the Welcome experience on first install"
+        },
         "go.buildOnSave": {
           "type": "string",
           "enum": [

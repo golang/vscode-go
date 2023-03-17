@@ -31,7 +31,7 @@ export class WelcomePanel {
 		}
 
 		// Show the Go welcome page on update.
-		if (!extensionInfo.isInCloudIDE) {
+		if (!extensionInfo.isInCloudIDE && vscode.workspace.getConfiguration('go.showWelcome')) {
 			showGoWelcomePage();
 		}
 	}
