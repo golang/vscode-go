@@ -42,6 +42,7 @@ export class GoTestResolver {
 	public readonly isDynamicSubtest = new WeakSet<TestItem>();
 	public readonly isTestMethod = new WeakSet<TestItem>();
 	public readonly isTestSuiteFunc = new WeakSet<TestItem>();
+	public readonly shouldIndexAll = getGoConfig().get('testExplorer.indexEntireWorkspace');
 	private readonly testSuites = new Map<string, TestSuite>();
 
 	constructor(
@@ -82,7 +83,9 @@ export class GoTestResolver {
 				}
 			});
 
-			// Create entries for all modules and workspaces
+			if (!this.shouldIndexAll) return;
+
+			// Create entries for all modules and workspaces, if indexing the entire workspace.
 			for (const folder of this.workspace.workspaceFolders || []) {
 				const found = await walkWorkspaces(this.workspace.fs, folder.uri);
 				let needWorkspace = false;
@@ -107,7 +110,8 @@ export class GoTestResolver {
 
 		if (!item.uri) return;
 		// The user expanded a module or workspace - find all packages
-		if (kind === 'module' || kind === 'workspace') {
+		// Always skipped if not indexing the entire workspace
+		if ((kind === 'module' || kind === 'workspace') && this.shouldIndexAll) {
 			await walkPackages(this.workspace.fs, item.uri, async (uri) => {
 				await this.getPackage(uri);
 			});
