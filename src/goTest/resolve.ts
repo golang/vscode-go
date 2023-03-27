@@ -252,6 +252,14 @@ export class GoTestResolver {
 		return item;
 	}
 
+	public async processCreatedFile(uri: Uri): Promise<void> {
+		const pkg = GoTest.id(uri.with({ path: path.dirname(uri.path) }), 'package');
+
+		// If we are not indexing the entire workspace, process file only if its package is already part of the resolver.
+		// This prevents adding files that were created by Git in paths outside of those that are already indexed.
+		if (this.shouldIndexAll || this.all.get(pkg)) this.getFile(uri);
+	}
+
 	/* ***** Private ***** */
 
 	private shouldSetRange(item: TestItem): boolean {

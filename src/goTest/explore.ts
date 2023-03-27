@@ -2,7 +2,6 @@
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
-import path = require('path');
 import {
 	ConfigurationChangeEvent,
 	ExtensionContext,
@@ -259,16 +258,12 @@ export class GoTestExplorer {
 	}
 
 	protected async didCreateFile(file: Uri) {
-		// If not indexing the entire workspace, then handle newly created files only if the package is already present in the test explorer.
-		const pkg = GoTest.id(file.with({ path: path.dirname(file.path) }), 'package');
-		if (this.resolver.shouldIndexAll || this.resolver.all.get(pkg)) {
-			// Do not use openTextDocument to get the TextDocument for file,
-			// since this sends a didOpen text document notification to gopls,
-			// leading to spurious diagnostics from gopls:
-			// https://github.com/golang/vscode-go/issues/2570
-			// Instead, get the test item for this file only.
-			await this.resolver.getFile(file);
-		}
+		// Do not use openTextDocument to get the TextDocument for file,
+		// since this sends a didOpen text document notification to gopls,
+		// leading to spurious diagnostics from gopls:
+		// https://github.com/golang/vscode-go/issues/2570
+		// Instead, get the test item for this file only.
+		await this.resolver.processCreatedFile(file);
 	}
 
 	protected async didDeleteFile(file: Uri) {
