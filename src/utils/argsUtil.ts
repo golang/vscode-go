@@ -1,6 +1,9 @@
-type ParseError = string
+/*---------------------------------------------------------
+ * Copyright 2021 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
 
-const escapeAtEndError = "args string has escape character (\\) at the end of the string, with nothing to escape.";
+type ParseError = string
 
 /**
  * Parses an argument string with shell-like semantics into a list of arguments.
@@ -16,7 +19,7 @@ const escapeAtEndError = "args string has escape character (\\) at the end of th
  * @param args The string containing arguments to be parsed.
  */
 export function parseArgsString(args: string): string[] | ParseError {
-	let resOrErr: string[] = [];
+	let result: string[] = [];
 	let word: string = "";
 	let bufferedWord: boolean = false;
 
@@ -25,11 +28,12 @@ export function parseArgsString(args: string): string[] | ParseError {
 			let j = i + 1;
 			let k = i + 1;
 			for (; k < args.length && args[k] != "'";) {
+				// escaped quotes
 				if (args[k] == '\\'
 					&& k + 1 < args.length
 					&& (args[k + 1] == "'" || args[k + 1] == '"')) {
 					bufferedWord = true;
-					// buffer everything up to this point
+					// buffer everything up to this point, skipping backslash
 					word += args.slice(j, k)
 					word += args.charAt(k + 1)
 
@@ -50,11 +54,12 @@ export function parseArgsString(args: string): string[] | ParseError {
 			let j = i + 1;
 			let k = i + 1;
 			for (; k < args.length && args[k] != '"';) {
+				// escaped quotes
 				if (args[k] == '\\'
 					&& k + 1 < args.length
 					&& (args[k + 1] == "'" || args[k + 1] == '"')) {
 					bufferedWord = true;
-					// buffer everything up to this point
+					// buffer everything up to this point, skipping backslash
 					word += args.slice(j, k)
 					word += args.charAt(k + 1)
 
@@ -73,12 +78,13 @@ export function parseArgsString(args: string): string[] | ParseError {
 			i = k + 1;
 		} else if (args[i] == '\\'
 			&& i + 1 < args.length
-			&& (args[i + 1] == "'" || args[i + 1] == '"')) {
+			&& (args[i + 1] == "'" || args[i + 1] == '"')) { // escaped quotes
 			bufferedWord = true;
 			word += args.charAt(i + 1);
 			i = i + 2;
-		} else if (args[i] != ' ') {
+		} else if (args[i] != ' ') { // a word
 			let j = i + 1;
+			// advance until a whitespace, or special char is encountered
 			for (; j < args.length
 				&& args[j] != ' '
 				&& args[j] != "'"
@@ -91,7 +97,7 @@ export function parseArgsString(args: string): string[] | ParseError {
 			word += args.slice(i, j);
 			i = j;
 		} else if (bufferedWord) { // also true that args[i] == ' '
-			resOrErr.push(word);
+			result.push(word);
 			word = "";
 			bufferedWord = false;
 			i++;
@@ -101,8 +107,8 @@ export function parseArgsString(args: string): string[] | ParseError {
 	}
 
 	if (bufferedWord) {
-		resOrErr.push(word);
+		result.push(word);
 	}
 
-	return resOrErr;
+	return result;
 }
