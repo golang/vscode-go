@@ -36,7 +36,6 @@ import {
 	Thread
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { parseArgsString } from '../utils/argsUtil';
 import { parseEnvFiles } from '../utils/envUtils';
 import {
 	correctBinname,
@@ -272,7 +271,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	program: string;
 	stopOnEntry?: boolean;
 	dlvFlags?: string[];
-	args?: string[] | string;
+	args?: string[];
 	showLog?: boolean;
 	logOutput?: string;
 	cwd?: string;
@@ -405,7 +404,6 @@ export function normalizeSeparators(filePath: string): string {
 function getBaseName(filePath: string) {
 	return filePath.includes('/') ? path.basename(filePath) : path.win32.basename(filePath);
 }
-
 
 export class Delve {
 	public program: string;
@@ -568,16 +566,7 @@ export class Delve {
 
 						const run = [];
 						if (launchArgs.args) {
-							if (typeof launchArgs.args == 'string') {
-								const argsOrErrorMsg = parseArgsString(launchArgs.args)
-								if (typeof argsOrErrorMsg == 'string') {
-									reject(argsOrErrorMsg)
-								} else {
-									run.push(...argsOrErrorMsg)
-								}
-							} else {
-								run.push(...launchArgs.args);
-							}
+							run.push(...launchArgs.args);
 						}
 
 						log(`Current working directory: ${wd}`);
@@ -618,7 +607,8 @@ export class Delve {
 
 				if (!existsSync(launchArgs.dlvToolPath)) {
 					log(
-						`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${env['GOPATH'] ? ', ' + env['GOPATH'] : ''
+						`Couldn't find dlv at the Go tools path, ${process.env['GOPATH']}${
+							env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 						} or ${envPath}`
 					);
 					return reject(
@@ -666,17 +656,8 @@ export class Delve {
 				if (launchArgs.output && (mode === 'debug' || mode === 'test')) {
 					dlvArgs.push('--output=' + launchArgs.output);
 				}
-				if (launchArgs.args) {
-					if (typeof launchArgs.args == 'string' && launchArgs.args.length > 0) {
-						const argsOrErrorMsg = parseArgsString(launchArgs.args)
-						if (typeof argsOrErrorMsg == 'string') {
-							reject(argsOrErrorMsg)
-						} else {
-							dlvArgs.push('--', ...argsOrErrorMsg)
-						}
-					} else if (Array.isArray(launchArgs.args) && launchArgs.args.length > 0) {
-						dlvArgs.push('--', ...launchArgs.args);
-					}
+				if (launchArgs.args && launchArgs.args.length > 0) {
+					dlvArgs.push('--', ...launchArgs.args);
 				}
 				this.localDebugeePath = this.getLocalDebugeePath(launchArgs.output);
 			} else if (launchArgs.request === 'attach') {
@@ -2002,8 +1983,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			args.trace === 'verbose' || args.trace === 'trace'
 				? Logger.LogLevel.Verbose
 				: args.trace === 'log' || args.trace === 'info' || args.trace === 'warn'
-					? Logger.LogLevel.Log
-					: Logger.LogLevel.Error;
+				? Logger.LogLevel.Log
+				: Logger.LogLevel.Error;
 		const logPath =
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-go-debug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);
@@ -2363,7 +2344,12 @@ export class GoDebugSession extends LoggingDebugSession {
 				variablesReference: 0
 			};
 		} else if (v.kind === GoReflectKind.Ptr) {
-			if (v.children[0].addr === 0) {
+			if (!v.children[0]) {
+				return {
+					result: 'unknown <' + v.type + '>',
+					variablesReference: 0
+				};
+			} else if (v.children[0].addr === 0) {
 				return {
 					result: 'nil <' + v.type + '>',
 					variablesReference: 0
