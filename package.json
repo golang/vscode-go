@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.38.0-dev",
+  "version": "0.39.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -31,7 +31,9 @@
     "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
-    "multi-root ready"
+    "multi-root ready",
+    "golang",
+    "gopls"
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm *.vsix",
@@ -77,7 +79,7 @@
     "@vscode/test-electron": "2.2.0",
     "@vscode/vsce": "2.16.0",
     "adm-zip": "0.4.16",
-    "esbuild": "0.12.21",
+    "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
     "gts": "4.0.0",
@@ -2059,6 +2061,12 @@
           },
           "additionalProperties": true
         },
+        "go.tasks.provideDefault": {
+          "default": true,
+          "description": "enable the default go build/test task provider.",
+          "scope": "window",
+          "type": "boolean"
+        },
         "go.terminal.activateEnvironment": {
           "default": true,
           "description": "Apply the Go & PATH environment variables used by the extension to all integrated terminals.",
@@ -2862,6 +2870,54 @@
           "when": "go.hasProfiles"
         }
       ]
-    }
+    },
+    "taskDefinitions": [
+      {
+        "type": "go",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "the name of go task"
+          },
+          "command": {
+            "type": "string",
+            "description": "go command to run",
+            "enum": [
+              "build",
+              "test"
+            ],
+            "enumDescriptions": [
+              "go build",
+              "go test"
+            ],
+            "default": "build"
+          },
+          "args": {
+            "type": "array",
+            "description": "additional arguments to pass to the go command (including the build target)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "type": "object",
+            "description": "additional command options",
+            "properties": {
+              "cwd": {
+                "type": "string",
+                "description": "the current working directory of the executed program or script. If omitted Code's current workspace root is used."
+              },
+              "env": {
+                "type": "object",
+                "markdownDescription": "Environment variables in the format of \"name\": \"value\"."
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

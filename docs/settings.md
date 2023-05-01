@@ -457,6 +457,11 @@ Default:
 Prompt for surveys, including the gopls survey and the Go developer survey.
 
 Default: `true`
+### `go.tasks.provideDefault`
+
+enable the default go build/test task provider.
+
+Default: `true`
 ### `go.terminal.activateEnvironment`
 
 Apply the Go & PATH environment variables used by the extension to all integrated terminals.

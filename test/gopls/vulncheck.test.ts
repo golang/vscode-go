@@ -89,7 +89,7 @@ Fixed Version: N/A
 	module3/lib.Run$2
 		(/home/user/module3/lib/lib.go:28)`;
 
-suite.only('VulncheckOutputLinkProvider', () => {
+suite('VulncheckOutputLinkProvider', () => {
 	let doc: vscode.TextDocument;
 	let links: vscode.DocumentLink[] | undefined | null;
 

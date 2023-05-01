@@ -192,7 +192,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.50.1'
+		defaultVersion: 'v1.51.0'
 	},
 	'revive': {
 		name: 'revive',
@@ -211,9 +211,9 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.13'),
-		latestVersion: semver.parse('v0.10.1'),
-		latestVersionTimestamp: moment('2022-11-01', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.11.0-pre.3'),
+		latestVersion: semver.parse('v0.11.0'),
+		latestVersionTimestamp: moment('2022-12-13', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.11.0'),
 		latestPrereleaseVersionTimestamp: moment('2022-12-13', 'YYYY-MM-DD')
 	},
 	'dlv': {

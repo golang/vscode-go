@@ -107,6 +107,41 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	});
 });
 
+suite('gopls okForStagedRollout', () => {
+	const tool = getTool('gopls');
+	const sandbox = sinon.createSandbox();
+	teardown(() => {
+		sandbox.restore();
+	});
+
+	function daysAgo(d: number): Date {
+		const day = new Date();
+		day.setDate(day.getDate() - d);
+		return day;
+	}
+
+	async function testOkForStagedRollout(ver: string, published: Date | null, machineIDHash: number, want: boolean) {
+		const version = semver.parse(ver);
+
+		assert(version);
+		sandbox.stub(lsp, 'getTimestampForVersion').returns(Promise.resolve(published ? moment(published) : null));
+		const got = await lsp.okForStagedRollout(tool, version, () => machineIDHash);
+		assert.strictEqual(got, want);
+	}
+	test('published today, machine id hash % 100 < 10, want update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(0), 9, true));
+	test('published today, machine id hash % 100 >= 10, delay update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(0), 11, false));
+	test('published 2d ago, machine id hash % 100 < 30, want update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(2), 29, true));
+	test('published 2d ago, machine id hash % 100 >= 30, delay update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(2), 30, false));
+	test('published 5d ago, want update', async () => await testOkForStagedRollout('v0.11.0', daysAgo(5), 99, true));
+	test('publish date unknown, want update', async () => await testOkForStagedRollout('0.11.0', null, 99, true));
+	test('prerelease, want update', async () => await testOkForStagedRollout('v0.11.0-pre.1', daysAgo(0), 99, true));
+	test('patch version, want update', async () => await testOkForStagedRollout('0.11.1', daysAgo(0), 99, true));
+});
+
 suite('gopls update tests', () => {
 	test('prompt for update', async () => {
 		const tool = getTool('gopls');
