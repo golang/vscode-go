@@ -25,7 +25,8 @@ import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
 import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion } from './util';
+import { getBinPath, getGoVersion,  } from './util';
+import { parseArgsString } from './utils/argsUtil';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 import { createRegisterCommand } from './commands';
@@ -478,6 +479,17 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				}
 			}
 		}
+
+		// convert args string into string array if needed
+		if (debugConfiguration.request === 'launch' && typeof debugConfiguration['args'] == 'string') {
+			const argsOrErrorMsg = parseArgsString(debugConfiguration['args'])
+			if (typeof argsOrErrorMsg == 'string') {
+				throw new Error(argsOrErrorMsg);
+			} else {
+				debugConfiguration['args'] = argsOrErrorMsg
+			}
+		}
+
 		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
 			// processId needs to be an int, but the substituted variables from pickGoProcess and pickProcess
 			// become a string. Convert any strings to integers.
