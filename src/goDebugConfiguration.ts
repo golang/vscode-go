@@ -25,7 +25,7 @@ import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
 import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion,  } from './util';
+import { getBinPath, getGoVersion } from './util';
 import { parseArgsString } from './utils/argsUtil';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
@@ -481,12 +481,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		}
 
 		// convert args string into string array if needed
-		if (debugConfiguration.request === 'launch' && typeof debugConfiguration['args'] == 'string') {
-			const argsOrErrorMsg = parseArgsString(debugConfiguration['args'])
-			if (typeof argsOrErrorMsg == 'string') {
+		if (debugConfiguration.request === 'launch' && typeof debugConfiguration['args'] === 'string') {
+			const argsOrErrorMsg = parseArgsString(debugConfiguration['args']);
+			if (typeof argsOrErrorMsg === 'string') {
 				throw new Error(argsOrErrorMsg);
 			} else {
-				debugConfiguration['args'] = argsOrErrorMsg
+				debugConfiguration['args'] = argsOrErrorMsg;
 			}
 		}
 

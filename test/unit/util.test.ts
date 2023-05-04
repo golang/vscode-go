@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 /*---------------------------------------------------------
  * Copyright 2022 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -76,19 +77,19 @@ suite('util tests', () => {
 			for (const arg of tc.args) {
 				const got = parseArgsString(arg);
 
-				if (typeof tc.want == 'string') { // error case
-					if (typeof got != 'string') {
-						assert.fail("expected error, but got: " + JSON.stringify(got))
+				if (typeof tc.want === 'string') { // error case
+					if (typeof got !== 'string') {
+						assert.fail('expected error, but got: ' + JSON.stringify(got));
 					}
 
-					const errorMatched = got.includes(tc.want)
+					const errorMatched = got.includes(tc.want);
 					if (!errorMatched) {
-						assert.fail(`unmatched error, got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`)
+						assert.fail(`unmatched error, got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`);
 					}
 				} else {
-					assert.deepStrictEqual(got, tc.want, `${tc.test}: parseArgsString(${JSON.stringify(arg)}), got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`)
+					assert.deepStrictEqual(got, tc.want, `${tc.test}: parseArgsString(${JSON.stringify(arg)}), got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`);
 				}
 			}
 		}
-	})
-})
+	});
+});
