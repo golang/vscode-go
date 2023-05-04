@@ -28,11 +28,9 @@ export function parseArgsString(args: string): string[] | ParseError {
 			const quoteBegin = args[i];
 			let j = i + 1;
 			let k = i + 1;
-			for (; k < args.length && args[k] !== quoteBegin;) {
+			for (; k < args.length && args[k] !== quoteBegin; ) {
 				// escaped quotes
-				if (args[k] === '\\'
-					&& k + 1 < args.length
-					&& (args[k + 1] === "'" || args[k + 1] === '"')) {
+				if (args[k] === '\\' && k + 1 < args.length && (args[k + 1] === "'" || args[k + 1] === '"')) {
 					bufferedWord = true;
 					// buffer everything up to this point, skipping backslash
 					word += args.slice(j, k);
@@ -55,33 +53,30 @@ export function parseArgsString(args: string): string[] | ParseError {
 			bufferedWord = true;
 			word += args.slice(j, k);
 			i = k + 1;
-		} else if (args[i] === '\\'
-			&& i + 1 < args.length
-			&& (args[i + 1] === "'" || args[i + 1] === '"')) { // escaped quotes
+		} else if (args[i] === '\\' && i + 1 < args.length && (args[i + 1] === "'" || args[i + 1] === '"')) {
+			// escaped quotes
 			bufferedWord = true;
 			word += args.charAt(i + 1);
 			i = i + 2;
-		} else if (args[i] !== ' ') { // a word
+		} else if (args[i] !== ' ') {
+			// a word
 			let j = i + 1;
 			// advance until a whitespace, or special char is encountered
-			for (; j < args.length
-				&& args[j] !== ' '
-				&& args[j] !== "'"
-				&& args[j] !== '"'
-				&& args[j] !== '\\';
-				j++) {
+			for (; j < args.length && args[j] !== ' ' && args[j] !== "'" && args[j] !== '"' && args[j] !== '\\'; j++) {
 				// a word
 			}
 
 			bufferedWord = true;
 			word += args.slice(i, j);
 			i = j;
-		} else if (bufferedWord) { // also true that args[i] === ' '
+		} else if (bufferedWord) {
+			// also true that args[i] === ' '
 			result.push(word);
 			word = '';
 			bufferedWord = false;
 			i++;
-		} else { // args[i] === ' '
+		} else {
+			// args[i] === ' '
 			i++;
 		}
 	}

@@ -8,7 +8,6 @@ import assert from 'assert';
 import { parseArgsString } from '../../src/utils/argsUtil';
 
 suite('util tests', () => {
-
 	test('parseArgsString Tests', () => {
 		const tt = [
 			{
@@ -77,17 +76,28 @@ suite('util tests', () => {
 			for (const arg of tc.args) {
 				const got = parseArgsString(arg);
 
-				if (typeof tc.want === 'string') { // error case
+				if (typeof tc.want === 'string') {
+					// error case
 					if (typeof got !== 'string') {
 						assert.fail(`${tc.test}: expected error, but got: ` + JSON.stringify(got));
 					}
 
 					const errorMatched = got.includes(tc.want);
 					if (!errorMatched) {
-						assert.fail(`${tc.test}: unmatched error, got: ${JSON.stringify(got)}, want error message include: ${JSON.stringify(tc.want)}`);
+						assert.fail(
+							`${tc.test}: unmatched error, got: ${JSON.stringify(
+								got
+							)}, want error message include: ${JSON.stringify(tc.want)}`
+						);
 					}
 				} else {
-					assert.deepStrictEqual(got, tc.want, `${tc.test}: parseArgsString(${JSON.stringify(arg)}), got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`);
+					assert.deepStrictEqual(
+						got,
+						tc.want,
+						`${tc.test}: parseArgsString(${JSON.stringify(arg)}), got: ${JSON.stringify(
+							got
+						)}, want: ${JSON.stringify(tc.want)}`
+					);
 				}
 			}
 		}
