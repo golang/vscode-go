@@ -45,7 +45,11 @@ export function parseArgsString(args: string): string[] | ParseError {
 				}
 			}
 			if (k >= args.length) {
-				return "args has unmatched single quotes ('). starting index: " + i;
+				if (quoteBegin === "'") {
+					return "args has unmatched single quotes ('). starting index: " + i;
+				} else {
+					return 'args has unmatched double quotes ("). starting index: ' + i;
+				}
 			}
 
 			bufferedWord = true;

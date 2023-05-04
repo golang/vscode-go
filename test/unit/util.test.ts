@@ -64,12 +64,12 @@ suite('util tests', () => {
 			{
 				test: 'UnmatchedSingleQuotes',
 				args: [`something '`, `' something`],
-				want: `args string has unmatched single quotes (')`
+				want: `args has unmatched single quotes (')`
 			},
 			{
 				test: 'UnmatchedDoubleQuotes',
 				args: ['something "', '" something'],
-				want: 'args string has unmatched double quotes (")'
+				want: 'args has unmatched double quotes (")'
 			}
 		];
 
@@ -79,12 +79,12 @@ suite('util tests', () => {
 
 				if (typeof tc.want === 'string') { // error case
 					if (typeof got !== 'string') {
-						assert.fail('expected error, but got: ' + JSON.stringify(got));
+						assert.fail(`${tc.test}: expected error, but got: ` + JSON.stringify(got));
 					}
 
 					const errorMatched = got.includes(tc.want);
 					if (!errorMatched) {
-						assert.fail(`unmatched error, got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`);
+						assert.fail(`${tc.test}: unmatched error, got: ${JSON.stringify(got)}, want error message include: ${JSON.stringify(tc.want)}`);
 					}
 				} else {
 					assert.deepStrictEqual(got, tc.want, `${tc.test}: parseArgsString(${JSON.stringify(arg)}), got: ${JSON.stringify(got)}, want: ${JSON.stringify(tc.want)}`);
