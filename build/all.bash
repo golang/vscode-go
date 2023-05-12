@@ -35,10 +35,7 @@ setup_virtual_display() {
 
 go_binaries_info() {
   echo "**** Go version ****"
-  which go
   go version
-  echo "**** Gopls version ****"
-  go version -m "$(which gopls)"
 }
 
 run_test() {
@@ -63,6 +60,8 @@ run_test() {
 
 
 run_test_in_docker() {
+  which npm && npm version || echo "no npm"
+  which go && go version || echo "no go"
   echo "**** Building the docker image ***"
   docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
 
