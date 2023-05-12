@@ -39,7 +39,13 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import { correctBinname, envPath, executableFileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import {
+	correctBinname,
+	getEnvPath,
+	executableFileExists,
+	getCurrentGoRoot,
+	setCurrentGoRoot
+} from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
 import { RestartReason } from './language/goLanguageServer';
@@ -376,7 +382,7 @@ export async function promptForMissingTool(toolName: string) {
 	const tool = getTool(toolName);
 	if (!tool) {
 		vscode.window.showWarningMessage(
-			`${toolName} is not found. Please make sure it is installed and available in the PATH ${envPath}`
+			`${toolName} is not found. Please make sure it is installed and available in the PATH ${getEnvPath()}`
 		);
 		return;
 	}
@@ -661,7 +667,7 @@ let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
 	const msg =
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}). ` +
+		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()}). ` +
 		'Check PATH, or Install Go and reload the window. ' +
 		"If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971";
 

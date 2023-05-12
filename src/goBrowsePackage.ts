@@ -13,7 +13,7 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getAllPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 
 export const browsePackages: CommandFactory = () => () => {
 	let workDir = '';
@@ -43,7 +43,7 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 	}
 

@@ -9,7 +9,7 @@ import cp = require('child_process');
 import { QuickPickItem } from 'vscode';
 import { getBinPath } from './util';
 import { lsofDarwinCommand, parseLsofProcesses } from './utils/lsofProcessParser';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
 import vscode = require('vscode');
@@ -99,7 +99,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return processes;
 	}

@@ -6,13 +6,13 @@
 
 import jsDiff = require('diff');
 import { Position, Range, TextEditorEdit, Uri, WorkspaceEdit } from 'vscode';
-import { getBinPathFromEnvVar } from './utils/pathUtils';
+import { getBinPathFromEnvVar, getEnvPath } from './utils/pathUtils';
 
 let diffToolAvailable: boolean | null = null;
 
 export function isDiffToolAvailable(): boolean {
 	if (diffToolAvailable == null) {
-		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+		const envPath = getEnvPath();
 		if (!envPath) {
 			return false;
 		}
