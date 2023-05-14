@@ -17,7 +17,8 @@ import { logVerbose } from '../goLogging';
 
 let binPathCache: { [bin: string]: string } = {};
 
-export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+export const getEnvPath = () => process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+export const initialEnvPath = getEnvPath();
 
 // find the tool's path from the given PATH env var, or null if the tool is not found.
 export function getBinPathFromEnvVar(
@@ -101,7 +102,7 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	}
 
 	// Finally search PATH parts
-	const pathFromPath = getBinPathFromEnvVar(binname, envPath, false);
+	const pathFromPath = getBinPathFromEnvVar(binname, getEnvPath(), false);
 	if (pathFromPath) {
 		binPathCache[toolName] = pathFromPath;
 		return { binPath: pathFromPath, why: found('path') };

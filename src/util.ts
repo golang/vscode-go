@@ -20,7 +20,7 @@ import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
 import {
-	envPath,
+	getEnvPath,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopathGorootWithExplanation,
 	getCurrentGoRoot,
@@ -337,7 +337,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	};
 
 	if (!goRuntimePath) {
-		throw error(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${envPath})`);
+		throw error(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${getEnvPath()})`);
 	}
 	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {

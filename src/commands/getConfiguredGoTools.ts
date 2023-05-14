@@ -12,7 +12,7 @@ import { inspectGoToolVersion } from '../goInstallTools';
 import { outputChannel } from '../goStatus';
 import { getConfiguredTools } from '../goTools';
 import { getBinPath, getCurrentGoPath, getGoEnv, getGoVersion, getToolsGopath } from '../util';
-import { envPath, getCurrentGoRoot } from '../utils/pathUtils';
+import { getEnvPath, initialEnvPath, getCurrentGoRoot } from '../utils/pathUtils';
 
 export const getConfiguredGoTools: CommandFactory = () => {
 	return async () => {
@@ -31,10 +31,10 @@ export const getConfiguredGoTools: CommandFactory = () => {
 		outputChannel.appendLine('toolsGopath: ' + getToolsGopath());
 		outputChannel.appendLine('gopath: ' + getCurrentGoPath());
 		outputChannel.appendLine('GOROOT: ' + getCurrentGoRoot());
-		const currentEnvPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+		const currentEnvPath = getEnvPath();
 		outputChannel.appendLine('PATH: ' + currentEnvPath);
-		if (currentEnvPath !== envPath) {
-			outputChannel.appendLine(`PATH (vscode launched with): ${envPath}`);
+		if (currentEnvPath !== initialEnvPath) {
+			outputChannel.appendLine(`PATH (vscode launched with): ${initialEnvPath}`);
 		}
 		outputChannel.appendLine('');
 

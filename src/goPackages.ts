@@ -11,7 +11,12 @@ import { promisify } from 'util';
 import vscode = require('vscode');
 import { toolExecutionEnvironment } from './goEnv';
 import { getBinPath, getCurrentGoPath } from './util';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
+import {
+	getEnvPath,
+	fixDriveCasingInWindows,
+	getCurrentGoRoot,
+	getCurrentGoWorkspaceFromGOPATH
+} from './utils/pathUtils';
 
 type GoListPkgsDone = (res: Map<string, PackageInfo>) => void;
 interface Cache {
@@ -51,7 +56,7 @@ async function goListPkgs(workDir?: string): Promise<Map<string, PackageInfo>> {
 	const goBin = getBinPath('go');
 	if (!goBin) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return pkgs;
 	}
@@ -263,7 +268,7 @@ export function getImportPathToFolder(targets: string[], cwd?: string): Promise<
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
-			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) PATH(${envPath})`
+			`Failed to run "go list" to find packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) PATH(${getEnvPath()})`
 		);
 		return Promise.resolve(new Map());
 	}

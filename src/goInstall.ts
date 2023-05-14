@@ -12,7 +12,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getModuleCache } from './util';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
 export const installCurrentPackage: CommandFactory = () => async () => {
 	const editor = vscode.window.activeTextEditor;
@@ -30,7 +30,7 @@ export const installCurrentPackage: CommandFactory = () => async () => {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return;
 	}
