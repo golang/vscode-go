@@ -129,7 +129,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter',
-		defaultVersion: 'v0.4.0'
+		defaultVersion: 'v0.5.0'
 	},
 	'goimports': {
 		name: 'goimports',
@@ -192,7 +192,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.51.0'
+		defaultVersion: 'v1.52.2'
 	},
 	'revive': {
 		name: 'revive',
@@ -200,7 +200,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/mgechev/revive',
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.2.3'
+		defaultVersion: 'v1.3.2'
 	},
 	'gopls': {
 		name: 'gopls',
@@ -213,8 +213,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		minimumGoVersion: semver.coerce('1.13'),
 		latestVersion: semver.parse('v0.11.0'),
 		latestVersionTimestamp: moment('2022-12-13', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.11.0'),
-		latestPrereleaseVersionTimestamp: moment('2022-12-13', 'YYYY-MM-DD')
+		latestPrereleaseVersion: semver.parse('v0.12.0-pre.1'),
+		latestPrereleaseVersionTimestamp: moment('2023-04-24', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
