@@ -2453,7 +2453,7 @@
                 },
                 "unsafeptr": {
                   "type": "boolean",
-                  "markdownDescription": "check for invalid conversions of uintptr to unsafe.Pointer\n\nThe unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer\nto convert integers to pointers. A conversion from uintptr to\nunsafe.Pointer is invalid if it implies that there is a uintptr-typed\nword in memory that holds a pointer value, because that word will be\ninvisible to stack copying and to the garbage collector.`",
+                  "markdownDescription": "check for invalid conversions of uintptr to unsafe.Pointer\n\nThe unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer\nto convert integers to pointers. A conversion from uintptr to\nunsafe.Pointer is invalid if it implies that there is a uintptr-typed\nword in memory that holds a pointer value, because that word will be\ninvisible to stack copying and to the garbage collector.",
                   "default": true
                 },
                 "unusedparams": {
@@ -2463,7 +2463,7 @@
                 },
                 "unusedresult": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side effects,\nso it is always a mistake to discard the result. This analyzer reports\ncalls to certain functions in which the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
+                  "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side\neffects, so it is always a mistake to discard the result. Other\nfunctions may return an error that must not be ignored, or a cleanup\noperation that must be called. This analyzer reports calls to\nfunctions like these when the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
                   "default": true
                 },
                 "unusedvariable": {
@@ -2586,6 +2586,20 @@
                 ""
               ],
               "default": "FastFuzzy",
+              "scope": "resource"
+            },
+            "ui.navigation.symbolScope": {
+              "type": "string",
+              "markdownDescription": "symbolScope controls which packages are searched for workspace/symbol\nrequests. The default value, \"workspace\", searches only workspace\npackages. The legacy behavior, \"all\", causes all loaded packages to be\nsearched, including dependencies; this is more expensive and may return\nunwanted results.\n",
+              "enum": [
+                "all",
+                "workspace"
+              ],
+              "markdownEnumDescriptions": [
+                "`\"all\"` matches symbols in any loaded package, including\ndependencies.\n",
+                "`\"workspace\"` matches symbols in workspace packages only.\n"
+              ],
+              "default": "all",
               "scope": "resource"
             },
             "ui.navigation.symbolStyle": {
