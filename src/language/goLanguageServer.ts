@@ -396,8 +396,9 @@ export class GoLanguageClient extends LanguageClient implements vscode.Disposabl
 		super(id, name, serverOptions, clientOptions);
 	}
 
-	dispose() {
+	dispose(timeout?: number) {
 		this.onDidChangeVulncheckResultEmitter.dispose();
+		return super.dispose(timeout);
 	}
 	public get onDidChangeVulncheckResult(): vscode.Event<VulncheckEvent> {
 		return this.onDidChangeVulncheckResultEmitter.event;
