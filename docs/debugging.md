@@ -492,7 +492,7 @@ your project lives in `/path/to/actual/helloWorld`, but the project is open in
 vscode under the linked folder `/link/to/helloWorld`, you can add the following
 to your config to set breakpoints in the files in `/link/to/helloWorld`:
 
-```
+```json
 {
     "name": "Launch with symlinks",
     "type": "go",
@@ -500,11 +500,11 @@ to your config to set breakpoints in the files in `/link/to/helloWorld`:
     "mode": "debug",
     "program": "/path/to/actual/helloWorld",
     "substitutePath": [
-  {
-   "from": "/link/to/helloWorld",
-   "to": "/path/to/actual/helloWorld",
-  },
- ],
+        {
+            "from": "/link/to/helloWorld",
+            "to": "/path/to/actual/helloWorld"
+        }
+    ]
 }
 ```
 
