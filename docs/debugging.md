@@ -441,7 +441,7 @@ Here is the list of attributes specific to Go debugging.
 <!-- SETTINGS BEGIN -->
 | Property | Launch | Attach |
 | --- | --- | --- |
-| `args` | Command line arguments passed to the debugged program.<br/> | <center>_n/a_</center> |
+| `args` | Command line arguments passed to the debugged program.<br/>(Default: `[]`)<br/> | <center>_n/a_</center> |
 | `asRoot` | (Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.<br/>(Default: `false`)<br/> | (Experimental) Debug with elevated permissions (on Unix). This requires `integrated` or `external` console modes and is ignored in remote debugging.<br/>(Default: `false`)<br/> |
 | `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`, `"rr"`<br/> | <center>_same as Launch_</center>|
 | `buildFlags` | Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.<br/>(Default: `""`)<br/> | <center>_n/a_</center> |

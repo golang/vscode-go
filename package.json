@@ -678,7 +678,10 @@
                 "default": false
               },
               "args": {
-                "type": ["array", "string"],
+                "type": [
+                  "array",
+                  "string"
+                ],
                 "description": "Command line arguments passed to the debugged program.",
                 "items": {
                   "type": "string"
