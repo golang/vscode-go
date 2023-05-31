@@ -37,29 +37,34 @@ export async function pickGoProcess(): Promise<string> {
 }
 
 async function processPicker(processes: AttachItem[], name?: string): Promise<string> {
+	// We need to use createQuickPick instead of showQuickPick
+	// to set the starting value for the menu.
+	const menu = vscode.window.createQuickPick<AttachItem>();
+	if (name) {
+		menu.value = name;
+	}
+	menu.items = processes;
+	menu.placeholder = 'Choose a process to attach to';
+	menu.matchOnDescription = true;
+	menu.matchOnDetail = true;
 	return new Promise<string>(async (resolve, reject) => {
-		const menu = vscode.window.createQuickPick<AttachItem>();
-		if (name) {
-			menu.value = name;
-		}
-		menu.items = processes;
-		menu.placeholder = 'Choose a process to attach to';
-		menu.matchOnDescription = true;
-		menu.matchOnDetail = true;
-
 		menu.onDidAccept(() => {
 			if (menu.selectedItems.length !== 1) {
 				reject(new Error('No process selected.'));
 			}
 			const selectedId = menu.selectedItems[0].id;
-
-			menu.dispose();
-
 			resolve(selectedId);
+		});
+		// The quickpick menu can be hidden either explicitly or
+		// through other UI interactions. When the quick pick menu is
+		// missing we want to keep the debugging setup process from
+		// hanging, so we reject the selection.
+		menu.onDidHide(() => {
+			reject(new Error('No process selected.'));
 		});
 
 		menu.show();
-	});
+	}).finally(() => menu.dispose());
 }
 
 // Modified from:
