@@ -369,19 +369,6 @@ Default: `false`
 If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.
 
 Default: `false`
-### `go.languageServerExperimentalFeatures`
-
-Temporary flag to enable/disable diagnostics from the language server. This setting will be deprecated soon. Please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).
-| Properties | Description |
-| --- | --- |
-| `diagnostics` | If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings. <br/> Default: `true` |
-
-Default:
-```
-{
-	"diagnostics" :	true,
-}
-```
 ### `go.languageServerFlags`
 
 Flags like -rpc.trace and -logfile to be used while running the language server.

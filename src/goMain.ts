@@ -392,21 +392,4 @@ async function showDeprecationWarning() {
 			}
 		}
 	}
-	const experimentalFeatures = cfg['languageServerExperimentalFeatures'];
-	if (experimentalFeatures) {
-		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
-		// all of the settings. See golang/vscode-go#1109 too.
-		// The `diagnostics` setting is still used as a workaround for running custom vet.
-		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
-		const prompted = getFromGlobalState(promptKey, false);
-		if (!prompted && experimentalFeatures['diagnostics'] === false) {
-			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
-	If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://go.dev/s/vscode-issue/50).`;
-			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
-			switch (selected) {
-				case "Don't show again":
-					updateGlobalState(promptKey, true);
-			}
-		}
-	}
 }

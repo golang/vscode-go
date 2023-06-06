@@ -227,8 +227,7 @@ export function goplsStaticcheckEnabled(
 	) {
 		return false;
 	}
-	const features = goConfig['languageServerExperimentalFeatures'];
-	return !features || features['diagnostics'] === true;
+	return true;
 }
 
 export const gocodeClose = async (env: NodeJS.Dict<string>): Promise<string> => {

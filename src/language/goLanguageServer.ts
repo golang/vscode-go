@@ -72,7 +72,6 @@ export interface LanguageServerConfig {
 	flags: string[];
 	env: any;
 	features: {
-		diagnostics: boolean;
 		formatter?: GoDocumentFormattingEditProvider;
 	};
 	checkForUpdates: string;
@@ -616,9 +615,6 @@ export async function buildLanguageClient(
 					diagnostics: vscode.Diagnostic[],
 					next: HandleDiagnosticsSignature
 				) => {
-					if (!cfg.features.diagnostics) {
-						return null;
-					}
 					const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
 					// Deduplicate diagnostics with those found by the other tools.
 					removeDuplicateDiagnostics(vetDiagnosticCollection, uri, diagnostics);
@@ -925,7 +921,6 @@ export async function watchLanguageServerConfiguration(goCtx: GoExtensionContext
 	if (
 		e.affectsConfiguration('go.useLanguageServer') ||
 		e.affectsConfiguration('go.languageServerFlags') ||
-		e.affectsConfiguration('go.languageServerExperimentalFeatures') ||
 		e.affectsConfiguration('go.alternateTools') ||
 		e.affectsConfiguration('go.toolsEnvVars') ||
 		e.affectsConfiguration('go.formatTool')
@@ -954,7 +949,6 @@ export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguratio
 		features: {
 			// TODO: We should have configs that match these names.
 			// Ultimately, we should have a centralized language server config rather than separate fields.
-			diagnostics: goConfig['languageServerExperimentalFeatures']['diagnostics'],
 			formatter: formatter
 		},
 		env: toolExecutionEnvironment(),

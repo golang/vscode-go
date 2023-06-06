@@ -210,9 +210,7 @@ suite('gopls update tests', () => {
 				version: undefined,
 				checkForUpdates: 'proxy',
 				env: {},
-				features: {
-					diagnostics: true
-				},
+				features: {},
 				flags: [],
 				modtime: new Date(),
 				serverName: 'gopls'
