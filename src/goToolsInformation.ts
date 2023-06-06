@@ -191,8 +191,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/golangci/golangci-lint',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Linter',
-		defaultVersion: 'v1.52.2'
+		description: 'Linter'
 	},
 	'revive': {
 		name: 'revive',
@@ -211,10 +210,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.13'),
-		latestVersion: semver.parse('v0.11.0'),
-		latestVersionTimestamp: moment('2022-12-13', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.12.0-pre.1'),
-		latestPrereleaseVersionTimestamp: moment('2023-04-24', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.12.2'),
+		latestVersionTimestamp: moment('2023-06-01', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.12.2'),
+		latestPrereleaseVersionTimestamp: moment('2023-06-01', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
