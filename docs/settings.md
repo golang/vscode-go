@@ -55,17 +55,19 @@ Alternate tools or alternate paths for the same tools used by the Go extension. 
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
 | `gopls` | Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary. <br/> Default: `"gopls"` |
-### `go.autocompleteUnimportedPackages`
+### `go.autocompleteUnimportedPackages (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Include unimported packages in auto-complete suggestions. Not applicable when using the language server.
 
 Default: `false`
 ### `go.buildFlags`
 
 Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.build.buildFlags` is not specified.
-### `go.buildOnSave`
+### `go.buildOnSave (deprecated)`
 
-Compiles code on file save using 'go build' or 'go test -c'. Options are 'workspace', 'package', or 'off'.  Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
+Enable the Go language server (`#go.useLanguageServer#`) to diagnose compile errors.
+Compiles code on file save using 'go build' or 'go test -c'. Not applicable when using the language server.<br/>
 Allowed Options: `package`, `workspace`, `off`
 
 Default: `"package"`
@@ -168,8 +170,9 @@ Default: `"Off"`
 If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
 
 Default: `false`
-### `go.docsTool`
+### `go.docsTool (deprecated)`
 
+Documentation support without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.<br/>
 Allowed Options: `godoc`, `gogetdoc`, `guru`
 
@@ -248,19 +251,22 @@ Default: `"default"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
-### `go.gocodeAutoBuild`
+### `go.gocodeAutoBuild (deprecated)`
 
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
 Enable gocode's autobuild feature. Not applicable when using the language server.
 
 Default: `false`
-### `go.gocodeFlags`
+### `go.gocodeFlags (deprecated)`
 
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
 Additional flags to pass to gocode. Not applicable when using the language server.
 
 Default: `["-builtin", "-ignore-case", "-unimported-packages"]`
-### `go.gocodePackageLookupMode`
+### `go.gocodePackageLookupMode (deprecated)`
 
-Used to determine the Go package lookup rules for completions by gocode. Only applies when using nsf/gocode. Latest versions of the Go extension uses mdempsky/gocode by default. Not applicable when using the language server.<br/>
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
+Used to determine the Go package lookup rules for completions by gocode. Not applicable when using the language server.<br/>
 Allowed Options: `go`, `gb`, `bzl`
 
 Default: `"go"`
@@ -270,16 +276,19 @@ Specify GOPATH here to override the one that is set as environment variable. The
 ### `go.goroot`
 
 Specifies the GOROOT to use when no environment variable is set.
-### `go.gotoSymbol.ignoreFolders`
+### `go.gotoSymbol.ignoreFolders (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.
-### `go.gotoSymbol.includeGoroot`
+### `go.gotoSymbol.includeGoroot (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
-### `go.gotoSymbol.includeImports`
+### `go.gotoSymbol.includeImports (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
@@ -397,8 +406,9 @@ Specifies Lint tool name.<br/>
 Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
 
 Default: `"staticcheck"`
-### `go.liveErrors`
+### `go.liveErrors (deprecated)`
 
+Real-time diagnostics without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.
 | Properties | Description |
 | --- | --- |
@@ -553,13 +563,15 @@ Trace the communication between VS Code and the Go language server.<br/>
 Allowed Options: `off`, `messages`, `verbose`
 
 Default: `"off"`
-### `go.useCodeSnippetsOnFunctionSuggest`
+### `go.useCodeSnippetsOnFunctionSuggest (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead.
 Complete functions with their parameter signature, including the variable type. Not propagated to the language server.
 
 Default: `false`
-### `go.useCodeSnippetsOnFunctionSuggestWithoutType`
+### `go.useCodeSnippetsOnFunctionSuggestWithoutType (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead.
 Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.
 
 Default: `false`
