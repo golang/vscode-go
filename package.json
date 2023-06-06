@@ -1575,7 +1575,7 @@
         "go.useLanguageServer": {
           "type": "boolean",
           "default": true,
-          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics."
+          "description": "Enable intellisense, code navigation, refactoring, formatting & diagnostics for Go. The features are powered by the Go language server \"gopls\"."
         },
         "go.languageServerFlags": {
           "type": "array",

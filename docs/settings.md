@@ -583,7 +583,7 @@ When enabled, the extension automatically checks the Go proxy if there are updat
 Default: `true`
 ### `go.useLanguageServer`
 
-Use the Go language server "gopls" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics.
+Enable intellisense, code navigation, refactoring, formatting & diagnostics for Go. The features are powered by the Go language server "gopls".
 
 Default: `true`
 ### `go.vetFlags`
