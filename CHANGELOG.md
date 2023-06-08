@@ -1,3 +1,34 @@
+## v0.39.0 - 12 Jun, 2023
+
+We are in the process of removing legacy language features that were replaced by `gopls` since early 2021. The versions released after September 2023 will no longer offer features like code completion, navigation, documentation, formatting, and refactoring if the language server is disabled. In this release, we are showing deprecation notification messages if you are using the legacy language features. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799))
+
+A list of all issues and changes can be found in the [v0.39.0 milestone](https://github.com/golang/vscode-go/milestone/55) and [commit history](https://github.com/golang/vscode-go/compare/v0.39.0...v0.38.0).
+
+### Changes
+- Added the [`go.showWelcome`](https://github.com/golang/vscode-go/wiki/settings#goshowwelcome) setting that controls whether to show the Welcome page. ([PR 2704](https://github.com/golang/vscode-go/pull/2704)) <!-- CL 501208 -->
+- Report when `go.toolsManagement.go` setting is invalid and ignored. ([Issue 2753](https://github.com/golang/vscode-go/issues/2753)) <!-- CL 501056 -->
+- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issue/1109)) <!-- CL 501199 -->
+- Deprecated settings that affect only legacy language features and tools. They will be removed in the release after September 2023. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799)) <!-- CL 501206 -->
+- `"Go: Update/Install Tools"` will install the latest version of `golangci-lint` instead of a vetted, pinned version. The extension chose to pin the versions of third-party go tools it installs in order to manage version skew and reduce security risks. However, `golangci-lint` is frequently released and its community is active enough to handle compatibility/security issues. We decided to install the latest version by default. ([Issue 2763](https://github.com/golang/vscode-go/issues/2763), [2485](https://github.com/golang/vscode-go/issues/2485))
+
+- Debug: show error when the process picker is hidden ([CL 499601](https://go.dev/cl/499601)). To learn more about the process picker in debug, see [Launch.json "processId" documentation](https://github.com/golang/vscode-go/wiki/debugging#launchjson-attributes). <!-- CL 499601 -->
+- Debug: `args` attribute now accepts a `string` typed value. The argument string is parsed into word arguments with rules similar to `bash` except that there is no shell expansion. This change allows to use vscode variables like `${input:args}`. ([Issue 2621](https://github.com/golang/vscode-go/issues/2621)) <!-- CL 469378 -->
+- The extension no longer cache PATH environment variable, which helps interoperate with extensions that modify `PATH`. ([Issue 2617](https://github.com/golang/vscode-go/issues/2617)) <!-- CL 494555 -->
+- Updated LSP to v3.17.3 and VS Code language client library to v8.1.0. This includes fixes for request ordering issues around full document sync and bugs around shutdown. <!-- CL 473157 -->
+- Replaced the extension user survey link to https://go.dev/s/ide-hats-survey. ([CL 497536](https://go.dev/cl/497536)) <!-- CL 497536 -->
+- Updated settings to sync with [gopls@v0.12](https://go.dev/s/gopls-v0.12).
+- Third-party go tools dependencies: use gofumpt@v0.5.0 and revive@v1.3.2 and install staticcheck@v0.3.3 when building with go1.18 or older.
+
+### Delopment process updates
+- Updated `@vscode/vsce` version to address the [xml2js prototype pollution vulnerability report](https://github.com/advisories/GHSA-776f-qx25-q3cc) <!-- CL 494997 -->
+
+### Documentation
+- Debugging documentation includes tips for debugging with `-trimpath`. ([Issue 2609](https://github.com/golang/vscode-go/issues/2609))
+- Added advanced [semantic syntax highlighting options](https://github.com/golang/vscode-go/wiki/features#syntax-highlighting). ([Issue 2682](https://github.com/golang/vscode-go/issues/2682))
+
+### Thanks
+- Thank you for your contribution, @fflewddur, @ZekeLu, @cuining, @weikanglim, @niklaskorz, @xmmak, @jamalc, @suzmue, @hyangah!
+
 ## v0.38.0 - 23 Feb, 2023
 
 This release adds default `go` tasks to help build and test your Go projects.
