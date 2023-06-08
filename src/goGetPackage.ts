@@ -11,7 +11,7 @@ import { CommandFactory } from './commands';
 import { buildCode } from './goBuild';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 
 export const goGetPackage: CommandFactory = (ctx, goCtx) => () => {
 	const editor = vscode.window.activeTextEditor;
@@ -26,7 +26,7 @@ export const goGetPackage: CommandFactory = (ctx, goCtx) => () => {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 	}
 

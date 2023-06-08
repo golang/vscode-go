@@ -16,7 +16,7 @@ import { ConfigurationTarget } from 'vscode';
 import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
-import { logVerbose } from './goLogging';
+import { logVerbose, logError } from './goLogging';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import {
@@ -39,7 +39,13 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import { correctBinname, envPath, executableFileExists, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import {
+	correctBinname,
+	getEnvPath,
+	executableFileExists,
+	getCurrentGoRoot,
+	setCurrentGoRoot
+} from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
 import { RestartReason } from './language/goLanguageServer';
@@ -102,16 +108,17 @@ export async function getGoForInstall(goVersion: GoVersion, silent?: boolean): P
 	if (!configured) {
 		return goVersion;
 	}
-	if (executableFileExists(configured)) {
-		try {
-			const go = await getGoVersion(configured);
-			if (go) return go;
-		} finally {
-			if (!silent) {
-				outputChannel.appendLine(
-					`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid Go command.`
-				);
-			}
+
+	try {
+		const go = await getGoVersion(configured);
+		if (go) return go;
+	} catch (e) {
+		logError(`getGoForInstall failed to run 'go version' with the configured go for tool install: ${e}`);
+	} finally {
+		if (!silent) {
+			outputChannel.appendLine(
+				`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid path to the Go command.`
+			);
 		}
 	}
 
@@ -376,7 +383,7 @@ export async function promptForMissingTool(toolName: string) {
 	const tool = getTool(toolName);
 	if (!tool) {
 		vscode.window.showWarningMessage(
-			`${toolName} is not found. Please make sure it is installed and available in the PATH ${envPath}`
+			`${toolName} is not found. Please make sure it is installed and available in the PATH ${getEnvPath()}`
 		);
 		return;
 	}
@@ -661,7 +668,7 @@ let suggestedDownloadGo = false;
 
 async function suggestDownloadGo() {
 	const msg =
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath}). ` +
+		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()}). ` +
 		'Check PATH, or Install Go and reload the window. ' +
 		"If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971";
 

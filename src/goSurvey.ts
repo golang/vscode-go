@@ -162,7 +162,7 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
 				const goV = await getGoVersion();
 				const goVersion = goV ? (goV.isDevel ? 'devel' : goV.format(true)) : 'na';
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}&go=${goVersion}&os=${process.platform}`;
+				const surveyURL = `https://go.dev/s/ide-hats-survey/?s=c&usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}&go=${goVersion}&os=${process.platform}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;

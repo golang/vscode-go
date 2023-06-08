@@ -40,7 +40,7 @@ import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit, isModSupported } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 
 import { vetCode } from './goVet';
 import {
@@ -375,18 +375,18 @@ function lintDiagnosticCollectionName(lintToolName: string) {
 
 async function showDeprecationWarning() {
 	const cfg = getGoConfig();
-	const experimentalFeatures = cfg['languageServerExperimentalFeatures'];
-	if (experimentalFeatures) {
-		// TODO(golang/vscode-go#50): Eventually notify about deprecation of
-		// all of the settings. See golang/vscode-go#1109 too.
-		// The `diagnostics` setting is still used as a workaround for running custom vet.
-		const promptKey = 'promptedLanguageServerExperimentalFeatureDeprecation';
+	const disableLanguageServer = cfg['useLanguageServer'];
+	if (disableLanguageServer === false) {
+		const promptKey = 'promptedLegacyLanguageServerDeprecation';
 		const prompted = getFromGlobalState(promptKey, false);
-		if (!prompted && experimentalFeatures['diagnostics'] === false) {
-			const msg = `The 'go.languageServerExperimentalFeature.diagnostics' setting will be deprecated soon.
-	If you would like additional configuration for diagnostics from gopls, please see and response to [Issue 50](https://go.dev/s/vscode-issue/50).`;
-			const selected = await vscode.window.showInformationMessage(msg, "Don't show again");
+		if (!prompted) {
+			const msg =
+				'When [go.useLanguageServer](command:workbench.action.openSettings?%5B%22go.useLanguageServer%22%5D) is false, IntelliSense, code navigation, and refactoring features for Go will stop working. Linting, debugging and testing other than debug/test code lenses will continue to work. Please see [Issue 2799](https://go.dev/s/vscode-issue/2799).';
+			const selected = await vscode.window.showInformationMessage(msg, 'Open settings', "Don't show again");
 			switch (selected) {
+				case 'Open settings':
+					vscode.commands.executeCommand('workbench.action.openSettings', 'go.useLanguageServer');
+					break;
 				case "Don't show again":
 					updateGlobalState(promptKey, true);
 			}

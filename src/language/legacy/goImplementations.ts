@@ -13,7 +13,7 @@ import { getGoConfig } from '../../config';
 import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool } from '../../goInstallTools';
 import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath, getWorkspaceFolderPath } from '../../util';
-import { envPath, getCurrentGoRoot } from '../../utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from '../../utils/pathUtils';
 import { killProcessTree } from '../../utils/processUtils';
 
 interface GoListOutput {
@@ -53,7 +53,7 @@ export class GoImplementationProvider implements vscode.ImplementationProvider {
 		const goRuntimePath = getBinPath('go');
 		if (!goRuntimePath) {
 			vscode.window.showErrorMessage(
-				`Failed to run "go list" to get the scope to find implementations as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+				`Failed to run "go list" to get the scope to find implementations as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 			);
 			return;
 		}

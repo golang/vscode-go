@@ -441,7 +441,7 @@ Here is the list of attributes specific to Go debugging.
 <!-- SETTINGS BEGIN -->
 | Property | Launch | Attach |
 | --- | --- | --- |
-| `args` | Command line arguments passed to the debugged program.<br/> | <center>_n/a_</center> |
+| `args` | Command line arguments passed to the debugged program.<br/>(Default: `[]`)<br/> | <center>_n/a_</center> |
 | `asRoot` | (Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.<br/>(Default: `false`)<br/> | (Experimental) Debug with elevated permissions (on Unix). This requires `integrated` or `external` console modes and is ignored in remote debugging.<br/>(Default: `false`)<br/> |
 | `backend` | Backend used by delve. Maps to `dlv`'s `--backend` flag.<br/><p>Allowed Values: `"default"`, `"native"`, `"lldb"`, `"rr"`<br/> | <center>_same as Launch_</center>|
 | `buildFlags` | Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.<br/>(Default: `""`)<br/> | <center>_n/a_</center> |
@@ -492,7 +492,7 @@ your project lives in `/path/to/actual/helloWorld`, but the project is open in
 vscode under the linked folder `/link/to/helloWorld`, you can add the following
 to your config to set breakpoints in the files in `/link/to/helloWorld`:
 
-```
+```json
 {
     "name": "Launch with symlinks",
     "type": "go",
@@ -500,11 +500,11 @@ to your config to set breakpoints in the files in `/link/to/helloWorld`:
     "mode": "debug",
     "program": "/path/to/actual/helloWorld",
     "substitutePath": [
-  {
-   "from": "/link/to/helloWorld",
-   "to": "/path/to/actual/helloWorld",
-  },
- ],
+        {
+            "from": "/link/to/helloWorld",
+            "to": "/path/to/actual/helloWorld"
+        }
+    ]
 }
 ```
 
@@ -843,7 +843,7 @@ Connect to it with a remote attach configuration in your `launch.json`:
     "port": 12345,
     "host": "127.0.0.1", // can skip for localhost
     "substitutePath": [
-      { "from": ${workspaceFolder}, "to": "/path/to/remote/workspace" },
+      { "from": "${workspaceFolder}", "to": "/path/to/remote/workspace" },
       ...
   ]
 }
@@ -1012,6 +1012,49 @@ debugged program and the workspace directory VS Code uses are different. Common
 culprits are remote debugging where the program is built in the remote location,
 use of symbolic links, or use of `-trimpath` build flags. In this case,
 configure the `substitutePath` attribute in your launch configuration.
+
+#### Trimpath tips
+
+If you are using `-trimpath` to build your program, you need to add entries to substitute
+path to let the debugger know how to map the package paths that are compiled in the
+binary to the files that you are looking at in the editor.
+
+Here are some tips for configuring substitutePath. This assumes that your program is using module mode, which is the default.
+
+One rule that you will need will map your main module. The mapping will map `"from"` the file path to the directory containing the module, `"to"` the module path.
+
+You will also need to create a similar mapping for all dependencies. These include modules
+in the module cache, vendored modules, and the standard library.
+
+```json
+"substitutePath": [
+  // Main module.
+  {
+   "from": "${workspaceFolder}",
+   "to": "moduleName",
+  },
+  // Module cache paths.
+  {
+   "from": "${env:HOME}/go/pkg/mod/github.com",
+   "to": "github.com",
+  },
+  {
+   "from": "${env:HOME}/go/pkg/mod/golang.org",
+   "to": "golang.org",
+  },
+  ...
+  // Standard library paths.
+  // This rule should come last since the empty "to" will match every path.
+  { "from": "/path/to/local/goroot/pkg" , "to": ""}
+ ],
+```
+
+Since rules are applied both from client to server and server to client,
+rules with an empty string will be applied to *all* paths that it sees, so even
+dependencies will be mapped to `"/path/to/module"`.
+
+We plan to make this easier in the future. Progress can be tracked
+in the issue tracker [golang/vscode-go#1985](https://github.com/golang/vscode-go/issues/1985).
 
 ### Debug sessions started with the "debug test" CodeLens or the test UI does not use my `launch.json` configuration
 
