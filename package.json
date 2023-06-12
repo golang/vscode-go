@@ -217,8 +217,7 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        },
-        "editor.suggest.snippetsPreventQuickSuggestions": false
+        }
       }
     },
     "commands": [
