@@ -37,7 +37,7 @@
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm *.vsix",
-    "package": "vsce package",
+    "package": "npx vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
