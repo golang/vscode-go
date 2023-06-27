@@ -21,6 +21,7 @@ export { runBuilds } from './runBuilds';
 export { showCommands } from './showCommands';
 export { startDebugSession } from './startDebugSession';
 export { startLanguageServer } from './startLanguageServer';
+export { startGoplsMaintainerInterface } from './startLanguageServer';
 export { toggleGCDetails } from './toggleGCDetails';
 
 type CommandCallback<T extends unknown[]> = (...args: T) => Promise<unknown> | unknown;

@@ -159,6 +159,10 @@ Toggles between file in current active editor and the corresponding test file.
 
 Toggle the display of vulnerability analysis in dependencies.
 
+### `Go: Start language server's maintainer interface`
+
+Start the Go language server's maintainer interface (a web server).
+
 ### `Go: Add Tags To Struct Fields`
 
 Add tags configured in go.addTags setting to selected struct using gomodifytags

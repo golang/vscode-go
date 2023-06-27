@@ -103,6 +103,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
+	registerCommand('go.languageserver.maintain', commands.startGoplsMaintainerInterface);
 
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
 

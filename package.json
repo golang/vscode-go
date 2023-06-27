@@ -398,6 +398,11 @@
         "description": "Toggle the display of vulnerability analysis in dependencies."
       },
       {
+        "command": "go.languageserver.maintain",
+        "title": "Go: Start language server's maintainer interface",
+        "description": "Start the Go language server's maintainer interface (a web server)."
+      },
+      {
         "command": "go.add.tags",
         "title": "Go: Add Tags To Struct Fields",
         "description": "Add tags configured in go.addTags setting to selected struct using gomodifytags"

@@ -138,3 +138,19 @@ function shouldActivateLanguageFeatures() {
 	}
 	return true;
 }
+
+export const startGoplsMaintainerInterface: CommandFactory = (ctx, goCtx) => {
+	return () => {
+		if (!goCtx.languageServerIsRunning) {
+			vscode.window.showErrorMessage(
+				'"Go: Start language server\'s maintainer interface" command is available only when the language server is running'
+			);
+			return;
+		}
+		vscode.commands.executeCommand('gopls.start_debugging', {}).then(undefined, (reason) => {
+			vscode.window.showErrorMessage(
+				`"Go: Start language server's maintainer interface" command failed: ${reason}`
+			);
+		});
+	};
+};
