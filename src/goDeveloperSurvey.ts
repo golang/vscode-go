@@ -12,8 +12,8 @@ import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMin
 import { GoExtensionContext } from './context';
 
 // Start and end dates of the survey.
-export const startDate = new Date('Jan 18 2023 00:00:00 GMT');
-export const endDate = new Date('Feb 8 2023 00:00:00 GMT');
+export const startDate = new Date('Jul 20 2023 00:00:00 GMT');
+export const endDate = new Date('Aug 10 2023 00:00:00 GMT');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -139,7 +139,7 @@ by participating in this 10-minute Go Developer Survey (2023 Winter) before ${en
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_bNnbAtFZ0vfRTH8?s=p';
+				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_4Vi4bNaMQhQdqSi?s=p';
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
