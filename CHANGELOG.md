@@ -1,3 +1,8 @@
+## v0.39.1 - 17 Jul, 2023
+
+This is a point release to update the link for the upcoming Go developer survey.
+A list of changes can be found in the full [commit history](https://github.com/golang/vscode-go/compare/v0.39.1...v0.39.0).
+
 ## v0.39.0 - 12 Jun, 2023
 
 We are in the process of removing legacy language features that were replaced by `gopls` since early 2021. The versions released after September 2023 will no longer offer features like code completion, navigation, documentation, formatting, and refactoring if the language server is disabled. In this release, we are showing deprecation notification messages if you are using the legacy language features. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799))
