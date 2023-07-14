@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.39.0",
+  "version": "0.39.1",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm *.vsix",
-    "package": "vsce package",
+    "package": "npx vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
@@ -216,8 +216,7 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        },
-        "editor.suggest.snippetsPreventQuickSuggestions": false
+        }
       }
     },
     "commands": [
@@ -396,6 +395,11 @@
         "command": "go.vulncheck.toggle",
         "title": "Go: Toggle Vulncheck",
         "description": "Toggle the display of vulnerability analysis in dependencies."
+      },
+      {
+        "command": "go.languageserver.maintain",
+        "title": "Go: Start language server's maintainer interface",
+        "description": "Start the Go language server's maintainer interface (a web server)."
       },
       {
         "command": "go.add.tags",

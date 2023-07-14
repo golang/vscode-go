@@ -26,7 +26,6 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV NODE_OPTIONS --dns-result-order=ipv4first
 
 RUN apt-get -qq update && apt-get install -qq -y libnss3 libgtk-3-dev libxss1 libasound2 xvfb libsecret-1-0 jq > /dev/null
-RUN npm install -g typescript @vscode/vsce
 
 USER node
 WORKDIR /workspace
