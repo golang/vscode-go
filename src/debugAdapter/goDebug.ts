@@ -36,7 +36,6 @@ import {
 	Thread
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { toolExecutionEnvironment } from '../goEnv';
 import { parseEnvFiles } from '../utils/envUtils';
 import {
 	correctBinname,
@@ -491,8 +490,7 @@ export class Delve {
 
 				// read env from disk and merge into env variables
 				try {
-					const goToolsEnvVars = toolExecutionEnvironment();
-					const fileEnvs = parseEnvFiles(launchArgs.envFile, goToolsEnvVars);
+					const fileEnvs = parseEnvFiles(launchArgs.envFile);
 					const launchArgsEnv = launchArgs.env || {};
 					env = Object.assign({}, process.env, fileEnvs, launchArgsEnv);
 				} catch (e) {

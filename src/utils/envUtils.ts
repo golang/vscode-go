@@ -19,7 +19,7 @@ function stripBOM(s: string): string {
 /**
  * returns the environment variable collection created by parsing the given .env file.
  */
-export function parseEnvFile(envFilePath: string, globalVars?: { [key: string]: string }): { [key: string]: string } {
+export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<string>): { [key: string]: string } {
 	const env: { [key: string]: string } = {};
 	if (!envFilePath) {
 		return env;
@@ -53,7 +53,7 @@ const SUBST_REGEX = /\${([a-zA-Z]\w*)?([^}\w].*)?}/g;
 function substituteEnvVars(
 	value: string,
 	localVars: { [key: string]: string },
-	globalVars: { [key: string]: string }
+	globalVars: NodeJS.Dict<string>
 ): string {
 	let invalid = false;
 	let replacement = value;
@@ -76,7 +76,7 @@ function substituteEnvVars(
 
 export function parseEnvFiles(
 	envFiles: string[] | string | undefined,
-	globalVars?: { [key: string]: string }
+	globalVars?: NodeJS.Dict<string>
 ): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
