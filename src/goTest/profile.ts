@@ -53,12 +53,12 @@ export class GoTestProfiler {
 	}
 
 	preRun(options: ProfilingOptions, item: TestItem): string[] {
-		const kind = Kind.get(options.kind);
+		const kind = options.kind && Kind.get(options.kind);
 		if (!kind) return [];
 
 		const run = new File(kind, item);
 		const flags = [...run.flags];
-		if (this.runs.has(item.id)) this.runs.get(item.id).unshift(run);
+		if (this.runs.has(item.id)) this.runs.get(item.id)?.unshift(run);
 		else this.runs.set(item.id, [run]);
 		return flags;
 	}
@@ -76,16 +76,17 @@ export class GoTestProfiler {
 	}
 
 	async configure(): Promise<ProfilingOptions | undefined> {
-		const { kind } = await vscode.window.showQuickPick(
-			Kind.all.map((x) => ({ label: x.label, kind: x })),
-			{
-				title: 'Profile'
-			}
-		);
-		if (!kind) return;
+		const { profilekind } =
+			(await vscode.window.showQuickPick(
+				Kind.all.map((x) => ({ label: x.label, profilekind: x })),
+				{
+					title: 'Profile'
+				}
+			)) ?? {};
+		if (!profilekind) return;
 
 		return {
-			kind: kind.id
+			kind: profilekind.id
 		};
 	}
 
@@ -121,17 +122,21 @@ export class GoTestProfiler {
 		await runs[0].show();
 	}
 
+	showFile(file: string) {
+		return show(file);
+	}
+
 	// Tests that have been profiled
 	get tests() {
 		const items = Array.from(this.runs.keys());
 		items.sort((a: string, b: string) => {
-			const aWhen = this.runs.get(a)[0].when.getTime();
-			const bWhen = this.runs.get(b)[0].when.getTime();
+			const aWhen = this.runs.get(a)?.[0].when.getTime() ?? 0;
+			const bWhen = this.runs.get(b)?.[0].when.getTime() ?? 0;
 			return bWhen - aWhen;
 		});
 
 		// Filter out any tests that no longer exist
-		return items.map((x) => this.resolver.all.get(x)).filter((x) => x);
+		return items.map((x) => this.resolver.all.get(x)).filter((x): x is TestItem => !!x);
 	}
 
 	// Profiles associated with the given test
@@ -168,7 +173,7 @@ async function show(profile: string) {
 	const proc = spawn(getBinPath('go'), ['tool', 'pprof', '-http=:', '-no_browser', profile]);
 	pprofProcesses.add(proc);
 
-	const port = await new Promise<string>((resolve, reject) => {
+	const port = await new Promise<string | undefined>((resolve, reject) => {
 		proc.on('error', (err) => {
 			pprofProcesses.delete(proc);
 			reject(err);
@@ -186,7 +191,7 @@ async function show(profile: string) {
 			const m = stderr.match(/^Serving web UI on http:\/\/localhost:(?<port>\d+)\n/);
 			if (!m) return;
 
-			resolve(m.groups.port);
+			resolve(m.groups?.port);
 			proc.stdout.off('data', captureStdout);
 		}
 
@@ -297,7 +302,7 @@ class ProfileTreeDataProvider implements TreeDataProvider<TreeElement> {
 			item.contextValue = 'go:test:file';
 			item.command = {
 				title: 'Open',
-				command: 'vscode.open',
+				command: 'go.test.showProfileFile',
 				arguments: [element.uri]
 			};
 			return item;
@@ -307,7 +312,7 @@ class ProfileTreeDataProvider implements TreeDataProvider<TreeElement> {
 		item.contextValue = 'go:test:test';
 		const options: TextDocumentShowOptions = {
 			preserveFocus: false,
-			selection: new Range(element.range.start, element.range.start)
+			selection: element.range && new Range(element.range.start, element.range.start)
 		};
 		item.command = {
 			title: 'Go to test',

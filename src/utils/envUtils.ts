@@ -43,7 +43,7 @@ export function parseEnvFile(envFilePath: string, globalVars?: { [key: string]: 
 		});
 		return env;
 	} catch (e) {
-		throw new Error(`Cannot load environment variables from file ${envFilePath}`);
+		throw new Error(`Cannot load environment variables from file ${envFilePath}: ${e}`);
 	}
 }
 
@@ -75,7 +75,7 @@ function substituteEnvVars(
 }
 
 export function parseEnvFiles(
-	envFiles: string[] | string,
+	envFiles: string[] | string | undefined,
 	globalVars?: { [key: string]: string }
 ): { [key: string]: string } {
 	const fileEnvs = [];

@@ -1,24 +1,25 @@
 package main
 
-func run1() {
-	x := 0
-	for {
-		x++
-		x *= 4
-	}
+import (
+	"fmt"
+	"sync"
+)
+
+func sayhi(n int, wg *sync.WaitGroup) {
+	hi(n)
+	wg.Done()
 }
 
-func run2() {
-	x := 0
-	for {
-		x++
-		x *= 4
-	}
+func hi(n int) {
+	fmt.Println("hi", n)
+	fmt.Println("hi", n)
 }
 
 func main() {
-	go run1()
-	go run2()
-	for {
+	var wg sync.WaitGroup
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go sayhi(i, &wg)
 	}
+	wg.Wait()
 }

@@ -10,7 +10,7 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
-import { ContinuedEvent } from 'vscode-debugadapter';
+import { extensionId } from './const';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
@@ -20,17 +20,30 @@ import {
 	promptForUpdatingTool,
 	shouldUpdateTool
 } from './goInstallTools';
+import { extensionInfo } from './config';
 import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
-import { pickProcess, pickProcessByName } from './pickProcess';
+import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
+import { parseArgsString } from './utils/argsUtil';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
+import { createRegisterCommand } from './commands';
+import { GoExtensionContext } from './context';
 
 let dlvDAPVersionChecked = false;
 
 export class GoDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
+		ctx.subscriptions.push(
+			vscode.debug.registerDebugConfigurationProvider('go', new GoDebugConfigurationProvider('go'))
+		);
+		const registerCommand = createRegisterCommand(ctx, goCtx);
+		registerCommand('go.debug.pickProcess', () => pickProcess);
+		registerCommand('go.debug.pickGoProcess', () => pickGoProcess);
+	}
+
 	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
@@ -120,7 +133,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): Promise<vscode.DebugConfiguration> {
+	): Promise<vscode.DebugConfiguration | undefined> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
 			// if 'request' is missing interpret this as a missing launch.json
@@ -154,29 +167,32 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
+		const defaultConfig = vscode.extensions.getExtension(extensionId)?.packageJSON.contributes.configuration
+			.properties['go.delveConfig'].properties;
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.
+		// If debugAdapter is not provided in launch.json, see if it's in settings.json.
 		if (!debugConfiguration.hasOwnProperty('debugAdapter') && dlvConfig.hasOwnProperty('debugAdapter')) {
-			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter');
+			const { globalValue, workspaceValue } = goConfig.inspect('delveConfig.debugAdapter') ?? {};
 			// user configured the default debug adapter through settings.json.
 			if (globalValue !== undefined || workspaceValue !== undefined) {
 				debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
 			}
 		}
+		// If neither launch.json nor settings.json gave us the debugAdapter value, we go with the default
+		// from package.json (dlv-dap) unless this is remote attach with a stable release.
 		if (!debugConfiguration['debugAdapter']) {
-			// For local modes, default to dlv-dap. For remote - to legacy for now.
-			debugConfiguration['debugAdapter'] = debugConfiguration['mode'] !== 'remote' ? 'dlv-dap' : 'legacy';
+			debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
+			if (debugConfiguration['mode'] === 'remote' && !extensionInfo.isPreview) {
+				debugConfiguration['debugAdapter'] = 'legacy';
+			}
 		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
 			if (debugConfiguration['mode'] === 'remote') {
-				// This is only possible if a user explicitely requests this combination. Let them, with a warning.
-				// They need to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
-				// but we have no way of detectng that with an external server.
-				this.showWarning(
-					'ignoreDlvDAPInRemoteModeWarning',
-					"Using new 'remote' mode with 'dlv-dap' to connect to an external `dlv --headless` server via DAP."
-				);
+				// This needs to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
+				// but we have no way of detectng that with an external server ahead of time.
+				// If an earlier version is used, the attach will fail with  warning about versions.
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
 					'ignorePortUsedInDlvDapWarning',
@@ -202,8 +218,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		if (
 			debugAdapter === 'dlv-dap' &&
 			(debugConfiguration.hasOwnProperty('dlvLoadConfig') ||
-				goConfig.inspect('delveConfig.dlvLoadConfig').globalValue !== undefined ||
-				goConfig.inspect('delveConfig.dlvLoadConfig').workspaceValue !== undefined)
+				goConfig.inspect('delveConfig.dlvLoadConfig')?.globalValue !== undefined ||
+				goConfig.inspect('delveConfig.dlvLoadConfig')?.workspaceValue !== undefined)
 		) {
 			this.showWarning(
 				'ignoreDebugDlvConfigWithDlvDapWarning',
@@ -225,14 +241,18 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			dlvProperties.push('dlvLoadConfig');
 		}
 		dlvProperties.forEach((p) => {
-			if (!debugConfiguration.hasOwnProperty(p) && dlvConfig.hasOwnProperty(p)) {
-				debugConfiguration[p] = dlvConfig[p];
+			if (!debugConfiguration.hasOwnProperty(p)) {
+				if (dlvConfig.hasOwnProperty(p)) {
+					debugConfiguration[p] = dlvConfig[p];
+				} else {
+					debugConfiguration[p] = defaultConfig[p]?.default;
+				}
 			}
 		});
 
 		if (debugAdapter !== 'dlv-dap' && debugConfiguration.request === 'attach' && !debugConfiguration['cwd']) {
 			debugConfiguration['cwd'] = '${workspaceFolder}';
-			if (vscode.workspace.workspaceFolders?.length > 1) {
+			if (vscode.workspace.workspaceFolders?.length ?? 0 > 1) {
 				debugConfiguration['cwd'] = '${fileWorkspaceFolder}';
 			}
 		}
@@ -386,7 +406,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
 		token?: vscode.CancellationToken
-	): vscode.DebugConfiguration {
+	): vscode.DebugConfiguration | null {
 		const debugAdapter = debugConfiguration['debugAdapter'];
 		if (debugAdapter === '') {
 			return null;
@@ -459,6 +479,17 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				}
 			}
 		}
+
+		// convert args string into string array if needed
+		if (debugConfiguration.request === 'launch' && typeof debugConfiguration['args'] === 'string') {
+			const argsOrErrorMsg = parseArgsString(debugConfiguration['args']);
+			if (typeof argsOrErrorMsg === 'string') {
+				throw new Error(argsOrErrorMsg);
+			} else {
+				debugConfiguration['args'] = argsOrErrorMsg;
+			}
+		}
+
 		if (debugConfiguration.request === 'attach' && debugConfiguration['mode'] === 'local') {
 			// processId needs to be an int, but the substituted variables from pickGoProcess and pickProcess
 			// become a string. Convert any strings to integers.

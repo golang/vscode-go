@@ -26,6 +26,8 @@ import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
 import { debugTestAtCursor } from '../goTest';
+import { GoExtensionContext } from '../context';
+import path = require('path');
 
 let debugSessionID = 0;
 
@@ -36,7 +38,7 @@ interface RunConfig {
 	flags: string[];
 	isMod: boolean;
 	isBenchmark?: boolean;
-	cancel: CancellationToken;
+	cancel?: CancellationToken;
 
 	run: TestRun;
 	options: ProfilingOptions;
@@ -70,10 +72,12 @@ class TestRunOutput implements OutputChannel {
 	show(...args: unknown[]) {}
 	hide() {}
 	dispose() {}
+	replace() {}
 }
 
 export class GoTestRunner {
 	constructor(
+		private readonly goCtx: GoExtensionContext,
 		private readonly workspace: Workspace,
 		private readonly ctrl: TestController,
 		private readonly resolver: GoTestResolver,
@@ -150,20 +154,21 @@ export class GoTestRunner {
 		}
 
 		const test = tests[0].item;
-		const { kind, name } = GoTest.parseId(test.id);
+		const { kind, name = '' } = GoTest.parseId(test.id);
+		if (!test.uri) return;
 		const doc = await vscode.workspace.openTextDocument(test.uri);
 		await doc.save();
 
 		const goConfig = getGoConfig(test.uri);
 		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-		const testFunctions = await getFunctions(doc, token);
+		const testFunctions = await getFunctions(this.goCtx, doc, token);
 
 		// TODO Can we get output from the debug session, in order to check for
 		// run/pass/fail events?
 
 		const id = `debug #${debugSessionID++} ${name}`;
 		const subs: vscode.Disposable[] = [];
-		const sessionPromise = new Promise<DebugSession>((resolve) => {
+		const sessionPromise = new Promise<DebugSession | null>((resolve) => {
 			subs.push(
 				vscode.debug.onDidStartDebugSession((s) => {
 					if (s.configuration.sessionID === id) {
@@ -184,6 +189,7 @@ export class GoTestRunner {
 		});
 
 		const run = this.ctrl.createTestRun(request, `Debug ${name}`);
+		if (!testFunctions) return;
 		const started = await debugTestAtCursor(doc, name, testFunctions, goConfig, id);
 		if (!started) {
 			subs.forEach((s) => s.dispose());
@@ -197,7 +203,7 @@ export class GoTestRunner {
 			return;
 		}
 
-		token.onCancellationRequested(() => vscode.debug.stopDebugging(session));
+		token?.onCancellationRequested(() => vscode.debug.stopDebugging(session));
 
 		await new Promise<void>((resolve) => {
 			const sub = vscode.debug.onDidTerminateDebugSession(didTerminateSession);
@@ -208,7 +214,7 @@ export class GoTestRunner {
 			});
 
 			function didTerminateSession(s: DebugSession) {
-				if (s.id !== session.id) return;
+				if (s.id !== session?.id) return;
 				resolve();
 				sub.dispose();
 			}
@@ -264,6 +270,7 @@ export class GoTestRunner {
 		let success = true;
 		const subItems: string[] = [];
 		for (const [pkg, items] of collected.entries()) {
+			if (!pkg.uri) continue;
 			const isMod = isInMod(pkg) || (await isModSupported(pkg.uri, true));
 			const goConfig = getGoConfig(pkg.uri);
 			const flags = getTestFlags(goConfig);
@@ -288,7 +295,7 @@ export class GoTestRunner {
 			const tests: Record<string, TestItem> = {};
 			const benchmarks: Record<string, TestItem> = {};
 			for (const { item, explicitlyIncluded } of items) {
-				const { kind, name } = GoTest.parseId(item.id);
+				const { kind, name = '' } = GoTest.parseId(item.id);
 				if (/[/#]/.test(name)) subItems.push(name);
 
 				// When the user clicks the run button on a package, they expect all
@@ -303,7 +310,7 @@ export class GoTestRunner {
 					continue;
 				}
 
-				item.error = null;
+				item.error = undefined;
 				run.enqueued(item);
 
 				// Remove subtests created dynamically from test output
@@ -321,7 +328,7 @@ export class GoTestRunner {
 			}
 
 			const record = new Map<string, string[]>();
-			const concat = goConfig.get<boolean>('testExplorer.concatenateMessages');
+			const concat = !!goConfig.get<boolean>('testExplorer.concatenateMessages');
 
 			// https://github.com/golang/go/issues/39904
 			if (subItems.length > 0 && Object.keys(tests).length + Object.keys(benchmarks).length > 1) {
@@ -395,7 +402,7 @@ export class GoTestRunner {
 	async collectTests(
 		item: TestItem,
 		explicitlyIncluded: boolean,
-		excluded: TestItem[],
+		excluded: readonly TestItem[],
 		functions: Map<TestItem, CollectedTest[]>,
 		files: Set<TestItem>
 	) {
@@ -417,18 +424,21 @@ export class GoTestRunner {
 			return;
 		}
 
-		function getFile(item: TestItem): TestItem {
+		function getFile(item: TestItem): TestItem | undefined {
 			const { kind } = GoTest.parseId(item.id);
 			if (kind === 'file') return item;
-			return getFile(item.parent);
+			return item.parent && getFile(item.parent);
 		}
 
 		const file = getFile(item);
-		files.add(file);
+		if (file) {
+			files.add(file);
+		}
 
-		const pkg = file.parent;
+		const pkg = file?.parent;
+		if (!pkg) return;
 		if (functions.has(pkg)) {
-			functions.get(pkg).push({ item, explicitlyIncluded });
+			functions.get(pkg)?.push({ item, explicitlyIncluded });
 		} else {
 			functions.set(pkg, [{ item, explicitlyIncluded }]);
 		}
@@ -452,7 +462,7 @@ export class GoTestRunner {
 		const success = await goTest({
 			...rest,
 			outputChannel,
-			dir: pkg.uri.fsPath,
+			dir: pkg.uri?.fsPath ?? '',
 			functions: Object.keys(functions),
 			goTestOutputConsumer: rest.isBenchmark
 				? (e) => this.consumeGoBenchmarkEvent(run, functions, complete, e)
@@ -477,14 +487,16 @@ export class GoTestRunner {
 	}
 
 	// Resolve a test name to a test item. If the test name is TestXxx/Foo, Foo is
-	// created as a child of TestXxx. The same is true for TestXxx#Foo and
-	// TestXxx/#Foo.
+	// created as a child of TestXxx.
 	resolveTestName(tests: Record<string, TestItem>, name: string): TestItem | undefined {
 		if (!name) {
 			return;
 		}
 
-		const re = /[#/]+/;
+		// Heuristically determines whether a test is a subtest by checking the existence of "/".
+		// BUG: go test does not escape "/" included in the name passed to t.Run, so that
+		// can result in confusing presentation.
+		const re = /\/+/;
 
 		const resolve = (parent?: TestItem, start = 0, length = 0): TestItem | undefined => {
 			const pos = start + length;
@@ -494,11 +506,11 @@ export class GoTestRunner {
 				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name, true);
 			}
 
-			const subName = name.substring(0, pos + m.index);
+			const subName = name.substring(0, pos + (m.index ?? 0));
 			const test = parent
-				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + m.index), subName, true)
+				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + (m.index ?? 0)), subName, true)
 				: tests[subName];
-			return resolve(test, pos + m.index, m[0].length);
+			return resolve(test, pos + (m.index ?? 0), m[0].length);
 		};
 
 		return resolve();
@@ -549,14 +561,14 @@ export class GoTestRunner {
 		}
 
 		// Find (or create) the (sub)benchmark
-		const test = this.resolveTestName(benchmarks, m.groups.name);
+		const test = m.groups && this.resolveTestName(benchmarks, m.groups.name);
 		if (!test) {
 			return;
 		}
 
 		// If output includes benchmark results, the benchmark passed. If output
 		// only includes the benchmark name, the benchmark is running.
-		if (m.groups.result) {
+		if (m.groups?.result) {
 			run.passed(test);
 			complete.add(test);
 			vscode.commands.executeCommand('testing.showMostRecentOutput');
@@ -588,7 +600,7 @@ export class GoTestRunner {
 		concat: boolean,
 		e: GoTestOutput
 	) {
-		const test = this.resolveTestName(tests, e.Test);
+		const test = e.Test && this.resolveTestName(tests, e.Test);
 		if (!test) {
 			return;
 		}
@@ -607,7 +619,7 @@ export class GoTestRunner {
 				// TODO(firelizzard18): add messages on pass, once that capability
 				// is added.
 				complete.add(test);
-				run.passed(test, e.Elapsed * 1000);
+				run.passed(test, (e.Elapsed ?? 0) * 1000);
 				break;
 
 			case 'fail': {
@@ -615,21 +627,21 @@ export class GoTestRunner {
 				const messages = this.parseOutput(test, record.get(test.id) || []);
 
 				if (!concat) {
-					run.failed(test, messages, e.Elapsed * 1000);
+					run.failed(test, messages, (e.Elapsed ?? 0) * 1000);
 					break;
 				}
 
 				const merged = new Map<string, TestMessage>();
 				for (const { message, location } of messages) {
-					const loc = `${location.uri}:${location.range.start.line}`;
+					const loc = `${location?.uri}:${location?.range.start.line}`;
 					if (merged.has(loc)) {
-						merged.get(loc).message += '\n' + message;
+						merged.get(loc)!.message += '' + message;
 					} else {
 						merged.set(loc, { message, location });
 					}
 				}
 
-				run.failed(test, Array.from(merged.values()), e.Elapsed * 1000);
+				run.failed(test, Array.from(merged.values()), (e.Elapsed ?? 0) * 1000);
 				break;
 			}
 
@@ -639,16 +651,19 @@ export class GoTestRunner {
 				break;
 
 			case 'output':
-				if (/^(=== RUN|\s*--- (FAIL|PASS): )/.test(e.Output)) {
+				if (/^(=== RUN|\s*--- (FAIL|PASS): )/.test(e.Output ?? '')) {
 					break;
 				}
 
-				if (record.has(test.id)) record.get(test.id).push(e.Output);
-				else record.set(test.id, [e.Output]);
+				if (record.has(test.id)) record.get(test.id)!.push(e.Output ?? '');
+				else record.set(test.id, [e.Output ?? '']);
 				break;
 		}
 	}
 
+	// parseOutput returns build/test error messages associated with source locations.
+	// Location info is inferred heuristically by applying a simple pattern matching
+	// over the output strings from `go test -json` `output` type action events.
 	parseOutput(test: TestItem, output: string[]): TestMessage[] {
 		const messages: TestMessage[] = [];
 
@@ -659,17 +674,36 @@ export class GoTestRunner {
 			const got = output.slice(gotI + 1, wantI).join('');
 			const want = output.slice(wantI + 1).join('');
 			const message = TestMessage.diff('Output does not match', want, got);
-			message.location = new Location(test.uri, test.range.start);
+			if (test.uri && test.range) {
+				message.location = new Location(test.uri, test.range.start);
+			}
 			messages.push(message);
 			output = output.slice(0, gotI);
 		}
 
-		let current: Location;
-		const dir = Uri.joinPath(test.uri, '..');
+		let current: Location | undefined;
+		if (!test.uri) return messages;
+		const dir = Uri.joinPath(test.uri, '..').fsPath;
+		// TODO(hyangah): handle panic messages specially.
+
+		// Extract the location info from output message.
+		// This is not trivial since both the test output and any output/print
+		// from the tested program are reported as `output` type test events
+		// and not distinguishable. stdout/stderr output from the tested program
+		// makes this more trickier.
+		//
+		// Here we assume that test output messages are line-oriented, precede
+		// with a file name and line number, and end with new lines.
 		for (const line of output) {
-			const m = line.match(/^\s*(?<file>.*\.go):(?<line>\d+): ?(?<message>.*\n)$/);
-			if (m) {
-				const file = Uri.joinPath(dir, m.groups.file);
+			// ^(?:.*\s+|\s*) - non-greedy match of any chars followed by a space or, a space.
+			// (?<file>\S+\.go):(?<line>\d+):  - gofile:line: followed by a space.
+			// (?<message>.\n)$ - all remaining message up to $.
+			const m = line.match(/^.*\s+(?<file>\S+\.go):(?<line>\d+): (?<message>.*\n)$/);
+			if (m?.groups) {
+				const file =
+					m.groups.file && path.isAbsolute(m.groups.file)
+						? Uri.file(m.groups.file)
+						: Uri.file(path.join(dir, m.groups.file));
 				const ln = Number(m.groups.line) - 1; // VSCode uses 0-based line numbering (internally)
 				current = new Location(file, new Position(ln, 0));
 				messages.push({ message: m.groups.message, location: current });

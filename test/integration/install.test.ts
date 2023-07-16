@@ -19,8 +19,9 @@ import sinon = require('sinon');
 import url = require('url');
 import util = require('util');
 import vscode = require('vscode');
-import { isInPreviewMode } from '../../src/goLanguageServer';
 import { allToolsInformation } from '../../src/goToolsInformation';
+import * as goInstallTools from '../../src/goInstallTools';
+import * as utilModule from '../../src/util';
 
 interface installationTestCase {
 	name: string;
@@ -58,25 +59,34 @@ suite('Installation Tests', function () {
 
 		// Clean up the temporary GOPATH. To delete the module cache, run `go clean -modcache`.
 		const goRuntimePath = getBinPath('go');
-		const envForTest = Object.assign({}, process.env);
-
 		for (const p of [tmpToolsGopath, tmpToolsGopath2]) {
+			const envForTest = Object.assign({}, process.env);
 			envForTest['GOPATH'] = p;
+			envForTest['GOMODCACHE'] = path.join(p, 'pkg', 'mod');
 			const execFile = util.promisify(cp.execFile);
-			await execFile(goRuntimePath, ['clean', '-modcache'], {
-				env: envForTest
-			});
-			rmdirRecursive(p);
+			try {
+				await execFile(goRuntimePath, ['clean', '-x', '-modcache'], {
+					env: envForTest
+				});
+				rmdirRecursive(p);
+			} catch (e) {
+				console.log(`failed to clean module cache directory: ${e}`);
+			}
 		}
 	});
 
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
 	// If withGOBIN is true, the test will set GOBIN env var.
-	async function runTest(testCases: installationTestCase[], withLocalProxy?: boolean, withGOBIN?: boolean) {
+	async function runTest(
+		testCases: installationTestCase[],
+		withLocalProxy?: boolean,
+		withGOBIN?: boolean,
+		withGoVersion?: string
+	) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
-		let proxyDir: string;
+		let proxyDir: string | undefined;
 		let configStub: sinon.SinonStub;
 		if (withLocalProxy) {
 			proxyDir = buildFakeProxy(testCases);
@@ -85,7 +95,10 @@ suite('Installation Tests', function () {
 					value: {
 						GOPROXY: url.pathToFileURL(proxyDir),
 						GOSUMDB: 'off',
-						GOBIN: gobin
+						GOBIN: gobin,
+						// Build environment may have GOMODCACHE set. Avoid writing
+						// fake data to it.
+						GOMODCACHE: path.join(tmpToolsGopath, 'pkg', 'mod')
 					}
 				},
 				gopath: { value: toolsGopath }
@@ -102,8 +115,15 @@ suite('Installation Tests', function () {
 		}
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
-		const goVersion = await getGoVersion();
-		await installTools(missingTools, goVersion);
+		const goVersion = withGoVersion
+			? /* we want a fake go version, but need the real 'go' binary to run `go install` */
+			  new GoVersion(getBinPath('go'), `go version ${withGoVersion} amd64/linux`)
+			: await getGoVersion();
+
+		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
+
+		const failures = await installTools(missingTools, goVersion);
+		assert(!failures || failures.length === 0, `installTools failed: ${JSON.stringify(failures)}`);
 
 		// Confirm that each expected tool has been installed.
 		const checks: Promise<void>[] = [];
@@ -136,6 +156,8 @@ suite('Installation Tests', function () {
 
 		if (withLocalProxy) {
 			sandbox.assert.calledWith(configStub);
+			// proxyDir should be set when withLocalProxy = true
+			assert(proxyDir);
 			rmdirRecursive(proxyDir);
 		}
 	}
@@ -146,7 +168,7 @@ suite('Installation Tests', function () {
 				{
 					name: 'gopls',
 					versions: ['v0.1.0', 'v1.0.0', 'v1.0.1-pre.2'],
-					wantVersion: isInPreviewMode() ? 'v1.0.1-pre.2' : 'v1.0.0'
+					wantVersion: config.extensionInfo.isPreview ? 'v1.0.1-pre.2' : 'v1.0.0'
 				}
 			],
 			true
@@ -174,6 +196,24 @@ suite('Installation Tests', function () {
 		);
 	});
 
+	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
+	test('Install gofumpt with old go', async () => {
+		await runTest(
+			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: 'v0.2.1' }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go1.17' // Go Version
+		);
+	});
+
+	test('Install gofumpt with new go', async () => {
+		await runTest(
+			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: gofumptDefault }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go1.18' // Go Version
+		);
+	});
 	test('Install all tools via GOPROXY', async () => {
 		// Only run this test if we are in CI before a Nightly release.
 		if (!shouldRunSlowTests()) {
@@ -238,27 +278,112 @@ function shouldRunSlowTests(): boolean {
 
 suite('getConfiguredTools', () => {
 	test('do not require legacy tools when using language server', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.15.6'), { useLanguageServer: true }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.15.6 linux/amd64'),
+			{ useLanguageServer: true },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
 		assert(!got.includes('guru') && !got.includes('gocode'), `suggested legacy tools: ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.15.6'), { useLanguageServer: false }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.15.6 linux/amd64'),
+			{ useLanguageServer: false },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
 		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when the go version is old', async () => {
-		const configured = getConfiguredTools(fakeGoVersion('1.9'), { useLanguageServer: true }, {});
+		const configured = getConfiguredTools(
+			fakeGoVersion('go version go1.9 linux/amd64'),
+			{ useLanguageServer: true },
+			{}
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls' for old go: ${JSON.stringify(got)}`);
 		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
 	});
 });
 
-function fakeGoVersion(version: string) {
-	return new GoVersion('/path/to/go', `go version go${version} windows/amd64`);
+function fakeGoVersion(versionStr: string) {
+	return new GoVersion('/path/to/go', versionStr);
 }
+
+suite('listOutdatedTools', () => {
+	let sandbox: sinon.SinonSandbox;
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+	teardown(() => sandbox.restore());
+
+	async function runTest(goVersion: string | undefined, tools: { [key: string]: string | undefined }) {
+		const binPathStub = sandbox.stub(utilModule, 'getBinPath');
+		const versionStub = sandbox.stub(goInstallTools, 'inspectGoToolVersion');
+		for (const tool in tools) {
+			binPathStub.withArgs(tool).returns(`/bin/${tool}`);
+			versionStub.withArgs(`/bin/${tool}`).returns(Promise.resolve({ goVersion: tools[tool] }));
+		}
+
+		const toolsToCheck = Object.keys(tools).map((tool) => getToolAtVersion(tool));
+
+		const configuredGoVersion = goVersion ? fakeGoVersion(goVersion) : undefined;
+		const toolsToUpdate = await goInstallTools.listOutdatedTools(configuredGoVersion, toolsToCheck);
+		return toolsToUpdate.map((tool) => tool.name).filter((tool) => !!tool);
+	}
+
+	test('minor version difference requires updates', async () => {
+		const x = await runTest('go version go1.18 linux/amd64', {
+			gopls: 'go1.16', // 1.16 < 1.18
+			dlv: 'go1.17', // 1.17 < 1.18
+			staticcheck: 'go1.18', // 1.18 == 1.18
+			gotests: 'go1.19' // 1.19 > 1.18
+		});
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
+	});
+	test('patch version difference does not require updates', async () => {
+		const x = await runTest('go version go1.16.1 linux/amd64', {
+			gopls: 'go1.16', // 1.16 < 1.16.1
+			dlv: 'go1.16.1', // 1.16.1 == 1.16.1
+			staticcheck: 'go1.16.2', // 1.16.2 > 1.16.1
+			gotests: 'go1.16rc1' // 1.16rc1 != 1.16.1
+		});
+		assert.deepStrictEqual(x, ['gotests']);
+	});
+	test('go is beta version', async () => {
+		const x = await runTest('go version go1.18beta2 linux/amd64', {
+			gopls: 'go1.17.1', // 1.17.1 < 1.18beta2
+			dlv: 'go1.18beta1', // 1.18beta1 != 1.18beta2
+			staticcheck: 'go1.18beta2', // 1.18beta2 == 1.18beta2
+			gotests: 'go1.18' // 1.18 > 1.18beta2
+		});
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
+	});
+	test('go is dev version', async () => {
+		const x = await runTest('go version devel go1.18-41f485b9a7 linux/amd64', {
+			gopls: 'go1.17.1',
+			dlv: 'go1.18beta1',
+			staticcheck: 'go1.18',
+			gotests: 'go1.19'
+		});
+		assert.deepStrictEqual(x, []);
+	});
+	test('go is unknown version', async () => {
+		const x = await runTest('', {
+			gopls: 'go1.17.1'
+		});
+		assert.deepStrictEqual(x, []);
+	});
+	test('tools are unknown versions', async () => {
+		const x = await runTest('go version go1.17 linux/amd64', {
+			gopls: undefined, // this can be because gopls was compiled with go1.18 or it's too old.
+			dlv: 'go1.16.1'
+		});
+		assert.deepStrictEqual(x, ['dlv']);
+	});
+});

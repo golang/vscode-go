@@ -11,6 +11,7 @@
 import fs = require('fs');
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
@@ -213,7 +214,7 @@ function clearCoverage() {
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
  * @param dir Directory to execute go list in
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: string): Promise<void> {
+export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: string): Promise<void> {
 	const v = new Promise<void>((resolve, reject) => {
 		try {
 			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
@@ -260,13 +261,25 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 
 				// and fill in coveragePath
 				const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
+				// When line directive is used this information is artificial and
+				// the source code file can be non-existent or wrong (go.dev/issues/41222).
+				// There is no perfect way to guess whether the line/col in coverage profile
+				// is bogus. At least, we know that 0 or negative values are not true line/col.
+				const startLine = parseInt(parse[2], 10);
+				const startCol = parseInt(parse[3], 10);
+				const endLine = parseInt(parse[4], 10);
+				const endCol = parseInt(parse[5], 10);
+				if (startLine < 1 || startCol < 1 || endLine < 1 || endCol < 1) {
+					return;
+				}
 				const range = new vscode.Range(
 					// Convert lines and columns to 0-based
-					parseInt(parse[2], 10) - 1,
-					parseInt(parse[3], 10) - 1,
-					parseInt(parse[4], 10) - 1,
-					parseInt(parse[5], 10) - 1
+					startLine - 1,
+					startCol - 1,
+					endLine - 1,
+					endCol - 1
 				);
+
 				const counts = parseInt(parse[7], 10);
 				// If is Covered (CoverCount > 0)
 				if (counts > 0) {
@@ -285,7 +298,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir: str
 				resolve();
 			});
 		} catch (e) {
-			vscode.window.showInformationMessage(e.msg);
+			vscode.window.showInformationMessage((e as any).msg);
 			reject(e);
 		}
 	});
@@ -358,7 +371,7 @@ function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
  * Apply the code coverage highlighting in given editor
  * @param editor
  */
-export function applyCodeCoverage(editor: vscode.TextEditor) {
+export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 	if (!editor || editor.document.languageId !== 'go' || editor.document.fileName.endsWith('_test.go')) {
 		return;
 	}
@@ -489,7 +502,7 @@ export function trackCodeCoverageRemovalOnFileChange(e: vscode.TextDocumentChang
  * If current editor has Code coverage applied, then remove it.
  * Else run tests to get the coverage and apply.
  */
-export async function toggleCoverageCurrentPackage() {
+export const toggleCoverageCurrentPackage: CommandFactory = () => async () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -520,7 +533,7 @@ export async function toggleCoverageCurrentPackage() {
 			showTestOutput();
 		}
 	});
-}
+};
 
 export function isPartOfComment(e: vscode.TextDocumentChangeEvent): boolean {
 	return e.contentChanges.every((change) => {

@@ -6,10 +6,12 @@
 // the gopls's API and generate documentation from it.
 //
 // To update documentation based on the current package.json:
-//    go run tools/generate.go
+//
+//	go run tools/generate.go
 //
 // To update package.json and generate documentation.
-//    go run tools/generate.go -gopls
+//
+//	go run tools/generate.go -gopls
 package main
 
 import (
@@ -239,7 +241,8 @@ func main() {
 	latestPre := versions.Versions[latestIndex]
 	// We need to find the last version that was not a pre-release.
 	var latest string
-	for latest = versions.Versions[latestIndex]; latestIndex >= 0; latestIndex-- {
+	for ; latestIndex >= 0; latestIndex-- {
+		latest = versions.Versions[latestIndex]
 		if !strings.Contains(latest, "pre") {
 			break
 		}
@@ -340,8 +343,10 @@ func defaultDescriptionSnippet(p *Property) string {
 	switch p.Type {
 	case "object":
 		x, ok := p.Default.(map[string]interface{})
-		// do nothing if it is nil
-		if ok && len(x) > 0 {
+		if !ok {
+			panic(fmt.Sprintf("unexpected type of object: %v", *p))
+		} else if len(x) > 0 {
+			// do nothing if it is nil
 			writeMapObject(b, "", x)
 		}
 	case "string":
@@ -349,8 +354,18 @@ func defaultDescriptionSnippet(p *Property) string {
 	case "boolean", "number":
 		fmt.Fprintf(b, "%v", p.Default)
 	case "array":
-		if x, ok := p.Default.([]interface{}); ok && len(x) > 0 {
-			fmt.Fprintf(b, "%v", p.Default)
+		x, ok := p.Default.([]interface{})
+		if !ok {
+			panic(fmt.Sprintf("unexpected type for array: %v", *p))
+		} else if len(x) > 0 {
+			fmt.Fprintf(b, "[")
+			for i, v := range x {
+				if i > 0 {
+					fmt.Fprintf(b, ", ")
+				}
+				fmt.Fprintf(b, "%q", v)
+			}
+			fmt.Fprintf(b, "]")
 		}
 	default:
 		fmt.Fprintf(b, "%v", p.Default)

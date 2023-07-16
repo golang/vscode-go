@@ -8,12 +8,12 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { lastUserAction } from './goLanguageServer';
 import { daysBetween, flushSurveyConfig, getStateConfig, minutesBetween, timeMinute } from './goSurvey';
+import { GoExtensionContext } from './context';
 
 // Start and end dates of the survey.
-export const startDate = new Date('2021-10-27');
-export const endDate = new Date('2021-11-16');
+export const startDate = new Date('Jul 20 2023 00:00:00 GMT');
+export const endDate = new Date('Aug 10 2023 00:00:00 GMT');
 
 // DeveloperSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -35,7 +35,7 @@ export interface DeveloperSurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForDeveloperSurvey() {
+export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -52,13 +52,13 @@ export function maybePromptForDeveloperSurvey() {
 	}
 	const callback = async () => {
 		const currentTime = new Date();
-
+		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
 		if (minutesBetween(lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForDeveloperSurvey(cfg, now);
+		cfg = await promptForDeveloperSurvey(cfg ?? {}, now);
 		if (cfg) {
 			flushSurveyConfig(developerSurveyConfig, cfg);
 		}
@@ -69,7 +69,7 @@ export function maybePromptForDeveloperSurvey() {
 // shouldPromptForSurvey decides if we should prompt the given user to take the
 // survey. It returns the DeveloperSurveyConfig if we should prompt, and
 // undefined if we should not prompt.
-export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): DeveloperSurveyConfig | undefined {
 	// TODO(rstambler): Merge checks for surveys into a setting.
 
 	// Don't prompt if the survey hasn't started or is over.
@@ -86,7 +86,7 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 	// is done by generating a random number in the range [0, 1) and checking
 	// if it is < probability.
 	if (cfg.prompt === undefined) {
-		const probability = 0.2;
+		const probability = 0.1;
 		cfg.datePromptComputed = now;
 		cfg.prompt = Math.random() < probability;
 	}
@@ -122,10 +122,9 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 }
 
 export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
-	let selected = await vscode.window.showInformationMessage(
-		// TODO(rstambler): Figure out how to phrase this.
-		`Looks like you are coding in Go! Would you like to help ensure that Go is meeting your needs
-by participating in this 10-minute survey before ${endDate.toDateString()}?`,
+	const selected = await vscode.window.showInformationMessage(
+		`"Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
+by participating in this 10-minute Go Developer Survey (2023 H2) before ${endDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
@@ -140,7 +139,7 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 			{
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_0BwHwKSaeE9Cx2S?s=p';
+				const surveyURL = 'https://google.qualtrics.com/jfe/form/SV_4Vi4bNaMQhQdqSi?s=p';
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
@@ -149,10 +148,10 @@ by participating in this 10-minute survey before ${endDate.toDateString()}?`,
 
 			vscode.window.showInformationMessage("No problem! We'll ask you again another time.");
 			break;
-		case 'Never':
+		case 'Never': {
 			cfg.prompt = false;
 
-			selected = await vscode.window.showInformationMessage(
+			const selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
 If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' to false.`,
 				'Open Settings'
@@ -165,6 +164,7 @@ If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' t
 					break;
 			}
 			break;
+		}
 		default:
 			// If the user closes the prompt without making a selection, treat it
 			// like a "Not now" response.

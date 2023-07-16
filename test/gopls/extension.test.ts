@@ -9,7 +9,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
-import { buildLanguageClient, BuildLanguageClientOption, buildLanguageServerConfig } from '../../src/goLanguageServer';
+import {
+	buildLanguageClient,
+	BuildLanguageClientOption,
+	buildLanguageServerConfig
+} from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
 
@@ -21,6 +25,7 @@ class FakeOutputChannel implements vscode.OutputChannel {
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
 	public dispose = sinon.fake(); // no-empty
+	public replace = sinon.fake(); // no-empty
 
 	private buf = [] as string[];
 
@@ -61,14 +66,14 @@ class FakeOutputChannel implements vscode.OutputChannel {
 // Currently, this works only in module-aware mode.
 class Env {
 	public languageClient?: LanguageClient;
-	private fakeOutputChannel: FakeOutputChannel;
+	private fakeOutputChannel?: FakeOutputChannel;
 	private disposables = [] as { dispose(): any }[];
 
 	public flushTrace(print: boolean) {
 		if (print) {
-			console.log(this.fakeOutputChannel.toString());
+			console.log(this.fakeOutputChannel?.toString());
 		}
-		this.fakeOutputChannel.clear();
+		this.fakeOutputChannel?.clear();
 	}
 
 	// This is a hack to check the progress of package loading.
@@ -80,40 +85,55 @@ class Env {
 				this.flushTrace(true);
 				reject(`Timed out while waiting for '${msg}'`);
 			}, timeoutMS);
-			this.fakeOutputChannel.onPattern(msg, () => {
+			this.fakeOutputChannel?.onPattern(msg, () => {
 				clearTimeout(timeout);
 				resolve();
 			});
 		});
 	}
 
-	public async setup(filePath: string) {
+	// Start the language server with the fakeOutputChannel.
+	public async startGopls(filePath: string, goConfig?: vscode.WorkspaceConfiguration) {
 		// file path to open.
 		this.fakeOutputChannel = new FakeOutputChannel();
 		const pkgLoadingDone = this.onMessageInTrace('Finished loading packages.', 60_000);
 
-		// Start the language server with the fakeOutputChannel.
-		const goConfig = Object.create(getGoConfig(), {
-			useLanguageServer: { value: true },
-			languageServerFlags: { value: ['-rpc.trace'] }, // enable rpc tracing to monitor progress reports
-			formatTool: { value: 'nonexistent' } // to test custom formatters
-		});
-		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(goConfig);
+		if (!goConfig) {
+			goConfig = getGoConfig();
+		}
+		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(
+			Object.create(goConfig, {
+				useLanguageServer: { value: true },
+				languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
+			})
+		);
 		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
-		this.languageClient = await buildLanguageClient(cfg);
-		this.disposables.push(this.languageClient.start());
+		this.languageClient = await buildLanguageClient({}, cfg);
+		if (!this.languageClient) {
+			throw new Error('Language client not initialized.');
+		}
 
-		await this.languageClient.onReady();
+		await this.languageClient.start();
 		await this.openDoc(filePath);
 		await pkgLoadingDone;
 	}
 
 	public async teardown() {
-		await this.languageClient?.stop();
-		for (const d of this.disposables) {
-			d.dispose();
+		try {
+			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+			await this.languageClient?.stop(1_000); // 1s timeout
+		} catch (e) {
+			console.log(`failed to stop gopls within 1sec: ${e}`);
+		} finally {
+			if (this.languageClient?.isRunning()) {
+				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
+				this.flushTrace(true);
+			}
+			for (const d of this.disposables) {
+				d.dispose();
+			}
+			this.languageClient = undefined;
 		}
-		this.languageClient = undefined;
 	}
 
 	public async openDoc(...paths: string[]) {
@@ -132,22 +152,24 @@ suite('Go Extension Tests With Gopls', function () {
 	const projectDir = path.join(__dirname, '..', '..', '..');
 	const testdataDir = path.join(projectDir, 'test', 'testdata');
 	const env = new Env();
-
+	const sandbox = sinon.createSandbox();
 	let goVersion: GoVersion;
+
 	suiteSetup(async () => {
-		await env.setup(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
 		goVersion = await getGoVersion();
 	});
-	suiteTeardown(() => env.teardown());
 
-	this.afterEach(function () {
+	this.afterEach(async function () {
+		await env.teardown();
 		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 		// I don't know why but this.currentTest.state does not have the expected value when
 		// used with teardown.
-		env.flushTrace(this.currentTest.state === 'failed');
+		env.flushTrace(this.currentTest?.state === 'failed');
+		sandbox.restore();
 	});
 
 	test('HoverProvider', async () => {
+		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
@@ -197,10 +219,15 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('Completion middleware', async () => {
+		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
-		const testCases: [string, vscode.Position, string][] = [['fmt.P<>', new vscode.Position(19, 6), 'Print']];
-		for (const [name, position, wantFilterText] of testCases) {
-			let list: vscode.CompletionList<vscode.CompletionItem>;
+		const testCases: [string, vscode.Position, string, vscode.CompletionItemKind][] = [
+			['fmt.P<>', new vscode.Position(19, 6), 'Print', vscode.CompletionItemKind.Function],
+			['xyz.H<>', new vscode.Position(41, 13), 'Hello', vscode.CompletionItemKind.Method]
+		];
+
+		for (const [name, position, wantFilterText, wantItemKind] of testCases) {
+			let list: vscode.CompletionList<vscode.CompletionItem> | undefined;
 			// Query completion items. We expect the hard coded filter text hack
 			// has been applied and gopls returns an incomplete list by default
 			// to avoid reordering by vscode. But, if the query is made before
@@ -221,7 +248,7 @@ suite('Go Extension Tests With Gopls', function () {
 				console.log(`${new Date()}: retrying...`);
 			}
 			// Confirm that the hardcoded filter text hack has been applied.
-			if (!list.isIncomplete) {
+			if (!list || !list.isIncomplete) {
 				assert.fail('gopls should provide an incomplete list by default');
 			}
 
@@ -230,6 +257,7 @@ suite('Go Extension Tests With Gopls', function () {
 			// Alternative is to directly query the language client, but that will
 			// prevent us from detecting problems caused by issues between the language
 			// client library and the vscode.
+			let itemKindFound = false;
 			for (const item of list.items) {
 				if (item.kind === vscode.CompletionItemKind.Snippet) {
 					continue;
@@ -241,6 +269,9 @@ suite('Go Extension Tests With Gopls', function () {
 						`(got ${item.filterText ?? item.label}, want ${wantFilterText})\n` +
 						`${JSON.stringify(item, null, 2)}`
 				);
+				if (item.kind === wantItemKind) {
+					itemKindFound = true;
+				}
 				if (
 					item.kind === vscode.CompletionItemKind.Method ||
 					item.kind === vscode.CompletionItemKind.Function
@@ -251,18 +282,49 @@ suite('Go Extension Tests With Gopls', function () {
 					);
 				}
 			}
+			assert(itemKindFound, `failed to find expected item kind ${wantItemKind}: got ${JSON.stringify(list)}`);
 		}
 	});
 
-	test('Nonexistent formatter', async () => {
-		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
-		const result = (await vscode.commands.executeCommand(
-			'vscode.executeFormatDocumentProvider',
-			uri,
-			{} // empty options
-		)) as vscode.TextEdit[];
-		if (result) {
-			assert.fail(`expected no result, got one: ${result}`);
+	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
+		const config = require('../../src/config');
+		sandbox.stub(config, 'getGoConfig').returns(goConfig);
+
+		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'), goConfig);
+		const { doc } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
+		await vscode.window.showTextDocument(doc);
+
+		const formatFeature = env.languageClient?.getFeature('textDocument/formatting');
+		const formatter = formatFeature?.getProvider(doc);
+		const tokensrc = new vscode.CancellationTokenSource();
+		try {
+			const result = await formatter?.provideDocumentFormattingEdits(
+				doc,
+				{} as vscode.FormattingOptions,
+				tokensrc.token
+			);
+			assert.fail(`formatter unexpectedly succeeded and returned a result: ${JSON.stringify(result)}`);
+		} catch (e) {
+			assert(`${e}`.includes(`errors when formatting with ${customFormatter}`), `${e}`);
 		}
+	}
+
+	test('Nonexistent formatter', async () => {
+		const customFormatter = 'nonexistent';
+		const goConfig = Object.create(getGoConfig(), {
+			formatTool: { value: customFormatter } // this should make the formatter fail.
+		}) as vscode.WorkspaceConfiguration;
+
+		await testCustomFormatter(goConfig, customFormatter);
+	});
+
+	test('Custom formatter', async () => {
+		const customFormatter = 'coolCustomFormatter';
+		const goConfig = Object.create(getGoConfig(), {
+			formatTool: { value: 'custom' }, // this should make the formatter fail.
+			alternateTools: { value: { customFormatter: customFormatter } } // this should make the formatter fail.
+		}) as vscode.WorkspaceConfiguration;
+
+		await testCustomFormatter(goConfig, customFormatter);
 	});
 });

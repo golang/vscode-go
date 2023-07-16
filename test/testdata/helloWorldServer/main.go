@@ -16,8 +16,8 @@ func main() {
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
 	}
-
-	log.Printf("server starting to listen on %s", addr)
+	// NOTE: goDebug.test.ts setupRemoteProgram expects this log message.
+	log.Printf("helloWorldServer starting to listen on %s", addr)
 	http.HandleFunc("/", home)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatalf("server listen error: %+v", err)
@@ -26,6 +26,6 @@ func main() {
 
 // home logs the received request and returns a simple response.
 func home(w http.ResponseWriter, r *http.Request) {
-	log.Printf("received request: %s %s", r.Method, r.URL.Path)
+	log.Printf("received request: %s %s", r.Method, r.URL.Path) // Breakpoint
 	fmt.Fprintf(w, "Hello, world!")
 }

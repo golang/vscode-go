@@ -63,7 +63,7 @@ suite('Workspace State Modification Tests', () => {
 		interface TestCase {
 			keys: string[];
 			values: any[];
-			items: string[];
+			items?: string[];
 			want: string[];
 		}
 		const testCases: TestCase[] = [

@@ -3,6 +3,28 @@
 This document describes more advanced ways of working with the VS Code Go
 extension.
 
+## Formatting Code and Organizing Imports
+
+When you have multiple formatter extensions, be sure to set this
+extension as the default formatter for go language.
+```json5
+"[go]": {
+  "editor.defaultFormatter": "golang.go"
+}
+```
+
+Formatting and organizing imports are enabled by default. You
+can choose to disable them by configuring the following settings.
+
+```json5
+"[go]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": false
+        }
+}
+```
+
 ## Choosing a different version of Go
 
 The extension chooses the `go` command using the `PATH` (or `Path`) environment
@@ -39,6 +61,11 @@ etc.). The `"go.alternateTools"` setting provides a way to configure the
 extension to use different tool location, for example a wrapper with a different
 name.
 
+The extension uses pinned versions of command-line tools. See the pinned versions
+in tools information
+[here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts).
+To use an alternate version of a tool install it manually with with go install.
+
 ## Using a custom linter
 
 A commonly customized feature is the linter, which is the tool used to provide
@@ -56,7 +83,6 @@ This extension can be used for developing the standard library with additional
 configuration.
 
 First, you **must open the `src/` folder in VS Code**, not the Go tree root.
-(See [golang/go#32394](https://github.com/golang/go/issues/32394).)
 
 Then, you need to configure the workspace, by placing the following in
 `src/.vscode/settings.json`. [Command Palette] ->
@@ -90,26 +116,6 @@ You can add `.vscode` to `.git/info/exclude` to avoid risking checking
 If you see an "inconsistent vendoring" error, please report it at
 [golang/go#40250](https://github.com/golang/go/issues/40250).
 
-## Formatting Code and Organizing Imports
 
-When you have multiple formatter extensions, be sure to set this
-extension as the default formatter for go language.
-```json5
-"[go]": {
-  "editor.defaultFormatter": "golang.go"
-}
-```
-
-Formatting and organizing imports are enabled by default. You
-can choose to disable them by configuring the following settings.
-
-```json5
-"[go]": {
-        "editor.formatOnSave": false,
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": false
-        }
-}
-```
 
 [Command Palette]: https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette

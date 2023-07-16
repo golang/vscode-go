@@ -15,9 +15,26 @@ import * as net from 'net';
 import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
-import { envPath, getBinPathFromEnvVar } from './utils/pathUtils';
+import { getEnvPath, getBinPathFromEnvVar } from './utils/pathUtils';
 
-export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
+export function activate(ctx: vscode.ExtensionContext) {
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	ctx.subscriptions.push(debugOutputChannel);
+
+	const factory = new GoDebugAdapterDescriptorFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('go', factory));
+	if ('dispose' in factory) {
+		ctx.subscriptions.push(factory);
+	}
+
+	const tracker = new GoDebugAdapterTrackerFactory(debugOutputChannel);
+	ctx.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('go', tracker));
+	if ('dispose' in tracker) {
+		ctx.subscriptions.push(tracker);
+	}
+}
+
+class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
 	constructor(private outputChannel?: vscode.OutputChannel) {}
 
 	public createDebugAdapterDescriptor(
@@ -49,7 +66,7 @@ export class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescr
 	}
 }
 
-export class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 	constructor(private outputChannel: vscode.OutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -218,13 +235,13 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 // VSCode and a dlv dap process spawned and managed by this adapter.
 // It turns the process's stdout/stderrr into OutputEvent.
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
-	constructor(private configuration: vscode.DebugConfiguration, logger?: Logger) {
+	constructor(private configuration: vscode.DebugConfiguration, logger: Logger) {
 		super(logger);
 	}
 
-	private connected: Promise<{ connected: boolean; reason?: any }>;
-	private dlvDapServer: ChildProcess;
-	private socket: net.Socket;
+	private connected?: Promise<{ connected: boolean; reason?: any }>;
+	private dlvDapServer?: ChildProcess;
+	private socket?: net.Socket;
 	private terminatedOnError = false;
 
 	protected sendMessageToClient(message: vscode.DebugProtocolMessage) {
@@ -290,9 +307,6 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		}
 		this.connected = undefined;
 
-		if (timeoutMS === undefined || timeoutMS < 0) {
-			timeoutMS = 1_000;
-		}
 		const dlvDapServer = this.dlvDapServer;
 		this.dlvDapServer = undefined;
 		if (!dlvDapServer) {
@@ -305,6 +319,9 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			return;
 		}
 		await new Promise<void>((resolve) => {
+			if (timeoutMS === undefined || timeoutMS < 0) {
+				timeoutMS = 1_000;
+			}
 			const exitTimeoutToken = setTimeout(() => {
 				this.logger?.error(`dlv dap process (${dlvDapServer.pid}) isn't responding. Killing...`);
 				dlvDapServer.kill('SIGINT'); // Don't use treekill but let dlv handle cleaning up the child processes.
@@ -341,7 +358,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 	async startDapServer(
 		configuration: vscode.DebugConfiguration
-	): Promise<{ dlvDapServer?: ChildProcessWithoutNullStreams; socket: net.Socket }> {
+	): Promise<{ dlvDapServer?: ChildProcess; socket: net.Socket }> {
 		const log = (msg: string) => this.outputEvent('stdout', msg);
 		const logErr = (msg: string) => this.outputEvent('stderr', msg);
 		const logConsole = (msg: string) => {
@@ -443,14 +460,15 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 let sudoPath: string | null | undefined = undefined;
 function getSudo(): string | null {
 	if (sudoPath === undefined) {
-		sudoPath = getBinPathFromEnvVar('sudo', envPath, false);
+		sudoPath = getBinPathFromEnvVar('sudo', getEnvPath(), false);
 	}
 	return sudoPath;
 }
 
 function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
 	return new Promise((resolve, reject) => {
-		let s: net.Server = undefined;
+		// eslint-disable-next-line prefer-const
+		let s: net.Server | undefined;
 		const timeoutToken = setTimeout(() => {
 			if (s?.listening) {
 				s.close();
@@ -463,7 +481,7 @@ function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> 
 				`connected: ${port} (remote: ${socket.remoteAddress}:${socket.remotePort} local: ${socket.localAddress}:${socket.localPort})`
 			);
 			clearTimeout(timeoutToken);
-			s.close(); // accept no more connection
+			s?.close(); // accept no more connection
 			socket.resume();
 			resolve(socket);
 		});
@@ -607,7 +625,7 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 	const dlvPath = launchAttachArgs.dlvToolPath ?? 'dlv';
 
 	if (!fs.existsSync(dlvPath)) {
-		const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+		const envPath = getEnvPath();
 		logErr(
 			`Couldn't find ${dlvPath} at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
@@ -625,13 +643,8 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 	const dlvArgs = new Array<string>();
 	dlvArgs.push('dap');
 
-	// TODO(hyangah): if Go version is higher than what the delve can support, we need to warn users.
-
 	// When duplicate flags are specified,
 	// dlv doesn't mind but accepts the last flag value.
-	// Add user-specified dlv flags first except
-	//  --check-go-version that we want to disable by default but allow users to override.
-	dlvArgs.push('--check-go-version=false');
 	if (launchAttachArgs.dlvFlags && launchAttachArgs.dlvFlags.length > 0) {
 		dlvArgs.push(...launchAttachArgs.dlvFlags);
 	}

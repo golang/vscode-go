@@ -1,3 +1,298 @@
+## v0.39.1 - 17 Jul, 2023
+
+This is a point release to update the link for the upcoming Go developer survey.
+A list of changes can be found in the full [commit history](https://github.com/golang/vscode-go/compare/v0.39.1...v0.39.0).
+
+## v0.39.0 - 12 Jun, 2023
+
+We are in the process of removing legacy language features that were replaced by `gopls` since early 2021. The versions released after September 2023 will no longer offer features like code completion, navigation, documentation, formatting, and refactoring if the language server is disabled. In this release, we are showing deprecation notification messages if you are using the legacy language features. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799))
+
+A list of all issues and changes can be found in the [v0.39.0 milestone](https://github.com/golang/vscode-go/milestone/55) and [commit history](https://github.com/golang/vscode-go/compare/v0.39.0...v0.38.0).
+
+### Changes
+- Added the [`go.showWelcome`](https://github.com/golang/vscode-go/wiki/settings#goshowwelcome) setting that controls whether to show the Welcome page. ([PR 2704](https://github.com/golang/vscode-go/pull/2704)) <!-- CL 501208 -->
+- Report when `go.toolsManagement.go` setting is invalid and ignored. ([Issue 2753](https://github.com/golang/vscode-go/issues/2753)) <!-- CL 501056 -->
+- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issue/1109)) <!-- CL 501199 -->
+- Deprecated settings that affect only legacy language features and tools. They will be removed in the release after September 2023. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799)) <!-- CL 501206 -->
+- `"Go: Update/Install Tools"` will install the latest version of `golangci-lint` instead of a vetted, pinned version. The extension chose to pin the versions of third-party go tools it installs in order to manage version skew and reduce security risks. However, `golangci-lint` is frequently released and its community is active enough to handle compatibility/security issues. We decided to install the latest version by default. ([Issue 2763](https://github.com/golang/vscode-go/issues/2763), [2485](https://github.com/golang/vscode-go/issues/2485))
+
+- Debug: show error when the process picker is hidden ([CL 499601](https://go.dev/cl/499601)). To learn more about the process picker in debug, see [Launch.json "processId" documentation](https://github.com/golang/vscode-go/wiki/debugging#launchjson-attributes). <!-- CL 499601 -->
+- Debug: `args` attribute now accepts a `string` typed value. The argument string is parsed into word arguments with rules similar to `bash` except that there is no shell expansion. This change allows to use vscode variables like `${input:args}`. ([Issue 2621](https://github.com/golang/vscode-go/issues/2621)) <!-- CL 469378 -->
+- The extension no longer cache PATH environment variable, which helps interoperate with extensions that modify `PATH`. ([Issue 2617](https://github.com/golang/vscode-go/issues/2617)) <!-- CL 494555 -->
+- Updated LSP to v3.17.3 and VS Code language client library to v8.1.0. This includes fixes for request ordering issues around full document sync and bugs around shutdown. <!-- CL 473157 -->
+- Replaced the extension user survey link to https://go.dev/s/ide-hats-survey. ([CL 497536](https://go.dev/cl/497536)) <!-- CL 497536 -->
+- Updated settings to sync with [gopls@v0.12](https://go.dev/s/gopls-v0.12).
+- Third-party go tools dependencies: use gofumpt@v0.5.0 and revive@v1.3.2 and install staticcheck@v0.3.3 when building with go1.18 or older.
+
+### Delopment process updates
+- Updated `@vscode/vsce` version to address the [xml2js prototype pollution vulnerability report](https://github.com/advisories/GHSA-776f-qx25-q3cc) <!-- CL 494997 -->
+
+### Documentation
+- Debugging documentation includes tips for debugging with `-trimpath`. ([Issue 2609](https://github.com/golang/vscode-go/issues/2609))
+- Added advanced [semantic syntax highlighting options](https://github.com/golang/vscode-go/wiki/features#syntax-highlighting). ([Issue 2682](https://github.com/golang/vscode-go/issues/2682))
+
+### Thanks
+- Thank you for your contribution, @fflewddur, @ZekeLu, @cuining, @weikanglim, @niklaskorz, @xmmak, @jamalc, @suzmue, @hyangah!
+
+## v0.38.0 - 23 Feb, 2023
+
+This release adds default `go` tasks to help build and test your Go projects.
+
+A list of all issues and changes can be found in the [v0.38.0 milestone](https://github.com/golang/vscode-go/milestone/50) and [commit history](https://github.com/golang/vscode-go/compare/v0.37.1...v0.38.0).
+
+### Changes
+- Added default go task provider ([Issue 194](https://github.com/golang/vscode-go/issues/194)) <!-- CL 467697 -->
+- Updated pinned golangci-lint version to fix memory leak issue with Go 1.20 ([Issue 2654](https://github.com/golang/vscode-go/issues/2654))
+- gopls releases will now have a staged rollout in VS Code ([CL 468497](http://go.dev/cl/468497)) <!-- CL 468497 -->
+- Added extension keywords to make this extension easier to find in the VS Code Extension Marketplace ([Issue 2657](https://github.com/golang/vscode-go/issues/2657)) <!-- CL 467698 -->
+- Deleted the broken references codelens code ([Issue 2519](https://github.com/golang/vscode-go/issues/2519)) <!-- CL 464098 -->
+- Added support to handle missing variables in legacy debug adapter gracefully ([Issue 2397](https://github.com/golang/vscode-go/issues/2397)) <!-- CL 462289 -->
+
+### Development process updates
+- Upgraded esbuild to support s390x ([Issue 2668](https://github.com/golang/vscode-go/issues/2668)) <!-- CL 469915 -->
+- Use --profile-temp for testing with clean env ([Issue 2458](https://github.com/golang/vscode-go/issues/2458)) <!-- CL 468496 -->
+
+### Thanks
+
+Thank you for your contribution, @ankon, @hyangah, @jamalc, and @suzmue!
+
+## v0.37.1 - 17 Jan, 2023
+
+### Fixes
+- Fixed spurious file creation bugs on branch switches. ([Issue 2570](https://github.com/golang/vscode-go/issues/2570))
+
+### Changes
+- Added promotion for the annual Go developer survey (2023 Winter).
+
+### Thanks
+Thank you for your contribution, @suzmue!
+
+## v0.37.0 - 19 Dec, 2022
+
+This release includes new [static analysis features](https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies) that report known vulnerabilities in your dependencies. These vulncheck analysis tools are backed by [Go's vulnerability database](https://go.dev/security/vulndb) and the Go language server's integration of [`govulncheck`](https://golang.org/x/vuln/cmd/govulncheck").
+Read [Go's support for vulnerability management](https://go.dev/blog/vuln) to learn about the Go team's approach to helping Go developers secure their open-source dependencies.
+
+### Changes
+- The new "Go: Toggle Vulncheck" command enables/disables imports-based vulnerability analysis. This requires gopls v0.11.0 or newer.
+- Test and debug test code lenses are added to some subtests if the test names can be determined. ([Issue 2536](https://github.com/golang/vscode-go/issues/2536))
+- Gopls settings was updated to match gopls@v0.11.0.
+- `"go.formatTool"` setting accepts a special value `"custom"`, which causes the extension to use the custom formatter configured with the setting `"go.alternateTools": { "customFormatter": <your custom tool name> }`. ([Issue 2503](https://github.com/golang/vscode-go/issues/2503))
+- The experimental "Go: Run Vulncheck (exp)" command was removed.
+- The extension no longer bypasses Delve's Go version check by default. Users must install the delve version compatible with their Go version, or explicitly configure their launch configuration to pass the `--check-go-version=false` flag using the `dlvFlags` attribute. ([Go Delve Issue 3058](https://github.com/go-delve/delve/issues/3058))
+
+### Fixes
+- The editor survey prompt logic was adjusted for uniform sampling. ([Issue 2545](https://github.com/golang/vscode-go/issues/2545))
+- Fixed the crash bug when handling coverage profiles involving go `//line`-directive. ([Issue 2453](https://github.com/golang/vscode-go/issues/2453))
+- Updated dependencies to address [CVE-2022-37603](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-37603) and [CVE-2022-24999](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-24999).
+
+### Thanks
+
+Thank you for your contribution, @devuo, @pjweinbgo, @aarzilli, @tklauser, @hyangah, @suzmue, @jamalc!
+
+## v0.36.0 - 7 Nov, 2022
+A list of all issues and changes can be found in the [v0.36.0 milestone](https://github.com/golang/vscode-go/milestone/52) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.2...v0.36.0).
+
+### Changes
+- From this release, the extension will download specific versions of 3rd party tools installed with the "Go: Install/Update Tools" command. This is to enhance stability and security. The "Go: Install/Upate Tools" command will present the versions the extension will install. To install a different version of a tool, use `go install` command from the terminal instead. ([Issue 1850](https://github.com/golang/vscode-go/issues/1850))
+- The default gopls version was updated to v0.10.1 and the settings were updated accordingly. See the [release note of gopls v0.10.0](https://github.com/golang/tools/releases/tag/gopls%2Fv0.10.0) to learn about notable changes and new features.
+- Typing `vars` will now offer a completion snippet that expands it to a `var (...)` block containing multiple variables. ([PR 2481](https://github.com/golang/vscode-go/pull/2481))
+- The setting to enable the "references" codelens, `go.enableCodeLens.references`, is now hidden. The feature remained broken for a while, so we plan to remove it in a future release. Please see [Issue 2509](https://github.com/golang/vscode-go/issues#2509) for details.
+- When debugging tests, the extension will open the "Debug Console". ([Issue 2409](https://github.com/golang/vscode-go/issues/2409))
+
+### Fixes
+- Fixed [Issue 2525](https://github.com/golang/vscode-go/issues/2525) that prevented triggering of parameter hints after method autocompletion. Users can enable/disable this parameter hints popup with the `"editor.parameterHints.enabled"` setting.
+- Fixed [test profie feature](https://github.com/golang/vscode-go/wiki/features#profiling) ([CL 440530](https://go-review.googlesource.com/c/vscode-go/+/440530)).
+- Removed dev dependency affected by CVE-2022-3517.
+
+### Thanks
+Thank you for your contribution, @suzmue, @fatoboist, @cuishuang, @jamalc, @karthikraobr, @pjweinbgo, @firelizzard18, @hyangah!
+
+## v0.35.2 - 15 Aug, 2022
+A list of all issues and changes can be found in the [v0.35.2 milestone](https://github.com/golang/vscode-go/milestone/51) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.1...v0.35.2).
+
+### Changes
+
+This release includes a new [go.goroot command](https://github.com/golang/vscode-go/issues/2379), [fixes](https://github.com/golang/vscode-go/issues/2342) to the `Generate Tests` commands, and improvements for windows users.
+
+### Thanks
+
+Thank you for your contribution, @OrBin, @Ras96, @hyangah, @jamalcarvalho, and @suzmue!
+
+## v0.35.1 - 19 July, 2022
+
+A list of all issues and changes can be found in the [v0.35.1 milestone](https://github.com/golang/vscode-go/milestone/50) and [commit history](https://github.com/golang/vscode-go/compare/v0.35.0...v0.35.1).
+
+### Bug Fix
+- Disabled experimental gopls features (e.g. semantic highlighting).
+
+## v0.35.0 - 18 July, 2022
+
+A list of all issues and changes can be found in the [v0.35.0 milestone](https://github.com/golang/vscode-go/milestone/47) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.1...v0.35.0).
+
+### Features
+- This release adds support for inlay hints ([Issue 1631](https://github.com/golang/vscode-go/issues/1631)).
+- Add logic to support ${workspaceFolderBasename} substitution in extension settings ([Issue 2310](https://github.com/golang/vscode-go/issues/2310)).
+- Add support for multi-file test suite ([Issue 1130](https://github.com/golang/vscode-go/issues/1130)).
+- Add support for custom formatters.
+
+### Bug Fix
+- Fixed (Issue [2339](https://github.com/golang/vscode-go/issues/#2339)) that prevented updating delve on arm64 Macs.
+
+### Thanks
+Thank you for your contribution, @hyangah, @nirhaas, @bentekkie, @jamalc, and @suzmue.
+
+## v0.34.1 - 30 June, 2022
+
+A list of all issues and changes can be found in the [v0.34.1 milestone](https://github.com/golang/vscode-go/milestone/48) and [commit history](https://github.com/golang/vscode-go/compare/v0.34.0...v0.34.1).
+
+### Bug Fix
+- Fixed (Issue [2300](https://github.com/golang/vscode-go/issues/2300)) that prevented the extension from complete activation when the language server fails to start.
+
+### Thanks
+Thank you for your contribution, @jamalc, @hyangh!
+
+## v0.34.0 - 22 June, 2022
+
+This release adds support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) and requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
+
+### Features
+This release includes improvements to the `Go: Run Vulncheck (Experimental)` command ([Issue 2185](https://github.com/golang/vscode-go/issues/2185), [2186](https://github.com/golang/vscode-go/issues/2186), [2214](https://github.com/golang/vscode-go/issues/2214)). Use it to find security issues in your dependencies.
+
+### Documentation
+Documentation for vscode-go can now be found on the [wiki](https://github.com/golang/vscode-go/wiki) ([Issue 2094](https://github.com/golang/vscode-go/issues/2094)).
+
+Thanks @thediveo for updating the debugging documentation!
+
+### Bug Fixes
+`TestMain(m *testing.M)` is no longer treated as a test ([Issue 482](https://github.com/golang/vscode-go/issues/482), [2039](https://github.com/golang/vscode-go/issues/2039))
+
+### Code Health
+- Enabled strict type checking ([Issue 57](https://github.com/golang/vscode-go/issues/57))
+- Updated release notes generation script to improve release process automation
+- Fixed bugs in testing
+
+### Thanks
+
+Thank you for your contribution, @hyangah, @jamalc, @polinasok, @suzmue, @thediveo, and @dle8!
+
+## v0.33.1 - 24 May, 2022
+
+This is the last release that supports Visual Studio Code 1.66 or older.
+We plan to add support for [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#whatIsNew) in the next release and the change requires Visual Studio Code [1.67+](https://code.visualstudio.com/updates/v1_67).
+
+### Changes
+
+* Updated settings to be in sync with `gopls@v0.8.4`. See [the release note](https://github.com/golang/tools/releases/tag/gopls%2Fv0.8.4) to learn new features like the `//go:embed` analyzer, and improved hover for imported packages.
+* Prepared for 2022 mid-year Go developer survey.
+
+## v0.33.0 - 1 May, 2022
+
+📣 [Remote attach debugging](docs/debugging.md#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It is now the default with the [Go Nightly](docs/nightly.md) and will become the default for the stable releases in mid 2022.
+
+### Changes
+
+* `staticcheck`: if go 1.16.x or older is used in installing tools, the extension chooses `staticcheck@v0.2.2`. In order to use the latest version of `staticcheck` while working on projects that require older versions of go, you can utilize the `"go.toolsManagement.go"` setting to specify a newer version of go for tool installation. ([Issue 2162](https://github.com/golang/vscode-go/issues/2162))
+
+* `go-outline`: `go-outline` is no longer required when `gopls` (v0.8.2+) is used.
+
+* Activation: the extension defers commands and feature provider registrations until it runs `go version` and `go env`, and starts `gopls`. [This change](https://go-review.googlesource.com/c/vscode-go/+/398155) prevent the extension prematually export its features, but may result in a slight increase in extension activation time if those commands run slow.
+
+* Survey: we show the Gopls opt-out survey prompt only when users change the setting to disable `gopls`.
+
+* Test Explorer: fixed a bug in `go.mod` file parsing ([Issue 2171](https://github.com/golang/vscode-go/issues/2171))
+
+* Debugging: we removed the informational popup at the start of remote attach session with `dlv-dap`. ([Issue 2018](https://github.com/golang/vscode-go/issues/2018))
+
+### Experimental features
+
+This version includes two highly experimental features. They are still
+in early stage and we are looking forward to hearing more user feedback.
+
+* [Go Explorer view](docs/ui.md#go-explorer-view): it displays environment variables and information about tools used by the extension. ([Issue 2049](https://github.com/golang/vscode-go/issues/2049))
+
+* `Go: Run Vulncheck (Experimental)` command: it runs the `govulncheck` command embedded in `gopls`, which identifies known vulnerabilities by call graph traversal and module dependency analysis. ([Issue 2096](https://github.com/golang/vscode-go/issues/2096))
+
+### Thanks
+
+@jamalc, @polinasok, @dlipovetsky, @vladdoster, @suzmue, @hyangah
+
+## v0.32.0 - 8 Mar, 2022
+
+This version includes features to enhance Go 1.18 support. It works best when paired with the latest Go Language Server ([`gopls` v0.8.0+](https://github.com/golang/tools/releases/tag/gopls%2Fv0.8.0)) and Delve ([`dlv` v1.8.0+](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#changelog)).
+
+[Go 1.18](https://go.dev/doc/go1.18) introduces substantial changes to [the language spec](https://go.dev/doc/go1.18#generics), so many tools need rebuilding with Go 1.18 or newer. The extension now suggests updates of tools if it finds they were built with old versions of `go` which are inadequate for the version used for the project. If you [opted in for auto-update](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementautoupdate), tools will be auto-updated.
+
+In order to use Go 1.18, please follow [the instruction to configure your Visual Studio Code to locate the right go binary](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#using-go118), and run the Go tools using the "Go: Install/Update Tools" command.
+
+A list of all issues and changes can be found in the [v0.32.0 milestone](https://github.com/golang/vscode-go/milestone/42) and [commit history](https://github.com/golang/vscode-go/compare/v0.31.1...v0.32.0).
+
+### Changes
+
+- Starting with Go 1.18,  the `go` command provides native support for multi-module workspaces, via  [`go.work`](https://go.dev/ref/mod#workspaces) files. The new "Open 'go.work'" option in the Go status bar's quickpick menu allows users to access the corresponding `go.work` file.
+![go work short](https://user-images.githubusercontent.com/4999471/157268414-fba63843-5a14-44ba-be82-d42765568856.gif)
+
+- The extension no longer depends on [`gopkgs`](https://github.com/uudashr/gopkgs/cmd/gopkgs). Its use for "Go: Browse Packages" and "Go: Add Import" commands had been replaced with `go list` or commands in `gopls`. ([Issue 258](https://github.com/golang/vscode-go/issues/258))
+
+- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issue/1020))
+
+- The new [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementgo) allows users to specify the Go command for tools installation/updates separate from the Go command used for the project.
+
+- The latest `gopls` requires go 1.13+ for installation, so the extension no longer asks for `gopls` updates when an older versions of `go` is used. ([Issue 2030](https://github.com/golang/vscode-go/issues/2030)) Note `gopls` compiled with go 1.13 or newer can still process projects that use go 1.12. If you want to update `gopls` while working with an older version of Go, utilize the new `"go.toolsManagement.go"` setting.
+
+- Reduced the verbosity of "Go: Locate Configured Go Tools" output.
+
+### Code Health
+- Updated to mocha@9.2.0 (CVE-2021-23566).
+- Deflaked debug tests.
+- Changed to check `go.dev/dl` instead of `golang.org/dl` for Go release.
+- Improved documentation for the default formatting behavior  and template support.
+
+### Thanks
+@jamalc @suzmue @pavlelee @dekimsey @hyangah
+
+## v0.31.1 - 8 Feb, 2022
+
+A list of all issues and changes can be found in the [v0.31.1 milestone](https://github.com/golang/vscode-go/milestone/44) and [commit history](https://github.com/golang/vscode-go/compare/v0.31.0...v0.31.1).
+
+### Fixes
+- Fixed the profile functionality broken by VSCode 1.63 ([Issue 2048](https://github.com/golang/vscode-go/issues/2048))
+- Include fuzz tests in test explorer UI ([Issue 2023](https://github.com/golang/vscode-go/issues/2023))
+
+## v0.31.0 - 26 Jan, 2022
+
+A list of all issues and changes can be found in the [v0.31.0 milestone](https://github.com/golang/vscode-go/milestone/41) and [commit history](https://github.com/golang/vscode-go/compare/v0.30.0...v0.31.0).
+
+### Fixes
+
+- src/goStatus: assign id/name to each status bar item ([Issue 1571](https://github.com/golang/vscode-go/issues/1571)) <!-- CL 370354 -->
+- Change go template file language id to `gotmpl` ([Issue 1957](https://github.com/golang/vscode-go/issues/1957)) <!-- CL 376037 -->
+
+### Debugging
+
+- Use 'dlv' instead of 'dlv-dap' binary ([Issue 1977](https://github.com/golang/vscode-go/issues/1977)) <!-- CL 374594 -->
+- Experimental support of 'console' mode debugging ([Issue 124](https://github.com/golang/vscode-go/issues/124)) <!-- CL 358618 -->
+- Support debugging with root privileges ([Issue 558](https://github.com/golang/vscode-go/issues/558))
+- Updated [debugging documentation]() ([Issue 1861](https://github.com/golang/vscode-go/issues/1861),[1719](https://github.com/golang/vscode-go/issues/1719),([1676](https://github.com/golang/vscode-go/issues/1676), [123](https://github.com/golang/vscode-go/issues/123), [855](https://github.com/golang/vscode-go/issues/855), [1840](https://github.com/golang/vscode-go/issues/1840)))
+- Enabled remaining tests for dlv dap and fixed flaky tests ([Issue 1958](https://github.com/golang/vscode-go/issues/1958),[Issue 1993](https://github.com/golang/vscode-go/issues/1993))
+- Improvement of debug session start-up and session fail messages ([Issue 1861](https://github.com/golang/vscode-go/issues/1861)) <!-- CL 371974 -->
+
+### Test Explorer
+
+- src/goTest: don't resolve tests in virtual files <!-- CL 373234 -->
+- src/goTest: fix output for subtests ([Issue 1837](https://github.com/golang/vscode-go/issues/1837)) <!-- CL 373274 -->
+
+### Development Process Updates
+
+- Recommend that contributers use npm ci instead of npm install when developing vscode-go ([Issue 2010](https://github.com/golang/vscode-go/issues/2010)) <!-- CL 379154 -->
+- test: use @vscode/test-electron instead of vscode-test <!-- CL 377336 -->
+- go.mod: update imports to latest versions <!-- CL 374280 -->
+- package.json: pin direct dependencies ([Issue 2010](https://github.com/golang/vscode-go/issues/2010)) <!-- CL 379155 -->
+- Enable tests with go1.18beta1 ([Issue 1950](https://github.com/golang/vscode-go/issues/1950)) <!-- CL 374055 -->
+
+### Thanks
+
+Thank you for your contribution, @firelizzard18, @hyangah, @jamalc, @polinasok, @TheNagaPraneeth, @suzmue!
+
 ## v0.30.0 - 16 Dec, 2021
 
 A list of all issues and changes can be found in the [v0.30.0 milestone](https://github.com/golang/vscode-go/milestone/40) and [commit history](https://github.com/golang/vscode-go/compare/v0.29.0...v0.30.0).

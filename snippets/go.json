@@ -45,10 +45,15 @@
 			"body": "func $1($2) $3 {\n\t$0\n}",
 			"description": "Snippet for function declaration"
 		},
-		"variable declaration": {
+		"single variable": {
 			"prefix": "var",
 			"body": "var ${1:name} ${2:type}",
 			"description": "Snippet for a variable"
+		},
+		"multiple variables": {
+			"prefix": "vars",
+			"body": "var (\n\t${1:name} ${2:type}\n)",
+			"description": "Snippet for variable block"
 		},
 		"switch statement": {
 			"prefix": "switch",

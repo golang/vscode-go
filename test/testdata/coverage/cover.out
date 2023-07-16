@@ -1,3 +1,5 @@
 mode: set
 github.com/microsoft/vscode-go/gofixtures/coveragetest/a/a.go:19.71,22.25 3 1
 github.com/microsoft/vscode-go/gofixtures/coveragetest/b/b.go:35.2,35.14 1 1
+github.com/microsoft/vscode-go/gofixtures/coveragetest/b/blah.go:13.16,98989.0 2 1
+github.com/microsoft/vscode-go/gofixtures/coveragetest/b/blah.go:98992.0,98993.0 -2 1

@@ -10,11 +10,12 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getAllPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 
-export function browsePackages() {
+export const browsePackages: CommandFactory = () => () => {
 	let workDir = '';
 	let selectedText = '';
 	const editor = vscode.window.activeTextEditor;
@@ -36,13 +37,13 @@ export function browsePackages() {
 	}
 
 	showPackageFiles(selectedText, true, workDir);
-}
+};
 
 function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDir: string) {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go list" to fetch packages as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 	}
 
@@ -95,22 +96,19 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 	);
 }
 
-function showPackageList(workDir: string) {
-	return getAllPackages(workDir).then((pkgMap) => {
-		const pkgs: string[] = Array.from(pkgMap.keys());
-		if (pkgs.length === 0) {
-			return vscode.window.showErrorMessage(
-				'Could not find packages. Ensure `gopkgs -format {{.Name}};{{.ImportPath}}` runs successfully.'
-			);
-		}
-
-		vscode.window
-			.showQuickPick(pkgs.sort(), { placeHolder: 'Select a package to browse' })
-			.then((pkgFromDropdown) => {
-				if (!pkgFromDropdown) {
-					return;
-				}
-				showPackageFiles(pkgFromDropdown, false, workDir);
-			});
+async function showPackageList(workDir: string) {
+	const pkgMap = await getAllPackages(workDir);
+	const pkgs: string[] = Array.from(pkgMap.keys());
+	if (pkgs.length === 0) {
+		return vscode.window.showErrorMessage(
+			'Could not find packages. Ensure `go list -f "{{.Name}};{{.ImportPath}}" all` runs successfully.'
+		);
+	}
+	const pkgFromDropdown = await vscode.window.showQuickPick(pkgs.sort(), {
+		placeHolder: 'Select a package to browse'
 	});
+	if (!pkgFromDropdown) {
+		return;
+	}
+	showPackageFiles(pkgFromDropdown, false, workDir);
 }

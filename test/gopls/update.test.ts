@@ -9,7 +9,7 @@
 import assert from 'assert';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
-import * as lsp from '../../src/goLanguageServer';
+import * as lsp from '../../src/language/goLanguageServer';
 import * as goInstallTools from '../../src/goInstallTools';
 import { getTool, Tool } from '../../src/goTools';
 import { getCheckForToolsUpdatesConfig as getCheckForToolUpdatesConfig } from '../../src/util';
@@ -23,7 +23,7 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	const defaultConfigInspector = getGoConfig().inspect(CHECK_FOR_UPDATES);
 
 	test('default is as expected', () => {
-		const { key, defaultValue, globalValue, workspaceValue } = defaultConfigInspector;
+		const { key, defaultValue, globalValue, workspaceValue } = defaultConfigInspector ?? {};
 		assert.deepStrictEqual(
 			{ key, defaultValue, globalValue, workspaceValue },
 			{
@@ -107,6 +107,41 @@ suite('getCheckForToolUpdatesConfig tests', () => {
 	});
 });
 
+suite('gopls okForStagedRollout', () => {
+	const tool = getTool('gopls');
+	const sandbox = sinon.createSandbox();
+	teardown(() => {
+		sandbox.restore();
+	});
+
+	function daysAgo(d: number): Date {
+		const day = new Date();
+		day.setDate(day.getDate() - d);
+		return day;
+	}
+
+	async function testOkForStagedRollout(ver: string, published: Date | null, machineIDHash: number, want: boolean) {
+		const version = semver.parse(ver);
+
+		assert(version);
+		sandbox.stub(lsp, 'getTimestampForVersion').returns(Promise.resolve(published ? moment(published) : null));
+		const got = await lsp.okForStagedRollout(tool, version, () => machineIDHash);
+		assert.strictEqual(got, want);
+	}
+	test('published today, machine id hash % 100 < 10, want update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(0), 9, true));
+	test('published today, machine id hash % 100 >= 10, delay update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(0), 11, false));
+	test('published 2d ago, machine id hash % 100 < 30, want update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(2), 29, true));
+	test('published 2d ago, machine id hash % 100 >= 30, delay update', async () =>
+		await testOkForStagedRollout('v0.11.0', daysAgo(2), 30, false));
+	test('published 5d ago, want update', async () => await testOkForStagedRollout('v0.11.0', daysAgo(5), 99, true));
+	test('publish date unknown, want update', async () => await testOkForStagedRollout('0.11.0', null, 99, true));
+	test('prerelease, want update', async () => await testOkForStagedRollout('v0.11.0-pre.1', daysAgo(0), 99, true));
+	test('patch version, want update', async () => await testOkForStagedRollout('0.11.1', daysAgo(0), 99, true));
+});
+
 suite('gopls update tests', () => {
 	test('prompt for update', async () => {
 		const tool = getTool('gopls');
@@ -120,10 +155,10 @@ suite('gopls update tests', () => {
 		const latestPrereleaseVersionTimestamp = moment('2020-05-20', 'YYYY-MM-DD');
 
 		// name, usersVersion, acceptPrerelease, want
-		const testCases: [string, string, boolean, semver.SemVer][] = [
+		const testCases: [string, string, boolean, semver.SemVer | null][] = [
 			['outdated, tagged', 'v0.3.1', false, latestVersion],
 			['outdated, tagged (pre-release)', '0.3.1', true, latestPrereleaseVersion],
-			['up-to-date, tagged', latestVersion.format(), false, null],
+			['up-to-date, tagged', latestVersion?.format() ?? '', false, null],
 			['up-to-date tagged (pre-release)', 'v0.4.0', true, latestPrereleaseVersion],
 			['developer version', '(devel)', false, null],
 			['developer version (pre-release)', '(devel)', true, null],
@@ -152,7 +187,7 @@ suite('gopls update tests', () => {
 		];
 		for (const [name, usersVersion, acceptPrerelease, want] of testCases) {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
-				return usersVersion;
+				return { version: usersVersion };
 			});
 			sinon.replace(goInstallTools, 'latestToolVersion', async () => {
 				if (acceptPrerelease) {
@@ -167,16 +202,15 @@ suite('gopls update tests', () => {
 				if (version === latestPrereleaseVersion) {
 					return latestPrereleaseVersionTimestamp;
 				}
+				return null;
 			});
 			const got = await lsp.shouldUpdateLanguageServer(tool, {
 				enabled: true,
 				path: 'bad/path/to/gopls',
-				version: '',
+				version: undefined,
 				checkForUpdates: 'proxy',
 				env: {},
-				features: {
-					diagnostics: true
-				},
+				features: {},
 				flags: [],
 				modtime: new Date(),
 				serverName: 'gopls'
@@ -201,7 +235,7 @@ suite('version comparison', () => {
 		assert.strictEqual(
 			expected,
 			got,
-			`hard-coded minimum: ${tool.latestVersion.toString()} vs localVersion: ${moduleVersion}`
+			`hard-coded minimum: ${tool.latestVersion?.toString()} vs localVersion: ${moduleVersion}`
 		);
 	}
 
@@ -210,24 +244,24 @@ suite('version comparison', () => {
 	});
 
 	test('local delve is the minimum required version', async () => {
-		await testShouldUpdateTool(false, 'v' + latestVersion.toString());
+		await testShouldUpdateTool(false, 'v' + latestVersion?.toString());
 	});
 
 	test('local delve is newer', async () => {
-		await testShouldUpdateTool(false, `v${latestVersion.major}.${latestVersion.minor + 1}.0`);
+		await testShouldUpdateTool(false, `v${latestVersion?.major}.${(latestVersion?.minor ?? 0) + 1}.0`);
 	});
 
 	test('local delve is slightly older', async () => {
 		await testShouldUpdateTool(
 			true,
-			`v${latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.20201231000000-5360c6286949`
+			`v${latestVersion?.major}.${latestVersion?.minor}.${latestVersion?.patch}-0.20201231000000-5360c6286949`
 		);
 	});
 
 	test('local delve is slightly newer', async () => {
 		await testShouldUpdateTool(
 			false,
-			`v{$latestVersion.major}.${latestVersion.minor}.${latestVersion.patch}-0.30211231000000-5360c6286949`
+			`v{$latestVersion.major}.${latestVersion?.minor}.${latestVersion?.patch}-0.30211231000000-5360c6286949`
 		);
 	});
 

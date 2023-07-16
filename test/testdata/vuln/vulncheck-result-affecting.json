@@ -1,0 +1,94 @@
+{
+	"Vulns": [
+		{
+			"OSV": {
+				"id": "GO-2022-1059",
+				"details": "This is unaffecting",
+				"affected": [
+					{
+						"package": {
+							"name": "golang.org/x/text",
+							"ecosystem": "Go"
+						},
+						"database_specific": {
+							"url": "https://pkg.go.dev/vuln/GO-2022-1059"
+						}
+					}
+				]
+			},
+			"Modules": [
+				{
+					"Path": "golang.org/x/text",
+					"FoundVersion": "v0.3.5",
+					"FixedVersion": "v0.3.8",
+					"Packages": [
+						{
+							"Path": "golang.org/x/text/language",
+							"CallStacks": null
+						}
+					]
+				}
+			]
+		},
+		{
+			"OSV": {
+				"id": "GO-2021-0113",
+				"details": "This is used",
+				"affected": [
+					{
+						"package": {
+							"name": "golang.org/x/text",
+							"ecosystem": "Go"
+						},					
+						"database_specific": {
+							"url": "https://pkg.go.dev/vuln/GO-2021-0113"
+						}
+					}
+				]
+			},
+			"Modules": [
+				{
+					"Path": "golang.org/x/text",
+					"FoundVersion": "v0.3.5",
+					"FixedVersion": "v0.3.7",
+					"Packages": [
+						{
+							"Path": "golang.org/x/text/language",
+							"CallStacks": [
+								{
+									"Symbol": "Parse",
+									"Summary": "main.go:15:29: module2.main calls golang.org/x/text/language.Parse",
+									"Frames": [
+										{
+											"PkgPath": "module2",
+											"FuncName": "main",
+											"RecvType": "",
+											"Position": {
+												"Filename": "/Users/hakim/bugbash/govulncheck-study/module2/main.go",
+												"Offset": 230,
+												"Line": 15,
+												"Column": 29
+											}
+										},
+										{
+											"PkgPath": "golang.org/x/text/language",
+											"FuncName": "Parse",
+											"RecvType": "",
+											"Position": {
+												"Filename": "",
+												"Offset": 0,
+												"Line": 0,
+												"Column": 0
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"Mode": "govulncheck"
+}

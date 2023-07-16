@@ -166,7 +166,7 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("jq run failed (%v): %s", err, &stderr)
 	}
-	return stdout.Bytes(), nil
+	return bytes.TrimSpace(stdout.Bytes()), nil
 }
 
 // asVSCodeSettings converts the given options to match the VS Code settings
@@ -181,22 +181,21 @@ func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
 			return v[i].Name < v[j].Name
 		})
 	}
-	properties, err := collectProperties(seen)
+	goplsProperties, goProperties, err := collectProperties(seen)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(map[string]*Object{
-		"gopls": {
-			Type:                 "object",
-			MarkdownDescription:  "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
-			Scope:                "resource",
-			AdditionalProperties: false,
-			Properties:           properties,
-		},
-	})
+	goProperties["gopls"] = &Object{
+		Type:                 "object",
+		MarkdownDescription:  "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
+		Scope:                "resource",
+		AdditionalProperties: false,
+		Properties:           goplsProperties,
+	}
+	return json.Marshal(goProperties)
 }
 
-func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
+func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goProperties map[string]*Object, err error) {
 	var sorted []string
 	var containsEmpty bool
 	for k := range m {
@@ -210,60 +209,90 @@ func collectProperties(m map[string][]*OptionJSON) (map[string]*Object, error) {
 	if containsEmpty {
 		sorted = append(sorted, "")
 	}
-	properties := map[string]*Object{}
+	goplsProperties, goProperties = map[string]*Object{}, map[string]*Object{}
 	for _, hierarchy := range sorted {
-		for _, opt := range m[hierarchy] {
-			doc := opt.Doc
-			if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
-				doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
-			}
-			obj := &Object{
-				MarkdownDescription: doc,
-				// TODO: are all gopls settings in the resource scope?
-				Scope: "resource",
-				// TODO: consider 'additionalProperties' if gopls api-json
-				// outputs acceptable properties.
-				// TODO: deprecation attribute
-			}
-			// Handle any enum types.
-			if opt.Type == "enum" {
-				for _, v := range opt.EnumValues {
-					unquotedName, err := strconv.Unquote(v.Value)
-					if err != nil {
-						return nil, err
-					}
-					obj.Enum = append(obj.Enum, unquotedName)
-					obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
-				}
-			}
-			// Handle any objects whose keys are enums.
-			if len(opt.EnumKeys.Keys) > 0 {
-				if obj.Properties == nil {
-					obj.Properties = map[string]*Object{}
-				}
+		if hierarchy == "ui.inlayhint" {
+			for _, opt := range m[hierarchy] {
 				for _, k := range opt.EnumKeys.Keys {
 					unquotedName, err := strconv.Unquote(k.Name)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
-					obj.Properties[unquotedName] = &Object{
-						Type:                propertyType(opt.EnumKeys.ValueType),
+					key := "go.inlayHints." + unquotedName
+					goProperties[key] = &Object{
 						MarkdownDescription: k.Doc,
-						Default:             formatDefault(k.Default),
+						Type:                "boolean",
+						Default:             formatDefault(k.Default, "boolean"),
 					}
 				}
 			}
-			obj.Type = propertyType(opt.Type)
-			obj.Default = formatOptionDefault(opt)
-
+			continue
+		}
+		for _, opt := range m[hierarchy] {
+			obj, err := toObject(opt)
+			if err != nil {
+				return nil, nil, err
+			}
+			// TODO(hyangah): move diagnostic to all go.diagnostic.
+			if hierarchy == "ui.diagnostic" && opt.Name == "vulncheck" {
+				goProperties["go.diagnostic.vulncheck"] = obj
+				continue
+			}
 			key := opt.Name
 			if hierarchy != "" {
 				key = hierarchy + "." + key
 			}
-			properties[key] = obj
+			goplsProperties[key] = obj
 		}
 	}
-	return properties, nil
+	return goplsProperties, goProperties, nil
+}
+
+func toObject(opt *OptionJSON) (*Object, error) {
+	doc := opt.Doc
+	if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
+		doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
+	}
+	obj := &Object{
+		MarkdownDescription: doc,
+		// TODO: are all gopls settings in the resource scope?
+		Scope: "resource",
+		// TODO: consider 'additionalProperties' if gopls api-json
+		// outputs acceptable properties.
+		// TODO: deprecation attribute
+	}
+	// Handle any enum types.
+	if opt.Type == "enum" {
+		for _, v := range opt.EnumValues {
+			unquotedName, err := strconv.Unquote(v.Value)
+			if err != nil {
+				return nil, err
+			}
+			obj.Enum = append(obj.Enum, unquotedName)
+			obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
+		}
+	}
+	// Handle any objects whose keys are enums.
+	if len(opt.EnumKeys.Keys) > 0 {
+		if obj.Properties == nil {
+			obj.Properties = map[string]*Object{}
+		}
+		for _, k := range opt.EnumKeys.Keys {
+			unquotedName, err := strconv.Unquote(k.Name)
+			if err != nil {
+				return nil, err
+			}
+			obj.Properties[unquotedName] = &Object{
+				Type:                propertyType(opt.EnumKeys.ValueType),
+				MarkdownDescription: k.Doc,
+				Default:             formatDefault(k.Default, opt.EnumKeys.ValueType),
+			}
+		}
+	}
+	obj.Type = propertyType(opt.Type)
+	obj.Default = formatOptionDefault(opt)
+
+	return obj, nil
 }
 
 func formatOptionDefault(opt *OptionJSON) interface{} {
@@ -272,21 +301,26 @@ func formatOptionDefault(opt *OptionJSON) interface{} {
 	if len(opt.EnumKeys.Keys) > 0 {
 		return nil
 	}
-	def := opt.Default
-	switch opt.Type {
-	case "enum", "string", "time.Duration":
-		unquote, err := strconv.Unquote(def)
-		if err == nil {
-			def = unquote
-		}
-	}
-	return formatDefault(def)
+
+	return formatDefault(opt.Default, opt.Type)
 }
 
 // formatDefault converts a string-based default value to an actual value that
 // can be marshaled to JSON. Right now, gopls generates default values as
 // strings, but perhaps that will change.
-func formatDefault(def string) interface{} {
+func formatDefault(def, typ string) interface{} {
+	switch typ {
+	case "enum", "string", "time.Duration":
+		unquote, err := strconv.Unquote(def)
+		if err == nil {
+			def = unquote
+		}
+	case "[]string":
+		var x []string
+		if err := json.Unmarshal([]byte(def), &x); err == nil {
+			return x
+		}
+	}
 	switch def {
 	case "{}", "[]":
 		return nil

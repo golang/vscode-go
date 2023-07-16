@@ -1,7 +1,7 @@
 import assert = require('assert');
 import path = require('path');
 import sinon = require('sinon');
-import { Uri, workspace } from 'vscode';
+import { Range, TestItem, Uri, workspace } from 'vscode';
 import * as testUtils from '../../src/testUtils';
 import { forceDidOpenTextDocument } from './goTest.utils';
 import { GoTestExplorer } from '../../src/goTest/explore';
@@ -13,7 +13,45 @@ suite('Go Test Runner', () => {
 
 	let testExplorer: GoTestExplorer;
 
-	suite.skip('Profile', () => {
+	suite('parseOutput', () => {
+		const ctx = MockExtensionContext.new();
+		suiteSetup(async () => {
+			testExplorer = GoTestExplorer.setup(ctx, {});
+		});
+		suiteTeardown(() => ctx.teardown());
+
+		const fileURI = Uri.parse('file:///path/to/mod/file.go');
+		const filePath = fileURI.fsPath;
+
+		function testParseOutput(output: string, expected: { file: string; line: number; msg: string }[]) {
+			const id = GoTest.id(fileURI, 'test', 'TestXXX');
+			const ti = { id, uri: fileURI, range: new Range(1, 0, 100, 0) } as TestItem;
+			const testMsgs = testExplorer.runner.parseOutput(ti, [output]);
+			const got = testMsgs.map((m) => {
+				return {
+					file: m.location?.uri.fsPath,
+					line: m.location?.range.start.line,
+					msg: m.message
+				};
+			});
+			assert.strictEqual(JSON.stringify(got), JSON.stringify(expected));
+		}
+		test('no line info ', () => testParseOutput(' foo \n', []));
+		test('file path without preceding space', () => testParseOutput('file.go:7: foo\n', [])); // valid test message starts with a space.
+		test('valid test message format', () =>
+			testParseOutput('  file.go:7: foo\n', [{ file: filePath, line: 6, msg: 'foo\n' }]));
+		test('message without ending newline', () =>
+			testParseOutput(
+				'  file.go:7: foo ', // valid test message contains a new line.
+				[]
+			));
+		test('user print message before test message', () =>
+			testParseOutput('random print file.go:8: foo\n', [{ file: filePath, line: 7, msg: 'foo\n' }]));
+		test('multiple file locs in one line', () =>
+			testParseOutput('file.go:1: line1 . file.go:2: line2 \n', [{ file: filePath, line: 1, msg: 'line2 \n' }]));
+	});
+
+	suite('Profile', () => {
 		const sandbox = sinon.createSandbox();
 		const ctx = MockExtensionContext.new();
 
@@ -21,7 +59,7 @@ suite('Go Test Runner', () => {
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -52,7 +90,15 @@ suite('Go Test Runner', () => {
 			assert(test, 'No tests found');
 
 			assert(
-				await testExplorer.runner.run({ include: [test] }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run(
+					{
+						include: [test],
+						exclude: undefined,
+						profile: undefined
+					},
+					undefined,
+					{ kind: 'cpu' }
+				),
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
@@ -64,7 +110,14 @@ suite('Go Test Runner', () => {
 			const tests = Array.from(testExplorer.resolver.allItems).filter((x) => GoTest.parseId(x.id).name);
 			assert(tests, 'No tests found');
 
-			assert(await testExplorer.runner.run({ include: tests }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: tests,
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(stub.callCount, 1, 'expected one call to goTest');
 			assert.deepStrictEqual(
 				stub.lastCall.args[0].functions,
@@ -79,7 +132,15 @@ suite('Go Test Runner', () => {
 			console.log(`running ${tests.length} tests`);
 
 			assert(
-				await testExplorer.runner.run({ include: tests }, null, { kind: 'cpu' }),
+				await testExplorer.runner.run(
+					{
+						include: tests,
+						exclude: undefined,
+						profile: undefined
+					},
+					undefined,
+					{ kind: 'cpu' }
+				),
 				'Failed to execute `go test`'
 			);
 			console.log('verify we got expected calls');
@@ -95,6 +156,10 @@ suite('Go Test Runner', () => {
 	});
 
 	suite('Subtest', () => {
+		// WARNING: each call to testExplorer.runner.run triggers one or more
+		// `go test` command runs (testUtils.goTest is spied, not mocked or replaced).
+		// Each `go test` command invocation can take seconds on slow machines.
+		// As we add more cases, the timeout should be increased accordingly.
 		const sandbox = sinon.createSandbox();
 		const subTestDir = path.join(fixtureDir, 'subTest');
 		const ctx = MockExtensionContext.new();
@@ -103,7 +168,7 @@ suite('Go Test Runner', () => {
 		let spy: sinon.SinonSpy<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			uri = Uri.file(path.join(subTestDir, 'sub_test.go'));
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -129,7 +194,14 @@ suite('Go Test Runner', () => {
 
 			// Run TestMain
 			console.log('Run TestMain');
-			assert(await testExplorer.runner.run({ include: [tMain] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tMain],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 1, 'expected one call to goTest');
 
 			// Verify TestMain was run
@@ -144,9 +216,22 @@ suite('Go Test Runner', () => {
 			const tSub = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub'));
 			assert(tSub, 'Subtest was not created');
 
+			console.log('Locate subtests with conflicting names');
+			const tSub2 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01'));
+			assert(tSub2, 'Subtest #01 was not created');
+			const tSub3 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01#01'));
+			assert(tSub3, 'Subtest #01#01 was not created');
+
 			// Run subtest by itself
 			console.log('Run subtest by itself');
-			assert(await testExplorer.runner.run({ include: [tSub] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tSub],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 1, 'expected one call to goTest');
 
 			// Verify TestMain/Sub was run
@@ -162,8 +247,15 @@ suite('Go Test Runner', () => {
 
 			// Attempt to run subtest and other test - should not work
 			console.log('Attempt to run subtest and other test');
-			assert(await testExplorer.runner.run({ include: [tSub, tOther] }), 'Failed to execute `go test`');
+			assert(
+				await testExplorer.runner.run({
+					include: [tSub, tOther],
+					exclude: undefined,
+					profile: undefined
+				}),
+				'Failed to execute `go test`'
+			);
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		});
+		}).timeout(10000);
 	});
 });

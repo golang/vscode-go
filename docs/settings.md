@@ -4,7 +4,7 @@ This extension is highly configurable, and as such, offers a number of settings.
 
 To navigate to your settings, open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P) and search for "settings". The simplest way to modify your settings is through "Preferences: Open Settings (UI)".
 
-For tuning the features provided by `gopls`, see the [section](https://github.com/golang/vscode-go/blob/master/docs/settings.md#settings-for-gopls) for `gopls` settings.
+For tuning the features provided by `gopls`, see the [section](settings.md#settings-for-gopls) for `gopls` settings.
 
 ## Latest changes
 
@@ -48,25 +48,26 @@ Default:
 ```
 ### `go.alternateTools`
 
-Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.
 | Properties | Description |
 | --- | --- |
+| `customFormatter` | Custom formatter to use instead of the language server. This should be used with the `custom` option in `#go.formatTool#`. <br/> Default: `""` |
 | `dlv` | Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary. <br/> Default: `"dlv"` |
 | `go` | Alternate tool to use instead of the go binary or alternate path to use for the go binary. <br/> Default: `"go"` |
-| `go-outline` | Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary. <br/> Default: `"go-outline"` |
-| `gopkgs` | Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary. <br/> Default: `"gopkgs"` |
 | `gopls` | Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary. <br/> Default: `"gopls"` |
-### `go.autocompleteUnimportedPackages`
+### `go.autocompleteUnimportedPackages (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Include unimported packages in auto-complete suggestions. Not applicable when using the language server.
 
 Default: `false`
 ### `go.buildFlags`
 
 Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.build.buildFlags` is not specified.
-### `go.buildOnSave`
+### `go.buildOnSave (deprecated)`
 
-Compiles code on file save using 'go build' or 'go test -c'. Options are 'workspace', 'package', or 'off'.  Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
+Enable the Go language server (`#go.useLanguageServer#`) to diagnose compile errors.
+Compiles code on file save using 'go build' or 'go test -c'. Not applicable when using the language server.<br/>
 Allowed Options: `package`, `workspace`, `off`
 
 Default: `"package"`
@@ -152,13 +153,26 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag. <br/> Default: `false` |
 | `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not. <br/> Default: `false` |
 | `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request). |
+### `go.diagnostic.vulncheck`
+
+(Experimental) vulncheck enables vulnerability scanning.
+<br/>
+Allowed Options:
+
+* `Imports`: `"Imports"`: In Imports mode, `gopls` will report vulnerabilities that affect packages
+directly and indirectly used by the analyzed main module.
+* `Off`: `"Off"`: Disable vulnerability analysis.
+
+
+Default: `"Off"`
 ### `go.disableConcurrentTests`
 
 If true, tests will not run concurrently. When a new test run is started, the previous will be cancelled.
 
 Default: `false`
-### `go.docsTool`
+### `go.docsTool (deprecated)`
 
+Documentation support without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.<br/>
 Allowed Options: `godoc`, `gogetdoc`, `guru`
 
@@ -175,7 +189,7 @@ Experimental Feature: Enable/Disable entries from the context menu in the editor
 | `fillStruct` | If true, adds command to fill struct literal with default values to the editor context menu <br/> Default: `true` |
 | `generateTestForFile` | If true, adds command to generate unit tests for current file to the editor context menu <br/> Default: `true` |
 | `generateTestForFunction` | If true, adds command to generate unit tests for function under the cursor to the editor context menu <br/> Default: `true` |
-| `generateTestForPackage` | If true, adds command to generate unit tests for currnt package to the editor context menu <br/> Default: `true` |
+| `generateTestForPackage` | If true, adds command to generate unit tests for current package to the editor context menu <br/> Default: `true` |
 | `playground` | If true, adds command to upload the current file or selection to the Go Playground <br/> Default: `true` |
 | `removeTags` | If true, adds command to remove configured tags from struct fields to the editor context menu <br/> Default: `true` |
 | `testAtCursor` | If true, adds command to run the test under the cursor to the editor context menu <br/> Default: `false` |
@@ -209,13 +223,11 @@ Default:
 Feature level setting to enable/disable code lens for references and run/debug tests
 | Properties | Description |
 | --- | --- |
-| `references` | If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead. <br/> Default: `false` |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
 
 Default:
 ```
 {
-	"references" :	false,
 	"runtest" :	true,
 }
 ```
@@ -224,59 +236,132 @@ Default:
 Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.
 ### `go.formatTool`
 
-Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.<br/>
+When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.<br/>
 Allowed Options:
 
 * `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
-* `gofmt`: Formats the file according to the standard Go style.
-* `goimports`: Organizes imports and formats the file with gofmt.
+* `gofmt`: Formats the file according to the standard Go style. (not applicable when the language server is enabled)
+* `goimports`: Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)
 * `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
-* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt.
-* `gofumports`: Applies gofumpt formatting and organizes imports.
+* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)
+* `custom`: Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT.
 
 
 Default: `"default"`
 ### `go.generateTestsFlags`
 
 Additional command line flags to pass to `gotests` for generating tests.
-### `go.gocodeAutoBuild`
+### `go.gocodeAutoBuild (deprecated)`
 
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
 Enable gocode's autobuild feature. Not applicable when using the language server.
 
 Default: `false`
-### `go.gocodeFlags`
+### `go.gocodeFlags (deprecated)`
 
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
 Additional flags to pass to gocode. Not applicable when using the language server.
 
-Default: `[-builtin -ignore-case -unimported-packages]`
-### `go.gocodePackageLookupMode`
+Default: `["-builtin", "-ignore-case", "-unimported-packages"]`
+### `go.gocodePackageLookupMode (deprecated)`
 
-Used to determine the Go package lookup rules for completions by gocode. Only applies when using nsf/gocode. Latest versions of the Go extension uses mdempsky/gocode by default. Not applicable when using the language server.<br/>
+`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`).
+Used to determine the Go package lookup rules for completions by gocode. Not applicable when using the language server.<br/>
 Allowed Options: `go`, `gb`, `bzl`
 
 Default: `"go"`
 ### `go.gopath`
 
-Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.
 ### `go.goroot`
 
-Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
-### `go.gotoSymbol.ignoreFolders`
+Specifies the GOROOT to use when no environment variable is set.
+### `go.gotoSymbol.ignoreFolders (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.
-### `go.gotoSymbol.includeGoroot`
+### `go.gotoSymbol.includeGoroot (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
-### `go.gotoSymbol.includeImports`
+### `go.gotoSymbol.includeImports (deprecated)`
 
+Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.
 
 Default: `false`
 ### `go.inferGopath`
 
-Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Infer GOPATH from the workspace root. This is ignored when using Go Modules.
+
+Default: `false`
+### `go.inlayHints.assignVariableTypes`
+
+Enable/disable inlay hints for variable types in assign statements:
+```go
+	i/* int*/, j/* int*/ := 0, len(r)-1
+```
+
+Default: `false`
+### `go.inlayHints.compositeLiteralFields`
+
+Enable/disable inlay hints for composite literal field names:
+```go
+	{/*in: */"Hello, world", /*want: */"dlrow ,olleH"}
+```
+
+Default: `false`
+### `go.inlayHints.compositeLiteralTypes`
+
+Enable/disable inlay hints for composite literal types:
+```go
+	for _, c := range []struct {
+		in, want string
+	}{
+		/*struct{ in string; want string }*/{"Hello, world", "dlrow ,olleH"},
+	}
+```
+
+Default: `false`
+### `go.inlayHints.constantValues`
+
+Enable/disable inlay hints for constant values:
+```go
+	const (
+		KindNone   Kind = iota/* = 0*/
+		KindPrint/*  = 1*/
+		KindPrintf/* = 2*/
+		KindErrorf/* = 3*/
+	)
+```
+
+Default: `false`
+### `go.inlayHints.functionTypeParameters`
+
+Enable/disable inlay hints for implicit type parameters on generic functions:
+```go
+	myFoo/*[int, string]*/(1, "hello")
+```
+
+Default: `false`
+### `go.inlayHints.parameterNames`
+
+Enable/disable inlay hints for parameter names:
+```go
+	parseInt(/* str: */ "123", /* radix: */ 8)
+```
+
+Default: `false`
+### `go.inlayHints.rangeVariableTypes`
+
+Enable/disable inlay hints for variable types in range statements:
+```go
+	for k/* int*/, v/* string*/ := range []string{} {
+		fmt.Println(k, v)
+	}
+```
 
 Default: `false`
 ### `go.installDependenciesWhenBuilding`
@@ -284,19 +369,6 @@ Default: `false`
 If true, then `-i` flag will be passed to `go build` everytime the code is compiled. Since Go 1.10, setting this may be unnecessary unless you are in GOPATH mode and do not use the language server.
 
 Default: `false`
-### `go.languageServerExperimentalFeatures`
-
-Temporary flag to enable/disable diagnostics from the language server. This setting will be deprecated soon. Please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50).
-| Properties | Description |
-| --- | --- |
-| `diagnostics` | If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings. <br/> Default: `true` |
-
-Default:
-```
-{
-	"diagnostics" :	true,
-}
-```
 ### `go.languageServerFlags`
 
 Flags like -rpc.trace and -logfile to be used while running the language server.
@@ -306,7 +378,13 @@ Flags to pass to Lint tool (e.g. ["-min_confidence=.8"])
 ### `go.lintOnSave`
 
 Lints code on file save using the configured Lint tool. Options are 'file', 'package', 'workspace' or 'off'.<br/>
-Allowed Options: `file`, `package`, `workspace`, `off`
+Allowed Options:
+
+* `file`: lint the current file on file saving
+* `package`: lint the current package on file saving
+* `workspace`: lint all the packages in the current workspace root folder on file saving
+* `off`: do not run lint automatically
+
 
 Default: `"package"`
 ### `go.lintTool`
@@ -315,8 +393,9 @@ Specifies Lint tool name.<br/>
 Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
 
 Default: `"staticcheck"`
-### `go.liveErrors`
+### `go.liveErrors (deprecated)`
 
+Real-time diagnostics without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`).
 Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.
 | Properties | Description |
 | --- | --- |
@@ -370,9 +449,19 @@ Default:
 	"tags" :	"",
 }
 ```
+### `go.showWelcome`
+
+Specifies whether to show the Welcome experience on first install
+
+Default: `true`
 ### `go.survey.prompt`
 
 Prompt for surveys, including the gopls survey and the Go developer survey.
+
+Default: `true`
+### `go.tasks.provideDefault`
+
+enable the default go build/test task provider.
 
 Default: `true`
 ### `go.terminal.activateEnvironment`
@@ -435,10 +524,10 @@ Specifies the timeout for go test in ParseDuration format.
 Default: `"30s"`
 ### `go.toolsEnvVars`
 
-Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)
+Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.
 ### `go.toolsGopath`
 
-Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with "Go: Toggle Workspace Trust Flag".
+Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.
 ### `go.toolsManagement.autoUpdate`
 
 Automatically update the tools used by the extension, without prompting the user.
@@ -455,19 +544,26 @@ Allowed Options:
 
 
 Default: `"proxy"`
+### `go.toolsManagement.go`
+
+The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.
+
+Default: `""`
 ### `go.trace.server`
 
 Trace the communication between VS Code and the Go language server.<br/>
 Allowed Options: `off`, `messages`, `verbose`
 
 Default: `"off"`
-### `go.useCodeSnippetsOnFunctionSuggest`
+### `go.useCodeSnippetsOnFunctionSuggest (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead.
 Complete functions with their parameter signature, including the variable type. Not propagated to the language server.
 
 Default: `false`
-### `go.useCodeSnippetsOnFunctionSuggestWithoutType`
+### `go.useCodeSnippetsOnFunctionSuggestWithoutType (deprecated)`
 
+Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead.
 Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.
 
 Default: `false`
@@ -479,7 +575,7 @@ When enabled, the extension automatically checks the Go proxy if there are updat
 Default: `true`
 ### `go.useLanguageServer`
 
-Use the Go language server "gopls" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics.
+Enable intellisense, code navigation, refactoring, formatting & diagnostics for Go. The features are powered by the Go language server "gopls".
 
 Default: `true`
 ### `go.vetFlags`
@@ -488,7 +584,12 @@ Flags to pass to `go tool vet` (e.g. ["-all", "-shadow"])
 ### `go.vetOnSave`
 
 Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.<br/>
-Allowed Options: `package`, `workspace`, `off`
+Allowed Options:
+
+* `package`: vet the current package on file saving
+* `workspace`: vet all the packages in the current workspace root folder on file saving
+* `off`: do not run vet automatically
+
 
 Default: `"package"`
 ### `gopls`
@@ -538,14 +639,20 @@ relative to the workspace folder. They are evaluated in order, and
 the last filter that applies to a path controls whether it is included.
 The path prefix can be empty, so an initial `-` excludes everything.
 
+DirectoryFilters also supports the `**` operator to match 0 or more directories.
+
 Examples:
 
-Exclude node_modules: `-node_modules`
+Exclude node_modules at current depth: `-node_modules`
+
+Exclude node_modules at any depth: `-**/node_modules`
 
 Include only project_a: `-` (exclude everything), `+project_a`
 
 Include only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`
 
+
+Default: `["-**/node_modules"]`
 ### `build.env`
 
 env adds environment variables to external commands run by `gopls`, most notably `go list`.
@@ -561,34 +668,6 @@ a go.mod file, narrowing the scope to that directory if it exists.
 
 
 Default: `true`
-### `build.experimentalPackageCacheKey`
-
-(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key
-for package type information to increase cache hits. This setting removes
-the user's environment, build flags, and working directory from the cache
-key, which should be a safe change as all relevant inputs into the type
-checking pass are already hashed into the key. This is temporarily guarded
-by an experiment because caching behavior is subtle and difficult to
-comprehensively test.
-
-
-Default: `true`
-### `build.experimentalUseInvalidMetadata`
-
-(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated
-package metadata to provide editor features if the go command fails to
-load packages for some reason (like an invalid go.mod file). This will
-eventually be the default behavior, and this setting will be removed.
-
-
-Default: `false`
-### `build.experimentalWorkspaceModule`
-
-(Experimental) experimentalWorkspaceModule opts a user into the experimental support
-for multi-module workspaces.
-
-
-Default: `false`
 ### `build.memoryMode`
 
 (Experimental) memoryMode controls the tradeoff `gopls` makes between memory usage and
@@ -605,6 +684,29 @@ References and Rename will miss results in such packages.
 
 
 Default: `"Normal"`
+### `build.standaloneTags`
+
+standaloneTags specifies a set of build constraints that identify
+individual Go source files that make up the entire main package of an
+executable.
+
+A common example of standalone main files is the convention of using the
+directive `//go:build ignore` to denote files that are not intended to be
+included in any package, for example because they are invoked directly by
+the developer using `go run`.
+
+Gopls considers a file to be a standalone main file if and only if it has
+package name "main" and has a build directive of the exact form
+"//go:build tag" or "// +build tag", where tag is among the list of tags
+configured by this setting. Notably, if the build constraint is more
+complicated than a simple tag (such as the composite constraint
+`//go:build tag && go1.18`), the file is not considered to be a standalone
+main file.
+
+This setting is only supported when gopls is built with Go 1.16 or later.
+
+
+Default: `["ignore"]`
 ### `build.templateExtensions`
 
 templateExtensions gives the extensions of file names that are treateed
@@ -630,7 +732,7 @@ Default: `""`
 
 codelenses overrides the enabled/disabled state of code lenses. See the
 "Code Lenses" section of the
-[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)
+[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#code-lenses)
 for the list of supported lenses.
 
 Example Usage:
@@ -651,6 +753,7 @@ Example Usage:
 | `gc_details` | Toggle the calculation of gc annotations. <br/> Default: `false` |
 | `generate` | Runs `go generate` for a given directory. <br/> Default: `true` |
 | `regenerate_cgo` | Regenerates cgo definitions. <br/> Default: `true` |
+| `run_govulncheck` | Run vulnerability check (`govulncheck`). <br/> Default: `false` |
 | `test` | Runs `go test` for a specific set of test or benchmark functions. <br/> Default: `false` |
 | `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
 | `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
@@ -667,7 +770,7 @@ results. Zero means unlimited.
 Default: `"100ms"`
 ### `ui.completion.experimentalPostfixCompletions`
 
-(Experimental) experimentalPostfixCompletions enables artifical method snippets
+(Experimental) experimentalPostfixCompletions enables artificial method snippets
 such as "someSlice.sort!".
 
 
@@ -691,8 +794,8 @@ Default: `false`
 
 analyses specify analyses that the user would like to enable or disable.
 A map of the names of analysis passes that should be enabled/disabled.
-A full list of analyzers that gopls uses can be found
-[here](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).
+A full list of analyzers that gopls uses can be found in
+[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).
 
 Example Usage:
 
@@ -712,44 +815,49 @@ Example Usage:
 | `atomic` | check for common mistakes using the sync/atomic package <br/> The atomic checker looks for assignment statements of the form: <br/> <pre>x = atomic.AddUint64(&x, 1)</pre><br/> which are not atomic. <br/> Default: `true` |
 | `atomicalign` | check for non-64-bits-aligned arguments to sync/atomic functions <br/> Default: `true` |
 | `bools` | check for common mistakes involving boolean operators <br/> Default: `true` |
-| `buildtag` | check that +build tags are well-formed and correctly located <br/> Default: `true` |
+| `buildtag` | check //go:build and // +build directives <br/> Default: `true` |
 | `cgocall` | detect some violations of the cgo pointer passing rules <br/> Check for invalid cgo pointer passing. This looks for code that uses cgo to call C code passing values whose types are almost always invalid according to the cgo pointer sharing rules. Specifically, it warns about attempts to pass a Go chan, map, func, or slice to C, either directly, or via a pointer, array, or struct. <br/> Default: `true` |
 | `composites` | check for unkeyed composite literals <br/> This analyzer reports a diagnostic for composite literals of struct types imported from another package that do not use the field-keyed syntax. Such literals are fragile because the addition of a new field (even if unexported) to the struct will cause compilation to fail. <br/> As an example, <br/> <pre>err = &net.DNSConfigError{err}</pre><br/> should be replaced by: <br/> <pre>err = &net.DNSConfigError{Err: err}</pre><br/> <br/> Default: `true` |
 | `copylocks` | check for locks erroneously passed by value <br/> Inadvertently copying a value containing a lock, such as sync.Mutex or sync.WaitGroup, may cause both copies to malfunction. Generally such values should be referred to through a pointer. <br/> Default: `true` |
 | `deepequalerrors` | check for calls of reflect.DeepEqual on error values <br/> The deepequalerrors checker looks for calls of the form: <br/>     reflect.DeepEqual(err1, err2) <br/> where err1 and err2 are errors. Using reflect.DeepEqual to compare errors is discouraged. <br/> Default: `true` |
+| `directive` | check Go toolchain directives such as //go:debug <br/> This analyzer checks for problems with known Go toolchain directives in all Go source files in a package directory, even those excluded by //go:build constraints, and all non-Go source files too. <br/> For //go:debug (see https://go.dev/doc/godebug), the analyzer checks that the directives are placed only in Go source files, only above the package comment, and only in package main or *_test.go files. <br/> Support for other known directives may be added in the future. <br/> This analyzer does not check //go:build, which is handled by the buildtag analyzer. <br/> <br/> Default: `true` |
+| `embed` | check for //go:embed directive import <br/> This analyzer checks that the embed package is imported when source code contains //go:embed comment directives. The embed package must be imported for //go:embed directives to function.import _ "embed". <br/> Default: `true` |
 | `errorsas` | report passing non-pointer or non-error values to errors.As <br/> The errorsas analysis reports calls to errors.As where the type of the second argument is not a pointer to a type implementing error. <br/> Default: `true` |
-| `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the optimal order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> <br/> Default: `false` |
+| `fieldalignment` | find structs that would use less memory if their fields were sorted <br/> This analyzer find structs that can be rearranged to use less memory, and provides a suggested edit with the most compact order. <br/> Note that there are two different diagnostics reported. One checks struct size, and the other reports "pointer bytes" used. Pointer bytes is how many bytes of the object that the garbage collector has to potentially scan for pointers, for example: <br/> <pre>struct { uint32; string }</pre><br/> have 16 pointer bytes because the garbage collector has to scan up through the string's inner pointer. <br/> <pre>struct { string; *uint32 }</pre><br/> has 24 pointer bytes because it has to scan further through the *uint32. <br/> <pre>struct { string; uint32 }</pre><br/> has 8 because it can stop immediately after the string pointer. <br/> Be aware that the most compact order is not always the most efficient. In rare cases it may cause two variables each updated by its own goroutine to occupy the same CPU cache line, inducing a form of memory contention known as "false sharing" that slows down both goroutines. <br/> <br/> Default: `false` |
 | `fillreturns` | suggest fixes for errors due to an incorrect number of return values <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre>will turn into <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> <br/> Default: `true` |
 | `fillstruct` | note incomplete struct initializations <br/> This analyzer provides diagnostics for any struct literals that do not have any fields initialized. Because the suggested fix for this analysis is expensive to compute, callers should compute it separately, using the SuggestedFix function below. <br/> <br/> Default: `true` |
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
-| `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> <br/> Default: `true` |
+| `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> Default: `true` |
 | `infertypeargs` | check for unnecessary type arguments in call expressions <br/> Explicit type arguments may be omitted from call expressions if they can be inferred from function arguments, or from other type arguments: <br/> <pre>func f[T any](T) {}<br/><br/><br/>func _() {<br/>	f[string]("foo") // string could be inferred<br/>}</pre><br/> <br/> Default: `true` |
-| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer checks for references to loop variables from within a function literal inside the loop body. It checks only instances where the function literal is called in a defer or go statement that is the last statement in the loop body, as otherwise we would need whole program analysis. <br/> For example: <br/> <pre>for i, v := range s {<br/>	go func() {<br/>		println(i, v) // not what you might expect<br/>	}()<br/>}</pre><br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
+| `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer reports places where a function literal references the iteration variable of an enclosing loop, and the loop calls the function in such a way (e.g. with go or defer) that it may outlive the loop iteration and possibly observe the wrong value of the variable. <br/> In this example, all the deferred functions run after the loop has completed, so all observe the final value of v. <br/> <pre>for _, v := range list {<br/>    defer func() {<br/>        use(v) // incorrect<br/>    }()<br/>}</pre><br/> One fix is to create a new variable for each iteration of the loop: <br/> <pre>for _, v := range list {<br/>    v := v // new var per iteration<br/>    defer func() {<br/>        use(v) // ok<br/>    }()<br/>}</pre><br/> The next example uses a go statement and has a similar problem. In addition, it has a data race because the loop updates v concurrent with the goroutines accessing it. <br/> <pre>for _, v := range elem {<br/>    go func() {<br/>        use(v)  // incorrect, and a data race<br/>    }()<br/>}</pre><br/> A fix is the same as before. The checker also reports problems in goroutines started by golang.org/x/sync/errgroup.Group. A hard-to-spot variant of this form is common in parallel tests: <br/> <pre>func Test(t *testing.T) {<br/>    for _, test := range tests {<br/>        t.Run(test.name, func(t *testing.T) {<br/>            t.Parallel()<br/>            use(test) // incorrect, and a data race<br/>        })<br/>    }<br/>}</pre><br/> The t.Parallel() call causes the rest of the function to execute concurrent with the loop. <br/> The analyzer reports references only in the last statement, as it is not deep enough to understand the effects of subsequent statements that might render the reference benign. ("Last statement" is defined recursively in compound statements such as if, switch, and select.) <br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
 | `lostcancel` | check cancel func returned by context.WithCancel is called <br/> The cancellation function returned by context.WithCancel, WithTimeout, and WithDeadline must be called or the new context will remain live until its parent context is cancelled. (The background context is never cancelled.) <br/> Default: `true` |
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
-| `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> <br/> Default: `false` |
+| `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> Default: `false` |
 | `nonewvars` | suggested fixes for "no new vars on left side of :=" <br/> This checker provides suggested fixes for type errors of the type "no new vars on left side of :=". For example: <pre>z := 1<br/>z := 2</pre>will turn into <pre>z := 1<br/>z = 2</pre><br/> <br/> Default: `true` |
-| `noresultvalues` | suggested fixes for "no result values expected" <br/> This checker provides suggested fixes for type errors of the type "no result values expected". For example: <pre>func z() { return nil }</pre>will turn into <pre>func z() { return }</pre><br/> <br/> Default: `true` |
-| `printf` | check consistency of Printf format strings and arguments <br/> The check applies to known functions (for example, those in package fmt) as well as any detected wrappers of known functions. <br/> A function that wants to avail itself of printf checking but is not found by this analyzer's heuristics (for example, due to use of dynamic calls) can insert a bogus call: <br/> <pre>if false {<br/>	_ = fmt.Sprintf(format, args...) // enable printf checking<br/>}</pre><br/> The -funcs flag specifies a comma-separated list of names of additional known formatting functions or methods. If the name contains a period, it must denote a specific function using one of the following forms: <br/> <pre>dir/pkg.Function<br/>dir/pkg.Type.Method<br/>(*dir/pkg.Type).Method</pre><br/> Otherwise the name is interpreted as a case-insensitive unqualified identifier such as "errorf". Either way, if a listed name ends in f, the function is assumed to be Printf-like, taking a format string before the argument list. Otherwise it is assumed to be Print-like, taking a list of arguments with no format string. <br/> <br/> Default: `true` |
-| `shadow` | check for possible unintended shadowing of variables <br/> This analyzer check for shadowed variables. A shadowed variable is a variable declared in an inner scope with the same name and type as a variable in an outer scope, and where the outer variable is mentioned after the inner one is declared. <br/> (This definition can be refined; the module generates too many false positives and is not yet enabled by default.) <br/> For example: <br/> <pre>func BadRead(f *os.File, buf []byte) error {<br/>	var err error<br/>	for {<br/>		n, err := f.Read(buf) // shadows the function variable 'err'<br/>		if err != nil {<br/>			break // causes return of wrong value<br/>		}<br/>		foo(buf)<br/>	}<br/>	return err<br/>}</pre><br/> <br/> Default: `false` |
+| `noresultvalues` | suggested fixes for unexpected return values <br/> This checker provides suggested fixes for type errors of the type "no result values expected" or "too many return values". For example: <pre>func z() { return nil }</pre>will turn into <pre>func z() { return }</pre><br/> <br/> Default: `true` |
+| `printf` | check consistency of Printf format strings and arguments <br/> The check applies to calls of the formatting functions such as [fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of those functions. <br/> In this example, the %d format operator requires an integer operand: <br/> <pre>fmt.Printf("%d", "hello") // fmt.Printf format %d has arg "hello" of wrong type string</pre><br/> See the documentation of the fmt package for the complete set of format operators and their operand types. <br/> To enable printf checking on a function that is not found by this analyzer's heuristics (for example, because control is obscured by dynamic method calls), insert a bogus call: <br/> <pre>func MyPrintf(format string, args ...any) {<br/>	if false {<br/>		_ = fmt.Sprintf(format, args...) // enable printf checker<br/>	}<br/>	...<br/>}</pre><br/> The -funcs flag specifies a comma-separated list of names of additional known formatting functions or methods. If the name contains a period, it must denote a specific function using one of the following forms: <br/> <pre>dir/pkg.Function<br/>dir/pkg.Type.Method<br/>(*dir/pkg.Type).Method</pre><br/> Otherwise the name is interpreted as a case-insensitive unqualified identifier such as "errorf". Either way, if a listed name ends in f, the function is assumed to be Printf-like, taking a format string before the argument list. Otherwise it is assumed to be Print-like, taking a list of arguments with no format string. <br/> Default: `true` |
+| `shadow` | check for possible unintended shadowing of variables <br/> This analyzer check for shadowed variables. A shadowed variable is a variable declared in an inner scope with the same name and type as a variable in an outer scope, and where the outer variable is mentioned after the inner one is declared. <br/> (This definition can be refined; the module generates too many false positives and is not yet enabled by default.) <br/> For example: <br/> <pre>func BadRead(f *os.File, buf []byte) error {<br/>	var err error<br/>	for {<br/>		n, err := f.Read(buf) // shadows the function variable 'err'<br/>		if err != nil {<br/>			break // causes return of wrong value<br/>		}<br/>		foo(buf)<br/>	}<br/>	return err<br/>}</pre><br/> Default: `false` |
 | `shift` | check for shifts that equal or exceed the width of the integer <br/> Default: `true` |
 | `simplifycompositelit` | check for composite literal simplifications <br/> An array, slice, or map composite literal of the form: <pre>[]T{T{}, T{}}</pre>will be simplified to: <pre>[]T{{}, {}}</pre><br/> This is one of the simplifications that "gofmt -s" applies. <br/> Default: `true` |
 | `simplifyrange` | check for range statement simplifications <br/> A range of the form: <pre>for x, _ = range v {...}</pre>will be simplified to: <pre>for x = range v {...}</pre><br/> A range of the form: <pre>for _ = range v {...}</pre>will be simplified to: <pre>for range v {...}</pre><br/> This is one of the simplifications that "gofmt -s" applies. <br/> Default: `true` |
 | `simplifyslice` | check for slice simplifications <br/> A slice expression of the form: <pre>s[a:len(s)]</pre>will be simplified to: <pre>s[a:]</pre><br/> This is one of the simplifications that "gofmt -s" applies. <br/> Default: `true` |
 | `sortslice` | check the argument type of sort.Slice <br/> sort.Slice requires an argument of a slice type. Check that the interface{} value passed to sort.Slice is actually a slice. <br/> Default: `true` |
-| `stdmethods` | check signature of methods of well-known interfaces <br/> Sometimes a type may be intended to satisfy an interface but may fail to do so because of a mistake in its method signature. For example, the result of this WriteTo method should be (int64, error), not error, to satisfy io.WriterTo: <br/> <pre>type myWriterTo struct{...}</pre>        func (myWriterTo) WriteTo(w io.Writer) error { ... } <br/> This check ensures that each method whose name matches one of several well-known interface methods from the standard library has the correct signature for that interface. <br/> Checked method names include: <pre>Format GobEncode GobDecode MarshalJSON MarshalXML<br/>Peek ReadByte ReadFrom ReadRune Scan Seek<br/>UnmarshalJSON UnreadByte UnreadRune WriteByte<br/>WriteTo</pre><br/> <br/> Default: `true` |
-| `stringintconv` | check for string(int) conversions <br/> This checker flags conversions of the form string(x) where x is an integer (but not byte or rune) type. Such conversions are discouraged because they return the UTF-8 representation of the Unicode code point x, and not a decimal string representation of x as one might expect. Furthermore, if x denotes an invalid code point, the conversion cannot be statically rejected. <br/> For conversions that intend on using the code point, consider replacing them with string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the string representation of the value in the desired base. <br/> <br/> Default: `true` |
+| `stdmethods` | check signature of methods of well-known interfaces <br/> Sometimes a type may be intended to satisfy an interface but may fail to do so because of a mistake in its method signature. For example, the result of this WriteTo method should be (int64, error), not error, to satisfy io.WriterTo: <br/> <pre>type myWriterTo struct{...}<br/>func (myWriterTo) WriteTo(w io.Writer) error { ... }</pre><br/> This check ensures that each method whose name matches one of several well-known interface methods from the standard library has the correct signature for that interface. <br/> Checked method names include: <br/> <pre>Format GobEncode GobDecode MarshalJSON MarshalXML<br/>Peek ReadByte ReadFrom ReadRune Scan Seek<br/>UnmarshalJSON UnreadByte UnreadRune WriteByte<br/>WriteTo</pre><br/> Default: `true` |
+| `stringintconv` | check for string(int) conversions <br/> This checker flags conversions of the form string(x) where x is an integer (but not byte or rune) type. Such conversions are discouraged because they return the UTF-8 representation of the Unicode code point x, and not a decimal string representation of x as one might expect. Furthermore, if x denotes an invalid code point, the conversion cannot be statically rejected. <br/> For conversions that intend on using the code point, consider replacing them with string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the string representation of the value in the desired base. <br/> Default: `true` |
 | `structtag` | check that struct field tags conform to reflect.StructTag.Get <br/> Also report certain struct tags (json, xml) used with unexported fields. <br/> Default: `true` |
-| `testinggoroutine` | report calls to (*testing.T).Fatal from goroutines started by a test. <br/> Functions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and Skip{,f,Now} methods of *testing.T, must be called from the test goroutine itself. This checker detects calls to these functions that occur within a goroutine started by the test. For example: <br/> func TestFoo(t *testing.T) {     go func() {         t.Fatal("oops") // error: (*T).Fatal called from non-test goroutine     }() } <br/> <br/> Default: `true` |
-| `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
+| `stubmethods` | stub methods analyzer <br/> This analyzer generates method stubs for concrete types in order to implement a target interface <br/> Default: `true` |
+| `testinggoroutine` | report calls to (*testing.T).Fatal from goroutines started by a test. <br/> Functions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and Skip{,f,Now} methods of *testing.T, must be called from the test goroutine itself. This checker detects calls to these functions that occur within a goroutine started by the test. For example: <br/> <pre>func TestFoo(t *testing.T) {<br/>    go func() {<br/>        t.Fatal("oops") // error: (*T).Fatal called from non-test goroutine<br/>    }()<br/>}</pre><br/> Default: `true` |
+| `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark, Fuzzing and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
+| `timeformat` | check for calls of (time.Time).Format or time.Parse with 2006-02-01 <br/> The timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm) format. Internationally, "yyyy-dd-mm" does not occur in common calendar date standards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended. <br/> Default: `true` |
 | `undeclaredname` | suggested fixes for "undeclared name: <>" <br/> This checker provides suggested fixes for type errors of the type "undeclared name: <>". It will either insert a new statement, such as: <br/> "<> := " <br/> or a new function declaration, such as: <br/> func <>(inferred parameters) { <pre>panic("implement me!")</pre>} <br/> <br/> Default: `true` |
 | `unmarshal` | report passing non-pointer or non-interface values to unmarshal <br/> The unmarshal analysis reports calls to functions such as json.Unmarshal in which the argument type is not a pointer or an interface. <br/> Default: `true` |
 | `unreachable` | check for unreachable code <br/> The unreachable analyzer finds statements that execution can never reach because they are preceded by an return statement, a call to panic, an infinite loop, or similar constructs. <br/> Default: `true` |
 | `unsafeptr` | check for invalid conversions of uintptr to unsafe.Pointer <br/> The unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer to convert integers to pointers. A conversion from uintptr to unsafe.Pointer is invalid if it implies that there is a uintptr-typed word in memory that holds a pointer value, because that word will be invisible to stack copying and to the garbage collector. <br/> Default: `true` |
 | `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To reduce false positives it ignores: - methods - parameters that do not have a name or are underscored - functions in test files - functions with empty bodies or those with just a return stmt <br/> Default: `false` |
-| `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. This analyzer reports calls to certain functions in which the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
-| `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }<br/>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }<br/>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> <br/> Default: `false` |
-| `useany` | check for constraints that could be simplified to "any" <br/> Default: `true` |
+| `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. Other functions may return an error that must not be ignored, or a cleanup operation that must be called. This analyzer reports calls to functions like these when the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
+| `unusedvariable` | check for unused variables <br/> The unusedvariable analyzer suggests fixes for unused variables errors. <br/> <br/> Default: `false` |
+| `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }</pre><br/> <pre>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }</pre><br/> <pre>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> Default: `false` |
+| `useany` | check for constraints that could be simplified to "any" <br/> Default: `false` |
 ### `ui.diagnostic.annotations`
 
 (Experimental) annotations specifies the various kinds of optimization diagnostics
@@ -771,22 +879,12 @@ on recently modified packages.
 This option must be set to a valid duration string, for example `"250ms"`.
 
 
-Default: `"250ms"`
-### `ui.diagnostic.experimentalWatchedFileDelay`
-
-(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits
-for additional workspace/didChangeWatchedFiles notifications to arrive,
-before processing all such notifications in a single batch. This is
-intended for use by LSP clients that don't support their own batching of
-file system notifications.
-
-This option must be set to a valid duration string, for example `"100ms"`.
-
-
-Default: `"0s"`
+Default: `"1s"`
 ### `ui.diagnostic.staticcheck`
 
 (Experimental) staticcheck enables additional analyses from staticcheck.io.
+These analyses are documented on
+[Staticcheck's website](https://staticcheck.io/docs/checks/).
 
 
 Default: `false`
@@ -817,6 +915,9 @@ It might be one of:
 
 If company chooses to use its own `godoc.org`, its address can be used as well.
 
+Modules matching the GOPRIVATE environment variable will not have
+documentation links in hover.
+
 
 Default: `"pkg.go.dev"`
 ### `ui.documentation.linksInHover`
@@ -839,7 +940,23 @@ Default: `"Both"`
 <br/>
 Allowed Options: `CaseInsensitive`, `CaseSensitive`, `FastFuzzy`, `Fuzzy`
 
-Default: `"Fuzzy"`
+Default: `"FastFuzzy"`
+### `ui.navigation.symbolScope`
+
+symbolScope controls which packages are searched for workspace/symbol
+requests. The default value, "workspace", searches only workspace
+packages. The legacy behavior, "all", causes all loaded packages to be
+searched, including dependencies; this is more expensive and may return
+unwanted results.
+<br/>
+Allowed Options:
+
+* `all`: `"all"` matches symbols in any loaded package, including
+dependencies.
+* `workspace`: `"workspace"` matches symbols in workspace packages only.
+
+
+Default: `"all"`
 ### `ui.navigation.symbolStyle`
 
 (Advanced) symbolStyle controls how symbols are qualified in symbol responses.
@@ -867,6 +984,18 @@ just "Foo.Field".
 
 
 Default: `"Dynamic"`
+### `ui.noSemanticNumber`
+
+(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'
+
+
+Default: `false`
+### `ui.noSemanticString`
+
+(Experimental) noSemanticString turns off the sending of the semantic token 'string'
+
+
+Default: `false`
 ### `ui.semanticTokens`
 
 (Experimental) semanticTokens controls whether the LSP server will send

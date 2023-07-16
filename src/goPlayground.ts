@@ -11,10 +11,11 @@ import { promptForMissingTool } from './goInstallTools';
 import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 
 const TOOL_CMD_NAME = 'goplay';
 
-export const playgroundCommand = () => {
+export const playgroundCommand: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
@@ -32,7 +33,8 @@ export const playgroundCommand = () => {
 
 	const selection = editor.selection;
 	const code = selection.isEmpty ? editor.document.getText() : editor.document.getText(selection);
-	goPlay(code, getGoConfig(editor.document.uri).get('playground')).then(
+	const config: vscode.WorkspaceConfiguration | undefined = getGoConfig(editor.document.uri).get('playground');
+	goPlay(code, config).then(
 		(result) => {
 			outputChannel.append(result);
 		},
@@ -44,8 +46,8 @@ export const playgroundCommand = () => {
 	);
 };
 
-export function goPlay(code: string, goConfig: vscode.WorkspaceConfiguration): Thenable<string> {
-	const cliArgs = Object.keys(goConfig).map((key) => `-${key}=${goConfig[key]}`);
+export function goPlay(code: string, goConfig?: vscode.WorkspaceConfiguration): Thenable<string> {
+	const cliArgs = goConfig ? Object.keys(goConfig).map((key) => `-${key}=${goConfig[key]}`) : [];
 	const binaryLocation = getBinPath(TOOL_CMD_NAME);
 
 	return new Promise<string>((resolve, reject) => {
@@ -64,7 +66,7 @@ Finished running tool: ${binaryLocation} ${cliArgs.join(' ')} -\n`
 			);
 		});
 		if (p.pid) {
-			p.stdin.end(code);
+			p.stdin?.end(code);
 		}
 	});
 }

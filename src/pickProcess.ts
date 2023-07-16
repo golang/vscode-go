@@ -9,7 +9,7 @@ import cp = require('child_process');
 import { QuickPickItem } from 'vscode';
 import { getBinPath } from './util';
 import { lsofDarwinCommand, parseLsofProcesses } from './utils/lsofProcessParser';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
 import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
 import vscode = require('vscode');
@@ -37,29 +37,34 @@ export async function pickGoProcess(): Promise<string> {
 }
 
 async function processPicker(processes: AttachItem[], name?: string): Promise<string> {
+	// We need to use createQuickPick instead of showQuickPick
+	// to set the starting value for the menu.
+	const menu = vscode.window.createQuickPick<AttachItem>();
+	if (name) {
+		menu.value = name;
+	}
+	menu.items = processes;
+	menu.placeholder = 'Choose a process to attach to';
+	menu.matchOnDescription = true;
+	menu.matchOnDetail = true;
 	return new Promise<string>(async (resolve, reject) => {
-		const menu = vscode.window.createQuickPick<AttachItem>();
-		if (name) {
-			menu.value = name;
-		}
-		menu.items = processes;
-		menu.placeholder = 'Choose a process to attach to';
-		menu.matchOnDescription = true;
-		menu.matchOnDetail = true;
-
 		menu.onDidAccept(() => {
 			if (menu.selectedItems.length !== 1) {
 				reject(new Error('No process selected.'));
 			}
 			const selectedId = menu.selectedItems[0].id;
-
-			menu.dispose();
-
 			resolve(selectedId);
+		});
+		// The quickpick menu can be hidden either explicitly or
+		// through other UI interactions. When the quick pick menu is
+		// missing we want to keep the debugging setup process from
+		// hanging, so we reject the selection.
+		menu.onDidHide(() => {
+			reject(new Error('No process selected.'));
 		});
 
 		menu.show();
-	});
+	}).finally(() => menu.dispose());
 }
 
 // Modified from:
@@ -99,13 +104,13 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go version" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return processes;
 	}
 	const args = ['version'];
 	processes.forEach((item) => {
-		if (item.executable?.length > 0) {
+		if (item.executable) {
 			args.push(item.executable);
 		}
 	});
@@ -117,7 +122,7 @@ async function getGoProcesses(): Promise<AttachItem[]> {
 
 	const goProcesses: AttachItem[] = [];
 	processes.forEach((item) => {
-		if (goProcessExecutables.indexOf(item.executable) >= 0) {
+		if (item.executable && goProcessExecutables.indexOf(item.executable) >= 0) {
 			item.isGo = true;
 			goProcesses.push(item);
 		}
@@ -133,7 +138,7 @@ export function parseGoVersionOutput(stdout: string): string[] {
 	const lines = stdout.toString().split('\n');
 	lines.forEach((line) => {
 		const match = line.match(goVersionRegexp);
-		if (match?.length > 0) {
+		if (match && match.length > 0) {
 			const exe = line.substr(0, line.length - match[0].length);
 			goProcessExes.push(exe);
 		}
@@ -194,8 +199,8 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 
 async function runCommand(
 	processCmd: ProcessListCommand
-): Promise<{ err: cp.ExecException; stdout: string; stderr: string }> {
-	return await new Promise<{ err: cp.ExecException; stdout: string; stderr: string }>((resolve) => {
+): Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }> {
+	return await new Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }>((resolve) => {
 		cp.execFile(processCmd.command, processCmd.args, (err, stdout, stderr) => {
 			resolve({ err, stdout, stderr });
 		});

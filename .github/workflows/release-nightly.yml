@@ -1,13 +1,11 @@
 name: Release (golang.go-nightly)
 
 # Daily release on 15:00 UTC, monday-thursday.
-# Or, force to release by triggering repository_dispatch events by using
-#   curl -v -H "Accept: application/vnd.github.everest-preview+json" -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/golang/vscode-go/dispatches -d '{ "event_type": "force-release" }'
+# Or, trigger with workflow dispatch event.
 on:
   schedule:
     - cron: "0 15 * * MON-THU"  # 15 UTC, monday-thursday daily
-  repository_dispatch:
-    types: [force-release]
+  workflow_dispatch:
 
 jobs:
   release:
@@ -15,27 +13,38 @@ jobs:
 
     name: Release Nightly
     runs-on: ubuntu-latest
+    environment: nightly
     timeout-minutes: 20
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: '14.x'
+         node-version: '18'
+         cache: 'npm'
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-         go-version: '1.17'
+         go-version: '1.20'
+         check-latest: true
+         cache: true
 
       - name: Install dependencies
         run: npm ci
 
       - name: Prepare Release
         run: build/all.bash prepare_nightly
+
+      - name: Version
+        run: |
+          echo "VSCODE_GO_VERSION=$(jq .version package.json | tr -d '"')" >> $GITHUB_ENV
+
+      - name: Package Extension
+        run: npx vsce package -o "./go-nightly-${{ env.VSCODE_GO_VERSION }}.vsix"
 
       - name: Compile
         run: npm run vscode:prepublish
@@ -53,17 +62,14 @@ jobs:
         run: npm run unit-test
 
       - name: Run tests
-        uses: GabrielBB/xvfb-action@v1.0
-        with:
-          run: npm run test
+        run: xvfb-run -a npm run test
         env:
           CODE_VERSION: 'insiders'
           VSCODEGO_BEFORE_RELEASE_TESTS: true
 
       - name: Publish
         if: github.ref == 'refs/heads/master' && github.repository == 'golang/vscode-go'
-        uses: lannonbr/vsce-action@0f3391ee0477b08fae949eb0a875e91e6d20b075
-        with:
-          args: "publish -p $VSCE_TOKEN"
-        env:
-          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+        run: |
+          echo "publishing ${{ env.VSCODE_GO_VERSION }}"
+          ls *.vsix
+          npx vsce publish -i "./go-nightly-${{ env.VSCODE_GO_VERSION }}.vsix" -p "${{ secrets.VSCE_TOKEN }}"

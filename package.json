@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.31.0-dev",
+  "version": "0.40.0-dev",
   "preview": true,
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
@@ -31,9 +31,13 @@
     "url": "https://github.com/golang/vscode-go/issues"
   },
   "keywords": [
-    "multi-root ready"
+    "multi-root ready",
+    "golang",
+    "gopls"
   ],
   "scripts": {
+    "clean": "rm -rf ./dist/* && rm *.vsix",
+    "package": "npx vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
@@ -49,46 +53,45 @@
   },
   "extensionDependencies": [],
   "dependencies": {
-    "deep-equal": "^2.0.2",
-    "diff": "^4.0.2",
-    "glob": "^7.1.6",
-    "json-rpc2": "^2.0.0",
-    "moment": "^2.24.0",
-    "semver": "^7.3.2",
+    "diff": "4.0.2",
+    "glob": "7.1.7",
+    "json-rpc2": "2.0.0",
+    "moment": "2.29.4",
+    "semver": "7.3.4",
     "tree-kill": "file:third_party/tree-kill",
-    "vscode-debugadapter": "^1.44.0",
-    "vscode-debugadapter-testsupport": "^1.44.0",
-    "vscode-debugprotocol": "^1.44.0",
-    "vscode-languageclient": "^7.0.0",
-    "vscode-languageserver-protocol": "^3.16.0",
-    "web-request": "^1.0.7"
+    "vscode-debugadapter": "1.45.0",
+    "vscode-debugprotocol": "1.45.0",
+    "vscode-languageclient": "8.1.0",
+    "vscode-languageserver-protocol": "3.17.3",
+    "vscode-uri": "3.0.3",
+    "web-request": "1.0.7"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.4.33",
-    "@types/deep-equal": "^1.0.1",
-    "@types/fs-extra": "^8.1.0",
-    "@types/glob": "^7.1.1",
-    "@types/mocha": "^7.0.2",
-    "@types/node": "^13.11.1",
-    "@types/semver": "^7.1.0",
-    "@types/sinon": "^9.0.0",
-    "@types/vscode": "^1.59.0",
-    "adm-zip": "^0.4.14",
-    "esbuild": "^0.12.21",
-    "fs-extra": "^9.0.0",
-    "get-port": "^5.1.1",
-    "gts": "^3.1.0",
-    "mocha": "^9.1.2",
-    "prettier": "^2.2.1",
-    "sinon": "^9.0.2",
-    "ts-loader": "^7.0.5",
-    "tslint": "^6.1.1",
-    "typescript": "^3.8.3",
-    "vscode-test": "^1.3.0",
-    "yarn": "^1.22.4"
+    "@types/adm-zip": "0.4.33",
+    "@types/fs-extra": "8.1.1",
+    "@types/glob": "7.1.3",
+    "@types/mocha": "7.0.2",
+    "@types/node": "13.13.46",
+    "@types/semver": "7.3.4",
+    "@types/sinon": "9.0.11",
+    "@types/vscode": "1.67.0",
+    "@vscode/debugadapter-testsupport": "1.58.0",
+    "@vscode/test-electron": "2.2.0",
+    "@vscode/vsce": "2.19.0",
+    "adm-zip": "0.4.16",
+    "esbuild": "0.17.10",
+    "fs-extra": "9.1.0",
+    "get-port": "5.1.1",
+    "gts": "4.0.0",
+    "mocha": "9.2.2",
+    "prettier": "2.2.1",
+    "sinon": "9.2.4",
+    "typescript": "4.6.4",
+    "yarn": "1.22.10"
   },
   "engines": {
-    "vscode": "^1.59.0"
+    "vscode": "^1.67.0",
+    "node": ">=12.0.0"
   },
   "activationEvents": [
     "onLanguage:go",
@@ -96,6 +99,7 @@
     "workspaceContains:*/*.go",
     "workspaceContains:*/*/*.go",
     "onCommand:go.gopath",
+    "onCommand:go.goroot",
     "onCommand:go.tools.install",
     "onCommand:go.locate.tools",
     "onCommand:go.show.commands",
@@ -116,7 +120,8 @@
         "go.goroot",
         "go.inferGopath",
         "go.toolsGopath",
-        "go.toolsEnvVars"
+        "go.toolsEnvVars",
+        "go.toolsManagement.go"
       ]
     }
   },
@@ -135,11 +140,20 @@
         "id": "go.mod",
         "filenames": [
           "go.mod",
-          "gopls.mod",
-          "go.work"
+          "gopls.mod"
         ],
         "aliases": [
           "Go Module File"
+        ],
+        "configuration": "./languages/go.mod.language-configuration.json"
+      },
+      {
+        "id": "go.work",
+        "filenames": [
+          "go.work"
+        ],
+        "aliases": [
+          "Go Work File"
         ],
         "configuration": "./languages/go.mod.language-configuration.json"
       },
@@ -153,13 +167,19 @@
         ]
       },
       {
-        "id": "tmpl",
+        "id": "gotmpl",
         "extensions": [
           ".tmpl",
           ".gotmpl"
         ],
         "aliases": [
           "Go Template File"
+        ]
+      },
+      {
+        "id": "govulncheck",
+        "aliases": [
+          "Govulncheck Output"
         ]
       }
     ],
@@ -170,9 +190,19 @@
         "path": "./syntaxes/go.mod.tmGrammar.json"
       },
       {
+        "language": "go.work",
+        "scopeName": "go.mod",
+        "path": "./syntaxes/go.mod.tmGrammar.json"
+      },
+      {
         "language": "go.sum",
         "scopeName": "go.sum",
         "path": "./syntaxes/go.sum.tmGrammar.json"
+      },
+      {
+        "language": "govulncheck",
+        "scopeName": "govulncheck",
+        "path": "./syntaxes/govulncheck.tmGrammar.json"
       }
     ],
     "snippets": [
@@ -187,8 +217,7 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        },
-        "editor.suggest.snippetsPreventQuickSuggestions": false
+        }
       }
     },
     "commands": [
@@ -196,6 +225,11 @@
         "command": "go.gopath",
         "title": "Go: Current GOPATH",
         "description": "See the currently set GOPATH."
+      },
+      {
+        "command": "go.goroot",
+        "title": "Go: Current GOROOT",
+        "description": "See the currently set GOROOT."
       },
       {
         "command": "go.locate.tools",
@@ -216,6 +250,11 @@
         "command": "go.subtest.cursor",
         "title": "Go: Subtest At Cursor",
         "description": "Runs a sub test at the cursor."
+      },
+      {
+        "command": "go.debug.subtest.cursor",
+        "title": "Go: Debug Subtest At Cursor",
+        "description": "Debug a sub test at the cursor."
       },
       {
         "command": "go.benchmark.cursor",
@@ -262,6 +301,11 @@
         "shortTitle": "Delete",
         "description": "Delete selected profile",
         "category": "Test"
+      },
+      {
+        "command": "go.test.showProfileFile",
+        "title": "Go: Show pprof file",
+        "description": "Internal use. Open a pprof profile file."
       },
       {
         "command": "go.benchmark.package",
@@ -347,6 +391,16 @@
         "command": "go.toggle.test.file",
         "title": "Go: Toggle Test File",
         "description": "Toggles between file in current active editor and the corresponding test file."
+      },
+      {
+        "command": "go.vulncheck.toggle",
+        "title": "Go: Toggle Vulncheck",
+        "description": "Toggle the display of vulnerability analysis in dependencies."
+      },
+      {
+        "command": "go.languageserver.maintain",
+        "title": "Go: Start language server's maintainer interface",
+        "description": "Start the Go language server's maintainer interface (a web server)."
       },
       {
         "command": "go.add.tags",
@@ -472,6 +526,34 @@
         "command": "go.global.resetState",
         "title": "Go: Reset Global State",
         "description": "Reset keys in global state to undefined."
+      },
+      {
+        "command": "go.explorer.refresh",
+        "title": "Go Explorer: Refresh",
+        "description": "Refresh the Go explorer. Only available as a menu item in the explorer.",
+        "category": "Explorer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "go.explorer.open",
+        "title": "Go Explorer: Open File",
+        "description": "Open a file from the Go explorer. Only available as a menu item in the explorer.",
+        "category": "Explorer",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "go.workspace.editEnv",
+        "title": "Go: Edit Workspace Env",
+        "description": "Edit the Go Env for the active workspace.",
+        "icon": "$(settings-edit)",
+        "enablement": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "go.workspace.resetEnv",
+        "title": "Go: Reset Workspace Env",
+        "description": "Reset the Go Env for the active workspace.",
+        "icon": "$(settings-remove)",
+        "enablement": "workspaceFolderCount > 0"
       }
     ],
     "breakpoints": [
@@ -600,7 +682,10 @@
                 "default": false
               },
               "args": {
-                "type": "array",
+                "type": [
+                  "array",
+                  "string"
+                ],
                 "description": "Command line arguments passed to the debugged program.",
                 "items": {
                   "type": "string"
@@ -619,7 +704,7 @@
               },
               "env": {
                 "type": "object",
-                "description": "Environment variables passed to the program.",
+                "description": "Environment variables passed to the launched debuggee program. Format as string key:value pairs. Merged with `envFile` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`.",
                 "default": {}
               },
               "substitutePath": {
@@ -686,8 +771,8 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Absolute path to a file containing environment variable definitions. Multiple files can be specified by provided an array of absolute paths",
-                "default": "${workspaceFolder}/.env"
+                "description": "Absolute path to a file containing environment variable definitions, formatted as string key=value pairs. Multiple files can be specified by provided an array of absolute paths. Merged with `env` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`. ",
+                "default": ""
               },
               "backend": {
                 "type": "string",
@@ -1032,6 +1117,11 @@
       "type": "object",
       "title": "Go",
       "properties": {
+        "go.showWelcome": {
+          "type": "boolean",
+          "default": true,
+          "description": "Specifies whether to show the Welcome experience on first install"
+        },
         "go.buildOnSave": {
           "type": "string",
           "enum": [
@@ -1040,8 +1130,9 @@
             "off"
           ],
           "default": "package",
-          "description": "Compiles code on file save using 'go build' or 'go test -c'. Options are 'workspace', 'package', or 'off'.  Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
-          "scope": "resource"
+          "description": "Compiles code on file save using 'go build' or 'go test -c'. Not applicable when using the language server.",
+          "scope": "resource",
+          "markdownDeprecationMessage": "Enable the Go language server (`#go.useLanguageServer#`) to diagnose compile errors."
         },
         "go.buildFlags": {
           "type": "array",
@@ -1087,6 +1178,12 @@
             "workspace",
             "off"
           ],
+          "enumDescriptions": [
+            "lint the current file on file saving",
+            "lint the current package on file saving",
+            "lint all the packages in the current workspace root folder on file saving",
+            "do not run lint automatically"
+          ],
           "default": "package",
           "description": "Lints code on file save using the configured Lint tool. Options are 'file', 'package', 'workspace' or 'off'.",
           "scope": "resource"
@@ -1119,6 +1216,11 @@
             "workspace",
             "off"
           ],
+          "enumDescriptions": [
+            "vet the current package on file saving",
+            "vet all the packages in the current workspace root folder on file saving",
+            "do not run vet automatically"
+          ],
           "default": "package",
           "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
           "scope": "resource"
@@ -1135,7 +1237,7 @@
         "go.formatTool": {
           "type": "string",
           "default": "default",
-          "description": "Not applicable when using the language server. Choosing 'goimports', 'goreturns', or 'gofumports' will add missing imports and remove unused imports.",
+          "markdownDescription": "When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.",
           "scope": "resource",
           "enum": [
             "default",
@@ -1143,15 +1245,15 @@
             "goimports",
             "goformat",
             "gofumpt",
-            "gofumports"
+            "custom"
           ],
-          "enumDescriptions": [
+          "markdownEnumDescriptions": [
             "If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.",
-            "Formats the file according to the standard Go style.",
-            "Organizes imports and formats the file with gofmt.",
+            "Formats the file according to the standard Go style. (not applicable when the language server is enabled)",
+            "Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)",
             "Configurable gofmt, see https://github.com/mbenkmann/goformat.",
-            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt.",
-            "Applies gofumpt formatting and organizes imports."
+            "Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)",
+            "Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT."
           ]
         },
         "go.formatFlags": {
@@ -1166,7 +1268,7 @@
         "go.inferGopath": {
           "type": "boolean",
           "default": false,
-          "description": "Infer GOPATH from the workspace root. This is ignored when using Go Modules. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Infer GOPATH from the workspace root. This is ignored when using Go Modules.",
           "scope": "resource"
         },
         "go.gopath": {
@@ -1175,7 +1277,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Specify GOPATH here to override the one that is set as environment variable. The inferred GOPATH from workspace root overrides this, if go.inferGopath is set to true.",
           "scope": "machine-overridable"
         },
         "go.toolsGopath": {
@@ -1184,7 +1286,7 @@
             "null"
           ],
           "default": null,
-          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Location to install the Go tools that the extension depends on if you don't want them in your GOPATH.",
           "scope": "machine-overridable"
         },
         "go.goroot": {
@@ -1193,7 +1295,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specifies the GOROOT to use when no environment variable is set. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Specifies the GOROOT to use when no environment variable is set.",
           "scope": "machine-overridable"
         },
         "go.testOnSave": {
@@ -1410,7 +1512,7 @@
         "go.toolsEnvVars": {
           "type": "object",
           "default": {},
-          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS)",
+          "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
         "go.gocodeFlags": {
@@ -1424,13 +1526,15 @@
             "-unimported-packages"
           ],
           "description": "Additional flags to pass to gocode. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.gocodeAutoBuild": {
           "type": "boolean",
           "default": false,
           "description": "Enable gocode's autobuild feature. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.gocodePackageLookupMode": {
           "type": "string",
@@ -1440,26 +1544,30 @@
             "bzl"
           ],
           "default": "go",
-          "description": "Used to determine the Go package lookup rules for completions by gocode. Only applies when using nsf/gocode. Latest versions of the Go extension uses mdempsky/gocode by default. Not applicable when using the language server.",
-          "scope": "resource"
+          "description": "Used to determine the Go package lookup rules for completions by gocode. Not applicable when using the language server.",
+          "scope": "resource",
+          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.useCodeSnippetsOnFunctionSuggest": {
           "type": "boolean",
           "default": false,
           "description": "Complete functions with their parameter signature, including the variable type. Not propagated to the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
         },
         "go.useCodeSnippetsOnFunctionSuggestWithoutType": {
           "type": "boolean",
           "default": false,
           "description": "Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
         },
         "go.autocompleteUnimportedPackages": {
           "type": "boolean",
           "default": false,
           "description": "Include unimported packages in auto-complete suggestions. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.docsTool": {
           "type": "string",
@@ -1470,32 +1578,18 @@
             "godoc",
             "gogetdoc",
             "guru"
-          ]
+          ],
+          "markdownDeprecationMessage": "Documentation support without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.useLanguageServer": {
           "type": "boolean",
           "default": true,
-          "description": "Use the Go language server \"gopls\" from Google for powering language features like code navigation, completion, refactoring, formatting & diagnostics."
+          "description": "Enable intellisense, code navigation, refactoring, formatting & diagnostics for Go. The features are powered by the Go language server \"gopls\"."
         },
         "go.languageServerFlags": {
           "type": "array",
           "default": [],
           "description": "Flags like -rpc.trace and -logfile to be used while running the language server."
-        },
-        "go.languageServerExperimentalFeatures": {
-          "type": "object",
-          "properties": {
-            "diagnostics": {
-              "type": "boolean",
-              "default": true,
-              "description": "If true, the language server will provide build, vet errors and the extension will ignore the `buildOnSave`, `vetOnSave` settings."
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "diagnostics": true
-          },
-          "markdownDescription": "Temporary flag to enable/disable diagnostics from the language server. This setting will be deprecated soon. Please see and response to [Issue 50](https://github.com/golang/vscode-go/issues/50)."
         },
         "go.trace.server": {
           "type": "string",
@@ -1517,6 +1611,12 @@
             "verbose"
           ],
           "description": "The logging level the extension logs at, defaults to 'error'",
+          "scope": "machine-overridable"
+        },
+        "go.toolsManagement.go": {
+          "type": "string",
+          "default": "",
+          "description": "The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.",
           "scope": "machine-overridable"
         },
         "go.toolsManagement.checkForUpdates": {
@@ -1550,22 +1650,19 @@
           "type": "boolean",
           "default": false,
           "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.gotoSymbol.includeGoroot": {
           "type": "boolean",
           "default": false,
           "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.enableCodeLens": {
           "type": "object",
           "properties": {
-            "references": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, enables the references code lens. Uses guru. Recalculates when there is change to the document followed by scrolling. Unnecessary when using the language server; use the call graph feature instead."
-            },
             "runtest": {
               "type": "boolean",
               "default": true,
@@ -1574,7 +1671,6 @@
           },
           "additionalProperties": false,
           "default": {
-            "references": false,
             "runtest": true
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
@@ -1647,7 +1743,8 @@
             "delay": 500
           },
           "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Real-time diagnostics without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.removeTags": {
           "type": "object",
@@ -1760,7 +1857,7 @@
             "generateTestForPackage": {
               "type": "boolean",
               "default": true,
-              "description": "If true, adds command to generate unit tests for currnt package to the editor context menu"
+              "description": "If true, adds command to generate unit tests for current package to the editor context menu"
             },
             "addImport": {
               "type": "boolean",
@@ -1816,7 +1913,8 @@
           },
           "default": [],
           "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
-          "scope": "resource"
+          "scope": "resource",
+          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.delveConfig": {
           "type": "object",
@@ -1946,7 +2044,7 @@
         "go.alternateTools": {
           "type": "object",
           "default": {},
-          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools or versioned tools from https://gopkg.in. When specified as a workspace setting, the setting is used only when the workspace is marked trusted with \"Go: Toggle Workspace Trust Flag\".",
+          "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.",
           "scope": "resource",
           "properties": {
             "go": {
@@ -1954,28 +2052,29 @@
               "default": "go",
               "description": "Alternate tool to use instead of the go binary or alternate path to use for the go binary."
             },
-            "gopkgs": {
-              "type": "string",
-              "default": "gopkgs",
-              "description": "Alternate tool to use instead of the gopkgs binary or alternate path to use for the gopkgs binary."
-            },
             "gopls": {
               "type": "string",
               "default": "gopls",
               "description": "Alternate tool to use instead of the gopls binary or alternate path to use for the gopls binary."
             },
-            "go-outline": {
-              "type": "string",
-              "default": "go-outline",
-              "description": "Alternate tool to use instead of the go-outline binary or alternate path to use for the go-outline binary."
-            },
             "dlv": {
               "type": "string",
               "default": "dlv",
               "description": "Alternate tool to use instead of the dlv binary or alternate path to use for the dlv binary."
+            },
+            "customFormatter": {
+              "type": "string",
+              "default": "",
+              "markdownDescription": "Custom formatter to use instead of the language server. This should be used with the `custom` option in `#go.formatTool#`."
             }
           },
           "additionalProperties": true
+        },
+        "go.tasks.provideDefault": {
+          "default": true,
+          "description": "enable the default go build/test task provider.",
+          "scope": "window",
+          "type": "boolean"
         },
         "go.terminal.activateEnvironment": {
           "default": true,
@@ -2003,12 +2102,15 @@
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
+              "default": [],
               "scope": "resource"
             },
             "build.directoryFilters": {
               "type": "array",
-              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nExamples:\n\nExclude node_modules: `-node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
-              "default": "[\"-node_modules\"]",
+              "markdownDescription": "directoryFilters can be used to exclude unwanted directories from the\nworkspace. By default, all directories are included. Filters are an\noperator, `+` to include and `-` to exclude, followed by a path prefix\nrelative to the workspace folder. They are evaluated in order, and\nthe last filter that applies to a path controls whether it is included.\nThe path prefix can be empty, so an initial `-` excludes everything.\n\nDirectoryFilters also supports the `**` operator to match 0 or more directories.\n\nExamples:\n\nExclude node_modules at current depth: `-node_modules`\n\nExclude node_modules at any depth: `-**/node_modules`\n\nInclude only project_a: `-` (exclude everything), `+project_a`\n\nInclude only project_a, but not node_modules inside it: `-`, `+project_a`, `-project_a/node_modules`\n",
+              "default": [
+                "-**/node_modules"
+              ],
               "scope": "resource"
             },
             "build.env": {
@@ -2020,24 +2122,6 @@
               "type": "boolean",
               "markdownDescription": "(Experimental) expandWorkspaceToModule instructs `gopls` to adjust the scope of the\nworkspace to find the best available module root. `gopls` first looks for\na go.mod file in any parent directory of the workspace folder, expanding\nthe scope to that directory if it exists. If no viable parent directory is\nfound, gopls will check if there is exactly one child directory containing\na go.mod file, narrowing the scope to that directory if it exists.\n",
               "default": true,
-              "scope": "resource"
-            },
-            "build.experimentalPackageCacheKey": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalPackageCacheKey controls whether to use a coarser cache key\nfor package type information to increase cache hits. This setting removes\nthe user's environment, build flags, and working directory from the cache\nkey, which should be a safe change as all relevant inputs into the type\nchecking pass are already hashed into the key. This is temporarily guarded\nby an experiment because caching behavior is subtle and difficult to\ncomprehensively test.\n",
-              "default": true,
-              "scope": "resource"
-            },
-            "build.experimentalUseInvalidMetadata": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalUseInvalidMetadata enables gopls to fall back on outdated\npackage metadata to provide editor features if the go command fails to\nload packages for some reason (like an invalid go.mod file). This will\neventually be the default behavior, and this setting will be removed.\n",
-              "default": false,
-              "scope": "resource"
-            },
-            "build.experimentalWorkspaceModule": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalWorkspaceModule opts a user into the experimental support\nfor multi-module workspaces.\n",
-              "default": false,
               "scope": "resource"
             },
             "build.memoryMode": {
@@ -2054,10 +2138,18 @@
               "default": "Normal",
               "scope": "resource"
             },
+            "build.standaloneTags": {
+              "type": "array",
+              "markdownDescription": "standaloneTags specifies a set of build constraints that identify\nindividual Go source files that make up the entire main package of an\nexecutable.\n\nA common example of standalone main files is the convention of using the\ndirective `//go:build ignore` to denote files that are not intended to be\nincluded in any package, for example because they are invoked directly by\nthe developer using `go run`.\n\nGopls considers a file to be a standalone main file if and only if it has\npackage name \"main\" and has a build directive of the exact form\n\"//go:build tag\" or \"// +build tag\", where tag is among the list of tags\nconfigured by this setting. Notably, if the build constraint is more\ncomplicated than a simple tag (such as the composite constraint\n`//go:build tag && go1.18`), the file is not considered to be a standalone\nmain file.\n\nThis setting is only supported when gopls is built with Go 1.16 or later.\n",
+              "default": [
+                "ignore"
+              ],
+              "scope": "resource"
+            },
             "build.templateExtensions": {
               "type": "array",
               "markdownDescription": "templateExtensions gives the extensions of file names that are treateed\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
-              "default": "[\"tmpl\",\"gotmpl\"]",
+              "default": [],
               "scope": "resource"
             },
             "formatting.gofumpt": {
@@ -2074,7 +2166,7 @@
             },
             "ui.codelenses": {
               "type": "object",
-              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#code-lenses)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
               "scope": "resource",
               "properties": {
                 "gc_details": {
@@ -2091,6 +2183,11 @@
                   "type": "boolean",
                   "markdownDescription": "Regenerates cgo definitions.",
                   "default": true
+                },
+                "run_govulncheck": {
+                  "type": "boolean",
+                  "markdownDescription": "Run vulnerability check (`govulncheck`).",
+                  "default": false
                 },
                 "test": {
                   "type": "boolean",
@@ -2122,7 +2219,7 @@
             },
             "ui.completion.experimentalPostfixCompletions": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artifical method snippets\nsuch as \"someSlice.sort!\".\n",
+              "markdownDescription": "(Experimental) experimentalPostfixCompletions enables artificial method snippets\nsuch as \"someSlice.sort!\".\n",
               "default": true,
               "scope": "resource"
             },
@@ -2150,7 +2247,7 @@
             },
             "ui.diagnostic.analyses": {
               "type": "object",
-              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found\n[here](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
+              "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found in\n[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
               "scope": "resource",
               "properties": {
                 "asmdecl": {
@@ -2180,7 +2277,7 @@
                 },
                 "buildtag": {
                   "type": "boolean",
-                  "markdownDescription": "check that +build tags are well-formed and correctly located",
+                  "markdownDescription": "check //go:build and // +build directives",
                   "default": true
                 },
                 "cgocall": {
@@ -2203,6 +2300,16 @@
                   "markdownDescription": "check for calls of reflect.DeepEqual on error values\n\nThe deepequalerrors checker looks for calls of the form:\n\n    reflect.DeepEqual(err1, err2)\n\nwhere err1 and err2 are errors. Using reflect.DeepEqual to compare\nerrors is discouraged.",
                   "default": true
                 },
+                "directive": {
+                  "type": "boolean",
+                  "markdownDescription": "check Go toolchain directives such as //go:debug\n\nThis analyzer checks for problems with known Go toolchain directives\nin all Go source files in a package directory, even those excluded by\n//go:build constraints, and all non-Go source files too.\n\nFor //go:debug (see https://go.dev/doc/godebug), the analyzer checks\nthat the directives are placed only in Go source files, only above the\npackage comment, and only in package main or *_test.go files.\n\nSupport for other known directives may be added in the future.\n\nThis analyzer does not check //go:build, which is handled by the\nbuildtag analyzer.\n",
+                  "default": true
+                },
+                "embed": {
+                  "type": "boolean",
+                  "markdownDescription": "check for //go:embed directive import\n\nThis analyzer checks that the embed package is imported when source code contains //go:embed comment directives.\nThe embed package must be imported for //go:embed directives to function.import _ \"embed\".",
+                  "default": true
+                },
                 "errorsas": {
                   "type": "boolean",
                   "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analysis reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.",
@@ -2210,7 +2317,7 @@
                 },
                 "fieldalignment": {
                   "type": "boolean",
-                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the optimal order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n",
+                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the most compact order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n\nBe aware that the most compact order is not always the most efficient.\nIn rare cases it may cause two variables each updated by its own goroutine\nto occupy the same CPU cache line, inducing a form of memory contention\nknown as \"false sharing\" that slows down both goroutines.\n",
                   "default": false
                 },
                 "fillreturns": {
@@ -2230,7 +2337,7 @@
                 },
                 "ifaceassert": {
                   "type": "boolean",
-                  "markdownDescription": "detect impossible interface-to-interface type assertions\n\nThis checker flags type assertions v.(T) and corresponding type-switch cases\nin which the static type V of v is an interface that cannot possibly implement\nthe target interface T. This occurs when V and T contain methods with the same\nname but different signatures. Example:\n\n\tvar v interface {\n\t\tRead()\n\t}\n\t_ = v.(io.Reader)\n\nThe Read method in v has a different signature than the Read method in\nio.Reader, so this assertion cannot succeed.\n",
+                  "markdownDescription": "detect impossible interface-to-interface type assertions\n\nThis checker flags type assertions v.(T) and corresponding type-switch cases\nin which the static type V of v is an interface that cannot possibly implement\nthe target interface T. This occurs when V and T contain methods with the same\nname but different signatures. Example:\n\n\tvar v interface {\n\t\tRead()\n\t}\n\t_ = v.(io.Reader)\n\nThe Read method in v has a different signature than the Read method in\nio.Reader, so this assertion cannot succeed.",
                   "default": true
                 },
                 "infertypeargs": {
@@ -2240,7 +2347,7 @@
                 },
                 "loopclosure": {
                   "type": "boolean",
-                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer checks for references to loop variables from within a\nfunction literal inside the loop body. It checks only instances where\nthe function literal is called in a defer or go statement that is the\nlast statement in the loop body, as otherwise we would need whole\nprogram analysis.\n\nFor example:\n\n\tfor i, v := range s {\n\t\tgo func() {\n\t\t\tprintln(i, v) // not what you might expect\n\t\t}()\n\t}\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
+                  "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer reports places where a function literal references the\niteration variable of an enclosing loop, and the loop calls the function\nin such a way (e.g. with go or defer) that it may outlive the loop\niteration and possibly observe the wrong value of the variable.\n\nIn this example, all the deferred functions run after the loop has\ncompleted, so all observe the final value of v.\n\n\tfor _, v := range list {\n\t    defer func() {\n\t        use(v) // incorrect\n\t    }()\n\t}\n\nOne fix is to create a new variable for each iteration of the loop:\n\n\tfor _, v := range list {\n\t    v := v // new var per iteration\n\t    defer func() {\n\t        use(v) // ok\n\t    }()\n\t}\n\nThe next example uses a go statement and has a similar problem.\nIn addition, it has a data race because the loop updates v\nconcurrent with the goroutines accessing it.\n\n\tfor _, v := range elem {\n\t    go func() {\n\t        use(v)  // incorrect, and a data race\n\t    }()\n\t}\n\nA fix is the same as before. The checker also reports problems\nin goroutines started by golang.org/x/sync/errgroup.Group.\nA hard-to-spot variant of this form is common in parallel tests:\n\n\tfunc Test(t *testing.T) {\n\t    for _, test := range tests {\n\t        t.Run(test.name, func(t *testing.T) {\n\t            t.Parallel()\n\t            use(test) // incorrect, and a data race\n\t        })\n\t    }\n\t}\n\nThe t.Parallel() call causes the rest of the function to execute\nconcurrent with the loop.\n\nThe analyzer reports references only in the last statement,\nas it is not deep enough to understand the effects of subsequent\nstatements that might render the reference benign.\n(\"Last statement\" is defined recursively in compound\nstatements such as if, switch, and select.)\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
                   "default": true
                 },
                 "lostcancel": {
@@ -2255,7 +2362,7 @@
                 },
                 "nilness": {
                   "type": "boolean",
-                  "markdownDescription": "check for redundant or impossible nil comparisons\n\nThe nilness checker inspects the control-flow graph of each function in\na package and reports nil pointer dereferences, degenerate nil\npointers, and panics with nil values. A degenerate comparison is of the form\nx==nil or x!=nil where x is statically known to be nil or non-nil. These are\noften a mistake, especially in control flow related to errors. Panics with nil\nvalues are checked because they are not detectable by\n\n\tif r := recover(); r != nil {\n\nThis check reports conditions such as:\n\n\tif f == nil { // impossible condition (f is a function)\n\t}\n\nand:\n\n\tp := &v\n\t...\n\tif p != nil { // tautological condition\n\t}\n\nand:\n\n\tif p == nil {\n\t\tprint(*p) // nil dereference\n\t}\n\nand:\n\n\tif p == nil {\n\t\tpanic(p)\n\t}\n",
+                  "markdownDescription": "check for redundant or impossible nil comparisons\n\nThe nilness checker inspects the control-flow graph of each function in\na package and reports nil pointer dereferences, degenerate nil\npointers, and panics with nil values. A degenerate comparison is of the form\nx==nil or x!=nil where x is statically known to be nil or non-nil. These are\noften a mistake, especially in control flow related to errors. Panics with nil\nvalues are checked because they are not detectable by\n\n\tif r := recover(); r != nil {\n\nThis check reports conditions such as:\n\n\tif f == nil { // impossible condition (f is a function)\n\t}\n\nand:\n\n\tp := &v\n\t...\n\tif p != nil { // tautological condition\n\t}\n\nand:\n\n\tif p == nil {\n\t\tprint(*p) // nil dereference\n\t}\n\nand:\n\n\tif p == nil {\n\t\tpanic(p)\n\t}",
                   "default": false
                 },
                 "nonewvars": {
@@ -2265,17 +2372,17 @@
                 },
                 "noresultvalues": {
                   "type": "boolean",
-                  "markdownDescription": "suggested fixes for \"no result values expected\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"no result values expected\". For example:\n\tfunc z() { return nil }\nwill turn into\n\tfunc z() { return }\n",
+                  "markdownDescription": "suggested fixes for unexpected return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"no result values expected\" or \"too many return values\".\nFor example:\n\tfunc z() { return nil }\nwill turn into\n\tfunc z() { return }\n",
                   "default": true
                 },
                 "printf": {
                   "type": "boolean",
-                  "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to known functions (for example, those in package fmt)\nas well as any detected wrappers of known functions.\n\nA function that wants to avail itself of printf checking but is not\nfound by this analyzer's heuristics (for example, due to use of\ndynamic calls) can insert a bogus call:\n\n\tif false {\n\t\t_ = fmt.Sprintf(format, args...) // enable printf checking\n\t}\n\nThe -funcs flag specifies a comma-separated list of names of additional\nknown formatting functions or methods. If the name contains a period,\nit must denote a specific function using one of the following forms:\n\n\tdir/pkg.Function\n\tdir/pkg.Type.Method\n\t(*dir/pkg.Type).Method\n\nOtherwise the name is interpreted as a case-insensitive unqualified\nidentifier such as \"errorf\". Either way, if a listed name ends in f, the\nfunction is assumed to be Printf-like, taking a format string before the\nargument list. Otherwise it is assumed to be Print-like, taking a list\nof arguments with no format string.\n",
+                  "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions.\n\nIn this example, the %d format operator requires an integer operand:\n\n\tfmt.Printf(\"%d\", \"hello\") // fmt.Printf format %d has arg \"hello\" of wrong type string\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.\n\nTo enable printf checking on a function that is not found by this\nanalyzer's heuristics (for example, because control is obscured by\ndynamic method calls), insert a bogus call:\n\n\tfunc MyPrintf(format string, args ...any) {\n\t\tif false {\n\t\t\t_ = fmt.Sprintf(format, args...) // enable printf checker\n\t\t}\n\t\t...\n\t}\n\nThe -funcs flag specifies a comma-separated list of names of additional\nknown formatting functions or methods. If the name contains a period,\nit must denote a specific function using one of the following forms:\n\n\tdir/pkg.Function\n\tdir/pkg.Type.Method\n\t(*dir/pkg.Type).Method\n\nOtherwise the name is interpreted as a case-insensitive unqualified\nidentifier such as \"errorf\". Either way, if a listed name ends in f, the\nfunction is assumed to be Printf-like, taking a format string before the\nargument list. Otherwise it is assumed to be Print-like, taking a list\nof arguments with no format string.",
                   "default": true
                 },
                 "shadow": {
                   "type": "boolean",
-                  "markdownDescription": "check for possible unintended shadowing of variables\n\nThis analyzer check for shadowed variables.\nA shadowed variable is a variable declared in an inner scope\nwith the same name and type as a variable in an outer scope,\nand where the outer variable is mentioned after the inner one\nis declared.\n\n(This definition can be refined; the module generates too many\nfalse positives and is not yet enabled by default.)\n\nFor example:\n\n\tfunc BadRead(f *os.File, buf []byte) error {\n\t\tvar err error\n\t\tfor {\n\t\t\tn, err := f.Read(buf) // shadows the function variable 'err'\n\t\t\tif err != nil {\n\t\t\t\tbreak // causes return of wrong value\n\t\t\t}\n\t\t\tfoo(buf)\n\t\t}\n\t\treturn err\n\t}\n",
+                  "markdownDescription": "check for possible unintended shadowing of variables\n\nThis analyzer check for shadowed variables.\nA shadowed variable is a variable declared in an inner scope\nwith the same name and type as a variable in an outer scope,\nand where the outer variable is mentioned after the inner one\nis declared.\n\n(This definition can be refined; the module generates too many\nfalse positives and is not yet enabled by default.)\n\nFor example:\n\n\tfunc BadRead(f *os.File, buf []byte) error {\n\t\tvar err error\n\t\tfor {\n\t\t\tn, err := f.Read(buf) // shadows the function variable 'err'\n\t\t\tif err != nil {\n\t\t\t\tbreak // causes return of wrong value\n\t\t\t}\n\t\t\tfoo(buf)\n\t\t}\n\t\treturn err\n\t}",
                   "default": false
                 },
                 "shift": {
@@ -2305,12 +2412,12 @@
                 },
                 "stdmethods": {
                   "type": "boolean",
-                  "markdownDescription": "check signature of methods of well-known interfaces\n\nSometimes a type may be intended to satisfy an interface but may fail to\ndo so because of a mistake in its method signature.\nFor example, the result of this WriteTo method should be (int64, error),\nnot error, to satisfy io.WriterTo:\n\n\ttype myWriterTo struct{...}\n        func (myWriterTo) WriteTo(w io.Writer) error { ... }\n\nThis check ensures that each method whose name matches one of several\nwell-known interface methods from the standard library has the correct\nsignature for that interface.\n\nChecked method names include:\n\tFormat GobEncode GobDecode MarshalJSON MarshalXML\n\tPeek ReadByte ReadFrom ReadRune Scan Seek\n\tUnmarshalJSON UnreadByte UnreadRune WriteByte\n\tWriteTo\n",
+                  "markdownDescription": "check signature of methods of well-known interfaces\n\nSometimes a type may be intended to satisfy an interface but may fail to\ndo so because of a mistake in its method signature.\nFor example, the result of this WriteTo method should be (int64, error),\nnot error, to satisfy io.WriterTo:\n\n\ttype myWriterTo struct{...}\n\tfunc (myWriterTo) WriteTo(w io.Writer) error { ... }\n\nThis check ensures that each method whose name matches one of several\nwell-known interface methods from the standard library has the correct\nsignature for that interface.\n\nChecked method names include:\n\n\tFormat GobEncode GobDecode MarshalJSON MarshalXML\n\tPeek ReadByte ReadFrom ReadRune Scan Seek\n\tUnmarshalJSON UnreadByte UnreadRune WriteByte\n\tWriteTo",
                   "default": true
                 },
                 "stringintconv": {
                   "type": "boolean",
-                  "markdownDescription": "check for string(int) conversions\n\nThis checker flags conversions of the form string(x) where x is an integer\n(but not byte or rune) type. Such conversions are discouraged because they\nreturn the UTF-8 representation of the Unicode code point x, and not a decimal\nstring representation of x as one might expect. Furthermore, if x denotes an\ninvalid code point, the conversion cannot be statically rejected.\n\nFor conversions that intend on using the code point, consider replacing them\nwith string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the\nstring representation of the value in the desired base.\n",
+                  "markdownDescription": "check for string(int) conversions\n\nThis checker flags conversions of the form string(x) where x is an integer\n(but not byte or rune) type. Such conversions are discouraged because they\nreturn the UTF-8 representation of the Unicode code point x, and not a decimal\nstring representation of x as one might expect. Furthermore, if x denotes an\ninvalid code point, the conversion cannot be statically rejected.\n\nFor conversions that intend on using the code point, consider replacing them\nwith string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the\nstring representation of the value in the desired base.",
                   "default": true
                 },
                 "structtag": {
@@ -2318,14 +2425,24 @@
                   "markdownDescription": "check that struct field tags conform to reflect.StructTag.Get\n\nAlso report certain struct tags (json, xml) used with unexported fields.",
                   "default": true
                 },
+                "stubmethods": {
+                  "type": "boolean",
+                  "markdownDescription": "stub methods analyzer\n\nThis analyzer generates method stubs for concrete types\nin order to implement a target interface",
+                  "default": true
+                },
                 "testinggoroutine": {
                   "type": "boolean",
-                  "markdownDescription": "report calls to (*testing.T).Fatal from goroutines started by a test.\n\nFunctions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and\nSkip{,f,Now} methods of *testing.T, must be called from the test goroutine itself.\nThis checker detects calls to these functions that occur within a goroutine\nstarted by the test. For example:\n\nfunc TestFoo(t *testing.T) {\n    go func() {\n        t.Fatal(\"oops\") // error: (*T).Fatal called from non-test goroutine\n    }()\n}\n",
+                  "markdownDescription": "report calls to (*testing.T).Fatal from goroutines started by a test.\n\nFunctions that abruptly terminate a test, such as the Fatal, Fatalf, FailNow, and\nSkip{,f,Now} methods of *testing.T, must be called from the test goroutine itself.\nThis checker detects calls to these functions that occur within a goroutine\nstarted by the test. For example:\n\n\tfunc TestFoo(t *testing.T) {\n\t    go func() {\n\t        t.Fatal(\"oops\") // error: (*T).Fatal called from non-test goroutine\n\t    }()\n\t}",
                   "default": true
                 },
                 "tests": {
                   "type": "boolean",
-                  "markdownDescription": "check for common mistaken usages of tests and examples\n\nThe tests checker walks Test, Benchmark and Example functions checking\nmalformed names, wrong signatures and examples documenting non-existent\nidentifiers.\n\nPlease see the documentation for package testing in golang.org/pkg/testing\nfor the conventions that are enforced for Tests, Benchmarks, and Examples.",
+                  "markdownDescription": "check for common mistaken usages of tests and examples\n\nThe tests checker walks Test, Benchmark, Fuzzing and Example functions checking\nmalformed names, wrong signatures and examples documenting non-existent\nidentifiers.\n\nPlease see the documentation for package testing in golang.org/pkg/testing\nfor the conventions that are enforced for Tests, Benchmarks, and Examples.",
+                  "default": true
+                },
+                "timeformat": {
+                  "type": "boolean",
+                  "markdownDescription": "check for calls of (time.Time).Format or time.Parse with 2006-02-01\n\nThe timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm)\nformat. Internationally, \"yyyy-dd-mm\" does not occur in common calendar date\nstandards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended.",
                   "default": true
                 },
                 "undeclaredname": {
@@ -2355,18 +2472,23 @@
                 },
                 "unusedresult": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side effects,\nso it is always a mistake to discard the result. This analyzer reports\ncalls to certain functions in which the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
+                  "markdownDescription": "check for unused results of calls to some functions\n\nSome functions like fmt.Errorf return a result and have no side\neffects, so it is always a mistake to discard the result. Other\nfunctions may return an error that must not be ignored, or a cleanup\noperation that must be called. This analyzer reports calls to\nfunctions like these when the result of the call is ignored.\n\nThe set of functions may be controlled using flags.",
                   "default": true
+                },
+                "unusedvariable": {
+                  "type": "boolean",
+                  "markdownDescription": "check for unused variables\n\nThe unusedvariable analyzer suggests fixes for unused variables errors.\n",
+                  "default": false
                 },
                 "unusedwrite": {
                   "type": "boolean",
-                  "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}\n",
+                  "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}",
                   "default": false
                 },
                 "useany": {
                   "type": "boolean",
                   "markdownDescription": "check for constraints that could be simplified to \"any\"",
-                  "default": true
+                  "default": false
                 }
               }
             },
@@ -2400,18 +2522,12 @@
             "ui.diagnostic.diagnosticsDelay": {
               "type": "string",
               "markdownDescription": "(Advanced) diagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
-              "default": "250ms",
-              "scope": "resource"
-            },
-            "ui.diagnostic.experimentalWatchedFileDelay": {
-              "type": "string",
-              "markdownDescription": "(Experimental) experimentalWatchedFileDelay controls the amount of time that gopls waits\nfor additional workspace/didChangeWatchedFiles notifications to arrive,\nbefore processing all such notifications in a single batch. This is\nintended for use by LSP clients that don't support their own batching of\nfile system notifications.\n\nThis option must be set to a valid duration string, for example `\"100ms\"`.\n",
-              "default": "0s",
+              "default": "1s",
               "scope": "resource"
             },
             "ui.diagnostic.staticcheck": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\n",
+              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\nThese analyses are documented on\n[Staticcheck's website](https://staticcheck.io/docs/checks/).\n",
               "default": false,
               "scope": "resource"
             },
@@ -2437,7 +2553,7 @@
             },
             "ui.documentation.linkTarget": {
               "type": "string",
-              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n",
+              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n\nModules matching the GOPRIVATE environment variable will not have\ndocumentation links in hover.\n",
               "default": "pkg.go.dev",
               "scope": "resource"
             },
@@ -2478,7 +2594,21 @@
                 "",
                 ""
               ],
-              "default": "Fuzzy",
+              "default": "FastFuzzy",
+              "scope": "resource"
+            },
+            "ui.navigation.symbolScope": {
+              "type": "string",
+              "markdownDescription": "symbolScope controls which packages are searched for workspace/symbol\nrequests. The default value, \"workspace\", searches only workspace\npackages. The legacy behavior, \"all\", causes all loaded packages to be\nsearched, including dependencies; this is more expensive and may return\nunwanted results.\n",
+              "enum": [
+                "all",
+                "workspace"
+              ],
+              "markdownEnumDescriptions": [
+                "`\"all\"` matches symbols in any loaded package, including\ndependencies.\n",
+                "`\"workspace\"` matches symbols in workspace packages only.\n"
+              ],
+              "default": "all",
               "scope": "resource"
             },
             "ui.navigation.symbolStyle": {
@@ -2497,6 +2627,18 @@
               "default": "Dynamic",
               "scope": "resource"
             },
+            "ui.noSemanticNumber": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "ui.noSemanticString": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) noSemanticString turns off the sending of the semantic token 'string'\n",
+              "default": false,
+              "scope": "resource"
+            },
             "ui.semanticTokens": {
               "type": "boolean",
               "markdownDescription": "(Experimental) semanticTokens controls whether the LSP server will send\nsemantic tokens to the client.\n",
@@ -2510,6 +2652,55 @@
               "scope": "resource"
             }
           }
+        },
+        "go.diagnostic.vulncheck": {
+          "type": "string",
+          "markdownDescription": "(Experimental) vulncheck enables vulnerability scanning.\n",
+          "enum": [
+            "Imports",
+            "Off"
+          ],
+          "markdownEnumDescriptions": [
+            "`\"Imports\"`: In Imports mode, `gopls` will report vulnerabilities that affect packages\ndirectly and indirectly used by the analyzed main module.\n",
+            "`\"Off\"`: Disable vulnerability analysis.\n"
+          ],
+          "default": "Off",
+          "scope": "resource"
+        },
+        "go.inlayHints.assignVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralFields": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal field names:\n```go\n\t{/*in: */\"Hello, world\", /*want: */\"dlrow ,olleH\"}\n```",
+          "default": false
+        },
+        "go.inlayHints.compositeLiteralTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t/*struct{ in string; want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```",
+          "default": false
+        },
+        "go.inlayHints.constantValues": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota/* = 0*/\n\t\tKindPrint/*  = 1*/\n\t\tKindPrintf/* = 2*/\n\t\tKindErrorf/* = 3*/\n\t)\n```",
+          "default": false
+        },
+        "go.inlayHints.functionTypeParameters": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo/*[int, string]*/(1, \"hello\")\n```",
+          "default": false
+        },
+        "go.inlayHints.parameterNames": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for parameter names:\n```go\n\tparseInt(/* str: */ \"123\", /* radix: */ 8)\n```",
+          "default": false
+        },
+        "go.inlayHints.rangeVariableTypes": {
+          "type": "boolean",
+          "markdownDescription": "Enable/disable inlay hints for variable types in range statements:\n```go\n\tfor k/* int*/, v/* string*/ := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```",
+          "default": false
         }
       }
     },
@@ -2529,6 +2720,18 @@
         },
         {
           "command": "go.test.deleteProfile",
+          "when": "false"
+        },
+        {
+          "command": "go.test.showProfileFile",
+          "when": "false"
+        },
+        {
+          "command": "go.explorer.refresh",
+          "when": "false"
+        },
+        {
+          "command": "go.explorer.open",
           "when": "false"
         }
       ],
@@ -2631,14 +2834,43 @@
           "group": "profile"
         }
       ],
+      "view/title": [
+        {
+          "command": "go.explorer.refresh",
+          "when": "view == go.explorer",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
         {
           "command": "go.test.deleteProfile",
           "when": "viewItem == go:test:file"
+        },
+        {
+          "command": "go.explorer.open",
+          "when": "viewItem == go:explorer:envfile",
+          "group": "inline"
+        },
+        {
+          "command": "go.workspace.editEnv",
+          "when": "viewItem =~ /(go:explorer:envtree|go:explorer:envitem)/ && workspaceFolderCount > 0",
+          "group": "inline"
+        },
+        {
+          "command": "go.workspace.resetEnv",
+          "when": "viewItem =~ /go:explorer:env/ && workspaceFolderCount > 0"
         }
       ]
     },
     "views": {
+      "explorer": [
+        {
+          "id": "go.explorer",
+          "name": "go",
+          "icon": "media/go-logo-white.svg",
+          "when": "go.showExplorer"
+        }
+      ],
       "test": [
         {
           "id": "go.test.profile",
@@ -2648,6 +2880,54 @@
           "when": "go.hasProfiles"
         }
       ]
-    }
+    },
+    "taskDefinitions": [
+      {
+        "type": "go",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "the name of go task"
+          },
+          "command": {
+            "type": "string",
+            "description": "go command to run",
+            "enum": [
+              "build",
+              "test"
+            ],
+            "enumDescriptions": [
+              "go build",
+              "go test"
+            ],
+            "default": "build"
+          },
+          "args": {
+            "type": "array",
+            "description": "additional arguments to pass to the go command (including the build target)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options": {
+            "type": "object",
+            "description": "additional command options",
+            "properties": {
+              "cwd": {
+                "type": "string",
+                "description": "the current working directory of the executed program or script. If omitted Code's current workspace root is used."
+              },
+              "env": {
+                "type": "object",
+                "markdownDescription": "Environment variables in the format of \"name\": \"value\"."
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

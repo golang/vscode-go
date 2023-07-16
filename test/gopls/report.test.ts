@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 
 import assert from 'assert';
-import { sanitizeGoplsTrace } from '../../src/goLanguageServer';
+import { sanitizeGoplsTrace } from '../../src/language/goLanguageServer';
 
 suite('gopls issue report tests', () => {
 	test('sanitize user trace', () => {

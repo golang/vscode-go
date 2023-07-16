@@ -7,17 +7,21 @@
 'use strict';
 
 import vscode = require('vscode');
-import { getLocalGoplsVersion, lastUserAction, latestConfig } from './goLanguageServer';
-import { outputChannel } from './goStatus';
+import { CommandFactory } from './commands';
+import { getGoConfig } from './config';
 import { extensionId } from './const';
-import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
+import { GoExtensionContext } from './context';
 import {
 	developerSurveyConfig,
 	getDeveloperSurveyConfig,
 	maybePromptForDeveloperSurvey,
 	promptForDeveloperSurvey
 } from './goDeveloperSurvey';
-import { getGoConfig } from './config';
+import { outputChannel } from './goStatus';
+import { getLocalGoplsVersion } from './language/goLanguageServer';
+import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
+import { getGoVersion } from './util';
+import { promptNext4Weeks } from './utils/randomDayutils';
 
 // GoplsSurveyConfig is the set of global properties used to determine if
 // we should prompt a user to take the gopls survey.
@@ -32,7 +36,7 @@ export interface GoplsSurveyConfig {
 	promptThisMonth?: boolean;
 
 	// dateToPromptThisMonth is the date on which we should prompt the user
-	// this month.
+	// this month. (It is no longer necessarily in the current month.)
 	dateToPromptThisMonth?: Date;
 
 	// dateComputedPromptThisMonth is the date on which the values of
@@ -47,7 +51,7 @@ export interface GoplsSurveyConfig {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForGoplsSurvey() {
+export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -64,13 +68,13 @@ export function maybePromptForGoplsSurvey() {
 	}
 	const callback = async () => {
 		const currentTime = new Date();
-
+		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
 		if (minutesBetween(lastUserAction, currentTime) < 1) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForGoplsSurvey(cfg, now);
+		cfg = await promptForGoplsSurvey(goCtx, cfg, now);
 		if (cfg) {
 			flushSurveyConfig(goplsSurveyConfig, cfg);
 		}
@@ -79,7 +83,7 @@ export function maybePromptForGoplsSurvey() {
 	setTimeout(callback, ms);
 }
 
-export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig {
+export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig | undefined {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
 	if (cfg.prompt === undefined) {
@@ -110,25 +114,20 @@ export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsS
 	if (cfg.dateComputedPromptThisMonth) {
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 30) {
+		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 28) {
 			return cfg;
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
 	// should prompt the user. This is done by generating a random number in
 	// the range [0, 1) and checking if it is < probability.
-	// We then randomly pick a day in the rest of the month on which to prompt
-	// the user.
+	// We then randomly pick a day in the next 4 weeks to prompt the user.
 	// Probability is set based on the # of responses received, and will be
 	// decreased if we begin receiving > 200 responses/month.
 	const probability = 0.06;
 	cfg.promptThisMonth = Math.random() < probability;
 	if (cfg.promptThisMonth) {
-		// end is the last day of the month, day is the random day of the
-		// month on which to prompt.
-		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-		const day = randomIntInRange(now.getUTCDate(), end.getUTCDate());
-		cfg.dateToPromptThisMonth = new Date(now.getFullYear(), now.getMonth(), day);
+		cfg.dateToPromptThisMonth = promptNext4Weeks(now);
 	} else {
 		cfg.dateToPromptThisMonth = undefined;
 	}
@@ -137,15 +136,12 @@ export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsS
 	return cfg;
 }
 
-// randomIntInRange returns a random integer between min and max, inclusive.
-function randomIntInRange(min: number, max: number): number {
-	const low = Math.ceil(min);
-	const high = Math.floor(max);
-	return Math.floor(Math.random() * (high - low + 1)) + low;
-}
-
-async function promptForGoplsSurvey(cfg: GoplsSurveyConfig, now: Date): Promise<GoplsSurveyConfig> {
-	let selected = await vscode.window.showInformationMessage(
+async function promptForGoplsSurvey(
+	goCtx: GoExtensionContext,
+	cfg: GoplsSurveyConfig = {},
+	now: Date
+): Promise<GoplsSurveyConfig> {
+	const selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
 		'Yes',
@@ -159,11 +155,14 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 	switch (selected) {
 		case 'Yes':
 			{
+				const { latestConfig } = goCtx;
 				cfg.lastDateAccepted = now;
 				cfg.prompt = true;
-				const goplsEnabled = latestConfig.enabled;
+				const goplsEnabled = latestConfig?.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
-				const surveyURL = `https://google.qualtrics.com/jfe/form/SV_agUVNbrDS0Cak2W?usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion}&extid=${extensionId}`;
+				const goV = await getGoVersion();
+				const goVersion = goV ? (goV.isDevel ? 'devel' : goV.format(true)) : 'na';
+				const surveyURL = `https://go.dev/s/ide-hats-survey/?s=c&usingGopls=${goplsEnabled}&gopls=${usersGoplsVersion?.version}&extid=${extensionId}&go=${goVersion}&os=${process.platform}`;
 				await vscode.env.openExternal(vscode.Uri.parse(surveyURL));
 			}
 			break;
@@ -172,10 +171,10 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 
 			vscode.window.showInformationMessage("No problem! We'll ask you again another time.");
 			break;
-		case 'Never':
+		case 'Never': {
 			cfg.prompt = false;
 
-			selected = await vscode.window.showInformationMessage(
+			const selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
 To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setting.`,
 				'Open Settings'
@@ -188,6 +187,7 @@ To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setti
 					break;
 			}
 			break;
+		}
 		default:
 			// If the user closes the prompt without making a selection, treat it
 			// like a "Not now" response.
@@ -204,10 +204,10 @@ function getGoplsSurveyConfig(): GoplsSurveyConfig {
 	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
 }
 
-export function resetSurveyConfigs() {
+export const resetSurveyConfigs: CommandFactory = () => () => {
 	flushSurveyConfig(goplsSurveyConfig, null);
 	flushSurveyConfig(developerSurveyConfig, null);
-}
+};
 
 export function flushSurveyConfig(key: string, cfg: any) {
 	if (cfg) {
@@ -242,7 +242,7 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 	}
 }
 
-export async function showSurveyConfig() {
+export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
 	// TODO(rstambler): Add developer survey config.
 	outputChannel.appendLine('HaTs Survey Configuration');
 	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
@@ -255,10 +255,10 @@ export async function showSurveyConfig() {
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(getGoplsSurveyConfig(), new Date());
+			promptForGoplsSurvey(goCtx, getGoplsSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForGoplsSurvey();
+			maybePromptForGoplsSurvey(goCtx);
 			break;
 		default:
 			break;
@@ -269,12 +269,12 @@ export async function showSurveyConfig() {
 			promptForDeveloperSurvey(getDeveloperSurveyConfig(), new Date());
 			break;
 		case 'Maybe':
-			maybePromptForDeveloperSurvey();
+			maybePromptForDeveloperSurvey(goCtx);
 			break;
 		default:
 			break;
 	}
-}
+};
 
 export const timeMinute = 1000 * 60;
 const timeHour = timeMinute * 60;

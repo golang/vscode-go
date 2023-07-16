@@ -6,14 +6,14 @@
 import assert from 'assert';
 import sinon = require('sinon');
 import vscode = require('vscode');
-import goLanguageServer = require('../../src/goLanguageServer');
+import goLanguageServer = require('../../src/language/goLanguageServer');
 import goSurvey = require('../../src/goSurvey');
 import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goSurvey.GoplsSurveyConfig, boolean][] = [
+		const testCases: [goSurvey.GoplsSurveyConfig, boolean | undefined][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -99,7 +99,7 @@ suite('developer survey tests', () => {
 
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goDeveloperSurvey.DeveloperSurveyConfig, boolean][] = [
+		const testCases: [goDeveloperSurvey.DeveloperSurveyConfig, boolean | undefined][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -197,26 +197,43 @@ suite('gopls opt out', () => {
 		sandbox.restore();
 	});
 
+	const today = new Date();
+	const yesterday = new Date(today.valueOf() - 1000 * 60 * 60 * 24);
+
+	// testConfig, choice, wantCount
 	const testCases: [goLanguageServer.GoplsOptOutConfig, string, number][] = [
 		// No saved config, different choices in the first dialog box.
-		[{}, 'Enable', 1],
-		[{}, 'Not now', 1],
-		[{}, 'Never', 2],
-		// // Saved config, doesn't matter what the user chooses.
+		[{}, 'Yes', 1],
+		[{}, 'No', 1],
+		[{}, '', 1],
+		[{ lastDatePrompted: new Date('2020-04-02') }, '', 1],
+		[{ lastDatePrompted: yesterday }, '', 0],
 		[{ prompt: false }, '', 0],
-		[{ prompt: false, lastDatePrompted: new Date() }, '', 0],
+		[{ prompt: false, lastDatePrompted: new Date('2020-04-02') }, '', 0],
+		[{ prompt: false, lastDatePrompted: yesterday }, '', 0],
 		[{ prompt: true }, '', 1],
-		[{ prompt: true, lastDatePrompted: new Date() }, '', 0]
+		[{ prompt: true, lastDatePrompted: new Date('2020-04-02') }, 'Yes', 1],
+		[{ prompt: true, lastDatePrompted: yesterday }, '', 0]
 	];
 
 	testCases.map(async ([testConfig, choice, wantCount], i) => {
 		test(`opt out: ${i}`, async () => {
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);
+			const flushGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'flushGoplsOptOutConfig');
+			sandbox.stub(vscode.env, 'openExternal').resolves(true);
 
-			await goLanguageServer.promptAboutGoplsOptOut(false);
-			assert.strictEqual(stub.callCount, wantCount);
+			await goLanguageServer.promptAboutGoplsOptOut({});
+			assert.strictEqual(stub.callCount, wantCount, 'unexpected call count');
 			sandbox.assert.called(getGoplsOptOutConfigStub);
+			sandbox.assert.calledOnce(flushGoplsOptOutConfigStub);
+			const got = flushGoplsOptOutConfigStub.getCall(0).args[0];
+			if (choice === 'Yes') assert.strictEqual(got.prompt, false, 'unexpected prompt config stored');
+			if (wantCount > 0)
+				assert(
+					got.lastDatePrompted && got.lastDatePrompted >= today,
+					`unexpected lastDatePrompted: ${JSON.stringify(got.lastDatePrompted)}`
+				);
 		});
 	});
 });

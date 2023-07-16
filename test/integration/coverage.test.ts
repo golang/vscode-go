@@ -9,9 +9,7 @@
 import assert from 'assert';
 import { applyCodeCoverageToAllEditors, coverageFilesForTest, initForTest } from '../../src/goCover';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import fs = require('fs-extra');
 import path = require('path');
-import sinon = require('sinon');
 import vscode = require('vscode');
 
 // The ideal test would check that each open editor containing a file with coverage
@@ -25,7 +23,7 @@ suite('Coverage for tests', function () {
 	let coverFilePath: string;
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig();
+		await updateGoVarsFromConfig({});
 
 		// Set up the test fixtures.
 		fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'coverage');
@@ -39,6 +37,11 @@ suite('Coverage for tests', function () {
 		const files = Object.keys(coverageFilesForTest());
 		const aDotGo = files.includes(path.join(fixtureSourcePath, 'a', 'a.go'));
 		const bDotGo = files.includes(path.join(fixtureSourcePath, 'b', 'b.go'));
-		assert.equal(aDotGo && bDotGo, true, `seen a.go:${aDotGo}, seen b.go:${bDotGo}\n${files}\n`);
+		// Coverage data (cover.out) contains a couple of bogus data with file name blah.go. They shouldn't appear.
+		const blahDotGo = files.includes(path.join(fixtureSourcePath, 'b', 'blah.go'));
+		assert(
+			aDotGo && bDotGo && !blahDotGo,
+			`!seen a.go:${aDotGo} or !seen b.go:${bDotGo} or seen blah.go:${blahDotGo}: ${files}\n`
+		);
 	});
 });

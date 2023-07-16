@@ -41,7 +41,7 @@ describe('#getLatestGoVersion()', function () {
 
 		webrequest
 			.expects('json')
-			.withArgs('https://golang.org/dl/?mode=json')
+			.withArgs('https://go.dev/dl/?mode=json')
 			.returns([
 				{
 					version: 'go1.15.1',
@@ -57,17 +57,17 @@ describe('#getLatestGoVersion()', function () {
 	});
 
 	this.afterEach(async () => {
-		sandbox.restore();
+		sandbox!.restore();
 	});
 
 	it('should get latest go versions from golang.org/dl with empty cache', async () => {
 		const results = await getLatestGoVersions();
 		const want = [
-			{ label: 'Go 1.15.1', binpath: 'go get golang.org/dl/go1.15.1' },
-			{ label: 'Go 1.14.2', binpath: 'go get golang.org/dl/go1.14.2' }
+			{ label: 'Go 1.15.1', binpath: 'golang.org/dl/go1.15.1' },
+			{ label: 'Go 1.14.2', binpath: 'golang.org/dl/go1.14.2' }
 		];
 
-		assert(results.length === want.length);
+		assert.strictEqual(results.length, want.length);
 		for (let i = 0; i < results.length; i++) {
 			assert(results[i].label === want[i].label);
 			assert(results[i].binpath === want[i].binpath);
@@ -75,8 +75,8 @@ describe('#getLatestGoVersion()', function () {
 	});
 
 	const cacheVersions = [
-		new GoEnvironmentOption('go get golang.org/dl/go1.14.7', 'Go 1.14.7'),
-		new GoEnvironmentOption('go get golang.org/dl/go1.13.2', 'Go 1.13.2')
+		new GoEnvironmentOption('golang.org/dl/go1.14.7', 'Go 1.14.7', false),
+		new GoEnvironmentOption('golang.org/dl/go1.13.2', 'Go 1.13.2', false)
 	];
 
 	it('should get latest go versions from golang.org/dl with timed out cache', async () => {
@@ -89,12 +89,12 @@ describe('#getLatestGoVersion()', function () {
 		// run test
 		const results = await getLatestGoVersions();
 		const want = [
-			{ label: 'Go 1.15.1', binpath: 'go get golang.org/dl/go1.15.1' },
-			{ label: 'Go 1.14.2', binpath: 'go get golang.org/dl/go1.14.2' }
+			{ label: 'Go 1.15.1', binpath: 'golang.org/dl/go1.15.1' },
+			{ label: 'Go 1.14.2', binpath: 'golang.org/dl/go1.14.2' }
 		];
 
 		// check results
-		assert(results.length === want.length);
+		assert.strictEqual(results.length, want.length);
 		for (let i = 0; i < results.length; i++) {
 			assert(results[i].label === want[i].label);
 			assert(results[i].binpath === want[i].binpath);
@@ -111,8 +111,8 @@ describe('#getLatestGoVersion()', function () {
 		// run test
 		const results = await getLatestGoVersions();
 		const want = [
-			{ label: 'Go 1.14.7', binpath: 'go get golang.org/dl/go1.14.7' },
-			{ label: 'Go 1.13.2', binpath: 'go get golang.org/dl/go1.13.2' }
+			{ label: 'Go 1.14.7', binpath: 'golang.org/dl/go1.14.7' },
+			{ label: 'Go 1.13.2', binpath: 'golang.org/dl/go1.13.2' }
 		];
 
 		// check results

@@ -37,8 +37,14 @@ jobs:
     if: github.repository == 'golang/vscode-go'
 
     steps:
-      - name: checkout code
-        uses: actions/checkout@v2
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
       - name: get release version
         id: release_version
@@ -74,10 +80,8 @@ jobs:
           npm ci
           npm run vscode:prepublish
 
-      - name: package
-        uses: lannonbr/vsce-action@0f3391ee0477b08fae949eb0a875e91e6d20b075
-        with:
-          args: "package"
+      - name: package extension
+        run: npx vsce package -o "./go-${{ env.EXT_VERSION }}.vsix"
 
       - name: create release
         id: create_release
@@ -102,10 +106,6 @@ jobs:
 
       - name: publish
         if: env.EXT_ISPREVIEW != 1 && github.repository == 'golang/vscode-go'
-        uses: lannonbr/vsce-action@0f3391ee0477b08fae949eb0a875e91e6d20b075
-        with:
-          args: "publish -p $VSCE_TOKEN"
-        env:
-          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+        run: npx vsce publish -i "./go-${{ env.EXT_VERSION }}.vsix" -p "${{ secrets.VSCE_TOKEN }}"
 
 # TODO: check if the commit is in green state. (test-long.yml results)

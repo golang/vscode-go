@@ -27,6 +27,10 @@ Finally, you can also see a full list by using a meta command: `Go: Show All Com
 
 See the currently set GOPATH.
 
+### `Go: Current GOROOT`
+
+See the currently set GOROOT.
+
 ### `Go: Locate Configured Go Tools`
 
 List all the Go tools being used by this extension along with their locations.
@@ -42,6 +46,10 @@ Runs a unit test at the cursor if one is found, otherwise re-runs the last execu
 ### `Go: Subtest At Cursor`
 
 Runs a sub test at the cursor.
+
+### `Go: Debug Subtest At Cursor`
+
+Debug a sub test at the cursor.
 
 ### `Go: Benchmark Function At Cursor`
 
@@ -74,6 +82,10 @@ Run a test and capture a profile
 ### `Go Test: Delete Profile`
 
 Delete selected profile
+
+### `Go: Show pprof file`
+
+Internal use. Open a pprof profile file.
 
 ### `Go: Benchmark Package`
 
@@ -142,6 +154,14 @@ install/update the required go packages
 ### `Go: Toggle Test File`
 
 Toggles between file in current active editor and the corresponding test file.
+
+### `Go: Toggle Vulncheck`
+
+Toggle the display of vulnerability analysis in dependencies.
+
+### `Go: Start language server's maintainer interface`
+
+Start the Go language server's maintainer interface (a web server).
 
 ### `Go: Add Tags To Struct Fields`
 
@@ -242,3 +262,19 @@ Reset keys in workspace state to undefined.
 ### `Go: Reset Global State`
 
 Reset keys in global state to undefined.
+
+### `Go Explorer: Refresh`
+
+Refresh the Go explorer. Only available as a menu item in the explorer.
+
+### `Go Explorer: Open File`
+
+Open a file from the Go explorer. Only available as a menu item in the explorer.
+
+### `Go: Edit Workspace Env`
+
+Edit the Go Env for the active workspace.
+
+### `Go: Reset Workspace Env`
+
+Reset the Go Env for the active workspace.

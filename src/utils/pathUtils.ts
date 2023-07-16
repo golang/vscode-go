@@ -17,10 +17,15 @@ import { logVerbose } from '../goLogging';
 
 let binPathCache: { [bin: string]: string } = {};
 
-export const envPath = process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+export const getEnvPath = () => process.env['PATH'] || (process.platform === 'win32' ? process.env['Path'] : null);
+export const initialEnvPath = getEnvPath();
 
 // find the tool's path from the given PATH env var, or null if the tool is not found.
-export function getBinPathFromEnvVar(toolName: string, envVarValue: string, appendBinToPath: boolean): string | null {
+export function getBinPathFromEnvVar(
+	toolName: string,
+	envVarValue: string | null | undefined,
+	appendBinToPath: boolean
+): string | null {
 	toolName = correctBinname(toolName);
 	if (envVarValue) {
 		const paths = envVarValue.split(path.delimiter);
@@ -97,7 +102,7 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	}
 
 	// Finally search PATH parts
-	const pathFromPath = getBinPathFromEnvVar(binname, envPath, false);
+	const pathFromPath = getBinPathFromEnvVar(binname, getEnvPath(), false);
 	if (pathFromPath) {
 		binPathCache[toolName] = pathFromPath;
 		return { binPath: pathFromPath, why: found('path') };
@@ -187,7 +192,7 @@ export function resolveHomeDir(inputPath: string): string {
 }
 
 // Walks up given folder path to return the closest ancestor that has `src` as a child
-export function getInferredGopath(folderPath: string): string {
+export function getInferredGopath(folderPath: string): string | undefined {
 	if (!folderPath) {
 		return;
 	}
@@ -206,9 +211,9 @@ export function getInferredGopath(folderPath: string): string {
  * @param gopath string Current Gopath. Can be ; or : separated (as per os) to support multiple paths
  * @param currentFileDirPath string
  */
-export function getCurrentGoWorkspaceFromGOPATH(gopath: string, currentFileDirPath: string): string {
+export function getCurrentGoWorkspaceFromGOPATH(gopath: string | undefined, currentFileDirPath: string): string {
 	if (!gopath) {
-		return;
+		return '';
 	}
 	const workspaces: string[] = gopath.split(path.delimiter);
 	let currentWorkspace = '';

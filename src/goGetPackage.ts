@@ -7,16 +7,16 @@
 
 import cp = require('child_process');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { buildCode } from './goBuild';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 
-export function goGetPackage() {
+export const goGetPackage: CommandFactory = (ctx, goCtx) => () => {
 	const editor = vscode.window.activeTextEditor;
-	const selection = editor.selection;
-	const selectedText = editor.document.lineAt(selection.active.line).text;
-
+	const selection = editor?.selection;
+	const selectedText = editor?.document.lineAt(selection?.active.line ?? 0).text ?? '';
 	const importPath = getImportPath(selectedText);
 	if (importPath === '') {
 		vscode.window.showErrorMessage('No import path to get');
@@ -26,7 +26,7 @@ export function goGetPackage() {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
-			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go get" to get package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 	}
 
@@ -38,11 +38,11 @@ export function goGetPackage() {
 			outputChannel.show();
 			outputChannel.clear();
 			outputChannel.appendLine(stderr);
-			buildCode();
+			buildCode(false)(ctx, goCtx)();
 			return;
 		}
 
 		// go get -v doesn't write anything when the package already exists
 		vscode.window.showInformationMessage(`Package already exists: ${importPath}`);
 	});
-}
+};

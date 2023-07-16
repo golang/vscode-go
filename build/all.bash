@@ -11,7 +11,6 @@ Available subcommands:
   help      - display this help message.
   test      - build and test locally. Some tests may fail if vscode is already in use.
   testlocal - build and test in a locally built container.
-  setup_env - setup environment for test. This installs tools under GOPATH/bin.
   ci        - build and test with headless vscode. Requires Xvfb.
 EOUSAGE
 }
@@ -36,33 +35,38 @@ setup_virtual_display() {
 
 go_binaries_info() {
   echo "**** Go version ****"
-  which go
   go version
-  echo "**** Gopls version ****"
-  go version -m "$(which gopls)"
 }
 
 run_test() {
-  echo "**** Run test ****"
-  npm ci
-  npm run compile
-  npm run unit-test
-  npm test --silent
-  npm run lint
+  df -h | grep shm
 
   echo "**** Run settings generator ****"
-  go run tools/generate.go -w=false -gopls=true
+  go run ./tools/generate.go -w=false -gopls=true
 
-  echo "**** Check if vsce works ****"
-  vsce package
+  echo "**** Run Go tests ****"
+  go test ./...
+
+  echo "**** Test build ****"
+  npm ci
+  npm run compile
+
+  echo "**** Run test ****"
+  npm run unit-test
+  npm test --silent
+
+  npm run lint
 }
 
+
 run_test_in_docker() {
+  which npm && npm version || echo "no npm"
+  which go && go version || echo "no go"
   echo "**** Building the docker image ***"
   docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
 
   # For debug tests, we need ptrace.
-  docker run --cap-add SYS_PTRACE --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
+  docker run --cap-add SYS_PTRACE --shm-size=8G --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
 
 prepare_nightly() {
@@ -81,7 +85,7 @@ prepare_nightly() {
 .displayName="Go Nightly" |
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
-.contributes.configuration.properties."go.delveConfig.hideSystemGoroutines".default=true
+.contributes.configuration.properties."go.delveConfig".properties.hideSystemGoroutines.default=true
 ') > /tmp/package.json && mv /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.

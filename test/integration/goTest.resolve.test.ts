@@ -40,6 +40,14 @@ suite('Go Test Resolver', () => {
 				},
 				expect: ['file:///src/proj?module']
 			},
+			'Module with leading comments': {
+				workspace: ['/src/proj'],
+				files: {
+					'/src/proj/go.mod': '// Example comment\nmodule test',
+					'/src/proj/main.go': 'package main'
+				},
+				expect: ['file:///src/proj?module']
+			},
 			'Basic workspace': {
 				workspace: ['/src/proj'],
 				files: {
@@ -172,6 +180,7 @@ suite('Go Test Resolver', () => {
 						func TestFoo(*testing.T) {}
 						func BenchmarkBar(*testing.B) {}
 						func ExampleBaz() {}
+						func FuzzFuss(*testing.F) {}
 					`
 				},
 				item: [
@@ -181,7 +190,8 @@ suite('Go Test Resolver', () => {
 				expect: [
 					'file:///src/proj/main_test.go?test#TestFoo',
 					'file:///src/proj/main_test.go?benchmark#BenchmarkBar',
-					'file:///src/proj/main_test.go?example#ExampleBaz'
+					'file:///src/proj/main_test.go?example#ExampleBaz',
+					'file:///src/proj/main_test.go?fuzz#FuzzFuss'
 				]
 			}
 		}

@@ -12,20 +12,24 @@ import vscode = require('vscode');
 import { ExecuteCommandRequest, ExecuteCommandParams } from 'vscode-languageserver-protocol';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { languageClient } from './goLanguageServer';
-import { documentSymbols, GoOutlineImportsOptions } from './goOutline';
+import { documentSymbols, GoOutlineImportsOptions } from './language/legacy/goOutline';
 import { getImportablePackages } from './goPackages';
 import { getBinPath, getImportPath, parseFilePrelude } from './util';
-import { envPath, getCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
+import { GoExtensionContext } from './context';
+import { CommandFactory } from './commands';
 
 const missingToolMsg = 'Missing tool: ';
 
+// listPackages returns 'importable' packages and places std packages first.
 export async function listPackages(excludeImportedPkgs = false): Promise<string[]> {
 	const importedPkgs =
 		excludeImportedPkgs && vscode.window.activeTextEditor
 			? await getImports(vscode.window.activeTextEditor.document)
 			: [];
-	const pkgMap = await getImportablePackages(vscode.window.activeTextEditor.document.fileName, true);
+	const pkgMap = vscode.window.activeTextEditor
+		? await getImportablePackages(vscode.window.activeTextEditor?.document.fileName, true)
+		: new Map();
 	const stdLibs: string[] = [];
 	const nonStdLibs: string[] = [];
 	pkgMap.forEach((value, key) => {
@@ -41,14 +45,19 @@ export async function listPackages(excludeImportedPkgs = false): Promise<string[
 	return [...stdLibs.sort(), ...nonStdLibs.sort()];
 }
 
-async function golist(): Promise<string[]> {
-	if (languageClient) {
+async function golist(goCtx: GoExtensionContext): Promise<string[]> {
+	const { languageClient, serverInfo } = goCtx;
+	const COMMAND = 'gopls.list_known_packages';
+	if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 		try {
-			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
-				vscode.window.activeTextEditor.document
-			).uri;
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('No active editor found.');
+				return [];
+			}
+			const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(editor.document).uri;
 			const params: ExecuteCommandParams = {
-				command: 'gopls.list_known_packages',
+				command: COMMAND,
 				arguments: [
 					{
 						URI: uri
@@ -78,7 +87,7 @@ async function getImports(document: vscode.TextDocument): Promise<string[]> {
 		importsOption: GoOutlineImportsOptions.Only,
 		document
 	};
-	const symbols = await documentSymbols(options, null);
+	const symbols = await documentSymbols(options);
 	if (!symbols || !symbols.length) {
 		return [];
 	}
@@ -89,9 +98,9 @@ async function getImports(document: vscode.TextDocument): Promise<string[]> {
 	return imports;
 }
 
-async function askUserForImport(): Promise<string | undefined> {
+async function askUserForImport(goCtx: GoExtensionContext): Promise<string | undefined> {
 	try {
-		const packages = await golist();
+		const packages = await golist(goCtx);
 		return vscode.window.showQuickPick(packages);
 	} catch (err) {
 		if (typeof err === 'string' && err.startsWith(missingToolMsg)) {
@@ -100,13 +109,18 @@ async function askUserForImport(): Promise<string | undefined> {
 	}
 }
 
-export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
+export function getTextEditForAddImport(arg: string | undefined): vscode.TextEdit[] | undefined {
 	// Import name wasn't provided
 	if (arg === undefined) {
-		return null;
+		return undefined;
+	}
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showErrorMessage('No active editor found.');
+		return [];
 	}
 
-	const { imports, pkg } = parseFilePrelude(vscode.window.activeTextEditor.document.getText());
+	const { imports, pkg } = parseFilePrelude(editor.document.getText());
 	if (imports.some((block) => block.pkgs.some((pkgpath) => pkgpath === arg))) {
 		return [];
 	}
@@ -129,7 +143,7 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 
 		edits.push(vscode.TextEdit.insert(new vscode.Position(minusCgo[0].start, 0), 'import (\n\t"' + arg + '"\n'));
 		minusCgo.forEach((element) => {
-			const currentLine = vscode.window.activeTextEditor.document.lineAt(element.start).text;
+			const currentLine = editor.document.lineAt(element.start).text;
 			const updatedLine = currentLine.replace(/^\s*import\s*/, '\t');
 			edits.push(
 				vscode.TextEdit.replace(
@@ -150,25 +164,30 @@ export function getTextEditForAddImport(arg: string): vscode.TextEdit[] {
 	}
 }
 
-export function addImport(arg: { importPath: string }) {
+export const addImport: CommandFactory = (ctx, goCtx) => (arg: { importPath: string }) => {
+	const { languageClient, serverInfo } = goCtx;
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found to add imports.');
 		return;
 	}
-	const p = arg && arg.importPath ? Promise.resolve(arg.importPath) : askUserForImport();
+	const p = arg && arg.importPath ? Promise.resolve(arg.importPath) : askUserForImport(goCtx);
 	p.then(async (imp) => {
 		if (!imp) {
 			return;
 		}
 
-		if (languageClient) {
+		const COMMAND = 'gopls.add_import';
+		if (languageClient && serverInfo?.Commands?.includes(COMMAND)) {
 			try {
-				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(
-					vscode.window.activeTextEditor.document
-				).uri;
+				const editor = vscode.window.activeTextEditor;
+				if (!editor) {
+					vscode.window.showErrorMessage('No active editor found to determine current package.');
+					return [];
+				}
+				const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(editor.document).uri;
 				const params: ExecuteCommandParams = {
-					command: 'gopls.add_import',
+					command: COMMAND,
 					arguments: [
 						{
 							ImportPath: imp,
@@ -191,9 +210,9 @@ export function addImport(arg: { importPath: string }) {
 			vscode.workspace.applyEdit(edit);
 		}
 	});
-}
+};
 
-export function addImportToWorkspace() {
+export const addImportToWorkspace: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found to determine current package.');
@@ -232,7 +251,7 @@ export function addImportToWorkspace() {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go list" to find the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go list" to find the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return;
 	}
@@ -259,4 +278,4 @@ export function addImportToWorkspace() {
 			{ uri: importPathUri }
 		);
 	});
-}
+};

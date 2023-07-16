@@ -2,7 +2,7 @@
 
 This document describes the tools that power the VS Code Go extension.
 
-Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
+Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
 
 VS Code Go will install the tools to your `$GOPATH/bin` by default. 
 
@@ -18,7 +18,7 @@ The extension checks for the availability of the new Go release by periodically 
 ### [`gopls`]
 [`gopls`] is the official Go [language server](https://langserver.org/) developed by the Go team. It is the default backend for most of this extension's IntelliSense, code navigation, code editing, and diagnostics features. When the extension starts, it spawns a `gopls` instance in server mode for each VS Code project.
 
-`gopls` uses the `go` command to analyze your code. The extension automatically propagates necessary settings such as  `"go.buildFlags"`, `"go.buildTags"`, `"go.toolsEnvVars"` and the path to the right `go` command to `gopls`. No extra settings should be necessary, but when you need to adjust `gopls`'s behavior further (e.g., enable more advanced analysis features), please see [all the settings for `gopls`](https://github.com/golang/vscode-go/blob/master/docs/settings.md#settings-for-gopls).
+`gopls` uses the `go` command to analyze your code. The extension automatically propagates necessary settings such as  `"go.buildFlags"`, `"go.buildTags"`, `"go.toolsEnvVars"` and the path to the right `go` command to `gopls`. No extra settings should be necessary, but when you need to adjust `gopls`'s behavior further (e.g., enable more advanced analysis features), please see [all the settings for `gopls`](settings.md#settings-for-gopls).
 
 If you encounter issues with `gopls`, please read the [troubleshooting guide](troubleshooting.md#collect-gopls-information). If you want to run the extension without the language server, you can disable it by setting `"go.useLanguageServer": false`.
 
@@ -37,10 +37,6 @@ For a comprehensive overview of how to debug your Go programs, please see the [d
 
 ### [`dlv-dap`](https://github.com/go-delve/delve)
 This extension requires an unstable version of [`dlv`](#dlv) when users opt in to use Delve's native DAP implementation. `dlv-dap` is a `dlv` built from the master, which includes unreleased features. Please see the documentation about [Dlv DAP - Delve's Native DAP implementation](./dlv-dap.md) for details.
-
-### [`gopkgs`](https://pkg.go.dev/github.com/uudashr/gopkgs?tab=overview)
-
-This tool provides autocompletion for unimported packages. Replacement of `gopkgs` with [`gopls`] is a work-in-progress. <!--TODO: reference to the issue-->
 
 ### [`go-outline`](https://pkg.go.dev/github.com/ramya-rao-a/go-outline?tab=overview)
 

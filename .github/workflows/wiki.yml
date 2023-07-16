@@ -1,0 +1,56 @@
+name: Wiki
+
+# Controls when the workflow will run
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/wiki.yml'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
+jobs:
+  # This workflow contains a single job called "build"
+  publish:
+    # The type of runner that the job will run on
+    permissions:
+      contents: write  # for Git to git push
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout vscode-go repo code
+        uses: actions/checkout@v3
+        with:
+          path: vscode-go
+      - name: Checkout vscode-go.wiki repo code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{github.repository}}.wiki
+          path: wiki
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20'
+          check-latest: true
+          cache: true
+          cache-dependency-path: '**/go.sum'
+
+      - name: Push to wiki
+        run: |
+          cd vscode-go
+          go run ./tools/docs2wiki -w ./docs
+          cd ..
+          cd wiki
+          rm -r ./* && cp -r ../vscode-go/docs/* .
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Reflecting changes from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git remote -v
+          git push
+          git log -1

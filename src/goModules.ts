@@ -8,56 +8,63 @@ import cp = require('child_process');
 import path = require('path');
 import util = require('util');
 import vscode = require('vscode');
+import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
-import { getFormatTool } from './goFormat';
+import { getFormatTool } from './language/legacy/goFormat';
 import { installTools } from './goInstallTools';
 import { outputChannel } from './goStatus';
 import { getTool } from './goTools';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion, getModuleCache, getWorkspaceFolderPath } from './util';
-import { envPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
-export let GO111MODULE: string;
+import { getEnvPath, fixDriveCasingInWindows, getCurrentGoRoot } from './utils/pathUtils';
+import { CommandFactory } from './commands';
+export let GO111MODULE: string | undefined;
 
-async function runGoModEnv(folderPath: string): Promise<string> {
+export async function runGoEnv(uri?: vscode.Uri, envvars: string[] = []): Promise<any> {
 	const goExecutable = getBinPath('go');
 	if (!goExecutable) {
 		console.warn(
-			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go env GOMOD" to find mod file as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
-		return;
+		return {};
 	}
-	const env = toolExecutionEnvironment();
+	const env = toolExecutionEnvironment(uri);
 	GO111MODULE = env['GO111MODULE'];
-	return new Promise((resolve) => {
-		cp.execFile(goExecutable, ['env', 'GOMOD'], { cwd: folderPath, env }, (err, stdout) => {
-			if (err) {
-				console.warn(`Error when running go env GOMOD: ${err}`);
-				return resolve('');
-			}
-			const [goMod] = stdout.split('\n');
-			if (goMod === '/dev/null' || goMod === 'NUL') resolve('');
-			else resolve(goMod);
-		});
-	});
+	const args = ['env', '-json'].concat(envvars);
+	try {
+		const { stdout, stderr } = await util.promisify(cp.execFile)(goExecutable, args, { cwd: uri?.fsPath, env });
+		if (stderr) {
+			throw new Error(stderr);
+		}
+		return JSON.parse(stdout);
+	} catch (e) {
+		vscode.window.showErrorMessage(`Failed to run "go env ${args}": ${(e as Error).message}`);
+		return {};
+	}
 }
 
-export function isModSupported(fileuri: vscode.Uri, isDir?: boolean): Promise<boolean> {
+export function isModSupported(fileuri?: vscode.Uri, isDir?: boolean): Promise<boolean> {
 	return getModFolderPath(fileuri, isDir).then((modPath) => !!modPath);
 }
 
+// packagePathToGoModPathMap is a cache that maps from a file path (of a package directory)
+// to the module root directory path (directory of `go env GOMOD`) if the file belongs to a module.
 export const packagePathToGoModPathMap: { [key: string]: string } = {};
 
-export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Promise<string> {
-	const pkgPath = isDir ? fileuri.fsPath : path.dirname(fileuri.fsPath);
-	if (packagePathToGoModPathMap[pkgPath]) {
+// getModFolderPath returns the module root of the file. '' or undefined value indicates
+// the file is outside of any module or Go module is disabled.
+export async function getModFolderPath(fileuri?: vscode.Uri, isDir?: boolean): Promise<string | undefined> {
+	const pkgUri = isDir ? fileuri : fileuri && vscodeUri.Utils.dirname(fileuri);
+	const pkgPath = pkgUri?.fsPath ?? '';
+	if (pkgPath && packagePathToGoModPathMap[pkgPath]) {
 		return packagePathToGoModPathMap[pkgPath];
 	}
 
 	// We never would be using the path under module cache for anything
 	// So, dont bother finding where exactly is the go.mod file
 	const moduleCache = getModuleCache();
-	if (fixDriveCasingInWindows(fileuri.fsPath).startsWith(moduleCache)) {
+	if (moduleCache && fixDriveCasingInWindows(fileuri?.fsPath ?? '').startsWith(moduleCache)) {
 		return moduleCache;
 	}
 	const goVersion = await getGoVersion();
@@ -65,18 +72,12 @@ export async function getModFolderPath(fileuri: vscode.Uri, isDir?: boolean): Pr
 		return;
 	}
 
-	let goModEnvResult = await runGoModEnv(pkgPath);
+	const goModEnvJSON = await runGoEnv(pkgUri, ['GOMOD']);
+	let goModEnvResult =
+		goModEnvJSON['GOMOD'] === '/dev/null' || goModEnvJSON['GOMOD'] === 'NUL' ? '' : goModEnvJSON['GOMOD'];
 	if (goModEnvResult) {
 		goModEnvResult = path.dirname(goModEnvResult);
 		const goConfig = getGoConfig(fileuri);
-
-		if (goConfig['inferGopath'] === true && !fileuri.path.includes('/vendor/')) {
-			goConfig.update('inferGopath', false, vscode.ConfigurationTarget.WorkspaceFolder);
-			vscode.window.showInformationMessage(
-				'The "inferGopath" setting is disabled for this workspace because Go modules are being used.'
-			);
-		}
-
 		if (goConfig['useLanguageServer'] === false && getFormatTool(goConfig) === 'goreturns') {
 			const promptFormatToolMsg =
 				'The goreturns tool does not support Go modules. Please update the "formatTool" setting to "goimports".';
@@ -118,7 +119,7 @@ export async function promptToUpdateToolForModules(
 					if (goConfig.get('useLanguageServer') === false) {
 						goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.Global);
 					}
-					if (goConfig.inspect('useLanguageServer').workspaceFolderValue === false) {
+					if (goConfig.inspect('useLanguageServer')?.workspaceFolderValue === false) {
 						goConfig.update('useLanguageServer', true, vscode.ConfigurationTarget.WorkspaceFolder);
 					}
 					break;
@@ -145,7 +146,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	}
 
 	const moduleCache = getModuleCache();
-	if (cwd.startsWith(moduleCache)) {
+	if (moduleCache && cwd.startsWith(moduleCache)) {
 		let importPath = cwd.substr(moduleCache.length + 1);
 		const matches = /@v\d+(\.\d+)?(\.\d+)?/.exec(importPath);
 		if (matches) {
@@ -159,9 +160,9 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		console.warn(
-			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go list" to find current package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
-		return;
+		return '';
 	}
 	return new Promise<string>((resolve) => {
 		const childProcess = cp.spawn(goRuntimePath, ['list'], { cwd, env: toolExecutionEnvironment() });
@@ -187,7 +188,7 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 	});
 }
 
-export async function goModInit() {
+export const goModInit: CommandFactory = () => async () => {
 	outputChannel.clear();
 
 	const moduleName = await vscode.window.showInputBox({
@@ -196,20 +197,24 @@ export async function goModInit() {
 		placeHolder: 'example/project'
 	});
 
+	if (!moduleName) {
+		return;
+	}
+
 	const goRuntimePath = getBinPath('go');
 	const execFile = util.promisify(cp.execFile);
 	try {
 		const env = toolExecutionEnvironment();
-		const cwd = getWorkspaceFolderPath();
+		const cwd = getWorkspaceFolderPath() ?? '';
 		outputChannel.appendLine(`Running "${goRuntimePath} mod init ${moduleName}"`);
 		await execFile(goRuntimePath, ['mod', 'init', moduleName], { env, cwd });
 		outputChannel.appendLine('Module successfully initialized. You are ready to Go :)');
 		vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(cwd, 'go.mod')));
 	} catch (e) {
-		outputChannel.appendLine(e);
+		outputChannel.appendLine((e as Error).message);
 		outputChannel.show();
 		vscode.window.showErrorMessage(
 			`Error running "${goRuntimePath} mod init ${moduleName}": See Go output channel for details`
 		);
 	}
-}
+};

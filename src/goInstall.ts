@@ -6,14 +6,15 @@
 import cp = require('child_process');
 import path = require('path');
 import vscode = require('vscode');
+import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getModuleCache } from './util';
-import { envPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot, getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
 
-export async function installCurrentPackage(): Promise<void> {
+export const installCurrentPackage: CommandFactory = () => async () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active, cannot find current package to install');
@@ -29,7 +30,7 @@ export async function installCurrentPackage(): Promise<void> {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
-			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${envPath})`
+			`Failed to run "go install" to install the package as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
 		);
 		return;
 	}
@@ -39,7 +40,8 @@ export async function installCurrentPackage(): Promise<void> {
 	const isMod = await isModSupported(editor.document.uri);
 
 	// Skip installing if cwd is in the module cache
-	if (isMod && cwd.startsWith(getModuleCache())) {
+	const cache = getModuleCache();
+	if (isMod && cache && cwd.startsWith(cache)) {
 		return;
 	}
 
@@ -63,4 +65,4 @@ export async function installCurrentPackage(): Promise<void> {
 	cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
 		outputChannel.appendLine(err ? `Installation failed: ${stderr}` : 'Installation successful');
 	});
-}
+};

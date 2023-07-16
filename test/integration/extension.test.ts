@@ -15,8 +15,8 @@ import * as vscode from 'vscode';
 import { getGoConfig, getGoplsConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
-import { GoDefinitionProvider } from '../../src/goDeclaration';
-import { GoHoverProvider } from '../../src/goExtraInfo';
+import { GoDefinitionProvider } from '../../src/language/legacy/goDeclaration';
+import { GoHoverProvider } from '../../src/language/legacy/goExtraInfo';
 import { runFillStruct } from '../../src/goFillStruct';
 import {
 	generateTestCurrentFile,
@@ -25,15 +25,15 @@ import {
 } from '../../src/goGenerateTests';
 import { getTextEditForAddImport, listPackages } from '../../src/goImport';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { buildLanguageServerConfig } from '../../src/goLanguageServer';
+import { buildLanguageServerConfig } from '../../src/language/goLanguageServer';
 import { goLint } from '../../src/goLint';
-import { documentSymbols, GoDocumentSymbolProvider, GoOutlineImportsOptions } from '../../src/goOutline';
-import { getAllPackages } from '../../src/goPackages';
+import { documentSymbols, GoOutlineImportsOptions } from '../../src/language/legacy/goOutline';
+import { GoDocumentSymbolProvider } from '../../src/goDocumentSymbols';
 import { goPlay } from '../../src/goPlayground';
-import { GoSignatureHelpProvider } from '../../src/goSignature';
-import { GoCompletionItemProvider } from '../../src/goSuggest';
-import { getWorkspaceSymbols } from '../../src/goSymbol';
-import { testCurrentFile } from '../../src/goTest';
+import { GoSignatureHelpProvider } from '../../src/language/legacy/goSignature';
+import { GoCompletionItemProvider } from '../../src/language/legacy/goSuggest';
+import { getWorkspaceSymbols } from '../../src/language/legacy/goSymbol';
+import { testCurrentFile } from '../../src/commands';
 import {
 	getBinPath,
 	getCurrentGoPath,
@@ -41,11 +41,12 @@ import {
 	getImportPath,
 	GoVersion,
 	handleDiagnosticErrors,
-	ICheckResult,
-	isVendorSupported
+	ICheckResult
 } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
+import { MockExtensionContext } from '../mocks/MockContext';
+import { affectedByIssue832 } from './testutils';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -65,7 +66,7 @@ const testAll = (isModuleMode: boolean) => {
 		previousEnv = Object.assign({}, process.env);
 		process.env.GO111MODULE = isModuleMode ? 'on' : 'off';
 
-		await updateGoVarsFromConfig();
+		await updateGoVarsFromConfig({});
 
 		gopath = getCurrentGoPath();
 		if (!gopath) {
@@ -135,12 +136,12 @@ const testAll = (isModuleMode: boolean) => {
 		const definitionInfo = await provider.provideDefinition(textDocument, position, dummyCancellationSource.token);
 
 		assert.equal(
-			definitionInfo.uri.path.toLowerCase(),
+			definitionInfo?.uri.path.toLowerCase(),
 			uri.path.toLowerCase(),
-			`${definitionInfo.uri.path} is not the same as ${uri.path}`
+			`${definitionInfo?.uri.path} is not the same as ${uri.path}`
 		);
-		assert.equal(definitionInfo.range.start.line, 6);
-		assert.equal(definitionInfo.range.start.character, 5);
+		assert.equal(definitionInfo?.range.start.line, 6);
+		assert.equal(definitionInfo?.range.start.character, 5);
 	}
 
 	async function testSignatureHelpProvider(
@@ -151,7 +152,7 @@ const testAll = (isModuleMode: boolean) => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'gogetdocTestData', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
 
-		const promises = testCases.map(([position, expected, expectedDoc, expectedParams]) =>
+		const promises = testCases.map(([position, expected, expectedDocPrefix, expectedParams]) =>
 			provider.provideSignatureHelp(textDocument, position, dummyCancellationSource.token).then((sigHelp) => {
 				assert.ok(
 					sigHelp,
@@ -159,7 +160,10 @@ const testAll = (isModuleMode: boolean) => {
 				);
 				assert.equal(sigHelp.signatures.length, 1, 'unexpected number of overloads');
 				assert.equal(sigHelp.signatures[0].label, expected);
-				assert.equal(sigHelp.signatures[0].documentation, expectedDoc);
+				assert(
+					sigHelp.signatures[0].documentation?.toString().startsWith(expectedDocPrefix),
+					`expected doc starting with ${expectedDocPrefix}, got ${JSON.stringify(sigHelp.signatures[0])}`
+				);
 				assert.equal(sigHelp.signatures[0].parameters.length, expectedParams.length);
 				for (let i = 0; i < expectedParams.length; i++) {
 					assert.equal(sigHelp.signatures[0].parameters[i].label, expectedParams[i]);
@@ -187,8 +191,12 @@ const testAll = (isModuleMode: boolean) => {
 				if (expectedDocumentation != null) {
 					expectedHover += expectedDocumentation;
 				}
+				assert(res);
 				assert.equal(res.contents.length, 1);
-				assert.equal((<vscode.MarkdownString>res.contents[0]).value, expectedHover);
+				assert(
+					(<vscode.MarkdownString>res.contents[0]).value.startsWith(expectedHover),
+					`expected hover starting with ${expectedHover}, got ${JSON.stringify(res.contents[0])}`
+				);
 			})
 		);
 		return Promise.all(promises);
@@ -225,11 +233,7 @@ const testAll = (isModuleMode: boolean) => {
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -238,7 +242,7 @@ encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -276,10 +280,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println(a ...interface{}) (n int, err error)'
 			: 'Println(a ...any) (n int, err error)';
@@ -288,7 +289,7 @@ It returns the number of bytes written and any write error encountered.
 			[
 				new vscode.Position(19, 13),
 				printlnSig,
-				printlnDoc,
+				printlnDocPrefix,
 				[goVersion.lt('1.18') ? 'a ...interface{}' : 'a ...any']
 			],
 			[
@@ -321,11 +322,7 @@ It returns the number of bytes written and any write error encountered.
 			this.skip();
 		} // not working in module mode
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'Println func(a ...interface{}) (n int, err error)'
 			: 'Println func(a ...any) (n int, err error)';
@@ -338,7 +335,7 @@ encountered.
 			[new vscode.Position(28, 16), null, null], // inside a number
 			[new vscode.Position(22, 5), 'main func()', '\n'],
 			[new vscode.Position(40, 23), 'import (math "math")', null],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(23, 4),
 				'print func(txt string)',
@@ -362,10 +359,7 @@ encountered.
 			return;
 		}
 
-		const printlnDoc = `Println formats using the default formats for its operands and writes to standard output.
-Spaces are always added between operands and a newline is appended.
-It returns the number of bytes written and any write error encountered.
-`;
+		const printlnDocPrefix = 'Println formats using the default formats for its operands and writes';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func Println(a ...interface{}) (n int, err error)'
 			: 'func Println(a ...any) (n int, err error)';
@@ -386,7 +380,7 @@ It returns the number of bytes written and any write error encountered.
 				'package math',
 				'Package math provides basic constants and mathematical functions.\n\nThis package does not guarantee bit-identical results across architectures.\n'
 			],
-			[new vscode.Position(19, 6), printlnSig, printlnDoc],
+			[new vscode.Position(19, 6), printlnSig, printlnDocPrefix],
 			[
 				new vscode.Position(27, 14),
 				'type ABC struct {\n    a int\n    b int\n    c int\n}',
@@ -404,13 +398,7 @@ It returns the number of bytes written and any write error encountered.
 		await testHoverProvider(config, testCases);
 	});
 
-	test('Linting - concurrent process cancelation', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
-		}
-
+	test('Linting - concurrent process cancelation', async () => {
 		const util = require('../../src/util');
 		const processutil = require('../../src/utils/processUtils');
 		sinon.spy(util, 'runTool');
@@ -439,53 +427,49 @@ It returns the number of bytes written and any write error encountered.
 		);
 	});
 
-	test('Linting - lint errors with multiple open files', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
+	test('Linting - lint errors with multiple open files', async () => {
+		try {
+			// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
+			// This adjustment applies only to the text documents known to vscode. This test checks
+			// the adjustment is made consistently across multiple open text documents.
+			const file1 = await vscode.workspace.openTextDocument(
+				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
+			);
+			const file2 = await vscode.workspace.openTextDocument(
+				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
+			);
+			console.log('start linting');
+			const warnings = await goLint(
+				file2.uri,
+				Object.create(getGoConfig(), {
+					lintTool: { value: 'staticcheck' },
+					lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
+					// staticcheck skips debatable checks such as ST1003 by default,
+					// but this test depends on ST1003 (MixedCaps package name) presented in both files
+					// in the same package. So, enable that.
+				}),
+				Object.create(getGoplsConfig(), {}),
+				'package'
+			);
+
+			const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
+			handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
+
+			// The first diagnostic message for each file should be about the use of MixedCaps in package name.
+			// Both files belong to the same package name, and we want them to be identical.
+			const file1Diagnostics = diagnosticCollection.get(file1.uri);
+			const file2Diagnostics = diagnosticCollection.get(file2.uri);
+			assert(file1Diagnostics);
+			assert(file2Diagnostics);
+			assert(file1Diagnostics.length > 0);
+			assert(file2Diagnostics.length > 0);
+			assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
+		} catch (e) {
+			assert.fail(`failed to lint: ${e}`);
 		}
-		// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
-		// This adjustment applies only to the text documents known to vscode. This test checks
-		// the adjustment is made consistently across multiple open text documents.
-		const file1 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
-		);
-		const file2 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
-		);
-		const warnings = await goLint(
-			file2.uri,
-			Object.create(getGoConfig(), {
-				lintTool: { value: 'staticcheck' },
-				lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
-				// staticcheck skips debatable checks such as ST1003 by default,
-				// but this test depends on ST1003 (MixedCaps package name) presented in both files
-				// in the same package. So, enable that.
-			}),
-			Object.create(getGoplsConfig(), {}),
-			'package'
-		);
-
-		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-		handleDiagnosticErrors(file2, warnings, diagnosticCollection);
-
-		// The first diagnostic message for each file should be about the use of MixedCaps in package name.
-		// Both files belong to the same package name, and we want them to be identical.
-		const file1Diagnostics = diagnosticCollection.get(file1.uri);
-		const file2Diagnostics = diagnosticCollection.get(file2.uri);
-		assert(file1Diagnostics.length > 0);
-		assert(file2Diagnostics.length > 0);
-		assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
 	});
 
-	test('Error checking', async function () {
-		if (!goVersion.lt('1.18')) {
-			// TODO(hyangah): reenable test when staticcheck for go1.18 is released
-			// https://github.com/dominikh/go-tools/issues/1145
-			this.skip();
-		}
-
+	test('Error checking', async () => {
 		const config = Object.create(getGoConfig(), {
 			vetOnSave: { value: 'package' },
 			vetFlags: { value: ['-all'] },
@@ -500,7 +484,8 @@ It returns the number of bytes written and any write error encountered.
 			{
 				line: 11,
 				severity: 'warning',
-				msg: 'undeclared name: prin (compile)'
+				// From v0.4.0, staticcheck uses 'undefined:' as the prefix of this error.
+				msg: /(?:undeclared name|undefined): prin \(compile\)/
 			}
 		];
 		// If a user has enabled diagnostics via a language server,
@@ -512,7 +497,15 @@ It returns the number of bytes written and any write error encountered.
 
 		// `check` itself doesn't run deDupeDiagnostics, so we expect all vet/lint errors.
 		const expected = [...expectedLintErrors, ...expectedBuildVetErrors];
-		const diagnostics = await check(vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')), config);
+		const diagnostics = await check(
+			{
+				buildDiagnosticCollection: vscode.languages.createDiagnosticCollection('buildtest'),
+				lintDiagnosticCollection: vscode.languages.createDiagnosticCollection('linttest'),
+				vetDiagnosticCollection: vscode.languages.createDiagnosticCollection('vettest')
+			},
+			vscode.Uri.file(path.join(fixturePath, 'errorsTest', 'errors.go')),
+			config
+		);
 		const sortedDiagnostics = ([] as ICheckResult[]).concat
 			.apply(
 				[],
@@ -526,7 +519,7 @@ It returns the number of bytes written and any write error encountered.
 				return (
 					expectedItem.line === diag.line &&
 					expectedItem.severity === diag.severity &&
-					expectedItem.msg === diag.msg
+					diag.msg.match(expectedItem.msg)
 				);
 			});
 		});
@@ -547,7 +540,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentFile();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentFile(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -564,7 +558,8 @@ It returns the number of bytes written and any write error encountered.
 		const document = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(5, 0, 6, 0);
-		await generateTestCurrentFunction();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentFunction(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -580,7 +575,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-		await generateTestCurrentPackage();
+		const ctx = new MockExtensionContext() as any;
+		await generateTestCurrentPackage(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
 		assert.equal(testFileGenerated, true, 'Test file not generated.');
@@ -673,8 +669,8 @@ It returns the number of bytes written and any write error encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'sample_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
-
-		const result = await testCurrentFile(config, false, []);
+		const ctx = new MockExtensionContext() as any;
+		const result = await testCurrentFile(false, () => config)(ctx, {})([]);
 		assert.equal(result, true);
 	});
 
@@ -725,7 +721,7 @@ It returns the number of bytes written and any write error encountered.
 	test('Test Outline document symbols', async () => {
 		const uri = vscode.Uri.file(path.join(fixturePath, 'outlineTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
-		const symbolProvider = new GoDocumentSymbolProvider();
+		const symbolProvider = GoDocumentSymbolProvider({});
 
 		const outlines = await symbolProvider.provideDocumentSymbols(document, dummyCancellationSource.token);
 		const packages = outlines.filter((x) => x.kind === vscode.SymbolKind.Package);
@@ -744,127 +740,65 @@ It returns the number of bytes written and any write error encountered.
 		assert.equal(interfaces[0].name, 'circle');
 	});
 
-	test('Test listPackages', async () => {
+	test('Test listPackages', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
 
 		const includeImportedPkgs = await listPackages(false);
 		const excludeImportedPkgs = await listPackages(true);
-		assert.equal(includeImportedPkgs.indexOf('fmt') > -1, true);
-		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false);
+		assert.equal(includeImportedPkgs.indexOf('fmt') > -1, true, 'want to include imported package');
+		assert.equal(excludeImportedPkgs.indexOf('fmt') > -1, false, 'want to exclude imported package');
 	});
 
 	test('Replace vendor packages with relative path', async function () {
 		if (isModuleMode) {
 			this.skip();
 		} // not working in module mode.
-		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'vendoring', 'main.go');
-		const workDir = path.dirname(filePath);
 		const vendorPkgsFullPath = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 		const vendorPkgsRelativePath = ['example/vendorpls'];
 
-		const gopkgsPromise = getAllPackages(workDir).then((pkgMap) => {
-			const pkgs = Array.from(pkgMap.keys()).filter((p) => {
-				const pkg = pkgMap.get(p);
-				return pkg && pkg.name !== 'main';
+		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
+			await vscode.window.showTextDocument(document);
+			const pkgs = await listPackages();
+			vendorPkgsRelativePath.forEach((pkg) => {
+				assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
 			});
-			if (vendorSupport) {
-				vendorPkgsFullPath.forEach((pkg) => {
-					assert.equal(pkgs.indexOf(pkg) > -1, true, `Package not found by goPkgs: ${pkg}`);
-				});
-				vendorPkgsRelativePath.forEach((pkg) => {
-					assert.equal(
-						pkgs.indexOf(pkg),
-						-1,
-						`Relative path to vendor package ${pkg} should not be returned by gopkgs command`
-					);
-				});
-			}
+			vendorPkgsFullPath.forEach((pkg) => {
+				assert.equal(
+					pkgs.indexOf(pkg),
+					-1,
+					`Full path for vendor package ${pkg} should be shown by listPackages method`
+				);
+			});
 			return pkgs;
 		});
-
-		const listPkgPromise: Thenable<string[]> = vscode.workspace
-			.openTextDocument(vscode.Uri.file(filePath))
-			.then(async (document) => {
-				await vscode.window.showTextDocument(document);
-				const pkgs = await listPackages();
-				if (vendorSupport) {
-					vendorPkgsRelativePath.forEach((pkg) => {
-						assert.equal(pkgs.indexOf(pkg) > -1, true, `Relative path for vendor package ${pkg} not found`);
-					});
-					vendorPkgsFullPath.forEach((pkg) => {
-						assert.equal(
-							pkgs.indexOf(pkg),
-							-1,
-							`Full path for vendor package ${pkg} should be shown by listPackages method`
-						);
-					});
-				}
-				return pkgs;
-			});
-
-		const values = await Promise.all<string[]>([gopkgsPromise, listPkgPromise]);
-		if (!vendorSupport) {
-			const originalPkgs = values[0].sort();
-			const updatedPkgs = values[1].sort();
-			assert.equal(originalPkgs.length, updatedPkgs.length);
-			for (let index = 0; index < originalPkgs.length; index++) {
-				assert.equal(updatedPkgs[index], originalPkgs[index]);
-			}
-		}
 	});
 
 	test('Vendor pkgs from other projects should not be allowed to import', async function () {
 		if (isModuleMode) {
 			this.skip();
 		} // not working in module mode.
-		const vendorSupport = await isVendorSupported();
 		const filePath = path.join(fixturePath, 'baseTest', 'test.go');
 		const vendorPkgs = ['test/testfixture/vendoring/vendor/example/vendorpls'];
 
-		const gopkgsPromise = new Promise<void>((resolve, reject) => {
-			const cmd = cp.spawn(getBinPath('gopkgs'), ['-format', '{{.ImportPath}}'], {
-				env: process.env
-			});
-			const chunks: any[] = [];
-			cmd.stdout.on('data', (d) => chunks.push(d));
-			cmd.on('close', () => {
-				const pkgs = chunks
-					.join('')
-					.split('\n')
-					.filter((pkg) => pkg)
-					.sort();
-				if (vendorSupport) {
-					vendorPkgs.forEach((pkg) => {
-						assert.equal(pkgs.indexOf(pkg) > -1, true, `Package not found by goPkgs: ${pkg}`);
-					});
-				}
-				return resolve();
+		vscode.workspace.openTextDocument(vscode.Uri.file(filePath)).then(async (document) => {
+			await vscode.window.showTextDocument(document);
+			const pkgs = await listPackages();
+			vendorPkgs.forEach((pkg) => {
+				assert.equal(pkgs.indexOf(pkg), -1, `Vendor package ${pkg} should not be shown by listPackages method`);
 			});
 		});
-
-		const listPkgPromise: Thenable<void> = vscode.workspace
-			.openTextDocument(vscode.Uri.file(filePath))
-			.then(async (document) => {
-				await vscode.window.showTextDocument(document);
-				const pkgs = await listPackages();
-				if (vendorSupport) {
-					vendorPkgs.forEach((pkg) => {
-						assert.equal(
-							pkgs.indexOf(pkg),
-							-1,
-							`Vendor package ${pkg} should not be shown by listPackages method`
-						);
-					});
-				}
-			});
-
-		return Promise.all<void>([gopkgsPromise, listPkgPromise]);
 	});
 
-	test('Workspace Symbols', () => {
+	test('Workspace Symbols', function () {
+		if (affectedByIssue832()) {
+			this.skip(); // frequent timeout on windows
+		}
 		const workspacePath = path.join(fixturePath, 'vendoring');
 		const configWithoutIgnoringFolders = Object.create(getGoConfig(), {
 			gotoSymbol: {
@@ -932,12 +866,12 @@ It returns the number of bytes written and any write error encountered.
 		return Promise.all([withIgnoringFolders, withoutIgnoringFolders, withIncludingGoroot, withoutIncludingGoroot]);
 	});
 
-	test('Test Completion', async () => {
-		const printlnDoc = `Println formats using the default formats for its operands and writes to
-standard output. Spaces are always added between operands and a newline is
-appended. It returns the number of bytes written and any write error
-encountered.
-`;
+	test('Test Completion', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
+
+		const printlnDocPrefix = 'Println formats using the default formats for its operands';
 		const printlnSig = goVersion.lt('1.18')
 			? 'func(a ...interface{}) (n int, err error)'
 			: 'func(a ...any) (n int, err error)';
@@ -945,7 +879,7 @@ encountered.
 		const provider = new GoCompletionItemProvider();
 		const testCases: [vscode.Position, string, string | null, string | null][] = [
 			[new vscode.Position(7, 4), 'fmt', 'fmt', null],
-			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDoc]
+			[new vscode.Position(7, 6), 'Println', printlnSig, printlnDocPrefix]
 		];
 		const uri = vscode.Uri.file(path.join(fixturePath, 'baseTest', 'test.go'));
 		const textDocument = await vscode.workspace.openTextDocument(uri);
@@ -967,22 +901,30 @@ encountered.
 					if (!resolvedItemResult) {
 						return;
 					}
-					if (resolvedItemResult instanceof vscode.CompletionItem) {
-						if (resolvedItemResult.documentation) {
-							assert.equal((<vscode.MarkdownString>resolvedItemResult.documentation).value, expectedDoc);
+					const resolvedItem =
+						resolvedItemResult instanceof vscode.CompletionItem
+							? resolvedItemResult
+							: await resolvedItemResult;
+					if (resolvedItem?.documentation) {
+						const got = (<vscode.MarkdownString>resolvedItem.documentation).value;
+						if (expectedDoc) {
+							assert(
+								got.startsWith(expectedDoc),
+								`expected doc starting with ${expectedDoc}, got ${got}`
+							);
+						} else {
+							assert.equal(got, expectedDoc);
 						}
-						return;
-					}
-					const resolvedItem = await resolvedItemResult;
-					if (resolvedItem) {
-						assert.equal((<vscode.MarkdownString>resolvedItem.documentation).value, expectedDoc);
 					}
 				})
 		);
 		await Promise.all(promises);
 	});
 
-	test('Test Completion Snippets For Functions', async () => {
+	test('Test Completion Snippets For Functions', async function () {
+		if (affectedByIssue832()) {
+			this.skip(); // timeout on windows
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'snippets.go'));
 		const baseConfig = getGoConfig();
@@ -1180,6 +1122,9 @@ encountered.
 	});
 
 	test('Test No Completion Snippets For Functions', async () => {
+		if (affectedByIssue832()) {
+			return;
+		}
 		const provider = new GoCompletionItemProvider();
 		const uri = vscode.Uri.file(path.join(fixturePath, 'completions', 'nosnippets.go'));
 		const baseConfig = getGoConfig();
@@ -1247,7 +1192,7 @@ encountered.
 	});
 
 	test('Test Completion on unimported packages', async function () {
-		if (isModuleMode) {
+		if (isModuleMode || affectedByIssue832()) {
 			this.skip();
 		}
 		// gocode-gomod does not handle unimported package completion.
@@ -1283,7 +1228,10 @@ encountered.
 		await Promise.all(promises);
 	});
 
-	test('Test Completion on unimported packages (multiple)', async () => {
+	test('Test Completion on unimported packages (multiple)', async function () {
+		if (affectedByIssue832()) {
+			this.skip();
+		}
 		const config = Object.create(getGoConfig(), {
 			gocodeFlags: { value: ['-builtin'] }
 		});
@@ -1497,7 +1445,7 @@ encountered.
 				buildTags: { value: tags }
 			}) as vscode.WorkspaceConfiguration;
 
-			const diagnostics = await check(fileUri, cfg);
+			const diagnostics = await check({}, fileUri, cfg);
 			return ([] as string[]).concat(
 				...diagnostics.map<string[]>((d) => {
 					return d.errors.map((e) => e.msg) as string[];
@@ -1569,17 +1517,18 @@ encountered.
 		const uri = vscode.Uri.file(path.join(fixturePath, 'testTags', 'hello_test.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
+		const ctx = new MockExtensionContext() as any;
 
-		const result1 = await testCurrentFile(config1, false, []);
+		const result1 = await testCurrentFile(false, () => config1)(ctx, {})([]);
 		assert.equal(result1, true);
 
-		const result2 = await testCurrentFile(config2, false, []);
+		const result2 = await testCurrentFile(false, () => config2)(ctx, {})([]);
 		assert.equal(result2, true);
 
-		const result3 = await testCurrentFile(config3, false, []);
+		const result3 = await testCurrentFile(false, () => config3)(ctx, {})([]);
 		assert.equal(result3, true);
 
-		const result4 = await testCurrentFile(config4, false, []);
+		const result4 = await testCurrentFile(false, () => config4)(ctx, {})([]);
 		assert.equal(result4, false);
 	});
 
@@ -1598,6 +1547,7 @@ encountered.
 		const expectedText = document.getText() + fixEOL(document.eol, '\n' + 'import (\n\t"bytes"\n)\n');
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		return vscode.workspace.applyEdit(edit).then(() => {
 			assert.equal(
@@ -1619,6 +1569,7 @@ encountered.
 			.replace(fixEOL(eol, '\t"fmt"\n\t"math"'), fixEOL(eol, '\t"bytes"\n\t"fmt"\n\t"math"'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1638,6 +1589,7 @@ encountered.
 			);
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1654,6 +1606,7 @@ encountered.
 			.replace(fixEOL(eol, 'import "math"'), fixEOL(eol, 'import (\n\t"bytes"\n\t"math"\n)'));
 		const edits = getTextEditForAddImport('bytes');
 		const edit = new vscode.WorkspaceEdit();
+		assert(edits);
 		edit.set(document.uri, edits);
 		await vscode.workspace.applyEdit(edit);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), expectedText);
@@ -1669,7 +1622,8 @@ encountered.
 		const editor = await vscode.window.showTextDocument(textDocument);
 		const selection = new vscode.Selection(12, 15, 12, 15);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 
@@ -1682,7 +1636,8 @@ encountered.
 
 		const selection = new vscode.Selection(7, 0, 7, 10);
 		editor.selection = selection;
-		await runFillStruct(editor);
+		const ctx = new MockExtensionContext() as any;
+		await runFillStruct(ctx, {})(editor);
 		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 };

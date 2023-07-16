@@ -13,7 +13,7 @@ import { MockTestWorkspace } from '../mocks/MockTest';
 export function getSymbols_Regex(doc: TextDocument, token: unknown): Thenable<DocumentSymbol[]> {
 	const syms: DocumentSymbol[] = [];
 	const range = new Range(new Position(0, 0), new Position(0, 0));
-	doc.getText().replace(/^func (Test|Benchmark|Example)([A-Z]\w+)(\(.*\))/gm, (m, type, name, details) => {
+	doc.getText().replace(/^func (Test|Benchmark|Example|Fuzz)([A-Z]\w+)(\(.*\))/gm, (m, type, name, details) => {
 		syms.push(new DocumentSymbol(type + name, details, SymbolKind.Function, range, range));
 		return m;
 	});
@@ -23,15 +23,15 @@ export function getSymbols_Regex(doc: TextDocument, token: unknown): Thenable<Do
 export function populateModulePathCache(workspace: MockTestWorkspace) {
 	function walk(dir: Uri, modpath?: string) {
 		const dirs: Uri[] = [];
-		for (const [name, type] of workspace.fs.dirs.get(dir.toString())) {
-			const uri = dir.with({ path: path.join(dir.path, name) });
+		for (const [name, type] of workspace.fs.dirs.get(dir.toString()) ?? []) {
+			const uri = Uri.file(path.join(dir.fsPath, name));
 			if (type === FileType.Directory) {
 				dirs.push(uri);
 			} else if (name === 'go.mod') {
-				modpath = dir.path;
+				modpath = dir.fsPath;
 			}
 		}
-		packagePathToGoModPathMap[dir.path] = modpath || '';
+		packagePathToGoModPathMap[dir.fsPath] = modpath || '';
 		for (const dir of dirs) {
 			walk(dir, modpath);
 		}

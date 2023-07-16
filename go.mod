@@ -3,6 +3,7 @@ module github.com/golang/vscode-go
 go 1.16
 
 require (
-	github.com/stamblerre/work-stats v0.0.0-20210726215650-a14fc877fae7
-	golang.org/x/build v0.0.0-20210722210716-65acb205e577
+	github.com/google/go-cmp v0.5.9
+	github.com/stamblerre/work-stats v0.0.0-20221215212512-f2f2cf51e506
+	golang.org/x/build v0.0.0-20230221151429-f03e733dd241
 )

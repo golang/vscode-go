@@ -216,6 +216,7 @@ class FakeOutputChannel implements vscode.OutputChannel {
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
 	public dispose = sinon.fake(); // no-empty
+	public replace = sinon.fake(); // no-empty
 
 	private buf = [] as string[];
 

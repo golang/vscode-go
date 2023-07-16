@@ -30,7 +30,7 @@ function newExplorer<T extends GoTestExplorer>(
 ) {
 	const ws = MockTestWorkspace.from(folders, files);
 	const ctrl = new MockTestController();
-	const expl = new ctor(ws, ctrl, new MockMemento(), getSymbols_Regex);
+	const expl = new ctor({}, ws, ctrl, new MockMemento(), getSymbols_Regex);
 	populateModulePathCache(ws);
 	return { ctrl, expl, ws };
 }
@@ -60,11 +60,16 @@ suite('Go Test Explorer', () => {
 			async _didOpen(doc: TextDocument) {
 				await this.didOpenTextDocument(doc);
 			}
+
+			async _didCreate(doc: TextDocument) {
+				await this.didCreateFile(doc.uri);
+			}
 		}
 
 		interface TC extends TestCase {
-			open: string;
-			expect: string[];
+			uri: string;
+			expectCreate: string[];
+			expectOpen: string[];
 		}
 
 		const cases: Record<string, TC> = {
@@ -76,8 +81,9 @@ suite('Go Test Explorer', () => {
 					'/src/proj/bar_test.go': 'package main\nfunc TestBar(*testing.T) {}',
 					'/src/proj/baz/main_test.go': 'package main\nfunc TestBaz(*testing.T) {}'
 				},
-				open: 'file:///src/proj/foo_test.go',
-				expect: [
+				uri: 'file:///src/proj/foo_test.go',
+				expectCreate: ['file:///src/proj?module', 'file:///src/proj/foo_test.go?file'],
+				expectOpen: [
 					'file:///src/proj?module',
 					'file:///src/proj/foo_test.go?file',
 					'file:///src/proj/foo_test.go?test#TestFoo'
@@ -89,8 +95,9 @@ suite('Go Test Explorer', () => {
 					'/src/proj/go.mod': 'module test',
 					'/src/proj/foo_test.go': 'package main\nfunc TestFoo(*testing.T) {}'
 				},
-				open: 'file:///src/proj/foo_test.go',
-				expect: [
+				uri: 'file:///src/proj/foo_test.go',
+				expectCreate: ['file:///src/proj?module', 'file:///src/proj/foo_test.go?file'],
+				expectOpen: [
 					'file:///src/proj?module',
 					'file:///src/proj/foo_test.go?file',
 					'file:///src/proj/foo_test.go?test#TestFoo'
@@ -100,12 +107,17 @@ suite('Go Test Explorer', () => {
 
 		for (const name in cases) {
 			test(name, async () => {
-				const { workspace, files, open, expect } = cases[name];
+				const { workspace, files, uri: uri, expectCreate: expectCreate, expectOpen: expectOpen } = cases[name];
 				const { ctrl, expl, ws } = newExplorer(workspace, files, DUT);
 
-				await expl._didOpen(ws.fs.files.get(open));
+				const doc = ws.fs.files.get(uri);
+				assert(doc);
 
-				assertTestItems(ctrl.items, expect);
+				await expl._didCreate(doc);
+				assertTestItems(ctrl.items, expectCreate);
+
+				await expl._didOpen(doc);
+				assertTestItems(ctrl.items, expectOpen);
 			});
 		}
 	});
@@ -172,16 +184,20 @@ suite('Go Test Explorer', () => {
 				const { workspace, files, open, changes, expect } = cases[name];
 				const { ctrl, expl, ws } = newExplorer(workspace, files, DUT);
 
-				await expl._didOpen(ws.fs.files.get(open));
+				const doc = ws.fs.files.get(open);
+				assert(doc);
+				await expl._didOpen(doc);
 
 				assertTestItems(ctrl.items, expect.before);
 
 				for (const [file, contents] of changes) {
 					const doc = ws.fs.files.get(file);
+					assert(doc);
 					doc.contents = contents;
 					await expl._didChange({
 						document: doc,
-						contentChanges: []
+						contentChanges: [],
+						reason: undefined
 					});
 				}
 
@@ -193,12 +209,11 @@ suite('Go Test Explorer', () => {
 	suite('stretchr', () => {
 		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 		const ctx = MockExtensionContext.new();
-
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx);
+			testExplorer = GoTestExplorer.setup(ctx, {});
 
 			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
 			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
@@ -329,7 +344,11 @@ suite('Go Test Explorer', () => {
 					expectedTests
 				);
 
-				await explorer.runner.run({ include: [tests[0]] });
+				await explorer.runner.run({
+					include: [tests[0]],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 				assert.deepStrictEqual(runStub.lastCall.args[0].functions, ['TestFoo']);
 			});
@@ -346,7 +365,11 @@ suite('Go Test Explorer', () => {
 					expectedTests
 				);
 
-				await explorer.runner.run({ include: [tests[0]] });
+				await explorer.runner.run({
+					include: [tests[0]],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 2, 'Expected goTest to be called twice');
 				assert.deepStrictEqual(runStub.firstCall.args[0].functions, ['TestFoo']);
 				assert.deepStrictEqual(runStub.secondCall.args[0].functions, ['BenchmarkBar']);
@@ -361,7 +384,7 @@ suite('Go Test Explorer', () => {
 				runStub = sandbox.stub(testUtils, 'goTest');
 				runStub.callsFake((cfg) => {
 					// Trigger creation of dynamic subtest
-					cfg.goTestOutputConsumer({
+					cfg.goTestOutputConsumer?.({
 						Test: 'TestFoo/Bar',
 						Action: 'run'
 					});
@@ -389,7 +412,11 @@ suite('Go Test Explorer', () => {
 					.filter((x) => GoTest.parseId(x.id).name)[0];
 				assert(test, 'Could not find test');
 
-				await explorer.runner.run({ include: [test] });
+				await explorer.runner.run({
+					include: [test],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
 				const subTest = test.children.get('file:///src/proj/main_test.go?test#TestFoo%2FBar');
@@ -409,7 +436,11 @@ suite('Go Test Explorer', () => {
 					.filter((x) => GoTest.parseId(x.id).name)[0];
 				assert(test, 'Could not find test');
 
-				await explorer.runner.run({ include: [test] });
+				await explorer.runner.run({
+					include: [test],
+					exclude: undefined,
+					profile: undefined
+				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
 				const subTest = test.children.get('file:///src/proj/main_test.go?test#TestFoo%2FBar');

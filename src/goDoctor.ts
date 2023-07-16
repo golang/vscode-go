@@ -17,7 +17,7 @@ import vscode = require('vscode');
  * Extracts function out of current selection and replaces the current selection with a call to the extracted function.
  */
 export function extractFunction() {
-	extract('extract');
+	return () => extract('extract');
 }
 
 /**
@@ -25,7 +25,7 @@ export function extractFunction() {
  * replaces the current selection with the new var.
  */
 export function extractVariable() {
-	extract('var');
+	return () => extract('var');
 }
 
 type typeOfExtraction = 'var' | 'extract';

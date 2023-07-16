@@ -1,7 +1,12 @@
+// Copyright 2021 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Binary installtools is a helper that installs Go tools extension tests depend on.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,27 +16,51 @@ import (
 	"strings"
 )
 
+// finalVersion encodes the fact that the specified tool version
+// is the known last version that can be buildable with goMinorVersion.
+type finalVersion struct {
+	goMinorVersion int
+	version        string
+}
+
 var tools = []struct {
-	path    string
-	version string
-	dest    string
+	path          string
+	dest          string
+	preferPreview bool
+	// versions is a list of supportedVersions sorted by
+	// goMinorVersion. If we want to pin a tool's version
+	// add a fake entry with a large goMinorVersion
+	// value and the pinned tool version as the last entry.
+	// Nil of empty list indicates we can use the `latest` version.
+	versions []finalVersion
 }{
 	// TODO: auto-generate based on allTools.ts.in.
-	{"golang.org/x/tools/gopls", "", ""},
-	{"github.com/acroca/go-symbols", "", ""},
-	{"github.com/cweill/gotests/gotests", "", ""},
-	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", ""},
-	{"github.com/haya14busa/goplay/cmd/goplay", "", ""},
-	{"github.com/stamblerre/gocode", "", "gocode-gomod"},
-	{"github.com/mdempsky/gocode", "", ""},
-	{"github.com/ramya-rao-a/go-outline", "", ""},
-	{"github.com/rogpeppe/godef", "", ""},
-	{"github.com/sqs/goreturns", "", ""},
-	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", ""},
-	{"github.com/zmb3/gogetdoc", "", ""},
-	{"honnef.co/go/tools/cmd/staticcheck", "", ""},
-	{"golang.org/x/tools/cmd/gorename", "", ""},
-	{"github.com/go-delve/delve/cmd/dlv", "", ""},
+	{"golang.org/x/tools/gopls", "", true, nil},
+	{"github.com/acroca/go-symbols", "", false, nil},
+	{"github.com/cweill/gotests/gotests", "", false, nil},
+	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
+	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
+	{"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
+	{"github.com/mdempsky/gocode", "", false, nil},
+	{"github.com/ramya-rao-a/go-outline", "", false, nil},
+	{"github.com/rogpeppe/godef", "", false, nil},
+	{"github.com/sqs/goreturns", "", false, nil},
+	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
+	{"github.com/zmb3/gogetdoc", "", false, nil},
+	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}, {18, "v0.3.3"}}},
+	{"golang.org/x/tools/cmd/gorename", "", false, nil},
+	{"github.com/go-delve/delve/cmd/dlv", "", false, []finalVersion{{16, "v1.8.3"}, {17, "v1.9.1"}}},
+}
+
+// pickVersion returns the version to install based on the supported
+// version list.
+func pickVersion(goMinorVersion int, versions []finalVersion, defaultVersion string) string {
+	for _, v := range versions {
+		if goMinorVersion <= v.goMinorVersion {
+			return v.version
+		}
+	}
+	return defaultVersion
 }
 
 func main() {
@@ -39,17 +68,15 @@ func main() {
 	if err != nil {
 		exitf("failed to find go version: %v", err)
 	}
+	if ver < 1 {
+		exitf("unsupported go version: 1.%v", ver)
+	}
+
 	bin, err := goBin()
 	if err != nil {
 		exitf("failed to determine go tool installation directory: %v", err)
 	}
-	if ver < 1 {
-		exitf("unsupported go version: 1.%v", ver)
-	} else if ver < 16 {
-		err = installTools(bin, "get")
-	} else {
-		err = installTools(bin, "install")
-	}
+	err = installTools(bin, ver)
 	if err != nil {
 		exitf("failed to install tools: %v", err)
 	}
@@ -100,17 +127,19 @@ func goBin() (string, error) {
 	return filepath.Join(gopaths[0], "bin"), nil
 }
 
-func installTools(binDir, installCmd string) error {
+func installTools(binDir string, goMinorVersion int) error {
+	installCmd := "install"
+	if goMinorVersion < 16 {
+		installCmd = "get"
+	}
+
 	dir := ""
 	if installCmd == "get" { // run `go get` command from an empty directory.
 		dir = os.TempDir()
 	}
 	env := append(os.Environ(), "GO111MODULE=on")
 	for _, tool := range tools {
-		ver := tool.version
-		if ver == "" {
-			ver = "latest"
-		}
+		ver := pickVersion(goMinorVersion, tool.versions, pickLatest(tool.path, tool.preferPreview))
 		path := tool.path + "@" + ver
 		cmd := exec.Command("go", installCmd, path)
 		cmd.Env = env
@@ -138,4 +167,19 @@ func binName(toolPath string) string {
 		return b + ".exe"
 	}
 	return b
+}
+
+func pickLatest(toolPath string, preferPreview bool) string {
+	if !preferPreview {
+		return "latest" // should we pick the pinned version in allTools.ts.in?
+	}
+	out, err := exec.Command("go", "list", "-m", "--versions", toolPath).Output()
+	if err != nil {
+		exitf("failed to find a suitable version for %q: %v", toolPath, err)
+	}
+	versions := bytes.Split(out, []byte(" "))
+	if len(versions) == 0 {
+		exitf("failed to find a suitable version for %q: %s", toolPath, out)
+	}
+	return string(bytes.TrimSpace(versions[len(versions)-1]))
 }
