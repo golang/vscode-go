@@ -38,7 +38,7 @@ export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<strin
 					value = value.replace(/\\n/gm, '\n');
 				}
 				const v = value.replace(/(^['"]|['"]$)/g, '');
-				env[r[1]] = substituteEnvVars(v, env, globalVars);
+				env[r[1]] = substituteEnvVars(v, env, globalVars!);
 			}
 		});
 		return env;
