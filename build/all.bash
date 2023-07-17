@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+set -e
 
 # Copyright (C) Microsoft Corporation. All rights reserved.
 # Modification copyright 2020 The Go Authors. All rights reserved.
@@ -38,26 +39,30 @@ go_binaries_info() {
   go version
 }
 
-run_test() {
+run_doc_test() {
   df -h | grep shm
 
   echo "**** Run settings generator ****"
   go run ./tools/generate.go -w=false -gopls=true
 
-  echo "**** Run Go tests ****"
-  go test ./...
-
   echo "**** Test build ****"
   npm ci
   npm run compile
+}
+
+run_test() {
+  echo "**** Run Go tests ****"
+  go test ./...
 
   echo "**** Run test ****"
   npm run unit-test
   npm test --silent
-
-  npm run lint
 }
 
+run_lint() {
+  echo "**** Run lint ****"
+  npm run lint
+}
 
 run_test_in_docker() {
   which npm && npm version || echo "no npm"
@@ -75,8 +80,7 @@ prepare_nightly() {
   #      on 2020/01/05 10:00
   local VER=`git log -1 --format=%cd --date="format:%Y.%-m.%-d%H"`
   local COMMIT=`git log -1 --format=%H`
-  echo "**** Preparing nightly release : $VER ***"
-
+  echo "**** Preparing nightly release : ${VER} (${COMMIT}) ***"
   # Update package.json
   (cat package.json | jq --arg VER "${VER}" '
 .version=$VER |
@@ -86,7 +90,7 @@ prepare_nightly() {
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
 .contributes.configuration.properties."go.delveConfig".properties.hideSystemGoroutines.default=true
-') > /tmp/package.json && mv /tmp/package.json package.json
+') > /tmp/package.json && cp /tmp/package.json package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
   printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
@@ -113,11 +117,17 @@ main() {
     "ci")
       go_binaries_info
       setup_virtual_display
+	  run_doc_test
       run_test
+	  run_lint
       ;;
     "prepare_nightly")
       prepare_nightly
       ;;
+	"test_nightly")
+	  setup_virtual_display
+	  run_test
+	  ;;
     *)
       usage
       exit 2

@@ -1,15 +1,44 @@
+# This workflow will be triggered daily.
+# For local testing, run:
+#   gcloud builds submit --config release-nightly.yaml
+# This will check out the vscode-go repo master branch and run the build from it.
 steps:
-# TODO: check build/test status
-#
-# Install dependencies
-- name: node
+  # TODO: check build/test status
+- id: clone vscode-go repo
+  name: "gcr.io/cloud-builders/git"
+  args: ['clone', '--branch=master', "--depth=1", 'https://go.googlesource.com/vscode-go', 'vscode-go']
+- id: adjust file permissions
+  name: "gcr.io/cloud-builders/docker"
+  entrypoint: "chown"
+  args: ["-R", "1000:1000", "/workspace", "/builder/home"] # ci-image sets USER to node whose uid/gid are 1000.
+  dir: "/"
+- id: install npm dependencies
+  name: "us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image"
   entrypoint: npm
-  args: ['ci']
-# Build .vsix
-- name: node
+  args: ["ci"]
+  dir: "vscode-go"
+- id: prepare nightly release
+  name: "us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image"
+  entrypoint: "bash"
+  args: ["build/all.bash", 'prepare_nightly']
+  dir: "vscode-go"
+- id: build .vsix
+  name: "us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image"
   entrypoint: npm
-  args: ['run', 'package']
+  args: ["run", "package"] # we build vsix before running tests to avoid including unintentional changes.
+  dir: "vscode-go"
+- id: run tests
+  name: "us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image"
+  entrypoint: "bash"
+  args: ["build/all.bash", "test_nightly"]
+  dir: "vscode-go"
+  env:
+    - "IN_RELEASE_WORKFLOW=true"
+options:
+  substitution_option: "ALLOW_LOOSE"
+  machineType: 'E2_HIGHCPU_8'  # tests need powerful cpus to avoid timeout.
+images: ['us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image:latest']
 artifacts:
   objects:
-    location: 'gs://$PROJECT_ID/nightly/$BUILD_ID'
-    paths: ['*.vsix']
+    location: "gs://$PROJECT_ID/nightly"
+    paths: ["vscode-go/*.vsix"] # vsix file base name includes the extension version.
