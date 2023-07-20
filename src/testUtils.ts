@@ -114,7 +114,7 @@ export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
 	if (testEnvFile) {
 		testEnvFile = resolvePath(testEnvFile);
 		try {
-			fileEnv = parseEnvFile(testEnvFile);
+			fileEnv = parseEnvFile(testEnvFile, envVars);
 		} catch (e) {
 			console.log(e);
 		}

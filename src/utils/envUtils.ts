@@ -19,10 +19,13 @@ function stripBOM(s: string): string {
 /**
  * returns the environment variable collection created by parsing the given .env file.
  */
-export function parseEnvFile(envFilePath: string): { [key: string]: string } {
+export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<string>): { [key: string]: string } {
 	const env: { [key: string]: string } = {};
 	if (!envFilePath) {
 		return env;
+	}
+	if (!globalVars) {
+		globalVars = {};
 	}
 
 	try {
@@ -34,7 +37,8 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 				if (value.length > 0 && value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
 					value = value.replace(/\\n/gm, '\n');
 				}
-				env[r[1]] = value.replace(/(^['"]|['"]$)/g, '');
+				const v = value.replace(/(^['"]|['"]$)/g, '');
+				env[r[1]] = substituteEnvVars(v, env, globalVars!);
 			}
 		});
 		return env;
@@ -43,14 +47,44 @@ export function parseEnvFile(envFilePath: string): { [key: string]: string } {
 	}
 }
 
-export function parseEnvFiles(envFiles: string[] | string | undefined): { [key: string]: string } {
+// matches ${var} where var is alphanumeric starting with a letter.
+const SUBST_REGEX = /\${([a-zA-Z]\w*)?([^}\w].*)?}/g;
+
+function substituteEnvVars(
+	value: string,
+	localVars: { [key: string]: string },
+	globalVars: NodeJS.Dict<string>
+): string {
+	let invalid = false;
+	let replacement = value;
+	replacement = replacement.replace(SUBST_REGEX, (match, substName, bogus, offset, orig) => {
+		if (offset > 0 && orig[offset - 1] === '\\') {
+			return match;
+		}
+		if ((bogus && bogus !== '') || !substName || substName === '') {
+			invalid = true;
+			return match;
+		}
+		return localVars[substName] || globalVars[substName] || '';
+	});
+	if (!invalid && replacement !== value) {
+		value = replacement;
+	}
+
+	return value.replace(/\\\$/g, '$');
+}
+
+export function parseEnvFiles(
+	envFiles: string[] | string | undefined,
+	globalVars?: NodeJS.Dict<string>
+): { [key: string]: string } {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
-		fileEnvs.push(parseEnvFile(envFiles));
+		fileEnvs.push(parseEnvFile(envFiles, globalVars));
 	}
 	if (Array.isArray(envFiles)) {
 		envFiles.forEach((envFile) => {
-			fileEnvs.push(parseEnvFile(envFile));
+			fileEnvs.push(parseEnvFile(envFile, globalVars));
 		});
 	}
 	return Object.assign({}, ...fileEnvs);
