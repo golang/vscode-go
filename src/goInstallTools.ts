@@ -149,6 +149,18 @@ export async function installTools(
 	outputChannel.clear();
 
 	const goForInstall = await getGoForInstall(goVersion);
+
+	if (goForInstall.lt('1.16')) {
+		vscode.window.showErrorMessage(
+			'Go 1.16 or newer is needed to install tools. ' +
+				'If your project requires a Go version older than go1.16, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
+				'to configure the Go version used for tools installation. See https://github.com/golang/vscode-go/issues/2898.'
+		);
+		return missing.map((tool) => {
+			return { tool: tool, reason: 'require go1.16 or newer' };
+		});
+	}
+
 	const envForTools = toolInstallationEnvironment();
 	const toolsGopath = envForTools['GOPATH'];
 	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
@@ -168,16 +180,6 @@ export async function installTools(
 		installingMsg += `${p}`;
 	}
 
-	// If the user is on Go >= 1.11, tools should be installed with modules enabled.
-	// This ensures that users get the latest tagged version, rather than master,
-	// which may be unstable.
-	let modulesOff = false;
-	if (goVersion?.lt('1.11')) {
-		modulesOff = true;
-	} else {
-		installingMsg += ' in module mode.';
-	}
-
 	outputChannel.appendLine(installingMsg);
 	missing.forEach((missingTool) => {
 		let toolName = missingTool.name;
@@ -191,9 +193,7 @@ export async function installTools(
 
 	const failures: { tool: ToolAtVersion; reason: string }[] = [];
 	for (const tool of missing) {
-		const modulesOffForTool = modulesOff;
-
-		const failed = await installToolWithGo(tool, goForInstall, envForTools, !modulesOffForTool);
+		const failed = await installToolWithGo(tool, goForInstall, envForTools);
 		if (failed) {
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls') {
@@ -237,14 +237,13 @@ export async function installTool(tool: ToolAtVersion): Promise<string | undefin
 	const goVersion = await getGoForInstall(await getGoVersion());
 	const envForTools = toolInstallationEnvironment();
 
-	return await installToolWithGo(tool, goVersion, envForTools, true);
+	return await installToolWithGo(tool, goVersion, envForTools);
 }
 
 async function installToolWithGo(
 	tool: ToolAtVersion,
 	goVersion: GoVersion, // go version to be used for installation.
-	envForTools: NodeJS.Dict<string>,
-	modulesOn: boolean
+	envForTools: NodeJS.Dict<string>
 ): Promise<string | undefined> {
 	// Some tools may have to be closed before we reinstall them.
 	if (tool.close) {
@@ -255,22 +254,16 @@ async function installToolWithGo(
 	}
 
 	const env = Object.assign({}, envForTools);
-	env['GO111MODULE'] = modulesOn ? 'on' : 'off';
 
-	let importPath: string;
-	if (!modulesOn) {
-		importPath = getImportPath(tool, goVersion);
-	} else {
-		let version: semver.SemVer | string | undefined | null = tool.version;
-		if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
-			version = await latestToolVersion(tool, true);
-		}
-		importPath = getImportPathWithVersion(tool, version, goVersion);
+	let version: semver.SemVer | string | undefined | null = tool.version;
+	if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
+		version = await latestToolVersion(tool, true);
 	}
+	const importPath = getImportPathWithVersion(tool, version, goVersion);
 
 	try {
-		if (!modulesOn || goVersion?.lt('1.16') || hasModSuffix(tool)) {
-			await installToolWithGoGet(tool, goVersion, env, modulesOn, importPath);
+		if (hasModSuffix(tool)) {
+			await installToolWithGoGet(tool, goVersion, env, importPath);
 		} else {
 			await installToolWithGoInstall(goVersion, env, importPath);
 		}
@@ -301,7 +294,6 @@ async function installToolWithGoGet(
 	tool: ToolAtVersion,
 	goVersion: GoVersion,
 	env: NodeJS.Dict<string>,
-	modulesOn: boolean,
 	importPath: string
 ) {
 	// Some users use direnv-like setup where the choice of go is affected by
@@ -318,10 +310,6 @@ async function installToolWithGoGet(
 
 	// Build the arguments list for the tool installation.
 	const args = ['get', '-x'];
-	// Only get tools at master if we are not using modules.
-	if (!modulesOn) {
-		args.push('-u');
-	}
 	// tools with a "mod" suffix can't be installed with
 	// simple `go install` or `go get`. We need to get, build, and rename them.
 	if (hasModSuffix(tool)) {
@@ -428,9 +416,7 @@ export async function promptForMissingTool(toolName: string) {
 		// Offer the option to install all tools.
 		installOptions.push('Install All');
 	}
-	const cmd = goVersion.lt('1.16')
-		? `go get -v ${getImportPath(tool, goVersion)}`
-		: `go install -v ${getImportPathWithVersion(tool, undefined, goVersion)}`;
+	const cmd = `go install -v ${getImportPathWithVersion(tool, undefined, goVersion)}`;
 	const selected = await vscode.window.showErrorMessage(
 		`The "${tool.name}" command is not available. Run "${cmd}" to install.`,
 		...installOptions

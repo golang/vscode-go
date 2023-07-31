@@ -6,7 +6,7 @@
 
 [The VS Code Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go)
 provides rich language support for the
-[Go programming language](https://golang.org/).
+[Go programming language](https://go.dev/).
 
 📣
 [Remote attach debugging](https://github.com/golang/vscode-go/wiki/debugging#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
@@ -18,13 +18,14 @@ Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose)
 
 📣📣 Watch [Debugging Treasure Hunt](https://youtu.be/ZPIPPRjwg7Q) from [GopherCon 2021](https://www.gophercon.com/) for a fun take on a debugging demo with VS Code Go and Delve DAP.
 
+
 ## Quick Start
 
 Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://golang.org) 1.14 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
 
 1.  Install the [VS Code Go extension].
 

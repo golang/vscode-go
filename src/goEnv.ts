@@ -50,6 +50,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	delete env['GOROOT'];
 	delete env['GOFLAGS'];
 	delete env['GOENV'];
+	delete env['GO111MODULE']; // we require module mode (default) for tools installation.
 
 	return env;
 }

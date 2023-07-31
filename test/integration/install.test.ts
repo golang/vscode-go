@@ -196,6 +196,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
+	test('Try to install with old go', async () => {
+		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.15 amd64/linux');
+		const failures = await installTools([getToolAtVersion('gopls')], oldGo);
+		assert(failures?.length === 1 && failures[0].tool.name === 'gopls' && failures[0].reason.includes('or newer'));
+	});
+
 	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
 	test('Install gofumpt with old go', async () => {
 		await runTest(
