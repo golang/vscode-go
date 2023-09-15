@@ -173,7 +173,7 @@ async function show(profile: string) {
 	const proc = spawn(getBinPath('go'), ['tool', 'pprof', '-http=:', '-no_browser', profile]);
 	pprofProcesses.add(proc);
 
-	const port = await new Promise<string | undefined>((resolve, reject) => {
+	const localUrl = await new Promise<string | undefined>((resolve, reject) => {
 		proc.on('error', (err) => {
 			pprofProcesses.delete(proc);
 			reject(err);
@@ -188,15 +188,18 @@ async function show(profile: string) {
 		function captureStdout(b: Buffer) {
 			stderr += b.toString('utf-8');
 
-			const m = stderr.match(/^Serving web UI on http:\/\/localhost:(?<port>\d+)\n/);
+			const m = stderr.match(/^Serving web UI on (?<url>http:\/\/:\d+)\n/);
 			if (!m) return;
 
-			resolve(m.groups?.port);
+			resolve(m.groups?.url);
 			proc.stdout.off('data', captureStdout);
 		}
 
 		proc.stderr.on('data', captureStdout);
 	});
+
+    const externalUrl = await vscode.env.asExternalUri(
+        vscode.Uri.parse(localUrl));
 
 	const panel = vscode.window.createWebviewPanel('go.profile', 'Profile', ViewColumn.Active);
 	panel.webview.options = { enableScripts: true };
@@ -217,7 +220,7 @@ async function show(profile: string) {
 			</style>
 		</head>
 		<body>
-			<iframe src="http://localhost:${port}"></iframe>
+			<iframe src="${externalUrl}"></iframe>
 		</body>
 	</html>`;
 
