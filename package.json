@@ -2250,6 +2250,11 @@
               "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found in\n[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
               "scope": "resource",
               "properties": {
+                "appends": {
+                  "type": "boolean",
+                  "markdownDescription": "check for missing values after append\n\nThis checker reports calls to append that pass\nno values to be appended to the slice.\n\n\ts := []string{\"a\", \"b\", \"c\"}\n\t_ = append(s)\n\nSuch calls are always no-ops and often indicate an\nunderlying mistake.",
+                  "default": true
+                },
                 "asmdecl": {
                   "type": "boolean",
                   "markdownDescription": "report mismatches between assembly files and Go declarations",
@@ -2298,6 +2303,11 @@
                 "deepequalerrors": {
                   "type": "boolean",
                   "markdownDescription": "check for calls of reflect.DeepEqual on error values\n\nThe deepequalerrors checker looks for calls of the form:\n\n    reflect.DeepEqual(err1, err2)\n\nwhere err1 and err2 are errors. Using reflect.DeepEqual to compare\nerrors is discouraged.",
+                  "default": true
+                },
+                "defers": {
+                  "type": "boolean",
+                  "markdownDescription": "report common mistakes in defer statements\n\nThe defers analyzer reports a diagnostic when a defer statement would\nresult in a non-deferred call to time.Since, as experience has shown\nthat this is nearly always a mistake.\n\nFor example:\n\n\tstart := time.Now()\n\t...\n\tdefer recordLatency(time.Since(start)) // error: call to time.Since is not deferred\n\nThe correct code is:\n\n\tdefer func() { recordLatency(time.Since(start)) }()",
                   "default": true
                 },
                 "deprecated": {
@@ -2410,6 +2420,11 @@
                   "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\ts[a:len(s)]\nwill be simplified to:\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.",
                   "default": true
                 },
+                "slog": {
+                  "type": "boolean",
+                  "markdownDescription": "check for invalid structured logging calls\n\nThe slog checker looks for calls to functions from the log/slog\npackage that take alternating key-value pairs. It reports calls\nwhere an argument in a key position is neither a string nor a\nslog.Attr, and where a final key is missing its value.\nFor example,it would report\n\n\tslog.Warn(\"message\", 11, \"k\") // slog.Warn arg \"11\" should be a string or a slog.Attr\n\nand\n\n\tslog.Info(\"message\", \"k1\", v1, \"k2\") // call to slog.Info missing a final value",
+                  "default": true
+                },
                 "sortslice": {
                   "type": "boolean",
                   "markdownDescription": "check the argument type of sort.Slice\n\nsort.Slice requires an argument of a slice type. Check that\nthe interface{} value passed to sort.Slice is actually a slice.",
@@ -2472,7 +2487,7 @@
                 },
                 "unusedparams": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo reduce false positives it ignores:\n- methods\n- parameters that do not have a name or are underscored\n- functions in test files\n- functions with empty bodies or those with just a return stmt",
+                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo reduce false positives it ignores:\n- methods\n- parameters that do not have a name or have the name '_' (the blank identifier)\n- functions in test files\n- functions with empty bodies or those with just a return stmt",
                   "default": false
                 },
                 "unusedresult": {
