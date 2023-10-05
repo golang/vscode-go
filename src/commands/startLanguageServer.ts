@@ -26,6 +26,7 @@ import {
 } from '../language/goLanguageServer';
 import { LegacyLanguageService } from '../language/registerDefaultProviders';
 import { Mutex } from '../utils/mutex';
+import { TelemetryService } from '../goTelemetry';
 
 const languageServerStartMutex = new Mutex();
 
@@ -95,6 +96,12 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			goCtx.languageClient = await buildLanguageClient(goCtx, buildLanguageClientOption(goCtx, cfg));
 			await goCtx.languageClient.start();
 			goCtx.serverInfo = toServerInfo(goCtx.languageClient.initializeResult);
+			goCtx.telemetryService = new TelemetryService(
+				goCtx.languageClient,
+				ctx.globalState,
+				goCtx.serverInfo?.Commands
+			);
+
 			updateStatus(goCtx, goConfig, true);
 			console.log(`Server: ${JSON.stringify(goCtx.serverInfo, null, 2)}`);
 		} catch (e) {

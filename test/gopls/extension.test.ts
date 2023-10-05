@@ -16,6 +16,8 @@ import {
 } from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
+import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, TELEMETRY_START_TIME_KEY, TelemetryService } from '../../src/goTelemetry';
+import { MockMemento } from '../mocks/MockMemento';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -326,5 +328,26 @@ suite('Go Extension Tests With Gopls', function () {
 		}) as vscode.WorkspaceConfiguration;
 
 		await testCustomFormatter(goConfig, customFormatter);
+	});
+
+	test('Prompt For telemetry', async () => {
+		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const memento = new MockMemento();
+		memento.update(TELEMETRY_START_TIME_KEY, new Date('2000-01-01'));
+
+		const sut = new TelemetryService(env.languageClient, memento, [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY]);
+		try {
+			await Promise.all([
+				// we want to see the prompt command flowing.
+				env.onMessageInTrace(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, 60_000),
+				sut.promptForTelemetry(
+					false /* not a preview */,
+					true /* vscode telemetry not disabled */,
+					1000 /* 1000 out of 1000 users */
+				)
+			]);
+		} catch (e) {
+			assert(false, `unexpected failure: ${e}`);
+		}
 	});
 });

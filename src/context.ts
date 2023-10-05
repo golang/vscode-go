@@ -8,6 +8,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 
 import { LanguageServerConfig, Restart, ServerInfo } from './language/goLanguageServer';
 import { LegacyLanguageService } from './language/registerDefaultProviders';
+import { TelemetryService } from './goTelemetry';
 
 // Global variables used for management of the language client.
 // They are global so that the server can be easily restarted with
@@ -16,6 +17,7 @@ export interface GoExtensionContext {
 	languageClient?: LanguageClient;
 	legacyLanguageService?: LegacyLanguageService;
 	latestConfig?: LanguageServerConfig;
+	telemetryService?: TelemetryService;
 	serverOutputChannel?: vscode.OutputChannel; // server-side output.
 	serverTraceChannel?: vscode.OutputChannel; // client-side tracing.
 	govulncheckOutputChannel?: vscode.OutputChannel; // govulncheck output.

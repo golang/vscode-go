@@ -40,7 +40,6 @@ import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
 import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
-import { GoExtensionContext } from '../context';
 import { getTool, Tool } from '../goTools';
 import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
@@ -62,6 +61,7 @@ import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
 import { VulncheckReport, writeVulns } from '../goVulncheck';
 import { createHash } from 'crypto';
+import { GoExtensionContext } from '../context';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -161,6 +161,9 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 	const usingGopls = (cfg: LanguageServerConfig): boolean => {
 		return cfg.enabled && cfg.serverName === 'gopls';
 	};
+	const usingGo = (): boolean => {
+		return vscode.workspace.textDocuments.some((doc) => doc.languageId === 'go');
+	};
 	const installGopls = async (cfg: LanguageServerConfig) => {
 		const tool = getTool('gopls');
 		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
@@ -203,22 +206,22 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 	};
 	const survey = async () => {
 		setTimeout(survey, timeDay);
-
 		// Only prompt for the survey if the user is working on Go code.
-		let foundGo = false;
-		for (const doc of vscode.workspace.textDocuments) {
-			if (doc.languageId === 'go') {
-				foundGo = true;
-			}
-		}
-		if (!foundGo) {
+		if (!usingGo) {
 			return;
 		}
 		maybePromptForGoplsSurvey(goCtx);
 		maybePromptForDeveloperSurvey(goCtx);
 	};
+	const telemetry = () => {
+		if (!usingGo) {
+			return;
+		}
+		maybePromptForTelemetry(goCtx);
+	};
 	setTimeout(update, 10 * timeMinute);
 	setTimeout(survey, 30 * timeMinute);
+	setTimeout(telemetry, 6 * timeMinute);
 }
 
 // Ask users to fill out opt-out survey.
@@ -309,6 +312,7 @@ const race = function (promise: Promise<unknown>, timeoutInMilliseconds: number)
 export async function stopLanguageClient(goCtx: GoExtensionContext) {
 	const c = goCtx.languageClient;
 	goCtx.crashCount = 0;
+	goCtx.telemetryService = undefined;
 	goCtx.languageClient = undefined;
 	if (!c) return false;
 
@@ -825,12 +829,13 @@ async function adjustGoplsWorkspaceConfiguration(
 		return workspaceConfig;
 	}
 
-	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource);
+	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource) || {};
 	// note: workspaceConfig is a modifiable, valid object.
 	const goConfig = getGoConfig(resource);
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, goConfig);
 	workspaceConfig = await passInlayHintConfigToGopls(cfg, workspaceConfig, goConfig);
 	workspaceConfig = await passVulncheckConfigToGopls(cfg, workspaceConfig, goConfig);
+	workspaceConfig = await passLinkifyShowMessageToGopls(cfg, workspaceConfig);
 
 	// Only modify the user's configurations for the Nightly.
 	if (!extensionInfo.isPreview) {
@@ -864,6 +869,20 @@ async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig
 		if (vulncheck) {
 			goplsConfig['ui.vulncheck'] = vulncheck;
 		}
+	}
+	return goplsConfig;
+}
+
+async function passLinkifyShowMessageToGopls(cfg: LanguageServerConfig, goplsConfig: any) {
+	goplsConfig = goplsConfig ?? {};
+
+	const goplsVersion = await getLocalGoplsVersion(cfg);
+	if (!goplsVersion) return goplsConfig;
+
+	const version = semver.parse(goplsVersion.version);
+	// The linkifyShowMessage option was added in v0.14.0-pre.1.
+	if ((version?.compare('0.13.99') ?? 1) > 0) {
+		goplsConfig['linkifyShowMessage'] = true;
 	}
 	return goplsConfig;
 }
@@ -1620,4 +1639,20 @@ async function goplsFetchVulncheckResult(goCtx: GoExtensionContext, uri: string)
 	};
 	const res = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
 	return res[uri];
+}
+
+export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
+	const callback = async () => {
+		const { lastUserAction = new Date() } = goCtx;
+		const currentTime = new Date();
+
+		// Make sure the user has been idle for at least 5 minutes.
+		const idleTime = currentTime.getTime() - lastUserAction.getTime();
+		if (idleTime < 5 * timeMinute) {
+			setTimeout(callback, 5 * timeMinute - Math.max(idleTime, 0));
+			return;
+		}
+		goCtx.telemetryService?.promptForTelemetry(extensionInfo.isPreview);
+	};
+	callback();
 }
