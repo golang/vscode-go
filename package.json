@@ -2211,6 +2211,12 @@
                 }
               }
             },
+            "ui.completion.completeFunctionCalls": {
+              "type": "boolean",
+              "markdownDescription": "completeFunctionCalls enables function call completion.\n\nWhen completing a statement, or when a function return type matches the\nexpected of the expression being completed, completion may suggest call\nexpressions (i.e. may include parentheses).\n",
+              "default": true,
+              "scope": "resource"
+            },
             "ui.completion.completionBudget": {
               "type": "string",
               "markdownDescription": "(For Debugging) completionBudget is the soft latency goal for completion requests. Most\nrequests finish in a couple milliseconds, but in some cases deep\ncompletions can take much longer. As we use up our budget we\ndynamically reduce the search scope to ensure we return timely\nresults. Zero means unlimited.\n",

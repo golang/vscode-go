@@ -758,6 +758,16 @@ Example Usage:
 | `tidy` | Runs `go mod tidy` for a module. <br/> Default: `true` |
 | `upgrade_dependency` | Upgrades a dependency in the go.mod file for a module. <br/> Default: `true` |
 | `vendor` | Runs `go mod vendor` for a module. <br/> Default: `true` |
+### `ui.completion.completeFunctionCalls`
+
+completeFunctionCalls enables function call completion.
+
+When completing a statement, or when a function return type matches the
+expected of the expression being completed, completion may suggest call
+expressions (i.e. may include parentheses).
+
+
+Default: `true`
 ### `ui.completion.completionBudget`
 
 (For Debugging) completionBudget is the soft latency goal for completion requests. Most
