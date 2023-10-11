@@ -270,6 +270,11 @@
         "description": "Runs all unit tests in the package of the current file."
       },
       {
+        "command": "go.debug.toggleHideSystemGoroutines",
+        "title": "Go: Toggle Hide System Goroutines",
+        "description": "Toggles hiding the system goroutines from the active debug session call stack view."
+      },
+      {
         "command": "go.test.refresh",
         "title": "Go Test: Refresh",
         "description": "Refresh a test in the test explorer. Only available as a context menu option in the test explorer.",
@@ -2758,6 +2763,12 @@
         {
           "command": "go.explorer.open",
           "when": "false"
+        }
+      ],
+      "debug/callstack/context": [
+        {
+          "command": "go.debug.toggleHideSystemGoroutines",
+          "when": "debugType == 'go' && callStackItemType == 'stackFrame' || (callStackItemType == 'thread' && callStackItemStopped)"
         }
       ],
       "editor/context": [

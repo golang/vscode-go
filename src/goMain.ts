@@ -123,7 +123,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
 	GoDebugConfigurationProvider.activate(ctx, goCtx);
-	GoDebugFactory.activate(ctx);
+	GoDebugFactory.activate(ctx, goCtx);
 
 	goCtx.buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(goCtx.buildDiagnosticCollection);

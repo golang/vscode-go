@@ -67,6 +67,10 @@ Runs all unit tests in the current file.
 
 Runs all unit tests in the package of the current file.
 
+### `Go: Toggle Hide System Goroutines`
+
+Toggles hiding the system goroutines from the active debug session call stack view.
+
 ### `Go Test: Refresh`
 
 Refresh a test in the test explorer. Only available as a context menu option in the test explorer.

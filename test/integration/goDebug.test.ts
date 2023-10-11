@@ -2251,6 +2251,55 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 	});
 
+	suite('hideSystemGoroutines', () => {
+		if (!isDlvDap) {
+			return;
+		}
+		test('should toggle hiding system goroutines', async () => {
+			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
+
+			const FILE = path.join(DATA_ROOT, 'baseTest', 'test.go');
+			const BREAKPOINT_LINE = 11;
+
+			const config = {
+				name: 'Launch',
+				type: 'go',
+				request: 'launch',
+				mode: 'debug',
+				program: PROGRAM,
+				hideSystemGoroutines: false
+			};
+			const debugConfig = await initializeDebugConfig(config);
+			await dc.hitBreakpoint(debugConfig, getBreakpointLocation(FILE, BREAKPOINT_LINE));
+			let threadsResponse = await dc.threadsRequest();
+			assert.ok(threadsResponse.success);
+			assert.ok(threadsResponse.body.threads.length > 1);
+
+			const toggle = () =>
+				Promise.all([
+					proxy.toggleHideSystemGoroutinesCustomRequest(async (command: string, args?: any) => {
+						return dc.customRequest(command, args).then((rsp) => {
+							return rsp.body;
+						});
+					}),
+					dc.waitForEvent('invalidated').then((event) => {
+						assert.strictEqual(event.body.areas.length, 1);
+						assert.strictEqual(event.body.areas[0], 'threads');
+					})
+				]);
+			// Toggle so only the main goroutine is shown.
+			await toggle();
+			threadsResponse = await dc.threadsRequest();
+			assert.ok(threadsResponse.success);
+			assert.strictEqual(threadsResponse.body.threads.length, 1);
+			// Toggle so all goroutines are shown again.
+			await toggle();
+			threadsResponse = await dc.threadsRequest();
+			assert.ok(threadsResponse.success);
+			assert.ok(threadsResponse.body.threads.length > 1);
+		});
+	});
+
 	let testNumber = 0;
 	async function initializeDebugConfig(config: DebugConfiguration, keepUserLogSettings?: boolean) {
 		// be explicit and prevent resolveDebugConfiguration from picking
