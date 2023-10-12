@@ -74,11 +74,14 @@ export function toolExecutionEnvironment(uri?: vscode.Uri, addProcessEnv = true)
 
 function newEnvironment(uri?: vscode.Uri, addProcessEnv = true): NodeJS.Dict<string> {
 	const toolsEnvVars = getGoConfig(uri)['toolsEnvVars'];
-	const env = addProcessEnv ? Object.assign({}, process.env, toolsEnvVars) : Object.assign({}, toolsEnvVars);
+	const env = addProcessEnv ? Object.assign({}, process.env) : {};
 	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
 		Object.keys(toolsEnvVars).forEach(
 			(key) =>
-				(env[key] = typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
+				(env[key] =
+					typeof toolsEnvVars[key] === 'string'
+						? resolvePath(substituteEnv(toolsEnvVars[key]))
+						: toolsEnvVars[key])
 		);
 	}
 

@@ -9,6 +9,9 @@ import assert from 'assert';
 import * as vscode from 'vscode';
 import { GoVersion, guessPackageNameFromFile, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
 import path = require('path');
+import { toolExecutionEnvironment } from '../../src/goEnv';
+import sinon = require('sinon');
+import { getGoConfig } from '../../src/config';
 
 suite('utils Tests', () => {
 	test('substituteEnv: default', () => {
@@ -168,4 +171,27 @@ suite('Duplicate Diagnostics Tests', () => {
 			assert.strictEqual(diagnosticCollection.get(uri2)?.[i], want2[i]);
 		}
 	});
+});
+
+suite('goEnv', () => {
+	const config = require('../../src/config');
+	const sandbox = sinon.createSandbox();
+	teardown(() => {
+		delete process.env.ENV_VAR_FOR_GO_ENV_TEST;
+		sandbox.restore();
+	});
+
+	test('toolExecutionEnvironment', () => {
+		const goConfig = Object.create(getGoConfig(), {
+			toolsEnvVars: { value: {
+				'FOOBAR': '${env:ENV_VAR_FOR_GO_ENV_TEST}/baz',
+				'FOOBAR2': '${env:UNKNOWN_ENV_VAR}/foo',
+			} }
+		});
+		sandbox.stub(config, 'getGoConfig').returns(goConfig);
+		process.env['ENV_VAR_FOR_GO_ENV_TEST'] = 'foobar';
+		const toolExecEnv = toolExecutionEnvironment(undefined, true);
+		assert.strictEqual(toolExecEnv.FOOBAR, 'foobar/baz');
+		assert.strictEqual(toolExecEnv.FOOBAR2, '/foo');
+	})
 });
