@@ -66,11 +66,19 @@ describe('#setGOROOTEnvVar', function () {
 		} else {
 			delete process.env.GOROOT;
 		}
+		delete process.env.GOROOT_FOR_TEST_SET_GOROOT_ENV_VAR;
 	});
 
 	it('empty goroot does not change GOROOT', async () => {
 		await setGOROOTEnvVar('');
 		assert.strictEqual(process.env['GOROOT'], origGOROOT);
+	});
+
+	it('{env:*} is substituted', async () => {
+		const goroot = path.dirname(ourutil.getBinPath('go'));
+		process.env['GOROOT_FOR_TEST_SET_GOROOT_ENV_VAR'] = goroot;
+		await setGOROOTEnvVar('${env:GOROOT_FOR_TEST_SET_GOROOT_ENV_VAR}');
+		assert.strictEqual(process.env['GOROOT'], process.env['GOROOT_FOR_TEST_SET_GOROOT_ENV_VAR']);
 	});
 
 	it('non-directory value is rejected', async () => {

@@ -7,7 +7,7 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';
+import { getCurrentGoPath, getToolsGopath, resolvePath, substituteEnv } from './util';
 import { logVerbose } from './goLogging';
 import { dirExists } from './utils/pathUtils';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
@@ -98,7 +98,7 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 	if (!configGOROOT) {
 		return;
 	}
-	const goroot = configGOROOT ? resolvePath(configGOROOT) : undefined;
+	const goroot = configGOROOT ? resolvePath(substituteEnv(configGOROOT)) : undefined;
 
 	const currentGOROOT = process.env['GOROOT'];
 	if (goroot === currentGOROOT) {

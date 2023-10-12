@@ -482,7 +482,7 @@ export function getBinPathWithExplanation(
 	const alternateToolPath: string | undefined = alternateTools?.[tool];
 
 	const goroot = cfg.get<string>('goroot');
-	const gorootInSetting = goroot && resolvePath(goroot);
+	const gorootInSetting = goroot && resolvePath(substituteEnv(goroot));
 
 	let selectedGoPath: string | undefined;
 	if (tool === 'go' && !gorootInSetting) {
@@ -493,7 +493,7 @@ export function getBinPathWithExplanation(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		tool === 'go' ? gorootInSetting : undefined,
-		selectedGoPath ?? (alternateToolPath && resolvePath(alternateToolPath)),
+		selectedGoPath ?? (alternateToolPath && resolvePath(substituteEnv(alternateToolPath))),
 		useCache
 	);
 }
