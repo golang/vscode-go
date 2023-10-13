@@ -32,15 +32,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Stubs for interfaces',
 		defaultVersion: 'v1.1.0'
 	},
-	'gofumports': {
-		name: 'gofumports',
-		importPath: 'mvdan.cc/gofumpt/gofumports',
-		modulePath: 'mvdan.cc/gofumpt',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Formatter',
-		defaultVersion: 'v0.1.1'
-	},
 	'gofumpt': {
 		name: 'gofumpt',
 		importPath: 'mvdan.cc/gofumpt',

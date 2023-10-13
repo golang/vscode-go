@@ -89,7 +89,6 @@ Configure `revive` to exclude `vendor` directories and apply extra configuration
 [`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
 [`golangci-lint`]: https://golangci-lint.run/
 [`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
-[`go vet`]: https://golang.org/cmd/vet/
 [`gopls`]: https://golang.org/s/gopls
 [`go`]: https://golang.org/cmd/go
 
