@@ -129,16 +129,12 @@ export function isGocode(tool: Tool): boolean {
 	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
-export function getConfiguredTools(
-	goVersion: GoVersion,
-	goConfig: { [key: string]: any },
-	goplsConfig: { [key: string]: any }
-): Tool[] {
+export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig: { [key: string]: any }): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
 	// no longer working (or we remove the legacy language feature providers completely).
-	const useLanguageServer = goConfig['useLanguageServer'] && goVersion?.gt('1.11');
+	const useLanguageServer = goConfig['useLanguageServer'];
 
 	const tools: Tool[] = [];
 	function maybeAddTool(name: string) {
@@ -150,20 +146,13 @@ export function getConfiguredTools(
 		}
 	}
 
+	// Add the language server if the user has chosen to do so.
+	if (useLanguageServer) {
+		maybeAddTool('gopls');
+	}
+
 	// Start with default tools that should always be installed.
-	for (const name of [
-		'gocode',
-		'go-outline',
-		'go-symbols',
-		'guru',
-		'gorename',
-		'gotests',
-		'gomodifytags',
-		'impl',
-		'fillstruct',
-		'goplay',
-		'godoctor'
-	]) {
+	for (const name of ['gotests', 'gomodifytags', 'impl', 'fillstruct', 'goplay']) {
 		maybeAddTool(name);
 	}
 
@@ -174,24 +163,9 @@ export function getConfiguredTools(
 		maybeAddTool('dlv');
 	}
 
-	// gocode-gomod needed in go 1.11 & higher
-	if (goVersion?.gt('1.10')) {
-		maybeAddTool('gocode-gomod');
-	}
-
-	// Add the doc/def tool that was chosen by the user.
-	switch (goConfig['docsTool']) {
-		case 'godoc':
-			maybeAddTool('godef');
-			break;
-		default:
-			maybeAddTool(goConfig['docsTool']);
-			break;
-	}
-
 	// Only add format tools if the language server is disabled or the
 	// format tool is known to us.
-	if (goConfig['useLanguageServer'] === false || usingCustomFormatTool(goConfig)) {
+	if (!useLanguageServer || usingCustomFormatTool(goConfig)) {
 		maybeAddTool(getFormatTool(goConfig));
 	}
 
@@ -201,13 +175,6 @@ export function getConfiguredTools(
 	if (goConfig['lintTool'] !== 'staticcheck' || !goplsStaticheckEnabled) {
 		maybeAddTool(goConfig['lintTool']);
 	}
-
-	// Add the language server if the user has chosen to do so.
-	// Even though we arranged this to run after the first attempt to start gopls
-	// this is still useful if we've fail to start gopls.
-	if (useLanguageServer) {
-		maybeAddTool('gopls');
-	}
 	return tools;
 }
 
@@ -216,7 +183,6 @@ export function goplsStaticcheckEnabled(
 	goplsConfig: { [key: string]: any }
 ): boolean {
 	if (
-		goConfig['useLanguageServer'] !== true ||
 		goplsConfig['ui.diagnostic.staticcheck'] === false ||
 		(goplsConfig['ui.diagnostic.staticcheck'] === undefined && goplsConfig['staticcheck'] !== true)
 	) {

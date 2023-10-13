@@ -94,7 +94,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		await setGOROOTEnvVar(configGOROOT);
 	}
 
-	await showDeprecationWarning();
 	await updateGoVarsFromConfig(goCtx);
 
 	suggestUpdates();
@@ -372,25 +371,4 @@ function lintDiagnosticCollectionName(lintToolName: string) {
 		return 'go-lint';
 	}
 	return `go-${lintToolName}`;
-}
-
-async function showDeprecationWarning() {
-	const cfg = getGoConfig();
-	const disableLanguageServer = cfg['useLanguageServer'];
-	if (disableLanguageServer === false) {
-		const promptKey = 'promptedLegacyLanguageServerDeprecation';
-		const prompted = getFromGlobalState(promptKey, false);
-		if (!prompted) {
-			const msg =
-				'When [go.useLanguageServer](command:workbench.action.openSettings?%5B%22go.useLanguageServer%22%5D) is false, IntelliSense, code navigation, and refactoring features for Go will stop working. Linting, debugging and testing other than debug/test code lenses will continue to work. Please see [Issue 2799](https://go.dev/s/vscode-issue/2799).';
-			const selected = await vscode.window.showInformationMessage(msg, 'Open settings', "Don't show again");
-			switch (selected) {
-				case 'Open settings':
-					vscode.commands.executeCommand('workbench.action.openSettings', 'go.useLanguageServer');
-					break;
-				case "Don't show again":
-					updateGlobalState(promptKey, true);
-			}
-		}
-	}
 }

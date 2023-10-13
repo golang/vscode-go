@@ -1229,7 +1229,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Flags to pass to `go tool vet` (e.g. [\"-all\", \"-shadow\"])",
+          "description": "Flags to pass to `go tool vet` (e.g. [\"-all\", \"-shadow\"]). Not applicable when using the language server's diagnostics.",
           "scope": "resource"
         },
         "go.formatTool": {
@@ -1513,72 +1513,6 @@
           "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
-        "go.gocodeFlags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "-builtin",
-            "-ignore-case",
-            "-unimported-packages"
-          ],
-          "description": "Additional flags to pass to gocode. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gocodeAutoBuild": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable gocode's autobuild feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gocodePackageLookupMode": {
-          "type": "string",
-          "enum": [
-            "go",
-            "gb",
-            "bzl"
-          ],
-          "default": "go",
-          "description": "Used to determine the Go package lookup rules for completions by gocode. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.useCodeSnippetsOnFunctionSuggest": {
-          "type": "boolean",
-          "default": false,
-          "description": "Complete functions with their parameter signature, including the variable type. Not propagated to the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
-        },
-        "go.useCodeSnippetsOnFunctionSuggestWithoutType": {
-          "type": "boolean",
-          "default": false,
-          "description": "Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
-        },
-        "go.autocompleteUnimportedPackages": {
-          "type": "boolean",
-          "default": false,
-          "description": "Include unimported packages in auto-complete suggestions. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.docsTool": {
-          "type": "string",
-          "default": "godoc",
-          "description": "Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.",
-          "scope": "resource",
-          "enum": [
-            "godoc",
-            "gogetdoc",
-            "guru"
-          ],
-          "markdownDeprecationMessage": "Documentation support without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
         "go.useLanguageServer": {
           "type": "boolean",
           "default": true,
@@ -1637,26 +1571,6 @@
           "default": false,
           "description": "Automatically update the tools used by the extension, without prompting the user.",
           "scope": "resource"
-        },
-        "go.useGoProxyToCheckForToolUpdates": {
-          "type": "boolean",
-          "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly",
-          "markdownDeprecationMessage": "Use `go.toolsManagement.checkForUpdates` instead."
-        },
-        "go.gotoSymbol.includeImports": {
-          "type": "boolean",
-          "default": false,
-          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gotoSymbol.includeGoroot": {
-          "type": "boolean",
-          "default": false,
-          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.enableCodeLens": {
           "type": "object",
@@ -1720,29 +1634,6 @@
           },
           "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, json tags are added.",
           "scope": "resource"
-        },
-        "go.liveErrors": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found. Disabled when the language server is enabled."
-            },
-            "delay": {
-              "type": "number",
-              "default": 500,
-              "description": "The number of milliseconds to delay before execution. Resets with each keystroke."
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "enabled": false,
-            "delay": 500
-          },
-          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Real-time diagnostics without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.removeTags": {
           "type": "object",
@@ -1903,16 +1794,6 @@
           },
           "description": "Experimental Feature: Enable/Disable entries from the context menu in the editor.",
           "scope": "resource"
-        },
-        "go.gotoSymbol.ignoreFolders": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.delveConfig": {
           "type": "object",

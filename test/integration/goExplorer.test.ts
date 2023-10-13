@@ -10,7 +10,6 @@ import { getGoConfig, getGoplsConfig } from '../../src/config';
 
 import { GoExplorerProvider } from '../../src/goExplorer';
 import { getConfiguredTools } from '../../src/goTools';
-import { getGoVersion } from '../../src/util';
 import { resolveHomeDir } from '../../src/utils/pathUtils';
 import { MockExtensionContext } from '../mocks/MockContext';
 
@@ -51,8 +50,7 @@ suite('GoExplorerProvider', () => {
 	});
 
 	test('tools tree items', async () => {
-		const goVersion = await getGoVersion();
-		const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+		const allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
 		const expectTools = allTools.map((t) => t.name);
 		const [, tools] = await explorer.getChildren()!;
 		const items = (await explorer.getChildren(tools)) as TreeItem[];

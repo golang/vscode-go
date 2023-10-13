@@ -39,7 +39,7 @@ export const getConfiguredGoTools: CommandFactory = () => {
 		outputChannel.appendLine('');
 
 		const goVersion = await getGoVersion();
-		const allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+		const allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
 		const goVersionTooOld = goVersion?.lt('1.12') || false;
 
 		outputChannel.appendLine(`\tgo:\t${goVersion?.binaryPath}: ${goVersion?.version}`);

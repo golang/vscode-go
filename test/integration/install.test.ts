@@ -283,37 +283,16 @@ function shouldRunSlowTests(): boolean {
 }
 
 suite('getConfiguredTools', () => {
-	test('do not require legacy tools when using language server', async () => {
-		const configured = getConfiguredTools(
-			fakeGoVersion('go version go1.15.6 linux/amd64'),
-			{ useLanguageServer: true },
-			{}
-		);
+	test('require gopls when using language server', async () => {
+		const configured = getConfiguredTools({ useLanguageServer: true }, {});
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
-		assert(!got.includes('guru') && !got.includes('gocode'), `suggested legacy tools: ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools(
-			fakeGoVersion('go version go1.15.6 linux/amd64'),
-			{ useLanguageServer: false },
-			{}
-		);
+		const configured = getConfiguredTools({ useLanguageServer: false }, {});
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
-		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
-	});
-
-	test('do not require gopls when the go version is old', async () => {
-		const configured = getConfiguredTools(
-			fakeGoVersion('go version go1.9 linux/amd64'),
-			{ useLanguageServer: true },
-			{}
-		);
-		const got = configured.map((tool) => tool.name) ?? [];
-		assert(!got.includes('gopls'), `suggested 'gopls' for old go: ${JSON.stringify(got)}`);
-		assert(got.includes('guru') && got.includes('gocode'), `omitted legacy tools: ${JSON.stringify(got)}`);
 	});
 });
 

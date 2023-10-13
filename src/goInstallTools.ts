@@ -39,13 +39,7 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import {
-	correctBinname,
-	getEnvPath,
-	executableFileExists,
-	getCurrentGoRoot,
-	setCurrentGoRoot
-} from './utils/pathUtils';
+import { correctBinname, getEnvPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
 import { RestartReason } from './language/goLanguageServer';
@@ -60,7 +54,7 @@ const declinedInstalls: Tool[] = [];
 
 export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
-	let allTools = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+	let allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
 
 	// exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
@@ -405,7 +399,7 @@ export async function promptForMissingTool(toolName: string) {
 	}
 
 	const installOptions = ['Install'];
-	let missing = await getMissingTools(goVersion);
+	let missing = await getMissingTools();
 	if (!containsTool(missing, tool)) {
 		// If this function has been called, we want to display the prompt whether
 		// it appears in missing or not.
@@ -587,7 +581,7 @@ export async function offerToInstallTools() {
 	alreadyOfferedToInstallTools = true;
 
 	const goVersion = await getGoVersion();
-	let missing = await getMissingTools(goVersion);
+	let missing = await getMissingTools();
 	missing = missing.filter((x) => x.isImportant);
 	if (missing.length > 0) {
 		addGoStatus(
@@ -628,15 +622,10 @@ export async function offerToInstallTools() {
 				});
 		});
 	}
-
-	const goConfig = getGoConfig();
-	if (!goConfig['useLanguageServer']) {
-		return;
-	}
 }
 
-function getMissingTools(goVersion: GoVersion): Promise<Tool[]> {
-	const keys = getConfiguredTools(goVersion, getGoConfig(), getGoplsConfig());
+function getMissingTools(): Promise<Tool[]> {
+	const keys = getConfiguredTools(getGoConfig(), getGoplsConfig());
 	return Promise.all(
 		keys.map(
 			(tool) =>
@@ -790,7 +779,7 @@ export async function suggestUpdates() {
 		return;
 	}
 
-	const allTools = getConfiguredTools(configuredGoVersion, getGoConfig(), getGoplsConfig());
+	const allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
 	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
 	if (toolsToUpdate.length === 0) {
 		return;

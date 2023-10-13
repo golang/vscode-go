@@ -1127,38 +1127,6 @@ export async function shouldUpdateLanguageServer(
 	return semver.lt(usersVersionSemver!, latestVersion!) ? latestVersion : null;
 }
 
-/**
- * suggestUpdateGopls will make sure the user is using the latest version of `gopls`,
- * when go.useLanguageServer is changed to true by default.
- *
- * @param tool	Object of type `Tool` for gopls tool.
- * @param cfg	Object of type `Language Server Config` for the users language server
- * 				configuration.
- * @returns		true if the tool was updated
- */
-export async function suggestUpdateGopls(tool: Tool, cfg: LanguageServerConfig): Promise<boolean | undefined> {
-	const forceUpdatedGoplsKey = 'forceUpdateForGoplsOnDefault';
-	// forceUpdated is true when the process of updating has been succesfully completed.
-	const forceUpdated = getFromGlobalState(forceUpdatedGoplsKey, false);
-	// TODO: If we want to force update again, switch this to be a comparison for a newer version.
-	if (forceUpdated) {
-		return false;
-	}
-	// Update the state to the latest version to show the last version that was checked.
-	await updateGlobalState(forceUpdatedGoplsKey, tool.latestVersion);
-
-	const latestVersion = await shouldUpdateLanguageServer(tool, cfg);
-
-	if (!latestVersion) {
-		// The user is using a new enough version
-		return;
-	}
-
-	const updateMsg =
-		"'gopls' is now enabled by default and you are using an old version. Please [update 'gopls'](https://github.com/golang/tools/blob/master/gopls/README.md#installation) for the best experience.";
-	promptForUpdatingTool(tool.name, latestVersion, false, updateMsg);
-}
-
 // Copied from src/cmd/go/internal/modfetch.go.
 const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+incompatible)?$/;
 
@@ -1623,11 +1591,6 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 		return { failureReason: GoplsFailureModes.INCORRECT_COMMAND_USAGE };
 	}
 	return { failureReason: GoplsFailureModes.UNRECOGNIZED_CRASH_PATTERN };
-}
-
-export function languageServerUsingDefault(cfg: vscode.WorkspaceConfiguration): boolean {
-	const useLanguageServer = cfg.inspect<boolean>('useLanguageServer');
-	return useLanguageServer?.globalValue === undefined && useLanguageServer?.workspaceValue === undefined;
 }
 
 const GOPLS_FETCH_VULNCHECK_RESULT = 'gopls.fetch_vulncheck_result';
