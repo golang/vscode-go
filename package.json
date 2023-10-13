@@ -36,7 +36,7 @@
     "gopls"
   ],
   "scripts": {
-    "clean": "rm -rf ./dist/* && rm *.vsix",
+    "clean": "rm -rf ./dist/* && rm -rf ./out/* && rm *.vsix",
     "package": "npx vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
