@@ -12,7 +12,6 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
-import { goLiveErrorsEnabled } from './language/legacy/goLiveErrors';
 import { allToolsInformation } from './goToolsInformation';
 import { getBinPath, GoVersion } from './util';
 
@@ -209,11 +208,6 @@ export function getConfiguredTools(
 	if (useLanguageServer) {
 		maybeAddTool('gopls');
 	}
-
-	if (goLiveErrorsEnabled()) {
-		maybeAddTool('gotype-live');
-	}
-
 	return tools;
 }
 

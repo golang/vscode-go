@@ -7,16 +7,11 @@ import vscode = require('vscode');
 import { DocumentSymbolRequest, ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
-import { GoLegacyDocumentSymbolProvider } from './language/legacy/goOutline';
 
 export function GoDocumentSymbolProvider(
 	goCtx: GoExtensionContext,
 	includeImports?: boolean
-): GoplsDocumentSymbolProvider | GoLegacyDocumentSymbolProvider {
-	const { latestConfig } = goCtx;
-	if (!latestConfig?.enabled) {
-		return new GoLegacyDocumentSymbolProvider(includeImports);
-	}
+): GoplsDocumentSymbolProvider {
 	return new GoplsDocumentSymbolProvider(goCtx, includeImports);
 }
 
@@ -25,6 +20,9 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 	constructor(private readonly goCtx: GoExtensionContext, private includeImports?: boolean) {}
 
 	public async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
+		if (!this.goCtx.languageServerIsRunning) {
+			return [];
+		}
 		// TODO(suzmue): consider providing an interface for providing document symbols that only requires
 		// the URI. Getting a TextDocument from a filename requires opening the file, which can lead to
 		// files being opened that were not requested by the user in order to get information that we just

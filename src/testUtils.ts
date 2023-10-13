@@ -154,7 +154,7 @@ export async function getTestFunctions(
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx, true);
-	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	if (!symbols || symbols.length === 0) {
 		return;
 	}
@@ -242,7 +242,7 @@ export async function getBenchmarkFunctions(
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx);
-	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc, token);
+	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	if (!symbols || symbols.length === 0) {
 		return;
 	}
