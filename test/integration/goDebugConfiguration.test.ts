@@ -7,14 +7,14 @@ import os = require('os');
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import { getGoConfig, extensionInfo } from '../../src/config';
-import { GoDebugConfigurationProvider } from '../../src/goDebugConfiguration';
-import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { rmdirRecursive } from '../../src/util';
-import goEnv = require('../../src/goEnv');
-import { MockCfg } from '../mocks/MockCfg';
+import { extensionInfo, getGoConfig } from '../../src/config';
 import { extensionId } from '../../src/const';
+import { GoDebugConfigurationProvider, maybeJoinFlags } from '../../src/goDebugConfiguration';
+import * as goInstallTools from '../../src/goInstallTools';
+import { rmdirRecursive } from '../../src/util';
+import { MockCfg } from '../mocks/MockCfg';
 import { affectedByIssue832 } from './testutils';
+import goEnv = require('../../src/goEnv');
 
 suite('Debug Environment Variable Merge Test', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
@@ -24,7 +24,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 
 	suiteSetup(async () => {
-		await updateGoVarsFromConfig({});
+		await goInstallTools.updateGoVarsFromConfig({});
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
 	});
 
@@ -505,6 +505,34 @@ suite('Debug Configuration Modify User Config', () => {
 			await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 
 			assert.strictEqual(config.env.GOFLAGS, '-race -mod=mod');
+		});
+	});
+
+	suite('convert args list to string for older delve', () => {
+		teardown(() => {
+			sinon.restore();
+		});
+
+		async function testShouldUpdateTool(
+			input: string | string[],
+			expected: string | string[],
+			moduleVersion?: string
+		) {
+			sinon.stub(goInstallTools, 'inspectGoToolVersion').returns(Promise.resolve({ moduleVersion }));
+			const got = await maybeJoinFlags('/path/to/dlv', input);
+			assert.deepStrictEqual(expected, got);
+		}
+
+		test('convert args list to string for older delve', async () => {
+			await testShouldUpdateTool(['-c', 'my.conf', '-p', '8080'], '-c my.conf -p 8080', '1.5.0');
+		});
+
+		test('convert args list to string for devel delve', async () => {
+			await testShouldUpdateTool(['-c', 'my.conf', '-p', '8080'], '-c my.conf -p 8080');
+		});
+
+		test('keep args list for newer delve', async () => {
+			await testShouldUpdateTool(['-c', 'my.conf', '-p', '8080'], ['-c', 'my.conf', '-p', '8080'], '1.22.2');
 		});
 	});
 });

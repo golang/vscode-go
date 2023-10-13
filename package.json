@@ -711,9 +711,15 @@
                 "default": []
               },
               "buildFlags": {
-                "type": "string",
+                "type": [
+                  "string",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                },
                 "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
-                "default": ""
+                "default": []
               },
               "dlvFlags": {
                 "type": "array",

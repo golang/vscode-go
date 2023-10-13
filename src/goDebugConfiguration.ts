@@ -10,11 +10,13 @@
 import { lstatSync } from 'fs';
 import path = require('path');
 import vscode = require('vscode');
+import semver = require('semver');
 import { extensionId } from './const';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import {
 	declinedToolInstall,
+	inspectGoToolVersion,
 	installTools,
 	promptForMissingTool,
 	promptForUpdatingTool,
@@ -47,8 +49,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	constructor(private defaultDebugAdapterType: string = 'go') {}
 
 	public async provideDebugConfigurations(
-		folder: vscode.WorkspaceFolder | undefined,
-		token?: vscode.CancellationToken
+		_folder: vscode.WorkspaceFolder | undefined,
+		_token?: vscode.CancellationToken
 	): Promise<vscode.DebugConfiguration[] | undefined> {
 		return await this.pickConfiguration();
 	}
@@ -132,7 +134,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	public async resolveDebugConfiguration(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
-		token?: vscode.CancellationToken
+		_token?: vscode.CancellationToken
 	): Promise<vscode.DebugConfiguration | undefined> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
@@ -261,28 +263,6 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			debugConfiguration['cwd'] = resolveHomeDir(debugConfiguration['cwd']);
 		}
 
-		// Remove any '--gcflags' entries and show a warning
-		if (debugConfiguration['buildFlags']) {
-			const resp = this.removeGcflags(debugConfiguration['buildFlags']);
-			if (resp.removed) {
-				debugConfiguration['buildFlags'] = resp.args;
-				this.showWarning(
-					'ignoreDebugGCFlagsWarning',
-					"User specified build flag '--gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
-				);
-			}
-		}
-		if (debugConfiguration['env'] && debugConfiguration['env']['GOFLAGS']) {
-			const resp = this.removeGcflags(debugConfiguration['env']['GOFLAGS']);
-			if (resp.removed) {
-				debugConfiguration['env']['GOFLAGS'] = resp.args;
-				this.showWarning(
-					'ignoreDebugGCFlagsWarning',
-					"User specified build flag '--gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
-				);
-			}
-		}
-
 		const dlvToolPath = getBinPath('dlv');
 		if (!path.isAbsolute(dlvToolPath)) {
 			// If user has not already declined to install this tool,
@@ -294,6 +274,33 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		debugConfiguration['dlvToolPath'] = dlvToolPath;
+
+		// Remove any '--gcflags' entries and show a warning
+		if (debugConfiguration['buildFlags']) {
+			let flags = await maybeJoinFlags(dlvToolPath, debugConfiguration['buildFlags']);
+			if (typeof flags === 'string') {
+				const resp = this.removeGcflags(flags);
+				if (resp.removed) {
+					flags = resp.args;
+					this.showWarning(
+						'ignoreDebugGCFlagsWarning',
+						"User specified build flag '-gcflags' in 'buildFlags' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
+					);
+				}
+			}
+
+			debugConfiguration['buildFlags'] = flags;
+		}
+		if (debugConfiguration['env'] && debugConfiguration['env']['GOFLAGS']) {
+			const resp = this.removeGcflags(debugConfiguration['env']['GOFLAGS']);
+			if (resp.removed) {
+				debugConfiguration['env']['GOFLAGS'] = resp.args;
+				this.showWarning(
+					'ignoreDebugGCFlagsWarning',
+					"User specified build flag '-gcflags' in 'GOFLAGS' is being ignored (see [debugging with build flags](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#specifying-other-build-flags) documentation)"
+				);
+			}
+		}
 
 		// For dlv-dap mode, check if the dlv is recent enough to support DAP.
 		if (debugAdapter === 'dlv-dap' && !dlvDAPVersionChecked) {
@@ -405,7 +412,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	public resolveDebugConfigurationWithSubstitutedVariables(
 		folder: vscode.WorkspaceFolder | undefined,
 		debugConfiguration: vscode.DebugConfiguration,
-		token?: vscode.CancellationToken
+		_token?: vscode.CancellationToken
 	): vscode.DebugConfiguration | null {
 		const debugAdapter = debugConfiguration['debugAdapter'];
 		if (debugAdapter === '') {
@@ -515,6 +522,16 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		});
 	}
+}
+
+// exported for testing.
+export async function maybeJoinFlags(dlvToolPath: string, flags: string | string[]) {
+	const { moduleVersion } = await inspectGoToolVersion(dlvToolPath);
+	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
+	if (typeof flags !== 'string' && (!localVersion || semver.lt(localVersion, '1.22.2'))) {
+		flags = flags.join(' ');
+	}
+	return flags;
 }
 
 // parseDebugProgramArgSync parses program arg of debug/auto/test launch requests.
