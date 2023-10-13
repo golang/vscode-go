@@ -15,6 +15,8 @@ import * as config from '../../src/config';
 import { GoTestResolver } from '../../src/goTest/resolve';
 import * as testUtils from '../../src/testUtils';
 import { GoTest } from '../../src/goTest/utils';
+import { Env } from './goplsTestEnv.utils';
+import { MockCfg } from '../mocks/MockCfg';
 
 type Files = Record<string, string | { contents: string; language: string }>;
 
@@ -206,20 +208,33 @@ suite('Go Test Explorer', () => {
 		}
 	});
 
-	suite('stretchr', () => {
+	suite('stretchr', function () {
 		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 		const ctx = MockExtensionContext.new();
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
-		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, {});
+		const env = new Env();
 
+		suiteSetup(async () => {
 			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
+			// TODO(hyangah): I don't know why, but gopls seems to pick up ./test/testdata/codelens as
+			// the workspace directory when we don't explicitly set the workspace directory
+			// (so initialize request doesn't include workspace dir info). The codelens directory was
+			// used in the previous test suite. Figure out why.
+			await env.startGopls(uri.fsPath, undefined, fixtureDir);
+
+			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
+
 			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
 		});
 
-		suiteTeardown(() => {
+		this.afterEach(async function () {
+			await env.teardown();
+			// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
+			// I don't know why but this.currentTest.state does not have the expected value when
+			// used with teardown.
+			env.flushTrace(this.currentTest?.state === 'failed');
 			ctx.teardown();
 		});
 
@@ -236,13 +251,7 @@ suite('Go Test Explorer', () => {
 	suite('settings', () => {
 		const sandbox = sinon.createSandbox();
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let goConfig: any;
-
-		setup(() => {
-			goConfig = Object.create(config.getGoConfig());
-			sandbox.stub(config, 'getGoConfig').returns(goConfig);
-		});
+		setup(() => {});
 
 		teardown(() => {
 			sandbox.restore();
@@ -269,8 +278,9 @@ suite('Go Test Explorer', () => {
 				// - module
 				//   - package pkg
 				//   - package pkg/sub
-
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.packageDisplayMode').returns('flat');
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.packageDisplayMode').returns('flat');
 				await forceResolve(resolver);
 
 				const mod = resolver.items.get('file:///src/proj?module');
@@ -288,8 +298,9 @@ suite('Go Test Explorer', () => {
 				// - module
 				//   - package pkg
 				//     - package pkg/sub
-
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.packageDisplayMode').returns('nested');
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.packageDisplayMode').returns('nested');
 				await forceResolve(resolver);
 
 				const mod = resolver.items.get('file:///src/proj?module');
@@ -335,7 +346,9 @@ suite('Go Test Explorer', () => {
 			test('false', async () => {
 				// Running the file should only run the test
 
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.alwaysRunBenchmarks').returns(false);
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.alwaysRunBenchmarks').returns(false);
 				await forceResolve(explorer.resolver);
 
 				const tests = explorer.resolver.find(Uri.parse('file:///src/proj/pkg/main_test.go'));
@@ -355,8 +368,9 @@ suite('Go Test Explorer', () => {
 
 			test('true', async () => {
 				// Running the file should run the test and the benchmark
-
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.alwaysRunBenchmarks').returns(true);
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.alwaysRunBenchmarks').returns(true);
 				await forceResolve(explorer.resolver);
 
 				const tests = explorer.resolver.find(Uri.parse('file:///src/proj/pkg/main_test.go'));
@@ -403,8 +417,9 @@ suite('Go Test Explorer', () => {
 
 			test('false', async () => {
 				// Dynamic subtests should have no location
-
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.showDynamicSubtestsInEditor').returns(false);
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.showDynamicSubtestsInEditor').returns(false);
 				await forceResolve(explorer.resolver);
 
 				const test = explorer.resolver
@@ -427,8 +442,9 @@ suite('Go Test Explorer', () => {
 
 			test('true', async () => {
 				// Dynamic subtests should have the same location as their parents
-
-				sinon.stub(goConfig, 'get').withArgs('testExplorer.showDynamicSubtestsInEditor').returns(true);
+				const goConfig = new MockCfg([]);
+				sandbox.stub(config, 'getGoConfig').returns(goConfig);
+				sandbox.stub(goConfig, 'get').withArgs('testExplorer.showDynamicSubtestsInEditor').returns(true);
 				await forceResolve(explorer.resolver);
 
 				const test = explorer.resolver

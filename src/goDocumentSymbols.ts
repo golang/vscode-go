@@ -84,7 +84,7 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 					);
 				});
 			} catch (err) {
-				console.log('Failed to list imports: {err}');
+				console.log(`Failed to list imports: ${err}`);
 			}
 		}
 		return [packageSymbol];

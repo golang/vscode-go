@@ -7,6 +7,7 @@ import { forceDidOpenTextDocument } from './goTest.utils';
 import { GoTestExplorer } from '../../src/goTest/explore';
 import { MockExtensionContext } from '../mocks/MockContext';
 import { GoTest } from '../../src/goTest/utils';
+import { Env } from './goplsTestEnv.utils';
 
 suite('Go Test Runner', () => {
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
@@ -51,17 +52,19 @@ suite('Go Test Runner', () => {
 			testParseOutput('file.go:1: line1 . file.go:2: line2 \n', [{ file: filePath, line: 1, msg: 'line2 \n' }]));
 	});
 
-	suite('Profile', () => {
+	suite('Profile', function () {
 		const sandbox = sinon.createSandbox();
 		const ctx = MockExtensionContext.new();
+		const env = new Env();
 
 		let uri: Uri;
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, {});
-
 			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
+			await env.startGopls(uri.fsPath);
+			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
+
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
 		});
 
@@ -81,7 +84,13 @@ suite('Go Test Runner', () => {
 			sandbox.restore();
 		});
 
-		suiteTeardown(() => {
+		// suiteTeardown
+		this.afterEach(async function () {
+			await env.teardown();
+			// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
+			// I don't know why but this.currentTest.state does not have the expected value when
+			// used with teardown.
+			env.flushTrace(this.currentTest?.state === 'failed');
 			ctx.teardown();
 		});
 
