@@ -8,16 +8,10 @@
 provides rich language support for the
 [Go programming language](https://go.dev/).
 
-📣
-[Remote attach debugging](https://github.com/golang/vscode-go/wiki/debugging#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
-[debugging features](https://github.com/golang/vscode-go/wiki/debugging) that are already in use for local debugging. It is now the default with the
-[Go Nightly](https://github.com/golang/vscode-go/wiki/nightly) build of the extension and will become the default for the stable releases in mid 2022.
-We recommend switching your remote attach configurations in `launch.json` to use
-`"debugAdapter":"dlv-dap"` now to verify that this works for you.
-Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
+## Requirements
 
-📣📣 Watch [Debugging Treasure Hunt](https://youtu.be/ZPIPPRjwg7Q) from [GopherCon 2021](https://www.gophercon.com/) for a fun take on a debugging demo with VS Code Go and Delve DAP.
-
+* Visual Studio Code 1.75 or newer (or editors compatible with VS Code 1.75+ APIs)
+* Go 1.18 or newer
 
 ## Quick Start
 
