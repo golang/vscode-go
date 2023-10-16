@@ -4,7 +4,7 @@
  *--------------------------------------------------------*/
 
 import vscode = require('vscode');
-import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
+import { DocumentSymbolRequest, ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
 import { GoLegacyDocumentSymbolProvider } from './language/legacy/goOutline';
@@ -38,11 +38,14 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 			return [];
 		}
 
-		const symbols: vscode.DocumentSymbol[] | undefined = await vscode.commands.executeCommand(
-			'vscode.executeDocumentSymbolProvider',
-			document.uri
-		);
-		if (!symbols || symbols.length === 0) {
+		const p = languageClient?.getFeature(DocumentSymbolRequest.method)?.getProvider(document);
+		if (!p) {
+			return [];
+		}
+		const cancel = new vscode.CancellationTokenSource();
+		const symbols = await p.provideDocumentSymbols(document, cancel.token);
+		cancel.dispose();
+		if (!symbols || symbols.length === 0 || !isDocumentSymbol(symbols)) {
 			return [];
 		}
 
@@ -107,4 +110,8 @@ async function listImports(
 	};
 	const resp = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
 	return resp.PackageImports;
+}
+
+function isDocumentSymbol(r: vscode.SymbolInformation[] | vscode.DocumentSymbol[]): r is vscode.DocumentSymbol[] {
+	return r[0] instanceof vscode.DocumentSymbol;
 }

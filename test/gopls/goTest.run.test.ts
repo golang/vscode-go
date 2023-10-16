@@ -164,7 +164,7 @@ suite('Go Test Runner', () => {
 		});
 	});
 
-	suite('Subtest', () => {
+	suite('Subtest', function () {
 		// WARNING: each call to testExplorer.runner.run triggers one or more
 		// `go test` command runs (testUtils.goTest is spied, not mocked or replaced).
 		// Each `go test` command invocation can take seconds on slow machines.
@@ -172,20 +172,28 @@ suite('Go Test Runner', () => {
 		const sandbox = sinon.createSandbox();
 		const subTestDir = path.join(fixtureDir, 'subTest');
 		const ctx = MockExtensionContext.new();
+		const env = new Env();
 
 		let uri: Uri;
 		let spy: sinon.SinonSpy<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			testExplorer = GoTestExplorer.setup(ctx, {});
-
 			uri = Uri.file(path.join(subTestDir, 'sub_test.go'));
+			// TODO(hyangah): I don't know why, but gopls seems to pick up ./test/testdata/codelens as
+			// the workspace directory when we don't explicitly set the workspace directory
+			// (so initialize request doesn't include workspace dir info). The codelens directory was
+			// used in the previous test suite. Figure out why.
+			await env.startGopls(uri.fsPath, undefined, subTestDir);
+			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
 
 			spy = sandbox.spy(testUtils, 'goTest');
 		});
 
-		suiteTeardown(() => {
+		// suiteTeardown
+		this.afterEach(async function () {
+			await env.teardown();
+			env.flushTrace(this.currentTest?.state === 'failed');
 			ctx.teardown();
 			sandbox.restore();
 		});
