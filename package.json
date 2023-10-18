@@ -168,12 +168,6 @@
         "aliases": [
           "Go Template File"
         ]
-      },
-      {
-        "id": "govulncheck",
-        "aliases": [
-          "Govulncheck Output"
-        ]
       }
     ],
     "grammars": [
@@ -191,11 +185,6 @@
         "language": "go.sum",
         "scopeName": "go.sum",
         "path": "./syntaxes/go.sum.tmGrammar.json"
-      },
-      {
-        "language": "govulncheck",
-        "scopeName": "govulncheck",
-        "path": "./syntaxes/govulncheck.tmGrammar.json"
       }
     ],
     "snippets": [

@@ -59,7 +59,7 @@ import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
-import { VulncheckReport, writeVulns } from '../goVulncheck';
+import { IVulncheckTerminal, VulncheckReport, VulncheckTerminal, writeVulns } from '../goVulncheck';
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
 
@@ -375,9 +375,6 @@ export function buildLanguageClientOption(
 		if (!goCtx.serverTraceChannel) {
 			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
 		}
-		if (!goCtx.govulncheckOutputChannel) {
-			goCtx.govulncheckOutputChannel = vscode.window.createOutputChannel('govulncheck', 'govulncheck');
-		}
 	}
 	return Object.assign(
 		{
@@ -410,6 +407,7 @@ export class GoLanguageClient extends LanguageClient implements vscode.Disposabl
 
 type VulncheckEvent = {
 	URI?: URI;
+	message?: string;
 };
 
 // buildLanguageClient returns a language client built using the given language server config.
@@ -433,8 +431,8 @@ export async function buildLanguageClient(
 	// we want to handle the connection close error case specially. Capture the error
 	// in initializationFailedHandler and handle it in the connectionCloseHandler.
 	let initializationError: WebRequest.ResponseError<InitializeError> | undefined = undefined;
+	let govulncheckTerminal: IVulncheckTerminal | undefined;
 
-	const govulncheckOutputChannel = goCtx.govulncheckOutputChannel;
 	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
 	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
 
@@ -518,35 +516,37 @@ export async function buildLanguageClient(
 							break;
 						case 'report':
 							if (pendingVulncheckProgressToken.has(token) && params.message) {
-								govulncheckOutputChannel?.appendLine(params.message);
+								govulncheckTerminal?.appendLine(params.message);
 							}
 							break;
 						case 'end':
 							if (pendingVulncheckProgressToken.has(token)) {
 								const out = pendingVulncheckProgressToken.get(token);
 								pendingVulncheckProgressToken.delete(token);
-								if (params.message === 'completed') {
-									// success. In case of failure, it will be 'failed'
-									onDidChangeVulncheckResultEmitter.fire({ URI: out.URI });
-								}
+								// success. In case of failure, it will be 'failed'
+								onDidChangeVulncheckResultEmitter.fire({ URI: out.URI, message: params.message });
 							}
 					}
 					next(token, params);
 				},
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
 					try {
-						if (command === 'gopls.run_govulncheck' && args.length) {
-							await vscode.workspace.saveAll(false);
-							// TODO: move this output printing to goVulncheck.ts.
-							govulncheckOutputChannel?.replace(`govulncheck ./... for ${args[0].URI}\n`);
-							govulncheckOutputChannel?.appendLine('govulncheck is an experimental tool.');
-							govulncheckOutputChannel?.appendLine(
-								'Share feedback at https://go.dev/s/vsc-vulncheck-feedback.\n'
-							);
-							govulncheckOutputChannel?.show();
-						}
 						if (command === 'gopls.tidy') {
 							await vscode.workspace.saveAll(false);
+						}
+						if (command === 'gopls.run_govulncheck' && args.length && args[0].URI) {
+							if (govulncheckTerminal) {
+								vscode.window.showErrorMessage(
+									'cannot start vulncheck while another vulncheck is in progress'
+								);
+								return;
+							}
+							await vscode.workspace.saveAll(false);
+							const uri = args[0].URI ? URI.parse(args[0].URI) : undefined;
+							const dir = uri?.fsPath?.endsWith('.mod') ? path.dirname(uri.fsPath) : uri?.fsPath;
+							govulncheckTerminal = VulncheckTerminal.Open();
+							govulncheckTerminal.appendLine(`⚡ govulncheck -C ${dir} ./...\n\n`);
+							govulncheckTerminal.show();
 						}
 						const res = await next(command, args);
 						if (command === 'gopls.run_govulncheck') {
@@ -737,17 +737,32 @@ export async function buildLanguageClient(
 		onDidChangeVulncheckResultEmitter
 	);
 	onDidChangeVulncheckResultEmitter.event(async (e: VulncheckEvent) => {
-		if (!govulncheckOutputChannel) return;
+		if (!govulncheckTerminal) {
+			return;
+		}
 		if (!e || !e.URI) {
-			govulncheckOutputChannel.appendLine(`unexpected vulncheck event: ${JSON.stringify(e)}`);
+			govulncheckTerminal.appendLine(`unexpected vulncheck event: ${JSON.stringify(e)}`);
 			return;
 		}
 
 		try {
-			const res = await goplsFetchVulncheckResult(goCtx, e.URI.toString());
-			writeVulns(res, govulncheckOutputChannel);
+			if (e.message === 'completed') {
+				const res = await goplsFetchVulncheckResult(goCtx, e.URI.toString());
+				if (res.Vulns) {
+					vscode.window.showWarningMessage(
+						'upgrade gopls (v0.14.0 or newer) to see the details about detected vulnerabilities'
+					);
+				} else {
+					await writeVulns(res, govulncheckTerminal, cfg.path);
+				}
+			} else {
+				govulncheckTerminal.appendLine(`terminated without result: ${e.message}`);
+			}
 		} catch (e) {
-			govulncheckOutputChannel.appendLine(`Fetching govulncheck output from gopls failed ${e}`);
+			govulncheckTerminal.appendLine(`Fetching govulncheck output from gopls failed ${e}`);
+		} finally {
+			govulncheckTerminal.show();
+			govulncheckTerminal = undefined;
 		}
 	});
 	return c;
