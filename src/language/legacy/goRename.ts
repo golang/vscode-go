@@ -15,6 +15,8 @@ import { promptForMissingTool } from '../../goInstallTools';
 import { outputChannel } from '../../goStatus';
 import { byteOffsetAt, canonicalizeGOPATHPrefix, getBinPath } from '../../util';
 import { killProcessTree } from '../../utils/processUtils';
+import { logVerbose } from '../../goLogging';
+import { logWarn } from '../../goLogging';
 
 export class GoRenameProvider implements vscode.RenameProvider {
 	public provideRenameEdits(
@@ -57,6 +59,8 @@ export class GoRenameProvider implements vscode.RenameProvider {
 				token.onCancellationRequested(() => killProcessTree(p));
 			}
 
+			logWarn(`Support for ${gorename} is deprecated in favor of gopls and will be removed in a future version.`)
+			logVerbose(`$ ${gorename} ${gorenameArgs} (cwd: ${opts.cwd})`);
 			p = cp.execFile(gorename, gorenameArgs, { env }, (err, stdout, stderr) => {
 				try {
 					if (err && (<any>err).code === 'ENOENT') {
