@@ -411,11 +411,6 @@
         "description": "Remove tags configured in go.removeTags setting from selected struct using gomodifytags"
       },
       {
-        "command": "go.fill.struct",
-        "title": "Go: Fill struct",
-        "description": "Fill a struct literal with default values"
-      },
-      {
         "command": "go.show.commands",
         "title": "Go: Show All Commands...",
         "description": "Shows all commands from the Go extension in the quick pick"
@@ -2666,11 +2661,6 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.removeTags && resourceLangId == go",
           "command": "go.remove.tags",
-          "group": "Go group 1"
-        },
-        {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.fillStruct && resourceLangId == go",
-          "command": "go.fill.struct",
           "group": "Go group 1"
         },
         {

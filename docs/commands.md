@@ -175,10 +175,6 @@ Add tags configured in go.addTags setting to selected struct using gomodifytags
 
 Remove tags configured in go.removeTags setting from selected struct using gomodifytags
 
-### `Go: Fill struct`
-
-Fill a struct literal with default values
-
 ### `Go: Show All Commands...`
 
 Shows all commands from the Go extension in the quick pick

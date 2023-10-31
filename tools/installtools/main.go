@@ -38,7 +38,6 @@ var tools = []struct {
 	{"golang.org/x/tools/gopls", "", true, nil},
 	{"github.com/acroca/go-symbols", "", false, nil},
 	{"github.com/cweill/gotests/gotests", "", false, nil},
-	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
 	{"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
 	{"github.com/mdempsky/gocode", "", false, nil},

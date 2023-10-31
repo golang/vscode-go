@@ -226,15 +226,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
 		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
 	},
-	'fillstruct': {
-		name: 'fillstruct',
-		importPath: 'github.com/davidrjenni/reftools/cmd/fillstruct',
-		modulePath: 'github.com/davidrjenni/reftools',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Fill structs with defaults',
-		defaultVersion: 'v0.0.0-20210213085015-40322ffdc2e4'
-	},
 	'godoctor': {
 		name: 'godoctor',
 		importPath: 'github.com/godoctor/godoctor',

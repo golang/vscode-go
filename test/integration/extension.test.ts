@@ -15,7 +15,6 @@ import * as vscode from 'vscode';
 import { getGoConfig, getGoplsConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
-import { runFillStruct } from '../../src/goFillStruct';
 import {
 	generateTestCurrentFile,
 	generateTestCurrentFunction,
@@ -38,7 +37,6 @@ import {
 import cp = require('child_process');
 import os = require('os');
 import { MockExtensionContext } from '../mocks/MockContext';
-import { affectedByIssue832 } from './testutils';
 
 const testAll = (isModuleMode: boolean) => {
 	const dummyCancellationSource = new vscode.CancellationTokenSource();
@@ -610,42 +608,6 @@ const testAll = (isModuleMode: boolean) => {
 
 		const result4 = await testCurrentFile(false, () => config4)(ctx, {})([]);
 		assert.equal(result4, false);
-	});
-
-	function fixEOL(eol: vscode.EndOfLine, strWithLF: string): string {
-		if (eol === vscode.EndOfLine.LF) {
-			return strWithLF;
-		}
-		return strWithLF.split('\n').join('\r\n'); // replaceAll.
-	}
-
-	test('Fill struct', async () => {
-		const uri = vscode.Uri.file(path.join(fixturePath, 'fillStruct', 'input_1.go'));
-		const golden = fs.readFileSync(path.join(fixturePath, 'fillStruct', 'golden_1.go'), 'utf-8');
-
-		const textDocument = await vscode.workspace.openTextDocument(uri);
-		await vscode.window.showTextDocument(textDocument);
-
-		const editor = await vscode.window.showTextDocument(textDocument);
-		const selection = new vscode.Selection(12, 15, 12, 15);
-		editor.selection = selection;
-		const ctx = new MockExtensionContext() as any;
-		await runFillStruct(ctx, {})(editor);
-		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
-	});
-
-	test('Fill struct - select line', async () => {
-		const uri = vscode.Uri.file(path.join(fixturePath, 'fillStruct', 'input_2.go'));
-		const golden = fs.readFileSync(path.join(fixturePath, 'fillStruct', 'golden_2.go'), 'utf-8');
-
-		const textDocument = await vscode.workspace.openTextDocument(uri);
-		const editor = await vscode.window.showTextDocument(textDocument);
-
-		const selection = new vscode.Selection(7, 0, 7, 10);
-		editor.selection = selection;
-		const ctx = new MockExtensionContext() as any;
-		await runFillStruct(ctx, {})(editor);
-		assert.equal(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.getText(), golden);
 	});
 };
 

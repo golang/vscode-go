@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -39,7 +40,8 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('HoverProvider', async () => {
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
@@ -89,7 +91,8 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('Completion middleware', async () => {
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string, vscode.CompletionItemKind][] = [
 			['fmt.P<>', new vscode.Position(19, 6), 'Print', vscode.CompletionItemKind.Function],
@@ -159,8 +162,8 @@ suite('Go Extension Tests With Gopls', function () {
 	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
 		const config = require('../../src/config');
 		sandbox.stub(config, 'getGoConfig').returns(goConfig);
-
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'), goConfig);
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), goConfig, workspaceDir);
 		const { doc } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
 		await vscode.window.showTextDocument(doc);
 
@@ -199,7 +202,8 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('Prompt For telemetry', async () => {
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const memento = new MockMemento();
 		memento.update(TELEMETRY_START_TIME_KEY, new Date('2000-01-01'));
 

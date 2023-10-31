@@ -152,7 +152,7 @@ export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig
 	}
 
 	// Start with default tools that should always be installed.
-	for (const name of ['gotests', 'gomodifytags', 'impl', 'fillstruct', 'goplay']) {
+	for (const name of ['gotests', 'gomodifytags', 'impl', 'goplay']) {
 		maybeAddTool(name);
 	}
 
