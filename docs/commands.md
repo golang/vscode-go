@@ -231,14 +231,6 @@ Cancels running tests.
 
 Applies existing cover profile.
 
-### `Go: Extract to function`
-
-Extract to function using godoctor.
-
-### `Go: Extract to variable`
-
-Extract to variable using godoctor.
-
 ### `Go: Restart Language Server`
 
 Restart the running instance of the language server

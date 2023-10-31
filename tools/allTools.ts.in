@@ -223,14 +223,5 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		latestVersion: semver.parse('v1.6.1'), // minimum version that supports DAP
 		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
 		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
-	},
-	'godoctor': {
-		name: 'godoctor',
-		importPath: 'github.com/godoctor/godoctor',
-		modulePath: 'github.com/godoctor/godoctor',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Extract to functions and variables',
-		defaultVersion: 'v0.0.0-20220520165350-b665b8ff3f35'
 	}
 };
