@@ -28,7 +28,7 @@ import {
 import * as extConfig from '../../src/config';
 import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
-import { killProcessTree, killProcess } from '../../src/utils/processUtils';
+import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
 import { TimestampedLogger } from '../../src/goLogging';
@@ -2563,5 +2563,16 @@ function tryRmdirRecursive(dir: string) {
 		rmdirRecursive(dir);
 	} catch (e) {
 		console.log(`failed to delete ${dir}: ${e}`);
+	}
+}
+
+// Kill a process.
+function killProcess(p: cp.ChildProcess) {
+	if (p && p.pid && p.exitCode === null) {
+		try {
+			p.kill();
+		} catch (e) {
+			console.log(`Error killing process ${p.pid}: ${e}`);
+		}
 	}
 }
