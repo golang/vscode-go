@@ -7,7 +7,7 @@
 
 import assert from 'assert';
 import * as vscode from 'vscode';
-import { GoVersion, guessPackageNameFromFile, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
+import { GoVersion, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
 import path = require('path');
 import { toolExecutionEnvironment } from '../../src/goEnv';
 import sinon = require('sinon');
@@ -54,43 +54,6 @@ suite('utils Tests', () => {
 			assert.equal(go.format(), wantFormat, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 			assert.equal(go.format(true), wantFormatIncludePrerelease, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 		}
-	});
-});
-
-suite('GuessPackageNameFromFile Tests', () => {
-	test('package name from main file', (done) => {
-		const expectedPackageName = 'main';
-		const filename = 'main.go';
-
-		guessPackageNameFromFile(filename)
-			.then((result) => {
-				assert.equal(result, expectedPackageName);
-			})
-			.then(() => done(), done);
-	});
-
-	test('package name from dirpath', (done) => {
-		const expectedPackageName = 'package';
-		const fileDir = 'path/package/file.go';
-
-		guessPackageNameFromFile(fileDir)
-			.then(([result]) => {
-				assert.equal(result, expectedPackageName);
-			})
-			.then(() => done(), done);
-	});
-
-	test('package name from test file', (done) => {
-		const expectedPackageName = 'file';
-		const expectedPackageTestName = 'file_test';
-		const fileDir = 'file_test.go';
-
-		guessPackageNameFromFile(fileDir)
-			.then(([packageNameResult, packageTestNameResult]) => {
-				assert.equal(packageNameResult, expectedPackageName);
-				assert.equal(packageTestNameResult, expectedPackageTestName);
-			})
-			.then(() => done(), done);
 	});
 });
 
