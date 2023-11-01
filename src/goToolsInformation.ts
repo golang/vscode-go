@@ -2,63 +2,9 @@
 
 import moment = require('moment');
 import semver = require('semver');
-import { gocodeClose, Tool } from './goTools';
+import { Tool } from './goTools';
 
 export const allToolsInformation: { [key: string]: Tool } = {
-	'gocode': {
-		name: 'gocode',
-		importPath: 'github.com/mdempsky/gocode',
-		modulePath: 'github.com/mdempsky/gocode',
-		isImportant: true,
-		replacedByGopls: true,
-		description: 'Auto-completion, does not work with modules',
-		close: gocodeClose,
-		defaultVersion: 'v0.0.0-20200405233807-4acdcbdea79d'
-	},
-	'gocode-gomod': {
-		name: 'gocode-gomod',
-		importPath: 'github.com/stamblerre/gocode',
-		modulePath: 'github.com/stamblerre/gocode',
-		isImportant: true,
-		replacedByGopls: true,
-		description: 'Auto-completion, works with modules',
-		minimumGoVersion: semver.coerce('1.11'),
-		defaultVersion: 'v1.0.0'
-	},
-	'go-outline': {
-		name: 'go-outline',
-		importPath: 'github.com/ramya-rao-a/go-outline',
-		modulePath: 'github.com/ramya-rao-a/go-outline',
-		replacedByGopls: true,
-		isImportant: true,
-		description: 'Go to symbol in file', // GoDocumentSymbolProvider, used by 'run test' codelens
-		defaultVersion: 'v0.0.0-20210608161538-9736a4bde949'
-	},
-	'go-symbols': {
-		name: 'go-symbols',
-		importPath: 'github.com/acroca/go-symbols',
-		modulePath: 'github.com/acroca/go-symbols',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Go to symbol in workspace',
-		defaultVersion: 'v0.1.1'
-	},
-	'guru': {
-		name: 'guru',
-		importPath: 'golang.org/x/tools/cmd/guru',
-		modulePath: 'golang.org/x/tools',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Find all references and Go to implementation of symbols'
-	},
-	'gorename': {
-		name: 'gorename',
-		importPath: 'golang.org/x/tools/cmd/gorename',
-		modulePath: 'golang.org/x/tools',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Rename symbols'
-	},
 	'gomodifytags': {
 		name: 'gomodifytags',
 		importPath: 'github.com/fatih/gomodifytags',
@@ -86,33 +32,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Stubs for interfaces',
 		defaultVersion: 'v1.1.0'
 	},
-	'gotype-live': {
-		name: 'gotype-live',
-		importPath: 'github.com/tylerb/gotype-live',
-		modulePath: 'github.com/tylerb/gotype-live',
-		replacedByGopls: true, // TODO(github.com/golang/vscode-go/issues/1021): recommend users to turn off.
-		isImportant: false,
-		description: 'Show errors as you type',
-		defaultVersion: 'v0.0.0-20200426224044-fc0b594a8b09'
-	},
-	'godef': {
-		name: 'godef',
-		importPath: 'github.com/rogpeppe/godef',
-		modulePath: 'github.com/rogpeppe/godef',
-		replacedByGopls: true,
-		isImportant: true,
-		description: 'Go to definition',
-		defaultVersion: 'v1.1.2'
-	},
-	'gogetdoc': {
-		name: 'gogetdoc',
-		importPath: 'github.com/zmb3/gogetdoc',
-		modulePath: 'github.com/zmb3/gogetdoc',
-		replacedByGopls: true,
-		isImportant: true,
-		description: 'Go to definition & text shown on hover',
-		defaultVersion: 'v0.0.0-20190228002656-b37376c5da6a'
-	},
 	'gofumports': {
 		name: 'gofumports',
 		importPath: 'mvdan.cc/gofumpt/gofumports',
@@ -138,24 +57,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: true,
 		description: 'Formatter'
-	},
-	'goreturns': {
-		name: 'goreturns',
-		importPath: 'github.com/sqs/goreturns',
-		modulePath: 'github.com/sqs/goreturns',
-		replacedByGopls: true,
-		isImportant: true,
-		description: 'Formatter',
-		defaultVersion: 'v0.0.0-20181028201513-538ac6014518'
-	},
-	'goformat': {
-		name: 'goformat',
-		importPath: 'winterdrache.de/goformat/goformat',
-		modulePath: 'winterdrache.de/goformat/goformat',
-		replacedByGopls: true,
-		isImportant: false,
-		description: 'Formatter',
-		defaultVersion: 'v0.0.0-20180512004123-256ef38c4271'
 	},
 	'gotests': {
 		name: 'gotests',
@@ -210,10 +111,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.13'),
-		latestVersion: semver.parse('v0.12.2'),
-		latestVersionTimestamp: moment('2023-06-01', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.12.2'),
-		latestPrereleaseVersionTimestamp: moment('2023-06-01', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.14.1'),
+		latestVersionTimestamp: moment('2023-10-26', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.14.1'),
+		latestPrereleaseVersionTimestamp: moment('2023-10-26', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',

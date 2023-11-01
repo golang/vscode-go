@@ -6,14 +6,11 @@
 
 'use strict';
 
-import cp = require('child_process');
 import moment = require('moment');
-import path = require('path');
 import semver = require('semver');
-import util = require('util');
 import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
 import { allToolsInformation } from './goToolsInformation';
-import { getBinPath, GoVersion } from './util';
+import { GoVersion } from './util';
 
 export interface Tool {
 	name: string;
@@ -59,25 +56,12 @@ export interface ToolAtVersion extends Tool {
 	version?: semver.SemVer;
 }
 
-/**
- * Returns the import path for a given tool, at a given Go version.
- * @param tool 		Object of type `Tool` for the Go tool.
- * @param goVersion The current Go version.
- */
-export function getImportPath(tool: Tool, goVersion: GoVersion): string {
-	// For older versions of Go, install the older version of gocode.
-	if (tool.name === 'gocode' && goVersion?.lt('1.10')) {
-		return 'github.com/nsf/gocode';
-	}
-	return tool.importPath;
-}
-
 export function getImportPathWithVersion(
 	tool: Tool,
 	version: semver.SemVer | string | undefined | null,
 	goVersion: GoVersion
 ): string {
-	const importPath = getImportPath(tool, goVersion);
+	const importPath = tool.importPath;
 	if (version) {
 		if (version instanceof semver.SemVer) {
 			return importPath + '@v' + version;
@@ -123,10 +107,6 @@ export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtV
 // name to avoid conflicts.
 export function hasModSuffix(tool: Tool): boolean {
 	return tool.name.endsWith('-gomod');
-}
-
-export function isGocode(tool: Tool): boolean {
-	return tool.name === 'gocode' || tool.name === 'gocode-gomod';
 }
 
 export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig: { [key: string]: any }): Tool[] {
@@ -190,21 +170,3 @@ export function goplsStaticcheckEnabled(
 	}
 	return true;
 }
-
-export const gocodeClose = async (env: NodeJS.Dict<string>): Promise<string> => {
-	const toolBinPath = getBinPath('gocode');
-	if (!path.isAbsolute(toolBinPath)) {
-		return '';
-	}
-	try {
-		const execFile = util.promisify(cp.execFile);
-		const { stderr } = await execFile(toolBinPath, ['close'], { env, timeout: 10000 }); // give 10sec.
-		if (stderr.indexOf("rpc: can't find service Server.") > -1) {
-			return 'Installing gocode aborted as existing process cannot be closed. Please kill the running process for gocode and try again.';
-		}
-	} catch (err) {
-		// This may fail if gocode isn't already running.
-		console.log(`gocode close failed: ${err}`);
-	}
-	return '';
-};

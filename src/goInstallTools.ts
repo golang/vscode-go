@@ -19,16 +19,7 @@ import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironm
 import { logVerbose, logError } from './goLogging';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
-import {
-	containsTool,
-	getConfiguredTools,
-	getImportPath,
-	getImportPathWithVersion,
-	getTool,
-	hasModSuffix,
-	Tool,
-	ToolAtVersion
-} from './goTools';
+import { containsTool, getConfiguredTools, getImportPathWithVersion, getTool, Tool, ToolAtVersion } from './goTools';
 import {
 	getBinPath,
 	getBinPathWithExplanation,
@@ -39,7 +30,7 @@ import {
 	GoVersion,
 	rmdirRecursive
 } from './util';
-import { correctBinname, getEnvPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
+import { getEnvPath, getCurrentGoRoot, setCurrentGoRoot } from './utils/pathUtils';
 import util = require('util');
 import vscode = require('vscode');
 import { RestartReason } from './language/goLanguageServer';
@@ -256,11 +247,7 @@ async function installToolWithGo(
 	const importPath = getImportPathWithVersion(tool, version, goVersion);
 
 	try {
-		if (hasModSuffix(tool)) {
-			await installToolWithGoGet(tool, goVersion, env, importPath);
-		} else {
-			await installToolWithGoInstall(goVersion, env, importPath);
-		}
+		await installToolWithGoInstall(goVersion, env, importPath);
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
@@ -282,76 +269,6 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	const execFile = util.promisify(cp.execFile);
 	logVerbose(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
 	await execFile(goBinary, ['install', '-v', importPath], opts);
-}
-
-async function installToolWithGoGet(
-	tool: ToolAtVersion,
-	goVersion: GoVersion,
-	env: NodeJS.Dict<string>,
-	importPath: string
-) {
-	// Some users use direnv-like setup where the choice of go is affected by
-	// the current directory path. In order to avoid choosing a different go,
-	// we will explicitly use `GOROOT/bin/go` instead of goVersion.binaryPath
-	// (which can be a wrapper script that switches 'go').
-	const goBinary = getCurrentGoRoot()
-		? path.join(getCurrentGoRoot(), 'bin', correctBinname('go'))
-		: goVersion?.binaryPath;
-	if (!goBinary) {
-		vscode.window.showErrorMessage('Go binary not found.');
-		return;
-	}
-
-	// Build the arguments list for the tool installation.
-	const args = ['get', '-x'];
-	// tools with a "mod" suffix can't be installed with
-	// simple `go install` or `go get`. We need to get, build, and rename them.
-	if (hasModSuffix(tool)) {
-		args.push('-d'); // get the version, but don't build.
-	}
-	args.push(importPath);
-
-	let toolsTmpDir = '';
-	try {
-		toolsTmpDir = await tmpDirForToolInstallation();
-	} catch (e) {
-		throw new Error(`Failed to create a temp directory: ${e}`);
-	}
-
-	const opts = {
-		env,
-		cwd: toolsTmpDir
-	};
-
-	try {
-		const execFile = util.promisify(cp.execFile);
-		logVerbose(`$ ${goBinary} ${args.join(' ')} (cwd: ${opts.cwd})`);
-		await execFile(goBinary, args, opts);
-
-		if (hasModSuffix(tool)) {
-			// Actual installation of the -gomod tool is done by running go build.
-			let destDir = env['GOBIN'];
-			if (!destDir) {
-				const gopath0 = env['GOPATH']?.split(path.delimiter)[0];
-				destDir = gopath0 ? path.join(gopath0, 'bin') : undefined;
-			}
-			if (!destDir) {
-				throw new Error('GOBIN/GOPATH not configured in environment');
-			}
-			const outputFile = path.join(destDir, correctBinname(tool.name));
-
-			// go build does not take @version suffix yet.
-			const importPathWithoutVersion = getImportPath(tool, goVersion);
-			logVerbose(`$ ${goBinary} build -o ${outputFile} ${importPathWithoutVersion} (cwd: ${opts.cwd})`);
-			await execFile(goBinary, ['build', '-o', outputFile, importPathWithoutVersion], opts);
-		}
-	} catch (e) {
-		logVerbose(`FAILED: ${JSON.stringify(e, null, 1)}`);
-		throw e;
-	} finally {
-		// Delete the temporary installation directory.
-		rmdirRecursive(toolsTmpDir);
-	}
 }
 
 export function declinedToolInstall(toolName: string) {
@@ -773,7 +690,7 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 
 export async function suggestUpdates() {
 	const configuredGoVersion = await getGoVersion();
-	if (!configuredGoVersion || configuredGoVersion.lt('1.12')) {
+	if (!configuredGoVersion || configuredGoVersion.lt('1.16')) {
 		// User is using an ancient or a dev version of go. Don't suggest updates -
 		// user should know what they are doing.
 		return;
