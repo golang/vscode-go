@@ -11,7 +11,6 @@ import path = require('path');
 import vscode = require('vscode');
 import { getGoplsConfig } from './config';
 import { goBuild } from './goBuild';
-import { buildLanguageServerConfig } from './language/goLanguageServer';
 import { goLint } from './goLint';
 import { isModSupported } from './goModules';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
@@ -68,8 +67,7 @@ export function check(
 
 	// If a user has enabled diagnostics via a language server,
 	// then we disable running build or vet to avoid duplicate errors and warnings.
-	const lspConfig = buildLanguageServerConfig(goConfig);
-	const disableBuildAndVet = lspConfig.enabled;
+	const disableBuildAndVet = goConfig.get('useLanguageServer');
 
 	let testPromise: Thenable<boolean>;
 	const testConfig: TestConfig = {

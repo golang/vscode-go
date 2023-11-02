@@ -210,7 +210,7 @@ const testAll = (isModuleMode: boolean) => {
 		];
 		// If a user has enabled diagnostics via a language server,
 		// then we disable running build or vet to avoid duplicate errors and warnings.
-		const lspConfig = buildLanguageServerConfig(getGoConfig());
+		const lspConfig = await buildLanguageServerConfig(getGoConfig());
 		const expectedBuildVetErrors = lspConfig.enabled
 			? []
 			: [{ line: 11, severity: 'error', msg: 'undefined: prin' }];
@@ -489,7 +489,7 @@ const testAll = (isModuleMode: boolean) => {
 	});
 
 	test('Build Tags checking', async () => {
-		const goplsConfig = buildLanguageServerConfig(getGoConfig());
+		const goplsConfig = await buildLanguageServerConfig(getGoConfig());
 		if (goplsConfig.enabled) {
 			// Skip this test if gopls is enabled. Build/Vet checks this test depend on are
 			// disabled when the language server is enabled, and gopls is not handling tags yet.

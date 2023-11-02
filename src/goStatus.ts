@@ -11,7 +11,6 @@ import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
-import { buildLanguageServerConfig, getLocalGoplsVersion } from './language/goLanguageServer';
 import { isGoFile } from './goMode';
 import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
@@ -61,14 +60,16 @@ export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
 		{ label: 'Choose Go Environment' }
 	];
 
-	// Get the gopls configuration
+	const cfg = goCtx.latestConfig;
+	// Get the gopls configuration.
 	const goConfig = getGoConfig();
-	const cfg = buildLanguageServerConfig(goConfig);
-	if (languageServerIsRunning && cfg.serverName === 'gopls') {
-		const goplsVersion = await getLocalGoplsVersion(cfg);
+	const goplsIsRunning = languageServerIsRunning && cfg && cfg.serverName === 'gopls';
+	if (goplsIsRunning) {
+		const goplsVersion = cfg.version;
 		options.push({ label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion?.version}` });
 	}
-	if (!languageServerIsRunning && !cfg.serverName && goConfig['useLanguageServer'] === true) {
+	// In case gopls still need to be installed, cfg.serverName will be empty.
+	if (!goplsIsRunning && goConfig.get('useLanguageServer') === true && cfg?.serverName === '') {
 		options.push({
 			label: 'Install Go Language Server',
 			description: `${languageServerErrorIcon}'gopls' is required but missing`

@@ -158,9 +158,6 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 		return;
 	}
 	// Some helper functions.
-	const usingGopls = (cfg: LanguageServerConfig): boolean => {
-		return cfg.enabled && cfg.serverName === 'gopls';
-	};
 	const usingGo = (): boolean => {
 		return vscode.workspace.textDocuments.some((doc) => doc.languageId === 'go');
 	};
@@ -187,20 +184,11 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 	};
 	const update = async () => {
 		setTimeout(update, timeDay);
-
-		let cfg = buildLanguageServerConfig(getGoConfig());
-		if (!usingGopls(cfg)) {
-			// This shouldn't happen, but if the user has a non-gopls language
-			// server enabled, we shouldn't prompt them to change.
-			if (cfg.serverName !== '' && cfg.serverName !== 'gopls') {
-				return;
-			}
-			// Check if the language server has now been enabled, and if so,
-			// it will be installed below.
-			cfg = buildLanguageServerConfig(getGoConfig());
-			if (!cfg.enabled) {
-				return;
-			}
+		const cfg = goCtx.latestConfig;
+		// trigger periodic update check only if the user is already using gopls.
+		// Otherwise, let's check again tomorrow.
+		if (!cfg || !cfg.enabled || cfg.serverName !== 'gopls') {
+			return;
 		}
 		await installGopls(cfg);
 	};
@@ -300,14 +288,6 @@ export const flushGoplsOptOutConfig = (cfg: GoplsOptOutConfig, workspace: boolea
 	updateGlobalState(goplsOptOutConfigKey, JSON.stringify(cfg));
 };
 
-const race = function (promise: Promise<unknown>, timeoutInMilliseconds: number) {
-	let token: NodeJS.Timeout;
-	const timeout = new Promise((resolve, reject) => {
-		token = setTimeout(() => reject('timeout'), timeoutInMilliseconds);
-	});
-	return Promise.race([promise, timeout]).then(() => clearTimeout(token));
-};
-
 // exported for testing.
 export async function stopLanguageClient(goCtx: GoExtensionContext) {
 	const c = goCtx.languageClient;
@@ -322,10 +302,8 @@ export async function stopLanguageClient(goCtx: GoExtensionContext) {
 	// LanguageClient.stop may hang if the language server
 	// crashes during shutdown before responding to the
 	// shutdown request. Enforce client-side timeout.
-	// TODO(hyangah): replace with the new LSP client API that supports timeout
-	// and remove this.
 	try {
-		await race(c.stop(), 2000);
+		c.stop(2000);
 	} catch (e) {
 		c.outputChannel?.appendLine(`Failed to stop client: ${e}`);
 	}
@@ -416,6 +394,7 @@ export async function buildLanguageClient(
 	goCtx: GoExtensionContext,
 	cfg: BuildLanguageClientOption
 ): Promise<GoLanguageClient> {
+	await getLocalGoplsVersion(cfg); // populate and cache cfg.version
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
 	const documentSelector = [
@@ -435,7 +414,7 @@ export async function buildLanguageClient(
 
 	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
 	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
-
+	// cfg is captured by closures for later use during error report.
 	const c = new GoLanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
@@ -470,6 +449,7 @@ export async function buildLanguageClient(
 						};
 					}
 					return {
+						message: '', // suppresses error popups
 						action: ErrorAction.Shutdown
 					};
 				},
@@ -477,6 +457,7 @@ export async function buildLanguageClient(
 					if (initializationError !== undefined) {
 						suggestGoplsIssueReport(
 							goCtx,
+							cfg,
 							'The gopls server failed to initialize.',
 							errorKind.initializationFailure,
 							initializationError
@@ -484,7 +465,7 @@ export async function buildLanguageClient(
 						initializationError = undefined;
 						// In case of initialization failure, do not try to restart.
 						return {
-							message: 'The gopls server failed to initialize.',
+							message: '', // suppresses error popups - there will be other popups. :-(
 							action: CloseAction.DoNotRestart
 						};
 					}
@@ -500,11 +481,13 @@ export async function buildLanguageClient(
 					}
 					suggestGoplsIssueReport(
 						goCtx,
+						cfg,
 						'The connection to gopls has been closed. The gopls server may have crashed.',
 						errorKind.crash
 					);
 					updateLanguageServerIconGoStatusBar(false, true);
 					return {
+						message: '', // suppresses error popups - there will be other popups.
 						action: CloseAction.DoNotRestart
 					};
 				}
@@ -968,16 +951,16 @@ export async function watchLanguageServerConfiguration(goCtx: GoExtensionContext
 	}
 }
 
-export function buildLanguageServerConfig(goConfig: vscode.WorkspaceConfiguration): LanguageServerConfig {
+export async function buildLanguageServerConfig(
+	goConfig: vscode.WorkspaceConfiguration
+): Promise<LanguageServerConfig> {
 	let formatter: GoDocumentFormattingEditProvider | undefined;
 	if (usingCustomFormatTool(goConfig)) {
 		formatter = new GoDocumentFormattingEditProvider();
 	}
 	const cfg: LanguageServerConfig = {
-		serverName: '',
+		serverName: '', // remain empty if gopls binary can't be found.
 		path: '',
-		version: undefined, // compute version lazily
-		modtime: undefined,
 		enabled: goConfig['useLanguageServer'] === true,
 		flags: goConfig['languageServerFlags'] || [],
 		features: {
@@ -1015,7 +998,7 @@ Please try reinstalling it.`);
 		return cfg;
 	}
 	cfg.modtime = stats.mtime;
-
+	cfg.version = await getLocalGoplsVersion(cfg);
 	return cfg;
 }
 
@@ -1208,13 +1191,13 @@ interface GoplsVersionOutput {
 // If this command has already been executed, it returns the saved result.
 export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 	if (!cfg) {
-		return null;
+		return;
 	}
 	if (cfg.version) {
 		return cfg.version;
 	}
 	if (cfg.path === '') {
-		return null;
+		return;
 	}
 	const env = toolExecutionEnvironment();
 	const cwd = getWorkspaceFolderPath();
@@ -1240,7 +1223,7 @@ export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 	} catch (e) {
 		// The "gopls version" command is not supported, or something else went wrong.
 		// TODO: Should we propagate this error?
-		return null;
+		return;
 	}
 
 	const lines = output.trim().split('\n');
@@ -1248,17 +1231,17 @@ export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 		case 0:
 			// No results, should update.
 			// Worth doing anything here?
-			return null;
+			return;
 		case 1:
 			// Built in $GOPATH mode. Should update.
 			// TODO: Should we check the Go version here?
 			// Do we even allow users to enable gopls if their Go version is too low?
-			return null;
+			return;
 		case 2:
 			// We might actually have a parseable version.
 			break;
 		default:
-			return null;
+			return;
 	}
 
 	// The second line should be the sum line.
@@ -1277,7 +1260,7 @@ export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 	//
 	const split = moduleVersion.trim().split('@');
 	if (split.length < 2) {
-		return null;
+		return;
 	}
 	// The version comes after the @ symbol:
 	//
@@ -1326,12 +1309,23 @@ export enum errorKind {
 // suggestGoplsIssueReport prompts users to file an issue with gopls.
 export async function suggestGoplsIssueReport(
 	goCtx: GoExtensionContext,
+	cfg: LanguageServerConfig, // config used when starting this gopls.
 	msg: string,
 	reason: errorKind,
 	initializationError?: WebRequest.ResponseError<InitializeError>
 ) {
+	const issueTime = new Date();
+
 	// Don't prompt users who manually restart to file issues until gopls/v1.0.
 	if (reason === errorKind.manualRestart) {
+		return;
+	}
+
+	// cfg is the config used when starting this crashed gopls instance, while
+	// goCtx.latestConfig is the config used by the latest gopls instance.
+	// They may be different if gopls upgrade occurred in between.
+	// Let's not report issue yet if they don't match.
+	if (JSON.stringify(goCtx.latestConfig?.version) !== JSON.stringify(cfg.version)) {
 		return;
 	}
 
@@ -1378,15 +1372,16 @@ export async function suggestGoplsIssueReport(
 	if (failureReason === GoplsFailureModes.INCORRECT_COMMAND_USAGE) {
 		const languageServerFlags = getGoConfig()['languageServerFlags'] as string[];
 		if (languageServerFlags && languageServerFlags.length > 0) {
-			selected = await vscode.window.showInformationMessage(
+			selected = await vscode.window.showErrorMessage(
 				`The extension was unable to start the language server.
 You may have an invalid value in your "go.languageServerFlags" setting.
-It is currently set to [${languageServerFlags}]. Please correct the setting by navigating to Preferences -> Settings.`,
-				'Open settings',
+It is currently set to [${languageServerFlags}].
+Please correct the setting.`,
+				'Open Settings',
 				'I need more help.'
 			);
 			switch (selected) {
-				case 'Open settings':
+				case 'Open Settings':
 					await vscode.commands.executeCommand('workbench.action.openSettings', 'go.languageServerFlags');
 					return;
 				case 'I need more help':
@@ -1395,7 +1390,8 @@ It is currently set to [${languageServerFlags}]. Please correct the setting by n
 			}
 		}
 	}
-	selected = await vscode.window.showInformationMessage(
+	const showMessage = sanitizedLog ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
+	selected = await showMessage(
 		`${msg} Would you like to report a gopls issue on GitHub?
 You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`,
 		'Yes',
@@ -1415,11 +1411,9 @@ You will be asked to provide additional information and logs, so PLEASE READ THE
 						errKind = 'initialization';
 						break;
 				}
-				// Get the user's version in case the update prompt above failed.
-				const usersGoplsVersion = await getLocalGoplsVersion(goCtx.latestConfig);
-				const goVersion = await getGoVersion();
 				const settings = goCtx.latestConfig.flags.join(' ');
 				const title = `gopls: automated issue report (${errKind})`;
+				const goplsStats = await getGoplsStats(goCtx.latestConfig?.path);
 				const goplsLog = sanitizedLog
 					? `<pre>${sanitizedLog}</pre>`
 					: `Please attach the stack trace from the crash.
@@ -1430,17 +1424,15 @@ Please copy the stack trace and error messages from that window and paste it in 
 
 Failed to auto-collect gopls trace: ${failureReason}.
 `;
-				const now = new Date();
 
 				const body = `
-gopls version: ${usersGoplsVersion?.version} (${usersGoplsVersion?.goVersion})
+gopls version: ${cfg.version?.version}/${cfg.version?.goVersion}
 gopls flags: ${settings}
-update flags: ${goCtx.latestConfig.checkForUpdates}
+update flags: ${cfg.checkForUpdates}
 extension version: ${extensionInfo.version}
-go version: ${goVersion?.format(true)}
 environment: ${extensionInfo.appName} ${process.platform}
 initialization error: ${initializationError}
-issue timestamp: ${now.toUTCString()}
+issue timestamp: ${issueTime.toUTCString()}
 restart history:
 ${formatRestartHistory(goCtx)}
 
@@ -1452,6 +1444,10 @@ Describe what you observed.
 
 ${goplsLog}
 
+<details><summary>gopls stats -anon</summary>
+${goplsStats}
+</details>
+
 OPTIONAL: If you would like to share more information, you can attach your complete gopls logs.
 
 NOTE: THESE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR CODEBASE.
@@ -1459,7 +1455,7 @@ DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
 
 <OPTIONAL: ATTACH LOGS HERE>
 `;
-				const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=upstream-tools&body=${body}`;
+				const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=automatedReport&body=${body}`;
 				await vscode.env.openExternal(vscode.Uri.parse(url));
 			}
 			break;
@@ -1525,12 +1521,10 @@ async function collectGoplsLog(goCtx: GoExtensionContext): Promise<{ sanitizedLo
 			if (doc.isDirty || doc.isClosed) {
 				continue;
 			}
-			// The document's name should look like 'extension-output-#X'.
-			if (doc.fileName.indexOf('extension-output-') === -1) {
-				continue;
+			if (doc.fileName.indexOf('gopls (server)') > -1) {
+				logs = doc.getText();
+				break;
 			}
-			logs = doc.getText();
-			break;
 		}
 		if (logs) {
 			break;
@@ -1538,7 +1532,6 @@ async function collectGoplsLog(goCtx: GoExtensionContext): Promise<{ sanitizedLo
 		// sleep a bit before the next try. The choice of the sleep time is arbitrary.
 		await sleep((i + 1) * 100);
 	}
-
 	return sanitizeGoplsTrace(logs);
 }
 
@@ -1588,7 +1581,7 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 		}
 		return { failureReason: GoplsFailureModes.INCOMPLETE_PANIC_TRACE };
 	}
-	const initFailMsgBegin = logs.lastIndexOf('Starting client failed');
+	const initFailMsgBegin = logs.lastIndexOf('gopls client:');
 	if (initFailMsgBegin > -1) {
 		// client start failed. Capture up to the 'Code:' line.
 		const initFailMsgEnd = logs.indexOf('Code: ', initFailMsgBegin);
@@ -1602,9 +1595,16 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 			};
 		}
 	}
-	if (logs.lastIndexOf('Usage: gopls') > -1) {
+	if (logs.lastIndexOf('Usage:') > -1) {
 		return { failureReason: GoplsFailureModes.INCORRECT_COMMAND_USAGE };
 	}
+	// Capture Fatal
+	//    foo.go:1: the last message (caveat - we capture only the first log line)
+	const m = logs.match(/(^\S+\.go:\d+:.*$)/gm);
+	if (m && m.length > 0) {
+		return { sanitizedLog: m[0].toString() };
+	}
+
 	return { failureReason: GoplsFailureModes.UNRECOGNIZED_CRASH_PATTERN };
 }
 
@@ -1655,4 +1655,23 @@ export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
 		goCtx.telemetryService?.promptForTelemetry(extensionInfo.isPreview);
 	};
 	callback();
+}
+
+async function getGoplsStats(binpath?: string) {
+	if (!binpath) {
+		return 'gopls path unknown';
+	}
+	const env = toolExecutionEnvironment();
+	const cwd = getWorkspaceFolderPath();
+	const start = new Date();
+	const execFile = util.promisify(cp.execFile);
+	try {
+		const timeout = 60 * 1000; // 60sec;
+		const { stdout } = await execFile(binpath, ['stats', '-anon'], { env, cwd, timeout });
+		return stdout;
+	} catch (e) {
+		const duration = new Date().getTime() - start.getTime();
+		console.log(`gopls stats -anon failed: ${JSON.stringify(e)}`);
+		return `gopls stats -anon failed after running for ${duration}ms`; // e may contain user information. don't include in the report.
+	}
 }

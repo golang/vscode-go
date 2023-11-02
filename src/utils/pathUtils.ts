@@ -247,7 +247,7 @@ export function fixDriveCasingInWindows(pathToFix: string): string {
 }
 
 /**
- * Returns the tool name from the given path to the tool
+ * Returns the tool name (executable's basename) from the given path to the tool
  * @param toolPath
  */
 export function getToolFromToolPath(toolPath: string): string | undefined {
