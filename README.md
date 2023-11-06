@@ -134,6 +134,50 @@ If you'd like to get early access to new features and bug fixes, you can use the
 nightly build of this extension. Learn how to install it in by reading the
 [Go Nightly documentation](https://github.com/golang/vscode-go/wiki/nightly).
 
+## Telemetry
+
+VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
+learn insights about the performance and stability of the extension and the
+language server (`gopls``).
+**Go Telemetry data uploading is disabled by default** and can be enabled
+with the following command:
+
+```
+go run golang.org/x/telemetry/cmd/gotelemetry@latest on
+```
+
+After telemetry is enabled, the language server will upload metrics and stack
+traces to [telemetry.go.dev](https://telemetry.go.dev). You can inspect what
+data is collected and can be uploaded by running:
+
+```
+go run golang.org/x/telemetry/cmdgotelemetry@latest view
+```
+
+If we get enough adoption, this data can significantly advance the pace of
+the Go extension development, and help us meet a higher standard
+of reliability. For example:
+
+- Even with [semi-automated crash
+  reports](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3AautomatedReport)
+  in VS Code, we've seen several crashers go unreported for weeks or months.
+- Even with [a suite of
+  benchmarks](https://perf.golang.org/dashboard/?benchmark=all&repository=tools&branch=release-branch.go1.20),
+  some performance regressions don't show up in our benchmark environment (such
+  as the [completion bug](https://go.dev/issue/62665) mentioned below!).
+- Even with [lots of great
+  ideas](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls+label%3Afeaturerequest)
+  for how to improve gopls, we have limited resources. Telemetry can help us
+  identify which new features are most important, and which existing features
+  aren't being used or aren't working well.
+
+These are just a few ways that telemetry can improve gopls. The [telemetry blog
+post series](https://research.swtch.com/telemetry-uses) contains many more.
+
+Go telemetry is designed to be transparent and privacy-preserving. If you have
+concerns about enabling telemetry, you can learn more at
+[https://telemetry.go.dev/privacy](https://telemetry.go.dev/privacy).
+
 ## Contributing
 
 We welcome your contributions and thank you for working to improve the Go
