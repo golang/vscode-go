@@ -91,7 +91,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/mgechev/revive',
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.3.2'
+		defaultVersion: 'v1.3.4'
 	},
 	'gopls': {
 		name: 'gopls',
@@ -101,7 +101,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.13'),
+		minimumGoVersion: semver.coerce('1.18'),
 		latestVersion: semver.parse('v0.14.1'),
 		latestVersionTimestamp: moment('2023-10-26', 'YYYY-MM-DD'),
 		latestPrereleaseVersion: semver.parse('v0.14.1'),
@@ -114,8 +114,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Go debugger (Delve)',
-		latestVersion: semver.parse('v1.6.1'), // minimum version that supports DAP
-		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
-		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
+		latestVersion: semver.parse('v1.8.3'),
+		latestVersionTimestamp: moment('2022-04-26', 'YYYY-MM-DD'),
+		minimumGoVersion: semver.coerce('1.18')
 	}
 };
