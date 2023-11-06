@@ -1,3 +1,65 @@
+## v0.40.0 - XX Nov, 2023
+
+This extension utilizes [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
+about the performance and stability of the extension and the language server it employs.
+By default, Telemetry uploading is disabled, but starting from this version,
+a small number of users will be prompted to enable it. Users can enable telemetry uploading
+by either responding to the prompt or running the following command:
+
+```
+go run golang.org/x/telemetry/cmd/gotelemetry@latest on
+```
+
+Once uploading is enabled, the data will be sent to https://telemetry.go.dev
+on a weekly basis. You can find more information about this process at
+[https://telemetry.go.dev/privacy](https://telemetry.go.dev) and in the 
+[gopls v0.14 release notes(https://github.com/golang/tools/releases/tag/gopls%2Fv0.14.0).
+
+A comprehensive list of changes can be found in the complete
+[commit history](https://github.com/golang/vscode-go/compare/v0.40.0...v0.39.1).
+
+### Changes
+
+* In this release, we have removed legacy language feature providers that were supported
+by outdated tools. As a result, features such as code completion, navigation,
+documentation, diagnostics, and refactoring will only function
+when the language server (`gopls`) is enabled.
+([Issue 2799](https://github.com/golang/vscode-go/issues/2799))
+
+* The "Go: Fill struct" command has been retired. The same functionality is provided
+as a [Code Action](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) 
+for refactoring. You can refer to the screenshot for details.
+([Issue 2107](https://github.com/golang/vscode-go/issues/2107)))
+
+* The "Go: Extract to function" and "Go: Extract to variable" commands are no longer needed,
+as they have been replaced by Code Actions provided by gopls.
+([Issue 2862](https://github.com/golang/vscode-go/issues/2862))
+
+* Debug
+<!-- golang/vscode-go#3009 buildFlags -->
+<!-- golang/vscode-go#1797 hideSystemGoroutine  -->
+
+### Fixes
+
+* We have enhanced environment variable substitution. Environment variable references
+like `${env:VAR}` in the `go.toolsEnvVars` setting
+([Issue 2680](https://github.com/golang/vscode-go/issues/2680)) and the `go.goroot` setting
+([Issue 3006](https://github.com/golang/vscode-go/issues/3006)) are now correctly substituted.
+Patterns like `${VAR}` inside environment files (`go.testEnvFile`) can be used to reference
+other environment variables as well. ([Issue 1902](https://github.com/golang/vscode-go/issues/1902))
+
+### Compatibilities
+
+* This extension version requires VS Code 1.75 (January 2023 version) or newer.
+The README.md provides a list of VS Code and Go version requirements.
+* For tools installation managed by the extension, you need go1.18 or a newer version.
+([Issue 2898](golang/vscode-go#2898))
+* The extension has been tested with gopls v0.14 and delve v0.21.
+
+### Thanks
+
+@n1lesh @suzmue @hyangah
+
 ## v0.39.1 - 17 Jul, 2023
 
 This is a point release to update the link for the upcoming Go developer survey.
