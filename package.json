@@ -351,6 +351,11 @@
         "description": "Generates unit tests for the selected function in the current file"
       },
       {
+        "command": "go.generate.method",
+        "title": "Go: Generate Method",
+        "description": "Generates method for the given type"
+      },
+      {
         "command": "go.impl.cursor",
         "title": "Go: Generate Interface Stubs",
         "description": "Generates method stub for implementing the provided interface and inserts at the cursor."
