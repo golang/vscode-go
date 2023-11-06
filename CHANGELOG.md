@@ -12,7 +12,7 @@ go run golang.org/x/telemetry/cmd/gotelemetry@latest on
 
 Once uploading is enabled, the data will be sent to https://telemetry.go.dev
 on a weekly basis. You can find more information about this process at
-[https://telemetry.go.dev/privacy](https://telemetry.go.dev) and in the 
+[https://telemetry.go.dev/privacy](https://telemetry.go.dev) and in the
 [gopls v0.14 release notes(https://github.com/golang/tools/releases/tag/gopls%2Fv0.14.0).
 
 A comprehensive list of changes can be found in the complete
@@ -27,7 +27,7 @@ when the language server (`gopls`) is enabled.
 ([Issue 2799](https://github.com/golang/vscode-go/issues/2799))
 
 * The "Go: Fill struct" command has been retired. The same functionality is provided
-as a [Code Action](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) 
+as a [Code Action](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings)
 for refactoring. You can refer to the screenshot for details.
 ([Issue 2107](https://github.com/golang/vscode-go/issues/2107)))
 
@@ -35,9 +35,18 @@ for refactoring. You can refer to the screenshot for details.
 as they have been replaced by Code Actions provided by gopls.
 ([Issue 2862](https://github.com/golang/vscode-go/issues/2862))
 
-* Debug
-<!-- golang/vscode-go#3009 buildFlags -->
-<!-- golang/vscode-go#1797 hideSystemGoroutine  -->
+* The "buildFlags" attribute for Go launch configuration now accepts a list of strings in
+addition to a string. If using delve at v1.22.2 or newer, this list is passed directly to
+delve. This should help with bugs related to parsing the string of buildFlags, such as in
+[Issue 1831](https://github.com/golang/vscode-go/issues/1831) and
+[Issue 1027](https://github.com/golang/vscode-go/issues/1027).
+([Issue 3009](https://github.com/golang/vscode-go/issues/3009))
+
+* The "Go: Toggle Hide System Goroutines" command was added to make it easier to switch between
+showing / hiding the system goroutines in the callstack view. This command is also
+available in the callstack context menu. The default setting can also be updated by updating
+"hideSystemGoroutines" in either the launch.json or in the "go.delveConfig" setting.
+([Issue 1797](https://github.com/golang/vscode-go/issues/1797#issuecomment-1762145244))
 
 ### Fixes
 
