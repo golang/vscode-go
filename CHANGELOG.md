@@ -1,4 +1,4 @@
-## v0.40.0 - XX Nov, 2023
+## v0.40.0 - 13 Nov, 2023
 
 This extension utilizes [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
 about the performance and stability of the extension and the language server it employs.
@@ -67,7 +67,7 @@ The README.md provides a list of VS Code and Go version requirements.
 
 ### Thanks
 
-@n1lesh @suzmue @hyangah
+Thank you for your contribution @n1lesh, @suzmue, @hyangah!
 
 ## v0.39.1 - 17 Jul, 2023
 
