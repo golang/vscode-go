@@ -11,12 +11,10 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
-import { NearestNeighborDict, Node } from './avlTree';
 import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { GoExtensionContext } from './context';
 import { toolExecutionEnvironment } from './goEnv';
-import { getCurrentPackage } from './goModules';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
 import {
@@ -28,59 +26,6 @@ import {
 	resolveHomeDir
 } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
-
-let userNameHash = 0;
-
-export const goKeywords: string[] = [
-	'break',
-	'case',
-	'chan',
-	'const',
-	'continue',
-	'default',
-	'defer',
-	'else',
-	'fallthrough',
-	'for',
-	'func',
-	'go',
-	'goto',
-	'if',
-	'import',
-	'interface',
-	'map',
-	'package',
-	'range',
-	'return',
-	'select',
-	'struct',
-	'switch',
-	'type',
-	'var'
-];
-
-export const goBuiltinTypes: Set<string> = new Set<string>([
-	'bool',
-	'byte',
-	'complex128',
-	'complex64',
-	'error',
-	'float32',
-	'float64',
-	'int',
-	'int16',
-	'int32',
-	'int64',
-	'int8',
-	'rune',
-	'string',
-	'uint',
-	'uint16',
-	'uint32',
-	'uint64',
-	'uint8',
-	'uintptr'
-]);
 
 export class GoVersion {
 	public sv?: semver.SemVer;
@@ -159,17 +104,6 @@ let toolsGopath: string;
 
 // getCheckForToolsUpdatesConfig returns go.toolsManagement.checkForUpdates configuration.
 export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfiguration) {
-	// useGoProxyToCheckForToolUpdates deprecation
-	// TODO: Step 1. mark as deprecated in Dec 2020 release, and update dev containers.
-	//       Step 2. prompt users to switch config. Jan 2020
-	//       Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
-	const legacyCfg = gocfg.get('useGoProxyToCheckForToolUpdates');
-	if (legacyCfg === false) {
-		const cfg = gocfg.inspect('toolsManagement.checkForUpdates');
-		if (cfg?.globalValue === undefined && cfg?.workspaceValue === undefined) {
-			return 'local';
-		}
-	}
 	return gocfg.get('toolsManagement.checkForUpdates') as string;
 }
 
@@ -219,103 +153,6 @@ export function parseFilePrelude(text: string): Prelude {
 		}
 	}
 	return ret;
-}
-
-// Takes a Go function signature like:
-//     (foo, bar string, baz number) (string, string)
-// and returns an array of parameter strings:
-//     ["foo", "bar string", "baz string"]
-// Takes care of balancing parens so to not get confused by signatures like:
-//     (pattern string, handler func(ResponseWriter, *Request)) {
-export function getParametersAndReturnType(signature: string): { params: string[]; returnType: string } {
-	const params: string[] = [];
-	let parenCount = 0;
-	let lastStart = 1;
-	for (let i = 1; i < signature.length; i++) {
-		switch (signature[i]) {
-			case '(':
-				parenCount++;
-				break;
-			case ')':
-				parenCount--;
-				if (parenCount < 0) {
-					if (i > lastStart) {
-						params.push(signature.substring(lastStart, i));
-					}
-					return {
-						params,
-						returnType: i < signature.length - 1 ? signature.substr(i + 1) : ''
-					};
-				}
-				break;
-			case ',':
-				if (parenCount === 0) {
-					params.push(signature.substring(lastStart, i));
-					lastStart = i + 2;
-				}
-				break;
-		}
-	}
-	return { params: [], returnType: '' };
-}
-
-export function canonicalizeGOPATHPrefix(filename: string): string {
-	const gopath: string = getCurrentGoPath();
-	if (!gopath) {
-		return filename;
-	}
-	const workspaces = gopath.split(path.delimiter);
-	const filenameLowercase = filename.toLowerCase();
-
-	// In case of multiple workspaces, find current workspace by checking if current file is
-	// under any of the workspaces in $GOPATH
-	let currentWorkspace: string | undefined;
-	for (const workspace of workspaces) {
-		// In case of nested workspaces, (example: both /Users/me and /Users/me/a/b/c are in $GOPATH)
-		// both parent & child workspace in the nested workspaces pair can make it inside the above if block
-		// Therefore, the below check will take longer (more specific to current file) of the two
-		if (
-			filenameLowercase.substring(0, workspace.length) === workspace.toLowerCase() &&
-			(!currentWorkspace || workspace.length > currentWorkspace.length)
-		) {
-			currentWorkspace = workspace;
-		}
-	}
-
-	if (!currentWorkspace) {
-		return filename;
-	}
-	return currentWorkspace + filename.slice(currentWorkspace.length);
-}
-
-/**
- * Gets a numeric hash based on given string.
- * Returns a number between 0 and 4294967295.
- */
-export function getStringHash(value: string): number {
-	let hash = 5381;
-	let i = value.length;
-
-	while (i) {
-		hash = (hash * 33) ^ value.charCodeAt(--i);
-	}
-
-	/* JavaScript does bitwise operations (like XOR, above) on 32-bit signed
-	 * integers. Since we want the results to be always positive, convert the
-	 * signed int to an unsigned by doing an unsigned bitshift. */
-	return hash >>> 0;
-}
-
-export function getUserNameHash() {
-	if (userNameHash) {
-		return userNameHash;
-	}
-	try {
-		userNameHash = getStringHash(os.userInfo().username);
-	} catch (error) {
-		userNameHash = 1;
-	}
-	return userNameHash;
 }
 
 /**
@@ -410,18 +247,6 @@ export function isGoPathSet(): boolean {
 	return true;
 }
 
-export function isPositionInString(document: vscode.TextDocument, position: vscode.Position): boolean {
-	const lineText = document.lineAt(position.line).text;
-	const lineTillCurrentPosition = lineText.substr(0, position.character);
-
-	// Count the number of double quotes in the line till current position. Ignore escaped double quotes
-	let doubleQuotesCnt = (lineTillCurrentPosition.match(/"/g) || []).length;
-	const escapedDoubleQuotesCnt = (lineTillCurrentPosition.match(/\\"/g) || []).length;
-
-	doubleQuotesCnt -= escapedDoubleQuotesCnt;
-	return doubleQuotesCnt % 2 === 1;
-}
-
 export function getToolsGopath(useCache = true): string {
 	if (!useCache || !toolsGopath) {
 		toolsGopath = resolveToolsGopath();
@@ -482,7 +307,7 @@ export function getBinPathWithExplanation(
 	const alternateToolPath: string | undefined = alternateTools?.[tool];
 
 	const goroot = cfg.get<string>('goroot');
-	const gorootInSetting = goroot && resolvePath(goroot);
+	const gorootInSetting = goroot && resolvePath(substituteEnv(goroot));
 
 	let selectedGoPath: string | undefined;
 	if (tool === 'go' && !gorootInSetting) {
@@ -493,7 +318,7 @@ export function getBinPathWithExplanation(
 		tool,
 		tool === 'go' ? [] : [getToolsGopath(), getCurrentGoPath()],
 		tool === 'go' ? gorootInSetting : undefined,
-		selectedGoPath ?? (alternateToolPath && resolvePath(alternateToolPath)),
+		selectedGoPath ?? (alternateToolPath && resolvePath(substituteEnv(alternateToolPath))),
 		useCache
 	);
 }
@@ -609,12 +434,6 @@ export class LineBuffer {
 	}
 }
 
-export function timeout(millis: number): Promise<void> {
-	return new Promise<void>((resolve) => {
-		setTimeout(() => resolve(), millis);
-	});
-}
-
 /**
  * Expands ~ to homedir in non-Windows platform and resolves
  * ${workspaceFolder}, ${workspaceRoot} and ${workspaceFolderBasename}
@@ -655,55 +474,6 @@ export function getImportPath(text: string): string {
 	}
 
 	return '';
-}
-
-// TODO: Add unit tests for the below
-
-/**
- * Guess the package name based on parent directory name of the given file
- *
- * Cases:
- * - dir 'go-i18n' -> 'i18n'
- * - dir 'go-spew' -> 'spew'
- * - dir 'kingpin' -> 'kingpin'
- * - dir 'go-expand-tilde' -> 'tilde'
- * - dir 'gax-go' -> 'gax'
- * - dir 'go-difflib' -> 'difflib'
- * - dir 'jwt-go' -> 'jwt'
- * - dir 'go-radix' -> 'radix'
- *
- * @param {string} filePath.
- */
-export function guessPackageNameFromFile(filePath: string): Promise<string[]> {
-	return new Promise((resolve, reject) => {
-		const goFilename = path.basename(filePath);
-		if (goFilename === 'main.go') {
-			return resolve(['main']);
-		}
-
-		const directoryPath = path.dirname(filePath);
-		const dirName = path.basename(directoryPath);
-		let segments = dirName.split(/[.-]/);
-		segments = segments.filter((val) => val !== 'go');
-
-		if (segments.length === 0 || !/[a-zA-Z_]\w*/.test(segments[segments.length - 1])) {
-			return reject();
-		}
-
-		const proposedPkgName = segments[segments.length - 1];
-
-		fs.stat(path.join(directoryPath, 'main.go'), (err, stats) => {
-			if (stats && stats.isFile()) {
-				return resolve(['main']);
-			}
-
-			if (goFilename.endsWith('_test.go')) {
-				return resolve([proposedPkgName, proposedPkgName + '_test']);
-			}
-
-			return resolve([proposedPkgName]);
-		});
-	});
 }
 
 export interface ICheckResult {
@@ -960,29 +730,6 @@ export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string | undefined
 	return undefined;
 }
 
-export function makeMemoizedByteOffsetConverter(buffer: Buffer): (byteOffset: number) => number {
-	const defaultValue = new Node<number, number>(0, 0); // 0 bytes will always be 0 characters
-	const memo = new NearestNeighborDict(defaultValue, NearestNeighborDict.NUMERIC_DISTANCE_FUNCTION);
-	return (byteOffset: number) => {
-		const nearest = memo.getNearest(byteOffset);
-		const byteDelta = byteOffset - nearest.key;
-
-		if (byteDelta === 0) {
-			return nearest.value ?? 0;
-		}
-
-		let charDelta: number;
-		if (byteDelta > 0) {
-			charDelta = buffer.toString('utf8', nearest.key, byteOffset).length;
-		} else {
-			charDelta = -buffer.toString('utf8', byteOffset, nearest.key).length;
-		}
-
-		memo.insert(byteOffset, (nearest.value ?? 0) + charDelta);
-		return (nearest.value ?? 0) + charDelta;
-	};
-}
-
 export function rmdirRecursive(dir: string) {
 	if (fs.existsSync(dir)) {
 		fs.readdirSync(dir).forEach((file) => {
@@ -1024,106 +771,4 @@ export function cleanupTempDir() {
 		rmdirRecursive(tmpDir);
 	}
 	tmpDir = undefined;
-}
-
-/**
- * Runs `go doc` to get documentation for given symbol
- * @param cwd The cwd where the go doc process will be run
- * @param packagePath Either the absolute path or import path of the package.
- * @param symbol Symbol for which docs need to be found
- * @param token Cancellation token
- */
-export function runGodoc(
-	cwd: string,
-	packagePath: string,
-	receiver: string | undefined,
-	symbol: string,
-	token: vscode.CancellationToken
-) {
-	if (!packagePath) {
-		return Promise.reject(new Error('Package Path not provided'));
-	}
-	if (!symbol) {
-		return Promise.reject(new Error('Symbol not provided'));
-	}
-
-	const goRuntimePath = getBinPath('go');
-	if (!goRuntimePath) {
-		return Promise.reject(new Error('Cannot find "go" binary. Update PATH or GOROOT appropriately'));
-	}
-
-	const getCurrentPackagePromise = path.isAbsolute(packagePath)
-		? getCurrentPackage(packagePath)
-		: Promise.resolve(packagePath);
-	return getCurrentPackagePromise.then((packageImportPath) => {
-		return new Promise<string>((resolve, reject) => {
-			if (receiver) {
-				receiver = receiver.replace(/^\*/, '');
-				symbol = receiver + '.' + symbol;
-			}
-
-			const env = toolExecutionEnvironment();
-			const args = ['doc', '-c', '-cmd', '-u', packageImportPath, symbol];
-			const p = cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
-				if (err) {
-					return reject(err.message || stderr);
-				}
-				let doc = '';
-				const godocLines = stdout.split('\n');
-				if (!godocLines.length) {
-					return resolve(doc);
-				}
-
-				// Recent versions of Go have started to include the package statement
-				// tht we dont need.
-				if (godocLines[0].startsWith('package ')) {
-					godocLines.splice(0, 1);
-					if (!godocLines[0].trim()) {
-						godocLines.splice(0, 1);
-					}
-				}
-
-				// Skip trailing empty lines
-				let lastLine = godocLines.length - 1;
-				for (; lastLine > 1; lastLine--) {
-					if (godocLines[lastLine].trim()) {
-						break;
-					}
-				}
-
-				for (let i = 1; i <= lastLine; i++) {
-					if (godocLines[i].startsWith('    ')) {
-						doc += godocLines[i].substring(4) + '\n';
-					} else if (!godocLines[i].trim()) {
-						doc += '\n';
-					}
-				}
-				return resolve(doc);
-			});
-
-			if (token) {
-				token.onCancellationRequested(() => {
-					killProcessTree(p);
-				});
-			}
-		});
-	});
-}
-
-/**
- * Returns a boolean whether the current position lies within a comment or not
- * @param document
- * @param position
- */
-export function isPositionInComment(document: vscode.TextDocument, position: vscode.Position): boolean {
-	const lineText = document.lineAt(position.line).text;
-	const commentIndex = lineText.indexOf('//');
-
-	if (commentIndex >= 0 && position.character > commentIndex) {
-		const commentPosition = new vscode.Position(position.line, commentIndex);
-		const isCommentInString = isPositionInString(document, commentPosition);
-
-		return !isCommentInString;
-	}
-	return false;
 }

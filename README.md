@@ -6,17 +6,12 @@
 
 [The VS Code Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go)
 provides rich language support for the
-[Go programming language](https://golang.org/).
+[Go programming language](https://go.dev/).
 
-📣
-[Remote attach debugging](https://github.com/golang/vscode-go/wiki/debugging#connecting-to-headless-delve-with-target-specified-at-server-start-up) is now available via Delve's native DAP implementation with Delve v1.7.3 or newer. It enchances remote debugging with the same
-[debugging features](https://github.com/golang/vscode-go/wiki/debugging) that are already in use for local debugging. It is now the default with the
-[Go Nightly](https://github.com/golang/vscode-go/wiki/nightly) build of the extension and will become the default for the stable releases in mid 2022.
-We recommend switching your remote attach configurations in `launch.json` to use
-`"debugAdapter":"dlv-dap"` now to verify that this works for you.
-Please [file a new issue](https://github.com/golang/vscode-go/issues/new/choose) if you encounter any problems.
+## Requirements
 
-📣📣 Watch [Debugging Treasure Hunt](https://youtu.be/ZPIPPRjwg7Q) from [GopherCon 2021](https://www.gophercon.com/) for a fun take on a debugging demo with VS Code Go and Delve DAP.
+* Visual Studio Code 1.75 or newer (or editors compatible with VS Code 1.75+ APIs)
+* Go 1.18 or newer
 
 ## Quick Start
 
@@ -24,7 +19,7 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://golang.org) 1.14 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
 
 1.  Install the [VS Code Go extension].
 
@@ -138,6 +133,50 @@ by using [Workspace Folders]. See the
 If you'd like to get early access to new features and bug fixes, you can use the
 nightly build of this extension. Learn how to install it in by reading the
 [Go Nightly documentation](https://github.com/golang/vscode-go/wiki/nightly).
+
+## Telemetry
+
+VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
+learn insights about the performance and stability of the extension and the
+language server (`gopls``).
+**Go Telemetry data uploading is disabled by default** and can be enabled
+with the following command:
+
+```
+go run golang.org/x/telemetry/cmd/gotelemetry@latest on
+```
+
+After telemetry is enabled, the language server will upload metrics and stack
+traces to [telemetry.go.dev](https://telemetry.go.dev). You can inspect what
+data is collected and can be uploaded by running:
+
+```
+go run golang.org/x/telemetry/cmdgotelemetry@latest view
+```
+
+If we get enough adoption, this data can significantly advance the pace of
+the Go extension development, and help us meet a higher standard
+of reliability. For example:
+
+- Even with [semi-automated crash
+  reports](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3AautomatedReport)
+  in VS Code, we've seen several crashers go unreported for weeks or months.
+- Even with [a suite of
+  benchmarks](https://perf.golang.org/dashboard/?benchmark=all&repository=tools&branch=release-branch.go1.20),
+  some performance regressions don't show up in our benchmark environment (such
+  as the [completion bug](https://go.dev/issue/62665) mentioned below!).
+- Even with [lots of great
+  ideas](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls+label%3Afeaturerequest)
+  for how to improve gopls, we have limited resources. Telemetry can help us
+  identify which new features are most important, and which existing features
+  aren't being used or aren't working well.
+
+These are just a few ways that telemetry can improve gopls. The [telemetry blog
+post series](https://research.swtch.com/telemetry-uses) contains many more.
+
+Go telemetry is designed to be transparent and privacy-preserving. If you have
+concerns about enabling telemetry, you can learn more at
+[https://telemetry.go.dev/privacy](https://telemetry.go.dev/privacy).
 
 ## Contributing
 

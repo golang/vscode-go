@@ -37,8 +37,8 @@ export class GoTestExplorer {
 
 		const ctrl = vscode.tests.createTestController('go', 'Go');
 		const symProvider = GoDocumentSymbolProvider(goCtx, true);
-		const inst = new this(goCtx, workspace, ctrl, context.workspaceState, (doc, token) =>
-			symProvider.provideDocumentSymbols(doc, token)
+		const inst = new this(goCtx, workspace, ctrl, context.workspaceState, (doc) =>
+			symProvider.provideDocumentSymbols(doc)
 		);
 
 		// Process already open editors

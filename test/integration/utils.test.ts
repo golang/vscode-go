@@ -7,8 +7,11 @@
 
 import assert from 'assert';
 import * as vscode from 'vscode';
-import { GoVersion, guessPackageNameFromFile, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
+import { GoVersion, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
 import path = require('path');
+import { toolExecutionEnvironment } from '../../src/goEnv';
+import sinon = require('sinon');
+import { getGoConfig } from '../../src/config';
 
 suite('utils Tests', () => {
 	test('substituteEnv: default', () => {
@@ -51,43 +54,6 @@ suite('utils Tests', () => {
 			assert.equal(go.format(), wantFormat, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 			assert.equal(go.format(true), wantFormatIncludePrerelease, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 		}
-	});
-});
-
-suite('GuessPackageNameFromFile Tests', () => {
-	test('package name from main file', (done) => {
-		const expectedPackageName = 'main';
-		const filename = 'main.go';
-
-		guessPackageNameFromFile(filename)
-			.then((result) => {
-				assert.equal(result, expectedPackageName);
-			})
-			.then(() => done(), done);
-	});
-
-	test('package name from dirpath', (done) => {
-		const expectedPackageName = 'package';
-		const fileDir = 'path/package/file.go';
-
-		guessPackageNameFromFile(fileDir)
-			.then(([result]) => {
-				assert.equal(result, expectedPackageName);
-			})
-			.then(() => done(), done);
-	});
-
-	test('package name from test file', (done) => {
-		const expectedPackageName = 'file';
-		const expectedPackageTestName = 'file_test';
-		const fileDir = 'file_test.go';
-
-		guessPackageNameFromFile(fileDir)
-			.then(([packageNameResult, packageTestNameResult]) => {
-				assert.equal(packageNameResult, expectedPackageName);
-				assert.equal(packageTestNameResult, expectedPackageTestName);
-			})
-			.then(() => done(), done);
 	});
 });
 
@@ -168,4 +134,27 @@ suite('Duplicate Diagnostics Tests', () => {
 			assert.strictEqual(diagnosticCollection.get(uri2)?.[i], want2[i]);
 		}
 	});
+});
+
+suite('goEnv', () => {
+	const config = require('../../src/config');
+	const sandbox = sinon.createSandbox();
+	teardown(() => {
+		delete process.env.ENV_VAR_FOR_GO_ENV_TEST;
+		sandbox.restore();
+	});
+
+	test('toolExecutionEnvironment', () => {
+		const goConfig = Object.create(getGoConfig(), {
+			toolsEnvVars: { value: {
+				'FOOBAR': '${env:ENV_VAR_FOR_GO_ENV_TEST}/baz',
+				'FOOBAR2': '${env:UNKNOWN_ENV_VAR}/foo',
+			} }
+		});
+		sandbox.stub(config, 'getGoConfig').returns(goConfig);
+		process.env['ENV_VAR_FOR_GO_ENV_TEST'] = 'foobar';
+		const toolExecEnv = toolExecutionEnvironment(undefined, true);
+		assert.strictEqual(toolExecEnv.FOOBAR, 'foobar/baz');
+		assert.strictEqual(toolExecEnv.FOOBAR2, '/foo');
+	})
 });

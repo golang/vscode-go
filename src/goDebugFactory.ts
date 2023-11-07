@@ -16,8 +16,10 @@ import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
 import { getEnvPath, getBinPathFromEnvVar } from './utils/pathUtils';
+import { GoExtensionContext } from './context';
+import { createRegisterCommand } from './commands';
 
-export function activate(ctx: vscode.ExtensionContext) {
+export function activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
 	ctx.subscriptions.push(debugOutputChannel);
 
@@ -32,6 +34,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 	if ('dispose' in tracker) {
 		ctx.subscriptions.push(tracker);
 	}
+
+	const registerCommand = createRegisterCommand(ctx, goCtx);
+	registerCommand('go.debug.toggleHideSystemGoroutines', () => toggleHideSystemGoroutines);
 }
 
 class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
@@ -658,3 +663,41 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 	}
 	return { dlvArgs, dlvPath, dir, env };
 }
+
+// toggleHideSystemGoroutineCustomRequest is a helper function extracted
+// for testing the command.
+export async function toggleHideSystemGoroutinesCustomRequest(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	cr: (command: string, args?: any) => Thenable<any>
+) {
+	const debugConsole = vscode.debug.activeDebugConsole;
+	try {
+		const response = await cr('evaluate', {
+			expression: 'dlv config -list hideSystemGoroutines',
+			context: 'context'
+		});
+		let update = 'false';
+		if (response?.result?.indexOf('false') >= 0) {
+			update = 'true';
+		}
+		await cr('evaluate', {
+			expression: `dlv config hideSystemGoroutines ${update}`,
+			context: 'context'
+		});
+	} catch (err) {
+		if (err instanceof Error && err.message.indexOf('debuggee is running') >= 0) {
+			debugConsole.appendLine('Cannot toggle hideSystemGoroutines while debuggee is running');
+			return;
+		}
+		debugConsole.appendLine(`Error toggling hideSystemGoroutines: ${err}`);
+	}
+}
+
+const toggleHideSystemGoroutines = () => {
+	const ds = vscode.debug.activeDebugSession;
+	if (ds) {
+		toggleHideSystemGoroutinesCustomRequest((command, args) => {
+			return ds.customRequest(command, args);
+		});
+	}
+};

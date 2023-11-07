@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.39.1",
+  "version": "0.40.0",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -35,7 +35,7 @@
     "gopls"
   ],
   "scripts": {
-    "clean": "rm -rf ./dist/* && rm *.vsix",
+    "clean": "rm -rf ./dist/* && rm -rf ./out/* && rm *.vsix",
     "package": "npx vsce package",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
@@ -89,7 +89,7 @@
     "yarn": "1.22.10"
   },
   "engines": {
-    "vscode": "^1.67.0",
+    "vscode": "^1.75.0",
     "node": ">=12.0.0"
   },
   "activationEvents": [
@@ -97,16 +97,9 @@
     "workspaceContains:*.go",
     "workspaceContains:*/*.go",
     "workspaceContains:*/*/*.go",
-    "onCommand:go.gopath",
-    "onCommand:go.goroot",
-    "onCommand:go.tools.install",
-    "onCommand:go.locate.tools",
-    "onCommand:go.show.commands",
-    "onCommand:go.run.modinit",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
-    "onWebviewPanel:welcomeGo",
-    "onView:go.test.profile"
+    "onWebviewPanel:welcomeGo"
   ],
   "main": "./dist/goMain.js",
   "capabilities": {
@@ -174,12 +167,6 @@
         "aliases": [
           "Go Template File"
         ]
-      },
-      {
-        "id": "govulncheck",
-        "aliases": [
-          "Govulncheck Output"
-        ]
       }
     ],
     "grammars": [
@@ -197,11 +184,6 @@
         "language": "go.sum",
         "scopeName": "go.sum",
         "path": "./syntaxes/go.sum.tmGrammar.json"
-      },
-      {
-        "language": "govulncheck",
-        "scopeName": "govulncheck",
-        "path": "./syntaxes/govulncheck.tmGrammar.json"
       }
     ],
     "snippets": [
@@ -274,6 +256,11 @@
         "command": "go.test.package",
         "title": "Go: Test Package",
         "description": "Runs all unit tests in the package of the current file."
+      },
+      {
+        "command": "go.debug.toggleHideSystemGoroutines",
+        "title": "Go: Toggle Hide System Goroutines",
+        "description": "Toggles hiding the system goroutines from the active debug session call stack view."
       },
       {
         "command": "go.test.refresh",
@@ -412,11 +399,6 @@
         "description": "Remove tags configured in go.removeTags setting from selected struct using gomodifytags"
       },
       {
-        "command": "go.fill.struct",
-        "title": "Go: Fill struct",
-        "description": "Fill a struct literal with default values"
-      },
-      {
         "command": "go.show.commands",
         "title": "Go: Show All Commands...",
         "description": "Shows all commands from the Go extension in the quick pick"
@@ -485,16 +467,6 @@
         "command": "go.apply.coverprofile",
         "title": "Go: Apply Cover Profile",
         "description": "Applies existing cover profile."
-      },
-      {
-        "command": "go.godoctor.extract",
-        "title": "Go: Extract to function",
-        "description": "Extract to function using godoctor."
-      },
-      {
-        "command": "go.godoctor.var",
-        "title": "Go: Extract to variable",
-        "description": "Extract to variable using godoctor."
       },
       {
         "command": "go.languageserver.restart",
@@ -727,9 +699,15 @@
                 "default": []
               },
               "buildFlags": {
-                "type": "string",
+                "type": [
+                  "string",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                },
                 "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
-                "default": ""
+                "default": []
               },
               "dlvFlags": {
                 "type": "array",
@@ -1230,7 +1208,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Flags to pass to `go tool vet` (e.g. [\"-all\", \"-shadow\"])",
+          "description": "Flags to pass to `go tool vet` (e.g. [\"-all\", \"-shadow\"]). Not applicable when using the language server's diagnostics.",
           "scope": "resource"
         },
         "go.formatTool": {
@@ -1514,72 +1492,6 @@
           "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
-        "go.gocodeFlags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "-builtin",
-            "-ignore-case",
-            "-unimported-packages"
-          ],
-          "description": "Additional flags to pass to gocode. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gocodeAutoBuild": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable gocode's autobuild feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gocodePackageLookupMode": {
-          "type": "string",
-          "enum": [
-            "go",
-            "gb",
-            "bzl"
-          ],
-          "default": "go",
-          "description": "Used to determine the Go package lookup rules for completions by gocode. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "`gocode` is deprecated by the Go language server. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.useCodeSnippetsOnFunctionSuggest": {
-          "type": "boolean",
-          "default": false,
-          "description": "Complete functions with their parameter signature, including the variable type. Not propagated to the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
-        },
-        "go.useCodeSnippetsOnFunctionSuggestWithoutType": {
-          "type": "boolean",
-          "default": false,
-          "description": "Complete functions with their parameter signature, excluding the variable types. Use `gopls.usePlaceholders` when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`) and use [`gopls's `ui.completion.usePlaceholders` setting](https://github.com/golang/vscode-go/wiki/settings#uicompletionuseplaceholders) instead."
-        },
-        "go.autocompleteUnimportedPackages": {
-          "type": "boolean",
-          "default": false,
-          "description": "Include unimported packages in auto-complete suggestions. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code completion without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.docsTool": {
-          "type": "string",
-          "default": "godoc",
-          "description": "Pick 'godoc' or 'gogetdoc' to get documentation. Not applicable when using the language server.",
-          "scope": "resource",
-          "enum": [
-            "godoc",
-            "gogetdoc",
-            "guru"
-          ],
-          "markdownDeprecationMessage": "Documentation support without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
         "go.useLanguageServer": {
           "type": "boolean",
           "default": true,
@@ -1638,26 +1550,6 @@
           "default": false,
           "description": "Automatically update the tools used by the extension, without prompting the user.",
           "scope": "resource"
-        },
-        "go.useGoProxyToCheckForToolUpdates": {
-          "type": "boolean",
-          "default": true,
-          "description": "When enabled, the extension automatically checks the Go proxy if there are updates available for Go and the Go tools (at present, only gopls) it depends on and prompts the user accordingly",
-          "markdownDeprecationMessage": "Use `go.toolsManagement.checkForUpdates` instead."
-        },
-        "go.gotoSymbol.includeImports": {
-          "type": "boolean",
-          "default": false,
-          "description": "If false, the import statements will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
-        },
-        "go.gotoSymbol.includeGoroot": {
-          "type": "boolean",
-          "default": false,
-          "description": "If false, the standard library located at $GOROOT will be excluded while using the Go to Symbol in File feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.enableCodeLens": {
           "type": "object",
@@ -1721,29 +1613,6 @@
           },
           "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, json tags are added.",
           "scope": "resource"
-        },
-        "go.liveErrors": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false,
-              "description": "If true, runs gotype on the file currently being edited and reports any semantic or syntactic errors found. Disabled when the language server is enabled."
-            },
-            "delay": {
-              "type": "number",
-              "default": 500,
-              "description": "The number of milliseconds to delay before execution. Resets with each keystroke."
-            }
-          },
-          "additionalProperties": false,
-          "default": {
-            "enabled": false,
-            "delay": 500
-          },
-          "description": "Use gotype on the file currently being edited and report any semantic or syntactic errors found after configured delay. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Real-time diagnostics without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.removeTags": {
           "type": "object",
@@ -1904,16 +1773,6 @@
           },
           "description": "Experimental Feature: Enable/Disable entries from the context menu in the editor.",
           "scope": "resource"
-        },
-        "go.gotoSymbol.ignoreFolders": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Folder names (not paths) to ignore while using Go to Symbol in Workspace feature. Not applicable when using the language server.",
-          "scope": "resource",
-          "markdownDeprecationMessage": "Code navigation without the language server is deprecated. Enable the Go language server (`#go.useLanguageServer#`)."
         },
         "go.delveConfig": {
           "type": "object",
@@ -2210,6 +2069,12 @@
                 }
               }
             },
+            "ui.completion.completeFunctionCalls": {
+              "type": "boolean",
+              "markdownDescription": "completeFunctionCalls enables function call completion.\n\nWhen completing a statement, or when a function return type matches the\nexpected of the expression being completed, completion may suggest call\nexpressions (i.e. may include parentheses).\n",
+              "default": true,
+              "scope": "resource"
+            },
             "ui.completion.completionBudget": {
               "type": "string",
               "markdownDescription": "(For Debugging) completionBudget is the soft latency goal for completion requests. Most\nrequests finish in a couple milliseconds, but in some cases deep\ncompletions can take much longer. As we use up our budget we\ndynamically reduce the search scope to ensure we return timely\nresults. Zero means unlimited.\n",
@@ -2249,6 +2114,11 @@
               "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found in\n[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedparams\": true  // Enable the unusedparams analyzer.\n}\n...\n```\n",
               "scope": "resource",
               "properties": {
+                "appends": {
+                  "type": "boolean",
+                  "markdownDescription": "check for missing values after append\n\nThis checker reports calls to append that pass\nno values to be appended to the slice.\n\n\ts := []string{\"a\", \"b\", \"c\"}\n\t_ = append(s)\n\nSuch calls are always no-ops and often indicate an\nunderlying mistake.",
+                  "default": true
+                },
                 "asmdecl": {
                   "type": "boolean",
                   "markdownDescription": "report mismatches between assembly files and Go declarations",
@@ -2299,6 +2169,16 @@
                   "markdownDescription": "check for calls of reflect.DeepEqual on error values\n\nThe deepequalerrors checker looks for calls of the form:\n\n    reflect.DeepEqual(err1, err2)\n\nwhere err1 and err2 are errors. Using reflect.DeepEqual to compare\nerrors is discouraged.",
                   "default": true
                 },
+                "defers": {
+                  "type": "boolean",
+                  "markdownDescription": "report common mistakes in defer statements\n\nThe defers analyzer reports a diagnostic when a defer statement would\nresult in a non-deferred call to time.Since, as experience has shown\nthat this is nearly always a mistake.\n\nFor example:\n\n\tstart := time.Now()\n\t...\n\tdefer recordLatency(time.Since(start)) // error: call to time.Since is not deferred\n\nThe correct code is:\n\n\tdefer func() { recordLatency(time.Since(start)) }()",
+                  "default": true
+                },
+                "deprecated": {
+                  "type": "boolean",
+                  "markdownDescription": "check for use of deprecated identifiers\n\nThe deprecated analyzer looks for deprecated symbols and package imports.\n\nSee https://go.dev/wiki/Deprecated to learn about Go's convention\nfor documenting and signaling deprecated identifiers.",
+                  "default": true
+                },
                 "directive": {
                   "type": "boolean",
                   "markdownDescription": "check Go toolchain directives such as //go:debug\n\nThis analyzer checks for problems with known Go toolchain directives\nin all Go source files in a package directory, even those excluded by\n//go:build constraints, and all non-Go source files too.\n\nFor //go:debug (see https://go.dev/doc/godebug), the analyzer checks\nthat the directives are placed only in Go source files, only above the\npackage comment, and only in package main or *_test.go files.\n\nSupport for other known directives may be added in the future.\n\nThis analyzer does not check //go:build, which is handled by the\nbuildtag analyzer.\n",
@@ -2306,7 +2186,7 @@
                 },
                 "embed": {
                   "type": "boolean",
-                  "markdownDescription": "check for //go:embed directive import\n\nThis analyzer checks that the embed package is imported when source code contains //go:embed comment directives.\nThe embed package must be imported for //go:embed directives to function.import _ \"embed\".",
+                  "markdownDescription": "check //go:embed directive usage\n\nThis analyzer checks that the embed package is imported if //go:embed\ndirectives are present, providing a suggested fix to add the import if\nit is missing.\n\nThis analyzer also checks that //go:embed directives precede the\ndeclaration of a single variable.",
                   "default": true
                 },
                 "errorsas": {
@@ -2404,6 +2284,11 @@
                   "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\ts[a:len(s)]\nwill be simplified to:\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.",
                   "default": true
                 },
+                "slog": {
+                  "type": "boolean",
+                  "markdownDescription": "check for invalid structured logging calls\n\nThe slog checker looks for calls to functions from the log/slog\npackage that take alternating key-value pairs. It reports calls\nwhere an argument in a key position is neither a string nor a\nslog.Attr, and where a final key is missing its value.\nFor example,it would report\n\n\tslog.Warn(\"message\", 11, \"k\") // slog.Warn arg \"11\" should be a string or a slog.Attr\n\nand\n\n\tslog.Info(\"message\", \"k1\", v1, \"k2\") // call to slog.Info missing a final value",
+                  "default": true
+                },
                 "sortslice": {
                   "type": "boolean",
                   "markdownDescription": "check the argument type of sort.Slice\n\nsort.Slice requires an argument of a slice type. Check that\nthe interface{} value passed to sort.Slice is actually a slice.",
@@ -2466,7 +2351,7 @@
                 },
                 "unusedparams": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo reduce false positives it ignores:\n- methods\n- parameters that do not have a name or are underscored\n- functions in test files\n- functions with empty bodies or those with just a return stmt",
+                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo reduce false positives it ignores:\n- methods\n- parameters that do not have a name or have the name '_' (the blank identifier)\n- functions in test files\n- functions with empty bodies or those with just a return stmt",
                   "default": false
                 },
                 "unusedresult": {
@@ -2490,6 +2375,12 @@
                   "default": false
                 }
               }
+            },
+            "ui.diagnostic.analysisProgressReporting": {
+              "type": "boolean",
+              "markdownDescription": "analysisProgressReporting controls whether gopls sends progress\nnotifications when construction of its index of analysis facts is taking a\nlong time. Cancelling these notifications will cancel the indexing task,\nthough it will restart after the next change in the workspace.\n\nWhen a package is opened for the first time and heavyweight analyses such as\nstaticcheck are enabled, it can take a while to construct the index of\nanalysis facts for all its dependencies. The index is cached in the\nfilesystem, so subsequent analysis should be faster.\n",
+              "default": true,
+              "scope": "resource"
             },
             "ui.diagnostic.annotations": {
               "type": "object",
@@ -2734,6 +2625,12 @@
           "when": "false"
         }
       ],
+      "debug/callstack/context": [
+        {
+          "command": "go.debug.toggleHideSystemGoroutines",
+          "when": "debugType == 'go' && callStackItemType == 'stackFrame' || (callStackItemType == 'thread' && callStackItemStopped)"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.toggleTestFile && resourceLangId == go",
@@ -2748,11 +2645,6 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.removeTags && resourceLangId == go",
           "command": "go.remove.tags",
-          "group": "Go group 1"
-        },
-        {
-          "when": "editorTextFocus && config.go.editorContextMenuCommands.fillStruct && resourceLangId == go",
-          "command": "go.fill.struct",
           "group": "Go group 1"
         },
         {

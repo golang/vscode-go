@@ -244,6 +244,9 @@ function generateTests(
 async function getFunctions(goCtx: GoExtensionContext, doc: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
+	if (!symbols || symbols.length == 0) {
+		return [];
+	}
 	return symbols[0].children.filter((sym) =>
 		[vscode.SymbolKind.Function, vscode.SymbolKind.Method].includes(sym.kind)
 	);

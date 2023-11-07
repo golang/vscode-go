@@ -7,7 +7,7 @@
 
 import vscode = require('vscode');
 import { getGoConfig } from './config';
-import { getCurrentGoPath, getToolsGopath, resolvePath } from './util';
+import { getCurrentGoPath, getToolsGopath, resolvePath, substituteEnv } from './util';
 import { logVerbose } from './goLogging';
 import { dirExists } from './utils/pathUtils';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
@@ -50,6 +50,7 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	delete env['GOROOT'];
 	delete env['GOFLAGS'];
 	delete env['GOENV'];
+	delete env['GO111MODULE']; // we require module mode (default) for tools installation.
 
 	return env;
 }
@@ -73,11 +74,14 @@ export function toolExecutionEnvironment(uri?: vscode.Uri, addProcessEnv = true)
 
 function newEnvironment(uri?: vscode.Uri, addProcessEnv = true): NodeJS.Dict<string> {
 	const toolsEnvVars = getGoConfig(uri)['toolsEnvVars'];
-	const env = addProcessEnv ? Object.assign({}, process.env, toolsEnvVars) : Object.assign({}, toolsEnvVars);
+	const env = addProcessEnv ? Object.assign({}, process.env) : {};
 	if (toolsEnvVars && typeof toolsEnvVars === 'object') {
 		Object.keys(toolsEnvVars).forEach(
 			(key) =>
-				(env[key] = typeof toolsEnvVars[key] === 'string' ? resolvePath(toolsEnvVars[key]) : toolsEnvVars[key])
+				(env[key] =
+					typeof toolsEnvVars[key] === 'string'
+						? resolvePath(substituteEnv(toolsEnvVars[key]))
+						: toolsEnvVars[key])
 		);
 	}
 
@@ -97,7 +101,7 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 	if (!configGOROOT) {
 		return;
 	}
-	const goroot = configGOROOT ? resolvePath(configGOROOT) : undefined;
+	const goroot = configGOROOT ? resolvePath(substituteEnv(configGOROOT)) : undefined;
 
 	const currentGOROOT = process.env['GOROOT'];
 	if (goroot === currentGOROOT) {

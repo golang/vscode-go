@@ -4,19 +4,14 @@
  *--------------------------------------------------------*/
 
 import vscode = require('vscode');
-import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
+import { DocumentSymbolRequest, ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
-import { GoLegacyDocumentSymbolProvider } from './language/legacy/goOutline';
 
 export function GoDocumentSymbolProvider(
 	goCtx: GoExtensionContext,
 	includeImports?: boolean
-): GoplsDocumentSymbolProvider | GoLegacyDocumentSymbolProvider {
-	const { latestConfig } = goCtx;
-	if (!latestConfig?.enabled) {
-		return new GoLegacyDocumentSymbolProvider(includeImports);
-	}
+): GoplsDocumentSymbolProvider {
 	return new GoplsDocumentSymbolProvider(goCtx, includeImports);
 }
 
@@ -25,6 +20,9 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 	constructor(private readonly goCtx: GoExtensionContext, private includeImports?: boolean) {}
 
 	public async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
+		if (!this.goCtx.languageServerIsRunning) {
+			return [];
+		}
 		// TODO(suzmue): consider providing an interface for providing document symbols that only requires
 		// the URI. Getting a TextDocument from a filename requires opening the file, which can lead to
 		// files being opened that were not requested by the user in order to get information that we just
@@ -38,11 +36,14 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 			return [];
 		}
 
-		const symbols: vscode.DocumentSymbol[] | undefined = await vscode.commands.executeCommand(
-			'vscode.executeDocumentSymbolProvider',
-			document.uri
-		);
-		if (!symbols || symbols.length === 0) {
+		const p = languageClient?.getFeature(DocumentSymbolRequest.method)?.getProvider(document);
+		if (!p) {
+			return [];
+		}
+		const cancel = new vscode.CancellationTokenSource();
+		const symbols = await p.provideDocumentSymbols(document, cancel.token);
+		cancel.dispose();
+		if (!symbols || symbols.length === 0 || !isDocumentSymbol(symbols)) {
 			return [];
 		}
 
@@ -84,7 +85,7 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 					);
 				});
 			} catch (err) {
-				console.log('Failed to list imports: {err}');
+				console.log(`Failed to list imports: ${err}`);
 			}
 		}
 		return [packageSymbol];
@@ -107,4 +108,8 @@ async function listImports(
 	};
 	const resp = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
 	return resp.PackageImports;
+}
+
+function isDocumentSymbol(r: vscode.SymbolInformation[] | vscode.DocumentSymbol[]): r is vscode.DocumentSymbol[] {
+	return r[0] instanceof vscode.DocumentSymbol;
 }

@@ -178,28 +178,30 @@ export class WelcomePanel {
 						<li><a href="#" class="Command" data-command="openDocument" data-document="CHANGELOG.md">Release notes</a></li>
 						<li><a href="https://github.com/golang/vscode-go">GitHub</a></li>
 						<li><a href="https://stackoverflow.com/questions/tagged/go+visual-studio-code">Questions</a></li>
-						<li><a href="https://invite.slack.golangbridge.org/">Slack</a></li>
+<li><a href="https://invite.slack.golangbridge.org/">Slack</a></li>
 					</ul>
 				</div>
 			</div>
 
 			<div class="Announcement">
-				<img src="${announceURI}" alt="announce" class="Announcement-image" />
+				<p>📣 Recent gopls release (v0.14) includes <a href="https://go.dev/issue/58894">opt-in transparent telemetry</a>.
+				</p>
+				<p><b>Telemetry uploading is off by default</b> even when Visual Studio Code's telemetry setting is enabled.
+				Go Telemetry needs to be enabled with the following command:
+				<br>
+				<code>go run golang.org/x/telemetry/cmd/gotelemetry@latest on</code>
+				</p>
 				<p>
-					New!
-					We are excited to announce a new
-					<a href="https://github.com/golang/vscode-go/wiki/features#analyze-vulnerabilities-in-dependencies">code analysis feature</a>
-					that surfaces known vulnerabilities in your dependencies.
-					<br>
-					This vulncheck analyzer is backed by <a href="https://go.dev/security/vulndb">
-					Go's vulnerability database</a> and the Go language server's integration of
-					<a href="https://golang.org/x/vuln/cmd/govulncheck"><code>govulncheck</code></a>.
-					Read <a href="https://go.dev/blog/vuln">"Go's support for vulnerability management"</a>
-					to learn about the Go team's approach to helping Go developers secure their open-source dependencies.
-					Please share your feedback at
-					<a href="https://go.dev/s/vsc-vulncheck-feedback">go.dev/s/vsc-vulncheck-feedback</a>,
-					and report a bug in
-					<a href="https://github.com/golang/vscode-go/issues/new">our issue tracker</a>.
+				After telemetry is enabled, metrics and crash stack traces will be uploaded to <a href="https://telemetry.go.dev">telemetry.go.dev</a> weekly.
+				You can see the preview of the collected data using:
+				<br>
+				<code>go run golang.org/x/telemetry/cmd/gotelemetry@latest view</code>
+				</p>
+				<p>
+				If we get enough adoption, this data can significantly advance the pace of the go plugin development and help us meet a higher standard of reliability.
+                Go telemetry is designed to be transparent and privacy-preserving.
+				If you have concerns about enabling telemetry, you can learn more at
+				<a href="https://telemetry.go.dev/privacy">Go Telemetry Privacy Policy</a>.
 				</p>
 			</div>
 
@@ -226,7 +228,7 @@ export class WelcomePanel {
 					<div class="Card-inner">
 						<p class="Card-title">Troubleshooting</p>
 						<p class="Card-content">Experiencing problems? Start with our
-							<a href="https://github.com/golang/vscode-go/blob/master/docs/troubleshooting.md">troubleshooting guide</a>.  </p> </div>
+							<a href="https://github.com/golang/vscode-go/wiki/troubleshooting">troubleshooting guide</a>.  </p> </div>
 				</div>
 			</div>
 			</main>
@@ -259,10 +261,10 @@ function joinPath(uri: vscode.Uri, ...pathFragment: string[]): vscode.Uri {
 function showGoWelcomePage() {
 	// Update this list of versions when there is a new version where we want to
 	// show the welcome page on update.
-	const showVersions: string[] = ['0.37.0'];
+	const showVersions: string[] = ['0.40.0'];
 	// TODO(hyangah): use the content hash instead of hard-coded string.
 	// https://github.com/golang/vscode-go/issue/1179
-	let goExtensionVersion = '0.37.0';
+	let goExtensionVersion = '0.40.0';
 	let goExtensionVersionKey = 'go.extensionVersion';
 	if (extensionInfo.isPreview) {
 		goExtensionVersion = '0.0.0';

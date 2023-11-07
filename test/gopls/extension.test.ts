@@ -1,147 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 import assert from 'assert';
-import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
-import {
-	buildLanguageClient,
-	BuildLanguageClientOption,
-	buildLanguageServerConfig
-} from '../../src/language/goLanguageServer';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
-
-// FakeOutputChannel is a fake output channel used to buffer
-// the output of the tested language client in an in-memory
-// string array until cleared.
-class FakeOutputChannel implements vscode.OutputChannel {
-	public name = 'FakeOutputChannel';
-	public show = sinon.fake(); // no-empty
-	public hide = sinon.fake(); // no-empty
-	public dispose = sinon.fake(); // no-empty
-	public replace = sinon.fake(); // no-empty
-
-	private buf = [] as string[];
-
-	private eventEmitter = new EventEmitter();
-	private registeredPatterns = new Set<string>();
-	public onPattern(msg: string, listener: () => void) {
-		this.registeredPatterns.add(msg);
-		this.eventEmitter.once(msg, () => {
-			this.registeredPatterns.delete(msg);
-			listener();
-		});
-	}
-
-	public append = (v: string) => this.enqueue(v);
-	public appendLine = (v: string) => this.enqueue(v);
-	public clear = () => {
-		this.buf = [];
-	};
-	public toString = () => {
-		return this.buf.join('\n');
-	};
-
-	private enqueue = (v: string) => {
-		this.registeredPatterns?.forEach((p) => {
-			if (v.includes(p)) {
-				this.eventEmitter.emit(p);
-			}
-		});
-
-		if (this.buf.length > 1024) {
-			this.buf.shift();
-		}
-		this.buf.push(v.trim());
-	};
-}
-
-// Env is a collection of test-related variables and lsp client.
-// Currently, this works only in module-aware mode.
-class Env {
-	public languageClient?: LanguageClient;
-	private fakeOutputChannel?: FakeOutputChannel;
-	private disposables = [] as { dispose(): any }[];
-
-	public flushTrace(print: boolean) {
-		if (print) {
-			console.log(this.fakeOutputChannel?.toString());
-		}
-		this.fakeOutputChannel?.clear();
-	}
-
-	// This is a hack to check the progress of package loading.
-	// TODO(hyangah): use progress message middleware hook instead
-	// once it becomes available.
-	public onMessageInTrace(msg: string, timeoutMS: number): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				this.flushTrace(true);
-				reject(`Timed out while waiting for '${msg}'`);
-			}, timeoutMS);
-			this.fakeOutputChannel?.onPattern(msg, () => {
-				clearTimeout(timeout);
-				resolve();
-			});
-		});
-	}
-
-	// Start the language server with the fakeOutputChannel.
-	public async startGopls(filePath: string, goConfig?: vscode.WorkspaceConfiguration) {
-		// file path to open.
-		this.fakeOutputChannel = new FakeOutputChannel();
-		const pkgLoadingDone = this.onMessageInTrace('Finished loading packages.', 60_000);
-
-		if (!goConfig) {
-			goConfig = getGoConfig();
-		}
-		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(
-			Object.create(goConfig, {
-				useLanguageServer: { value: true },
-				languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
-			})
-		);
-		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
-		this.languageClient = await buildLanguageClient({}, cfg);
-		if (!this.languageClient) {
-			throw new Error('Language client not initialized.');
-		}
-
-		await this.languageClient.start();
-		await this.openDoc(filePath);
-		await pkgLoadingDone;
-	}
-
-	public async teardown() {
-		try {
-			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-			await this.languageClient?.stop(1_000); // 1s timeout
-		} catch (e) {
-			console.log(`failed to stop gopls within 1sec: ${e}`);
-		} finally {
-			if (this.languageClient?.isRunning()) {
-				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
-				this.flushTrace(true);
-			}
-			for (const d of this.disposables) {
-				d.dispose();
-			}
-			this.languageClient = undefined;
-		}
-	}
-
-	public async openDoc(...paths: string[]) {
-		const uri = vscode.Uri.file(path.resolve(...paths));
-		const doc = await vscode.workspace.openTextDocument(uri);
-		return { uri, doc };
-	}
-}
+import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, TELEMETRY_START_TIME_KEY, TelemetryService } from '../../src/goTelemetry';
+import { MockMemento } from '../mocks/MockMemento';
+import { Env } from './goplsTestEnv.utils';
 
 async function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -169,7 +40,8 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('HoverProvider', async () => {
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
@@ -219,7 +91,8 @@ suite('Go Extension Tests With Gopls', function () {
 	});
 
 	test('Completion middleware', async () => {
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'));
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
 		const testCases: [string, vscode.Position, string, vscode.CompletionItemKind][] = [
 			['fmt.P<>', new vscode.Position(19, 6), 'Print', vscode.CompletionItemKind.Function],
@@ -289,8 +162,8 @@ suite('Go Extension Tests With Gopls', function () {
 	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
 		const config = require('../../src/config');
 		sandbox.stub(config, 'getGoConfig').returns(goConfig);
-
-		await env.startGopls(path.resolve(testdataDir, 'gogetdocTestData', 'test.go'), goConfig);
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), goConfig, workspaceDir);
 		const { doc } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
 		await vscode.window.showTextDocument(doc);
 
@@ -326,5 +199,27 @@ suite('Go Extension Tests With Gopls', function () {
 		}) as vscode.WorkspaceConfiguration;
 
 		await testCustomFormatter(goConfig, customFormatter);
+	});
+
+	test('Prompt For telemetry', async () => {
+		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
+		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
+		const memento = new MockMemento();
+		memento.update(TELEMETRY_START_TIME_KEY, new Date('2000-01-01'));
+
+		const sut = new TelemetryService(env.languageClient, memento, [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY]);
+		try {
+			await Promise.all([
+				// we want to see the prompt command flowing.
+				env.onMessageInTrace(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, 60_000),
+				sut.promptForTelemetry(
+					false /* not a preview */,
+					true /* vscode telemetry not disabled */,
+					1000 /* 1000 out of 1000 users */
+				)
+			]);
+		} catch (e) {
+			assert(false, `unexpected failure: ${e}`);
+		}
 	});
 });

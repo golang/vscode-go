@@ -37,7 +37,7 @@ async function main() {
 			]
 		});
 	} catch (err) {
-		console.error('Failed to run integration tests' + err);
+		console.error('Failed to run integration tests: ' + err);
 		failed = true;
 	}
 
@@ -59,7 +59,7 @@ async function main() {
 			]
 		});
 	} catch (err) {
-		console.error('Failed to run gopls tests' + err);
+		console.error('Failed to run gopls tests: ' + err);
 		failed = true;
 	}
 
