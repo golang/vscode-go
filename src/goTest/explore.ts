@@ -263,7 +263,7 @@ export class GoTestExplorer {
 		// leading to spurious diagnostics from gopls:
 		// https://github.com/golang/vscode-go/issues/2570
 		// Instead, get the test item for this file only.
-		await this.resolver.getFile(file);
+		await this.resolver.processCreatedFile(file);
 	}
 
 	protected async didDeleteFile(file: Uri) {
