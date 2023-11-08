@@ -1,4 +1,4 @@
-## v0.40.0 - 13 Nov, 2023
+## v0.40.0 - 15 Nov, 2023
 
 This extension utilizes [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
 about the performance and stability of the extension and the language server it employs.
