@@ -1,9 +1,9 @@
 ## v0.40.0 - 15 Nov, 2023
 
-This extension utilizes [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
+This extension uses [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
 about the performance and stability of the extension and the language server it employs.
 By default, Telemetry uploading is disabled, but starting from this version,
-a small number of users will be prompted to enable it. Users can enable telemetry uploading
+a small number of users will be prompted to enable it. Users can enable uploading of telemetry data
 by either responding to the prompt or running the following command:
 
 ```
@@ -11,7 +11,7 @@ go run golang.org/x/telemetry/cmd/gotelemetry@latest on
 ```
 
 Once uploading is enabled, the data will be sent to https://telemetry.go.dev
-on a weekly basis. You can find more information about this process at
+each week. You can find more information about this process at
 [https://telemetry.go.dev/privacy](https://telemetry.go.dev) and in the
 [gopls v0.14 release notes(https://github.com/golang/tools/releases/tag/gopls%2Fv0.14.0).
 
@@ -44,7 +44,7 @@ delve. This should help with bugs related to parsing the string of buildFlags, s
 
 * The "Go: Toggle Hide System Goroutines" command was added to make it easier to switch between
 showing / hiding the system goroutines in the callstack view. This command is also
-available in the callstack context menu. The default setting can also be updated by updating
+available in the callstack context menu. The default setting can be updated by updating
 "hideSystemGoroutines" in either the launch.json or in the "go.delveConfig" setting.
 ([Issue 1797](https://github.com/golang/vscode-go/issues/1797#issuecomment-1762145244))
 
@@ -63,7 +63,7 @@ other environment variables as well. ([Issue 1902](https://github.com/golang/vsc
 The README.md provides a list of VS Code and Go version requirements.
 * For tools installation managed by the extension, you need go1.18 or a newer version.
 ([Issue 2898](golang/vscode-go#2898))
-* The extension has been tested with gopls v0.14 and delve v0.21.
+* The extension has been tested with gopls v0.14 and delve v1.21.
 
 ### Thanks
 
