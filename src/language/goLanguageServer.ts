@@ -748,7 +748,7 @@ export async function buildLanguageClient(
 		try {
 			if (e.message === 'completed') {
 				const res = await goplsFetchVulncheckResult(goCtx, e.URI.toString());
-				if (res.Vulns) {
+				if (res!.Vulns) {
 					vscode.window.showWarningMessage(
 						'upgrade gopls (v0.14.0 or newer) to see the details about detected vulnerabilities'
 					);
@@ -1609,14 +1609,36 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 }
 
 const GOPLS_FETCH_VULNCHECK_RESULT = 'gopls.fetch_vulncheck_result';
+// Fetches vulncheck result and throws an error if the result is not found.
+// uri is a string representation of URI or DocumentURI.
 async function goplsFetchVulncheckResult(goCtx: GoExtensionContext, uri: string): Promise<VulncheckReport> {
 	const { languageClient } = goCtx;
 	const params: ExecuteCommandParams = {
 		command: GOPLS_FETCH_VULNCHECK_RESULT,
 		arguments: [{ URI: uri }]
 	};
-	const res = await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
-	return res[uri];
+	const res: { [modFile: string]: VulncheckReport } = await languageClient?.sendRequest(
+		ExecuteCommandRequest.type,
+		params
+	);
+
+	// res may include multiple results, but we only need one for the given uri.
+	// Gopls uses normalized URI (https://cs.opensource.google/go/x/tools/+/refs/tags/gopls/v0.14.2:gopls/internal/span/uri.go;l=78)
+	// but VS Code URI (uri) may not be normalized. For comparison, we use URI.fsPath
+	// that provides a normalization implementation.
+	// https://github.com/microsoft/vscode-uri/blob/53e4ca6263f2e4ddc35f5360c62bc1b1d30f27dd/src/uri.ts#L204
+	const uriFsPath = URI.parse(uri).fsPath;
+	for (const modFile in res) {
+		try {
+			const modFileURI = URI.parse(modFile);
+			if (modFileURI.fsPath === uriFsPath) {
+				return res[modFile];
+			}
+		} catch (e) {
+			console.log(`gopls returned an unparseable file uri in govulncheck result: ${modFile}`);
+		}
+	}
+	throw new Error(`no matching go.mod ${uriFsPath} (${uri.toString()}) in the returned result: ${Object.keys(res)}`);
 }
 
 export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
