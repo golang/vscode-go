@@ -136,7 +136,6 @@ export class WelcomePanel {
 		// Local path to css styles and images
 		const scriptPathOnDisk = joinPath(this.dataroot, 'welcome.js');
 		const stylePath = joinPath(this.dataroot, 'welcome.css');
-		const announcePath = vscode.Uri.joinPath(this.dataroot, 'announce.png');
 		const gopherPath = joinPath(this.dataroot, 'go-logo-blue.png');
 		const goExtension = vscode.extensions.getExtension(extensionId)!;
 		const goExtensionVersion = goExtension.packageJSON.version;
@@ -145,7 +144,6 @@ export class WelcomePanel {
 		const scriptURI = webview.asWebviewUri(scriptPathOnDisk);
 		const stylesURI = webview.asWebviewUri(stylePath);
 		const gopherURI = webview.asWebviewUri(gopherPath);
-		const announceURI = webview.asWebviewUri(announcePath);
 
 		// Use a nonce to only allow specific scripts to be run
 		const nonce = getNonce();
