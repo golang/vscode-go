@@ -1,7 +1,7 @@
 /* eslint-disable no-process-exit */
 /* eslint-disable node/no-unpublished-import */
 import * as path from 'path';
-import { runTests } from '@vscode/test-electron';
+import { SilentReporter, runTests } from '@vscode/test-electron';
 
 async function main() {
 	// We are in test mode.
@@ -34,7 +34,8 @@ async function main() {
 				`--user-data-dir=${extensionDevelopmentPath}/.user-data-dir-test`,
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
-			]
+			],
+			reporter: new SilentReporter() // Suppress vscode download progress report
 		});
 	} catch (err) {
 		console.error('Failed to run integration tests: ' + err);
@@ -56,7 +57,8 @@ async function main() {
 				`--user-data-dir=${extensionDevelopmentPath}/.user-data-dir-test`,
 				// https://github.com/microsoft/vscode/issues/115794#issuecomment-774283222
 				'--force-disable-user-env'
-			]
+			],
+			reporter: new SilentReporter() // Suppress vscode download progress report
 		});
 	} catch (err) {
 		console.error('Failed to run gopls tests: ' + err);
