@@ -138,7 +138,7 @@ nightly build of this extension. Learn how to install it in by reading the
 
 VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
 learn insights about the performance and stability of the extension and the
-language server (`gopls``).
+language server (`gopls`).
 **Go Telemetry data uploading is disabled by default** and can be enabled
 with the following command:
 
