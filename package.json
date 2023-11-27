@@ -95,9 +95,8 @@
   },
   "activationEvents": [
     "onLanguage:go",
-    "workspaceContains:*.go",
-    "workspaceContains:*/*.go",
-    "workspaceContains:*/*/*.go",
+    "onLanguage:go.sum",
+    "onLanguage:gotmpl",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
@@ -132,8 +131,7 @@
       {
         "id": "go.mod",
         "filenames": [
-          "go.mod",
-          "gopls.mod"
+          "go.mod"
         ],
         "aliases": [
           "Go Module File"
