@@ -109,15 +109,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	initCoverageDecorators(ctx);
 
 	registerCommand('go.builds.run', commands.runBuilds);
-
-	const activeDoc = vscode.window.activeTextEditor?.document;
-	if (!goCtx.languageServerIsRunning && activeDoc?.languageId === 'go' && isGoPathSet()) {
-		// Check mod status so that cache is updated and then run build/lint/vet
-		isModSupported(activeDoc.uri).then(() => {
-			vscode.commands.executeCommand('go.builds.run', activeDoc, getGoConfig(activeDoc.uri));
-		});
-	}
-
 	registerCommand('go.environment.status', expandGoStatusBar);
 
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
