@@ -102,8 +102,14 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	}
 
 	// Finally search PATH parts
-	const pathFromPath = getBinPathFromEnvVar(binname, getEnvPath(), false);
+	let pathFromPath = getBinPathFromEnvVar(binname, getEnvPath(), false);
 	if (pathFromPath) {
+		if (toolName === 'go' && pathFromPath === '/snap/bin/go') {
+			// Workaround for the snapd issue (golang/vscode-go#166)
+			// https://bugs.launchpad.net/ubuntu/+source/snapd/+bug/1849753
+			console.log('using /snap/go/current/bin/go instead of /snap/bin/go (see golang/vscode-go#166)');
+			pathFromPath = '/snap/go/current/bin/go';
+		}
 		binPathCache[toolName] = pathFromPath;
 		return { binPath: pathFromPath, why: found('path') };
 	}
