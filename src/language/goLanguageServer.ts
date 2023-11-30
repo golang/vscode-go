@@ -650,13 +650,13 @@ export async function buildLanguageClient(
 							item.filterText = hardcodedFilterText;
 						}
 					}
-					const paramHintsEnabled = vscode.workspace.getConfiguration('editor.parameterHints', {
+					const paramHints = vscode.workspace.getConfiguration('editor.parameterHints', {
 						languageId: 'go',
 						uri: document.uri
 					});
 					// If the user has parameterHints (signature help) enabled,
 					// trigger it for function or method completion items.
-					if (paramHintsEnabled) {
+					if (paramHints.get<boolean>('enabled') === true) {
 						for (const item of items) {
 							if (item.kind === CompletionItemKind.Method || item.kind === CompletionItemKind.Function) {
 								item.command = {
