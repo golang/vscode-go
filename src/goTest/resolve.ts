@@ -169,27 +169,34 @@ export class GoTestResolver {
 		return it(this.items);
 	}
 
-	// Create or Retrieve a sub test or benchmark. The ID will be of the form:
+	// Create or Retrieve a sub test or benchmark. This is always dynamically
+	// called while processing test run output.
+	// The parent's uri is of the form:
 	//     file:///path/to/mod/file.go?test#TestXxx%2fA%2fB%2fC
-	getOrCreateSubTest(item: TestItem, label: string, name: string, dynamic?: boolean): TestItem | undefined {
-		if (!item.uri) return;
-		const { kind } = GoTest.parseId(item.id);
+	// The name is the name of the subtest to get or create.
+	// The label is the title presented in the UI.
+	// We expect the caller to call getOrCreateSubTest with the
+	// right parent.
+	// For example, if TestXxx has subtests and we are processing
+	// TestXxx/Sub1/Sub2, the parent item should be a node corresponding
+	// to TestXxx/Sub1, the label is Sub2 while the name is TestXxx/Sub1/Sub2.
+	getOrCreateSubTest(parent: TestItem, label: string, name: string): TestItem | undefined {
+		if (!parent.uri) return;
+		const { kind } = GoTest.parseId(parent.id);
 
 		let existing: TestItem | undefined;
-		item.children.forEach((child) => {
-			if (child.label === name) existing = child;
+		parent.children.forEach((child) => {
+			if (child.label === label) existing = child;
 		});
 		if (existing) return existing;
 
-		item.canResolveChildren = true;
-		const sub = this.createItem(label, item.uri, kind, name);
-		item.children.add(sub);
+		parent.canResolveChildren = true;
+		const sub = this.createItem(label, parent.uri, kind, name);
+		parent.children.add(sub);
 
-		if (dynamic) {
-			this.isDynamicSubtest.add(sub);
-			if (this.shouldSetRange(item)) {
-				sub.range = item.range;
-			}
+		this.isDynamicSubtest.add(sub);
+		if (this.shouldSetRange(parent)) {
+			sub.range = parent.range;
 		}
 
 		return sub;
