@@ -153,7 +153,25 @@ func help(name string) {
 // runIncCounters increments telemetry counters read from stdin.
 func runIncCounters(_ []string) error {
 	scanner := bufio.NewScanner(os.Stdin)
+	if counterFile := os.Getenv("TELEMETRY_COUNTER_FILE"); counterFile != "" {
+		return printCounter(counterFile, scanner)
+	}
 	return runIncCountersImpl(scanner, counter.Add)
+}
+
+func printCounter(fname string, scanner *bufio.Scanner) (rerr error) {
+	f, err := os.OpenFile(fname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); rerr == nil {
+			rerr = err
+		}
+	}()
+	return runIncCountersImpl(scanner, func(name string, count int64) {
+		fmt.Fprintln(f, name, count)
+	})
 }
 
 const (

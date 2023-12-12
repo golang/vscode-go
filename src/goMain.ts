@@ -8,7 +8,7 @@
 
 'use strict';
 
-import { getGoConfig } from './config';
+import { extensionInfo, getGoConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -32,15 +32,21 @@ import * as goGenerateTests from './goGenerateTests';
 import { goGetPackage } from './goGetPackage';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
-import { offerToInstallTools, promptForMissingTool, updateGoVarsFromConfig, suggestUpdates } from './goInstallTools';
+import {
+	offerToInstallTools,
+	promptForMissingTool,
+	updateGoVarsFromConfig,
+	suggestUpdates,
+	installVSCGO
+} from './goInstallTools';
 import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
 import { setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
-import { GO111MODULE, goModInit, isModSupported } from './goModules';
+import { GO111MODULE, goModInit } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
 
 import { vetCode } from './goVet';
 import {
@@ -52,7 +58,7 @@ import {
 	updateGlobalState
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
-import { cleanupTempDir, getBinPath, getToolsGopath, isGoPathSet } from './util';
+import { cleanupTempDir, getBinPath, getToolsGopath } from './util';
 import { clearCacheForTools } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import vscode = require('vscode');
@@ -67,6 +73,7 @@ import { GoExtensionContext } from './context';
 import * as commands from './commands';
 import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
+import { telemetryReporter } from './goTelemetry';
 
 const goCtx: GoExtensionContext = {};
 
@@ -76,6 +83,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		return;
 	}
 
+	const start = Date.now();
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
@@ -95,6 +103,18 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	}
 
 	await updateGoVarsFromConfig(goCtx);
+
+	// for testing or development mode, always rebuild vscgo.
+	const forceInstall = ctx.extensionMode !== vscode.ExtensionMode.Production;
+	installVSCGO(
+		ctx.extension.id,
+		extensionInfo.version || '',
+		ctx.extensionPath,
+		extensionInfo.isPreview,
+		forceInstall
+	)
+		.then((path) => telemetryReporter.setTool(path))
+		.catch((reason) => console.error(reason));
 
 	suggestUpdates();
 	offerToInstallLatestGoVersion();
@@ -201,7 +221,25 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	registerCommand('go.vulncheck.toggle', toggleVulncheckCommandFactory);
 
+	telemetryReporter.add(activationLatency(Date.now() - start), 1);
+
 	return extensionAPI;
+}
+
+function activationLatency(duration: number): string {
+	// TODO: generalize and move to goTelemetry.ts
+	let bucket = '>=5s';
+
+	if (duration < 100) {
+		bucket = '<100ms';
+	} else if (duration < 500) {
+		bucket = '<500ms';
+	} else if (duration < 1000) {
+		bucket = '<1s';
+	} else if (duration < 5000) {
+		bucket = '<5s';
+	}
+	return 'activation_latency:' + bucket;
 }
 
 export function deactivate() {
@@ -210,7 +248,8 @@ export function deactivate() {
 		cancelRunningTests(),
 		killRunningPprof(),
 		Promise.resolve(cleanupTempDir()),
-		Promise.resolve(disposeGoStatusBar())
+		Promise.resolve(disposeGoStatusBar()),
+		telemetryReporter.dispose()
 	]);
 }
 

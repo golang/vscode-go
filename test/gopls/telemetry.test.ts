@@ -6,8 +6,21 @@
 
 import * as sinon from 'sinon';
 import { describe, it } from 'mocha';
-import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, TELEMETRY_START_TIME_KEY, TelemetryService } from '../../src/goTelemetry';
+import {
+	GOPLS_MAYBE_PROMPT_FOR_TELEMETRY,
+	TELEMETRY_START_TIME_KEY,
+	TelemetryReporter,
+	TelemetryService
+} from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
+import { installVSCGO } from '../../src/goInstallTools';
+import assert from 'assert';
+import path from 'path';
+import * as fs from 'fs-extra';
+import os = require('os');
+import { rmdirRecursive } from '../../src/util';
+import { extensionId } from '../../src/const';
+import { executableFileExists, fileExists } from '../../src/utils/pathUtils';
 
 describe('# prompt for telemetry', () => {
 	it(
@@ -157,3 +170,66 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 		}
 	};
 }
+
+describe('# telemetry reporter using vscgo', async () => {
+	// installVSCGO expects
+	//   {extensionPath}/vscgo: vscgo source code for testing.
+	//   {extensionPath}/bin: where compiled vscgo will be stored.
+	// During testing, extensionDevelopmentPath is the root of the extension.
+	// __dirname = out/test/gopls.
+	const extensionDevelopmentPath = path.resolve(__dirname, '../../..');
+	const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'telemetryReporter'));
+	const counterfile = path.join(tmpDir, 'counterfile.txt');
+	const sut = new TelemetryReporter(0, counterfile);
+	let vscgo: string;
+
+	suiteSetup(async () => {
+		try {
+			vscgo = await installVSCGO(
+				extensionId,
+				'',
+				extensionDevelopmentPath,
+				true /*isPreview*/,
+				true /* force install */
+			);
+		} catch (e) {
+			assert.fail(`failed to install vscgo needed for testing: ${e}`);
+		}
+	});
+	suiteTeardown(() => {
+		rmdirRecursive(tmpDir);
+		if (executableFileExists(vscgo)) {
+			fs.unlink(vscgo);
+		}
+	});
+
+	teardown(() => {
+		if (fileExists(counterfile)) {
+			fs.unlink(counterfile);
+		}
+	});
+
+	it('add succeeds before telemetryReporter.setTool runs', () => {
+		sut.add('hello', 1);
+		sut.add('world', 2);
+	});
+
+	it('flush is noop before setTool', async () => {
+		await sut.flush();
+		assert(!fileExists(counterfile), 'counterfile exists');
+	});
+
+	it('flush writes accumulated counters after setTool', async () => {
+		sut.setTool(vscgo);
+		await sut.flush();
+		const readAll = fs.readFileSync(counterfile).toString();
+		assert(readAll.includes('hello 1\n') && readAll.includes('world 2\n'), readAll);
+	});
+
+	it('dispose triggers flush', async () => {
+		sut.add('bye', 3);
+		await sut.dispose();
+		const readAll = fs.readFileSync(counterfile).toString();
+		assert(readAll.includes('bye 3\n'), readAll);
+	});
+});
