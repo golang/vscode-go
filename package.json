@@ -76,7 +76,7 @@
     "@types/sinon": "9.0.11",
     "@types/vscode": "1.67.0",
     "@vscode/debugadapter-testsupport": "1.58.0",
-    "@vscode/test-electron": "2.3.6",
+    "@vscode/test-electron": "2.3.8",
     "@vscode/vsce": "2.19.0",
     "adm-zip": "0.4.16",
     "esbuild": "0.17.10",
