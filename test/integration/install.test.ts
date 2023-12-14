@@ -225,10 +225,17 @@ suite('Installation Tests', function () {
 		if (!shouldRunSlowTests()) {
 			return;
 		}
-		const tools = Object.keys(allToolsInformation).map((tool) => {
-			return { name: tool };
+		const goVersion = await getGoVersion();
+		const tools = Object.keys(allToolsInformation).filter((tool) => {
+			const minGoVersion = allToolsInformation[tool].minimumGoVersion;
+			return !minGoVersion || goVersion.gt(minGoVersion.format());
 		});
-		await runTest(tools);
+		assert(tools.includes('gopls') && tools.includes('dlv'), `selected tools ${JSON.stringify(tools)}`);
+		await runTest(
+			tools.map((tool) => {
+				return { name: tool };
+			})
+		);
 	});
 });
 
