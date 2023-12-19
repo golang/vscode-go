@@ -1,3 +1,45 @@
+## v0.40.1 - 21 Dec, 2023
+
+This is a point release to fix minor bugs. A comprehensive list of bug fixes and
+changes can be found in
+[the milestone](https://github.com/golang/vscode-go/milestone/60) and
+[the commit history](https://github.com/golang/vscode-go/compare/v0.40.0...v0.40.1).
+
+### Changes
+
+* We adjusted the extension activation behavior. The extension will not be
+  activated until Go files are open or the extension's commands are invoked.
+  ([Issue 3038](https://github.com/golang/vscode-go/issues/3038), and
+  [2164](https://github.com/golang/vscode-go/issues/2164)).
+* The [`GOTOOLCHAIN`](https://go.dev/doc/toolchain) environment variable is
+  shown from the [Go explorer
+  view](https://github.com/golang/vscode-go/wiki/ui#go-explorer-view).
+
+### Fixes
+
+* [Pprof result viewer](https://github.com/golang/vscode-go/wiki/features#profiling)
+  now works with the [remote development setup](https://code.visualstudio.com/docs/remote/remote-overview).
+  ([Issue 3090](https://github.com/golang/vscode-go/issues/3090)).
+* Subtests that include regexp metacharacters in their names are now properly
+  handled. ([Issue 2624](https://github.com/golang/vscode-go/issues/2624),
+  [3070](https://github.com/golang/vscode-go/issues/3070))
+* When the extension detects `go` installed by snap, it will use
+  `/snap/go/current/bin/go` as the go command path to work around a bug in
+  snapd. ([Issue 166](https://github.com/golang/vscode-go/issues/166)).
+* We enhanced the automated issue reporting feature to be robust in collecting
+  gopls crash logs and handling transient errors during gopls upgrade.
+  ([Issue 984](https://github.com/golang/vscode-go/issues/984),
+  [2690](https://github.com/golang/vscode-go/issues/2690)).
+* The extension now respects user's `editor.parameterHints.enabled` and shows
+  parameter hints after completion only if it is enabled.
+  ([Issue 3071](https://github.com/golang/vscode-go/issues/3071))
+* Ran `npm audit fix` and that updated `semver` and `word-wrap` dependencies.
+  ([CL 551055](https://go.dev/cl/551055)).
+
+### Thanks
+
+Thank you for your contribution @tekig, @rogeryk, @suzmue, @hyangah!
+
 ## v0.40.0 - 15 Nov, 2023
 
 This extension uses [Go Telemetry](https://telemetry.go.dev/privacy) to gather insights
@@ -13,7 +55,7 @@ go run golang.org/x/telemetry/cmd/gotelemetry@latest on
 Once uploading is enabled, the data will be sent to https://telemetry.go.dev
 each week. You can find more information about this process at
 [https://telemetry.go.dev/privacy](https://telemetry.go.dev) and in the
-[gopls v0.14 release notes(https://github.com/golang/tools/releases/tag/gopls%2Fv0.14.0).
+[gopls v0.14 release notes](https://github.com/golang/tools/releases/tag/gopls%2Fv0.14.0).
 
 A comprehensive list of changes can be found in the complete
 [commit history](https://github.com/golang/vscode-go/compare/v0.40.0...v0.39.1).
