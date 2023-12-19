@@ -28,9 +28,9 @@ import {
 	dirExists
 } from './utils/pathUtils';
 import vscode = require('vscode');
-import WebRequest = require('web-request');
 import { installTool } from './goInstallTools';
 import { CommandFactory } from './commands';
+import fetch from 'node-fetch';
 
 export class GoEnvironmentOption implements vscode.QuickPickItem {
 	readonly description: string;
@@ -468,10 +468,12 @@ interface GoVersionWebResult {
 }
 
 async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
+	// TODO: use `go list -m --versions -json go` when go1.20+ is the minimum supported version.
 	// fetch information about what Go versions are available to install
 	let webResults;
 	try {
-		webResults = await WebRequest.json<GoVersionWebResult[]>('https://go.dev/dl/?mode=json');
+		const response = await fetch('https://go.dev/dl/?mode=json');
+		webResults = (await response.json()) as GoVersionWebResult[];
 	} catch (error) {
 		return [];
 	}
@@ -511,13 +513,7 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 				goVersions: results
 			});
 		} catch (e) {
-			// hardcode the latest versions of Go in case golang.dl is unavailable
-			// TODO(hyangah): consider to remove these hardcoded versions and instead
-			// show error notification if necessary.
-			results = [
-				new GoEnvironmentOption('golang.org/dl/go1.17.6', 'Go 1.17.6', false),
-				new GoEnvironmentOption('golang.org/dl/go1.16.13', 'Go 1.16.13', false)
-			];
+			results = [];
 		}
 	}
 
