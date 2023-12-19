@@ -38,7 +38,7 @@ changes can be found in
 
 ### Thanks
 
-Thank you for your contribution @tekig, @rogeryk, @suzmue, @hyangah!
+Thank you for your contribution @tekig, @rogeryk, @hyangah!
 
 ## v0.40.0 - 15 Nov, 2023
 
