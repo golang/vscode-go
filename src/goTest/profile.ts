@@ -198,6 +198,8 @@ async function show(profile: string) {
 		proc.stderr.on('data', captureStdout);
 	});
 
+	const externalUri = await vscode.env.asExternalUri(vscode.Uri.parse(`http://localhost:${port}`));
+
 	const panel = vscode.window.createWebviewPanel('go.profile', 'Profile', ViewColumn.Active);
 	panel.webview.options = { enableScripts: true };
 	panel.webview.html = `<html>
@@ -217,7 +219,7 @@ async function show(profile: string) {
 			</style>
 		</head>
 		<body>
-			<iframe src="http://localhost:${port}"></iframe>
+			<iframe src="${externalUri}"></iframe>
 		</body>
 	</html>`;
 

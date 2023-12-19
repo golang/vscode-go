@@ -230,14 +230,20 @@ suite('Go Test Runner', () => {
 
 			// Locate subtest
 			console.log('Locate subtest');
-			const tSub = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub'));
+			const tSub = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub|Test'));
 			assert(tSub, 'Subtest was not created');
 
 			console.log('Locate subtests with conflicting names');
-			const tSub2 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01'));
+			const tSub2 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub|Test#01'));
 			assert(tSub2, 'Subtest #01 was not created');
-			const tSub3 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub#01#01'));
+			const tSub3 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/Sub|Test#01#01'));
 			assert(tSub3, 'Subtest #01#01 was not created');
+
+			const tSub4 = tMain.children.get(GoTest.id(uri, 'test', 'TestMain/1_+_1'));
+			assert(tSub4, 'Subtest 1_+_1 was not created');
+
+			const tSub5 = tSub4.children.get(GoTest.id(uri, 'test', 'TestMain/1_+_1/Nested'));
+			assert(tSub5, 'Subtest 1_+_1/Nested was not created');
 
 			// Run subtest by itself
 			console.log('Run subtest by itself');
@@ -255,7 +261,7 @@ suite('Go Test Runner', () => {
 			console.log('Verify TestMain/Sub was run');
 			call = spy.lastCall.args[0];
 			assert.strictEqual(call.dir, subTestDir);
-			assert.deepStrictEqual(call.functions, ['TestMain/Sub']);
+			assert.deepStrictEqual(call.functions, ['TestMain/Sub\\|Test']); // | is escaped.
 			spy.resetHistory();
 
 			// Ensure the subtest hasn't been disposed

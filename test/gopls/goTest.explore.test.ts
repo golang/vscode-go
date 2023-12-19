@@ -209,25 +209,13 @@ suite('Go Test Explorer', () => {
 	});
 
 	suite('stretchr', function () {
+		// This test suite requires stretcher module so gopls start may take a while.
 		const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 		const ctx = MockExtensionContext.new();
 		let document: TextDocument;
 		let testExplorer: GoTestExplorer;
 
 		const env = new Env();
-
-		suiteSetup(async () => {
-			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
-			// TODO(hyangah): I don't know why, but gopls seems to pick up ./test/testdata/codelens as
-			// the workspace directory when we don't explicitly set the workspace directory
-			// (so initialize request doesn't include workspace dir info). The codelens directory was
-			// used in the previous test suite. Figure out why.
-			await env.startGopls(uri.fsPath, undefined, fixtureDir);
-
-			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
-
-			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
-		});
 
 		this.afterEach(async function () {
 			await env.teardown();
@@ -238,7 +226,17 @@ suite('Go Test Explorer', () => {
 			ctx.teardown();
 		});
 
-		test('discovery', () => {
+		test('discovery', async () => {
+			const uri = Uri.file(path.join(fixtureDir, 'suite_test.go'));
+			// TODO(hyangah): I don't know why, but gopls seems to pick up ./test/testdata/codelens as
+			// the workspace directory when we don't explicitly set the workspace directory
+			// (so initialize request doesn't include workspace dir info). The codelens directory was
+			// used in the previous test suite. Figure out why.
+			await env.startGopls(uri.fsPath, undefined, fixtureDir);
+
+			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
+
+			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
 			const tests = testExplorer.resolver.find(document.uri).map((x) => x.id);
 			assert.deepStrictEqual(tests.sort(), [
 				document.uri.with({ query: 'file' }).toString(),

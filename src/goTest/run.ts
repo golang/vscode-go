@@ -28,6 +28,7 @@ import { GoTestProfiler, ProfilingOptions } from './profile';
 import { debugTestAtCursor } from '../goTest';
 import { GoExtensionContext } from '../context';
 import path = require('path');
+import { escapeRegExp } from '../subTestUtils';
 
 let debugSessionID = 0;
 
@@ -190,7 +191,7 @@ export class GoTestRunner {
 
 		const run = this.ctrl.createTestRun(request, `Debug ${name}`);
 		if (!testFunctions) return;
-		const started = await debugTestAtCursor(doc, name, testFunctions, goConfig, id);
+		const started = await debugTestAtCursor(doc, escapeSubTestName(name), testFunctions, goConfig, id);
 		if (!started) {
 			subs.forEach((s) => s.dispose());
 			run.end();
@@ -463,7 +464,7 @@ export class GoTestRunner {
 			...rest,
 			outputChannel,
 			dir: pkg.uri?.fsPath ?? '',
-			functions: Object.keys(functions),
+			functions: Object.keys(functions)?.map((v) => escapeSubTestName(v)),
 			goTestOutputConsumer: rest.isBenchmark
 				? (e) => this.consumeGoBenchmarkEvent(run, functions, complete, e)
 				: (e) => this.consumeGoTestEvent(run, functions, record, complete, concat, e)
@@ -503,12 +504,12 @@ export class GoTestRunner {
 			const m = name.substring(pos).match(re);
 			if (!m) {
 				if (!parent) return tests[name];
-				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name, true);
+				return this.resolver.getOrCreateSubTest(parent, name.substring(pos), name);
 			}
 
 			const subName = name.substring(0, pos + (m.index ?? 0));
 			const test = parent
-				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + (m.index ?? 0)), subName, true)
+				? this.resolver.getOrCreateSubTest(parent, name.substring(pos, pos + (m.index ?? 0)), subName)
 				: tests[subName];
 			return resolve(test, pos + (m.index ?? 0), m[0].length);
 		};
@@ -721,4 +722,18 @@ export class GoTestRunner {
 		// TODO(firelizzard18): Add more sophisticated check for build failures?
 		return output.some((x) => rePkg.test(x));
 	}
+}
+
+// escapeSubTestName escapes regexp-like metacharacters. Unlike
+// escapeSubTestName in subTestUtils.ts, this assumes the input are
+// coming from the test explorer test items whose names are computed from
+// the actual test run, not from a hacky source code analysis so escaping
+// empty unprintable characters is not necessary here.
+function escapeSubTestName(v: string) {
+	return v?.includes('/')
+		? v
+				.split('/')
+				.map((part) => escapeRegExp(part), '')
+				.join('/')
+		: v;
 }

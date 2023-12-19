@@ -30,7 +30,7 @@ const languageServerStartMutex = new Mutex();
 export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 	return async (reason: RestartReason = RestartReason.MANUAL) => {
 		const goConfig = getGoConfig();
-		const cfg = buildLanguageServerConfig(goConfig);
+		const cfg = await buildLanguageServerConfig(goConfig);
 
 		if (typeof reason === 'string') {
 			updateRestartHistory(goCtx, reason, cfg.enabled);
@@ -42,6 +42,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			if (reason === RestartReason.MANUAL) {
 				await suggestGoplsIssueReport(
 					goCtx,
+					cfg,
 					"Looks like you're about to manually restart the language server.",
 					errorKind.manualRestart
 				);

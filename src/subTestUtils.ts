@@ -18,6 +18,12 @@ export function escapeSubTestName(testFuncName: string, subTestName: string): st
 	return `${testFuncName}/${subTestName}`
 		.replace(/\s/g, '_')
 		.split('/')
-		.map((part) => `\\Q${part}\\E`, '')
+		.map((part) => escapeRegExp(part), '')
 		.join('$/^');
+}
+
+// escapeRegExp escapes regex metacharacters.
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+export function escapeRegExp(v: string) {
+	return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

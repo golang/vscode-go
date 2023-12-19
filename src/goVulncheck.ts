@@ -79,18 +79,21 @@ export async function writeVulns(
 		return;
 	}
 	term.appendLine('');
-	let combined = '';
+	let stdout = '';
+	let stderr = '';
 	const pr = new Promise<number | null>((resolve) => {
 		const p = cp.spawn(goplsBinPath, ['vulncheck', '--', '-mode=convert', '-show=color'], {
 			cwd: getWorkspaceFolderPath()
 		});
+
 		p.stdout.on('data', (data) => {
-			combined += data;
+			stdout += data;
 		});
 		p.stderr.on('data', (data) => {
-			combined += data;
+			stderr += data;
 		});
-		p.on('exit', (exitCode) => {
+		// 'close' fires after exit or error when the subprocess closes all stdio.
+		p.on('close', (exitCode) => {
 			// When vulnerabilities are found, vulncheck -mode=convert returns a non-zero exit code.
 			// TODO: can we use the exitCode to set the status of terminal?
 			resolve(exitCode);
@@ -113,8 +116,16 @@ export async function writeVulns(
 	});
 	try {
 		await pr;
+	} catch (e) {
+		console.error(`writeVulns: ${e}`);
 	} finally {
-		combined.split('\n').forEach((l) => term.appendLine(l));
+		// Combining stderr and stdout streams in the exact order they were received
+		// is tricky since they are buffered separately.
+		// Normally, govulncheck will print the text-based report to stdout first
+		// and then report whether there are vulnerabilities to stderr at the end.
+		// So, we just process stdout first and then stderr.
+		stdout.split('\n').forEach((l) => term.appendLine(l));
+		stderr.split('\n').forEach((l) => term.appendLine(l));
 	}
 	return;
 }

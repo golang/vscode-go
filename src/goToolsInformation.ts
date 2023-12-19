@@ -83,7 +83,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/golangci/golangci-lint',
 		replacedByGopls: false,
 		isImportant: true,
-		description: 'Linter'
+		description: 'Linter',
+		minimumGoVersion: semver.coerce('1.20')
 	},
 	'revive': {
 		name: 'revive',

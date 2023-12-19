@@ -108,7 +108,7 @@ export class Env {
 		if (!goConfig) {
 			goConfig = getGoConfig();
 		}
-		const cfg: BuildLanguageClientOption = buildLanguageServerConfig(
+		const cfg: BuildLanguageClientOption = await buildLanguageServerConfig(
 			Object.create(goConfig, {
 				useLanguageServer: { value: true },
 				languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports

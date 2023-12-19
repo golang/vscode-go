@@ -22,8 +22,8 @@ suite('gopls issue report tests', () => {
 			},
 			{
 				name: 'initialization error message',
-				in: traceFromIssueVSCodeGo572,
-				want: sanitizedTraceFromIssuVSCodeGo572
+				in: traceFromIssueVSCodeGo572LSP317,
+				want: sanitizedTraceFromIssueVSCodeGo572LSP317
 			},
 			{
 				name: 'incomplete panic trace',
@@ -40,8 +40,8 @@ suite('gopls issue report tests', () => {
 		testCases.map((tc: TestCase) => {
 			const { sanitizedLog, failureReason } = sanitizeGoplsTrace(tc.in);
 			assert.strictEqual(
-				sanitizedLog,
-				tc.want,
+				JSON.stringify(sanitizedLog),
+				JSON.stringify(tc.want),
 				`sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result`
 			);
 			assert.strictEqual(
@@ -317,15 +317,21 @@ created by golang.org/x/tools/internal/jsonrpc2.AsyncHandler.func1
   handler.go:100 +0x171
 [Info - 12:50:26 PM] `;
 
-const traceFromIssueVSCodeGo572 = `
-
-[Error - 下午9:23:45] Starting client failed
-Message: unsupported URI scheme: (gopls only supports file URIs)
-Code: 0
-[Info - 下午9:23:45] 2020/08/25 21:23:45 server shutdown without initialization
-
+const traceFromIssueVSCodeGo572LSP317 = `
+[Error - 12:20:35 PM] Stopping server failed
+Error: Client is not running and can't be stopped. It's current state is: startFailed
+	at GoLanguageClient.shutdown (/Users/hakim/projects/vscode-go/dist/goMain.js:21702:17)
+	at GoLanguageClient.stop (/Users/hakim/projects/vscode-go/dist/goMain.js:21679:21)
+	at GoLanguageClient.stop (/Users/hakim/projects/vscode-go/dist/goMain.js:23486:22)
+	at GoLanguageClient.handleConnectionError (/Users/hakim/projects/vscode-go/dist/goMain.js:21920:16)
+	at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[Error - 12:20:35 PM] 
+[Error - 12:20:35 PM] gopls client: couldn't create connection to server.
+  Message: Socket closed before the connection was established
+  Code: -32099 
+Error starting language server: Error: Socket closed before the connection was established <-- this will be included in the initialization error field.
 `;
 
-const sanitizedTraceFromIssuVSCodeGo572 = `Starting client failed
-Message: unsupported URI scheme: (gopls only supports file URIs)
-Code: 0`;
+const sanitizedTraceFromIssueVSCodeGo572LSP317 = `gopls client: couldn't create connection to server.
+  Message: Socket closed before the connection was established
+  Code: -32099 `;

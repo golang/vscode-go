@@ -12,12 +12,17 @@ suite('escapeSubTestName Tests', () => {
 			{
 				test: 'TestFunction',
 				subtest: 'GET /path/with/slashes',
-				want: '\\QTestFunction\\E$/^\\QGET_\\E$/^\\Qpath\\E$/^\\Qwith\\E$/^\\Qslashes\\E'
+				want: 'TestFunction$/^GET_$/^path$/^with$/^slashes'
 			},
 			{
 				test: 'TestMain',
 				subtest: 'All{0,1} tests [run]+ (fine)',
-				want: '\\QTestMain\\E$/^\\QAll{0,1}_tests_[run]+_(fine)\\E'
+				want: 'TestMain$/^All\\{0,1\\}_tests_\\[run\\]\\+_\\(fine\\)'
+			},
+			{
+				test: 'TestMain',
+				subtest: 'Foo|Bar+',
+				want: 'TestMain$/^Foo\\|Bar\\+'
 			}
 		];
 

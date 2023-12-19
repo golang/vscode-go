@@ -24,16 +24,16 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout vscode-go repo code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: vscode-go
       - name: Checkout vscode-go.wiki repo code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{github.repository}}.wiki
           path: wiki
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.21'
           check-latest: true

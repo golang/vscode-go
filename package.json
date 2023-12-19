@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.40.0",
+  "version": "0.40.1",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {
@@ -56,7 +56,7 @@
     "glob": "7.1.7",
     "json-rpc2": "2.0.0",
     "moment": "2.29.4",
-    "semver": "7.3.4",
+    "semver": "7.5.4",
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
     "vscode-debugprotocol": "1.45.0",
@@ -75,7 +75,7 @@
     "@types/sinon": "9.0.11",
     "@types/vscode": "1.67.0",
     "@vscode/debugadapter-testsupport": "1.58.0",
-    "@vscode/test-electron": "2.2.0",
+    "@vscode/test-electron": "2.3.8",
     "@vscode/vsce": "2.19.0",
     "adm-zip": "0.4.16",
     "esbuild": "0.17.10",
@@ -94,9 +94,8 @@
   },
   "activationEvents": [
     "onLanguage:go",
-    "workspaceContains:*.go",
-    "workspaceContains:*/*.go",
-    "workspaceContains:*/*/*.go",
+    "onLanguage:go.sum",
+    "onLanguage:gotmpl",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
@@ -131,8 +130,7 @@
       {
         "id": "go.mod",
         "filenames": [
-          "go.mod",
-          "gopls.mod"
+          "go.mod"
         ],
         "aliases": [
           "Go Module File"

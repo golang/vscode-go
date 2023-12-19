@@ -125,7 +125,7 @@ When developing features in `gopls`, you may need to attach a debugger to `gopls
 
 1. Start a gopls in deamon mode:
 ```
-gopls -listen=:37374" -logfile=auto -debug=:0 serve
+gopls -listen=:37374 -logfile=auto -debug=:0 serve
 ```
 
 Or, if you use vscode for gopls development, you can configure `launch.json` of the `x/tools/gopls` project:
