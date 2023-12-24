@@ -255,7 +255,7 @@ class GoEnv {
 	]);
 
 	/** Vars that should always be visible if they contain a value. */
-	private static vars = ['GOPRIVATE', 'GOMOD', 'GOWORK', 'GOENV'];
+	private static vars = ['GOPRIVATE', 'GOMOD', 'GOWORK', 'GOENV', 'GOTOOLCHAIN'];
 }
 
 class ToolTree implements vscode.TreeItem {

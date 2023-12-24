@@ -13,17 +13,14 @@ import * as vscode from 'vscode';
 import { getLatestGoVersions, GoEnvironmentOption, latestGoVersionKey } from '../../src/goEnvironmentStatus';
 import { getGlobalState, setGlobalState, updateGlobalState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
+import * as fetchModule from 'node-fetch';
 
 import moment = require('moment');
-import semver = require('semver');
-import WebRequest = require('web-request');
 
 describe('#getLatestGoVersion()', function () {
 	this.timeout(40000);
 	let sandbox: sinon.SinonSandbox | undefined;
 	let defaultMemento: vscode.Memento;
-	const webrequest = sinon.mock(WebRequest);
-	const mmnt = sinon.mock(moment);
 
 	const now = 100000000;
 	const oneday = 60 * 60 * 24 * 1000; // 24 hours in milliseconds
@@ -39,20 +36,16 @@ describe('#getLatestGoVersion()', function () {
 		sandbox = sinon.createSandbox();
 		setGlobalState(new MockMemento());
 
-		webrequest
-			.expects('json')
+		const responseJSON = JSON.stringify([
+			{ version: 'go1.15.1', stable: true },
+			{ version: 'go1.14.2', stable: true }
+		]);
+		const fetchMock = sandbox.mock(fetchModule);
+		fetchMock.expects('default')
 			.withArgs('https://go.dev/dl/?mode=json')
-			.returns([
-				{
-					version: 'go1.15.1',
-					stable: true
-				},
-				{
-					version: 'go1.14.2',
-					stable: true
-				}
-			]);
-
+			.returns(Promise.resolve(
+				new fetchModule.Response(responseJSON)));
+		const mmnt = sandbox.mock(moment);
 		mmnt.expects('now').returns(now);
 	});
 
@@ -69,8 +62,8 @@ describe('#getLatestGoVersion()', function () {
 
 		assert.strictEqual(results.length, want.length);
 		for (let i = 0; i < results.length; i++) {
-			assert(results[i].label === want[i].label);
-			assert(results[i].binpath === want[i].binpath);
+			assert.strictEqual(results[i].label, want[i].label);
+			assert.strictEqual(results[i].binpath, want[i].binpath);
 		}
 	});
 
@@ -96,8 +89,8 @@ describe('#getLatestGoVersion()', function () {
 		// check results
 		assert.strictEqual(results.length, want.length);
 		for (let i = 0; i < results.length; i++) {
-			assert(results[i].label === want[i].label);
-			assert(results[i].binpath === want[i].binpath);
+			assert.strictEqual(results[i].label, want[i].label);
+			assert.strictEqual(results[i].binpath, want[i].binpath);
 		}
 	});
 
@@ -116,10 +109,10 @@ describe('#getLatestGoVersion()', function () {
 		];
 
 		// check results
-		assert(results.length === want.length);
+		assert.strictEqual(results.length, want.length);
 		for (let i = 0; i < results.length; i++) {
-			assert(results[i].label === want[i].label);
-			assert(results[i].binpath === want[i].binpath);
+			assert.strictEqual(results[i].label, want[i].label);
+			assert.strictEqual(results[i].binpath, want[i].binpath);
 		}
 	});
 });

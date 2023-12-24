@@ -51,7 +51,7 @@ import {
 	removeDuplicateDiagnostics
 } from '../util';
 import { getToolFromToolPath } from '../utils/pathUtils';
-import WebRequest = require('web-request');
+import fetch from 'node-fetch';
 import { CompletionItemKind, FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
@@ -409,7 +409,7 @@ export async function buildLanguageClient(
 	// when initialization is failed after the connection is established,
 	// we want to handle the connection close error case specially. Capture the error
 	// in initializationFailedHandler and handle it in the connectionCloseHandler.
-	let initializationError: WebRequest.ResponseError<InitializeError> | undefined = undefined;
+	let initializationError: ResponseError<InitializeError> | undefined = undefined;
 	let govulncheckTerminal: IVulncheckTerminal | undefined;
 
 	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
@@ -435,7 +435,7 @@ export async function buildLanguageClient(
 			outputChannel: cfg.outputChannel,
 			traceOutputChannel: cfg.traceOutputChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
-			initializationFailedHandler: (error: WebRequest.ResponseError<InitializeError>): boolean => {
+			initializationFailedHandler: (error: ResponseError<InitializeError>): boolean => {
 				initializationError = error;
 				return false;
 			},
@@ -1287,9 +1287,8 @@ async function goProxyRequest(tool: Tool, endpoint: string): Promise<any> {
 		const url = `${proxy}/${tool.importPath}/@v/${endpoint}`;
 		let data: string;
 		try {
-			data = await WebRequest.json<string>(url, {
-				throwResponseError: true
-			});
+			const response = await fetch(url);
+			data = await response.text();
 		} catch (e) {
 			console.log(`Error sending request to ${proxy}: ${e}`);
 			return null;
@@ -1312,7 +1311,7 @@ export async function suggestGoplsIssueReport(
 	cfg: LanguageServerConfig, // config used when starting this gopls.
 	msg: string,
 	reason: errorKind,
-	initializationError?: WebRequest.ResponseError<InitializeError>
+	initializationError?: ResponseError<InitializeError>
 ) {
 	const issueTime = new Date();
 
