@@ -1,0 +1,4 @@
+golang.org/x/sys v0.15.0 h1:h48lPFYpsTvQJZF4EKyI4aLHaev3CxivZmv7yZig9pc=
+golang.org/x/sys v0.15.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/telemetry v0.0.0-20231127153925-9e8199583d1d h1:ogNR6QNR4EYuxIiZ41ylPQHVyK6iFcGngiOqNHfTc/M=
+golang.org/x/telemetry v0.0.0-20231127153925-9e8199583d1d/go.mod h1:2hdX6fx9lgVpcqv/QJBJjwYNa2E/imfPNoTyf/a6vBo=

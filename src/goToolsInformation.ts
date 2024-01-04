@@ -103,10 +103,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
 		minimumGoVersion: semver.coerce('1.18'),
-		latestVersion: semver.parse('v0.14.1'),
-		latestVersionTimestamp: moment('2023-10-26', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.14.1'),
-		latestPrereleaseVersionTimestamp: moment('2023-10-26', 'YYYY-MM-DD')
+		latestVersion: semver.parse('v0.14.2'),
+		latestVersionTimestamp: moment('2023-11-14', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.14.2'),
+		latestPrereleaseVersionTimestamp: moment('2023-11-14', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
@@ -117,6 +117,15 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Go debugger (Delve)',
 		latestVersion: semver.parse('v1.8.3'),
 		latestVersionTimestamp: moment('2022-04-26', 'YYYY-MM-DD'),
+		minimumGoVersion: semver.coerce('1.18')
+	},
+	'vscgo': {
+		name: 'vscgo',
+		importPath: 'github.com/golang/vscode-go/vscgo',
+		modulePath: 'github.com/golang/vscode-go/vscgo',
+		replacedByGopls: false,
+		isImportant: true,
+		description: 'VS Code Go helper program',
 		minimumGoVersion: semver.coerce('1.18')
 	}
 };

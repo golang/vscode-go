@@ -12,11 +12,11 @@
 .vscode/
 .vscode-test/
 SECURITY.md
+bin/
 build/
 codereview.cfg
 docs/
-go.mod
-go.sum
+go.*
 node_modules/
 out/
 src/

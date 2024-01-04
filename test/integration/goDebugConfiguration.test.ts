@@ -951,7 +951,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test("default debugAdapter for remote mode should be 'legacy' when not in Preview mode", async () => {
+	test("default debugAdapter for remote mode should be 'dlv-dap'", async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -961,24 +961,24 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = extensionInfo.isPreview ? 'dlv-dap' : 'legacy';
+		const want = 'dlv-dap';
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 
-	test('debugAdapter=dlv-dap is allowed with remote mode', async () => {
+	test('debugAdapter=legacy is allowed with remote mode', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
 			request: 'attach',
 			mode: 'remote',
-			debugAdapter: 'dlv-dap',
+			debugAdapter: 'legacy',
 			program: '/path/to/main_test.go',
 			cwd: '/path'
 		};
 
-		const want = 'dlv-dap'; // If requested, dlv-dap is preserved.
+		const want = 'legacy'; // If requested, legacy is preserved.
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);

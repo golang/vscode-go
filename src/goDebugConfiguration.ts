@@ -183,24 +183,35 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		// If neither launch.json nor settings.json gave us the debugAdapter value, we go with the default
-		// from package.json (dlv-dap) unless this is remote attach with a stable release.
+		// from package.json (dlv-dap).
 		if (!debugConfiguration['debugAdapter']) {
 			debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
-			if (debugConfiguration['mode'] === 'remote' && !extensionInfo.isPreview) {
-				debugConfiguration['debugAdapter'] = 'legacy';
-			}
-		}
-		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
-			if (debugConfiguration['mode'] === 'remote') {
-				// This needs to use dlv at version 'v1.7.3-0.20211026171155-b48ceec161d5' or later,
-				// but we have no way of detectng that with an external server ahead of time.
-				// If an earlier version is used, the attach will fail with  warning about versions.
-			} else if (debugConfiguration['port']) {
+			if (
+				debugConfiguration.request === 'attach' &&
+				debugConfiguration['mode'] === 'remote' &&
+				!extensionInfo.isPreview
+			) {
 				this.showWarning(
-					'ignorePortUsedInDlvDapWarning',
-					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/golang/vscode-go/blob/master/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+					'ignoreDefaultDebugAdapterChangeWarning',
+					"We are using the 'dlv-dap' integration for remote debugging by default. Please comment on [issue 3096](https://github.com/golang/vscode-go/issues/3096) if this impacts your workflows."
 				);
 			}
+		}
+		if (debugConfiguration['debugAdapter'] === 'legacy') {
+			this.showWarning(
+				'ignoreLegacyDADeprecationWarning',
+				'Legacy debug adapter is deprecated. Please comment on [issue 3096](https://github.com/golang/vscode-go/issues/3096) if this impacts your workflows.'
+			);
+		}
+		if (
+			debugConfiguration['debugAdapter'] === 'dlv-dap' &&
+			debugConfiguration.request === 'launch' &&
+			debugConfiguration['port']
+		) {
+			this.showWarning(
+				'ignorePortUsedInDlvDapWarning',
+				"`port` with 'dlv-dap' debugAdapter connects to [a `dlv dap` server](https://github.com/golang/vscode-go/wiki/debugging#run-debugee-externally) to launch a program or attach to a process. Remove 'host'/'port' from your launch.json configuration if you have not launched a 'dlv dap' server."
+			);
 		}
 
 		const debugAdapter = debugConfiguration['debugAdapter'] === 'dlv-dap' ? 'dlv-dap' : 'dlv';
