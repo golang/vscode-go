@@ -607,7 +607,10 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 		const { stdout } = await execFile(
 			goCmd,
 			['list', '-m', '--versions', '-json', `${tool.modulePath}@${version}`],
-			{ env, cwd: tmpDir }
+			{
+				env,
+				cwd: tmpDir
+			}
 		);
 		const m = <ListVersionsOutput>JSON.parse(stdout);
 		// Versions field is a list of all known versions of the module,
@@ -794,17 +797,17 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 // Unlike other tools, it is installed under the extension path (which is cleared
 // when a new version is installed).
 export async function installVSCGO(
+	extensionMode: vscode.ExtensionMode,
 	extensionId: string,
 	extensionVersion: string,
 	extensionPath: string,
-	isPreview: boolean,
-	forceInstall = false
+	isPreview: boolean
 ): Promise<string> {
 	// golang.go stable, golang.go-nightly stable -> install once per version.
 	// golang.go dev through launch.json -> install every time.
 	const progPath = path.join(extensionPath, 'bin', correctBinname('vscgo'));
 
-	if (!forceInstall && executableFileExists(progPath)) {
+	if (extensionMode === vscode.ExtensionMode.Production && executableFileExists(progPath)) {
 		return progPath; // reuse existing executable.
 	}
 	telemetryReporter.add('vscgo_install', 1);
@@ -812,25 +815,24 @@ export async function installVSCGO(
 	await mkdir(path.dirname(progPath), { recursive: true });
 	const execFile = util.promisify(cp.execFile);
 
-	const cwd = path.join(extensionPath, 'vscgo');
+	const cwd = path.join(extensionPath);
 	const env = toolExecutionEnvironment();
 	env['GOBIN'] = path.dirname(progPath);
 
+	const importPath = allToolsInformation['vscgo'].importPath;
+	const version =
+		extensionMode !== vscode.ExtensionMode.Production
+			? ''
+			: extensionId !== 'golang.go' || isPreview
+			? '@master'
+			: `@v${extensionVersion}`;
 	// build from source acquired from the module proxy if this is a non-preview version.
-	if (extensionId === 'golang.go' && !isPreview && !extensionVersion.includes('-dev.')) {
-		const importPath = allToolsInformation['vscgo'].importPath;
-		try {
-			const args = ['install', `${importPath}@v${extensionVersion}`];
-			await execFile(getBinPath('go'), args, { cwd, env });
-			return progPath;
-		} catch (e) {
-			telemetryReporter.add('vscgo_install_fail', 1);
-			console.log(`failed to install ${importPath}@v${extensionVersion};\n${e}`);
-			console.log('falling back to install the dev version packaged in the extension');
-		}
+	try {
+		const args = ['install', `${importPath}${version}`];
+		await execFile(getBinPath('go'), args, { cwd, env });
+		return progPath;
+	} catch (e) {
+		telemetryReporter.add('vscgo_install_fail', 1);
+		return Promise.reject(`failed to install vscgo - ${e}`);
 	}
-	// build from the source included in vsix or test extension.
-	const args = ['install', '.'];
-	await execFile(getBinPath('go'), args, { cwd, env }); // throw error in case of failure.
-	return progPath;
 }

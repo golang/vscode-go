@@ -28,7 +28,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/vscode-go/tools/goplssetting"
+	"github.com/golang/vscode-go/extension/tools/goplssetting"
 )
 
 var (
@@ -52,7 +52,7 @@ func checkAndWrite(filename string, oldContent, newContent []byte) {
 		}
 		fmt.Printf("updated %s\n", filename)
 	} else {
-		base := filepath.Join("docs", filepath.Base(filename))
+		base := filepath.Join("..", "docs", filepath.Base(filename))
 		fmt.Printf(`%s have changed in the package.json, but documentation in %s was not updated.
 To update the settings, run "go run tools/generate.go -w".
 `, strings.TrimSuffix(base, ".md"), base)
@@ -180,7 +180,7 @@ func main() {
 			b.WriteString("\n\n")
 		}
 	}
-	rewrite(filepath.Join(dir, "docs", "commands.md"), b.Bytes())
+	rewrite(filepath.Join(dir, "..", "docs", "commands.md"), b.Bytes())
 
 	// Clear so that we can rewrite settings.md.
 	b.Reset()
@@ -218,11 +218,11 @@ func main() {
 	b.WriteString("## Settings for `gopls`\n\n")
 	writeGoplsSettingsSection(b, goplsProperty)
 
-	rewrite(filepath.Join(dir, "docs", "settings.md"), b.Bytes())
+	rewrite(filepath.Join(dir, "..", "docs", "settings.md"), b.Bytes())
 
 	b.Reset()
 	generateDebugConfigTable(b, pkgJSON)
-	rewriteDebugDoc(filepath.Join(dir, "docs", "debugging.md"), b.Bytes())
+	rewriteDebugDoc(filepath.Join(dir, "..", "docs", "debugging.md"), b.Bytes())
 
 	// Only update the latest tool versions if the flag is set.
 	if !*updateLatestToolVersionsFlag {

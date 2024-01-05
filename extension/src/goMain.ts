@@ -105,13 +105,12 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	await updateGoVarsFromConfig(goCtx);
 
 	// for testing or development mode, always rebuild vscgo.
-	const forceInstall = ctx.extensionMode !== vscode.ExtensionMode.Production;
 	installVSCGO(
+		ctx.extensionMode,
 		ctx.extension.id,
 		extensionInfo.version || '',
 		ctx.extensionPath,
-		extensionInfo.isPreview,
-		forceInstall
+		extensionInfo.isPreview
 	)
 		.then((path) => telemetryReporter.setTool(path))
 		.catch((reason) => console.error(reason));

@@ -1628,7 +1628,9 @@ export class GoDebugSession extends LoggingDebugSession {
 											response,
 											2007,
 											'Unable to list global vars: "{e}"',
-											{ e: listPkgVarsErr.toString() }
+											{
+												e: listPkgVarsErr.toString()
+											}
 										);
 									}
 									const globals = this.delve?.isApiV1
@@ -2088,7 +2090,9 @@ export class GoDebugSession extends LoggingDebugSession {
 								response,
 								2001,
 								'Failed to get remote server version: "{e}"',
-								{ e: err.toString() }
+								{
+									e: err.toString()
+								}
 							);
 						}
 						const clientVersion = this.delve?.isApiV1 ? 1 : 2;

@@ -6,7 +6,7 @@ ENV GOBIN /gobin
 
 # Install other Go tools tests depend on
 RUN mkdir -p /scratch/installtools
-ADD tools/installtools/main.go /scratch/installtools/main.go
+ADD extension/tools/installtools/main.go /scratch/installtools/main.go
 RUN go run /scratch/installtools/main.go
 
 FROM node:latest

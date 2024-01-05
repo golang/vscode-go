@@ -79,7 +79,7 @@ func requireEnvVars(vars ...string) {
 	}
 }
 
-// checkWD checks if the working directory is the root of the repository where package.json is located.
+// checkWD checks if the working directory is the extension directory where package.json is located.
 func checkWD() {
 	wd, err := os.Getwd()
 	if err != nil {

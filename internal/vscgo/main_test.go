@@ -5,7 +5,7 @@
 // The binary vscgo is a helper of the VS Code Go extension.
 // The source is distributed with the extension and compiled when
 // the extension is first activated.
-package main
+package vscgo
 
 import (
 	"bufio"

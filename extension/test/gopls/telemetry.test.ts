@@ -21,6 +21,7 @@ import os = require('os');
 import { rmdirRecursive } from '../../src/util';
 import { extensionId } from '../../src/const';
 import { executableFileExists, fileExists } from '../../src/utils/pathUtils';
+import { ExtensionMode } from 'vscode';
 
 describe('# prompt for telemetry', () => {
 	it(
@@ -186,11 +187,11 @@ describe('# telemetry reporter using vscgo', async () => {
 	suiteSetup(async () => {
 		try {
 			vscgo = await installVSCGO(
+				ExtensionMode.Test,
 				extensionId,
 				'',
 				extensionDevelopmentPath,
-				true /*isPreview*/,
-				true /* force install */
+				true /*isPreview*/
 			);
 		} catch (e) {
 			assert.fail(`failed to install vscgo needed for testing: ${e}`);

@@ -24,7 +24,7 @@ steps:
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
     args:
       - ci
-    dir: vscode-go
+    dir: vscode-go/extension
     id: install npm dependencies
     entrypoint: npm
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
@@ -38,14 +38,14 @@ steps:
     args:
       - run
       - package
-    dir: vscode-go
+    dir: vscode-go/extension
     id: build .vsix
     entrypoint: npm
   - name: ubuntu
     args:
       - '-c'
       - ls -1 go-nightly-*.vsix | tee /workspace/vsix_name.txt
-    dir: vscode-go
+    dir: vscode-go/extension
     id: store the vsix file name
     entrypoint: bash
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
@@ -64,7 +64,7 @@ steps:
         npx vsce publish -i $(cat /workspace/vsix_name.txt) -p $$VSCE_PAT
         --baseContentUrl=https://github.com/golang/vscode-go
         --baseImagesUrl=https://github.com/golang/vscode-go
-    dir: vscode-go
+    dir: vscode-go/extension
     id: publish nightly extension
     entrypoint: bash
     secretEnv:

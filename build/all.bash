@@ -37,36 +37,39 @@ setup_virtual_display() {
 go_binaries_info() {
   echo "**** Go version ****"
   go version
+  df -h | grep shm
 }
 
 run_doc_test() {
-  df -h | grep shm
-
   echo "**** Run settings generator ****"
-  go run ./tools/generate.go -w=false -gopls=true
-
-  echo "**** Test build ****"
-  npm ci
-  npm run compile
+  go run -C extension ./tools/generate.go -w=false -gopls=true
 }
 
 run_test() {
+  pushd .
+  cd "$(root_dir)/extension"
+  echo "**** Test build ****"
+  npm ci
+  npm run compile
+
   echo "**** Run Go tests ****"
   go test ./...
 
   echo "**** Run test ****"
   npm run unit-test
   npm test --silent
+  popd
 }
 
 run_lint() {
+  pushd .
+  cd "$(root_dir)/extension"
   echo "**** Run lint ****"
   npm run lint
+  popd
 }
 
 run_test_in_docker() {
-  which npm && npm version || echo "no npm"
-  which go && go version || echo "no go"
   echo "**** Building the docker image ***"
   docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
 
@@ -75,6 +78,8 @@ run_test_in_docker() {
 }
 
 prepare_nightly() {
+  pushd .
+  cd "$(root_dir)/extension"
   # Version format: YYYY.MM.DDHH based on the latest commit timestamp.
   # e.g. 2020.1.510 is the version built based on a commit that was made
   #      on 2020/01/05 10:00
@@ -98,10 +103,11 @@ prepare_nightly() {
   sed '/^# Go for Visual Studio Code$/d' README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
   # Replace src/const.ts with build/nightly/const.ts.
   cp build/nightly/const.ts src/const.ts
+  popd
 }
 
 main() {
-  cd "$(root_dir)"  # always run from the script root.
+  cd "$(root_dir)"  # always start to run from the extension source root.
   case "$1" in
     "help"|"-h"|"--help")
       usage

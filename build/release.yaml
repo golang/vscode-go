@@ -31,15 +31,15 @@ steps:
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
     args:
       - ci
-    dir: vscode-go
+    dir: vscode-go/extension
     id: install npm dependencies
     entrypoint: npm
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
     args:
       - -c
       - |
-        go run build/release.go package &&
-        go run build/release.go publish
+        go run -C extension tools/release/release.go package &&
+        go run -C extension tools/release/release.go publish
     dir: vscode-go
     id: package and publish the extension
     entrypoint: bash
@@ -56,7 +56,7 @@ artifacts:
   objects:
     location: 'gs://$PROJECT_ID/releases/$TAG_NAME'
     paths:
-      - vscode-go/*.vsix
+      - vscode-go/extension/*.vsix
 availableSecrets:
   secretManager:
     - versionName: projects/$PROJECT_ID/secrets/$_VSCE_TOKEN/versions/latest
