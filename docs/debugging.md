@@ -25,7 +25,7 @@ adapter in favor of direct communication with Delve via
 Many features and settings described in this document may be available only with
 the new `dlv-dap` mode. For troubleshooting and configuring the legacy debug
 adapter, see
-[the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
+[the legacy debug adapter documentation](debugging-legacy.md).
 
 ## Get started
 
@@ -560,7 +560,7 @@ integration with Delve becomes possible.
 <p align="center"><img src="images/vscode-go-debug-arch.png" alt="vscode-go debug architecture"> </p>
 
 For information on debugging using the legacy debug adapter, please see the old
-[Debugging Documentation](debugging.md). Note that many new or enhanced features
+[Debugging Documentation](debugging-legacy.md). Note that many new or enhanced features
 discussed in this document may not be available with the legacy debug adapter.
 
 ### Handling STDIN
