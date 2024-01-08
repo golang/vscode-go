@@ -15,8 +15,12 @@ import { getBinPath } from './util';
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
 
-// Supports only passing interface, see TODO in implCursor to finish
-const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
+// Accepts input of the form:
+// [f *File] io.Closer [, ...]
+// [f *File] io.Closer
+// io.Closer (type name will be deduced from variable name from cursor position)
+// io.Closer, io.Reader (same as above)
+const inputRegex = /^(?<identifier>(?<variable>[\p{Letter}_][\p{Letter}_\p{Number}\d]*) *(?<type>[*]? *[\p{Letter}_][\p{Letter}_\p{Number}\d]*) +)?(?<interfaces>(?:[\p{Letter}_][\p{Letter}_\p{Number}\d\.\-\/]*)+(?: *, *(?:[\p{Letter}_][\p{Letter}_\p{Number}\d\.\-\/]*)+)*)$/u;
 
 export const implCursor: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
@@ -27,7 +31,7 @@ export const implCursor: CommandFactory = () => () => {
 	const cursor = editor.selection;
 	return vscode.window
 		.showInputBox({
-			placeHolder: 'f *File io.Closer',
+			placeHolder: '[f *File] io.Closer [, ...]',
 			prompt: 'Enter receiver and interface to implement.'
 		})
 		.then((implInput) => {
@@ -35,42 +39,64 @@ export const implCursor: CommandFactory = () => () => {
 				return;
 			}
 			const matches = implInput.match(inputRegex);
-			if (!matches) {
+			if (!matches || !matches.groups || !matches.groups.interfaces) {
 				vscode.window.showInformationMessage(`Not parsable input: ${implInput}`);
 				return;
 			}
 
-			// TODO: automatically detect type name at cursor
-			// if matches[1] is undefined then detect receiver type
-			// take first character and use as receiver name
+			let identifier = matches.groups?.identifier;
+			if (!identifier) {
+				const beforeCursor = new vscode.Range(new vscode.Position(cursor.start.line, 0), cursor.start);
+				const beforeCursorText = editor.document.getText(beforeCursor);
+				const typeIndex = beforeCursorText.lastIndexOf('type');
+				if (typeIndex === -1) {
+					vscode.window.showInformationMessage('No identifier found at cursor.');
+					return;
+				}
 
-			runGoImpl([matches[1], matches[2]], cursor.start, editor);
+				const variable = editor.document.getText(cursor)[0].toLowerCase();
+				identifier = editor.document.getText(cursor);
+				identifier = `${variable} *${identifier}`;
+
+				let newPosition = cursor.start.with(cursor.start.line + 1, 0);
+				newPosition = newPosition.translate(1, 0);
+				editor.selection = new vscode.Selection(newPosition, newPosition);
+			}
+			const interfaces = matches.groups?.interfaces.trim().split(',');
+			interfaces.forEach((iface, i) => {
+				interfaces[i] = iface.trim();
+			});
+			runGoImpl([identifier, interfaces], editor);
 		});
 };
 
-function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor) {
+function runGoImpl(prompt: [string, string[]], editor: vscode.TextEditor) {
 	const goimpl = getBinPath('impl');
-	const p = cp.execFile(
-		goimpl,
-		args,
-		{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
-		(err, stdout, stderr) => {
-			if (err && (<any>err).code === 'ENOENT') {
-				promptForMissingTool('impl');
-				return;
-			}
+	prompt[1].forEach((iface) => {
+		const p = cp.execFile(
+			goimpl,
+			[prompt[0], iface],
+			{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
+			(err, stdout, stderr) => {
+				if (err && (<any>err).code === 'ENOENT') {
+					promptForMissingTool('impl');
+					return;
+				}
 
-			if (err) {
-				vscode.window.showInformationMessage(`Cannot stub interface: ${stderr}`);
-				return;
-			}
+				if (err) {
+					vscode.window.showInformationMessage(`Cannot stub interface: ${stderr}`);
+					return;
+				}
 
-			editor.edit((editBuilder) => {
-				editBuilder.insert(insertPos, stdout);
-			});
+				(function (out: string) {
+					editor.edit((editBuilder) => {
+						editBuilder.insert(editor.selection.start, out);
+					});
+				})(stdout);
+			}
+		);
+		if (p.pid) {
+			p.stdin?.end();
 		}
-	);
-	if (p.pid) {
-		p.stdin?.end();
-	}
+	});
 }
