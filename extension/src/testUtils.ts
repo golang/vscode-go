@@ -545,10 +545,13 @@ export function computeTestCommand(
 	addJSONFlag: boolean | undefined; // true if we add extra -json flag for stream processing.
 } {
 	const args: Array<string> = ['test'];
+	const outArgs: Array<string> = ['test']; // command to show
 	// user-specified flags
 	const argsFlagIdx = testconfig.flags?.indexOf('-args') ?? -1;
 	const userFlags = argsFlagIdx < 0 ? testconfig.flags : testconfig.flags.slice(0, argsFlagIdx);
 	const userArgsFlags = argsFlagIdx < 0 ? [] : testconfig.flags.slice(argsFlagIdx);
+
+	args.push(...targets);
 
 	// flags to limit test time
 	if (testconfig.isBenchmark) {
@@ -587,20 +590,11 @@ export function computeTestCommand(
 	// all other test run/benchmark flags
 	args.push(...targetArgs(testconfig));
 
-	const outArgs = args.slice(0); // command to show
-
 	// if user set -v, set -json to emulate streaming test output
 	const addJSONFlag = (userFlags.includes('-v') || testconfig.goTestOutputConsumer) && !userFlags.includes('-json');
 	if (addJSONFlag) {
 		args.push('-json'); // this is not shown to the user.
 	}
-
-	if (targets.length > 4) {
-		outArgs.push('<long arguments omitted>');
-	} else {
-		outArgs.push(...targets);
-	}
-	args.push(...targets);
 
 	// ensure that user provided flags are appended last (allow use of -args ...)
 	// ignore user provided -run flag if we are already using it
@@ -609,10 +603,16 @@ export function computeTestCommand(
 	}
 
 	args.push(...userFlags);
-	outArgs.push(...userFlags);
-
 	args.push(...userArgsFlags);
-	outArgs.push(...userArgsFlags);
+
+	// build outArgs
+	if (targets.length > 4) {
+		outArgs.push('<long arguments omitted>');
+	} else {
+		outArgs.push(...targets);
+	}
+
+	outArgs.push(...args.slice(targets.length + 1));
 
 	return {
 		args,
