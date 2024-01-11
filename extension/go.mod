@@ -24,7 +24,7 @@ require (
 	github.com/stamblerre/sheets v0.0.0-20220322044539-54bdb620f700 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20230809094429-853ea248256d // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
