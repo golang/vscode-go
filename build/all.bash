@@ -78,8 +78,6 @@ run_test_in_docker() {
 }
 
 prepare_nightly() {
-  pushd .
-  cd "$(root_dir)/extension"
   # Version format: YYYY.MM.DDHH based on the latest commit timestamp.
   # e.g. 2020.1.510 is the version built based on a commit that was made
   #      on 2020/01/05 10:00
@@ -87,7 +85,7 @@ prepare_nightly() {
   local COMMIT=`git log -1 --format=%H`
   echo "**** Preparing nightly release : ${VER} (${COMMIT}) ***"
   # Update package.json
-  (cat package.json | jq --arg VER "${VER}" '
+  (cat extension/package.json | jq --arg VER "${VER}" '
 .version=$VER |
 .preview=true |
 .name="go-nightly" |
@@ -95,15 +93,14 @@ prepare_nightly() {
 .publisher="golang" |
 .description="Rich Go language support for Visual Studio Code (Nightly)" |
 .contributes.configuration.properties."go.delveConfig".properties.hideSystemGoroutines.default=true
-') > /tmp/package.json && cp /tmp/package.json package.json
+') > /tmp/package.json && cp /tmp/package.json extension/package.json
 
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
-  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new CHANGELOG.md
+  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new extension/CHANGELOG.md
   # Replace the heading of README.md with the heading for Go Nightly.
-  sed '/^# Go for Visual Studio Code$/d' README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
+  sed '/^# Go for Visual Studio Code$/d' extension/README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new extension/README.md
   # Replace src/const.ts with build/nightly/const.ts.
-  cp build/nightly/const.ts src/const.ts
-  popd
+  cp build/nightly/const.ts extension/src/const.ts
 }
 
 main() {

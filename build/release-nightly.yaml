@@ -29,7 +29,7 @@ steps:
     entrypoint: npm
   - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
     args:
-      - build/all.bash  // TODO: replace all.bash with release.go
+      - build/all.bash
       - prepare_nightly
     dir: vscode-go
     id: prepare nightly release
