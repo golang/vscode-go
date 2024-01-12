@@ -48,7 +48,7 @@ jobs:
       - name: Install Go tools (Modules mode)
         run: |
             go version
-            go run ./tools/installtools/main.Go
+            go run ./tools/installtools/main.go
         working-directory: ./extension
         env:
           GO111MODULE: on
