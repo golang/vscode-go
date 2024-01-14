@@ -155,27 +155,76 @@ export async function getTestFunctions(
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
+	const result = await getTestFunctionsAndTestifyHint(goCtx, doc, token);
+	return result.testFunctions;
+}
+
+/**
+ * Returns all Go unit test functions in the given source file and an hint if testify is used.
+ *
+ * @param doc A Go source file
+ */
+export async function getTestFunctionsAndTestifyHint(
+	goCtx: GoExtensionContext,
+	doc: vscode.TextDocument,
+	token?: vscode.CancellationToken
+): Promise<{ testFunctions?: vscode.DocumentSymbol[]; foundTestifyTestFunction?: boolean }> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx, true);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	if (!symbols || symbols.length === 0) {
-		return;
+		return {};
 	}
 	const symbol = symbols[0];
 	if (!symbol) {
-		return;
+		return {};
 	}
 	const children = symbol.children;
 
 	// With gopls symbol provider, the symbols have the imports of all
 	// the package, so suite tests from all files will be found.
 	const testify = importsTestify(symbols);
-	return children.filter(
+
+	const allTestFunctions = children.filter(
 		(sym) =>
-			(sym.kind === vscode.SymbolKind.Function || sym.kind === vscode.SymbolKind.Method) &&
+			sym.kind === vscode.SymbolKind.Function &&
 			// Skip TestMain(*testing.M) - see https://github.com/golang/vscode-go/issues/482
 			!testMainRegex.test(doc.lineAt(sym.range.start.line).text) &&
-			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name))
 	);
+
+	const allTestMethods = testify
+		? children.filter((sym) => sym.kind === vscode.SymbolKind.Method && testMethodRegex.test(sym.name))
+		: [];
+
+	return {
+		testFunctions: allTestFunctions.concat(allTestMethods),
+		foundTestifyTestFunction: allTestMethods.length > 0
+	};
+}
+
+/**
+ * Returns all the Go test functions (or benchmark) from the given Go source file, and the associated test suites when testify is used.
+ *
+ * @param doc A Go source file
+ */
+export async function getTestFunctionsAndTestSuite(
+	isBenchmark: boolean,
+	goCtx: GoExtensionContext,
+	doc: vscode.TextDocument
+): Promise<{ testFunctions: vscode.DocumentSymbol[]; suiteToTest: SuiteToTestMap }> {
+	if (isBenchmark) {
+		return {
+			testFunctions: (await getBenchmarkFunctions(goCtx, doc)) ?? [],
+			suiteToTest: {}
+		};
+	}
+
+	const { testFunctions, foundTestifyTestFunction } = await getTestFunctionsAndTestifyHint(goCtx, doc);
+
+	return {
+		testFunctions: testFunctions ?? [],
+		suiteToTest: foundTestifyTestFunction ? await getSuiteToTestMap(goCtx, doc) : {}
+	};
 }
 
 /**
@@ -210,9 +259,7 @@ export function getTestFunctionDebugArgs(
 	const instanceMethod = extractInstanceTestName(testFunctionName);
 	if (instanceMethod) {
 		const testFns = findAllTestSuiteRuns(document, testFunctions, suiteToFunc);
-		const testSuiteRuns = ['-test.run', `^${testFns.map((t) => t.name).join('|')}$`];
-		const testSuiteTests = ['-testify.m', `^${instanceMethod}$`];
-		return [...testSuiteRuns, ...testSuiteTests];
+		return ['-test.run', `^${testFns.map((t) => t.name).join('|')}$/^${instanceMethod}$`];
 	} else {
 		return ['-test.run', `^${testFunctionName}$`];
 	}

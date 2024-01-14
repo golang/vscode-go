@@ -18,12 +18,12 @@ import {
 	getBenchmarkFunctions,
 	getTestFlags,
 	getTestFunctionDebugArgs,
-	getSuiteToTestMap,
-	getTestFunctions,
+	getTestFunctionsAndTestSuite,
 	getTestTags,
 	goTest,
 	TestConfig,
-	SuiteToTestMap
+	SuiteToTestMap,
+	getTestFunctions
 } from './testUtils';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
@@ -54,9 +54,11 @@ async function _testAtCursor(
 		throw new NotFoundError('No tests found. Current file is not a test file.');
 	}
 
-	const getFunctions = cmd === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-	const testFunctions = (await getFunctions(goCtx, editor.document)) ?? [];
-	const suiteToTest = await getSuiteToTestMap(goCtx, editor.document);
+	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(
+		cmd === 'benchmark',
+		goCtx,
+		editor.document
+	);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const testFunctionName =
@@ -95,8 +97,7 @@ async function _subTestAtCursor(
 	}
 
 	await editor.document.save();
-	const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
-	const suiteToTest = await getSuiteToTestMap(goCtx, editor.document);
+	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(false, goCtx, editor.document);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
@@ -164,7 +165,7 @@ async function _subTestAtCursor(
 export function testAtCursor(cmd: TestAtCursorCmd): CommandFactory {
 	return (ctx, goCtx) => (args: any) => {
 		const goConfig = getGoConfig();
-		_testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
+		return _testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
 			} else {

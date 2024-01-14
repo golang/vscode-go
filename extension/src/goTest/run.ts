@@ -21,14 +21,7 @@ import vscode = require('vscode');
 import { outputChannel } from '../goStatus';
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
-import {
-	getBenchmarkFunctions,
-	getTestFlags,
-	getSuiteToTestMap,
-	getTestFunctions,
-	goTest,
-	GoTestOutput
-} from '../testUtils';
+import { getTestFlags, getTestFunctionsAndTestSuite, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
@@ -168,9 +161,11 @@ export class GoTestRunner {
 		await doc.save();
 
 		const goConfig = getGoConfig(test.uri);
-		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-		const testFunctions = await getFunctions(this.goCtx, doc, token);
-		const suiteToTest = await getSuiteToTestMap(this.goCtx, doc, token);
+		const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(
+			kind === 'benchmark',
+			this.goCtx,
+			doc
+		);
 
 		// TODO Can we get output from the debug session, in order to check for
 		// run/pass/fail events?
