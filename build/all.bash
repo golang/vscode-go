@@ -98,7 +98,7 @@ prepare_nightly() {
   # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
   printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new extension/CHANGELOG.md
   # Replace the heading of README.md with the heading for Go Nightly.
-  sed '/^# Go for Visual Studio Code$/d' extension/README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new extension/README.md
+  sed '/^# Go for Visual Studio Code$/d' README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
   # Replace src/const.ts with build/nightly/const.ts.
   cp build/nightly/const.ts extension/src/const.ts
 }

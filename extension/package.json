@@ -37,7 +37,7 @@
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm -rf ./out/* && rm -rf ./bin/* && rm *.vsix",
-    "package": "npx vsce package",
+    "package": "npx vsce package --readme-path ../README.md",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
@@ -78,7 +78,7 @@
     "@types/vscode": "1.67.0",
     "@vscode/debugadapter-testsupport": "1.58.0",
     "@vscode/test-electron": "2.3.8",
-    "@vscode/vsce": "2.19.0",
+    "@vscode/vsce": "2.22.1-2",
     "adm-zip": "0.4.16",
     "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
