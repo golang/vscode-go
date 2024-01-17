@@ -26,18 +26,24 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
 
+var flagN = flag.Bool("n", false, "print the underlying commands but do not run them")
+
 func main() {
-	if len(os.Args) != 2 {
-		fatalf("usage: %s [package|publish]", os.Args[0])
+	flag.Parse()
+	if flag.NArg() != 1 {
+		usage()
+		os.Exit(1)
 	}
-	cmd := os.Args[1]
+	cmd := flag.Arg(0)
 
 	checkWD()
 	requireTools("jq", "npx", "gh", "git")
@@ -48,13 +54,20 @@ func main() {
 
 	switch cmd {
 	case "package":
-		buildPackage(version, vsix)
+		buildPackage(version, tagName, vsix)
 	case "publish":
 		requireEnvVars("VSCE_PAT", "GITHUB_TOKEN")
 		publish(tagName, vsix, isRC)
 	default:
-		fatalf("usage: %s [package|publish]", os.Args[0])
+		usage()
+		os.Exit(1)
 	}
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <flags> [package|publish]\n\n", os.Args[0])
+	fmt.Fprintln(os.Stderr, "Flags:")
+	flag.PrintDefaults()
 }
 
 func fatalf(format string, args ...any) {
@@ -119,44 +132,73 @@ func releaseVersionInfo() (tagName, version string, isPrerelease bool) {
 
 	cmd := exec.Command("jq", "-r", ".version", "package.json")
 	cmd.Stderr = os.Stderr
-	versionInPackageJSON, err := cmd.Output()
-	if err != nil {
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	if err := commandRun(cmd); err != nil {
 		fatalf("failed to read package.json version")
+	}
+	versionInPackageJSON := buf.Bytes()
+	if *flagN {
+		return tagName, mmp + label, isPrerelease
 	}
 	if got := string(bytes.TrimSpace(versionInPackageJSON)); got != mmp {
 		fatalf("package.json version %q does not match TAG_NAME %q", got, tagName)
 	}
-
 	return tagName, mmp + label, isPrerelease
 }
 
+func commandRun(cmd *exec.Cmd) error {
+	if *flagN {
+		if cmd.Dir != "" {
+			fmt.Fprintf(os.Stderr, "cd %v\n", cmd.Dir)
+		}
+		fmt.Fprintf(os.Stderr, "%v\n", strings.Join(cmd.Args, " "))
+		return nil
+	}
+	return cmd.Run()
+}
+
+func copy(dst, src string) error {
+	if *flagN {
+		fmt.Fprintf(os.Stderr, "cp %s %s\n", src, dst)
+		return nil
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
+}
+
 // buildPackage builds the extension of the given version, using npx vsce package.
-func buildPackage(version, output string) {
+func buildPackage(version, tagName, output string) {
+	if err := copy("README.md", filepath.Join("..", "README.md")); err != nil {
+		fatalf("failed to copy README.md: %v", err)
+	}
+	// build the package.
 	cmd := exec.Command("npx", "vsce", "package",
 		"-o", output,
-		"--baseContentUrl", "https://github.com/golang/vscode-go",
-		"--baseImagesUrl", "https://github.com/golang/vscode-go",
+		"--baseContentUrl", "https://github.com/golang/vscode-go/raw/"+tagName,
+		"--baseImagesUrl", "https://github.com/golang/vscode-go/raw/"+tagName,
 		"--no-update-package-json",
 		"--no-git-tag-version",
 		version)
 
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fatalf("failed to build package")
-	}
-
-	cmd = exec.Command("git", "add", output)
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fatalf("failed to build package")
+	if err := commandRun(cmd); err != nil {
+		fatalf("failed to build package: %v", err)
 	}
 }
 
 // publish publishes the extension to the VS Code Marketplace and GitHub, using npx vsce and gh release create.
 func publish(tagName, packageFile string, isPrerelease bool) {
 	// check if the package file exists.
-	if _, err := os.Stat(packageFile); os.IsNotExist(err) {
-		fatalf("package file %q does not exist. Did you run 'go run build/release.go package'?", packageFile)
+	if *flagN {
+		fmt.Fprintf(os.Stderr, "stat %s\n", packageFile)
+	} else {
+		if _, err := os.Stat(packageFile); os.IsNotExist(err) {
+			fatalf("package file %q does not exist. Did you run 'go run build/release.go package'?", packageFile)
+		}
 	}
 
 	// publish release to GitHub. This will create a draft release - manually publish it after reviewing the draft.
@@ -170,23 +212,20 @@ func publish(tagName, packageFile string, isPrerelease bool) {
 	ghArgs = append(ghArgs, tagName, packageFile)
 	cmd := exec.Command("gh", ghArgs...)
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fatalf("failed to publish release")
+	if err := commandRun(cmd); err != nil {
+		fatalf("failed to publish release: %v", err)
 	}
 
 	if isPrerelease {
 		return // TODO: release with the -pre-release flag if isPrerelease is set.
 	}
 
-	/* TODO(hyangah): uncomment this to finalize the release workflow migration.
 	npxVsceArgs := []string{"vsce", "publish", "-i", packageFile}
-
 	cmd2 := exec.Command("npx", npxVsceArgs...)
 	cmd2.Stderr = os.Stderr
-	if err := cmd2.Run(); err != nil {
+	if err := commandRun(cmd2); err != nil {
 		fatalf("failed to publish release")
 	}
-	*/
 }
 
 // commitSHA returns COMMIT_SHA environment variable, or the commit SHA of the current branch.

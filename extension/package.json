@@ -37,7 +37,7 @@
   ],
   "scripts": {
     "clean": "rm -rf ./dist/* && rm -rf ./out/* && rm -rf ./bin/* && rm *.vsix",
-    "package": "npx vsce package --readme-path ../README.md",
+    "package": "cp ../README.md ./README.md && npx vsce package --baseContentUrl https://github.com/golang/vscode-go/raw/HEAD --baseImagesUrl https://github.com/golang/vscode-go/raw/HEAD",
     "vscode:prepublish": "npm run compile",
     "bundle": "esbuild src/goMain.ts debugAdapter=src/debugAdapter/goDebug.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node",
     "bundle-dev": "npm run bundle -- --sourcemap",
