@@ -31,7 +31,7 @@ require (
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/telemetry v0.0.0-20240104150930-463b4b688e47 // indirect
+	golang.org/x/telemetry v0.0.0-20240116212745-88e2d1c7f9a2 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/api v0.136.0 // indirect
