@@ -1,3 +1,8 @@
+## v0.40.2 - 22 Jan, 2023
+
+This is a point release to update the upcoming developer survey information
+([the commit history](https://github.com/golang/vscode-go/compare/v0.40.1...v0.40.2)).
+
 ## v0.40.1 - 21 Dec, 2023
 
 This is a point release to fix minor bugs. A comprehensive list of bug fixes and
