@@ -41,7 +41,7 @@
 			"description": "Snippet for main package & function"
 		},
 		"function declaration": {
-			"prefix": "func",
+			"prefix": "fu",
 			"body": "func $1($2) $3 {\n\t$0\n}",
 			"description": "Snippet for function declaration"
 		},
