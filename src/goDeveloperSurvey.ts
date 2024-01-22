@@ -123,8 +123,8 @@ export function shouldPromptForSurvey(now: Date, cfg: DeveloperSurveyConfig): De
 
 export async function promptForDeveloperSurvey(cfg: DeveloperSurveyConfig, now: Date): Promise<DeveloperSurveyConfig> {
 	const selected = await vscode.window.showInformationMessage(
-		`"Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
-by participating in this 10-minute Go Developer Survey (2023 H2) before ${endDate.toDateString()}?`,
+		`Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
+by participating in this 10-minute Go Developer Survey (January 2024) before ${endDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
