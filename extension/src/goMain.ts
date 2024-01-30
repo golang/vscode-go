@@ -33,11 +33,11 @@ import { goGetPackage } from './goGetPackage';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
-	offerToInstallTools,
 	promptForMissingTool,
 	updateGoVarsFromConfig,
 	suggestUpdates,
-	installVSCGO
+	maybeInstallVSCGO,
+	maybeInstallImportantTools
 } from './goInstallTools';
 import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
@@ -105,7 +105,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	await updateGoVarsFromConfig(goCtx);
 
 	// for testing or development mode, always rebuild vscgo.
-	installVSCGO(
+	maybeInstallVSCGO(
 		ctx.extensionMode,
 		ctx.extension.id,
 		extensionInfo.version || '',
@@ -115,15 +115,15 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		.then((path) => telemetryReporter.setTool(path))
 		.catch((reason) => console.error(reason));
 
-	suggestUpdates();
-	offerToInstallLatestGoVersion();
-	offerToInstallTools();
-
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
 	registerCommand('go.languageserver.maintain', commands.startGoplsMaintainerInterface);
 
+	await maybeInstallImportantTools(cfg.get('alternateTools'));
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
+
+	suggestUpdates();
+	offerToInstallLatestGoVersion(ctx);
 
 	initCoverageDecorators(ctx);
 

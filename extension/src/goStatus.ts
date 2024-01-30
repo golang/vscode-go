@@ -11,7 +11,7 @@ import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
-import { isGoFile } from './goMode';
+import { GoDocumentSelector, isGoFile } from './goMode';
 import { isModSupported, runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
@@ -199,7 +199,7 @@ export function showGoStatusBar() {
 }
 
 // status bar item to show warning messages such as missing analysis tools.
-const statusBarEntries = new Map<string, vscode.StatusBarItem>();
+const statusBarEntries = new Map<string, vscode.LanguageStatusItem>();
 
 export function removeGoStatus(name: string) {
 	const statusBarEntry = statusBarEntries.get(name);
@@ -209,16 +209,11 @@ export function removeGoStatus(name: string) {
 	}
 }
 
-export function addGoStatus(name: string, message: string, command: string, tooltip?: string) {
+export function addGoStatus(name: string): vscode.LanguageStatusItem {
 	let statusBarEntry = statusBarEntries.get(name);
 	if (!statusBarEntry) {
-		statusBarEntry = vscode.window.createStatusBarItem(name, vscode.StatusBarAlignment.Right, Number.MIN_VALUE);
+		statusBarEntry = vscode.languages.createLanguageStatusItem(name, GoDocumentSelector);
 		statusBarEntries.set(name, statusBarEntry);
-
-		statusBarEntry.name = name;
 	}
-	statusBarEntry.text = `$(alert) ${message}`;
-	statusBarEntry.command = command;
-	statusBarEntry.tooltip = tooltip;
-	statusBarEntry.show();
+	return statusBarEntry;
 }

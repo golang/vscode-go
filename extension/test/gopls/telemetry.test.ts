@@ -13,7 +13,7 @@ import {
 	TelemetryService
 } from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
-import { installVSCGO } from '../../src/goInstallTools';
+import { maybeInstallVSCGO } from '../../src/goInstallTools';
 import assert from 'assert';
 import path from 'path';
 import * as fs from 'fs-extra';
@@ -189,7 +189,7 @@ describe('# telemetry reporter using vscgo', async function () {
 
 	suiteSetup(async () => {
 		try {
-			vscgo = await installVSCGO(
+			vscgo = await maybeInstallVSCGO(
 				ExtensionMode.Test,
 				extensionId,
 				'',

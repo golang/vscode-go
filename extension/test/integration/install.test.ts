@@ -7,8 +7,8 @@
 import AdmZip = require('adm-zip');
 import assert from 'assert';
 import * as config from '../../src/config';
-import { inspectGoToolVersion, installTools } from '../../src/goInstallTools';
-import { getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
+import { inspectGoToolVersion, installTools, maybeInstallImportantTools } from '../../src/goInstallTools';
+import { Tool, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
 import cp = require('child_process');
@@ -378,4 +378,92 @@ suite('listOutdatedTools', () => {
 		});
 		assert.deepStrictEqual(x, ['dlv']);
 	});
+});
+
+suite('maybeInstallImportantTools tests', () => {
+	let sandbox: sinon.SinonSandbox;
+
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+
+	teardown(async () => sandbox.restore());
+
+	// runTest actually executes the logic of the test using a fake proxy.
+	async function runTest(
+		toolsManager: goInstallTools.IToolsManager,
+		alternateToolsCfg: { [key: string]: string } = {},
+		wantMissingTools: string[] = []
+	) {
+		// maybeInstallImportantTools shouldn't trigger gopls restart.
+		// The caller ('activate') will explicitly start it.
+		sandbox
+			.stub(vscode.commands, 'executeCommand')
+			.withArgs('go.languageserver.restart')
+			.throws(new Error('gopls shouldn not be restarted'));
+
+		try {
+			const statusBarItem = await maybeInstallImportantTools(alternateToolsCfg, toolsManager);
+			assert.strictEqual(statusBarItem.busy, false);
+			assert.strictEqual(
+				statusBarItem.severity,
+				wantMissingTools && wantMissingTools.length > 0
+					? vscode.LanguageStatusSeverity.Error
+					: vscode.LanguageStatusSeverity.Information,
+				statusBarItem.text
+			);
+			for (const tool of wantMissingTools) {
+				assert(statusBarItem.detail!.includes(tool), statusBarItem.detail + ' does not contain ' + tool);
+			}
+		} catch (e) {
+			assert.fail(`maybeInstallImportantTools failed: ${e}`);
+		}
+	}
+
+	test('Successfully install gopls & linter', async () => {
+		await runTest(
+			toolsManagerForTest(),
+			{}, // emtpry alternateTools.
+			[] // no missing tools after run.
+		);
+	});
+
+	test('Do not install alternate tools', async () => {
+		await runTest(toolsManagerForTest(), { gopls: 'fork.example.com/gopls' }, ['gopls']);
+	});
+
+	test('Recover when installation fails', async () => {
+		const tm = toolsManagerForTest();
+		tm.installTool = () => {
+			return Promise.resolve('failed');
+		};
+		await runTest(tm, {}, ['gopls', 'staticcheck']);
+	});
+
+	test('Recover when installation crashes', async () => {
+		const tm = toolsManagerForTest();
+		tm.installTool = () => {
+			throw new Error('crash');
+		};
+		await runTest(tm, {}, ['gopls', 'staticcheck']);
+	});
+
+	function toolsManagerForTest() {
+		const installed: string[] = [];
+		const toolsManager: goInstallTools.IToolsManager = {
+			getMissingTools: function (matcher: (tool: Tool) => boolean): Promise<Tool[]> {
+				let tools = getConfiguredTools(config.getGoConfig(), {});
+				// apply user's filter;
+				tools = matcher ? tools.filter(matcher) : tools;
+				// remove tools that are installed.
+				tools = tools.filter((tool) => !installed.includes(tool.name));
+				return Promise.resolve(tools);
+			},
+			installTool: function (tool: Tool): Promise<string | undefined> {
+				installed.push(tool.name);
+				return Promise.resolve(undefined); // no error.
+			}
+		};
+		return toolsManager;
+	}
 });

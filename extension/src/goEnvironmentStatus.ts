@@ -520,11 +520,13 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 	return results;
 }
 
-const STATUS_BAR_ITEM_NAME = 'Go Notification';
+const STATUS_BAR_ITEM_NAME = 'Go Update Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
-export async function offerToInstallLatestGoVersion() {
+export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
 	if (extensionInfo.isInCloudIDE) {
+		// TODO: As we use the language status bar, the notification is less visible
+		// and we can consider to remove this condition check.
 		return;
 	}
 	const goConfig = getGoConfig();
@@ -551,59 +553,66 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		addGoStatus(
-			STATUS_BAR_ITEM_NAME,
-			'Go Update Available',
-			'go.promptforgoinstall',
-			'A newer version of Go is available'
-		);
-		vscode.commands.registerCommand('go.promptforgoinstall', () => {
-			const download = {
-				title: 'Download',
-				async command() {
-					await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
-				}
-			};
+		const versionsText = options.map((x) => x.label).join(', ');
+		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+		statusBarItem.name = STATUS_BAR_ITEM_NAME;
+		statusBarItem.text = 'New Go version is available';
+		statusBarItem.detail = versionsText;
+		statusBarItem.command = {
+			title: 'Upgrade',
+			command: 'go.promptforgoinstall',
+			arguments: [options],
+			tooltip: 'Upgrade or silence notification'
+		};
+		// TODO: Error level is more visible. Consider to make it configurable?
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
 
-			const neverAgain = {
-				title: "Don't Show Again",
-				async command() {
-					// mark these versions as seen
-					dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-					if (!dismissedOptions) {
-						dismissedOptions = [];
+		ctx.subscriptions.push(
+			vscode.commands.registerCommand('go.promptforgoinstall', () => {
+				const download = {
+					title: 'Download',
+					async command() {
+						await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
 					}
-					options.forEach((version) => {
-						dismissedOptions.push(version);
-					});
-					await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+				};
+
+				const neverAgain = {
+					title: "Don't Show Again",
+					async command() {
+						// mark these versions as seen
+						dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
+						if (!dismissedOptions) {
+							dismissedOptions = [];
+						}
+						options.forEach((version) => {
+							dismissedOptions.push(version);
+						});
+						await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+					}
+				};
+
+				let versionsText: string;
+				if (options.length > 1) {
+					versionsText = `${options
+						.map((x) => x.label)
+						.reduce((prev, next) => {
+							return prev + ' and ' + next;
+						})} are available`;
+				} else {
+					versionsText = `${options[0].label} is available`;
 				}
-			};
 
-			let versionsText: string;
-			if (options.length > 1) {
-				versionsText = `${options
-					.map((x) => x.label)
-					.reduce((prev, next) => {
-						return prev + ' and ' + next;
-					})} are available`;
-			} else {
-				versionsText = `${options[0].label} is available`;
-			}
-
-			vscode.window
-				.showInformationMessage(
-					`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
-					download,
-					neverAgain
-				)
-				.then((selection) => {
-					// TODO: should we removeGoStatus if user has closed the notification
-					// without any action? It's kind of a feature now - without selecting
-					// neverAgain, user can hide this statusbar item.
-					removeGoStatus(STATUS_BAR_ITEM_NAME);
-					selection?.command();
-				});
-		});
+				vscode.window
+					.showInformationMessage(
+						`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
+						download,
+						neverAgain
+					)
+					.then((selection) => {
+						selection?.command();
+						removeGoStatus(STATUS_BAR_ITEM_NAME);
+					});
+			})
+		);
 	}
 }

@@ -175,7 +175,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 			if (extensionInfo.isPreview || (await okForStagedRollout(tool, versionToUpdate, hashMachineID))) {
 				const goVersion = await getGoVersion();
 				const toolVersion = { ...tool, version: versionToUpdate }; // ToolWithVersion
-				await installTools([toolVersion], goVersion, true);
+				await installTools([toolVersion], goVersion, { silent: true });
 			} else {
 				console.log(`gopls ${versionToUpdate} is too new, try to update later`);
 			}

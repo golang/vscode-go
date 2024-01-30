@@ -322,7 +322,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				const toolsManagementConfig = getGoConfig()['toolsManagement'];
 				if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
 					const goVersion = await getGoVersion();
-					await installTools([tool], goVersion, true);
+					await installTools([tool], goVersion, { silent: true });
 				} else {
 					await promptForUpdatingTool(tool.name);
 				}
