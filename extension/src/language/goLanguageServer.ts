@@ -62,6 +62,7 @@ import { URI } from 'vscode-uri';
 import { IVulncheckTerminal, VulncheckReport, VulncheckTerminal, writeVulns } from '../goVulncheck';
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
+import { GoDocumentSelector } from '../goMode';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -397,15 +398,6 @@ export async function buildLanguageClient(
 	await getLocalGoplsVersion(cfg); // populate and cache cfg.version
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
-	const documentSelector = [
-		// gopls handles only file URIs.
-		{ language: 'go', scheme: 'file' },
-		{ language: 'go.mod', scheme: 'file' },
-		{ language: 'go.sum', scheme: 'file' },
-		{ language: 'go.work', scheme: 'file' },
-		{ language: 'gotmpl', scheme: 'file' }
-	];
-
 	// when initialization is failed after the connection is established,
 	// we want to handle the connection close error case specially. Capture the error
 	// in initializationFailedHandler and handle it in the connectionCloseHandler.
@@ -425,7 +417,7 @@ export async function buildLanguageClient(
 		} as ServerOptions,
 		{
 			initializationOptions: goplsWorkspaceConfig,
-			documentSelector,
+			documentSelector: GoDocumentSelector,
 			uriConverters: {
 				// Apply file:/// scheme to all file paths.
 				code2Protocol: (uri: vscode.Uri): string =>

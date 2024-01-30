@@ -13,16 +13,16 @@ interface Filter extends vscode.DocumentFilter {
 }
 
 export const GO_MODE: Filter = { language: 'go', scheme: 'file' };
-export const GO_MOD_MODE: Filter = { language: 'go.mod', scheme: 'file' };
-export const GO_SUM_MODE: Filter = { language: 'go.sum', scheme: 'file' };
 
 export function isGoFile(document: vscode.TextDocument): boolean {
-	if (
-		vscode.languages.match(GO_MODE, document) ||
-		vscode.languages.match(GO_MOD_MODE, document) ||
-		vscode.languages.match(GO_SUM_MODE, document)
-	) {
-		return true;
-	}
-	return false;
+	return GoDocumentSelector.some((selector) => vscode.languages.match(selector, document));
 }
+
+export const GoDocumentSelector = [
+	// gopls handles only file URIs.
+	{ language: 'go', scheme: 'file' },
+	{ language: 'go.mod', scheme: 'file' },
+	{ language: 'go.sum', scheme: 'file' },
+	{ language: 'go.work', scheme: 'file' },
+	{ language: 'gotmpl', scheme: 'file' }
+];
