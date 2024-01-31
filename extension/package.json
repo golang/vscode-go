@@ -1514,14 +1514,7 @@
         },
         "go.logging.level": {
           "type": "string",
-          "default": "error",
-          "enum": [
-            "off",
-            "error",
-            "info",
-            "verbose"
-          ],
-          "description": "The logging level the extension logs at, defaults to 'error'",
+          "deprecationMessage": "This setting is deprecated. Use 'Developer: Set Log Level...' command to control logging level instead.",
           "scope": "machine-overridable"
         },
         "go.toolsManagement.go": {

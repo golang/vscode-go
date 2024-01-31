@@ -345,12 +345,10 @@ Specifies Lint tool name.<br/>
 Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
 
 Default: `"staticcheck"`
-### `go.logging.level`
+### `go.logging.level (deprecated)`
 
-The logging level the extension logs at, defaults to 'error'<br/>
-Allowed Options: `off`, `error`, `info`, `verbose`
+This setting is deprecated. Use 'Developer: Set Log Level...' command to control logging level instead.
 
-Default: `"error"`
 ### `go.playground`
 
 The flags configured here will be passed through to command `goplay`

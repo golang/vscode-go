@@ -15,7 +15,6 @@ import path = require('path');
 import { promisify } from 'util';
 import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
-import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getCheckForToolsUpdatesConfig, getGoVersion, GoVersion } from './util';
@@ -295,7 +294,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
-		logVerbose("couldn't find PATH property in process.env");
+		outputChannel.debug("couldn't find PATH property in process.env");
 		return;
 	}
 
@@ -304,7 +303,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 		defaultPathEnv = <string>process.env[pathEnvVar];
 	}
 
-	logVerbose(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
+	outputChannel.debug(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
 
 	// calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
@@ -354,7 +353,7 @@ export function clearGoRuntimeBaseFromPATH() {
 	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
-		logVerbose("couldn't find PATH property in process.env");
+		outputChannel.debug("couldn't find PATH property in process.env");
 		return;
 	}
 	environmentVariableCollection?.delete(pathEnvVar);

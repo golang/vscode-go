@@ -41,12 +41,11 @@ import {
 } from './goInstallTools';
 import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
-import { setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 
 import { vetCode } from './goVet';
 import {
@@ -89,8 +88,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
 	const cfg = getGoConfig();
-	setLogConfig(cfg['logging']);
-
 	WelcomePanel.activate(ctx, goCtx);
 
 	const configGOROOT = getGoConfig()['goroot'];
@@ -279,9 +276,6 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 				e.affectsConfiguration('go.testEnvFile')
 			) {
 				updateGoVarsFromConfig(goCtx);
-			}
-			if (e.affectsConfiguration('go.logging')) {
-				setLogConfig(updatedGoConfig['logging']);
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {

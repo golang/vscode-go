@@ -13,7 +13,6 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
-import { logVerbose } from '../goLogging';
 
 let binPathCache: { [bin: string]: string } = {};
 
@@ -142,7 +141,6 @@ export function getCurrentGoRoot(): string {
 }
 
 export function setCurrentGoRoot(goroot: string) {
-	logVerbose(`setCurrentGoRoot(${goroot})`);
 	currentGoRoot = goroot;
 }
 

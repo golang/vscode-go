@@ -24,7 +24,6 @@ import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
 import getPort = require('get-port');
 import util = require('util');
-import { TimestampedLogger } from '../../src/goLogging';
 import { affectedByIssue832 } from './testutils';
 
 // For debugging test and streaming the trace instead of buffering, set this.
@@ -2101,7 +2100,21 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private constructor(config: DebugConfiguration) {
-		super(config, new TimestampedLogger('error', undefined, PRINT_TO_CONSOLE));
+		const logger = {
+			trace: (msg: string) => {
+				console.log(msg);
+			},
+			debug: (msg: string) => {
+				console.log(msg);
+			},
+			info: (msg: string) => {
+				console.log(msg);
+			},
+			error: (msg: string) => {
+				console.error(msg);
+			}
+		};
+		super(config, logger);
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';

@@ -16,7 +16,6 @@ import { ConfigurationTarget } from 'vscode';
 import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
-import { logVerbose, logError } from './goLogging';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import { containsTool, getConfiguredTools, getImportPathWithVersion, getTool, Tool, ToolAtVersion } from './goTools';
@@ -109,22 +108,19 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 async function getGoForInstall(goVersion: GoVersion, silent?: boolean): Promise<GoVersion> {
 	const configured = getGoConfig().get<string>('toolsManagement.go');
 	if (!configured) {
-		return goVersion;
+		return goVersion; // use the default.
 	}
 
 	try {
 		const go = await getGoVersion(configured);
 		if (go) return go;
 	} catch (e) {
-		logError(`getGoForInstall failed to run 'go version' with the configured go for tool install: ${e}`);
-	} finally {
 		if (!silent) {
 			outputChannel.error(
-				`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid path to the Go command.`
+				`failed to run "go version" with "${configured}". Provide a valid path to the Go binary`
 			);
 		}
 	}
-
 	return goVersion;
 }
 
@@ -152,7 +148,10 @@ export async function installTools(
 		return [];
 	}
 	const { silent, skipRestartGopls } = options || {};
-	outputChannel.appendLine('Installing tools...');
+	if (!silent) {
+		outputChannel.show();
+	}
+	outputChannel.clear();
 
 	const goForInstall = await getGoForInstall(goVersion);
 
@@ -219,9 +218,9 @@ export async function installTools(
 		if (silent) {
 			outputChannel.show();
 		}
-		outputChannel.error(failures.length + ' tools failed to install.\n');
+		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
-			outputChannel.error(`${failure.tool.name}: ${failure.reason} `);
+			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
 	if (missing.some((tool) => tool.isImportant)) {
@@ -277,8 +276,8 @@ async function installToolWithGo(
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.error(`Installing ${importPath} FAILED`);
-		outputChannel.error(`${JSON.stringify(e, null, 1)}`);
+		outputChannel.appendLine(`Installing ${importPath} FAILED`);
+		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
 		return `failed to install ${tool.name}(${importPath}): ${e}`;
 	}
 }
@@ -293,7 +292,7 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	};
 
 	const execFile = util.promisify(cp.execFile);
-	logVerbose(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
+	outputChannel.trace(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
 	await execFile(goBinary, ['install', '-v', importPath], opts);
 }
 
@@ -452,7 +451,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
-	logVerbose(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
+	outputChannel.debug(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
 	if (!goRuntimePath || !path.isAbsolute(goRuntimePath)) {
 		// getBinPath returns the absolute path to the tool if it exists.
 		// Otherwise, it may return the tool name (e.g. 'go').
@@ -481,12 +480,13 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 				if (stderr) {
 					// 'go env' may output warnings about potential misconfiguration.
 					// Show the messages to users but keep processing the stdout.
-					outputChannel.error(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
 					outputChannel.show();
 				}
-				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
+				outputChannel.trace(`${goRuntimePath} env ...:\n${stdout}`);
 				const envOutput = JSON.parse(stdout);
 				if (envOutput.GOROOT && envOutput.GOROOT.trim()) {
+					outputChannel.debug('setCurrentGOROOT:', envOutput.GOROOT);
 					setCurrentGoRoot(envOutput.GOROOT.trim());
 					delete envOutput.GOROOT;
 				}
