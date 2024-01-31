@@ -110,19 +110,19 @@ function shouldActivateLanguageFeatures() {
 	for (const folder of vscode.workspace.workspaceFolders || []) {
 		switch (folder.uri.scheme) {
 			case 'vsls':
-				outputChannel.appendLine(
+				outputChannel.error(
 					'Language service on the guest side is disabled. ' +
 						'The server-side language service will provide the language features.'
 				);
 				return;
 			case 'ssh':
-				outputChannel.appendLine('The language server is not supported for SSH. Disabling it.');
+				outputChannel.error('The language server is not supported for SSH. Disabling it.');
 				return;
 		}
 	}
 	const schemes = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.scheme);
 	if (schemes && schemes.length > 0 && !schemes.includes('file') && !schemes.includes('untitled')) {
-		outputChannel.appendLine(
+		outputChannel.error(
 			`None of the folders in this workspace ${schemes.join(
 				','
 			)} are the types the language server recognizes. Disabling the language features.`

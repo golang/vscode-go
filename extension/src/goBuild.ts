@@ -45,7 +45,6 @@ export function buildCode(buildWorkspace?: boolean): CommandFactory {
 		const documentUri = editor?.document.uri;
 		const goConfig = getGoConfig(documentUri);
 
-		outputChannel.clear(); // Ensures stale output from build on save is cleared
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Building...';
 
@@ -156,7 +155,7 @@ export async function goBuild(
 		if (currentGoWorkspace && !isMod) {
 			importPath = cwd.substr(currentGoWorkspace.length + 1);
 		} else {
-			outputChannel.appendLine(
+			outputChannel.error(
 				`Not able to determine import path of current package by using cwd: ${cwd} and Go workspace: ${currentGoWorkspace}`
 			);
 		}

@@ -92,7 +92,7 @@ export class GoTestRunner {
 					await this.run(request, token);
 				} catch (error) {
 					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -107,7 +107,7 @@ export class GoTestRunner {
 					await this.debug(request, token);
 				} catch (error) {
 					const m = 'Failed to debug tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -122,7 +122,7 @@ export class GoTestRunner {
 					await this.run(request, token, this.profiler.options);
 				} catch (error) {
 					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -333,7 +333,7 @@ export class GoTestRunner {
 
 			// https://github.com/golang/go/issues/39904
 			if (subItems.length > 0 && Object.keys(tests).length + Object.keys(benchmarks).length > 1) {
-				outputChannel.appendLine(
+				outputChannel.error(
 					`The following tests in ${pkg.uri} failed to run, as go test will only run a sub-test or sub-benchmark if it is by itself:`
 				);
 				Object.keys(tests)

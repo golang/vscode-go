@@ -119,7 +119,7 @@ async function getGoForInstall(goVersion: GoVersion, silent?: boolean): Promise<
 		logError(`getGoForInstall failed to run 'go version' with the configured go for tool install: ${e}`);
 	} finally {
 		if (!silent) {
-			outputChannel.appendLine(
+			outputChannel.error(
 				`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid path to the Go command.`
 			);
 		}
@@ -152,10 +152,7 @@ export async function installTools(
 		return [];
 	}
 	const { silent, skipRestartGopls } = options || {};
-	if (!silent) {
-		outputChannel.show();
-	}
-	outputChannel.clear();
+	outputChannel.appendLine('Installing tools...');
 
 	const goForInstall = await getGoForInstall(goVersion);
 
@@ -222,9 +219,9 @@ export async function installTools(
 		if (silent) {
 			outputChannel.show();
 		}
-		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+		outputChannel.error(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
-			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+			outputChannel.error(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
 	if (missing.some((tool) => tool.isImportant)) {
@@ -280,8 +277,8 @@ async function installToolWithGo(
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
+		outputChannel.error(`Installing ${importPath} FAILED`);
+		outputChannel.error(`${JSON.stringify(e, null, 1)}`);
 		return `failed to install ${tool.name}(${importPath}): ${e}`;
 	}
 }
@@ -484,7 +481,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 				if (stderr) {
 					// 'go env' may output warnings about potential misconfiguration.
 					// Show the messages to users but keep processing the stdout.
-					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.error(`'${goRuntimePath} env': ${stderr}`);
 					outputChannel.show();
 				}
 				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);

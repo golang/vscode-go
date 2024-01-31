@@ -18,7 +18,7 @@ import { getGoVersion } from './util';
 import { GoExtensionContext } from './context';
 import { CommandFactory } from './commands';
 
-export const outputChannel = vscode.window.createOutputChannel('Go');
+export const outputChannel = vscode.window.createOutputChannel('Go', { log: true });
 
 const STATUS_BAR_ITEM_NAME = 'Go Diagnostics';
 export const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(

@@ -533,8 +533,8 @@ export function runTool(
 					return resolve([]);
 				}
 				if (err && stderr && !useStdErr) {
-					outputChannel.appendLine(['Error while running tool:', cmd, ...args].join(' '));
-					outputChannel.appendLine(stderr);
+					outputChannel.error(['Error while running tool:', cmd, ...args].join(' '));
+					outputChannel.error(stderr);
 					return resolve([]);
 				}
 				const lines = (useStdErr ? stderr : stdout).toString().split('\n');
@@ -575,7 +575,7 @@ export function runTool(
 					outputChannel.appendLine(`${filePath}:${line}:${col ?? ''} ${msg}`);
 				}
 				if (!atLeastSingleMatch && unexpectedOutput && vscode.window.activeTextEditor) {
-					outputChannel.appendLine(stderr);
+					outputChannel.error(stderr);
 					if (err) {
 						ret.push({
 							file: vscode.window.activeTextEditor.document.fileName,

@@ -127,8 +127,6 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 }
 
 export const goModInit: CommandFactory = () => async () => {
-	outputChannel.clear();
-
 	const moduleName = await vscode.window.showInputBox({
 		prompt: 'Enter module name',
 		value: '',
@@ -149,7 +147,7 @@ export const goModInit: CommandFactory = () => async () => {
 		outputChannel.appendLine('Module successfully initialized. You are ready to Go :)');
 		vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(cwd, 'go.mod')));
 	} catch (e) {
-		outputChannel.appendLine((e as Error).message);
+		outputChannel.error((e as Error).message);
 		outputChannel.show();
 		vscode.window.showErrorMessage(
 			`Error running "${goRuntimePath} mod init ${moduleName}": See Go output channel for details`

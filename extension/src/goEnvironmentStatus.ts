@@ -218,8 +218,6 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			location: vscode.ProgressLocation.Notification
 		},
 		async () => {
-			outputChannel.clear();
-			outputChannel.show();
 			outputChannel.appendLine(`go install ${goOption.binpath}@latest`);
 			const result = await installTool({
 				name: newExecutableName,
@@ -229,7 +227,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 				isImportant: false
 			});
 			if (result) {
-				outputChannel.appendLine(`Error installing ${goOption.binpath}: ${result}`);
+				outputChannel.error(`Error installing ${goOption.binpath}: ${result}`);
 				throw new Error('Could not install ${goOption.binpath}');
 			}
 			// run `goX.X download`
@@ -238,7 +236,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			try {
 				await execFile(goXExecutable, ['download']);
 			} catch (downloadErr) {
-				outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
+				outputChannel.error(`Error finishing installation: ${downloadErr}`);
 				throw new Error('Could not download Go version.');
 			}
 
@@ -253,11 +251,11 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 					sdkPath = stdout.trim();
 				}
 			} catch (downloadErr) {
-				outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
+				outputChannel.error(`Error finishing installation: ${downloadErr}`);
 				throw new Error('Could not download Go version.');
 			}
 			if (!sdkPath || !(await dirExists(sdkPath))) {
-				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
+				outputChannel.error(`SDK path does not exist: ${sdkPath}`);
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
 			}
 

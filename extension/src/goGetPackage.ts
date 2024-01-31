@@ -35,9 +35,7 @@ export const goGetPackage: CommandFactory = (ctx, goCtx) => () => {
 	cp.execFile(goRuntimePath, ['get', '-v', importPath], { env }, (err, stdout, stderr) => {
 		// go get -v uses stderr to write output regardless of success or failure
 		if (stderr !== '') {
-			outputChannel.show();
-			outputChannel.clear();
-			outputChannel.appendLine(stderr);
+			outputChannel.error(stderr);
 			buildCode(false)(ctx, goCtx)();
 			return;
 		}
