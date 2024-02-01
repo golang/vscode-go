@@ -88,13 +88,13 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				goCtx.serverInfo?.Commands
 			);
 
-			updateStatus(goCtx, goConfig, true);
 			console.log(`Server: ${JSON.stringify(goCtx.serverInfo, null, 2)}`);
 		} catch (e) {
 			const msg = `Error starting language server: ${e}`;
 			console.log(msg);
 			goCtx.serverOutputChannel?.append(msg);
 		} finally {
+			updateStatus(goCtx, goConfig, true);
 			unlock();
 		}
 	};
@@ -103,7 +103,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 function updateStatus(goCtx: GoExtensionContext, goConfig: vscode.WorkspaceConfiguration, didStart: boolean) {
 	goCtx.languageServerIsRunning = didStart;
 	vscode.commands.executeCommand('setContext', 'go.goplsIsRunning', didStart);
-	updateLanguageServerIconGoStatusBar(didStart, goConfig['useLanguageServer'] === true);
+	updateLanguageServerIconGoStatusBar(goCtx.languageClient, goConfig['useLanguageServer'] === true);
 }
 
 function shouldActivateLanguageFeatures() {

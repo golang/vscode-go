@@ -415,15 +415,15 @@ export function getGoEnvironmentStatusbarItem(): vscode.StatusBarItem {
 
 export function formatGoVersion(version?: GoVersion): string {
 	if (!version || !version.isValid()) {
-		return 'Go (unknown)';
+		return '(unknown)';
 	}
 	const versionStr = version.format(true);
 	const versionWords = versionStr.split(' ');
 	if (versionWords.length > 1 && versionWords[0] === 'devel') {
 		// go devel +hash or go devel go1.17-hash
-		return versionWords[1].startsWith('go') ? `Go ${versionWords[1].slice(2)}` : `Go ${versionWords[1]}`;
+		return versionWords[1].startsWith('go') ? `${versionWords[1].slice(2)}` : `${versionWords[1]}`;
 	} else {
-		return `Go ${versionWords[0]}`;
+		return `${versionWords[0]}`;
 	}
 }
 

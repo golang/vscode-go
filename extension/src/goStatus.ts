@@ -12,11 +12,12 @@ import vscodeUri = require('vscode-uri');
 import { getGoConfig } from './config';
 import { formatGoVersion, GoEnvironmentOption, terminalCreationListener } from './goEnvironmentStatus';
 import { GoDocumentSelector, isGoFile } from './goMode';
-import { isModSupported, runGoEnv } from './goModules';
+import { runGoEnv } from './goModules';
 import { allToolsInformation } from './goToolsInformation';
 import { getGoVersion } from './util';
 import { GoExtensionContext } from './context';
 import { CommandFactory } from './commands';
+import { LanguageClient, State } from 'vscode-languageclient/node';
 
 export const outputChannel = vscode.window.createOutputChannel('Go', { log: true });
 
@@ -32,28 +33,39 @@ export let goEnvStatusbarItem: vscode.StatusBarItem;
 
 let gomod: string;
 let gowork: string;
-export const languageServerIcon = '$(zap)';
-export const languageServerErrorIcon = '$(warning)';
+const languageServerIcon = '$(zap)';
+const languageServerErrorIcon = '$(warning)';
+const languageServerStartingIcon = '$(sync~spin)';
 
 export async function updateGoStatusBar(editor: vscode.TextEditor | undefined) {
-	// Only update the module path if we are in a Go file.
-	// This allows the user to open output windows without losing
-	// the go.mod information in the status bar.
-	if (!!editor && isGoFile(editor.document)) {
-		const isMod = await isModSupported(editor.document.uri);
-		if (isMod) {
-			runGoEnv(vscodeUri.Utils.dirname(editor.document.uri), ['GOMOD', 'GOWORK']).then((p) => {
-				gomod = p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
-				gowork = p['GOWORK'];
-			});
-		} else {
-			gomod = '';
-			gowork = '';
-		}
+	if (!editor) {
+		return;
+	}
+	if (isGoFile(editor.document)) {
+		showGoStatusBar();
+		return;
+	}
+	if (editor.document.languageId?.toLowerCase() !== 'log') {
+		goEnvStatusbarItem.hide();
 	}
 }
 
 export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
+	// Only update the module path if we are in a Go file.
+	// This allows the user to open output windows without losing
+	// the go.mod information in the status bar.
+	const editor = vscode.window.activeTextEditor;
+	if (!!editor && isGoFile(editor.document)) {
+		const cwd = vscodeUri.Utils.dirname(editor.document.uri);
+		try {
+			const p = await runGoEnv(cwd, ['GOMOD', 'GOWORK']);
+			gomod = p['GOMOD'] === '/dev/null' || p['GOMOD'] === 'NUL' ? '' : p['GOMOD'];
+			gowork = p['GOWORK'];
+		} catch (e) {
+			outputChannel.debug(`failed to run go env from ${cwd} - ${e}`);
+		}
+	}
+
 	const { languageServerIsRunning, serverOutputChannel } = goCtx;
 	const options = [
 		{ label: 'Locate Configured Go Tools', description: 'display go env' },
@@ -66,7 +78,7 @@ export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
 	const goplsIsRunning = languageServerIsRunning && cfg && cfg.serverName === 'gopls';
 	if (goplsIsRunning) {
 		const goplsVersion = cfg.version;
-		options.push({ label: `${languageServerIcon}Open 'gopls' trace`, description: `${goplsVersion?.version}` });
+		options.push({ label: `${languageServerIcon} Open 'gopls' trace`, description: `${goplsVersion?.version}` });
 	}
 	// In case gopls still need to be installed, cfg.serverName will be empty.
 	if (!goplsIsRunning && goConfig.get('useLanguageServer') === true && cfg?.serverName === '') {
@@ -120,13 +132,13 @@ export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
  * Initialize the status bar item with current Go binary
  */
 export async function initGoStatusBar(goCtx: GoExtensionContext) {
-	const { languageServerIsRunning } = goCtx;
+	const { languageClient } = goCtx;
 	if (!goEnvStatusbarItem) {
 		const STATUS_BAR_ITEM_NAME = 'Go';
 		goEnvStatusbarItem = vscode.window.createStatusBarItem(
 			STATUS_BAR_ITEM_NAME,
-			vscode.StatusBarAlignment.Left,
-			50
+			vscode.StatusBarAlignment.Right,
+			100.09999 // place the item right after the language status item https://github.com/microsoft/vscode-python/issues/18040#issuecomment-992567670.
 		);
 		goEnvStatusbarItem.name = STATUS_BAR_ITEM_NAME;
 	}
@@ -141,12 +153,13 @@ export async function initGoStatusBar(goCtx: GoExtensionContext) {
 	// Assume if it is configured it is already running, since the
 	// icon will be updated on an attempt to start.
 	const goConfig = getGoConfig();
-	updateLanguageServerIconGoStatusBar(!!languageServerIsRunning, goConfig['useLanguageServer'] === true);
-
-	showGoStatusBar();
+	updateLanguageServerIconGoStatusBar(languageClient, goConfig['useLanguageServer'] === true);
+	if (vscode.window.visibleTextEditors.some((editor) => !!editor && isGoFile(editor.document))) {
+		showGoStatusBar();
+	}
 }
 
-export function updateLanguageServerIconGoStatusBar(started: boolean, enabled: boolean) {
+export function updateLanguageServerIconGoStatusBar(languageClient: LanguageClient | undefined, enabled: boolean) {
 	if (!goEnvStatusbarItem) {
 		return;
 	}
@@ -154,20 +167,31 @@ export function updateLanguageServerIconGoStatusBar(started: boolean, enabled: b
 	// Split the existing goEnvStatusbarItem.text into the version string part and
 	// the gopls icon part.
 	let text = goEnvStatusbarItem.text;
-	let icon = '';
 	if (text.endsWith(languageServerIcon)) {
 		text = text.substring(0, text.length - languageServerIcon.length);
 	} else if (text.endsWith(languageServerErrorIcon)) {
 		text = text.substring(0, text.length - languageServerErrorIcon.length);
+	} else if (text.endsWith(languageServerStartingIcon)) {
+		text = text.substring(0, text.length - languageServerStartingIcon.length);
 	}
-
-	if (started && enabled) {
+	let color = undefined;
+	let icon = '';
+	if (!enabled || !languageClient) {
+		icon = '';
+		color = new vscode.ThemeColor('statusBarItem.warningBackground');
+	} else if (languageClient.state === State.Starting) {
+		icon = languageServerStartingIcon;
+		color = undefined;
+	} else if (languageClient.state === State.Running) {
 		icon = languageServerIcon;
-	} else if (!started && enabled) {
+		color = undefined;
+	} else if (languageClient.state === State.Stopped) {
 		icon = languageServerErrorIcon;
+		color = new vscode.ThemeColor('statusBarItem.errorBackground');
 	}
 
 	goEnvStatusbarItem.text = text + icon;
+	goEnvStatusbarItem.backgroundColor = color;
 }
 
 /**

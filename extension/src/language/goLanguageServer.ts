@@ -466,6 +466,7 @@ export async function buildLanguageClient(
 					const { crashCount = 0 } = goCtx;
 					goCtx.crashCount = crashCount + 1;
 					if (goCtx.crashCount < 5) {
+						updateLanguageServerIconGoStatusBar(c, true);
 						return {
 							message: '', // suppresses error popups
 							action: CloseAction.Restart
@@ -477,7 +478,7 @@ export async function buildLanguageClient(
 						'The connection to gopls has been closed. The gopls server may have crashed.',
 						errorKind.crash
 					);
-					updateLanguageServerIconGoStatusBar(false, true);
+					updateLanguageServerIconGoStatusBar(c, true);
 					return {
 						message: '', // suppresses error popups - there will be other popups.
 						action: CloseAction.DoNotRestart
