@@ -49,6 +49,9 @@
 				"VSCODE_GO_IN_TEST": "1",  // Disable code that shouldn't be used in test
 				"MOCHA_TIMEOUT": "999999",
 			},
+			"outFiles": [
+                "${workspaceFolder}/extension/out/**/*.js"
+            ],
 			"sourceMaps": true,
 			"smartStep": true,
 			"preLaunchTask": "npm: watch",
@@ -71,6 +74,9 @@
 			"env": {
 				"VSCODE_GO_IN_TEST": "1"  // Disable code that shouldn't be used in test
 			},
+			"outFiles": [
+                "${workspaceFolder}/extension/out/**/*.js"
+            ],
 			"sourceMaps": true,
 			"preLaunchTask": "npm: watch",
 			"cwd": "${workspaceFolder}/extension"
