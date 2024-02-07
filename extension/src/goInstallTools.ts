@@ -556,6 +556,9 @@ export async function maybeInstallImportantTools(
 			}
 			await installTools(missing, goVersion, { toolsManager: tm, skipRestartGopls: true });
 			// installTools will update ImportantToolsStatus.
+		} else {
+			// no essential tools to be installed.
+			await updateImportantToolsStatus(tm);
 		}
 	} catch (e) {
 		outputChannel.appendLine('install missing tools failed - ' + JSON.stringify(e));

@@ -412,8 +412,14 @@ suite('maybeInstallImportantTools tests', () => {
 					: vscode.LanguageStatusSeverity.Information,
 				statusBarItem.text
 			);
-			for (const tool of wantMissingTools) {
-				assert(statusBarItem.detail!.includes(tool), statusBarItem.detail + ' does not contain ' + tool);
+			if (wantMissingTools && wantMissingTools.length > 0) {
+				assert.strictEqual(statusBarItem.command?.title, 'Install missing tools');
+				for (const tool of wantMissingTools) {
+					assert(statusBarItem.detail!.includes(tool), statusBarItem.detail + ' does not contain ' + tool);
+				}
+			} else {
+				assert.strictEqual(statusBarItem.command?.title, 'Update');
+				assert.strictEqual(statusBarItem.detail, 'no missing tools');
 			}
 		} catch (e) {
 			assert.fail(`maybeInstallImportantTools failed: ${e}`);
