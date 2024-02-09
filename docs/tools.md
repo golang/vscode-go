@@ -35,6 +35,13 @@ This extension uses Delve for its debug/test functionalities. The extension curr
 
 For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
 
+### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/cmd/vscgo)
+
+This tool provides utilities needed by this extension but do not belong to the language server
+or debug adapter server. Examples include dependency tools management, developer survey
+configuration, and [Go telemetry collection](https://github.com/golang/vscode-go/issues/3121).
+This tool is released with the extension and installed in the extension's directory.
+
 ### [`goplay`](https://pkg.go.dev/github.com/haya14busa/goplay?tab=overview)
 
 This tool provides support for the [`Go: Run on Go Playground`](features.md#go-playground) command.
