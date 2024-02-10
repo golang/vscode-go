@@ -27,6 +27,7 @@ jobs:
         with:
          node-version: '18'
          cache: 'npm'
+         cache-dependency-path: './extension/package-lock.json'
 
       - name: Setup Go
         uses: actions/setup-go@v4
@@ -37,32 +38,39 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: ./extension
       
       - name: Compile
         run: npm run vscode:prepublish
+        working-directory: ./extension
 
       - name: Install Go tools (Modules mode)
         run: |
             go version
             go run ./tools/installtools/main.go
+        working-directory: ./extension
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
           
       - name: Run unit tests
         run: npm run unit-test
+        working-directory: ./extension
         
       - name: Run tests (Linux)
         run: xvfb-run -a npm run test
+        working-directory: ./extension
         if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           CODE_VERSION: ${{ matrix.version }}
       - name: Run tests (Windows/Mac)
         run: npm run test
+        working-directory: ./extension
         if: ${{ matrix.os != 'ubuntu-latest' }}
         env:
           CODE_VERSION: ${{ matrix.version }}
       
       - name: Lint check
         run: npm run lint
+        working-directory: ./extension
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.version == 'stable' }}

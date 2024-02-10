@@ -6,26 +6,8 @@ activities using
 [VS Code’s Debugging UI](https://code.visualstudio.com/docs/editor/debugging).
 
 These debugging features are possible by using
-[Delve](https://github.com/go-delve/delve), the Go debugger.
-
-Previously, the Go extension communicated with Delve through a custom debug
-adaptor program (`legacy` mode). Since
-[`Delve`'s native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap)
-is available, the Go extension is transitioning to deprecate the legacy debug
-adapter in favor of direct communication with Delve via
-[DAP](https://microsoft.github.io/debug-adapter-protocol/overview).
-
-
- 📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve
- integration is enabled for _local_ _debugging_ by default. For
- [_remote_ _debugging_](#remote-debugging) it is the default in
- [Go Nightly](nightly.md) and is available with stable builds on demand with
- `"debugAdapter": "dlv-dap"` attribute in `launch.json` or `settings.json`!**
-
-Many features and settings described in this document may be available only with
-the new `dlv-dap` mode. For troubleshooting and configuring the legacy debug
-adapter, see
-[the legacy debug adapter documentation](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).
+[Delve](https://github.com/go-delve/delve), the Go debugger, and its
+[native debug adapter implementation](https://github.com/go-delve/delve/tree/master/service/dap).
 
 ## Get started
 
@@ -82,7 +64,9 @@ from the tree head.
 
 ### Switch to legacy debug adapter
 
-Note: The extension still uses the legacy debug adapter for remote debugging.
+Previously, the Go extension communicated with Delve through a custom debug
+adaptor program (aka `legacy` mode). This legacy adapter is no longer maintained
+and will be removed by the end of 2024 H2.
 
 If you need to use the legacy debug adapter for local debugging (`legacy` mode)
 by default, add the following in your VSCode settings.
@@ -92,9 +76,6 @@ by default, add the following in your VSCode settings.
         "debugAdapter": "legacy",
     }
 ```
-
-When `mode` is set to `remote` you must explicitly set `debugAdapter` to
-`dlv-dap` to override the legacy adapter default.
 
 If you want to switch to `legacy` for only a subset of your launch
 configurations, you can use
@@ -809,8 +790,8 @@ with a running target.
 
 The
 [headless dlv server](https://github.com/go-delve/delve/tree/master/Documentation/api)
-can now be used with both `"debugAdapter": "legacy"` (default value) and
-`"debugAdapter": "dlv-dap"` (with Delve v1.7.3 or newer) as well as Delve's
+can now be used with both `"debugAdapter": "dlv-dap"` (default) and
+`"debugAdapter": "legacy"` (with Delve v1.7.3 or newer) as well as Delve's
 [command-line interface](https://github.com/go-delve/delve/tree/master/Documentation/cli)
 via `dlv connect`. The `--accept-multiclient` flag makes this a multi-use server
 that persists on `Disconnect` from a client and allows repeated connections from
@@ -837,7 +818,6 @@ Connect to it with a remote attach configuration in your `launch.json`:
 {
     "name": "Connect to external session",
     "type": "go",
-    "debugAdapter": "dlv-dap", // `legacy` by default
     "request": "attach",
     "mode": "remote",
     "port": 12345,

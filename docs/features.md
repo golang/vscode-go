@@ -248,9 +248,11 @@ Easily generate unit tests for your project by running one of the [`Go: Generate
 
 ### Fill struct literals
 
-Use the [`Go: Fill struct`](commands.md#fill-struct) command to automatically fill a struct literal with its default values.
+Use the [Code Action](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) to automatically fill a struct literal with its default values. The Go language server provides this capability as a `refactor.rewrite` type code action.
 
-<div style="text-align: center;"><img src="images/fillstructliterals.gif" alt="Fill struct literals" style="width: 75%"> </div>
+<div style="text-align: center;"><img src="images/fillstruct.png" alt="Fill struct literals"> </div>
+
+  **Note**: The old "Go: Fill struct" command was removed in v0.40.0 in favor of the Code Action.
 
 ## Diagnostics 
 

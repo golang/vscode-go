@@ -43,7 +43,7 @@ jobs:
       - name: Push to wiki
         run: |
           cd vscode-go
-          go run ./tools/docs2wiki -w ./docs
+          go run -C extension ./tools/docs2wiki -w ../docs
           cd ..
           cd wiki
           rm -r ./* && cp -r ../vscode-go/docs/* .

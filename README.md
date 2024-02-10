@@ -23,21 +23,17 @@ extension fits your needs and enhances your development experience.
 
 1.  Install the [VS Code Go extension].
 
-1.  Open any directory or workspace containing Go code to automatically activate
-    the extension. The
+1.  Open any Go file or go.mod file to automatically activate the extension. The
     [Go status bar](https://github.com/golang/vscode-go/wiki/ui) appears in the
-    bottom left corner of the window and displays your Go version.
+    bottom right corner of the window and displays your Go version.
 
-1.  The extension depends on `go`, `gopls`, `dlv` and other optional tools. If
-    any of the dependencies are missing, the ⚠️ `Analysis Tools Missing` warning
-    is displayed. Click on the warning to download dependencies.
-
-    See the
-    [tools documentation](https://github.com/golang/vscode-go/wiki/tools) for a
-    complete list of tools the extension depends on.
+1.  The extension depends on `go`, `gopls` (the Go language server), and optional
+    tools depending on your settings. If `gopls` is missing, the extension will
+    try to install it. The :zap: sign next to the Go version indicates
+    the language server is running, and you are ready to go.
 
 <p align="center">
-<img src="docs/images/installtools.gif" width=75%>
+<img src="docs/images/gettingstarted.gif" width=75%>
 <br/>
 <em>(Install Missing Tools)</em>
 </p>
@@ -52,7 +48,8 @@ You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
 	and [advanced topics](https://github.com/golang/vscode-go/wiki/advanced) to
 	customize the extension.
 * View the [tools documentation](https://github.com/golang/vscode-go/wiki/tools)
-  for a complete list of tools the VS Code Go extension depends on.
+  for a complete list of tools the VS Code Go extension depends on. You can
+  install additional tools and update them by using "Go: Install/Update Tools".
 * Solve issues with the
   [general troubleshooting](https://github.com/golang/vscode-go/wiki/troubleshooting)
 	and [debugging troubleshooting](https://github.com/golang/vscode-go/wiki/debugging#troubleshooting)
@@ -138,7 +135,7 @@ nightly build of this extension. Learn how to install it in by reading the
 
 VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
 learn insights about the performance and stability of the extension and the
-language server (`gopls``).
+language server (`gopls`).
 **Go Telemetry data uploading is disabled by default** and can be enabled
 with the following command:
 
