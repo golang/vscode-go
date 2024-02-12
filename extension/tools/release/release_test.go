@@ -27,17 +27,19 @@ func TestRelease(t *testing.T) {
 	moduleRoot := string(bytes.TrimSpace(out))
 
 	for _, command := range []string{"package", "publish"} {
-		t.Run(command, func(t *testing.T) {
-			testRelease(t, moduleRoot, command)
-		})
+		for _, tagName := range []string{"v0.0.0", "v0.0.0-rc.1"} {
+			t.Run(command+"-"+tagName, func(t *testing.T) {
+				testRelease(t, moduleRoot, command, tagName)
+			})
+		}
 	}
 }
 
-func testRelease(t *testing.T, moduleRoot, command string) {
+func testRelease(t *testing.T, moduleRoot, command, tagName string) {
 	cmd := exec.Command("go", "run", "-C", moduleRoot, "tools/release/release.go", "-n", command)
 	cmd.Env = append(os.Environ(),
 		// Provide dummy environment variables required to run release.go commands.
-		"TAG_NAME=v0.0.0",    // release tag
+		"TAG_NAME="+tagName,  // release tag
 		"GITHUB_TOKEN=dummy", // github token needed to post release notes
 		"VSCE_PAT=dummy",     // vsce token needed to publish the extension
 		"COMMIT_SHA=4893cd984d190bdf2cd65e11c425b42819ae6f57", // bogus commit SHA used to post release notes
@@ -47,12 +49,12 @@ func testRelease(t *testing.T, moduleRoot, command string) {
 		t.Fatalf("failed to run release package: %v", err)
 	}
 	if *flagUpdate {
-		if err := os.WriteFile(filepath.Join("testdata", command+".golden"), output, 0644); err != nil {
+		if err := os.WriteFile(filepath.Join("testdata", command+"-"+tagName+".golden"), output, 0644); err != nil {
 			t.Fatal("failed to write golden file:", err)
 		}
 		return
 	}
-	golden, err := os.ReadFile(filepath.Join("testdata", command+".golden"))
+	golden, err := os.ReadFile(filepath.Join("testdata", command+"-"+tagName+".golden"))
 	if err != nil {
 		t.Fatal("failed to read golden file:", err)
 	}
