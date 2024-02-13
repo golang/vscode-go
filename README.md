@@ -148,7 +148,7 @@ traces to [telemetry.go.dev](https://telemetry.go.dev). You can inspect what
 data is collected and can be uploaded by running:
 
 ```
-go run golang.org/x/telemetry/cmdgotelemetry@latest view
+go run golang.org/x/telemetry/cmd/gotelemetry@latest view
 ```
 
 If we get enough adoption, this data can significantly advance the pace of

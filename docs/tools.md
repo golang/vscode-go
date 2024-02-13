@@ -35,7 +35,7 @@ This extension uses Delve for its debug/test functionalities. The extension curr
 
 For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
 
-### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/cmd/vscgo)
+### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/vscgo)
 
 This tool provides utilities needed by this extension but do not belong to the language server
 or debug adapter server. Examples include dependency tools management, developer survey
