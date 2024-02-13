@@ -229,6 +229,10 @@ suite('Code lenses for testing and benchmarking', function () {
 });
 
 suite('Code lenses with stretchr/testify/suite', function () {
+	if (process.platform === 'win32') {
+		this.timeout(20000); // Gopls on windows needs more time to load required modules.
+	}
+
 	const ctx = MockExtensionContext.new();
 
 	const testdataDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
