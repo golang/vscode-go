@@ -75,10 +75,13 @@ export function getImportPathWithVersion(
 	}
 	if (tool.name === 'gofumpt') {
 		if (goVersion.lt('1.18')) return importPath + '@v0.2.1';
+		if (goVersion.lt('1.19')) return importPath + '@v0.4.0';
+		if (goVersion.lt('1.20')) return importPath + '@v0.5.0';
 	}
 	if (tool.name === 'golangci-lint') {
 		if (goVersion.lt('1.18')) return importPath + '@v1.47.3';
 		if (goVersion.lt('1.20')) return importPath + '@v1.53.3';
+		if (goVersion.lt('1.21')) return importPath + '@v1.55.2';
 	}
 	if (tool.defaultVersion) {
 		return importPath + '@' + tool.defaultVersion;

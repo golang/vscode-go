@@ -205,19 +205,18 @@ suite('Installation Tests', function () {
 	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
 	test('Install gofumpt with old go', async () => {
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: 'v0.2.1' }],
+			[{ name: 'gofumpt', versions: ['v0.4.0', 'v0.5.0', gofumptDefault], wantVersion: 'v0.5.0' }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.17' // Go Version
+			'go1.19' // Go Version
 		);
 	});
-
 	test('Install gofumpt with new go', async () => {
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: gofumptDefault }],
+			[{ name: 'gofumpt', versions: ['v0.4.0', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.18' // Go Version
+			'go1.22' // Go Version
 		);
 	});
 	test('Install all tools via GOPROXY', async () => {

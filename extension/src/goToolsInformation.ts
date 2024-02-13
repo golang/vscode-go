@@ -39,7 +39,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter',
-		defaultVersion: 'v0.5.0'
+		defaultVersion: 'v0.6.0'
 	},
 	'goimports': {
 		name: 'goimports',
