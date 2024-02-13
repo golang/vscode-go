@@ -59,7 +59,7 @@ history](https://github.com/golang/vscode-go/compare/v0.40.3...v0.41.0).
 * The extension does not require `dlv` installation until the debug feature is
   invoked.
 * The extension now installs
-  [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/cmd/vscgo), an
+  [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/vscgo), an
   optional tool used to [update the Go telemetry
   counters](https://github.com/golang/vscode-go/issues/3121). This tool is
   installed in the extension's directory.
