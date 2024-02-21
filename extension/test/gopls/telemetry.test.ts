@@ -173,9 +173,7 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 }
 
 describe('# telemetry reporter using vscgo', async function () {
-	if (os.platform() === 'win32') {
-		this.timeout(10000); // go install is slow on windows builder.
-	}
+	this.timeout(10000); // go install can be slow.
 	// installVSCGO expects
 	//   {extensionPath}/vscgo: vscgo source code for testing.
 	//   {extensionPath}/bin: where compiled vscgo will be stored.

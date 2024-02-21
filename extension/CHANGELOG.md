@@ -1,3 +1,10 @@
+## v0.41.1 - 22 Feb, 2024
+
+This release is a point release to skip `vscgo` installation on Windows
+([Issue 3182](https://github.com/golang/vscode-go/issues/3182)).
+For a detailed list of changes, refer to the complete
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.0...v0.41.1).
+
 ## v0.41.0 - 14 Feb, 2024
 
 This release introduces significant updates to the extension's UI.

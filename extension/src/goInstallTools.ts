@@ -893,7 +893,7 @@ export async function maybeInstallVSCGO(
 			: `@v${extensionVersion}`;
 	// build from source acquired from the module proxy if this is a non-preview version.
 	try {
-		const args = ['install', `${importPath}${version}`];
+		const args = ['install', '-trimpath', `${importPath}${version}`];
 		console.log(`installing vscgo: ${args.join(' ')}`);
 		await execFile(getBinPath('go'), args, { cwd, env });
 		return progPath;
