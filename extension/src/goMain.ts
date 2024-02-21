@@ -102,15 +102,18 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	await updateGoVarsFromConfig(goCtx);
 
 	// for testing or development mode, always rebuild vscgo.
-	maybeInstallVSCGO(
-		ctx.extensionMode,
-		ctx.extension.id,
-		extensionInfo.version || '',
-		ctx.extensionPath,
-		extensionInfo.isPreview
-	)
-		.then((path) => telemetryReporter.setTool(path))
-		.catch((reason) => console.error(reason));
+	if (process.platform !== 'win32') {
+		// skip windows until Windows Defender issue reported in golang/vscode-go#3182 can be addressed
+		maybeInstallVSCGO(
+			ctx.extensionMode,
+			ctx.extension.id,
+			extensionInfo.version || '',
+			ctx.extensionPath,
+			extensionInfo.isPreview
+		)
+			.then((path) => telemetryReporter.setTool(path))
+			.catch((reason) => console.error(reason));
+	}
 
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
