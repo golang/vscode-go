@@ -524,7 +524,7 @@ export function runTool(
 	}
 	cwd = fixDriveCasingInWindows(cwd);
 	return new Promise((resolve, reject) => {
-		p = cp.execFile(cmd, args, { env, cwd }, (err, stdout, stderr) => {
+		p = cp.exec([cmd, ...args].join(' '), { env, cwd }, (err, stdout, stderr) => {
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
 					// Since the tool is run on save which can be frequent
