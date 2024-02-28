@@ -353,6 +353,7 @@ export const testWorkspace: CommandFactory = () => (args: any) => {
 		dir: workspaceUri.fsPath,
 		background: !!args?.background,
 		flags: getTestFlags(goConfig, args),
+		background: !!args?.background,
 		includeSubDirectories: true
 	};
 	// Remember this config as the last executed test.
