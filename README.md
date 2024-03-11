@@ -133,7 +133,7 @@ nightly build of this extension. Learn how to install it in by reading the
 
 ## Telemetry
 
-VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
+VS Code Go extension relies on the [Go Telemetry](https://go.dev/doc/telemetry) to
 learn insights about the performance and stability of the extension and the
 language server (`gopls`).
 **Go Telemetry data uploading is disabled by default** and can be enabled
@@ -171,9 +171,8 @@ of reliability. For example:
 These are just a few ways that telemetry can improve gopls. The [telemetry blog
 post series](https://research.swtch.com/telemetry-uses) contains many more.
 
-Go telemetry is designed to be transparent and privacy-preserving. If you have
-concerns about enabling telemetry, you can learn more at
-[https://telemetry.go.dev/privacy](https://telemetry.go.dev/privacy).
+Go telemetry is designed to be transparent and privacy-preserving. Learn more at
+[https://go.dev/doc/telemetry](https://go.dev/doc/telemetry).
 
 ## Contributing
 
