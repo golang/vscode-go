@@ -1,4 +1,4 @@
-## v0.41.2 - 12 Mar, 2024
+## v0.41.2 - 14 Mar, 2024
 
 This release is a point release to increase the prompt rate of Go telemetry
 opt-in. Learn more at https://go.dev/doc/telemetry.
