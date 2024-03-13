@@ -97,6 +97,19 @@ suite('Test Go Test Args', () => {
 			flags: ['-run', 'TestC']
 		});
 	});
+	test('use -testify.m for methods', () => {
+		runTest({
+			expectedArgs:
+				'test -timeout 30s -run ^TestExampleTestSuite$ -testify.m ^(TestExample|TestAnotherExample)$ ./...',
+			expectedOutArgs:
+				'test -timeout 30s -run ^TestExampleTestSuite$ -testify.m ^(TestExample|TestAnotherExample)$ ./...',
+			functions: [
+				'(*ExampleTestSuite).TestExample',
+				'(*ExampleTestSuite).TestAnotherExample',
+				'TestExampleTestSuite'
+			]
+		});
+	});
 });
 
 suite('Test Go Test', function () {

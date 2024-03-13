@@ -1530,7 +1530,6 @@ async function collectGoplsLog(goCtx: GoExtensionContext): Promise<{ sanitizedLo
 enum GoplsFailureModes {
 	NO_GOPLS_LOG = 'no gopls log',
 	EMPTY_PANIC_TRACE = 'empty panic trace',
-	INCOMPLETE_PANIC_TRACE = 'incomplete panic trace',
 	INCORRECT_COMMAND_USAGE = 'incorrect gopls command usage',
 	UNRECOGNIZED_CRASH_PATTERN = 'unrecognized crash pattern'
 }
@@ -1544,34 +1543,40 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 	const panicMsgBegin = logs.lastIndexOf('panic: ');
 	if (panicMsgBegin > -1) {
 		// panic message was found.
-		const panicMsgEnd = logs.indexOf('Connection to server got closed.', panicMsgBegin);
+		let panicTrace = logs.substr(panicMsgBegin);
+		const panicMsgEnd = panicTrace.search(/\[(Info|Warning|Error)\s+-\s+/);
 		if (panicMsgEnd > -1) {
-			const panicTrace = logs.substr(panicMsgBegin, panicMsgEnd - panicMsgBegin);
-			const filePattern = /(\S+\.go):\d+/;
-			const sanitized = panicTrace
-				.split('\n')
-				.map((line: string) => {
-					// Even though this is a crash from gopls, the file path
-					// can contain user names and user's filesystem directory structure.
-					// We can still locate the corresponding file if the file base is
-					// available because the full package path is part of the function
-					// name. So, leave only the file base.
-					const m = line.match(filePattern);
-					if (!m) {
-						return line;
-					}
-					const filePath = m[1];
-					const fileBase = path.basename(filePath);
-					return line.replace(filePath, '  ' + fileBase);
-				})
-				.join('\n');
-
-			if (sanitized) {
-				return { sanitizedLog: sanitized };
-			}
-			return { failureReason: GoplsFailureModes.EMPTY_PANIC_TRACE };
+			panicTrace = panicTrace.substr(0, panicMsgEnd);
 		}
-		return { failureReason: GoplsFailureModes.INCOMPLETE_PANIC_TRACE };
+		const filePattern = /(\S+\.go):\d+/;
+		const sanitized = panicTrace
+			.split('\n')
+			.map((line: string) => {
+				// Even though this is a crash from gopls, the file path
+				// can contain user names and user's filesystem directory structure.
+				// We can still locate the corresponding file if the file base is
+				// available because the full package path is part of the function
+				// name. So, leave only the file base.
+				const m = line.match(filePattern);
+				if (!m) {
+					return line;
+				}
+				const filePath = m[1];
+				const fileBase = path.basename(filePath);
+				return line.replace(filePath, '  ' + fileBase);
+			})
+			.join('\n');
+
+		if (sanitized) {
+			return { sanitizedLog: sanitized };
+		}
+		return { failureReason: GoplsFailureModes.EMPTY_PANIC_TRACE };
+	}
+	// Capture Fatal
+	//    foo.go:1: the last message (caveat - we capture only the first log line)
+	const m = logs.match(/(^\S+\.go:\d+:.*$)/gm);
+	if (m && m.length > 0) {
+		return { sanitizedLog: m[0].toString() };
 	}
 	const initFailMsgBegin = logs.lastIndexOf('gopls client:');
 	if (initFailMsgBegin > -1) {
@@ -1590,13 +1595,6 @@ export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; fail
 	if (logs.lastIndexOf('Usage:') > -1) {
 		return { failureReason: GoplsFailureModes.INCORRECT_COMMAND_USAGE };
 	}
-	// Capture Fatal
-	//    foo.go:1: the last message (caveat - we capture only the first log line)
-	const m = logs.match(/(^\S+\.go:\d+:.*$)/gm);
-	if (m && m.length > 0) {
-		return { sanitizedLog: m[0].toString() };
-	}
-
 	return { failureReason: GoplsFailureModes.UNRECOGNIZED_CRASH_PATTERN };
 }
 
@@ -1664,6 +1662,6 @@ async function getGoplsStats(binpath?: string) {
 	} catch (e) {
 		const duration = new Date().getTime() - start.getTime();
 		console.log(`gopls stats -anon failed: ${JSON.stringify(e)}`);
-		return `gopls stats -anon failed after running for ${duration}ms`; // e may contain user information. don't include in the report.
+		return `gopls stats -anon failed after ${duration} ms. Please check if gopls is killed by OS.`;
 	}
 }

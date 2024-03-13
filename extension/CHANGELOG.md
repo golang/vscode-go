@@ -1,3 +1,10 @@
+## v0.41.2 - 14 Mar, 2024
+
+This release is a point release to increase the prompt rate of Go telemetry
+opt-in. Learn more at https://go.dev/doc/telemetry.
+For a detailed list of changes, refer to the complete
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.1...v0.41.2).
+
 ## v0.41.1 - 22 Feb, 2024
 
 This release is a point release to skip `vscgo` installation on Windows

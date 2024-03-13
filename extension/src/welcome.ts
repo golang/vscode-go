@@ -197,9 +197,7 @@ export class WelcomePanel {
 				</p>
 				<p>
 				If we get enough adoption, this data can significantly advance the pace of the go plugin development and help us meet a higher standard of reliability.
-                Go telemetry is designed to be transparent and privacy-preserving.
-				If you have concerns about enabling telemetry, you can learn more at
-				<a href="https://telemetry.go.dev/privacy">Go Telemetry Privacy Policy</a>.
+                Go telemetry is designed to be transparent and privacy-preserving. Learn more at <a href="https://go.dev/doc/telemetry">https://go.dev/doc/telemetry</a>.
 				</p>
 			</div>
 

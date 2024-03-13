@@ -8,11 +8,16 @@ import { GoTestExplorer } from '../../src/goTest/explore';
 import { MockExtensionContext } from '../mocks/MockContext';
 import { GoTest } from '../../src/goTest/utils';
 import { Env } from './goplsTestEnv.utils';
+import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 
 suite('Go Test Runner', () => {
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 
 	let testExplorer: GoTestExplorer;
+
+	suiteSetup(async () => {
+		await updateGoVarsFromConfig({});
+	});
 
 	suite('parseOutput', () => {
 		const ctx = MockExtensionContext.new();

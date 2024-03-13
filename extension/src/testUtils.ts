@@ -11,6 +11,7 @@ import cp = require('child_process');
 import path = require('path');
 import util = require('util');
 import vscode = require('vscode');
+import { promises as fs } from 'fs';
 
 import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
@@ -50,6 +51,7 @@ const testMethodRegex = /^\(([^)]+)\)\.(Test|Test\P{Ll}.*)$/u;
 const benchmarkRegex = /^Benchmark$|^Benchmark\P{Ll}.*/u;
 const fuzzFuncRegx = /^Fuzz$|^Fuzz\P{Ll}.*/u;
 const testMainRegex = /TestMain\(.*\*testing.M\)/;
+const runTestSuiteRegex = /^\s*suite\.Run\(\w+,\s*(?:&?(?<type1>\w+)\{|new\((?<type2>\w+)\))/mu;
 
 /**
  * Input to goTest.
@@ -153,27 +155,76 @@ export async function getTestFunctions(
 	doc: vscode.TextDocument,
 	token?: vscode.CancellationToken
 ): Promise<vscode.DocumentSymbol[] | undefined> {
+	const result = await getTestFunctionsAndTestifyHint(goCtx, doc, token);
+	return result.testFunctions;
+}
+
+/**
+ * Returns all Go unit test functions in the given source file and an hint if testify is used.
+ *
+ * @param doc A Go source file
+ */
+export async function getTestFunctionsAndTestifyHint(
+	goCtx: GoExtensionContext,
+	doc: vscode.TextDocument,
+	token?: vscode.CancellationToken
+): Promise<{ testFunctions?: vscode.DocumentSymbol[]; foundTestifyTestFunction?: boolean }> {
 	const documentSymbolProvider = GoDocumentSymbolProvider(goCtx, true);
 	const symbols = await documentSymbolProvider.provideDocumentSymbols(doc);
 	if (!symbols || symbols.length === 0) {
-		return;
+		return {};
 	}
 	const symbol = symbols[0];
 	if (!symbol) {
-		return;
+		return {};
 	}
 	const children = symbol.children;
 
-	// With gopls dymbol provider symbols, the symbols have the imports of all
+	// With gopls symbol provider, the symbols have the imports of all
 	// the package, so suite tests from all files will be found.
 	const testify = importsTestify(symbols);
-	return children.filter(
+
+	const allTestFunctions = children.filter(
 		(sym) =>
-			(sym.kind === vscode.SymbolKind.Function || sym.kind === vscode.SymbolKind.Method) &&
+			sym.kind === vscode.SymbolKind.Function &&
 			// Skip TestMain(*testing.M) - see https://github.com/golang/vscode-go/issues/482
 			!testMainRegex.test(doc.lineAt(sym.range.start.line).text) &&
-			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name) || (testify && testMethodRegex.test(sym.name)))
+			(testFuncRegex.test(sym.name) || fuzzFuncRegx.test(sym.name))
 	);
+
+	const allTestMethods = testify
+		? children.filter((sym) => sym.kind === vscode.SymbolKind.Method && testMethodRegex.test(sym.name))
+		: [];
+
+	return {
+		testFunctions: allTestFunctions.concat(allTestMethods),
+		foundTestifyTestFunction: allTestMethods.length > 0
+	};
+}
+
+/**
+ * Returns all the Go test functions (or benchmark) from the given Go source file, and the associated test suites when testify is used.
+ *
+ * @param doc A Go source file
+ */
+export async function getTestFunctionsAndTestSuite(
+	isBenchmark: boolean,
+	goCtx: GoExtensionContext,
+	doc: vscode.TextDocument
+): Promise<{ testFunctions: vscode.DocumentSymbol[]; suiteToTest: SuiteToTestMap }> {
+	if (isBenchmark) {
+		return {
+			testFunctions: (await getBenchmarkFunctions(goCtx, doc)) ?? [],
+			suiteToTest: {}
+		};
+	}
+
+	const { testFunctions, foundTestifyTestFunction } = await getTestFunctionsAndTestifyHint(goCtx, doc);
+
+	return {
+		testFunctions: testFunctions ?? [],
+		suiteToTest: foundTestifyTestFunction ? await getSuiteToTestMap(goCtx, doc) : {}
+	};
 }
 
 /**
@@ -199,17 +250,16 @@ export function extractInstanceTestName(symbolName: string): string {
 export function getTestFunctionDebugArgs(
 	document: vscode.TextDocument,
 	testFunctionName: string,
-	testFunctions: vscode.DocumentSymbol[]
+	testFunctions: vscode.DocumentSymbol[],
+	suiteToFunc: SuiteToTestMap
 ): string[] {
 	if (benchmarkRegex.test(testFunctionName)) {
 		return ['-test.bench', '^' + testFunctionName + '$', '-test.run', 'a^'];
 	}
 	const instanceMethod = extractInstanceTestName(testFunctionName);
 	if (instanceMethod) {
-		const testFns = findAllTestSuiteRuns(document, testFunctions);
-		const testSuiteRuns = ['-test.run', `^${testFns.map((t) => t.name).join('|')}$`];
-		const testSuiteTests = ['-testify.m', `^${instanceMethod}$`];
-		return [...testSuiteRuns, ...testSuiteTests];
+		const testFns = findAllTestSuiteRuns(document, testFunctions, suiteToFunc);
+		return ['-test.run', `^${testFns.map((t) => t.name).join('|')}$/^${instanceMethod}$`];
 	} else {
 		return ['-test.run', `^${testFunctionName}$`];
 	}
@@ -222,12 +272,22 @@ export function getTestFunctionDebugArgs(
  */
 export function findAllTestSuiteRuns(
 	doc: vscode.TextDocument,
-	allTests: vscode.DocumentSymbol[]
+	allTests: vscode.DocumentSymbol[],
+	suiteToFunc: SuiteToTestMap
 ): vscode.DocumentSymbol[] {
-	// get non-instance test functions
-	const testFunctions = allTests?.filter((t) => !testMethodRegex.test(t.name));
-	// filter further to ones containing suite.Run()
-	return testFunctions?.filter((t) => doc.getText(t.range).includes('suite.Run(')) ?? [];
+	const suites = allTests
+		// Find all tests with receivers.
+		?.map((e) => e.name.match(testMethodRegex))
+		.filter((e) => e?.length === 3)
+		// Take out receiever, strip leading *.
+		.map((e) => e && e[1].replace(/^\*/g, ''))
+		// Map receiver name to test that runs "suite.Run".
+		.map((e) => e && suiteToFunc[e])
+		// Filter out empty results.
+		.filter((e): e is vscode.DocumentSymbol => !!e);
+
+	// Dedup.
+	return [...new Set(suites)];
 }
 
 /**
@@ -252,6 +312,59 @@ export async function getBenchmarkFunctions(
 	}
 	const children = symbol.children;
 	return children.filter((sym) => sym.kind === vscode.SymbolKind.Function && benchmarkRegex.test(sym.name));
+}
+
+export type SuiteToTestMap = Record<string, vscode.DocumentSymbol>;
+
+/**
+ * Returns a mapping between a package's function receivers to
+ * the test method that initiated them with "suite.Run".
+ *
+ * @param the URI of a Go source file.
+ * @return function symbols from all source files of the package, mapped by target suite names.
+ */
+export async function getSuiteToTestMap(
+	goCtx: GoExtensionContext,
+	doc: vscode.TextDocument,
+	token?: vscode.CancellationToken
+) {
+	// Get all the package documents.
+	const packageDir = path.parse(doc.fileName).dir;
+	const packageContent = await fs.readdir(packageDir, { withFileTypes: true });
+	const packageFilenames = packageContent
+		// Only go files.
+		.filter((dirent) => dirent.isFile())
+		.map((dirent) => dirent.name)
+		.filter((name) => name.endsWith('.go'));
+	const packageDocs = await Promise.all(
+		packageFilenames.map((e) => path.join(packageDir, e)).map(vscode.workspace.openTextDocument)
+	);
+
+	const suiteToTest: SuiteToTestMap = {};
+	for (const packageDoc of packageDocs) {
+		const funcs = await getTestFunctions(goCtx, packageDoc, token);
+		if (!funcs) {
+			continue;
+		}
+
+		for (const func of funcs) {
+			const funcText = packageDoc.getText(func.range);
+
+			// Matches run suites of the types:
+			// type1: suite.Run(t, MySuite{
+			// type1: suite.Run(t, &MySuite{
+			// type2: suite.Run(t, new(MySuite)
+			const matchRunSuite = funcText.match(runTestSuiteRegex);
+			if (!matchRunSuite) {
+				continue;
+			}
+
+			const g = matchRunSuite.groups;
+			suiteToTest[g?.type1 || g?.type2 || ''] = func;
+		}
+	}
+
+	return suiteToTest;
 }
 
 /**
