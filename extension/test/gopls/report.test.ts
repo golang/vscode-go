@@ -26,9 +26,14 @@ suite('gopls issue report tests', () => {
 				want: sanitizedTraceFromIssueVSCodeGo572LSP317
 			},
 			{
+				name: 'panic trace 2024 March',
+				in: trace2024MarchPanic,
+				want: sanitizedTrace2024MarchPanic
+			},
+			{
 				name: 'incomplete panic trace',
-				in: 'panic: \nsecret\n',
-				wantReason: 'incomplete panic trace'
+				in: 'panic: \ntruncated\n',
+				want: 'panic: \ntruncated\n'
 			},
 			{
 				name: 'incomplete initialization error message',
@@ -42,7 +47,7 @@ suite('gopls issue report tests', () => {
 			assert.strictEqual(
 				JSON.stringify(sanitizedLog),
 				JSON.stringify(tc.want),
-				`sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result`
+				`sanitizeGoplsTrace(${tc.name}) returned unexpected sanitizedLog result - ${sanitizedLog}`
 			);
 			assert.strictEqual(
 				failureReason,
@@ -315,7 +320,7 @@ golang.org/x/tools/internal/jsonrpc2.AsyncHandler.func1.2(0xc00021ac60, 0xc0007b
   handler.go:103 +0x86
 created by golang.org/x/tools/internal/jsonrpc2.AsyncHandler.func1
   handler.go:100 +0x171
-[Info - 12:50:26 PM] `;
+`;
 
 const traceFromIssueVSCodeGo572LSP317 = `
 [Error - 12:20:35 PM] Stopping server failed
@@ -335,3 +340,47 @@ Error starting language server: Error: Socket closed before the connection was e
 const sanitizedTraceFromIssueVSCodeGo572LSP317 = `gopls client: couldn't create connection to server.
   Message: Socket closed before the connection was established
   Code: -32099 `;
+
+const trace2024MarchPanic = `
+[Info  - 9:58:40 AM] 
+true
+[Error - 9:58:40 AM] gopls client: couldn't create connection to server.
+  Message: Pending response rejected since connection got disposed
+  Code: -32097 
+panic: crash
+
+goroutine 1 [running]:
+golang.org/x/tools/gopls/internal/cmd.(*Serve).Run(0xc000486310?, {0xc0000b8090?, 0x0?}, {0x0?, 0x0?, 0x0?})
+	/Users/Gopher/projects/tools/gopls/internal/cmd/serve.go:81 +0x25
+golang.org/x/tools/internal/tool.Run({0x1012d048, 0xc00019c3f0}, 0xc000486310, {0x1012f9e0, 0xc000159b40}, {0xc0000b8090, 0x0, 0x0})
+	/Users/Gopher/projects/tools/internal/tool/tool.go:192 +0x691
+golang.org/x/tools/gopls/internal/cmd.(*Application).Run(0xc000159b00, {0x1012d010, 0x107d9840}, {0xc0000b8090, 0x0, 0x0})
+	/Users/Gopher/projects/tools/gopls/internal/cmd/cmd.go:240 +0x147
+golang.org/x/tools/internal/tool.Run({0x1012d010, 0x107d9840}, 0xc0004862a0, {0x1012f3a0, 0xc000159b00}, {0xc0000b8060, 0x4, 0x4})
+	/Users/Gopher/projects/tools/internal/tool/tool.go:192 +0x691
+golang.org/x/tools/internal/tool.Main({0x1012d010, 0x107d9840}, {0x1012f3a0, 0xc000159b00}, {0xc0000b8060, 0x4, 0x4})
+	/Users/Gopher/projects/tools/internal/tool/tool.go:93 +0x12a
+main.main()
+	/Users/Gopher/projects/tools/gopls/main.go:34 +0x109
+[Error - 9:58:49 AM] 
+[Error - 9:58:49 AM] gopls client: couldn't create connection to server.
+  Message: Pending response rejected since connection got disposed
+  Code: -32097 
+Error starting language server: Error: Pending response rejected since connection got disposed`;
+
+const sanitizedTrace2024MarchPanic = `panic: crash
+
+goroutine 1 [running]:
+golang.org/x/tools/gopls/internal/cmd.(*Serve).Run(0xc000486310?, {0xc0000b8090?, 0x0?}, {0x0?, 0x0?, 0x0?})
+	  serve.go:81 +0x25
+golang.org/x/tools/internal/tool.Run({0x1012d048, 0xc00019c3f0}, 0xc000486310, {0x1012f9e0, 0xc000159b40}, {0xc0000b8090, 0x0, 0x0})
+	  tool.go:192 +0x691
+golang.org/x/tools/gopls/internal/cmd.(*Application).Run(0xc000159b00, {0x1012d010, 0x107d9840}, {0xc0000b8090, 0x0, 0x0})
+	  cmd.go:240 +0x147
+golang.org/x/tools/internal/tool.Run({0x1012d010, 0x107d9840}, 0xc0004862a0, {0x1012f3a0, 0xc000159b00}, {0xc0000b8060, 0x4, 0x4})
+	  tool.go:192 +0x691
+golang.org/x/tools/internal/tool.Main({0x1012d010, 0x107d9840}, {0x1012f3a0, 0xc000159b00}, {0xc0000b8060, 0x4, 0x4})
+	  tool.go:93 +0x12a
+main.main()
+	  main.go:34 +0x109
+`;
