@@ -133,7 +133,12 @@ export function goLint(
 	}
 
 	if (scope === 'workspace' && currentWorkspace) {
-		args.push('./...');
+		if (lintTool === 'golangci-lint') {
+			// golangci-lint needs to be given workspace module paths explicitly
+			args.push(`$(go list -f '{{.Dir}}/...' -m | xargs)`)
+		} else {
+			args.push('./...');
+		}
 		outputChannel.appendLine(`Starting linting the current workspace at ${currentWorkspace}`);
 	} else if (scope === 'file') {
 		args.push(fileUri?.fsPath ?? '');
