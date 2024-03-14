@@ -5,6 +5,15 @@ opt-in. Learn more at https://go.dev/doc/telemetry.
 For a detailed list of changes, refer to the complete
 [commit history](https://github.com/golang/vscode-go/compare/v0.41.1...v0.41.2).
 
+### Fixes
+- Fixed [Issue 2414](https://github.com/golang/vscode-go/issues/2414) that prevented
+recognizing testify suites spanning multiple files. ([PR 3128](https://github.com/golang/vscode-go/pull/3128))
+- Fixed the "Open 'gopls' trace" submenu in "Go: Choose Go Environment" command. ([Issue 3236](https://github.com/golang/vscode-go/issues/3236))
+
+### Thanks
+
+Thanks for your contributions! @Cr4zySheep, @nirhaas
+
 ## v0.41.1 - 22 Feb, 2024
 
 This release is a point release to skip `vscgo` installation on Windows
