@@ -442,7 +442,7 @@ Here is the list of attributes specific to Go debugging.
 | `port` | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> | When applied to remote-attach configurations, will look for "dlv ... --headless --listen=<host>:<port>" server started externally. In dlv-dap mode, this will apply to all other configurations as well. The extension will try to connect to an external server started with "dlv dap --listen=<host>:<port>" to ask it to launch/attach to the target process.<br/>(Default: `2345`)<br/> |
 | `processId` | <center>_n/a_</center> | <br/><p><b>Option 1:</b> Use process picker to select a process to attach, or Process ID as integer.<br/><p>Allowed Values: `"${command:pickProcess}"`, `"${command:pickGoProcess}"`<br/><br/><p><b>Option 2:</b> Attach to a process by name. If more than one process matches the name, use the process picker to select a process.<br/><br/><p><b>Option 3:</b> The numeric ID of the process to be debugged. If 0, use the process picker to select a process.<br/><br/>(Default: `0`)<br/> |
 | `program` | Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interpretes it as a workspace relative path.<br/>(Default: `"${workspaceFolder}"`)<br/> | <center>_n/a_</center> |
-| `remotePath` | <center>_n/a_</center> | (Deprecated) *Use `substitutePath` instead.*<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath. Not supported with `dlv-dap`.<br/>(Default: `""`)<br/> |
+| `remotePath` | <center>_n/a_</center> | (Deprecated) _Use `substitutePath` instead._<br/>The path to the source code on the remote machine, when the remote path is different from the local machine. If specified, becomes the first entry in substitutePath. Not supported with `dlv-dap`.<br/>(Default: `""`)<br/> |
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
 | `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
 | `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not.<br/>(Default: `false`)<br/> | <center>_same as Launch_</center>|
@@ -803,7 +803,7 @@ command-line options.
 We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a
 try and to
 [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If
-you need to use the `legacy` mode, pleasse also see the
+you need to use the `legacy` mode, please also see the
 [legacy remote debugging](debugging-legacy.md#remote-debugging) documentation.
 
 For example, start external headless server:
@@ -1030,7 +1030,7 @@ in the module cache, vendored modules, and the standard library.
 ```
 
 Since rules are applied both from client to server and server to client,
-rules with an empty string will be applied to *all* paths that it sees, so even
+rules with an empty string will be applied to _all_ paths that it sees, so even
 dependencies will be mapped to `"/path/to/module"`.
 
 We plan to make this easier in the future. Progress can be tracked
