@@ -483,6 +483,22 @@ Default: `"proxy"`
 The path to the `go` binary used to install the Go tools. If it's empty, the same `go` binary chosen for the project will be used for tool installation.
 
 Default: `""`
+
+### `go.toolsManagement.buildFlags`
+
+Flags to `go install` used to install the Go tools. (e.g. `["-ldflags", "-s -w"]`)
+
+Default: `[]`
+### `go.toolsManagement.buildTags`
+
+The Go build tags used to install the Go tools.
+
+Default: `""`
+### `go.toolsManagement.envVars`
+
+Environment variables that will be used to install the Go tools.
+
+Default: `{}`
 ### `go.trace.server`
 
 Trace the communication between VS Code and the Go language server.<br/>
