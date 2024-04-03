@@ -12,7 +12,7 @@ import vscode = require('vscode');
 import { getGoConfig } from '../../config';
 import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
-import { getBinPath } from '../../util';
+import { getBinPath, resolvePath } from '../../util';
 import { killProcessTree } from '../../utils/processUtils';
 
 export class GoDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
@@ -144,7 +144,7 @@ export function getFormatTool(goConfig: { [key: string]: any }): string {
 		return 'goimports';
 	}
 	if (formatTool === 'custom') {
-		return goConfig['alternateTools']['customFormatter'] || 'goimports';
+		return resolvePath(goConfig['alternateTools']['customFormatter'] || 'goimports');
 	}
 	return formatTool;
 }
