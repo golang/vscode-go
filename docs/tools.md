@@ -2,7 +2,7 @@
 
 This document describes the tools that power the VS Code Go extension.
 
-Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
+Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/extension/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
 
 VS Code Go will install the tools to your `$GOPATH/bin` by default. 
 
