@@ -42,10 +42,9 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		name: 'Attach',
 		type: 'go',
 		request: 'attach',
-		mode: 'remote',
+		mode: 'remote', // This implies debugAdapter = legacy.
 		host: '127.0.0.1',
-		port: 3456,
-		debugAdapter: isDlvDap ? undefined : 'legacy'
+		port: 3456
 	};
 
 	let dc: DebugClient;
