@@ -10,7 +10,8 @@ import {
 	GOPLS_MAYBE_PROMPT_FOR_TELEMETRY,
 	TELEMETRY_START_TIME_KEY,
 	TelemetryReporter,
-	TelemetryService
+	TelemetryService,
+	recordTelemetryStartTime
 } from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
 import { maybeInstallVSCGO } from '../../src/goInstallTools';
@@ -21,9 +22,12 @@ import os = require('os');
 import { rmdirRecursive } from '../../src/util';
 import { extensionId } from '../../src/const';
 import { executableFileExists, fileExists } from '../../src/utils/pathUtils';
-import { ExtensionMode } from 'vscode';
+import { ExtensionMode, Memento, extensions } from 'vscode';
 
-describe('# prompt for telemetry', () => {
+describe('# prompt for telemetry', async () => {
+	const extension = extensions.getExtension(extensionId);
+	assert(extension);
+
 	it(
 		'do not prompt if language client is not used',
 		testTelemetryPrompt(
@@ -131,6 +135,22 @@ describe('# prompt for telemetry', () => {
 			false
 		)
 	);
+	// testExtensionAPI.globalState is a real memento instance passed by ExtensionHost.
+	// This instance is active throughout the integration test.
+	// When you add more test cases that interact with the globalState,
+	// be aware that multiple test cases may access and mutate it asynchronously.
+	const testExtensionAPI = await extension.activate();
+	it('check we can salvage the value in the real memento', async () => {
+		// write Date with Memento.update - old way. Now we always use string for TELEMETRY_START_TIME_KEY value.
+		testExtensionAPI.globalState.update(TELEMETRY_START_TIME_KEY, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+		await testTelemetryPrompt(
+			{
+				samplingInterval: 1000,
+				mementoInstance: testExtensionAPI.globalState
+			},
+			true
+		)();
+	});
 });
 
 interface testCase {
@@ -141,6 +161,7 @@ interface testCase {
 	vsTelemetryDisabled?: boolean; // assume the user disabled vscode general telemetry.
 	samplingInterval: number; // N where N out of 1000 are sampled.
 	hashMachineID?: number; // stub the machine id hash computation function.
+	mementoInstance?: Memento; // if set, use this instead of mock memento.
 }
 
 function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
@@ -153,9 +174,9 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 		const spy = sinon.spy(languageClient, 'sendRequest');
 		const lc = tc.noLangClient ? undefined : languageClient;
 
-		const memento = new MockMemento();
+		const memento = tc.mementoInstance ?? new MockMemento();
 		if (tc.firstDate) {
-			memento.update(TELEMETRY_START_TIME_KEY, tc.firstDate);
+			recordTelemetryStartTime(memento, tc.firstDate);
 		}
 		const commands = tc.goplsWithoutTelemetry ? [] : [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY];
 
