@@ -129,6 +129,21 @@ export class GoTestRunner {
 			false
 		);
 
+		ctrl.createRunProfile(
+			'Go (Coverage)',
+			TestRunProfileKind.Coverage,
+			async (request, token) => {
+				try {
+					await this.run(request, token, {}, true);
+				} catch (error) {
+					const m = 'Failed to execute tests';
+					outputChannel.error(`${m}: ${error}`);
+					await vscode.window.showErrorMessage(m);
+				}
+			},
+			false
+		);
+
 		pprof.configureHandler = async () => {
 			const state = await this.profiler.configure();
 			if (!state) return;
@@ -228,7 +243,7 @@ export class GoTestRunner {
 	}
 
 	// Execute tests - TestController.runTest callback
-	async run(request: TestRunRequest, token?: CancellationToken, options: ProfilingOptions = {}): Promise<boolean> {
+	async run(request: TestRunRequest, token?: CancellationToken, options: ProfilingOptions = {}, applyCodeCoverage = false): Promise<boolean> {
 		const collected = new Map<TestItem, CollectedTest[]>();
 		const files = new Set<TestItem>();
 		if (request.include) {
@@ -360,7 +375,8 @@ export class GoTestRunner {
 				options,
 				pkg,
 				record,
-				concat
+				concat,
+				applyCodeCoverage,
 			};
 
 			// Run tests
