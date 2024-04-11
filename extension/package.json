@@ -75,7 +75,7 @@
     "@types/node-fetch": "2.6.9",
     "@types/semver": "7.3.4",
     "@types/sinon": "9.0.11",
-    "@types/vscode": "1.75.0",
+    "@types/vscode": "1.88.0",
     "@vscode/debugadapter-testsupport": "1.58.0",
     "@vscode/test-electron": "2.3.8",
     "@vscode/vsce": "2.23.0",

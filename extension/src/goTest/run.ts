@@ -29,6 +29,7 @@ import { debugTestAtCursor } from '../goTest';
 import { GoExtensionContext } from '../context';
 import path = require('path');
 import { escapeRegExp } from '../subTestUtils';
+import { GetCoverageCounts } from '../goCover';
 
 let debugSessionID = 0;
 
@@ -408,6 +409,10 @@ export class GoTestRunner {
 			if (token?.isCancellationRequested) {
 				break;
 			}
+
+			if (applyCodeCoverage) {
+				this.collectCoverage(run);
+			}
 		}
 
 		run.end();
@@ -741,6 +746,19 @@ export class GoTestRunner {
 
 		// TODO(firelizzard18): Add more sophisticated check for build failures?
 		return output.some((x) => rePkg.test(x));
+	}
+
+	collectCoverage(run: TestRun) {
+		const coverageData = GetCoverageCounts();
+		for (const filename in coverageData) {
+			const data = coverageData[filename];
+			run.addCoverage(
+				new vscode.FileCoverage(
+					Uri.file(filename),
+					new vscode.TestCoverageCount(data.Covered, data.Total),
+				),
+			);
+		}
 	}
 }
 
