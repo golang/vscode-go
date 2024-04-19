@@ -1,3 +1,41 @@
+## v0.41.3 - 22 Apr, 2024
+
+This point release temporarily reverts the default remote debugging behavior to
+use the legacy debug adapter due to existing feature gaps.
+Once these gaps are addressed as outlined in
+[Issue 3096](https://github.com/golang/vscode-go/issues/3096),
+we plan to switch the default back to use Delve DAP for remote deubgging.
+
+If you want to continue using [Delve DAP for remote debugging](https://github.com/golang/vscode-go/wiki/debugging#connect-to-headless-delve-with-target-specified-at-server-start-up), use the following
+settings in your `launch.json`.
+
+```json
+{
+    "name": "Debug Remote",
+    "type": "go",
+    "request": "attach",
+    "mode": "remote",
+    "debugAdapter": "dlv-dap", // Use Delve DAP
+    ...
+}
+```
+
+See the full
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.2...v0.41.3)
+for detailed changes.
+
+### Fixes
+- Fixed to substitute variables used in `go.alternateTools` setting's
+  `customFormatter` entry ([Issue 2582](https://github.com/golang/vscode-go/issues/2582)).
+- Corrected handling of `go.showWelcome` setting
+  ([Issue 3319](https://github.com/golang/vscode-go/issues/3319)).
+- Addressed Go telemetry prompt issue in the latest Visual Studio Code
+  ([Issue 3312](https://github.com/golang/vscode-go/issues/3312)).
+
+### Thanks
+
+Thanks for your contributions, @uniquefine, @monitor1379, @suzmue, @hyangah!
+
 ## v0.41.2 - 14 Mar, 2024
 
 This release is a point release to increase the prompt rate of Go telemetry
