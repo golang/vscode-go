@@ -2,7 +2,7 @@
 
 The Go extension historically used a small adapter program to work with the Go debugger, [Delve].
 The extension transitioned to communicate with [Delve] directly but there are still cases you may
-need to use the legacy debug adapter. This document explains how to use the
+need to use the legacy debug adapter (e.g. remote debugging). This document explains how to use the
 ***legacy*** debug adapter.
 
 
@@ -45,6 +45,8 @@ To opt in to use the legacy debug adapter (`legacy`) by default, add the followi
 ```
 
 If you want to use the legacy mode for only a subset of your launch configurations, you can use [the `debugAdapter` attribute](#launchjson-attributes) to switch between `"dlv-dap"` and `"legacy"` mode.
+For [Remote Debugging](#remote-debugging) (launch configuration with `"mode": "remote"` attribute),
+the extension will use the `"legacy"` mode by default, so setting this attribute won't be necessary.
 
 Throughout this document, we assume that you opted in to use the legacy debug adapter.
 For debugging using the new debug adapter (default, `"dlv-dap"` mode), please see the documentation about [Debugging](https://github.com/golang/vscode-go/tree/master/docs/debugging-legacy.md).

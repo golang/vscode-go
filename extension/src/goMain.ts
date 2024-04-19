@@ -76,12 +76,24 @@ import { telemetryReporter } from './goTelemetry';
 
 const goCtx: GoExtensionContext = {};
 
-export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
-	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
-		// Make sure this does not run when running in test.
-		return;
-	}
+// Allow tests to access the extension context utilities.
+interface ExtensionTestAPI {
+	globalState: vscode.Memento;
+}
 
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | ExtensionTestAPI | undefined> {
+	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
+		// TODO: VSCODE_GO_IN_TEST was introduced long before we learned about
+		// ctx.extensionMode, and used in multiple places.
+		// Investigate if use of VSCODE_GO_IN_TEST can be removed
+		// in favor of ctx.extensionMode and clean up.
+		if (ctx.extensionMode === vscode.ExtensionMode.Test) {
+			return { globalState: ctx.globalState };
+		}
+		// We shouldn't expose the memento in production mode even when VSCODE_GO_IN_TEST
+		// environment variable is set.
+		return; // Skip the remaining activation work.
+	}
 	const start = Date.now();
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
