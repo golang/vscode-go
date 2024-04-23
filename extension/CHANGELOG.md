@@ -1,3 +1,11 @@
+## v0.41.4 - 24 Apr, 2024
+
+This point release addresses a regression issue (spurious display of the Go welcome page)  within cloud-based IDEs.
+
+See the full
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.3...v0.41.4)
+for detailed changes.
+
 ## v0.41.3 - 22 Apr, 2024
 
 This point release temporarily reverts the default remote debugging behavior to
