@@ -12,7 +12,7 @@ import path = require('path');
 import semver = require('semver');
 import { extensionId } from './const';
 import { GoExtensionContext } from './context';
-import { extensionInfo, getGoConfig } from './config';
+import { extensionInfo } from './config';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { createRegisterCommand } from './commands';
 
@@ -29,7 +29,11 @@ export class WelcomePanel {
 				}
 			});
 		}
-		showGoWelcomePage();
+
+		// Show the Go welcome page on update.
+		if (!extensionInfo.isInCloudIDE && vscode.workspace.getConfiguration('go.showWelcome')) {
+			showGoWelcomePage();
+		}
 	}
 
 	public static currentPanel: WelcomePanel | undefined;
@@ -274,9 +278,6 @@ function showGoWelcomePage() {
 }
 
 export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
-	if (!extensionInfo.isInCloudIDE && getGoConfig().get('showWelcome') === false) {
-		return false;
-	}
 	if (newVersion === oldVersion) {
 		return false;
 	}
