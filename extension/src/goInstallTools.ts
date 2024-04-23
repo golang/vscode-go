@@ -263,7 +263,8 @@ async function installToolWithGo(
 		}
 	}
 
-	const env = Object.assign({}, envForTools);
+	const toolsBuildEnv = getGoConfig().get('toolsManagement.envVars') ?? {};
+	const env = Object.assign({}, envForTools, toolsBuildEnv);
 
 	let version: semver.SemVer | string | undefined | null = tool.version;
 	if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
@@ -291,9 +292,21 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 		cwd: getWorkspaceFolderPath()
 	};
 
+	const goConfig = getGoConfig();
+	const buildFlags: string[] = goConfig.get('toolsManagement.buildFlags') ?? [];
+	const buildTags: string = goConfig.get('toolsManagement.buildTags') ?? "";
+
+	const buildArgs: string[] = ['install', '-v'];
+	buildArgs.push(...buildFlags);
+	if (buildTags.length > 0 && buildFlags.indexOf('-tags') === -1) {
+		buildArgs.push('-tags');
+		buildArgs.push(buildTags);
+	}
+	buildArgs.push(importPath);
+
 	const execFile = util.promisify(cp.execFile);
 	outputChannel.trace(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
-	await execFile(goBinary, ['install', '-v', importPath], opts);
+	await execFile(goBinary, buildArgs, opts);
 }
 
 export function declinedToolInstall(toolName: string) {
