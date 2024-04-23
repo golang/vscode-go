@@ -12,7 +12,7 @@ import path = require('path');
 import semver = require('semver');
 import { extensionId } from './const';
 import { GoExtensionContext } from './context';
-import { extensionInfo } from './config';
+import { extensionInfo, getGoConfig } from './config';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { createRegisterCommand } from './commands';
 
@@ -30,8 +30,14 @@ export class WelcomePanel {
 			});
 		}
 
-		// Show the Go welcome page on update.
-		if (!extensionInfo.isInCloudIDE && vscode.workspace.getConfiguration('go.showWelcome')) {
+		// Show the Go welcome page on update unless one of the followings is true:
+		//   * the extension is running in Cloud IDE or
+		//   * the user explicitly opted out (go.showWelcome === false)
+		//
+		// It is difficult to write useful tests for this suppression logic
+		// without major refactoring or complicating tests to enable
+		// dependency injection or stubbing.
+		if (!extensionInfo.isInCloudIDE && getGoConfig().get('showWelcome') !== false) {
 			showGoWelcomePage();
 		}
 	}
@@ -269,7 +275,7 @@ function showGoWelcomePage() {
 
 	const savedGoExtensionVersion = getFromGlobalState(goExtensionVersionKey, '');
 
-	if (shouldShowGoWelcomePage(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
+	if (hasNewsForNewVersion(showVersions, goExtensionVersion, savedGoExtensionVersion)) {
 		vscode.commands.executeCommand('go.welcome');
 	}
 	if (goExtensionVersion !== savedGoExtensionVersion) {
@@ -277,7 +283,7 @@ function showGoWelcomePage() {
 	}
 }
 
-export function shouldShowGoWelcomePage(showVersions: string[], newVersion: string, oldVersion: string): boolean {
+export function hasNewsForNewVersion(showVersions: string[], newVersion: string, oldVersion: string): boolean {
 	if (newVersion === oldVersion) {
 		return false;
 	}
