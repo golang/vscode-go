@@ -95,7 +95,7 @@ extension.
 <br/><em>(Toggle Test File)</em></p>
 
 **⚠️ Note**: the default syntax highlighting for Go files is provided by a
-[TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS
+[TextMate rule](https://github.com/worlpaker/go-syntax) embedded in VS
 Code, not by this extension.
 
 For better syntax highlighting, we recommend enabling
