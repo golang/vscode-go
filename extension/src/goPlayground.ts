@@ -27,7 +27,6 @@ export const playgroundCommand: CommandFactory = () => () => {
 		return promptForMissingTool(TOOL_CMD_NAME);
 	}
 
-	outputChannel.clear();
 	outputChannel.show();
 	outputChannel.appendLine('Upload to the Go Playground in progress...\n');
 
