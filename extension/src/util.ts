@@ -180,7 +180,7 @@ export async function getGoVersion(goBinPath?: string, GOTOOLCHAIN?: string): Pr
 	if (!goRuntimePath) {
 		throw error(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${getEnvPath()})`);
 	}
-	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
+	if (GOTOOLCHAIN === undefined && cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
@@ -205,7 +205,7 @@ export async function getGoVersion(goBinPath?: string, GOTOOLCHAIN?: string): Pr
 	} catch (err) {
 		throw error(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
 	}
-	if (!goBinPath && !GOTOOLCHAIN) {
+	if (!goBinPath && GOTOOLCHAIN === undefined) {
 		// if getGoVersion was called with a given goBinPath or an explicit GOTOOLCHAIN env var, don't cache the result.
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = goVersion;
