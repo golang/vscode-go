@@ -58,11 +58,13 @@ export const installCurrentPackage: CommandFactory = () => async () => {
 	const importPath = currentGoWorkspace && !isMod ? cwd.substr(currentGoWorkspace.length + 1) : '.';
 	args.push(importPath);
 
-	outputChannel.clear();
-	outputChannel.show();
 	outputChannel.appendLine(`Installing ${importPath === '.' ? 'current package' : importPath}`);
 
 	cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
-		outputChannel.appendLine(err ? `Installation failed: ${stderr}` : 'Installation successful');
+		if (err) {
+			outputChannel.error(`Installation failed: ${stderr}`);
+		} else {
+			outputChannel.appendLine('Installation successful');
+		}
 	});
 };

@@ -18,10 +18,12 @@ import {
 	getBenchmarkFunctions,
 	getTestFlags,
 	getTestFunctionDebugArgs,
-	getTestFunctions,
+	getTestFunctionsAndTestSuite,
 	getTestTags,
 	goTest,
-	TestConfig
+	TestConfig,
+	SuiteToTestMap,
+	getTestFunctions
 } from './testUtils';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
@@ -52,8 +54,11 @@ async function _testAtCursor(
 		throw new NotFoundError('No tests found. Current file is not a test file.');
 	}
 
-	const getFunctions = cmd === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-	const testFunctions = (await getFunctions(goCtx, editor.document)) ?? [];
+	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(
+		cmd === 'benchmark',
+		goCtx,
+		editor.document
+	);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const testFunctionName =
@@ -67,9 +72,9 @@ async function _testAtCursor(
 	await editor.document.save();
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, testFunctionName, testFunctions, goConfig);
+		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig);
 	} else if (cmd === 'benchmark' || cmd === 'test') {
-		return runTestAtCursor(editor, testFunctionName, testFunctions, goConfig, cmd, args);
+		return runTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
 		throw new Error(`Unsupported command: ${cmd}`);
 	}
@@ -92,7 +97,7 @@ async function _subTestAtCursor(
 	}
 
 	await editor.document.save();
-	const testFunctions = (await getTestFunctions(goCtx, editor.document)) ?? [];
+	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(false, goCtx, editor.document);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
@@ -142,9 +147,9 @@ async function _subTestAtCursor(
 	const escapedName = escapeSubTestName(testFunctionName, subTestName);
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, escapedName, testFunctions, goConfig);
+		return debugTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig);
 	} else if (cmd === 'test') {
-		return runTestAtCursor(editor, escapedName, testFunctions, goConfig, cmd, args);
+		return runTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
 		throw new Error(`Unsupported command: ${cmd}`);
 	}
@@ -160,7 +165,7 @@ async function _subTestAtCursor(
 export function testAtCursor(cmd: TestAtCursorCmd): CommandFactory {
 	return (ctx, goCtx) => (args: any) => {
 		const goConfig = getGoConfig();
-		_testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
+		return _testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
 			} else {
@@ -202,13 +207,14 @@ async function runTestAtCursor(
 	editor: vscode.TextEditor,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
+	suiteToTest: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: TestAtCursorCmd,
 	args: any
 ) {
 	const testConfigFns = [testFunctionName];
 	if (cmd !== 'benchmark' && extractInstanceTestName(testFunctionName)) {
-		testConfigFns.push(...findAllTestSuiteRuns(editor.document, testFunctions).map((t) => t.name));
+		testConfigFns.push(...findAllTestSuiteRuns(editor.document, testFunctions, suiteToTest).map((t) => t.name));
 	}
 
 	const isMod = await isModSupported(editor.document.uri);
@@ -260,11 +266,12 @@ export async function debugTestAtCursor(
 	editorOrDocument: vscode.TextEditor | vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
+	suiteToFunc: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
 	sessionID?: string
 ) {
 	const doc = 'document' in editorOrDocument ? editorOrDocument.document : editorOrDocument;
-	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions);
+	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);

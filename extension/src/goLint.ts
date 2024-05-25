@@ -35,7 +35,7 @@ export function lintCode(scope?: string): CommandFactory {
 		const goConfig = getGoConfig(documentUri);
 		const goplsConfig = getGoplsConfig(documentUri);
 
-		outputChannel.clear(); // Ensures stale output from lint on save is cleared
+		outputChannel.appendLine('Linting...');
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Linting...';
 

@@ -46,6 +46,7 @@ export class ExtensionInfo {
 		this.isPreview = !!packageJSON?.preview;
 		this.isInCloudIDE =
 			process.env.CLOUD_SHELL === 'true' ||
+			process.env.MONOSPACE_ENV === 'true' ||
 			process.env.CODESPACES === 'true' ||
 			!!process.env.GITPOD_WORKSPACE_ID;
 	}

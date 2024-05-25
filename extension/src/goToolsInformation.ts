@@ -39,7 +39,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter',
-		defaultVersion: 'v0.5.0'
+		defaultVersion: 'v0.6.0'
 	},
 	'goimports': {
 		name: 'goimports',
@@ -113,7 +113,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/go-delve/delve/cmd/dlv',
 		modulePath: 'github.com/go-delve/delve',
 		replacedByGopls: false,
-		isImportant: true,
+		isImportant: false,
 		description: 'Go debugger (Delve)',
 		latestVersion: semver.parse('v1.8.3'),
 		latestVersionTimestamp: moment('2022-04-26', 'YYYY-MM-DD'),
@@ -124,7 +124,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/golang/vscode-go/vscgo',
 		modulePath: 'github.com/golang/vscode-go/vscgo',
 		replacedByGopls: false,
-		isImportant: true,
+		isImportant: false, // TODO: set to true when we need it
 		description: 'VS Code Go helper program',
 		minimumGoVersion: semver.coerce('1.18')
 	}

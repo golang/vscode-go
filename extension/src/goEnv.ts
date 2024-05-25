@@ -8,9 +8,9 @@
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { getCurrentGoPath, getToolsGopath, resolvePath, substituteEnv } from './util';
-import { logVerbose } from './goLogging';
 import { dirExists } from './utils/pathUtils';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
+import { outputChannel } from './goStatus';
 
 // toolInstallationEnvironment returns the environment in which tools should
 // be installed. It always returns a new object.
@@ -67,7 +67,7 @@ export function toolExecutionEnvironment(uri?: vscode.Uri, addProcessEnv = true)
 	// Remove json flag (-json or --json=<any>) from GOFLAGS because it will effect to result format of the execution
 	if (env['GOFLAGS'] && env['GOFLAGS'].includes('-json')) {
 		env['GOFLAGS'] = env['GOFLAGS'].replace(/(^|\s+)-?-json[^\s]*/g, '');
-		logVerbose(`removed -json from GOFLAGS: ${env['GOFLAGS']}`);
+		outputChannel.debug(`removed -json from GOFLAGS: ${env['GOFLAGS']}`);
 	}
 	return env;
 }
@@ -127,7 +127,9 @@ export async function setGOROOTEnvVar(configGOROOT: string) {
 			});
 	}
 
-	logVerbose(`setting GOROOT = ${goroot} (old value: ${currentGOROOT}) because "go.goroot": "${configGOROOT}"`);
+	outputChannel.debug(
+		`setting GOROOT = ${goroot} (old value: ${currentGOROOT}) because "go.goroot": "${configGOROOT}"`
+	);
 	if (goroot) {
 		process.env['GOROOT'] = goroot;
 	} else {

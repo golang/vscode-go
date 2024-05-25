@@ -16,7 +16,6 @@ import { ConfigurationTarget } from 'vscode';
 import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
-import { logVerbose, logError } from './goLogging';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
 import { containsTool, getConfiguredTools, getImportPathWithVersion, getTool, Tool, ToolAtVersion } from './goTools';
@@ -50,6 +49,16 @@ const declinedUpdates: Tool[] = [];
 
 // declinedUpdates tracks the tools that the user has declined to install.
 const declinedInstalls: Tool[] = [];
+
+export interface IToolsManager {
+	getMissingTools(filter: (tool: Tool) => boolean): Promise<Tool[]>;
+	installTool(tool: Tool, goVersion: GoVersion, env: NodeJS.Dict<string>): Promise<string | undefined>;
+}
+
+export const defaultToolsManager: IToolsManager = {
+	getMissingTools,
+	installTool: installToolWithGo
+};
 
 export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
@@ -96,26 +105,28 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	);
 }
 
-export async function getGoForInstall(goVersion: GoVersion, silent?: boolean): Promise<GoVersion> {
-	const configured = getGoConfig().get<string>('toolsManagement.go');
+export const getGoForInstall = _getGoForInstall;
+async function _getGoForInstall(goVersion: GoVersion): Promise<GoVersion | undefined> {
+	let configured = getGoConfig().get<string>('toolsManagement.go');
 	if (!configured) {
-		return goVersion;
+		configured = goVersion.binaryPath;
 	}
-
 	try {
-		const go = await getGoVersion(configured);
+		// goVersion may be the version picked based on the the minimum
+		// toolchain version requirement specified in go.mod or go.work.
+		// Compute the local toolchain version. (GOTOOLCHAIN=local go version)
+		const go = await getGoVersion(configured, 'local');
 		if (go) return go;
 	} catch (e) {
-		logError(`getGoForInstall failed to run 'go version' with the configured go for tool install: ${e}`);
-	} finally {
-		if (!silent) {
-			outputChannel.appendLine(
-				`Ignoring misconfigured 'go.toolsManagement.go' (${configured}). Provide a valid path to the Go command.`
-			);
-		}
+		outputChannel.error(`failed to run "go version" with "${configured}". Provide a valid path to the Go binary`);
 	}
+	return;
+}
 
-	return goVersion;
+interface installToolsOptions {
+	silent?: boolean;
+	skipRestartGopls?: boolean;
+	toolsManager?: IToolsManager;
 }
 
 /**
@@ -123,42 +134,74 @@ export async function getGoForInstall(goVersion: GoVersion, silent?: boolean): P
  *
  * @param missing array of tool names and optionally, their versions to be installed.
  *                If a tool's version is not specified, it will install the latest.
- * @param goVersion version of Go used in the project. If go used for tools installation
+ * @param goVersion version of Go used in the project. (e.g. result of 'go version' from
+ *                workspace root). If go used for tools installation
  *                is not configured or misconfigured, this is used as a fallback.
  * @returns a list of tools that failed to install.
  */
 export async function installTools(
 	missing: ToolAtVersion[],
 	goVersion: GoVersion,
-	silent?: boolean
+	options?: installToolsOptions
 ): Promise<{ tool: ToolAtVersion; reason: string }[]> {
+	// TODO(hyangah): the return value (tool, reason) is not used anywhere
+	// other than in tests. Check if we are giving users enough information
+	// about failed tools installation.
 	if (!missing) {
 		return [];
 	}
-
+	const { silent, skipRestartGopls } = options || {};
 	if (!silent) {
 		outputChannel.show();
 	}
-	outputChannel.clear();
 
 	const goForInstall = await getGoForInstall(goVersion);
+	if (!goForInstall || !goForInstall.isValid()) {
+		vscode.window.showErrorMessage('Failed to find a go command needed to install tools.');
+		outputChannel.show(); // show error.
+		return missing.map((tool) => {
+			return { tool: tool, reason: 'failed to find go' };
+		});
+	}
 
-	if (goForInstall.lt('1.16')) {
+	const minVersion = goForInstall.lt('1.21') ? (goVersion.lt('1.18') ? '1.18' : goVersion.format()) : '1.21';
+	if (goForInstall.lt(minVersion)) {
 		vscode.window.showErrorMessage(
-			'Go 1.16 or newer is needed to install tools. ' +
-				'If your project requires a Go version older than go1.16, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
+			`Failed to find a go command (go${minVersion} or newer) needed to install tools. ` +
+				`The go command (${goForInstall.binaryPath}) is too old (go${goForInstall.svString}). ` +
+				'If your project requires a Go version older than go1.18, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
 				'to configure the Go version used for tools installation. See https://github.com/golang/vscode-go/issues/2898.'
 		);
 		return missing.map((tool) => {
-			return { tool: tool, reason: 'require go1.16 or newer' };
+			return { tool: tool, reason: `failed to find go (requires go${minVersion} or newer)` };
 		});
 	}
 
 	const envForTools = toolInstallationEnvironment();
+	if (
+		!goVersion.isDevel &&
+		goVersion.sv &&
+		!goForInstall.isDevel &&
+		goForInstall.sv &&
+		semver.gt(goVersion.sv, goForInstall.sv)
+	) {
+		// If goVersion.isDevel === true, for example,
+		//    go version go1.23-20240317-RC00 cl/616607620 +0a6f05e30f X:fieldtrack,boringcrypto linux/amd64
+		//    go version devel go1.23-cd294f55ca Mon Apr 1 20:28:41 2024 +0000 darwin/amd64
+		// we optimisitically assume the go command chosen for install (goForInstall)
+		// is new enough (possibly newer than the officially released go version),
+		// and don't set GOTOOLCHAIN.
+		const version = goVersion.format(true);
+		envForTools['GOTOOLCHAIN'] = `go${version}+auto`;
+	}
+
 	const toolsGopath = envForTools['GOPATH'];
 	let envMsg = `Tools environment: GOPATH=${toolsGopath}`;
 	if (envForTools['GOBIN']) {
 		envMsg += `, GOBIN=${envForTools['GOBIN']}`;
+	}
+	if (envForTools['GOTOOLCHAIN']) {
+		envMsg += `, GOTOOLCHAIN=${envForTools['GOTOOLCHAIN']}`;
 	}
 	outputChannel.appendLine(envMsg);
 
@@ -185,11 +228,12 @@ export async function installTools(
 	outputChannel.appendLine(''); // Blank line for spacing.
 
 	const failures: { tool: ToolAtVersion; reason: string }[] = [];
+	const tm = options?.toolsManager ?? defaultToolsManager;
 	for (const tool of missing) {
-		const failed = await installToolWithGo(tool, goForInstall, envForTools);
+		const failed = await tm.installTool(tool, goForInstall, envForTools);
 		if (failed) {
 			failures.push({ tool, reason: failed });
-		} else if (tool.name === 'gopls') {
+		} else if (tool.name === 'gopls' && !skipRestartGopls) {
 			// Restart the language server if a new binary has been installed.
 			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
 		}
@@ -210,6 +254,10 @@ export async function installTools(
 			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
+	if (missing.some((tool) => tool.isImportant)) {
+		// if we just installed important tools, update the status bar.
+		updateImportantToolsStatus(tm);
+	}
 	return failures;
 }
 
@@ -228,6 +276,9 @@ async function tmpDirForToolInstallation() {
 // installTool installs the specified tool.
 export async function installTool(tool: ToolAtVersion): Promise<string | undefined> {
 	const goVersion = await getGoForInstall(await getGoVersion());
+	if (!goVersion) {
+		return 'failed to find "go" for install';
+	}
 	const envForTools = toolInstallationEnvironment();
 
 	return await installToolWithGo(tool, goVersion, envForTools);
@@ -275,7 +326,7 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	};
 
 	const execFile = util.promisify(cp.execFile);
-	logVerbose(`$ ${goBinary} install -v ${importPath}} (cwd: ${opts.cwd})`);
+	outputChannel.trace(`${goBinary} install -v ${importPath} (cwd: ${opts.cwd})`);
 	await execFile(goBinary, ['install', '-v', importPath], opts);
 }
 
@@ -434,7 +485,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
-	logVerbose(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
+	outputChannel.debug(`updateGoVarsFromConfig: found 'go' in ${goRuntimePath}`);
 	if (!goRuntimePath || !path.isAbsolute(goRuntimePath)) {
 		// getBinPath returns the absolute path to the tool if it exists.
 		// Otherwise, it may return the tool name (e.g. 'go').
@@ -466,9 +517,10 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
 					outputChannel.show();
 				}
-				logVerbose(`${goRuntimePath} env ...:\n${stdout}`);
+				outputChannel.trace(`${goRuntimePath} env ...:\n${stdout}`);
 				const envOutput = JSON.parse(stdout);
 				if (envOutput.GOROOT && envOutput.GOROOT.trim()) {
+					outputChannel.debug('setCurrentGOROOT:', envOutput.GOROOT);
 					setCurrentGoRoot(envOutput.GOROOT.trim());
 					delete envOutput.GOROOT;
 				}
@@ -497,60 +549,107 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	});
 }
 
-let alreadyOfferedToInstallTools = false;
+// maybeInstallImportantTools checks whether important tools are installed,
+// and tries to auto-install them if missing.
+export async function maybeInstallImportantTools(
+	alternateTools: { [key: string]: string } | undefined,
+	tm: IToolsManager = defaultToolsManager
+): Promise<vscode.LanguageStatusItem> {
+	const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+	statusBarItem.name = STATUS_BAR_ITEM_NAME;
+	statusBarItem.text = 'Analysis tools';
 
-export async function offerToInstallTools() {
-	if (alreadyOfferedToInstallTools) {
-		return;
+	try {
+		statusBarItem.busy = true;
+		let missing = await tm.getMissingTools((tool: Tool) => {
+			return tool.isImportant;
+		}); // expect gopls and a linter.
+
+		// Initial install.
+		if (missing.length > 0) {
+			outputChannel.show(); // Best effort: make it visible so users can see the progress.
+			statusBarItem.detail = missing.map((tool) => tool.name).join(', ');
+			const goVersion = await getGoVersion();
+			// filter out tools with 'alternateTools' setting. updateImportantToolsStatus will
+			// recompute missing tools and recognize tools still missing.
+			if (alternateTools) {
+				missing = missing
+					.map((tool) => {
+						if (alternateTools[tool.name]) {
+							outputChannel.appendLine(
+								`skip installing ${
+									tool.name
+								} because the 'alternateTools' setting is configured to use ${
+									alternateTools[tool.name]
+								} instead.`
+							);
+						}
+						return tool;
+					})
+					.filter((tool) => !alternateTools[tool.name]);
+			}
+			await installTools(missing, goVersion, { toolsManager: tm, skipRestartGopls: true });
+			// installTools will update ImportantToolsStatus.
+		} else {
+			// no essential tools to be installed.
+			await updateImportantToolsStatus(tm);
+		}
+	} catch (e) {
+		outputChannel.appendLine('install missing tools failed - ' + JSON.stringify(e));
+	} finally {
+		statusBarItem.busy = false;
 	}
-	alreadyOfferedToInstallTools = true;
+	return statusBarItem;
+}
 
-	const goVersion = await getGoVersion();
-	let missing = await getMissingTools();
-	missing = missing.filter((x) => x.isImportant);
-	if (missing.length > 0) {
-		addGoStatus(
-			STATUS_BAR_ITEM_NAME,
-			'Analysis Tools Missing',
-			'go.promptforinstall',
-			'Not all Go tools are available on the GOPATH'
-		);
-		vscode.commands.registerCommand('go.promptforinstall', () => {
-			const installItem = {
-				title: 'Install',
-				async command() {
-					removeGoStatus(STATUS_BAR_ITEM_NAME);
-					await installTools(missing, goVersion);
-				}
-			};
-			const showItem = {
-				title: 'Show',
-				command() {
-					outputChannel.clear();
-					outputChannel.show();
-					outputChannel.appendLine('Below tools are needed for the basic features of the Go extension.');
-					missing.forEach((x) => outputChannel.appendLine(`  ${x.name}`));
-				}
-			};
-			vscode.window
-				.showInformationMessage(
-					'Failed to find some of the Go analysis tools. Would you like to install them?',
-					installItem,
-					showItem
-				)
-				.then((selection) => {
-					if (selection) {
-						selection.command();
-					} else {
-						removeGoStatus(STATUS_BAR_ITEM_NAME);
-					}
-				});
-		});
+async function updateImportantToolsStatus(tm: IToolsManager = defaultToolsManager): Promise<void> {
+	const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+	let missing: Tool[] | null = null;
+	try {
+		missing = await tm.getMissingTools((tool: Tool) => {
+			return tool.isImportant;
+		}); // expect gopls and a linter.
+	} catch (e) {
+		// ignore.
+	}
+
+	if (missing === null) {
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Error;
+		statusBarItem.detail = 'failed to compute missing tools';
+		statusBarItem.command = {
+			command: 'go.tools.install',
+			title: 'Retry',
+			tooltip: 'Install/Update Tools'
+		};
+		return;
+	} else if (missing.length === 0) {
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Information;
+		statusBarItem.detail = 'no missing tools';
+		statusBarItem.command = {
+			command: 'go.tools.install',
+			title: 'Update',
+			tooltip: 'Install/Update Tools'
+		};
+		return;
+	} else {
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Error;
+		statusBarItem.detail = `missing ${missing.map((tool) => tool.name).join(',')}`;
+		statusBarItem.command = {
+			command: 'go.tools.install',
+			arguments: missing.map((tool) => tool.name),
+			title: 'Install missing tools',
+			tooltip: `Install ${missing.join(',')}`
+		};
 	}
 }
 
-function getMissingTools(): Promise<Tool[]> {
-	const keys = getConfiguredTools(getGoConfig(), getGoplsConfig());
+// getMissingTools returns missing tools.
+// If matcher is provided, only the tools that match the filter will be checked.
+function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
+	let keys = getConfiguredTools(getGoConfig(), getGoplsConfig());
+	if (matcher) {
+		keys = keys.filter(matcher);
+	}
 	return Promise.all(
 		keys.map(
 			(tool) =>
@@ -717,7 +816,7 @@ export async function suggestUpdates() {
 	// without prompting.
 	const toolsManagementConfig = getGoConfig()['toolsManagement'];
 	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
-		installTools(toolsToUpdate, configuredGoVersion, true);
+		installTools(toolsToUpdate, configuredGoVersion, { silent: true });
 	} else {
 		const updateToolsCmdText = 'Update tools';
 		const selected = await vscode.window.showWarningMessage(
@@ -793,10 +892,10 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 	return oldTools.filter((tool): tool is Tool => !!tool);
 }
 
-// installVSCGO is a special program released and installed with the Go extension.
+// maybeInstallVSCGO is a special program released and installed with the Go extension.
 // Unlike other tools, it is installed under the extension path (which is cleared
 // when a new version is installed).
-export async function installVSCGO(
+export async function maybeInstallVSCGO(
 	extensionMode: vscode.ExtensionMode,
 	extensionId: string,
 	extensionVersion: string,
@@ -828,7 +927,7 @@ export async function installVSCGO(
 			: `@v${extensionVersion}`;
 	// build from source acquired from the module proxy if this is a non-preview version.
 	try {
-		const args = ['install', `${importPath}${version}`];
+		const args = ['install', '-trimpath', `${importPath}${version}`];
 		console.log(`installing vscgo: ${args.join(' ')}`);
 		await execFile(getBinPath('go'), args, { cwd, env });
 		return progPath;

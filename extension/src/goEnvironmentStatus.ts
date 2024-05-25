@@ -15,7 +15,6 @@ import path = require('path');
 import { promisify } from 'util';
 import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
-import { logVerbose } from './goLogging';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState, updateWorkspaceState } from './stateUtils';
 import { getBinPath, getCheckForToolsUpdatesConfig, getGoVersion, GoVersion } from './util';
@@ -218,8 +217,6 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			location: vscode.ProgressLocation.Notification
 		},
 		async () => {
-			outputChannel.clear();
-			outputChannel.show();
 			outputChannel.appendLine(`go install ${goOption.binpath}@latest`);
 			const result = await installTool({
 				name: newExecutableName,
@@ -229,8 +226,8 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 				isImportant: false
 			});
 			if (result) {
-				outputChannel.appendLine(`Error installing ${goOption.binpath}: ${result}`);
-				throw new Error('Could not install ${goOption.binpath}');
+				outputChannel.error(`Error installing ${goOption.binpath}: ${result}`);
+				throw new Error(`Could not install ${goOption.binpath} - check logs in the "Go" output channel`);
 			}
 			// run `goX.X download`
 			const goXExecutable = getBinPath(newExecutableName);
@@ -238,7 +235,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			try {
 				await execFile(goXExecutable, ['download']);
 			} catch (downloadErr) {
-				outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
+				outputChannel.error(`Error finishing installation: ${downloadErr}`);
 				throw new Error('Could not download Go version.');
 			}
 
@@ -253,11 +250,11 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 					sdkPath = stdout.trim();
 				}
 			} catch (downloadErr) {
-				outputChannel.appendLine(`Error finishing installation: ${downloadErr}`);
+				outputChannel.error(`Error finishing installation: ${downloadErr}`);
 				throw new Error('Could not download Go version.');
 			}
 			if (!sdkPath || !(await dirExists(sdkPath))) {
-				outputChannel.appendLine(`SDK path does not exist: ${sdkPath}`);
+				outputChannel.error(`SDK path does not exist: ${sdkPath}`);
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
 			}
 
@@ -297,7 +294,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
-		logVerbose("couldn't find PATH property in process.env");
+		outputChannel.debug("couldn't find PATH property in process.env");
 		return;
 	}
 
@@ -306,7 +303,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 		defaultPathEnv = <string>process.env[pathEnvVar];
 	}
 
-	logVerbose(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
+	outputChannel.debug(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
 
 	// calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
@@ -356,7 +353,7 @@ export function clearGoRuntimeBaseFromPATH() {
 	}
 	const pathEnvVar = pathEnvVarName();
 	if (!pathEnvVar) {
-		logVerbose("couldn't find PATH property in process.env");
+		outputChannel.debug("couldn't find PATH property in process.env");
 		return;
 	}
 	environmentVariableCollection?.delete(pathEnvVar);
@@ -418,15 +415,15 @@ export function getGoEnvironmentStatusbarItem(): vscode.StatusBarItem {
 
 export function formatGoVersion(version?: GoVersion): string {
 	if (!version || !version.isValid()) {
-		return 'Go (unknown)';
+		return '(unknown)';
 	}
 	const versionStr = version.format(true);
 	const versionWords = versionStr.split(' ');
 	if (versionWords.length > 1 && versionWords[0] === 'devel') {
 		// go devel +hash or go devel go1.17-hash
-		return versionWords[1].startsWith('go') ? `Go ${versionWords[1].slice(2)}` : `Go ${versionWords[1]}`;
+		return versionWords[1].startsWith('go') ? `${versionWords[1].slice(2)}` : `${versionWords[1]}`;
 	} else {
-		return `Go ${versionWords[0]}`;
+		return `${versionWords[0]}`;
 	}
 }
 
@@ -520,11 +517,13 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 	return results;
 }
 
-const STATUS_BAR_ITEM_NAME = 'Go Notification';
+const STATUS_BAR_ITEM_NAME = 'Go Update Notification';
 const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
 
-export async function offerToInstallLatestGoVersion() {
+export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
 	if (extensionInfo.isInCloudIDE) {
+		// TODO: As we use the language status bar, the notification is less visible
+		// and we can consider to remove this condition check.
 		return;
 	}
 	const goConfig = getGoConfig();
@@ -551,59 +550,66 @@ export async function offerToInstallLatestGoVersion() {
 
 	// notify user that there is a newer version of Go available
 	if (options.length > 0) {
-		addGoStatus(
-			STATUS_BAR_ITEM_NAME,
-			'Go Update Available',
-			'go.promptforgoinstall',
-			'A newer version of Go is available'
-		);
-		vscode.commands.registerCommand('go.promptforgoinstall', () => {
-			const download = {
-				title: 'Download',
-				async command() {
-					await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
-				}
-			};
+		const versionsText = options.map((x) => x.label).join(', ');
+		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+		statusBarItem.name = STATUS_BAR_ITEM_NAME;
+		statusBarItem.text = 'New Go version is available';
+		statusBarItem.detail = versionsText;
+		statusBarItem.command = {
+			title: 'Upgrade',
+			command: 'go.promptforgoinstall',
+			arguments: [options],
+			tooltip: 'Upgrade or silence notification'
+		};
+		// TODO: Error level is more visible. Consider to make it configurable?
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
 
-			const neverAgain = {
-				title: "Don't Show Again",
-				async command() {
-					// mark these versions as seen
-					dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-					if (!dismissedOptions) {
-						dismissedOptions = [];
+		ctx.subscriptions.push(
+			vscode.commands.registerCommand('go.promptforgoinstall', () => {
+				const download = {
+					title: 'Download',
+					async command() {
+						await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
 					}
-					options.forEach((version) => {
-						dismissedOptions.push(version);
-					});
-					await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+				};
+
+				const neverAgain = {
+					title: "Don't Show Again",
+					async command() {
+						// mark these versions as seen
+						dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
+						if (!dismissedOptions) {
+							dismissedOptions = [];
+						}
+						options.forEach((version) => {
+							dismissedOptions.push(version);
+						});
+						await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+					}
+				};
+
+				let versionsText: string;
+				if (options.length > 1) {
+					versionsText = `${options
+						.map((x) => x.label)
+						.reduce((prev, next) => {
+							return prev + ' and ' + next;
+						})} are available`;
+				} else {
+					versionsText = `${options[0].label} is available`;
 				}
-			};
 
-			let versionsText: string;
-			if (options.length > 1) {
-				versionsText = `${options
-					.map((x) => x.label)
-					.reduce((prev, next) => {
-						return prev + ' and ' + next;
-					})} are available`;
-			} else {
-				versionsText = `${options[0].label} is available`;
-			}
-
-			vscode.window
-				.showInformationMessage(
-					`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
-					download,
-					neverAgain
-				)
-				.then((selection) => {
-					// TODO: should we removeGoStatus if user has closed the notification
-					// without any action? It's kind of a feature now - without selecting
-					// neverAgain, user can hide this statusbar item.
-					removeGoStatus(STATUS_BAR_ITEM_NAME);
-					selection?.command();
-				});
-		});
+				vscode.window
+					.showInformationMessage(
+						`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
+						download,
+						neverAgain
+					)
+					.then((selection) => {
+						selection?.command();
+						removeGoStatus(STATUS_BAR_ITEM_NAME);
+					});
+			})
+		);
 	}
 }

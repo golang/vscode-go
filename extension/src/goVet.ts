@@ -38,7 +38,7 @@ export function vetCode(vetWorkspace?: boolean): CommandFactory {
 		const documentUri = editor?.document.uri;
 		const goConfig = getGoConfig(documentUri);
 
-		outputChannel.clear(); // Ensures stale output from vet on save is cleared
+		outputChannel.appendLine('Vetting...');
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Vetting...';
 

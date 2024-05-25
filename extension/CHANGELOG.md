@@ -1,3 +1,154 @@
+## v0.41.4 - 24 Apr, 2024
+
+This point release addresses a regression issue (spurious display of the Go welcome page)  within cloud-based IDEs.
+
+See the full
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.3...v0.41.4)
+for detailed changes.
+
+## v0.41.3 - 22 Apr, 2024
+
+This point release temporarily reverts the default remote debugging behavior to
+use the legacy debug adapter due to existing feature gaps.
+Once these gaps are addressed as outlined in
+[Issue 3096](https://github.com/golang/vscode-go/issues/3096),
+we plan to switch the default back to use Delve DAP for remote deubgging.
+
+If you want to continue using [Delve DAP for remote debugging](https://github.com/golang/vscode-go/wiki/debugging#connect-to-headless-delve-with-target-specified-at-server-start-up), use the following
+settings in your `launch.json`.
+
+```json
+{
+    "name": "Debug Remote",
+    "type": "go",
+    "request": "attach",
+    "mode": "remote",
+    "debugAdapter": "dlv-dap", // Use Delve DAP
+    ...
+}
+```
+
+See the full
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.2...v0.41.3)
+for detailed changes.
+
+### Fixes
+- Fixed to substitute variables used in `go.alternateTools` setting's
+  `customFormatter` entry ([Issue 2582](https://github.com/golang/vscode-go/issues/2582)).
+- Corrected handling of `go.showWelcome` setting
+  ([Issue 3319](https://github.com/golang/vscode-go/issues/3319)).
+- Addressed Go telemetry prompt issue in the latest Visual Studio Code
+  ([Issue 3312](https://github.com/golang/vscode-go/issues/3312)).
+
+### Thanks
+
+Thanks for your contributions, @uniquefine, @monitor1379, @suzmue, @hyangah!
+
+## v0.41.2 - 14 Mar, 2024
+
+This release is a point release to increase the prompt rate of Go telemetry
+opt-in. Learn more at https://go.dev/doc/telemetry.
+For a detailed list of changes, refer to the complete
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.1...v0.41.2).
+
+### Fixes
+- Fixed [Issue 2414](https://github.com/golang/vscode-go/issues/2414) that prevented
+recognizing testify suites spanning multiple files. ([PR 3128](https://github.com/golang/vscode-go/pull/3128))
+- Fixed the "Open 'gopls' trace" submenu in "Go: Choose Go Environment" command. ([Issue 3236](https://github.com/golang/vscode-go/issues/3236))
+
+### Thanks
+
+Thanks for your contributions! @Cr4zySheep, @nirhaas
+
+## v0.41.1 - 22 Feb, 2024
+
+This release is a point release to skip `vscgo` installation on Windows
+([Issue 3182](https://github.com/golang/vscode-go/issues/3182)).
+For a detailed list of changes, refer to the complete
+[commit history](https://github.com/golang/vscode-go/compare/v0.41.0...v0.41.1).
+
+## v0.41.0 - 14 Feb, 2024
+
+This release introduces significant updates to the extension's UI.
+We also want to share the news that the [gopls v0.15 release](https://go.dev/s/gopls-v0.15)
+enhances the multi-module workspace experience and improves build tag handling.
+
+For a detailed list of changes, refer to the complete [commit
+history](https://github.com/golang/vscode-go/compare/v0.40.3...v0.41.0).
+
+### Changes
+
+#### Gopls v0.15.0 and Workspace Configuration
+* The gopls v0.15 introduces a [significant change](https://go.dev/s/gopls-v0.15)
+  in its internal workspace data model. Known as ["zero configuration"
+  gopls](https://github.com/golang/go/issues/57979), `gopls` can automatically
+  determines workspace configurations such as Go module boundaries and necessary
+  GOOS/GOARCH build tags for open Go files. This eliminates the need for users
+  to align the VS Code workspace root folders with the Go module root folder.
+* For more details and additional feature updates, refer to the [gopls v0.15.0
+  release notes](https://go.dev/s/gopls-v0.15). The extension's
+  settings have been updated to align with gopls v0.15.0 settings.
+
+#### UI Updates
+* A new [language status
+  bar](https://github.com/golang/vscode-go/wiki/ui#using-the-language-status-bar)
+  is added, visible when working on Go-related files. The [Go status
+  bar](https://github.com/golang/vscode-go/wiki/ui#using-the-go-status-bar),
+  which displays the selected Go version and the gopls status, is now located at
+  the bottom right of the window and is visible only when Go files are open.
+* The "Go" and "Go Debug" output channels are now primarily used for logging
+  extension activities such as dependency tool installation, invocation, and
+  debug logging. Use the `"Developer: Set Log Level..."` command to adjust the
+  logging level. The `go.logging.level` setting is deprecated in favor of this
+  new logging mechanism.
+* The `"Go: Locate Configured Go Tools"` command now opens an untitled file and
+  dumps the tools information there, instead of printing it in the "Go" output
+  channel. This change allows users to inspect and edit the output easily before
+  sharing it in their issue report.
+
+#### Debugging
+* [Remote
+  debugging](https://github.com/golang/vscode-go/wiki/debugging#remote-debugging)
+  now defaults to using delve DAP. The legacy debug adapter will be removed in
+  the next release cycle.
+* [Delve
+  1.22.0](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#1220-2023-12-29)
+  introduces new options to [display 'pprof'
+  labels](https://github.com/go-delve/delve/issues/3493) and [use concise symbol
+  and stack presentation](https://github.com/go-delve/delve/issues/3516). Update
+  delve to the latest version using the `"Go: Install/Update Tools"` command.
+
+#### Tools
+* For new users, the extension will automatically install important tools
+  (`gopls` and an optionally selected extra lint tool such as `staticcheck` or
+  `golangci-lint`) if they are missing, using `go install` commands. Any
+  installation failures will be surfaced in the [language status
+  bar](https://github.com/golang/vscode-go/wiki/ui#using-the-go-status-bar) and
+  the "Go" output channel.
+* The extension does not require `dlv` installation until the debug feature is
+  invoked.
+* The extension now installs
+  [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/vscgo), an
+  optional tool used to [update the Go telemetry
+  counters](https://github.com/golang/vscode-go/issues/3121). This tool is
+  installed in the extension's directory.
+
+#### Telemetry
+* The Go telemetry now measures activation latency. ([CL
+  549244](https://go-review.git.corp.google.com/c/vscode-go/+/549244))
+
+### Fixes
+* The extension now recognizes idx as a Web IDE. ([CL
+  559895](https://go-review.googlesource.com/c/vscode-go/+/559895))
+* The deprecated `web-request` has been replaced with `node-fetch@v2`. ([Issue
+  2995](https://github.com/golang/vscode-go/issues/2995))
+
+### Development Process Updates
+* The repository layout has been updated with the extension code moved to the
+  `extension/` directory. See [Issue
+  3122](https://github.com/golang/vscode-go/issues/3122) for more details.
+* The extension release workflow has been moved to Google Cloud Build.
+
 ## v0.40.3 - 22 Jan, 2024
 
 This is a point release to update the upcoming developer survey information

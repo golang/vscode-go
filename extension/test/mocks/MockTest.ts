@@ -33,6 +33,10 @@ type TestRunHandler = (request: TestRunRequest, token: CancellationToken) => The
 class MockTestCollection implements TestItemCollection {
 	constructor(private item: MockTestItem | MockTestController) {}
 
+	[Symbol.iterator](): Iterator<[id: string, testItem: TestItem], any, undefined> {
+		throw new Error('Method not implemented.');
+	}
+
 	private readonly m = new Map<string, MockTestItem>();
 
 	get size() {

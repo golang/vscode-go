@@ -33,20 +33,19 @@ import { goGetPackage } from './goGetPackage';
 import { addImport, addImportToWorkspace } from './goImport';
 import { installCurrentPackage } from './goInstall';
 import {
-	offerToInstallTools,
 	promptForMissingTool,
 	updateGoVarsFromConfig,
 	suggestUpdates,
-	installVSCGO
+	maybeInstallVSCGO,
+	maybeInstallImportantTools
 } from './goInstallTools';
 import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
 import { lintCode } from './goLint';
-import { setLogConfig } from './goLogging';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
 
 import { vetCode } from './goVet';
 import {
@@ -77,20 +76,30 @@ import { telemetryReporter } from './goTelemetry';
 
 const goCtx: GoExtensionContext = {};
 
-export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | undefined> {
-	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
-		// Make sure this does not run when running in test.
-		return;
-	}
+// Allow tests to access the extension context utilities.
+interface ExtensionTestAPI {
+	globalState: vscode.Memento;
+}
 
+export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | ExtensionTestAPI | undefined> {
+	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
+		// TODO: VSCODE_GO_IN_TEST was introduced long before we learned about
+		// ctx.extensionMode, and used in multiple places.
+		// Investigate if use of VSCODE_GO_IN_TEST can be removed
+		// in favor of ctx.extensionMode and clean up.
+		if (ctx.extensionMode === vscode.ExtensionMode.Test) {
+			return { globalState: ctx.globalState };
+		}
+		// We shouldn't expose the memento in production mode even when VSCODE_GO_IN_TEST
+		// environment variable is set.
+		return; // Skip the remaining activation work.
+	}
 	const start = Date.now();
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
 
 	const cfg = getGoConfig();
-	setLogConfig(cfg['logging']);
-
 	WelcomePanel.activate(ctx, goCtx);
 
 	const configGOROOT = getGoConfig()['goroot'];
@@ -105,25 +114,28 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	await updateGoVarsFromConfig(goCtx);
 
 	// for testing or development mode, always rebuild vscgo.
-	installVSCGO(
-		ctx.extensionMode,
-		ctx.extension.id,
-		extensionInfo.version || '',
-		ctx.extensionPath,
-		extensionInfo.isPreview
-	)
-		.then((path) => telemetryReporter.setTool(path))
-		.catch((reason) => console.error(reason));
-
-	suggestUpdates();
-	offerToInstallLatestGoVersion();
-	offerToInstallTools();
+	if (process.platform !== 'win32') {
+		// skip windows until Windows Defender issue reported in golang/vscode-go#3182 can be addressed
+		maybeInstallVSCGO(
+			ctx.extensionMode,
+			ctx.extension.id,
+			extensionInfo.version || '',
+			ctx.extensionPath,
+			extensionInfo.isPreview
+		)
+			.then((path) => telemetryReporter.setTool(path))
+			.catch((reason) => console.error(reason));
+	}
 
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
 	registerCommand('go.languageserver.restart', commands.startLanguageServer);
 	registerCommand('go.languageserver.maintain', commands.startGoplsMaintainerInterface);
 
+	await maybeInstallImportantTools(cfg.get('alternateTools'));
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
+
+	suggestUpdates();
+	offerToInstallLatestGoVersion(ctx);
 
 	initCoverageDecorators(ctx);
 
@@ -279,9 +291,6 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 				e.affectsConfiguration('go.testEnvFile')
 			) {
 				updateGoVarsFromConfig(goCtx);
-			}
-			if (e.affectsConfiguration('go.logging')) {
-				setLogConfig(updatedGoConfig['logging']);
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {

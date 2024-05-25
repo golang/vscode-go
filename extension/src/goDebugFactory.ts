@@ -12,7 +12,6 @@ import getPort = require('get-port');
 import path = require('path');
 import * as fs from 'fs';
 import * as net from 'net';
-import { Logger, logVerbose, TimestampedLogger } from './goLogging';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
 import { getEnvPath, getBinPathFromEnvVar } from './utils/pathUtils';
@@ -20,7 +19,7 @@ import { GoExtensionContext } from './context';
 import { createRegisterCommand } from './commands';
 
 export function activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
-	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug');
+	const debugOutputChannel = vscode.window.createOutputChannel('Go Debug', { log: true });
 	ctx.subscriptions.push(debugOutputChannel);
 
 	const factory = new GoDebugAdapterDescriptorFactory(debugOutputChannel);
@@ -40,7 +39,7 @@ export function activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext
 }
 
 class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
-	constructor(private outputChannel?: vscode.OutputChannel) {}
+	constructor(private outputChannel: vscode.LogOutputChannel) {}
 
 	public createDebugAdapterDescriptor(
 		session: vscode.DebugSession,
@@ -59,11 +58,11 @@ class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFa
 	private async createDebugAdapterDescriptorDlvDap(
 		configuration: vscode.DebugConfiguration
 	): Promise<vscode.ProviderResult<vscode.DebugAdapterDescriptor>> {
-		const logger = new TimestampedLogger(configuration.trace, this.outputChannel);
-		logger.debug(`Config: ${JSON.stringify(configuration)}\n`);
+		const logger = this.outputChannel;
+		logger.debug(`Config: ${JSON.stringify(configuration)}`);
 		if (configuration.port) {
 			const host = configuration.host ?? '127.0.0.1';
-			logger.info(`Connecting to DAP server at ${host}:${configuration.port}\n`);
+			logger.info(`Connecting to DAP server at ${host}:${configuration.port}`);
 			return new vscode.DebugAdapterServer(configuration.port, host);
 		}
 		const d = new DelveDAPOutputAdapter(configuration, logger);
@@ -72,28 +71,24 @@ class GoDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFa
 }
 
 class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
-	constructor(private outputChannel: vscode.OutputChannel) {}
+	constructor(private outputChannel: vscode.LogOutputChannel) {}
 
 	createDebugAdapterTracker(session: vscode.DebugSession) {
-		const level = session.configuration?.trace;
-		if (!level || level === 'off') {
-			return null;
-		}
-		const logger = new TimestampedLogger(session.configuration?.trace || 'off', this.outputChannel);
+		const logger = this.outputChannel;
 		let requestsSent = 0;
 		let responsesReceived = 0;
 		return {
 			onWillStartSession: () =>
-				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}\n`),
+				logger.debug(`session ${session.id} will start with ${JSON.stringify(session.configuration)}`),
 			onWillReceiveMessage: (message: any) => {
-				logger.trace(`client -> ${JSON.stringify(message)}\n`);
+				logger.trace(`client -> ${JSON.stringify(message)}`);
 				requestsSent++;
 			},
 			onDidSendMessage: (message: any) => {
-				logger.trace(`client  <- ${JSON.stringify(message)}\n`);
+				logger.trace(`client  <- ${JSON.stringify(message)}`);
 				responsesReceived++;
 			},
-			onError: (error: Error) => logger.error(`error: ${error}\n`),
+			onError: (error: Error) => logger.error(`error: ${error}`),
 			onWillStopSession: () => {
 				if (
 					session.configuration.debugAdapter === 'dlv-dap' &&
@@ -109,7 +104,7 @@ class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory 
 				logger.debug(`session ${session.id} will stop\n`);
 			},
 			onExit: (code: number | undefined, signal: string | undefined) =>
-				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})\n`)
+				logger.info(`debug adapter exited: (code: ${code}, signal: ${signal})`)
 		};
 	}
 
@@ -117,6 +112,8 @@ class GoDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory 
 }
 
 const TWO_CRLF = '\r\n\r\n';
+
+type ILogger = Pick<vscode.LogOutputChannel, 'error' | 'info' | 'debug' | 'trace'>;
 
 // Proxies DebugProtocolMessage exchanges between VSCode and a remote
 // process or server connected through a duplex stream, after its
@@ -126,10 +123,10 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 	// connection from/to server (= dlv dap)
 	private readable?: stream.Readable;
 	private writable?: stream.Writable;
-	protected logger?: Logger;
+	protected logger: ILogger;
 	private terminated = false;
 
-	constructor(logger: Logger) {
+	constructor(logger: ILogger) {
 		this.logger = logger;
 		this.onDidSendMessage = this.messageEmitter.event;
 	}
@@ -240,7 +237,7 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 // VSCode and a dlv dap process spawned and managed by this adapter.
 // It turns the process's stdout/stderrr into OutputEvent.
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
-	constructor(private configuration: vscode.DebugConfiguration, logger: Logger) {
+	constructor(private configuration: vscode.DebugConfiguration, logger: ILogger) {
 		super(logger);
 	}
 
@@ -252,7 +249,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	protected sendMessageToClient(message: vscode.DebugProtocolMessage) {
 		const m = message as any;
 		if (m.type === 'request') {
-			logVerbose(`do not forward reverse request: dropping ${JSON.stringify(m)}`);
+			this.logger.debug(`do not forward reverse request: dropping ${JSON.stringify(m)}`);
 			return;
 		}
 
@@ -262,7 +259,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 	protected async sendMessageToServer(message: vscode.DebugProtocolMessage): Promise<void> {
 		const m = message as any;
 		if (m.type === 'response') {
-			logVerbose(`do not forward reverse request response: dropping ${JSON.stringify(m)}`);
+			this.logger.debug(`do not forward reverse request response: dropping ${JSON.stringify(m)}`);
 			return;
 		}
 
@@ -353,7 +350,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		} catch (err) {
 			return { connected: false, reason: err };
 		}
-		this.logger?.debug(`Running dlv dap server: pid=${this.dlvDapServer?.pid}\n`);
+		this.logger?.debug(`Running dlv dap server: pid=${this.dlvDapServer?.pid}`);
 		return { connected: true };
 	}
 
@@ -372,7 +369,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 			// may not appear in the DEBUG CONSOLE. For easier debugging, log
 			// the messages through the logger that prints to Go Debug output
 			// channel.
-			this.logger?.info(msg);
+			this.logger?.trace(msg);
 		};
 
 		// If a port has been specified, assume there is an already
@@ -437,7 +434,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 		try {
 			const port = await getPort();
-			const rendezvousServerPromise = waitForDAPServer(port, 30_000);
+			const rendezvousServerPromise = waitForDAPServer(port, 30_000, this.logger);
 
 			dlvArgs.push(`--client-addr=:${port}`);
 
@@ -470,7 +467,7 @@ function getSudo(): string | null {
 	return sudoPath;
 }
 
-function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> {
+function waitForDAPServer(port: number, timeoutMs: number, logger: ILogger): Promise<net.Socket> {
 	return new Promise((resolve, reject) => {
 		// eslint-disable-next-line prefer-const
 		let s: net.Server | undefined;
@@ -482,7 +479,7 @@ function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> 
 		}, timeoutMs);
 
 		s = net.createServer({ pauseOnConnect: true }, (socket) => {
-			logVerbose(
+			logger.debug(
 				`connected: ${port} (remote: ${socket.remoteAddress}:${socket.remotePort} local: ${socket.localAddress}:${socket.localPort})`
 			);
 			clearTimeout(timeoutToken);
@@ -491,7 +488,7 @@ function waitForDAPServer(port: number, timeoutMs: number): Promise<net.Socket> 
 			resolve(socket);
 		});
 		s.on('error', (err) => {
-			logVerbose(`connection error ${err}`);
+			logger.error(`connection error ${err}`);
 			reject(err);
 		});
 		s.maxConnections = 1;

@@ -202,8 +202,7 @@ function generateTests(
 					return resolve(false);
 				}
 				if (err) {
-					console.log(err);
-					outputChannel.appendLine(err.message);
+					outputChannel.error(err.message);
 					return reject('Cannot generate test due to errors');
 				}
 

@@ -57,8 +57,7 @@ export class GoTestResolver {
 				if (isInTest()) throw error;
 
 				const m = 'Failed to resolve tests';
-				outputChannel.appendLine(`${m}: ${error}`);
-				await vscode.window.showErrorMessage(m);
+				outputChannel.error(`${m}: ${error}`);
 			}
 		};
 	}

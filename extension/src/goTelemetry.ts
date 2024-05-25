@@ -21,6 +21,25 @@ export const GOPLS_MAYBE_PROMPT_FOR_TELEMETRY = 'gopls.maybe_prompt_for_telemetr
 // Exported for testing.
 export const TELEMETRY_START_TIME_KEY = 'telemetryStartTime';
 
+// Run our encode/decode function for the Date object, to be defensive
+// from vscode Memento API behavior change.
+// Exported for testing.
+export function recordTelemetryStartTime(storage: vscode.Memento, date: Date) {
+	storage.update(TELEMETRY_START_TIME_KEY, date.toJSON());
+}
+
+function readTelemetryStartTime(storage: vscode.Memento): Date | null {
+	const value = storage.get<string | number | Date>(TELEMETRY_START_TIME_KEY);
+	if (!value) {
+		return null;
+	}
+	const telemetryStartTime = new Date(value);
+	if (telemetryStartTime.toString() === 'Invalid Date') {
+		return null;
+	}
+	return telemetryStartTime;
+}
+
 enum ReporterState {
 	NOT_INITIALIZED,
 	IDLE,
@@ -153,16 +172,16 @@ export class TelemetryService {
 		this.active = true;
 		// record the first time we see the gopls with telemetry support.
 		// The timestamp will be used to avoid prompting too early.
-		const telemetryStartTime = globalState.get<Date>(TELEMETRY_START_TIME_KEY);
+		const telemetryStartTime = readTelemetryStartTime(globalState);
 		if (!telemetryStartTime) {
-			globalState.update(TELEMETRY_START_TIME_KEY, new Date());
+			recordTelemetryStartTime(globalState, new Date());
 		}
 	}
 
 	async promptForTelemetry(
 		isPreviewExtension: boolean,
 		isVSCodeTelemetryEnabled: boolean = vscode.env.isTelemetryEnabled,
-		samplingInterval = 1 /* prompt N out of 1000. 1 = 0.1% */
+		samplingInterval = 10 /* prompt N out of 1000. 10 = 1% */
 	) {
 		if (!this.active) return;
 
@@ -172,9 +191,11 @@ export class TelemetryService {
 		if (!isVSCodeTelemetryEnabled) return;
 
 		// Allow at least 7days for gopls to collect some data.
-		const now = new Date();
-		const telemetryStartTime = this.globalState.get<Date>(TELEMETRY_START_TIME_KEY, now);
-		if (daysBetween(telemetryStartTime, now) < 7) {
+		const telemetryStartTime = readTelemetryStartTime(this.globalState);
+		if (!telemetryStartTime) {
+			return;
+		}
+		if (daysBetween(telemetryStartTime, new Date()) < 7) {
 			return;
 		}
 

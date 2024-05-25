@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
-import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, TELEMETRY_START_TIME_KEY, TelemetryService } from '../../src/goTelemetry';
+import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, recordTelemetryStartTime, TelemetryService } from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
 import { Env } from './goplsTestEnv.utils';
 
@@ -205,8 +205,7 @@ suite('Go Extension Tests With Gopls', function () {
 		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
 		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const memento = new MockMemento();
-		memento.update(TELEMETRY_START_TIME_KEY, new Date('2000-01-01'));
-
+		recordTelemetryStartTime(memento, new Date('2000-01-01'));
 		const sut = new TelemetryService(env.languageClient, memento, [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY]);
 		try {
 			await Promise.all([

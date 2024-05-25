@@ -5,7 +5,7 @@
 
 import vscode = require('vscode');
 import assert from 'assert';
-import { shouldShowGoWelcomePage } from '../../src/welcome';
+import { hasNewsForNewVersion } from '../../src/welcome';
 import { extensionId } from '../../src/const';
 import { WelcomePanel } from '../../src/welcome';
 
@@ -54,7 +54,7 @@ suite('WelcomePanel Tests', () => {
 		const [showVersions, newVersion, oldVersion, expected] = c;
 
 		test(`shouldShowGoWelcomePage(${JSON.stringify(showVersions)}, ${newVersion}, ${oldVersion})`, () => {
-			assert.strictEqual(shouldShowGoWelcomePage(showVersions, newVersion, oldVersion), expected);
+			assert.strictEqual(hasNewsForNewVersion(showVersions, newVersion, oldVersion), expected);
 		});
 	});
 });

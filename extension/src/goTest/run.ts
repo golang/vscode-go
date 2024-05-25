@@ -21,7 +21,7 @@ import vscode = require('vscode');
 import { outputChannel } from '../goStatus';
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
-import { getBenchmarkFunctions, getTestFlags, getTestFunctions, goTest, GoTestOutput } from '../testUtils';
+import { getTestFlags, getTestFunctionsAndTestSuite, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
@@ -92,7 +92,7 @@ export class GoTestRunner {
 					await this.run(request, token);
 				} catch (error) {
 					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -107,7 +107,7 @@ export class GoTestRunner {
 					await this.debug(request, token);
 				} catch (error) {
 					const m = 'Failed to debug tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -122,7 +122,7 @@ export class GoTestRunner {
 					await this.run(request, token, this.profiler.options);
 				} catch (error) {
 					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.error(`${m}: ${error}`);
 					await vscode.window.showErrorMessage(m);
 				}
 			},
@@ -161,8 +161,11 @@ export class GoTestRunner {
 		await doc.save();
 
 		const goConfig = getGoConfig(test.uri);
-		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-		const testFunctions = await getFunctions(this.goCtx, doc, token);
+		const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(
+			kind === 'benchmark',
+			this.goCtx,
+			doc
+		);
 
 		// TODO Can we get output from the debug session, in order to check for
 		// run/pass/fail events?
@@ -191,7 +194,8 @@ export class GoTestRunner {
 
 		const run = this.ctrl.createTestRun(request, `Debug ${name}`);
 		if (!testFunctions) return;
-		const started = await debugTestAtCursor(doc, escapeSubTestName(name), testFunctions, goConfig, id);
+		const started = await debugTestAtCursor(doc, escapeSubTestName(name), testFunctions, suiteToTest, goConfig, id);
+
 		if (!started) {
 			subs.forEach((s) => s.dispose());
 			run.end();
@@ -333,7 +337,7 @@ export class GoTestRunner {
 
 			// https://github.com/golang/go/issues/39904
 			if (subItems.length > 0 && Object.keys(tests).length + Object.keys(benchmarks).length > 1) {
-				outputChannel.appendLine(
+				outputChannel.error(
 					`The following tests in ${pkg.uri} failed to run, as go test will only run a sub-test or sub-benchmark if it is by itself:`
 				);
 				Object.keys(tests)

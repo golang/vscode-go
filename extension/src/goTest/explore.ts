@@ -141,7 +141,7 @@ export class GoTestExplorer {
 					await inst.didChangeConfiguration(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'onDidChangeConfiguration': ${error}`);
+					else outputChannel.error(`Failed while handling 'onDidChangeConfiguration': ${error}`);
 				}
 			})
 		);
@@ -152,7 +152,7 @@ export class GoTestExplorer {
 					await inst.didOpenTextDocument(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'onDidOpenTextDocument': ${error}`);
+					else outputChannel.error(`Failed while handling 'onDidOpenTextDocument': ${error}`);
 				}
 			})
 		);
@@ -163,7 +163,7 @@ export class GoTestExplorer {
 					await inst.didChangeTextDocument(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'onDidChangeTextDocument': ${error}`);
+					else outputChannel.error(`Failed while handling 'onDidChangeTextDocument': ${error}`);
 				}
 			})
 		);
