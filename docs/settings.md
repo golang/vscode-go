@@ -58,6 +58,10 @@ Alternate tools or alternate paths for the same tools used by the Go extension. 
 ### `go.buildFlags`
 
 Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. ["-ldflags='-s'"]) This is propagated to the language server if `gopls.build.buildFlags` is not specified.
+### `go.testBinary`
+Alternative binary to use in place of `go` when calling `<bin> test`, in case you need have some additonal wrapper script needed for testing. Will be called instead of `go` so must support normal test args.
+
+
 ### `go.buildOnSave (deprecated)`
 
 Enable the Go language server (`#go.useLanguageServer#`) to diagnose compile errors.

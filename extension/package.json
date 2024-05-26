@@ -1560,6 +1560,12 @@
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"
         },
+        "go.testBinary": {
+          "type": "string",
+          "default": "",
+          "description": "The path to the test binary to use for running tests. If empty, the extension will use the default test binary.",
+          "scope": "resource"
+        },
         "go.addTags": {
           "type": "object",
           "properties": {

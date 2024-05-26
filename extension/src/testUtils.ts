@@ -144,6 +144,10 @@ export function getTestTags(goConfig: vscode.WorkspaceConfiguration): string {
 	return goConfig['testTags'] !== null ? goConfig['testTags'] : goConfig['buildTags'];
 }
 
+export function getTestGoBin(goConfig: vscode.WorkspaceConfiguration): string {
+	return goConfig['testBinary'];
+}
+
 /**
  * Returns all Go unit test functions in the given source file.
  *
@@ -425,10 +429,13 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 	outputChannel.appendLine('');
 
 	let testResult = false;
+
+	const testCmdBin = getTestGoBin(testconfig.goConfig);
+
 	try {
 		testResult = await new Promise<boolean>(async (resolve, reject) => {
 			const testEnvVars = getTestEnvVars(testconfig.goConfig);
-			const tp = cp.spawn(goRuntimePath, args, { env: testEnvVars, cwd: testconfig.dir });
+			const tp = cp.spawn(testCmdBin || goRuntimePath, args, { env: testEnvVars, cwd: testconfig.dir });
 			const outBuf = new LineBuffer();
 			const errBuf = new LineBuffer();
 
