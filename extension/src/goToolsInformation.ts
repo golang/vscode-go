@@ -102,11 +102,11 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.18'),
-		latestVersion: semver.parse('v0.14.2'),
-		latestVersionTimestamp: moment('2023-11-14', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.14.2'),
-		latestPrereleaseVersionTimestamp: moment('2023-11-14', 'YYYY-MM-DD')
+		minimumGoVersion: semver.coerce('1.19'),
+		latestVersion: semver.parse('v0.15.3'),
+		latestVersionTimestamp: moment('2024-04-12', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.15.3'),
+		latestPrereleaseVersionTimestamp: moment('2024-04-12', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',

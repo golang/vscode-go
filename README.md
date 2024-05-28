@@ -11,7 +11,7 @@ provides rich language support for the
 ## Requirements
 
 * Visual Studio Code 1.75 or newer (or editors compatible with VS Code 1.75+ APIs)
-* Go 1.18 or newer
+* Go 1.19 or newer.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.19 or newer if you haven't already.
 
 1.  Install the [VS Code Go extension].
 

@@ -37,7 +37,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter',
-		defaultVersion: 'v0.5.0'
+		defaultVersion: 'v0.6.0'
 	},
 	'goimports': {
 		name: 'goimports',
@@ -100,7 +100,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		isImportant: true,
 		description: 'Language Server from Google',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.18'),
+		minimumGoVersion: semver.coerce('1.19'),
 		latestVersion: semver.parse('%s'),
 		latestVersionTimestamp: moment('%s', 'YYYY-MM-DD'),
 		latestPrereleaseVersion: semver.parse('%s'),
@@ -122,7 +122,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		importPath: 'github.com/golang/vscode-go/vscgo',
 		modulePath: 'github.com/golang/vscode-go/vscgo',
 		replacedByGopls: false,
-		isImportant: false,  // TODO: set to true when we need it
+		isImportant: false, // TODO: set to true when we need it
 		description: 'VS Code Go helper program',
 		minimumGoVersion: semver.coerce('1.18')
 	}

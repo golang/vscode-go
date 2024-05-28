@@ -164,12 +164,12 @@ export async function installTools(
 		});
 	}
 
-	const minVersion = goForInstall.lt('1.21') ? (goVersion.lt('1.18') ? '1.18' : goVersion.format()) : '1.21';
+	const minVersion = goForInstall.lt('1.21') ? (goVersion.lt('1.19') ? '1.19' : goVersion.format()) : '1.21.0';
 	if (goForInstall.lt(minVersion)) {
 		vscode.window.showErrorMessage(
 			`Failed to find a go command (go${minVersion} or newer) needed to install tools. ` +
 				`The go command (${goForInstall.binaryPath}) is too old (go${goForInstall.svString}). ` +
-				'If your project requires a Go version older than go1.18, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
+				'If your project requires a Go version older than go1.19, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
 				'to configure the Go version used for tools installation. See https://github.com/golang/vscode-go/issues/2898.'
 		);
 		return missing.map((tool) => {
@@ -755,7 +755,7 @@ async function defaultInspectGoToolVersion(
 			dep     github.com/BurntSushi/toml      v0.3.1  h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 
 		   if the binary was built with a dev version of go, in module mode.
-			/Users/hakim/go/bin/gopls: devel go1.18-41f485b9a7 Mon Jan 31 13:43:52 2022 +0000
+			/Users/hakim/go/bin/gopls: devel go1.21-41f485b9a7 Mon Jan 31 13:43:52 2022 +0000
 			path    golang.org/x/tools/gopls
 			mod     golang.org/x/tools/gopls        v0.8.0-pre.1    h1:6iHi9bCJ8XndQtBEFFG/DX+eTJrf2lKFv4GI3zLeDOo=
 			...
@@ -800,7 +800,7 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 
 export async function suggestUpdates() {
 	const configuredGoVersion = await getGoVersion();
-	if (!configuredGoVersion || configuredGoVersion.lt('1.16')) {
+	if (!configuredGoVersion || configuredGoVersion.lt('1.19')) {
 		// User is using an ancient or a dev version of go. Don't suggest updates -
 		// user should know what they are doing.
 		return;
@@ -876,12 +876,12 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 				// We test the inequality by checking whether the exact beta or rc version
 				// appears in the `go version` output. e.g.,
 				//   configuredGoVersion.version      	goVersion(tool)		update
-				//   'go version go1.18 ...'    		'go1.18beta1'		Yes
-				//   'go version go1.18beta1 ...'		'go1.18beta1'		No
-				//   'go version go1.18beta2 ...'		'go1.18beta1'		Yes
-				//   'go version go1.18rc1 ...'			'go1.18beta1'		Yes
-				//   'go version go1.18rc1 ...'			'go1.18'			No
-				//   'go version devel go1.18-deadbeaf ...'	'go1.18beta1'	No (* rare)
+				//   'go version go1.21 ...'    		'go1.21beta1'		Yes
+				//   'go version go1.21beta1 ...'		'go1.21beta1'		No
+				//   'go version go1.21beta2 ...'		'go1.21beta1'		Yes
+				//   'go version go1.21rc1 ...'			'go1.21beta1'		Yes
+				//   'go version go1.21rc1 ...'			'go1.21'			No
+				//   'go version devel go1.21-deadbeaf ...'	'go1.21beta1'	No (* rare)
 				!configuredGoVersion.version.includes(goVersion)
 			) {
 				return tool;
