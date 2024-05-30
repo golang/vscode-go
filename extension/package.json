@@ -554,7 +554,7 @@
               "type": "go",
               "request": "launch",
               "mode": "auto",
-              "program": "^\"\\${fileDirname}${1:}\""
+              "program": "^\"\\${workspaceFolder}${1:}\""
             }
           },
           {
