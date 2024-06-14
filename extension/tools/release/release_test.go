@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,17 +27,24 @@ func TestRelease(t *testing.T) {
 	}
 	moduleRoot := string(bytes.TrimSpace(out))
 
-	for _, command := range []string{"package", "publish"} {
+	for _, fullCommand := range []string{
+		"package -out=/tmp/artifacts",
+		"publish -in=/tmp/artifacts",
+	} {
+		args := strings.Fields(fullCommand)
 		for _, tagName := range []string{"v0.0.0", "v0.0.0-rc.1"} {
-			t.Run(command+"-"+tagName, func(t *testing.T) {
-				testRelease(t, moduleRoot, command, tagName)
+			t.Run(args[0]+"-"+tagName, func(t *testing.T) {
+				testRelease(t, moduleRoot, args[0], tagName, args[1:]...)
 			})
 		}
 	}
 }
 
-func testRelease(t *testing.T, moduleRoot, command, tagName string) {
-	cmd := exec.Command("go", "run", "-C", moduleRoot, "tools/release/release.go", "-n", command)
+func testRelease(t *testing.T, moduleRoot, command, tagName string, extraArgs ...string) {
+	args := []string{"run", "-C", moduleRoot, "tools/release/release.go", command, "-n"}
+	args = append(args, extraArgs...)
+
+	cmd := exec.Command("go", args...)
 	cmd.Env = append(os.Environ(),
 		// Provide dummy environment variables required to run release.go commands.
 		"TAG_NAME="+tagName,  // release tag
@@ -46,7 +54,7 @@ func testRelease(t *testing.T, moduleRoot, command, tagName string) {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("failed to run release package: %v", err)
+		t.Fatalf("failed to run release %s: %v\n%s", command, err, output)
 	}
 	if *flagUpdate {
 		if err := os.WriteFile(filepath.Join("testdata", command+"-"+tagName+".golden"), output, 0644); err != nil {

@@ -19,9 +19,9 @@
 // Usage:
 //
 //	// package the extension (based on TAG_NAME).
-//	go run build/release.go package
+//	go run ./tools/release package
 //	// publish the extension.
-//	go run build/release.go publish
+//	go run ./tools/release publish
 package main
 
 import (
@@ -35,45 +35,232 @@ import (
 	"strings"
 )
 
-var flagN = flag.Bool("n", false, "print the underlying commands but do not run them")
+var (
+	flagN = false
+)
 
-func main() {
-	flag.Parse()
-	if flag.NArg() != 1 {
-		usage()
-		os.Exit(1)
+var (
+	cmdPackage = &command{
+		usage: "package",
+		short: "package the extension to vsix file",
+		long:  `package command builds the extension and produces .vsix file in -out`,
+		run:   runPackage,
 	}
-	cmd := flag.Arg(0)
+	cmdPublish = &command{
+		usage: "publish",
+		short: "publish the packaged extension (vsix) to the Visual Studio Code marketplace",
+		long:  `publish command publishes all the extension files in -in to the Visual Studio Code marketplace`,
+		run:   runPublish,
+	}
 
-	checkWD()
-	requireTools("jq", "npx", "gh", "git")
-	requireEnvVars("TAG_NAME")
+	allCommands = []*command{cmdPackage, cmdPublish}
+)
 
-	tagName, version, isRC := releaseVersionInfo()
-	vsix := fmt.Sprintf("go-%s.vsix", version)
+func init() {
+	cmdPackage.flags.String("out", ".", "directory where the artifacts are written")
+	cmdPublish.flags.String("in", ".", "directory where the artifacts to be published are")
 
-	switch cmd {
-	case "package":
-		buildPackage(version, tagName, vsix)
-	case "publish":
-		requireEnvVars("VSCE_PAT", "GITHUB_TOKEN")
-		publish(tagName, vsix, isRC)
-	default:
-		usage()
-		os.Exit(1)
+	addCommonFlags := func(cmd *command) {
+		cmd.flags.BoolVar(&flagN, "n", flagN, "print the underlying commands but do not run them")
+	}
+	for _, cmd := range allCommands {
+		addCommonFlags(cmd)
+		name := cmd.name()
+		cmd.flags.Usage = func() {
+			help(name)
+		}
 	}
 }
 
+func main() {
+	flag.Usage = usage
+	flag.Parse()
+
+	args := flag.Args()
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(2)
+	}
+	// len(args) > 0
+
+	if args[0] == "help" {
+		flag.CommandLine.SetOutput(os.Stdout)
+		switch len(args) {
+		case 1:
+			flag.Usage()
+		case 2:
+			help(args[1])
+		default:
+			flag.Usage()
+			fatalf(`too many arguments to "help"`)
+		}
+		os.Exit(0)
+	}
+
+	cmd := findCommand(args[0])
+	if cmd == nil {
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	cmd.run(cmd, args[1:])
+}
+
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: %s <flags> [package|publish]\n\n", os.Args[0])
-	fmt.Fprintln(os.Stderr, "Flags:")
-	flag.PrintDefaults()
+	printCommand := func(cmd *command) {
+		output(fmt.Sprintf("\t%s\t%s", cmd.name(), cmd.short))
+	}
+	output("go run release.go [command]")
+	output("The commands are:")
+	output()
+	for _, cmd := range allCommands {
+		printCommand(cmd)
+	}
+	output()
+}
+
+func output(msgs ...any) {
+	fmt.Fprintln(flag.CommandLine.Output(), msgs...)
+}
+
+func findCommand(name string) *command {
+	for _, cmd := range allCommands {
+		if cmd.name() == name {
+			return cmd
+		}
+	}
+	return nil
+}
+
+func help(name string) {
+	cmd := findCommand(name)
+	if cmd == nil {
+		fatalf("unknown command %q", name)
+	}
+	output(fmt.Sprintf("Usage: release %s", cmd.usage))
+	output()
+	if cmd.long != "" {
+		output(cmd.long)
+	} else {
+		output(fmt.Sprintf("release %s is used to %s.", cmd.name(), cmd.short))
+	}
+	anyflags := false
+	cmd.flags.VisitAll(func(*flag.Flag) {
+		anyflags = true
+	})
+	if anyflags {
+		output()
+		output("Flags:")
+		output()
+		cmd.flags.PrintDefaults()
+	}
+}
+
+type command struct {
+	usage string
+	short string
+	long  string
+	flags flag.FlagSet
+	run   func(cmd *command, args []string)
+}
+
+func (c command) name() string {
+	name, _, _ := strings.Cut(c.usage, " ")
+	return name
+}
+
+func (c command) lookupFlag(name string) flag.Value {
+	f := c.flags.Lookup(name)
+	if f == nil {
+		fatalf("flag %q not found", name)
+	}
+	return f.Value
+}
+
+// runPackage implements the "package" subcommand.
+func runPackage(cmd *command, args []string) {
+	cmd.flags.Parse(args) // will exit on error
+
+	checkWD()
+
+	requireTools("jq", "npx", "gh", "git")
+
+	tagName := requireEnv("TAG_NAME")
+
+	version, _ := releaseVersionInfo(tagName)
+	checkPackageJSON(tagName)
+	outDir := prepareOutputDir(cmd.lookupFlag("out").String())
+	vsix := filepath.Join(outDir, fmt.Sprintf("go-%s.vsix", version))
+	buildPackage(version, tagName, vsix)
+}
+
+// runPublish implements the "publish" subcommand.
+func runPublish(cmd *command, args []string) {
+	cmd.flags.Parse(args) // will exit on error
+
+	checkWD()
+
+	requireTools("jq", "npx", "gh", "git")
+
+	requireEnv("VSCE_PAT")
+	requireEnv("GITHUB_TOKEN")
+	tagName := requireEnv("TAG_NAME")
+
+	version, isRC := releaseVersionInfo(tagName)
+	checkPackageJSON(tagName)
+	inDir := prepareInputDir(cmd.lookupFlag("in").String())
+	vsix := filepath.Join(inDir, fmt.Sprintf("go-%s.vsix", version))
+	publish(tagName, vsix, isRC)
 }
 
 func fatalf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
+}
+
+// prepareOutputDir normalizes --output-dir. If the directory doesn't exist,
+// prepareOutputDir creates it.
+func prepareOutputDir(outDir string) string {
+	if outDir == "" {
+		outDir = "."
+	}
+
+	if flagN {
+		// -n used for testing. don't create the directory nor try to resolve.
+		return outDir
+	}
+
+	// resolve to absolute path so output dir can be consitent
+	// even when child processes accessing it need to run in a different directory.
+	dir, err := filepath.Abs(outDir)
+	if err != nil {
+		fatalf("failed to get absolute path of output directory: %v", err)
+	}
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fatalf("failed to create output directory: %v", err)
+	}
+	return dir
+}
+
+// prepareInputDir normalizes --input-dir.
+func prepareInputDir(inDir string) string {
+	if inDir == "" {
+		inDir = "."
+	}
+	if flagN {
+		// -n used for testing. don't create the directory nor try to resolve.
+		return inDir
+	}
+
+	// resolve to absolute path so input dir can be consitent
+	// even when child processes accessing it need to run in a different directory.
+	dir, err := filepath.Abs(inDir)
+	if err != nil {
+		fatalf("failed to get absolute path of output directory: %v", err)
+	}
+	return dir
 }
 
 func requireTools(tools ...string) {
@@ -84,12 +271,12 @@ func requireTools(tools ...string) {
 	}
 }
 
-func requireEnvVars(vars ...string) {
-	for _, v := range vars {
-		if os.Getenv(v) == "" {
-			fatalf("required environment variable %q not set", v)
-		}
+func requireEnv(name string) string {
+	v := os.Getenv(name)
+	if v == "" {
+		fatalf("required environment variable %q not set", v)
 	}
+	return v
 }
 
 // checkWD checks if the working directory is the extension directory where package.json is located.
@@ -106,30 +293,37 @@ func checkWD() {
 
 // releaseVersionInfo computes the version and label information for this release.
 // It requires the TAG_NAME environment variable to be set and the tag matches the version info embedded in package.json.
-func releaseVersionInfo() (tagName, version string, isPrerelease bool) {
-	tagName = os.Getenv("TAG_NAME")
-	if tagName == "" {
-		fatalf("TAG_NAME environment variable is not set")
-	}
+func releaseVersionInfo(tagName string) (version string, isPrerelease bool) {
 	// versionTag should be of the form vMajor.Minor.Patch[-rc.N].
 	// e.g. v1.1.0-rc.1, v1.1.0
 	// The MajorMinorPatch part should match the version in package.json.
 	// The optional `-rc.N` part is captured as the `Label` group
 	// and the validity is checked below.
-	versionTagRE := regexp.MustCompile(`^v(?P<MajorMinorPatch>\d+\.\d+\.\d+)(?P<Label>\S*)$`)
-	m := versionTagRE.FindStringSubmatch(tagName)
-	if m == nil {
-		fatalf("TAG_NAME environment variable %q is not a valid version", tagName)
-	}
-	mmp := m[versionTagRE.SubexpIndex("MajorMinorPatch")]
-	label := m[versionTagRE.SubexpIndex("Label")]
+	mmp, label := parseVersionTagName(tagName)
 	if label != "" {
 		if !strings.HasPrefix(label, "-rc.") {
 			fatalf("TAG_NAME environment variable %q is not a valid release candidate version", tagName)
 		}
 		isPrerelease = true
 	}
+	return mmp + label, isPrerelease
+}
 
+func parseVersionTagName(tagName string) (majorMinorPatch, label string) {
+	versionTagRE := regexp.MustCompile(`^v(?P<MajorMinorPatch>\d+\.\d+\.\d+)(?P<Label>\S*)$`)
+	m := versionTagRE.FindStringSubmatch(tagName)
+	if m == nil {
+		fatalf("TAG_NAME environment variable %q is not a valid version", tagName)
+	}
+	return m[versionTagRE.SubexpIndex("MajorMinorPatch")], m[versionTagRE.SubexpIndex("Label")]
+}
+
+func checkPackageJSON(tagName string) {
+	if flagN {
+		tracef("jq -r .version package.json")
+		return
+	}
+	mmp, _ := parseVersionTagName(tagName)
 	cmd := exec.Command("jq", "-r", ".version", "package.json")
 	cmd.Stderr = os.Stderr
 	var buf bytes.Buffer
@@ -138,19 +332,15 @@ func releaseVersionInfo() (tagName, version string, isPrerelease bool) {
 		fatalf("failed to read package.json version")
 	}
 	versionInPackageJSON := buf.Bytes()
-	if *flagN {
-		return tagName, mmp + label, isPrerelease
-	}
 	if got := string(bytes.TrimSpace(versionInPackageJSON)); got != mmp {
 		fatalf("package.json version %q does not match TAG_NAME %q", got, tagName)
 	}
-	return tagName, mmp + label, isPrerelease
 }
 
 func commandRun(cmd *exec.Cmd) error {
-	if *flagN {
+	if flagN {
 		if cmd.Dir != "" {
-			fmt.Fprintf(os.Stderr, "cd %v\n", cmd.Dir)
+			tracef("cd %v", cmd.Dir)
 		}
 		fmt.Fprintf(os.Stderr, "%v\n", strings.Join(cmd.Args, " "))
 		return nil
@@ -159,8 +349,8 @@ func commandRun(cmd *exec.Cmd) error {
 }
 
 func copy(dst, src string) error {
-	if *flagN {
-		fmt.Fprintf(os.Stderr, "cp %s %s\n", src, dst)
+	if flagN {
+		tracef("cp %s %s", src, dst)
 		return nil
 	}
 	data, err := os.ReadFile(src)
@@ -193,8 +383,8 @@ func buildPackage(version, tagName, output string) {
 // publish publishes the extension to the VS Code Marketplace and GitHub, using npx vsce and gh release create.
 func publish(tagName, packageFile string, isPrerelease bool) {
 	// check if the package file exists.
-	if *flagN {
-		fmt.Fprintf(os.Stderr, "stat %s\n", packageFile)
+	if flagN {
+		tracef("stat %s", packageFile)
 	} else {
 		if _, err := os.Stat(packageFile); os.IsNotExist(err) {
 			fatalf("package file %q does not exist. Did you run 'go run build/release.go package'?", packageFile)
@@ -241,4 +431,9 @@ func commitSHA() string {
 		fatalf("failed to get commit SHA")
 	}
 	return strings.TrimSpace(string(commitSHA))
+}
+
+func tracef(format string, args ...any) {
+	str := fmt.Sprintf(format, args...)
+	fmt.Fprintln(os.Stderr, str)
 }
