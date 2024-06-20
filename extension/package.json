@@ -1944,12 +1944,6 @@
               "default": false,
               "scope": "resource"
             },
-            "build.allowModfileModifications": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) allowModfileModifications disables -mod=readonly, allowing imports from\nout-of-scope modules. This option will eventually be removed.\n",
-              "default": false,
-              "scope": "resource"
-            },
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
@@ -2009,47 +2003,47 @@
             },
             "ui.codelenses": {
               "type": "object",
-              "markdownDescription": "codelenses overrides the enabled/disabled state of code lenses. See the\n\"Code Lenses\" section of the\n[Settings page](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#code-lenses)\nfor the list of supported lenses.\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of each of gopls'\nsources of [Code Lenses](codelenses.md).\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
               "scope": "resource",
               "properties": {
                 "gc_details": {
                   "type": "boolean",
-                  "markdownDescription": "Toggle the calculation of gc annotations.",
+                  "markdownDescription": "`\"gc_details\"`: Toggle display of Go compiler optimization decisions\n\nThis codelens source causes the `package` declaration of\neach file to be annotated with a command to toggle the\nstate of the per-session variable that controls whether\noptimization decisions from the Go compiler (formerly known\nas \"gc\") should be displayed as diagnostics.\n\nOptimization decisions include:\n- whether a variable escapes, and how escape is inferred;\n- whether a nil-pointer check is implied or eliminated;\n- whether a function can be inlined.\n\nTODO(adonovan): this source is off by default because the\nannotation is annoying and because VS Code has a separate\n\"Toggle gc details\" command. Replace it with a Code Action\n(\"Source action...\").\n",
                   "default": false
                 },
                 "generate": {
                   "type": "boolean",
-                  "markdownDescription": "Runs `go generate` for a given directory.",
+                  "markdownDescription": "`\"generate\"`: Run `go generate`\n\nThis codelens source annotates any `//go:generate` comments\nwith commands to run `go generate` in this directory, on\nall directories recursively beneath this one.\n\nSee [Generating code](https://go.dev/blog/generate) for\nmore details.\n",
                   "default": true
                 },
                 "regenerate_cgo": {
                   "type": "boolean",
-                  "markdownDescription": "Regenerates cgo definitions.",
+                  "markdownDescription": "`\"regenerate_cgo\"`: Re-generate cgo declarations\n\nThis codelens source annotates an `import \"C\"` declaration\nwith a command to re-run the [cgo\ncommand](https://pkg.go.dev/cmd/cgo) to regenerate the\ncorresponding Go declarations.\n\nUse this after editing the C code in comments attached to\nthe import, or in C header files included by it.\n",
                   "default": true
                 },
                 "run_govulncheck": {
                   "type": "boolean",
-                  "markdownDescription": "Run vulnerability check (`govulncheck`).",
+                  "markdownDescription": "`\"run_govulncheck\"`: Run govulncheck\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with a command to run Govulncheck.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static\nanalysis tool that computes the set of functions reachable\nwithin your application, including dependencies;\nqueries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
                   "default": false
                 },
                 "test": {
                   "type": "boolean",
-                  "markdownDescription": "Runs `go test` for a specific set of test or benchmark functions.",
+                  "markdownDescription": "`\"test\"`: Run tests and benchmarks\n\nThis codelens source annotates each `Test` and `Benchmark`\nfunction in a `*_test.go` file with a command to run it.\n\nThis source is off by default because VS Code has\na client-side custom UI for testing, and because progress\nnotifications are not a great UX for streamed test output.\nSee:\n- golang/go#67400 for a discussion of this feature.\n- https://github.com/joaotavora/eglot/discussions/1402\n  for an alternative approach.\n",
                   "default": false
                 },
                 "tidy": {
                   "type": "boolean",
-                  "markdownDescription": "Runs `go mod tidy` for a module.",
+                  "markdownDescription": "`\"tidy\"`: Tidy go.mod file\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with a command to run [`go mod\ntidy`](https://go.dev/ref/mod#go-mod-tidy), which ensures\nthat the go.mod file matches the source code in the module.\n",
                   "default": true
                 },
                 "upgrade_dependency": {
                   "type": "boolean",
-                  "markdownDescription": "Upgrades a dependency in the go.mod file for a module.",
+                  "markdownDescription": "`\"upgrade_dependency\"`: Update dependencies\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with commands to:\n\n- check for available upgrades,\n- upgrade direct dependencies, and\n- upgrade all dependencies transitively.\n",
                   "default": true
                 },
                 "vendor": {
                   "type": "boolean",
-                  "markdownDescription": "Runs `go mod vendor` for a module.",
+                  "markdownDescription": "`\"vendor\"`: Update vendor directory\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with a command to run [`go mod\nvendor`](https://go.dev/ref/mod#go-mod-vendor), which\ncreates or updates the directory named `vendor` in the\nmodule root so that it contains an up-to-date copy of all\nnecessary package dependencies.\n",
                   "default": true
                 }
               }
@@ -2189,6 +2183,11 @@
                   "markdownDescription": "suggest fixes for errors due to an incorrect number of return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"wrong number of return values (want %d, got %d)\". For example:\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn\n\t}\n\nwill turn into\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn 0, \"\", nil, nil\n\t}\n\nThis functionality is similar to https://github.com/sqs/goreturns.",
                   "default": true
                 },
+                "framepointer": {
+                  "type": "boolean",
+                  "markdownDescription": "report assembly that clobbers the frame pointer before saving it",
+                  "default": true
+                },
                 "httpresponse": {
                   "type": "boolean",
                   "markdownDescription": "check for mistakes using HTTP responses\n\nA common mistake when using the net/http package is to defer a function\ncall to close the http.Response Body before checking the error that\ndetermines whether the response is valid:\n\n\tresp, err := http.Head(url)\n\tdefer resp.Body.Close()\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\t// (defer statement belongs here)\n\nThis checker helps uncover latent nil dereference bugs by reporting a\ndiagnostic for such mistakes.",
@@ -2221,7 +2220,7 @@
                 },
                 "nilness": {
                   "type": "boolean",
-                  "markdownDescription": "check for redundant or impossible nil comparisons\n\nThe nilness checker inspects the control-flow graph of each function in\na package and reports nil pointer dereferences, degenerate nil\npointers, and panics with nil values. A degenerate comparison is of the form\nx==nil or x!=nil where x is statically known to be nil or non-nil. These are\noften a mistake, especially in control flow related to errors. Panics with nil\nvalues are checked because they are not detectable by\n\n\tif r := recover(); r != nil {\n\nThis check reports conditions such as:\n\n\tif f == nil { // impossible condition (f is a function)\n\t}\n\nand:\n\n\tp := &v\n\t...\n\tif p != nil { // tautological condition\n\t}\n\nand:\n\n\tif p == nil {\n\t\tprint(*p) // nil dereference\n\t}\n\nand:\n\n\tif p == nil {\n\t\tpanic(p)\n\t}",
+                  "markdownDescription": "check for redundant or impossible nil comparisons\n\nThe nilness checker inspects the control-flow graph of each function in\na package and reports nil pointer dereferences, degenerate nil\npointers, and panics with nil values. A degenerate comparison is of the form\nx==nil or x!=nil where x is statically known to be nil or non-nil. These are\noften a mistake, especially in control flow related to errors. Panics with nil\nvalues are checked because they are not detectable by\n\n\tif r := recover(); r != nil {\n\nThis check reports conditions such as:\n\n\tif f == nil { // impossible condition (f is a function)\n\t}\n\nand:\n\n\tp := &v\n\t...\n\tif p != nil { // tautological condition\n\t}\n\nand:\n\n\tif p == nil {\n\t\tprint(*p) // nil dereference\n\t}\n\nand:\n\n\tif p == nil {\n\t\tpanic(p)\n\t}\n\nSometimes the control flow may be quite complex, making bugs hard\nto spot. In the example below, the err.Error expression is\nguaranteed to panic because, after the first return, err must be\nnil. The intervening loop is just a distraction.\n\n\t...\n\terr := g.Wait()\n\tif err != nil {\n\t\treturn err\n\t}\n\tpartialSuccess := false\n\tfor _, err := range errs {\n\t\tif err == nil {\n\t\t\tpartialSuccess = true\n\t\t\tbreak\n\t\t}\n\t}\n\tif partialSuccess {\n\t\treportStatus(StatusMessage{\n\t\t\tCode:   code.ERROR,\n\t\t\tDetail: err.Error(), // \"nil dereference in dynamic method call\"\n\t\t})\n\t\treturn nil\n\t}\n\n...",
                   "default": true
                 },
                 "nonewvars": {
@@ -2236,7 +2235,7 @@
                 },
                 "printf": {
                   "type": "boolean",
-                  "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions.\n\nIn this example, the %d format operator requires an integer operand:\n\n\tfmt.Printf(\"%d\", \"hello\") // fmt.Printf format %d has arg \"hello\" of wrong type string\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.\n\nTo enable printf checking on a function that is not found by this\nanalyzer's heuristics (for example, because control is obscured by\ndynamic method calls), insert a bogus call:\n\n\tfunc MyPrintf(format string, args ...any) {\n\t\tif false {\n\t\t\t_ = fmt.Sprintf(format, args...) // enable printf checker\n\t\t}\n\t\t...\n\t}\n\nThe -funcs flag specifies a comma-separated list of names of additional\nknown formatting functions or methods. If the name contains a period,\nit must denote a specific function using one of the following forms:\n\n\tdir/pkg.Function\n\tdir/pkg.Type.Method\n\t(*dir/pkg.Type).Method\n\nOtherwise the name is interpreted as a case-insensitive unqualified\nidentifier such as \"errorf\". Either way, if a listed name ends in f, the\nfunction is assumed to be Printf-like, taking a format string before the\nargument list. Otherwise it is assumed to be Print-like, taking a list\nof arguments with no format string.",
+                  "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions such as [log.Printf]. It reports a variety of\nmistakes such as syntax errors in the format string and mismatches\n(of number and type) between the verbs and their arguments.\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.",
                   "default": true
                 },
                 "shadow": {
@@ -2247,6 +2246,11 @@
                 "shift": {
                   "type": "boolean",
                   "markdownDescription": "check for shifts that equal or exceed the width of the integer",
+                  "default": true
+                },
+                "sigchanyzer": {
+                  "type": "boolean",
+                  "markdownDescription": "check for unbuffered channel of os.Signal\n\nThis checker reports call expression of the form\n\n\tsignal.Notify(c <-chan os.Signal, sig ...os.Signal),\n\nwhere c is an unbuffered channel, which can be at risk of missing the signal.",
                   "default": true
                 },
                 "simplifycompositelit": {
@@ -2277,6 +2281,11 @@
                 "stdmethods": {
                   "type": "boolean",
                   "markdownDescription": "check signature of methods of well-known interfaces\n\nSometimes a type may be intended to satisfy an interface but may fail to\ndo so because of a mistake in its method signature.\nFor example, the result of this WriteTo method should be (int64, error),\nnot error, to satisfy io.WriterTo:\n\n\ttype myWriterTo struct{...}\n\tfunc (myWriterTo) WriteTo(w io.Writer) error { ... }\n\nThis check ensures that each method whose name matches one of several\nwell-known interface methods from the standard library has the correct\nsignature for that interface.\n\nChecked method names include:\n\n\tFormat GobEncode GobDecode MarshalJSON MarshalXML\n\tPeek ReadByte ReadFrom ReadRune Scan Seek\n\tUnmarshalJSON UnreadByte UnreadRune WriteByte\n\tWriteTo",
+                  "default": true
+                },
+                "stdversion": {
+                  "type": "boolean",
+                  "markdownDescription": "report uses of too-new standard library symbols\n\nThe stdversion analyzer reports references to symbols in the standard\nlibrary that were introduced by a Go release higher than the one in\nforce in the referring file. (Recall that the file's Go version is\ndefined by the 'go' directive its module's go.mod file, or by a\n\"//go:build go1.X\" build tag at the top of the file.)\n\nThe analyzer does not report a diagnostic for a reference to a \"too\nnew\" field or method of a type that is itself \"too new\", as this may\nhave false positives, for example if fields or methods are accessed\nthrough a type alias that is guarded by a Go version constraint.\n",
                   "default": true
                 },
                 "stringintconv": {
@@ -2347,7 +2356,7 @@
                 "unusedwrite": {
                   "type": "boolean",
                   "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}",
-                  "default": false
+                  "default": true
                 },
                 "useany": {
                   "type": "boolean",
@@ -2443,7 +2452,7 @@
             },
             "ui.documentation.linksInHover": {
               "type": "boolean",
-              "markdownDescription": "linksInHover toggles the presence of links to documentation in hover.\n",
+              "markdownDescription": "linksInHover controls the presence of documentation links\nin hover markdown.\n\nIts legal values are:\n- `false`, for no links;\n- `true`, for links to the `linkTarget` domain; or\n- `\"gopls\"`, for links to gopls' internal documentation viewer.\n",
               "default": true,
               "scope": "resource"
             },
@@ -2483,7 +2492,7 @@
             },
             "ui.navigation.symbolScope": {
               "type": "string",
-              "markdownDescription": "symbolScope controls which packages are searched for workspace/symbol\nrequests. The default value, \"workspace\", searches only workspace\npackages. The legacy behavior, \"all\", causes all loaded packages to be\nsearched, including dependencies; this is more expensive and may return\nunwanted results.\n",
+              "markdownDescription": "symbolScope controls which packages are searched for workspace/symbol\nrequests. When the scope is \"workspace\", gopls searches only workspace\npackages. When the scope is \"all\", gopls searches all loaded packages,\nincluding dependencies and the standard library.\n",
               "enum": [
                 "all",
                 "workspace"
