@@ -72,7 +72,7 @@ import { GoExtensionContext } from './context';
 import * as commands from './commands';
 import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
-import { telemetryReporter } from './goTelemetry';
+import { setTelemetryEnvVars, telemetryReporter } from './goTelemetry';
 
 const goCtx: GoExtensionContext = {};
 
@@ -98,6 +98,8 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	setGlobalState(ctx.globalState);
 	setWorkspaceState(ctx.workspaceState);
 	setEnvironmentVariableCollection(ctx.environmentVariableCollection);
+
+	setTelemetryEnvVars(ctx.globalState, process.env);
 
 	const cfg = getGoConfig();
 	WelcomePanel.activate(ctx, goCtx);
