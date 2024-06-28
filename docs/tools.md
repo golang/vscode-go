@@ -2,7 +2,7 @@
 
 This document describes the tools that power the VS Code Go extension.
 
-Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
+Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/extension/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
 
 VS Code Go will install the tools to your `$GOPATH/bin` by default. 
 
@@ -34,6 +34,13 @@ For more information about `gopls`, please visit its [documentation](https://gol
 This extension uses Delve for its debug/test functionalities. The extension currently ships with a thin Debug Adapter that implements the [Debug Adapter protocol](https://microsoft.github.io/debug-adapter-protocol/) and connects VS Code and `dlv`.
 
 For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
+
+### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/vscgo)
+
+This tool provides utilities needed by this extension but do not belong to the language server
+or debug adapter server. Examples include dependency tools management, developer survey
+configuration, and [Go telemetry collection](https://github.com/golang/vscode-go/issues/3121).
+This tool is released with the extension and installed in the extension's directory.
 
 ### [`goplay`](https://pkg.go.dev/github.com/haya14busa/goplay?tab=overview)
 

@@ -5,16 +5,21 @@
 ## Syntax highlighting doesn't seem to work.
 
 The default syntax highlighting for Go files is provided by a
-[TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS Code,
+[TextMate rule](https://github.com/worlpaker/go-syntax) embedded in VS Code,
 not by this extension.
 
-For better syntax highlighting (including generics support), we recommend enabling
+For accurate syntax highlighting (including generics support), we recommend enabling
 [semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
 by turning on [Gopls' `ui.semanticTokens` setting](settings.md#uisemantictokens).
 
 ```json
 "gopls": { "ui.semanticTokens": true }
 ```
+
+If you are experiencing issues with syntax highlighting, first check if you
+are using semantic highlighting. In case you did not enable semantic highlighting,
+report the issues to the [go-syntax](https://github.com/worlpaker/go-syntax)
+project directly.
 
 ## Code formatting by this extension doesn't seem to work.
 

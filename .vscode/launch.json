@@ -6,8 +6,8 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "debug",
-			"program": "${workspaceFolder}/tools/generate.go",
-			"cwd": "${workspaceFolder}"
+			"program": "${workspaceFolder}/extension/tools/generate.go",
+			"cwd": "${workspaceFolder}/extension"
 		},
 		{
 			"name": "Launch Extension",
@@ -20,7 +20,7 @@
 				"--disable-extensions"
 			],
 			"outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/extension/dist/**/*.js"
             ],
 			"sourceMaps": true,
 			"smartStep": true,
@@ -28,21 +28,7 @@
 			"env": {
 				"VSCODE_GO_IN_TEST": ""  // Enable code
 			},
-		},
-		{
-			"name": "Launch as server",
-			"type": "node",
-			"request": "launch",
-			"program": "${workspaceFolder}/dist/debugAdapter.js",
-			"args": [
-				"--server=4711"
-			],
-			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
-			],
-			"sourceMaps": true,
-			"smartStep": true,
-			"preLaunchTask": "npm: bundle-dev"
+			"cwd": "${workspaceFolder}/extension"
 		},
 		{
 			"name": "Launch Extension Tests",
@@ -53,9 +39,9 @@
 			"args": [
 				"--disable-extensions",
 				"--profile-temp",
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/integration/index",
-				"--user-data-dir=${workspaceFolder}/.user-data-dir-test",
+				"--extensionDevelopmentPath=${workspaceFolder}/extension",
+				"--extensionTestsPath=${workspaceFolder}/extension/out/test/integration/index",
+				"--user-data-dir=${workspaceFolder}/extension/.user-data-dir-test",
 				"--timeout",
 				"999999"
 			],
@@ -63,9 +49,13 @@
 				"VSCODE_GO_IN_TEST": "1",  // Disable code that shouldn't be used in test
 				"MOCHA_TIMEOUT": "999999",
 			},
+			"outFiles": [
+                "${workspaceFolder}/extension/out/**/*.js"
+            ],
 			"sourceMaps": true,
 			"smartStep": true,
 			"preLaunchTask": "npm: watch",
+			"cwd": "${workspaceFolder}/extension"
 		},
 		{
 			"name": "Launch Extension Tests with Gopls",
@@ -76,41 +66,37 @@
 			"args": [
 				"--disable-extensions",
 				"--profile-temp",
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/gopls/index",
-				"--user-data-dir=${workspaceFolder}/.user-data-dir-test",
+				"--extensionDevelopmentPath=${workspaceFolder}/extension",
+				"--extensionTestsPath=${workspaceFolder}/extension/out/test/gopls/index",
+				"--user-data-dir=${workspaceFolder}/extension/.user-data-dir-test",
 				"--timeout", "999999",
 			],
 			"env": {
 				"VSCODE_GO_IN_TEST": "1"  // Disable code that shouldn't be used in test
 			},
+			"outFiles": [
+                "${workspaceFolder}/extension/out/**/*.js"
+            ],
 			"sourceMaps": true,
 			"preLaunchTask": "npm: watch",
+			"cwd": "${workspaceFolder}/extension"
 		},
 		{
 			"type": "node",
 			"request": "launch",
 			"name": "Launch Unit Tests",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+			"program": "${workspaceFolder}/extension/node_modules/mocha/bin/_mocha",
 			"args": [
 				"-u",
 				"tdd",
 				"--timeout",
 				"5000",
 				"--colors",
-				"${workspaceFolder}/out/test/unit"
+				"${workspaceFolder}/extension/out/test/unit"
 			],
 			"internalConsoleOptions": "openOnSessionStart",
 			"preLaunchTask": "npm: watch",
+			"cwd": "${workspaceFolder}/extension"
 		},
-	],
-	"compounds": [
-		{
-			"name": "Extension + Debug server",
-			"configurations": [
-				"Launch Extension",
-				"Launch as server"
-			]
-		}
 	]
 }

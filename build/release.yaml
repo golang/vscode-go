@@ -1,0 +1,65 @@
+# This workflow will be triggered when a new release tag (of the form vX.Y.Z) is
+# pushed to the vscode-go repo.)
+# For local testing, run:
+#   gcloud builds submit --config release.yaml --no-source --substitutions=_TAG_NAME="v0.40.1-rc.1",_GITHUB_TOKEN="alias1",_VSCE_TOKEN="alias2"
+#
+# WARNING: this will publish the extension.
+#
+# This will check out the vscode-go repo on the specified tag, build the extension,
+# and publish it to the VS Code Marketplace and the GitHub Releases page if not published already.
+steps:
+  # TODO: check build/test status
+  # TODO: configure failure notification https://cloud.google.com/build/docs/configuring-notifications/notifiers
+  - name: gcr.io/cloud-builders/git
+    args:
+      - clone
+      - '--branch=$TAG_NAME'
+      - '--single-branch'
+      - '--depth=1'
+      - 'https://go.googlesource.com/vscode-go'
+      - vscode-go
+    id: clone vscode-go repo
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - '-R'
+      - '1000:1000'
+      - /workspace
+      - /builder/home
+    dir: /
+    id: adjust file permissions
+    entrypoint: chown
+  - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
+    args:
+      - ci
+    dir: vscode-go/extension
+    id: install npm dependencies
+    entrypoint: npm
+  - name: us-docker.pkg.dev/$PROJECT_ID/vscode-go-docker-repo/ci-image
+    args:
+      - -c
+      - |
+        go run -C extension tools/release/release.go package &&
+        go run -C extension tools/release/release.go publish
+    dir: vscode-go
+    id: package and publish the extension
+    entrypoint: bash
+    env:
+      - 'TAG_NAME=$TAG_NAME'
+      - 'COMMIT_SHA=$COMMIT_SHA'
+    secretEnv:
+      - VSCE_PAT
+      - GITHUB_TOKEN
+timeout: 1800s
+options:
+  substitutionOption: ALLOW_LOOSE
+artifacts:
+  objects:
+    location: 'gs://$PROJECT_ID/releases/$TAG_NAME'
+    paths:
+      - vscode-go/extension/*.vsix
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/$_VSCE_TOKEN/versions/latest
+      env: VSCE_PAT
+    - versionName: projects/$PROJECT_ID/secrets/$_GITHUB_TOKEN/versions/latest
+      env: GITHUB_TOKEN

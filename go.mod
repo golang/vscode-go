@@ -1,9 +1,10 @@
 module github.com/golang/vscode-go
 
-go 1.16
+go 1.21
+
+require golang.org/x/telemetry v0.0.0-20240116212745-88e2d1c7f9a2
 
 require (
-	github.com/google/go-cmp v0.5.9
-	github.com/stamblerre/work-stats v0.0.0-20221215212512-f2f2cf51e506
-	golang.org/x/build v0.0.0-20230221151429-f03e733dd241
+	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 )

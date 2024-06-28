@@ -822,7 +822,7 @@ command-line options.
 We encourage you to give the newly added `"debugAdapter": "dlv-dap"` support a
 try and to
 [let us know of any issues](https://github.com/golang/vscode-go/issues/new). If
-you need to use the `legacy` mode, pleasse also see the
+you need to use the `legacy` mode, please also see the
 [legacy remote debugging](debugging-legacy.md#remote-debugging) documentation.
 
 For example, start external headless server:
@@ -1050,7 +1050,7 @@ in the module cache, vendored modules, and the standard library.
 ```
 
 Since rules are applied both from client to server and server to client,
-rules with an empty string will be applied to *all* paths that it sees, so even
+rules with an empty string will be applied to _all_ paths that it sees, so even
 dependencies will be mapped to `"/path/to/module"`.
 
 We plan to make this easier in the future. Progress can be tracked

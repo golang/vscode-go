@@ -58,7 +58,7 @@ The debugging feature documentation has a dedicated section for tips for develop
 
     ```bash
     git clone https://go.googlesource.com/vscode-go
-    cd vscode-go
+    cd vscode-go/extension
     npm ci
     code .
     ```
@@ -79,10 +79,8 @@ If you make subsequent edits in the codebase, you can reload (`Ctrl+R` or `⌘+R
 
 ## Test
 
-**note**: Unfortunately, VS Code test framework inherits your user settings when running tests [Issue 43](https://github.com/golang/vscode-go/issues/43). Make sure VS Code user settings do not contain any go related configuration, except `go.gopath` or `go.toolsGopath` in case you installed the tools for testing in a different `GOPATH`.
-
-
 1. `export GOPATH=/path/to/gopath/for/test`
+2. `cd extension` -- most extension development work is done in the `extension` directory.
 2. `go run tools/installtools/main.go` -- this will install all tools in the `GOPATH/bin` built from master/main.
 3. There are currently two different types of tests in this repo:
   - `npm run unit-test`: this runs unit tests defined in `test/unit`. They are light-weight tests that don't require `vscode` APIs.
@@ -107,10 +105,7 @@ You can supply environment variables (e.g. `MOCHA_GREP`) by modifying the launch
 
 When you want to filter tests while debugging, utilize the `MOCAH_GREP` environment variable discussed previously - i.e., set the environment variable in the `env` property of the launch configuration.
 
-#### (3) Another way to run all tests:
-`build/all.bash test` is the script used by a CI (Linux).
-
-#### (4) Using different versions of tools.
+#### (3) Using different versions of tools.
 The tests will pick tools found from `GOPATH/bin` first. So, install the versions you want there.
 
 ## Running/Debugging the Extension
@@ -156,10 +151,9 @@ Or, if you use vscode for gopls development, you can configure `launch.json` of 
 
 After making changes to the extension, you may want to test it end-to-end instead of running it in debug mode. To do this, you can sideload the extension.
 
-1. Install the [vsce](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#vsce) tool for packaging extensions (`npm install -g vsce`).
-2. `cd` into your `vscode-go` directory.
+1. `cd` into the `extension` directory.
 3. Install all dependencies by running `npm ci`.
-4. Run `vsce package`. This will generate a file with a `.vsix` extension in your current directory.
+4. Run `npx vsce package`. This will generate a file with a `.vsix` extension in your current directory.
 
     ```bash
     npm install -g vsce
@@ -194,10 +188,7 @@ you or a fellow contributor assigns the `Run-TryBot=+1` label in Gerrit, the tes
 for running Dockerized tests. `Kokoro` will post the result as a comment, and add its `TryBot-Result`
 vote after each test run completes.
 
-To force a re-run of the Kokoro CI,
-  * Remove `TryBot-Result` vote (hover over the label, and click the trashcan icon).
-  * Reply in Gerrit with the comment "kokoro rerun". Make sure to keep the `Run-TryBot` +1 vote.
-
+To force a re-run of the Kokoro CI, add comment `kokoro rerun` to the CL.
 
 [#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
 [Gophers Slack]: https://invite.slack.golangbridge.org/
