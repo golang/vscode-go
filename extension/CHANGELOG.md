@@ -281,7 +281,7 @@ A list of all issues and changes can be found in the [v0.39.0 milestone](https:/
 ### Changes
 - Added the [`go.showWelcome`](https://github.com/golang/vscode-go/wiki/settings#goshowwelcome) setting that controls whether to show the Welcome page. ([PR 2704](https://github.com/golang/vscode-go/pull/2704)) <!-- CL 501208 -->
 - Report when `go.toolsManagement.go` setting is invalid and ignored. ([Issue 2753](https://github.com/golang/vscode-go/issues/2753)) <!-- CL 501056 -->
-- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issue/1109)) <!-- CL 501199 -->
+- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issues/1109)) <!-- CL 501199 -->
 - Deprecated settings that affect only legacy language features and tools. They will be removed in the release after September 2023. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799)) <!-- CL 501206 -->
 - `"Go: Update/Install Tools"` will install the latest version of `golangci-lint` instead of a vetted, pinned version. The extension chose to pin the versions of third-party go tools it installs in order to manage version skew and reduce security risks. However, `golangci-lint` is frequently released and its community is active enough to handle compatibility/security issues. We decided to install the latest version by default. ([Issue 2763](https://github.com/golang/vscode-go/issues/2763), [2485](https://github.com/golang/vscode-go/issues/2485))
 
@@ -502,7 +502,7 @@ A list of all issues and changes can be found in the [v0.32.0 milestone](https:/
 
 - The extension no longer depends on [`gopkgs`](https://github.com/uudashr/gopkgs/cmd/gopkgs). Its use for "Go: Browse Packages" and "Go: Add Import" commands had been replaced with `go list` or commands in `gopls`. ([Issue 258](https://github.com/golang/vscode-go/issues/258))
 
-- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issue/1020))
+- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issues/1020))
 
 - The new [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementgo) allows users to specify the Go command for tools installation/updates separate from the Go command used for the project.
 
@@ -1428,14 +1428,14 @@ Thank you for your contribution, fujimoto kyosuke, OneOfOne, Aditya Thakral, Ole
 - `Go: Add Tags To Struct Fields` prompts transform parameter input if the setting `go.addTags.promptForTags` is true ([Issue 2546](https://github.com/microsoft/vscode-go/issues/2546)).
 - `Go: Locate Go Tools` command output includes the `GOBIN` value. ([cl/235197](https://golang.org/cl/235197)).
 - Improved debugging experience
-    - The debug adapter automatically infers the mapping between remote and local paths for easy remote debugging ([cl/234020](https://golang.org/cl/234020), [Issue 45](https://github.com/golang/vscode-go/issue/45)).
-    - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issue/215)).
-    - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issue/143)).
+    - The debug adapter automatically infers the mapping between remote and local paths for easy remote debugging ([cl/234020](https://golang.org/cl/234020), [Issue 45](https://github.com/golang/vscode-go/issues/45)).
+    - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issues/215)).
+    - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issues/143)).
 - Better language server integration
     - Restart the language server automatically when changes in its configuration or the language server version are detected ([cl/232598](https://golang.org/cl/232598), [cl/233159](https://golang.org/cl/233159)).
     - Prompts user to file an issue if `gopls` crashes ([cl/233325](https://golang.org/cl/233325)).
 - `go.gopath`, `go.goroot`, `go.toolsGopath` are now [machine-overridable](https://code.visualstudio.com/api/references/contribution-points#Configuration-property-schema) ([cl/236539](https://golang.org/cl/236539), [Issue 2981](https://github.com/microsoft/vscode-go/issues/2981)).
-- The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issue/146)).
+- The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issues/146)).
 - A redundant code action provider was removed when using the language server ([cl/239284](https://golang.org/cl/239284)).
 
 ### Fixed

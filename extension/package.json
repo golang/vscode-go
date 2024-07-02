@@ -1199,7 +1199,7 @@
             "do not run vet automatically"
           ],
           "default": "package",
-          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics. See 'go.languageServerExperimentalFeatures.diagnostics' setting.",
+          "description": "Vets code on file save using 'go tool vet'. Not applicable when using the language server's diagnostics.",
           "scope": "resource"
         },
         "go.vetFlags": {
