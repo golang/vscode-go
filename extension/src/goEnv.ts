@@ -42,6 +42,13 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	}
 	env['GOPATH'] = toolsGopath;
 
+	// Explicitly set 'auto' so tools that require
+	// a newer toolchain can be built.
+	// We don't use unset, but unconditionally set this env var
+	// since some users may change the env var using GOENV,
+	// GOROOT/.goenv, or toolchain modification.
+	env['GOTOOLCHAIN'] = 'auto';
+
 	// Unset env vars that would affect tool build process: 'GOROOT', 'GOOS', 'GOARCH', ...
 	// Tool installation should be done for the host OS/ARCH (GOHOSTOS/GOHOSTARCH) with
 	// the default setup.
