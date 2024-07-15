@@ -1,3 +1,40 @@
+## v0.42.0 - 17 Jul, 2024
+
+A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.42.0...v0.41.4).
+
+### Updates in `gopls`
+
+* Gopls v0.16: The latest gopls version as of this release is [gopls v0.16](https://github.com/golang/tools/releases/tag/gopls%2Fv0.16.0). The extension settings documentation has been updated to align with the latest gopls settings.
+* The gopls project provides an index of [all supported features](https://github.com/golang/tools/tree/master/gopls/doc/features). We are working on making this documentation more accessible from the extension. Please stay tuned for updates.
+
+### Updates in telemetry
+
+This extension continues to use [Go toolchain telemetry](https://go.dev/doc/telemetry).
+By default, telemetry data is kept only on the local computer, but you can opt in to share it with the Go team with one of the following ways:
+
+- `go run golang.org/x/telemetry/cmd/gotelemetry@latest on` in the terminal, or
+- `go telemetry on`, from go1.23, or
+- Respond to the prompt when it appears.
+
+Once uploading is enabled, the data will be sent to https://telemetry.go.dev approximately once a week.
+
+### Changes
+
+#### Tools installation
+
+* For tools installation managed by the extension, this version requires go1.19 or newer version. The next minor release (v0.43.0+) will require go1.21 or newer to install tools. If your project requires go1.20 or older to build, you will need to manually install [compatible versions of tools](https://github.com/golang/vscode-go/wiki/tools), or configure the [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/wiki/settings#gotoolsmanagementgo) to use go1.21+ when installing the tools.
+
+* The extension installs its required tools using the `go install` command. Starting go1.21, the `go` command allows tool authors to specify the minimum Go version required to build their tools. If the required go toolchain version is not locally available, the `go` command needs to download it like other dependencies of the tool. To ensure this toolchain switch works correctly, the extension enforces `GOTOOLCHAIN=auto` mode during tools installation. Note that this change does not affect how it builds and tests your own project.  For more information about Go's toolchain switch behavior, see the [official documentation](https://go.dev/doc/toolchain).
+
+#### Debugging
+
+* The default launch.json template for "Go: Launch Package" was updated to use `"${workspaceFolder}${1:}"` instead of `"${fileDirname}"` as the default `"program"` attribute value. If the package to debug is located in the subdirectory, adjust the configuration to point to the main package path. The [official VS Code Variables Reference](https://code.visualstudio.com/docs/editor/variables-reference) lists useful substitution rules you can use in adjusting your launch.json setting.
+
+### Thanks
+
+Thanks for your contributions, @yimiaoxiehou!
+
+
 ## v0.41.4 - 24 Apr, 2024
 
 This point release addresses a regression issue (spurious display of the Go welcome page)  within cloud-based IDEs.
@@ -466,7 +503,7 @@ We plan to add support for [LSP 3.17](https://microsoft.github.io/language-serve
 
 * Activation: the extension defers commands and feature provider registrations until it runs `go version` and `go env`, and starts `gopls`. [This change](https://go-review.googlesource.com/c/vscode-go/+/398155) prevent the extension prematually export its features, but may result in a slight increase in extension activation time if those commands run slow.
 
-* Survey: we show the Gopls opt-out survey prompt only when users change the setting to disable `gopls`.
+* Survey: we show the gopls opt-out survey prompt only when users change the setting to disable `gopls`.
 
 * Test Explorer: fixed a bug in `go.mod` file parsing ([Issue 2171](https://github.com/golang/vscode-go/issues/2171))
 
