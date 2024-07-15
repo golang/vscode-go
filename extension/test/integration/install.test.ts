@@ -189,7 +189,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy', async () => {
+	test('Install multiple tools with a local proxy', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
@@ -199,7 +204,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy & GOBIN', async () => {
+	test('Install multiple tools with a local proxy & GOBIN', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
