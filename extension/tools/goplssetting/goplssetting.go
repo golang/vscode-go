@@ -349,8 +349,10 @@ func propertyType(t string) string {
 		return "string"
 	case "[]string":
 		return "array"
-	case "map[string]string", "map[string]bool":
+	case "map[string]string", "map[string]bool", "map[enum]string", "map[enum]bool":
 		return "object"
+	case "any":
+		return "boolean" // TODO(hyangah): change to "" after https://go.dev/cl/593656 is released.
 	}
 	log.Fatalf("unknown type %q", t)
 	return ""

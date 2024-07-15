@@ -227,7 +227,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			});
 			if (result) {
 				outputChannel.error(`Error installing ${goOption.binpath}: ${result}`);
-				throw new Error('Could not install ${goOption.binpath}');
+				throw new Error(`Could not install ${goOption.binpath} - check logs in the "Go" output channel`);
 			}
 			// run `goX.X download`
 			const goXExecutable = getBinPath(newExecutableName);

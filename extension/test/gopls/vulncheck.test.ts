@@ -60,11 +60,9 @@ suite('writeVulns', function () {
 	test('govulncheck finds vulnerabilities', async () => {
 		const workspaceDir = path.join(fixtureDir, 'mod1');
 		const output = await testRunGovulncheck(workspaceDir);
-		const sections = output.toString().split(' Informational ');
-		assert(sections.length >= 2, `got ${JSON.stringify(sections)}`);
-		assert(sections[0].includes('GO-1970-TEXT'));
-		assert(sections[1].includes('GO-1970-FMT'));
-		assert(sections[1].includes('vulnerabilities found'));
+		const result = output.toString();
+		assert(result.includes('GO-1970-TEXT'));
+		assert(result.includes('vulnerabilities found'));
 	});
 
 	test('govulncheck finds no vulnerabilities', async () => {
@@ -85,7 +83,7 @@ suite('writeVulns', function () {
 			};
 			return await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
 		});
-		const msg = 'Share feedback';
+		const msg = 'vulnerabilities found';
 		const timeoutMS = 10000;
 		await new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {

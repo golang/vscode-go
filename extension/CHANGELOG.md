@@ -1,3 +1,40 @@
+## v0.42.0 - 17 Jul, 2024
+
+A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.42.0...v0.41.4).
+
+### Updates in `gopls`
+
+* Gopls v0.16: The latest gopls version as of this release is [gopls v0.16](https://github.com/golang/tools/releases/tag/gopls%2Fv0.16.0). The extension settings documentation has been updated to align with the latest gopls settings.
+* The gopls project provides an index of [all supported features](https://github.com/golang/tools/tree/master/gopls/doc/features). We are working on making this documentation more accessible from the extension. Please stay tuned for updates.
+
+### Updates in telemetry
+
+This extension continues to use [Go toolchain telemetry](https://go.dev/doc/telemetry).
+By default, telemetry data is kept only on the local computer, but you can opt in to share it with the Go team with one of the following ways:
+
+- `go run golang.org/x/telemetry/cmd/gotelemetry@latest on` in the terminal, or
+- `go telemetry on`, from go1.23, or
+- Respond to the prompt when it appears.
+
+Once uploading is enabled, the data will be sent to https://telemetry.go.dev approximately once a week.
+
+### Changes
+
+#### Tools installation
+
+* For tools installation managed by the extension, this version requires go1.19 or newer version. The next minor release (v0.43.0+) will require go1.21 or newer to install tools. If your project requires go1.20 or older to build, you will need to manually install [compatible versions of tools](https://github.com/golang/vscode-go/wiki/tools), or configure the [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/wiki/settings#gotoolsmanagementgo) to use go1.21+ when installing the tools.
+
+* The extension installs its required tools using the `go install` command. Starting go1.21, the `go` command allows tool authors to specify the minimum Go version required to build their tools. If the required go toolchain version is not locally available, the `go` command needs to download it like other dependencies of the tool. To ensure this toolchain switch works correctly, the extension enforces `GOTOOLCHAIN=auto` mode during tools installation. Note that this change does not affect how it builds and tests your own project.  For more information about Go's toolchain switch behavior, see the [official documentation](https://go.dev/doc/toolchain).
+
+#### Debugging
+
+* The default launch.json template for "Go: Launch Package" was updated to use `"${workspaceFolder}${1:}"` instead of `"${fileDirname}"` as the default `"program"` attribute value. If the package to debug is located in the subdirectory, adjust the configuration to point to the main package path. The [official VS Code Variables Reference](https://code.visualstudio.com/docs/editor/variables-reference) lists useful substitution rules you can use in adjusting your launch.json setting.
+
+### Thanks
+
+Thanks for your contributions, @yimiaoxiehou!
+
+
 ## v0.41.4 - 24 Apr, 2024
 
 This point release addresses a regression issue (spurious display of the Go welcome page)  within cloud-based IDEs.
@@ -281,7 +318,7 @@ A list of all issues and changes can be found in the [v0.39.0 milestone](https:/
 ### Changes
 - Added the [`go.showWelcome`](https://github.com/golang/vscode-go/wiki/settings#goshowwelcome) setting that controls whether to show the Welcome page. ([PR 2704](https://github.com/golang/vscode-go/pull/2704)) <!-- CL 501208 -->
 - Report when `go.toolsManagement.go` setting is invalid and ignored. ([Issue 2753](https://github.com/golang/vscode-go/issues/2753)) <!-- CL 501056 -->
-- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issue/1109)) <!-- CL 501199 -->
+- Removed `go.languageServerExperimentalFeatures` setting which was deprecated in v0.21.0. ([Issue 1109](https://github.com/golang/vscode-go/issues/1109)) <!-- CL 501199 -->
 - Deprecated settings that affect only legacy language features and tools. They will be removed in the release after September 2023. ([Issue 2799](https://github.com/golang/vscode-go/issues/2799)) <!-- CL 501206 -->
 - `"Go: Update/Install Tools"` will install the latest version of `golangci-lint` instead of a vetted, pinned version. The extension chose to pin the versions of third-party go tools it installs in order to manage version skew and reduce security risks. However, `golangci-lint` is frequently released and its community is active enough to handle compatibility/security issues. We decided to install the latest version by default. ([Issue 2763](https://github.com/golang/vscode-go/issues/2763), [2485](https://github.com/golang/vscode-go/issues/2485))
 
@@ -466,7 +503,7 @@ We plan to add support for [LSP 3.17](https://microsoft.github.io/language-serve
 
 * Activation: the extension defers commands and feature provider registrations until it runs `go version` and `go env`, and starts `gopls`. [This change](https://go-review.googlesource.com/c/vscode-go/+/398155) prevent the extension prematually export its features, but may result in a slight increase in extension activation time if those commands run slow.
 
-* Survey: we show the Gopls opt-out survey prompt only when users change the setting to disable `gopls`.
+* Survey: we show the gopls opt-out survey prompt only when users change the setting to disable `gopls`.
 
 * Test Explorer: fixed a bug in `go.mod` file parsing ([Issue 2171](https://github.com/golang/vscode-go/issues/2171))
 
@@ -502,7 +539,7 @@ A list of all issues and changes can be found in the [v0.32.0 milestone](https:/
 
 - The extension no longer depends on [`gopkgs`](https://github.com/uudashr/gopkgs/cmd/gopkgs). Its use for "Go: Browse Packages" and "Go: Add Import" commands had been replaced with `go list` or commands in `gopls`. ([Issue 258](https://github.com/golang/vscode-go/issues/258))
 
-- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issue/1020))
+- The extension uses `gopls` instead of `go-outline` if `gopls` v0.8.0 or newer is used. We plan to complete the replacement work in the next release. ([Issue 1020](https://github.com/golang/vscode-go/issues/1020))
 
 - The new [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/blob/master/docs/settings.md#gotoolsmanagementgo) allows users to specify the Go command for tools installation/updates separate from the Go command used for the project.
 
@@ -1428,14 +1465,14 @@ Thank you for your contribution, fujimoto kyosuke, OneOfOne, Aditya Thakral, Ole
 - `Go: Add Tags To Struct Fields` prompts transform parameter input if the setting `go.addTags.promptForTags` is true ([Issue 2546](https://github.com/microsoft/vscode-go/issues/2546)).
 - `Go: Locate Go Tools` command output includes the `GOBIN` value. ([cl/235197](https://golang.org/cl/235197)).
 - Improved debugging experience
-    - The debug adapter automatically infers the mapping between remote and local paths for easy remote debugging ([cl/234020](https://golang.org/cl/234020), [Issue 45](https://github.com/golang/vscode-go/issue/45)).
-    - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issue/215)).
-    - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issue/143)).
+    - The debug adapter automatically infers the mapping between remote and local paths for easy remote debugging ([cl/234020](https://golang.org/cl/234020), [Issue 45](https://github.com/golang/vscode-go/issues/45)).
+    - The debug adapter handles errors that can occur during remote connection setup ([cl/237550](https://golang.org/cl/237550), [Issue 215](https://github.com/golang/vscode-go/issues/215)).
+    - Failed watch expression evaluation no longer pops up error message windows. The error is visible in the watch window instead ([cl/236999](https://golang.org/cl/236999), [Issue 143](https://github.com/golang/vscode-go/issues/143)).
 - Better language server integration
     - Restart the language server automatically when changes in its configuration or the language server version are detected ([cl/232598](https://golang.org/cl/232598), [cl/233159](https://golang.org/cl/233159)).
     - Prompts user to file an issue if `gopls` crashes ([cl/233325](https://golang.org/cl/233325)).
 - `go.gopath`, `go.goroot`, `go.toolsGopath` are now [machine-overridable](https://code.visualstudio.com/api/references/contribution-points#Configuration-property-schema) ([cl/236539](https://golang.org/cl/236539), [Issue 2981](https://github.com/microsoft/vscode-go/issues/2981)).
-- The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issue/146)).
+- The extension does not mutate the `GOROOT` environment variable any more. `go.goroot` is used to select the `go` command under the specified directory ([Issue 146](https://github.com/golang/vscode-go/issues/146)).
 - A redundant code action provider was removed when using the language server ([cl/239284](https://golang.org/cl/239284)).
 
 ### Fixed

@@ -31,7 +31,6 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 	return async (reason: RestartReason = RestartReason.MANUAL) => {
 		const goConfig = getGoConfig();
 		const cfg = await buildLanguageServerConfig(goConfig);
-
 		if (typeof reason === 'string') {
 			updateRestartHistory(goCtx, reason, cfg.enabled);
 		}
@@ -47,9 +46,14 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 					errorKind.manualRestart
 				);
 			}
+			outputChannel.info(`Try to start language server - ${reason} (enabled: ${cfg.enabled})`);
+
 			// If the client has already been started, make sure to clear existing
 			// diagnostics and stop it.
 			if (goCtx.languageClient) {
+				goCtx.serverOutputChannel?.append(
+					`Request to stop language server - ${reason} (enabled: ${cfg.enabled})`
+				);
 				await stopLanguageClient(goCtx);
 			}
 			updateStatus(goCtx, goConfig, false);
@@ -62,6 +66,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 
 			if (!shouldActivateLanguageFeatures()) {
+				outputChannel.warn('Cannot activate language features - unsupported environment');
 				return;
 			}
 
@@ -72,6 +77,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 
 			if (!cfg.enabled) {
+				outputChannel.warn('Language server is disabled');
 				const legacyService = new LegacyLanguageService();
 				goCtx.legacyLanguageService = legacyService;
 				ctx.subscriptions.push(legacyService);
@@ -87,11 +93,12 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				ctx.globalState,
 				goCtx.serverInfo?.Commands
 			);
-
-			console.log(`Server: ${JSON.stringify(goCtx.serverInfo, null, 2)}`);
+			outputChannel.info(
+				`Running language server ${goCtx.serverInfo?.Name}(${goCtx.serverInfo?.Version}/${goCtx.serverInfo?.GoVersion})`
+			);
 		} catch (e) {
 			const msg = `Error starting language server: ${e}`;
-			console.log(msg);
+			outputChannel.error(msg);
 			goCtx.serverOutputChannel?.append(msg);
 		} finally {
 			updateStatus(goCtx, goConfig, true);

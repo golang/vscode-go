@@ -69,17 +69,24 @@ export function getImportPathWithVersion(
 			return importPath + '@' + version;
 		}
 	}
+	if (tool.name === 'gopls') {
+		if (goVersion.lt('1.19')) return importPath + '@v0.14.2';
+		if (goVersion.lt('1.21')) return importPath + '@v0.15.3';
+	}
+	if (tool.name === 'dlv') {
+		if (goVersion.lt('1.19')) return importPath + '@v1.20.2';
+		if (goVersion.lt('1.21')) return importPath + '@v1.22.1';
+	}
 	if (tool.name === 'staticcheck') {
-		if (goVersion.lt('1.17')) return importPath + '@v0.2.2';
 		if (goVersion.lt('1.19')) return importPath + '@v0.3.3';
+		if (goVersion.lt('1.21')) return importPath + '@v0.4.7';
 	}
 	if (tool.name === 'gofumpt') {
-		if (goVersion.lt('1.18')) return importPath + '@v0.2.1';
 		if (goVersion.lt('1.19')) return importPath + '@v0.4.0';
 		if (goVersion.lt('1.20')) return importPath + '@v0.5.0';
+		if (goVersion.lt('1.21')) return importPath + '@v0.6.0';
 	}
 	if (tool.name === 'golangci-lint') {
-		if (goVersion.lt('1.18')) return importPath + '@v1.47.3';
 		if (goVersion.lt('1.20')) return importPath + '@v1.53.3';
 		if (goVersion.lt('1.21')) return importPath + '@v1.55.2';
 	}

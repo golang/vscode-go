@@ -79,8 +79,12 @@ export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 			flushSurveyConfig(goplsSurveyConfig, cfg);
 		}
 	};
-	const ms = msBetween(now, cfg.dateToPromptThisMonth);
-	setTimeout(callback, ms);
+
+	// 0 if we passed the computed dateToPromptThisMonth past.
+	// If the prompt date was computed a while ago (dateComputedPromptThisMonth),
+	// shouldPromptForSurvey should've made a new decision before we get here.
+	const delayMs = Math.max(cfg.dateToPromptThisMonth.getTime() - now.getTime(), 0);
+	setTimeout(callback, delayMs);
 }
 
 export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig | undefined {

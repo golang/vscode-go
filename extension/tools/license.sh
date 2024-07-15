@@ -19,9 +19,10 @@ WORKTREE="$(mktemp -d)"
 BRANCH="license-gen-$(date +%Y%m%d%H%M%S)"
 
 git fetch
-git worktree add --track -b "${BRANCH}" "${WORKTREE}" origin/master
+git worktree add --track -b "${BRANCH}" "${WORKTREE}" origin/release
 
-cd "${WORKTREE}"
+EXTENSIONDIR="${WORKTREE}/extension"
+cd "${EXTENSIONDIR}"
 export GIT_GOFMT_HOOK=off
 
 YARN="${ROOT}/node_modules/.bin/yarn"
@@ -74,5 +75,5 @@ then
   printf "\n" >> "${LICENSEFILE}"
   cat thirdpartynotices.txt >> "${LICENSEFILE}"
 fi
-
-cd - && mv "${WORKTREE}/${LICENSEFILE}" . && git worktree remove "${WORKTREE}" -f
+ 
+cd "${ROOT}" && mv "${EXTENSIONDIR}/${LICENSEFILE}" "${LICENSEFILE}" && git worktree remove "${WORKTREE}" -f

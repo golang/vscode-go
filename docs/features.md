@@ -194,7 +194,15 @@ Format code and organize imports, either manually or on save.
 
 The extension formats Go code, organizes imports, and removes unused imports by default. For different behavior, please override per-language default settings following [the instruction](advanced.md#formatting-code-and-organizing-imports).
 
-When organizing imports, the imported packages are grouped in the default `goimports` style. In order to group some packages after 3rd-party packages, use [`"gopls": { "formatting.local": <comma-separated imports prefix>}`](settings.md#formattinglocal).
+#### Organizing imports
+
+When organizing imports, the imported packages are grouped in the default `goimports` style. In order to group some packages after 3rd-party packages, use the [`"formatting.local"`](settings.md#formattinglocal) setting.
+
+```json
+"gopls": {
+  "formatting.local": "example.com/myorg,github.com/myorg2"
+}
+```
 
 #### Add import
 
@@ -204,8 +212,23 @@ The extension organizes imports automatically and can add missing imports if the
 
 #### Custom formatter
 
-In addition to the default `gofmt`-style formatter, the Go language server supports `gofumpt`-style formatting. You can enable `gofumpt` formatting by setting `"gopls.formatting.gofumpt"`.
-You can  also configure to use other custom formatter by using the `"go.formatTool"` setting. The custom formatter must operate on file contents from STDIN, and output the formatted result to STDOUT.
+In addition to the default [`go fmt`](https://pkg.go.dev/cmd/gofmt) style formatter, the language server (`gopls`) supports `github.com/mvdan/gofumpt` style formmating. Use gopls's [`formatting.gofumpt`](settings.md#formattinggofumpt) setting:
+
+```json
+"gopls": { "fomatting.gofumpt": true }
+```
+
+You can  also configure to use other custom formatter (`golines`) by using the `"go.formatTool"` setting. The custom formatter must operate on file contents from STDIN, and output the formatted result to STDOUT.
+
+```json
+"go.formatTools": "custom",
+"go.alternateTools": {
+  // the binary name if it is in your PATH, or
+  // provide the exact path to your
+  // custom formatter.
+  "customFormatter": "golines"
+}
+```
 
 ### [Rename symbol](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol)
 

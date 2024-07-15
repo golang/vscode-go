@@ -7,7 +7,13 @@
 import AdmZip = require('adm-zip');
 import assert from 'assert';
 import * as config from '../../src/config';
-import { inspectGoToolVersion, installTools, maybeInstallImportantTools } from '../../src/goInstallTools';
+import {
+	IToolsManager,
+	defaultToolsManager,
+	inspectGoToolVersion,
+	installTools,
+	maybeInstallImportantTools
+} from '../../src/goInstallTools';
 import { Tool, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
@@ -78,11 +84,16 @@ suite('Installation Tests', function () {
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
 	// If withGOBIN is true, the test will set GOBIN env var.
+	// If withGoVersion is set, the test will run assuming the project requires the version.
+	// If goForInstall is set, the test will use the go version for 'go install'.
+	// If toolsManager is set, goInstallTools will use it instead of the default tools Manager.
 	async function runTest(
 		testCases: installationTestCase[],
 		withLocalProxy?: boolean,
 		withGOBIN?: boolean,
-		withGoVersion?: string
+		withGoVersion?: string,
+		goForInstall?: GoVersion,
+		toolsManager?: goInstallTools.IToolsManager
 	) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
@@ -115,14 +126,17 @@ suite('Installation Tests', function () {
 		}
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
+		const goBinary = getBinPath('go');
 		const goVersion = withGoVersion
 			? /* we want a fake go version, but need the real 'go' binary to run `go install` */
-			  new GoVersion(getBinPath('go'), `go version ${withGoVersion} amd64/linux`)
+			  new GoVersion(goBinary, `go version ${withGoVersion} linux/amd64`)
 			: await getGoVersion();
 
 		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
+		sandbox.stub(goInstallTools, 'getGoForInstall').returns(Promise.resolve(goForInstall ?? goVersion));
 
-		const failures = await installTools(missingTools, goVersion);
+		const opts = toolsManager ? { toolsManager } : undefined;
+		const failures = await installTools(missingTools, goVersion, opts);
 		assert(!failures || failures.length === 0, `installTools failed: ${JSON.stringify(failures)}`);
 
 		// Confirm that each expected tool has been installed.
@@ -175,7 +189,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy', async () => {
+	test('Install multiple tools with a local proxy', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
@@ -185,7 +204,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy & GOBIN', async () => {
+	test('Install multiple tools with a local proxy & GOBIN', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
@@ -197,7 +221,8 @@ suite('Installation Tests', function () {
 	});
 
 	test('Try to install with old go', async () => {
-		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.15 amd64/linux');
+		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.17 amd64/linux');
+		sandbox.stub(goInstallTools, 'getGoForInstall').returns(Promise.resolve(oldGo));
 		const failures = await installTools([getToolAtVersion('gopls')], oldGo);
 		assert(failures?.length === 1 && failures[0].tool.name === 'gopls' && failures[0].reason.includes('or newer'));
 	});
@@ -216,9 +241,37 @@ suite('Installation Tests', function () {
 			[{ name: 'gofumpt', versions: ['v0.4.0', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.22' // Go Version
+			'go1.22.0' // Go Version
 		);
 	});
+
+	test('Install a tool, with go1.21.0', async () => {
+		const systemGoVersion = await getGoVersion();
+		const oldGo = new GoVersion(systemGoVersion.binaryPath, 'go version go1.21.0 linux/amd64');
+		const tm: IToolsManager = {
+			getMissingTools: () => {
+				assert.fail('must not be called');
+			},
+			installTool: (tool, goVersion, env) => {
+				// Assert the go install command is what we expect.
+				assert.strictEqual(tool.name, 'gopls');
+				assert.strictEqual(goVersion, oldGo);
+				assert(env['GOTOOLCHAIN'], `go${systemGoVersion.format()}+auto`);
+				// runTest checks if the tool build succeeds. So, delegate the remaining
+				// build task to the default tools manager's installTool function.
+				return defaultToolsManager.installTool(tool, goVersion, env);
+			}
+		};
+		await runTest(
+			[{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0'], wantVersion: 'v1.0.0' }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go' + systemGoVersion.format(true), // Go Version
+			oldGo, // Go for install
+			tm // stub installTool to
+		);
+	});
+
 	test('Install all tools via GOPROXY', async () => {
 		// Only run this test if we are in CI before a Nightly release.
 		if (!shouldRunSlowTests()) {

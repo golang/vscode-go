@@ -181,7 +181,7 @@ export class TelemetryService {
 	async promptForTelemetry(
 		isPreviewExtension: boolean,
 		isVSCodeTelemetryEnabled: boolean = vscode.env.isTelemetryEnabled,
-		samplingInterval = 10 /* prompt N out of 1000. 10 = 1% */
+		samplingInterval = 50 /* prompt N out of 1000. 50 = 5% */
 	) {
 		if (!this.active) return;
 
@@ -215,7 +215,27 @@ export class TelemetryService {
 
 	// exported for testing.
 	public hashMachineID(salt?: string): number {
-		const hash = createHash('md5').update(`${vscode.env.machineId}${salt}`).digest('hex');
-		return parseInt(hash.substring(0, 8), 16);
+		return hashMachineID(salt);
 	}
+}
+
+// Set telemetry env vars for gopls. See gopls/internal/server/prompt.go
+// TODO(hyangah): add an integration testing after gopls v0.17 becomes available.
+export function setTelemetryEnvVars(globalState: vscode.Memento, env: NodeJS.ProcessEnv) {
+	if (!env['GOTELEMETRY_GOPLS_CLIENT_TOKEN']) {
+		env['GOTELEMETRY_GOPLS_CLIENT_TOKEN'] = `${hashMachineID() + 1}`; // [1, 1000]
+	}
+	if (!env['GOTELEMETRY_GOPLS_CLIENT_START_TIME']) {
+		const start = readTelemetryStartTime(globalState);
+		if (start) {
+			const unixSec = Math.floor(start.getTime() / 1000);
+			env['GOTELEMETRY_GOPLS_CLIENT_START_TIME'] = `${unixSec}`;
+		}
+	}
+}
+
+// Map vscode.env.machineId to an integer in [0, 1000).
+function hashMachineID(salt?: string): number {
+	const hash = createHash('md5').update(`${vscode.env.machineId}${salt}`).digest('hex');
+	return parseInt(hash.substring(0, 8), 16) % 1000;
 }
