@@ -235,7 +235,7 @@ func main() {
 	// Check for the latest gopls version.
 	versions, err := listAllModuleVersions("golang.org/x/tools/gopls")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to list all module version: %v", err)
 	}
 	latestIndex := len(versions.Versions) - 1
 	latestPre := versions.Versions[latestIndex]
@@ -250,11 +250,11 @@ func main() {
 
 	goplsVersion, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latest))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to list gopls latest version: %v", err)
 	}
 	goplsVersionPre, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latestPre))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to list gopls latest prerelease version: %v", err)
 	}
 
 	allToolsFile := filepath.Join(dir, "tools", "allTools.ts.in")
@@ -274,7 +274,9 @@ func main() {
 }
 
 func listModuleVersion(path string) (moduleVersion, error) {
-	output, err := exec.Command("go", "list", "-m", "-json", path).Output()
+	cmd := exec.Command("go", "list", "-m", "-json", path)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
 	if err != nil {
 		return moduleVersion{}, err
 	}
@@ -287,7 +289,9 @@ func listModuleVersion(path string) (moduleVersion, error) {
 }
 
 func listAllModuleVersions(path string) (moduleVersion, error) {
-	output, err := exec.Command("go", "list", "-m", "-json", "-versions", path).Output()
+	cmd := exec.Command("go", "list", "-m", "-json", "-versions", path)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
 	if err != nil {
 		return moduleVersion{}, err
 	}
