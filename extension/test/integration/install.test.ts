@@ -176,7 +176,12 @@ suite('Installation Tests', function () {
 		}
 	}
 
-	test('Install one tool with a local proxy', async () => {
+	test('Install one tool with a local proxy', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{
