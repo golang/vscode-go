@@ -39,9 +39,9 @@ Still, there are a number of cases in which you might want a more complicated `G
 
 ## Different `GOPATH`s for different projects
 
-Setting [`go.gopath`](settings.md#go.gopath) in your [user settings](https://vscode.readthedocs.io/en/latest/getstarted/settings/) overrides the environment's `GOPATH` value.
+Setting [`go.gopath`](settings.md#go.gopath) in your [user settings](https://code.visualstudio.com/docs/getstarted/settings) overrides the environment's `GOPATH` value.
 
-[Workspace settings](https://vscode.readthedocs.io/en/latest/getstarted/settings/) override user settings, so you can use the [`go.gopath`](settings.md#go.gopath) setting to set different `GOPATH`s for different projects. A `GOPATH` can also contain multiple directories, so this setting is not necessary to achieve this behavior.
+[Workspace settings](https://code.visualstudio.com/docs/getstarted/settings#_workspace-settings) override user settings, so you can use the [`go.gopath`](settings.md#go.gopath) setting to set different `GOPATH`s for different projects. A `GOPATH` can also contain multiple directories, so this setting is not necessary to achieve this behavior.
 
 ## Automatically inferring your `GOPATH`
 
