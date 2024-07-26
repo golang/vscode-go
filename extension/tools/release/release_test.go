@@ -32,7 +32,11 @@ func TestRelease(t *testing.T) {
 		"publish -in=/tmp/artifacts",
 	} {
 		args := strings.Fields(fullCommand)
-		for _, tagName := range []string{"v0.0.0", "v0.0.0-rc.1"} {
+		// v0.43.0: prerelease
+		// v0.44.0-rc.1: release candidate of stable release
+		// v0.44.0: stable release
+		// TODO(hyangah): skip rc in favor of prerelease versions.
+		for _, tagName := range []string{"v0.43.0", "v0.44.0-rc.1", "v0.44.0"} {
 			t.Run(args[0]+"-"+tagName, func(t *testing.T) {
 				testRelease(t, moduleRoot, args[0], tagName, args[1:]...)
 			})
