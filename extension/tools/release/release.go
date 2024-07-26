@@ -32,6 +32,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -187,11 +188,11 @@ func runPackage(cmd *command, args []string) {
 
 	tagName := requireEnv("TAG_NAME")
 
-	version, _ := releaseVersionInfo(tagName)
-	checkPackageJSON(tagName)
+	version, isPrerelease := releaseVersionInfo(tagName)
+	checkPackageJSON(tagName, isPrerelease)
 	outDir := prepareOutputDir(cmd.lookupFlag("out").String())
 	vsix := filepath.Join(outDir, fmt.Sprintf("go-%s.vsix", version))
-	buildPackage(version, tagName, vsix)
+	buildPackage(version, tagName, isPrerelease, vsix)
 }
 
 // runPublish implements the "publish" subcommand.
@@ -206,11 +207,11 @@ func runPublish(cmd *command, args []string) {
 	requireEnv("GITHUB_TOKEN")
 	tagName := requireEnv("TAG_NAME")
 
-	version, isRC := releaseVersionInfo(tagName)
-	checkPackageJSON(tagName)
+	version, isPrerelease := releaseVersionInfo(tagName)
+	checkPackageJSON(tagName, isPrerelease)
 	inDir := prepareInputDir(cmd.lookupFlag("in").String())
 	vsix := filepath.Join(inDir, fmt.Sprintf("go-%s.vsix", version))
-	publish(tagName, vsix, isRC)
+	publish(tagName, vsix, isPrerelease)
 }
 
 func fatalf(format string, args ...any) {
@@ -294,36 +295,48 @@ func checkWD() {
 // releaseVersionInfo computes the version and label information for this release.
 // It requires the TAG_NAME environment variable to be set and the tag matches the version info embedded in package.json.
 func releaseVersionInfo(tagName string) (version string, isPrerelease bool) {
-	// versionTag should be of the form vMajor.Minor.Patch[-rc.N].
-	// e.g. v1.1.0-rc.1, v1.1.0
-	// The MajorMinorPatch part should match the version in package.json.
-	// The optional `-rc.N` part is captured as the `Label` group
-	// and the validity is checked below.
-	mmp, label := parseVersionTagName(tagName)
+	// Odd numbered minor version -> prerelease, after v0.42.
+	major, minor, patch, label := parseVersionTagName(tagName)
+	if (major != 0 || minor > 42) && minor%2 == 1 {
+		isPrerelease = true
+	}
 	if label != "" {
 		if !strings.HasPrefix(label, "-rc.") {
 			fatalf("TAG_NAME environment variable %q is not a valid release candidate version", tagName)
 		}
 		isPrerelease = true
 	}
-	return mmp + label, isPrerelease
+	return fmt.Sprintf("%d.%d.%d", major, minor, patch) + label, isPrerelease
 }
 
-func parseVersionTagName(tagName string) (majorMinorPatch, label string) {
-	versionTagRE := regexp.MustCompile(`^v(?P<MajorMinorPatch>\d+\.\d+\.\d+)(?P<Label>\S*)$`)
+func parseVersionTagName(tagName string) (major, minor, patch int, label string) {
+	versionTagRE := regexp.MustCompile(`^v(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)(?P<Label>\S*)$`)
 	m := versionTagRE.FindStringSubmatch(tagName)
 	if m == nil {
 		fatalf("TAG_NAME environment variable %q is not a valid version", tagName)
 	}
-	return m[versionTagRE.SubexpIndex("MajorMinorPatch")], m[versionTagRE.SubexpIndex("Label")]
+	atoi := func(key string) int {
+		val, err := strconv.Atoi(m[versionTagRE.SubexpIndex(key)])
+		if err != nil {
+			fatalf("%v in %v (%q) is not valid", key, tagName, m[versionTagRE.SubexpIndex(key)])
+		}
+		return val
+	}
+	return atoi("Major"), atoi("Minor"), atoi("Patch"), m[versionTagRE.SubexpIndex("Label")]
 }
 
-func checkPackageJSON(tagName string) {
+// checkPackageJSON checks if package.json has the expected version value.
+// If prerelease, the major/minor version should match.
+// Otherwise, major/minor/patch version should match.
+func checkPackageJSON(tagName string, isPrerelease bool) {
+	if !strings.HasPrefix(tagName, "v") {
+		fatalf("unexpected tagName in checkPackageJSON: %q", tagName)
+	}
+
 	if flagN {
 		tracef("jq -r .version package.json")
 		return
 	}
-	mmp, _ := parseVersionTagName(tagName)
 	cmd := exec.Command("jq", "-r", ".version", "package.json")
 	cmd.Stderr = os.Stderr
 	var buf bytes.Buffer
@@ -331,9 +344,18 @@ func checkPackageJSON(tagName string) {
 	if err := commandRun(cmd); err != nil {
 		fatalf("failed to read package.json version")
 	}
-	versionInPackageJSON := buf.Bytes()
-	if got := string(bytes.TrimSpace(versionInPackageJSON)); got != mmp {
-		fatalf("package.json version %q does not match TAG_NAME %q", got, tagName)
+
+	versionInPackageJSON := string(bytes.TrimSpace(buf.Bytes()))
+	if !isPrerelease {
+		if got, want := versionInPackageJSON, tagName[1:]; got != want {
+			fatalf("package.json version %q does not match wanted string %q", got, want)
+		}
+		return
+	}
+	// Check only major.minor for prerelease.
+	major, minor, _, _ := parseVersionTagName(tagName)
+	if want := fmt.Sprintf("%d.%d.", major, minor); strings.HasPrefix(versionInPackageJSON, want) {
+		fatalf("package.json version %q does not match wanted string %q", versionInPackageJSON, want)
 	}
 }
 
@@ -361,19 +383,26 @@ func copy(dst, src string) error {
 }
 
 // buildPackage builds the extension of the given version, using npx vsce package.
-func buildPackage(version, tagName, output string) {
+func buildPackage(version, tagName string, isPrerelease bool, output string) {
 	if err := copy("README.md", filepath.Join("..", "README.md")); err != nil {
 		fatalf("failed to copy README.md: %v", err)
 	}
 	// build the package.
-	cmd := exec.Command("npx", "vsce", "package",
+	args := []string{"vsce", "package",
 		"-o", output,
-		"--baseContentUrl", "https://github.com/golang/vscode-go/raw/"+tagName,
-		"--baseImagesUrl", "https://github.com/golang/vscode-go/raw/"+tagName,
+		"--baseContentUrl", "https://github.com/golang/vscode-go/raw/" + tagName,
+		"--baseImagesUrl", "https://github.com/golang/vscode-go/raw/" + tagName,
 		"--no-update-package-json",
 		"--no-git-tag-version",
-		version)
+	}
+	if isPrerelease {
+		args = append(args, "--pre-release")
 
+	}
+	args = append(args, version)
+
+	// build the package.
+	cmd := exec.Command("npx", args...)
 	cmd.Stderr = os.Stderr
 	if err := commandRun(cmd); err != nil {
 		fatalf("failed to build package: %v", err)
@@ -390,12 +419,13 @@ func publish(tagName, packageFile string, isPrerelease bool) {
 			fatalf("package file %q does not exist. Did you run 'go run build/release.go package'?", packageFile)
 		}
 	}
+	isRC := strings.Contains(tagName, "-rc.")
 
 	// publish release to GitHub. This will create a draft release - manually publish it after reviewing the draft.
 	// TODO(hyangah): populate the changelog (the first section of CHANGELOG.md) and pass it using --notes-file instead of --generate-notes.
 	ghArgs := []string{"release", "create", "--generate-notes", "--target", commitSHA(), "--title", "Release " + tagName, "--draft"}
 	fmt.Printf("%s\n", strings.Join(ghArgs, " "))
-	if isPrerelease {
+	if isRC || isPrerelease {
 		ghArgs = append(ghArgs, "--prerelease")
 	}
 	ghArgs = append(ghArgs, "-R", "github.com/golang/vscode-go")
@@ -406,11 +436,14 @@ func publish(tagName, packageFile string, isPrerelease bool) {
 		fatalf("failed to publish release: %v", err)
 	}
 
-	if isPrerelease {
-		return // TODO: release with the -pre-release flag if isPrerelease is set.
+	if isRC { // Do not publish RC versions to the marketplace.
+		return
 	}
 
 	npxVsceArgs := []string{"vsce", "publish", "-i", packageFile}
+	if isPrerelease {
+		npxVsceArgs = append(npxVsceArgs, "--pre-release")
+	}
 	cmd2 := exec.Command("npx", npxVsceArgs...)
 	cmd2.Stderr = os.Stderr
 	if err := commandRun(cmd2); err != nil {

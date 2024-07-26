@@ -1,5 +1,5 @@
 jq -r .version package.json
 stat /tmp/artifacts/go-0.43.0.vsix
 release create --generate-notes --target 4893cd984d190bdf2cd65e11c425b42819ae6f57 --title Release v0.43.0 --draft
-gh release create --generate-notes --target 4893cd984d190bdf2cd65e11c425b42819ae6f57 --title Release v0.43.0 --draft -R github.com/golang/vscode-go v0.43.0 /tmp/artifacts/go-0.43.0.vsix
-npx vsce publish -i /tmp/artifacts/go-0.43.0.vsix
+gh release create --generate-notes --target 4893cd984d190bdf2cd65e11c425b42819ae6f57 --title Release v0.43.0 --draft --prerelease -R github.com/golang/vscode-go v0.43.0 /tmp/artifacts/go-0.43.0.vsix
+npx vsce publish -i /tmp/artifacts/go-0.43.0.vsix --pre-release
