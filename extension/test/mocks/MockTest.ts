@@ -8,6 +8,7 @@ import path = require('path');
 import {
 	CancellationToken,
 	EndOfLine,
+	FileCoverage,
 	FileType,
 	MarkdownString,
 	Position,
@@ -24,7 +25,8 @@ import {
 	TextDocument,
 	TextLine,
 	Uri,
-	WorkspaceFolder
+	WorkspaceFolder,
+	EventEmitter
 } from 'vscode';
 import { FileSystem, Workspace } from '../../src/goTest/utils';
 
@@ -110,9 +112,11 @@ class MockTestRunProfile implements TestRunProfile {
 		public label: string,
 		public kind: TestRunProfileKind,
 		public runHandler: TestRunHandler,
-		public isDefault: boolean
 	) {}
 	tag: TestTag | undefined;
+	isDefault = false;
+	onDidChangeDefault = new EventEmitter<boolean>().event;
+	supportsContinuousRun= false;
 
 	configureHandler(): void {}
 	dispose(): void {}
@@ -121,6 +125,7 @@ class MockTestRunProfile implements TestRunProfile {
 class MockTestRun implements TestRun {
 	name = 'test run';
 	isPersisted = false;
+	onDidDispose = new EventEmitter<void>().event;
 
 	get token(): CancellationToken {
 		throw new Error('Method not implemented.');
@@ -133,6 +138,7 @@ class MockTestRun implements TestRun {
 	errored(test: TestItem, message: TestMessage | readonly TestMessage[], duration?: number): void {}
 	passed(test: TestItem, duration?: number): void {}
 	appendOutput(output: string): void {}
+	addCoverage(fileCoverage: FileCoverage): void {}
 	end(): void {}
 }
 
@@ -152,9 +158,8 @@ export class MockTestController implements TestController {
 		label: string,
 		kind: TestRunProfileKind,
 		runHandler: TestRunHandler,
-		isDefault = false
 	): TestRunProfile {
-		return new MockTestRunProfile(label, kind, runHandler, isDefault);
+		return new MockTestRunProfile(label, kind, runHandler);
 	}
 
 	createTestItem(id: string, label: string, uri?: Uri): TestItem {
@@ -162,6 +167,7 @@ export class MockTestController implements TestController {
 	}
 
 	dispose(): void {}
+	invalidateTestResults(items?: TestItem | readonly TestItem[]): void {}
 }
 
 type DirEntry = [string, FileType];
