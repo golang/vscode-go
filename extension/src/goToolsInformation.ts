@@ -12,7 +12,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Modify tags on structs',
-		defaultVersion: 'v1.16.0'
+		defaultVersion: 'v1.17.0'
 	},
 	'goplay': {
 		name: 'goplay',
@@ -30,7 +30,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Stubs for interfaces',
-		defaultVersion: 'v1.1.0'
+		defaultVersion: 'v1.4.0'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
