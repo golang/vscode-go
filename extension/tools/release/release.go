@@ -275,7 +275,7 @@ func requireTools(tools ...string) {
 func requireEnv(name string) string {
 	v := os.Getenv(name)
 	if v == "" {
-		fatalf("required environment variable %q not set", v)
+		fatalf("required environment variable %q not set", name)
 	}
 	return v
 }
@@ -354,7 +354,7 @@ func checkPackageJSON(tagName string, isPrerelease bool) {
 	}
 	// Check only major.minor for prerelease.
 	major, minor, _, _ := parseVersionTagName(tagName)
-	if want := fmt.Sprintf("%d.%d.", major, minor); strings.HasPrefix(versionInPackageJSON, want) {
+	if want := fmt.Sprintf("%d.%d.", major, minor); !strings.HasPrefix(versionInPackageJSON, want) {
 		fatalf("package.json version %q does not match wanted string %q", versionInPackageJSON, want)
 	}
 }
