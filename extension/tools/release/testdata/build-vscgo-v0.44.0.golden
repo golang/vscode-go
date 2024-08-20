@@ -1,0 +1,7 @@
+go install -o BUILDVSCGO/linux_amd64/vscgo github.com/golang/vscode-go/vscgo@v0.44.0
+go install -o BUILDVSCGO/linux_arm64/vscgo github.com/golang/vscode-go/vscgo@v0.44.0
+go install -o BUILDVSCGO/darwin_amd64/vscgo github.com/golang/vscode-go/vscgo@v0.44.0
+go install -o BUILDVSCGO/darwin_arm64/vscgo github.com/golang/vscode-go/vscgo@v0.44.0
+go install -o BUILDVSCGO/windows_amd64/vscgo.exe github.com/golang/vscode-go/vscgo@v0.44.0
+go install -o BUILDVSCGO/windows_arm64/vscgo.exe github.com/golang/vscode-go/vscgo@v0.44.0
+cd BUILDVSCGO; zip -r /tmp/artifacts/vscgo.zip *

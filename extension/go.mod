@@ -1,6 +1,6 @@
 module github.com/golang/vscode-go/extension
 
-go 1.21
+go 1.23.0
 
 require (
 	github.com/golang/vscode-go v0.0.0-00010101000000-000000000000
@@ -26,6 +26,7 @@ require (
 	go4.org v0.0.0-20180809161055-417644f6feb5 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/exp v0.0.0-20230809094429-853ea248256d // indirect
+	golang.org/x/mod v0.20.0
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect

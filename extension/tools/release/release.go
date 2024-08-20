@@ -18,6 +18,8 @@
 //
 // Usage:
 //
+//	// build vscgo@TAG_NAME (based on TAG_NAME).
+//	go run ./tools/release build-vscgo -out=/tmp/artifacts
 //	// package the extension (based on TAG_NAME).
 //	go run ./tools/release package
 //	// publish the extension.
@@ -25,7 +27,9 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -41,6 +45,12 @@ var (
 )
 
 var (
+	cmdBuildVSCGO = &command{
+		usage: "build-vscgo",
+		short: "build github.com/golang/vscode-go/vscgo@TAG_NAME",
+		long:  "build-vscgo command cross-compiles the vscgo binaries and produces vscgo.zip in -out dir",
+		run:   runBuildVSCGO,
+	}
 	cmdPackage = &command{
 		usage: "package",
 		short: "package the extension to vsix file",
@@ -54,10 +64,11 @@ var (
 		run:   runPublish,
 	}
 
-	allCommands = []*command{cmdPackage, cmdPublish}
+	allCommands = []*command{cmdBuildVSCGO, cmdPackage, cmdPublish}
 )
 
 func init() {
+	cmdBuildVSCGO.flags.String("out", ".", "directory where the vscgo.zip file is written")
 	cmdPackage.flags.String("out", ".", "directory where the artifacts are written")
 	cmdPublish.flags.String("in", ".", "directory where the artifacts to be published are")
 
@@ -176,6 +187,19 @@ func (c command) lookupFlag(name string) flag.Value {
 		fatalf("flag %q not found", name)
 	}
 	return f.Value
+}
+
+// runBuildVSCGO implements the "build-vscgo" subcommand.
+func runBuildVSCGO(cmd *command, args []string) {
+	cmd.flags.Parse(args) // will exit on error
+
+	checkWD()
+
+	requireTools("go")
+
+	tagName := requireEnv("TAG_NAME")
+	outDir := prepareOutputDir(cmd.lookupFlag("out").String())
+	buildVSCGO(tagName, outDir)
 }
 
 // runPackage implements the "package" subcommand.
@@ -466,7 +490,200 @@ func commitSHA() string {
 	return strings.TrimSpace(string(commitSHA))
 }
 
+// The followings are the platforms we ship precompiled vscgo binaries for.
+// On other platforms not in this list, the extension will fall back to
+// install vscgo using `go install`.
+//
+// The full list of platforms officially supported by VS Code is:
+// https://code.visualstudio.com/api/working-with-extensions/publishing-extension#platformspecific-extensions
+var targetPlatforms = []struct {
+	name         string
+	goos, goarch string
+}{
+	{name: "linux-x64", goos: "linux", goarch: "amd64"},
+	{name: "linux-arm64", goos: "linux", goarch: "arm64"},
+	{name: "darwin-x64", goos: "darwin", goarch: "amd64"},
+	{name: "darwin-arm64", goos: "darwin", goarch: "arm64"},
+	{name: "win32-x64", goos: "windows", goarch: "amd64"},
+	{name: "win32-arm64", goos: "windows", goarch: "arm64"},
+}
+
+func buildVSCGO(tagName, outdir string) {
+	tmpDir, err := mkdirTemp("", "buildVSCGO")
+	if err != nil {
+		fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	for _, target := range targetPlatforms {
+		base := "vscgo"
+		if target.goos == "windows" {
+			base += ".exe"
+		}
+		outfile := filepath.Join(tmpDir, target.goos+"_"+target.goarch, base)
+		if err := goinstall(outfile, target.goos, target.goarch, "github.com/golang/vscode-go/vscgo@"+tagName); err != nil {
+			fatalf("failed to build %s/%s: %v", target.goos, target.goarch, err)
+		}
+	}
+
+	artifact := filepath.Join(outdir, "vscgo.zip")
+	if err := zipAll(tmpDir, artifact); err != nil {
+		fatalf("failed to zip: %v", err)
+	}
+}
+
+func zipAll(srcDir, dstFile string) (err error) {
+	if flagN {
+		tracef("cd %s; zip -r %s *", srcDir, dstFile)
+		return nil
+	}
+	// zip all files in srcDir
+	w, err := os.Create(dstFile)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cerr := w.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	zw := zip.NewWriter(w)
+	defer func() {
+		cerr := zw.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+
+	return zw.AddFS(os.DirFS(srcDir))
+}
+
+// goinstall runs 'go install' with the given GOOS/GOARCH,
+// and renames the produced binary as outfile. Since the binary
+// is built with 'go install', the binary contains complete
+// build info.
+// This is a workaround for the limitation of `go install`
+// (go.dev/issue/57485) and `go build` (go.dev/issue/50603)
+func goinstall(outfile, goOS, goArch string, args ...string) error {
+	if flagN {
+		// -o is proposed in go.dev/issue/57485, but not yet
+		// a supported go install flag. So, it's a lie.
+		tracef("go install -o %s %s", outfile, strings.Join(args, " "))
+		return nil
+	}
+
+	env := goenv("GOHOSTOS", "GOHOSTARCH", "GOMODCACHE")
+
+	hostOS, hostArch := env["GOHOSTOS"], env["GOHOSTARCH"]
+	gomodcache := env["GOMODCACHE"]
+
+	outGOPATH, err := mkdirTemp("", "goinstall")
+	if err != nil {
+		fatalf("failed to create temp for go install: %v", err)
+	}
+	defer os.RemoveAll(outGOPATH)
+
+	args = append([]string{"install"}, args...)
+
+	cmd := exec.Command("go", args...)
+	cmd.Env = append(os.Environ(),
+		"GOOS="+goOS,
+		"GOARCH="+goArch,
+		"GOPATH="+outGOPATH,
+		"GOMODCACHE="+gomodcache, // reuse the process's module cache
+		"CGO_ENABLED=0",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	from, err := searchGoinstallOutput(outGOPATH, goOS, goArch, hostOS, hostArch)
+	if err != nil {
+		return err
+	}
+
+	if outfile == "" {
+		outfile = filepath.Join(".", filepath.Base(outfile))
+	}
+	if err := mv(from, outfile); err != nil {
+		return err
+	}
+	return nil
+}
+
+// searchGoinstallOutput returns the path to the binary produced by go install command.
+func searchGoinstallOutput(outGOPATH, goOS, goArch, hostOS, hostArch string) (string, error) {
+	// binary will be written in GOPATH/bin/ or GOPATH/bin/<goos>_<goarch>.
+	installDir := filepath.Join(outGOPATH, "bin")
+	if goOS != hostOS || goArch != hostArch {
+		installDir = filepath.Join(outGOPATH, "bin", goOS+"_"+goArch)
+	}
+	// since we do not know the target binary name, we assume any executable file found in installDir
+	// is the target binary we just built. It's ok since we are working with temporary GOPATH.
+	files, err := os.ReadDir(installDir)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		if i, err := f.Info(); err != nil {
+			return "", err
+		} else if i.Mode().Perm()&0111 == 0 { // not executable, skip.
+			continue
+		}
+		return filepath.Join(installDir, f.Name()), nil
+	}
+	return "", fmt.Errorf("failed to find the installed binary in %q", installDir)
+}
+
+func mv(from, to string) error {
+	if err := os.MkdirAll(filepath.Dir(to), 0777); err != nil {
+		return err
+	}
+	if err := os.Rename(from, to); err != nil {
+		return err
+	}
+	return nil
+}
+
+func goenv(keys ...string) map[string]string {
+	args := append([]string{"env", "-json"}, keys...)
+	res, err := exec.Command("go", args...).Output()
+	if err != nil {
+		fatalf("failed go env: %v", err)
+	}
+	var ret map[string]string
+	if err := json.Unmarshal(res, &ret); err != nil {
+		fatalf("failed to unmarshal go env output: %v", err)
+	}
+	return ret
+}
+
+// mkdirTemp wraps os.MkdirTemp, and records the created directory
+// to tempDirs. tracef uses tempDirs to replace any references to temporarily
+// created directories with short names.
+func mkdirTemp(dir, pattern string) (string, error) {
+	dir, err := os.MkdirTemp(dir, pattern)
+	if err != nil {
+		return "", err
+	}
+	tempDirs = append(tempDirs, replaceRule{from: dir, to: strings.ToUpper(pattern)})
+	return dir, nil
+}
+
+var tempDirs []replaceRule
+
+type replaceRule struct{ from, to string }
+
 func tracef(format string, args ...any) {
 	str := fmt.Sprintf(format, args...)
+	for _, tmpdir := range tempDirs {
+		str = strings.ReplaceAll(str, tmpdir.from, tmpdir.to)
+	}
 	fmt.Fprintln(os.Stderr, str)
 }
