@@ -12,7 +12,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Modify tags on structs',
-		defaultVersion: 'v1.16.0'
+		defaultVersion: 'v1.17.0'
 	},
 	'goplay': {
 		name: 'goplay',
@@ -30,7 +30,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: false,
 		isImportant: false,
 		description: 'Stubs for interfaces',
-		defaultVersion: 'v1.1.0'
+		defaultVersion: 'v1.4.0'
 	},
 	'gofumpt': {
 		name: 'gofumpt',
@@ -39,7 +39,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		replacedByGopls: true,
 		isImportant: false,
 		description: 'Formatter',
-		defaultVersion: 'v0.6.0'
+		defaultVersion: 'v0.7.0'
 	},
 	'goimports': {
 		name: 'goimports',
@@ -92,7 +92,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		modulePath: 'github.com/mgechev/revive',
 		isImportant: true,
 		description: 'Linter',
-		defaultVersion: 'v1.3.4'
+		defaultVersion: 'v1.3.9'
 	},
 	'gopls': {
 		name: 'gopls',
@@ -105,8 +105,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		minimumGoVersion: semver.coerce('1.19'),
 		latestVersion: semver.parse('v0.16.1'),
 		latestVersionTimestamp: moment('2024-07-01', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.16.1'),
-		latestPrereleaseVersionTimestamp: moment('2024-07-01', 'YYYY-MM-DD')
+		latestPrereleaseVersion: semver.parse('v0.16.2-pre.1'),
+		latestPrereleaseVersionTimestamp: moment('2024-08-16', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
