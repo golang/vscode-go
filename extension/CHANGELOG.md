@@ -1,3 +1,7 @@
+## v0.43.0 - 22 Aug, 2024 (pre-release)
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.44. The nightly (golang.go-nightly) extension will be deprecated in favor of the pre-release version.
+
 ## v0.42.0 - 17 Jul, 2024
 
 A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.42.0...v0.41.4).
