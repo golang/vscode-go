@@ -105,8 +105,8 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		minimumGoVersion: semver.coerce('1.19'),
 		latestVersion: semver.parse('v0.16.1'),
 		latestVersionTimestamp: moment('2024-07-01', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.16.2-pre.1'),
-		latestPrereleaseVersionTimestamp: moment('2024-08-16', 'YYYY-MM-DD')
+		latestPrereleaseVersion: semver.parse('v0.16.2-pre.2'),
+		latestPrereleaseVersionTimestamp: moment('2024-08-29', 'YYYY-MM-DD')
 	},
 	'dlv': {
 		name: 'dlv',
