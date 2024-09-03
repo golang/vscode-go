@@ -1,0 +1,5 @@
+{
+  "packageAllowlist": [
+    "es5class"
+  ]
+}
