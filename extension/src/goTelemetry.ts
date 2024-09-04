@@ -181,7 +181,7 @@ export class TelemetryService {
 	async promptForTelemetry(
 		isPreviewExtension: boolean,
 		isVSCodeTelemetryEnabled: boolean = vscode.env.isTelemetryEnabled,
-		samplingInterval = 50 /* prompt N out of 1000. 50 = 5% */
+		samplingInterval = 250 /* prompt N out of 1000. 250 = 25% */
 	) {
 		if (!this.active) return;
 
