@@ -1,6 +1,20 @@
+## v0.42.1 - 9 Sep, 2024
+
+A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.42.0..v0.42.1).
+
+### Changes
+
+* Prompt users for the [2024 Go Developer survey](https://google.qualtrics.com/jfe/form/SV_ei0CDV2K9qQIsp8?s=p). ([Issue 3517](https://github.com/golang/vscode-go/issues/3517))
+* Updated the default versions of `gomodifytags`, `impl`, `gofumpt`, and `revive`. ([CL 607757](https://go.dev/cl/607757)).
+* Increased the Go telemetry prompt rate to 25%. The new Go blog post ["Telemetry in Go 1.23 and beyond"](https://go.dev/blog/gotelemetry) discusses how Go telemetry helps improving the reliability and the performance of go toolchain programs.
+
+## v0.43.0 - 22 Aug, 2024 (pre-release)
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.44. The nightly (golang.go-nightly) extension will be deprecated in favor of the pre-release version.
+
 ## v0.42.0 - 17 Jul, 2024
 
-A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.42.0...v0.41.4).
+A comprehensive list of changes can be found in the complete [commit history](https://github.com/golang/vscode-go/compare/v0.41.4..v0.42.0).
 
 ### Updates in `gopls`
 
