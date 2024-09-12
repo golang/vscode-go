@@ -25,7 +25,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
@@ -46,7 +45,6 @@ func main() {
 	cmd := flag.Arg(0)
 
 	checkWD()
-	requireTools("jq", "npx", "gh", "git")
 	requireEnvVars("TAG_NAME")
 
 	tagName, version, isRC := releaseVersionInfo()
@@ -54,8 +52,10 @@ func main() {
 
 	switch cmd {
 	case "package":
+		requireTools("npx")
 		buildPackage(version, tagName, vsix)
 	case "publish":
+		requireTools("npx", "gh", "git")
 		requireEnvVars("VSCE_PAT", "GITHUB_TOKEN")
 		publish(tagName, vsix, isRC)
 	default:
@@ -128,21 +128,6 @@ func releaseVersionInfo() (tagName, version string, isPrerelease bool) {
 			fatalf("TAG_NAME environment variable %q is not a valid release candidate version", tagName)
 		}
 		isPrerelease = true
-	}
-
-	cmd := exec.Command("jq", "-r", ".version", "package.json")
-	cmd.Stderr = os.Stderr
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	if err := commandRun(cmd); err != nil {
-		fatalf("failed to read package.json version")
-	}
-	versionInPackageJSON := buf.Bytes()
-	if *flagN {
-		return tagName, mmp + label, isPrerelease
-	}
-	if got := string(bytes.TrimSpace(versionInPackageJSON)); got != mmp {
-		fatalf("package.json version %q does not match TAG_NAME %q", got, tagName)
 	}
 	return tagName, mmp + label, isPrerelease
 }

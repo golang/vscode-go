@@ -1,4 +1,3 @@
-jq -r .version package.json
 stat go-0.0.0.vsix
 release create --generate-notes --target 4893cd984d190bdf2cd65e11c425b42819ae6f57 --title Release v0.0.0 --draft
 gh release create --generate-notes --target 4893cd984d190bdf2cd65e11c425b42819ae6f57 --title Release v0.0.0 --draft -R github.com/golang/vscode-go v0.0.0 go-0.0.0.vsix
