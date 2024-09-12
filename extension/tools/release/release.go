@@ -210,12 +210,11 @@ func runPackage(cmd *command, args []string) {
 
 	checkWD()
 
-	requireTools("jq", "npx", "gh", "git")
+	requireTools("npx")
 
 	tagName := requireEnv("TAG_NAME")
 
 	version, isPrerelease := releaseVersionInfo(tagName)
-	checkPackageJSON(tagName, isPrerelease)
 	outDir := prepareOutputDir(cmd.lookupFlag("out").String())
 	vsix := filepath.Join(outDir, fmt.Sprintf("go-%s.vsix", version))
 	buildPackage(version, tagName, isPrerelease, vsix)
@@ -423,7 +422,6 @@ func buildPackage(version, tagName string, isPrerelease bool, output string) {
 	}
 	if isPrerelease {
 		args = append(args, "--pre-release")
-
 	}
 	args = append(args, version)
 
