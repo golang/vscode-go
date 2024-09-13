@@ -240,7 +240,11 @@ func runPublish(cmd *command, args []string) {
 }
 
 func fatalf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format, args...)
+	if len(args) == 0 {
+		fmt.Fprint(os.Stderr, format)
+	} else {
+		fmt.Fprintf(os.Stderr, format, args...)
+	}
 	fmt.Fprintf(os.Stderr, "\n")
 	os.Exit(1)
 }
@@ -407,18 +411,37 @@ func copy(dst, src string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
+func rm(file string) error {
+	if flagN {
+		tracef("rm %s", file)
+		return nil
+	}
+	return os.Remove(file)
+}
+
 // buildPackage builds the extension of the given version, using npx vsce package.
 func buildPackage(version, tagName string, isPrerelease bool, output string) {
+	// We want to embed the README.md file of the repo root to the extension,
+	// but vsce does not allow to include a file outside the node.js module directory.
+	// So, let's copy the file temporarily.
 	if err := copy("README.md", filepath.Join("..", "README.md")); err != nil {
 		fatalf("failed to copy README.md: %v", err)
 	}
+	defer func() {
+		if err := rm("README.md"); err != nil {
+			fatalf("failed to delete the temporarily created README.md file: %v", err)
+		}
+	}()
 	// build the package.
 	args := []string{"vsce", "package",
 		"-o", output,
 		"--baseContentUrl", "https://github.com/golang/vscode-go/raw/" + tagName,
 		"--baseImagesUrl", "https://github.com/golang/vscode-go/raw/" + tagName,
-		"--no-update-package-json",
-		"--no-git-tag-version",
+	}
+	if isPrerelease || strings.Contains(tagName, "-rc.") {
+		// Do not update of the version field in packages.json for prerelease or rc.
+		// relui will create a cl to update package.json during stable release only.
+		args = append(args, "--no-update-package-json", "--no-git-tag-version")
 	}
 	if isPrerelease {
 		args = append(args, "--pre-release")
@@ -681,7 +704,10 @@ var tempDirs []replaceRule
 type replaceRule struct{ from, to string }
 
 func tracef(format string, args ...any) {
-	str := fmt.Sprintf(format, args...)
+	str := format
+	if len(args) > 0 {
+		str = fmt.Sprintf(format, args...)
+	}
 	for _, tmpdir := range tempDirs {
 		str = strings.ReplaceAll(str, tmpdir.from, tmpdir.to)
 	}

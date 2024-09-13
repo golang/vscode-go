@@ -1,2 +1,3 @@
 cp ../README.md README.md
 npx vsce package -o /tmp/artifacts/go-0.44.0-rc.1.vsix --baseContentUrl https://github.com/golang/vscode-go/raw/v0.44.0-rc.1 --baseImagesUrl https://github.com/golang/vscode-go/raw/v0.44.0-rc.1 --no-update-package-json --no-git-tag-version --pre-release 0.44.0-rc.1
+rm README.md
