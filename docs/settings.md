@@ -218,6 +218,19 @@ Default:
 	"runtest" :	true,
 }
 ```
+### `go.experiments`
+
+Disable experimental features. These features are only available in the pre-release version.
+| Properties | Description |
+| --- | --- |
+| `testExplorer` | Prefer the experimental test explorer <br/> Default: `true` |
+
+Default:
+```
+{
+	"testExplorer" :	true,
+}
+```
 ### `go.formatFlags`
 
 Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.

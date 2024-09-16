@@ -25,16 +25,54 @@ import { GoTestResolver, ProvideSymbols } from './resolve';
 import { GoTestRunner } from './run';
 import { GoTestProfiler } from './profile';
 import { GoExtensionContext } from '../context';
-
-// Set true only if the Testing API is available (VSCode version >= 1.59).
-export const isVscodeTestingAPIAvailable =
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	'object' === typeof (vscode as any).tests && 'function' === typeof (vscode as any).tests.createTestController;
+import { getGoConfig } from '../config';
+import { experiments } from '../experimental';
 
 export class GoTestExplorer {
-	static setup(context: ExtensionContext, goCtx: GoExtensionContext): GoTestExplorer {
-		if (!isVscodeTestingAPIAvailable) throw new Error('VSCode Testing API is unavailable');
+	static setup(context: ExtensionContext, goCtx: GoExtensionContext) {
+		// Set the initial state
+		const state: { instance?: GoTestExplorer } = {};
+		this.updateEnableState(context, goCtx, state);
+		context.subscriptions.push({ dispose: () => state.instance?.dispose() });
 
+		// Update the state when the experimental version is enabled or disabled
+		context.subscriptions.push(experiments.onDidChange(() => this.updateEnableState(context, goCtx, state)));
+
+		// Update the state when the explorer is enabled or disabled via config
+		context.subscriptions.push(
+			vscode.workspace.onDidChangeConfiguration((e) => {
+				if (e.affectsConfiguration('go.testExplorer.enable')) {
+					this.updateEnableState(context, goCtx, state);
+				}
+			})
+		);
+	}
+
+	private static updateEnableState(
+		context: ExtensionContext,
+		goCtx: GoExtensionContext,
+		state: { instance?: GoTestExplorer }
+	) {
+		// Notify the user if it's the first time we've disabled the test
+		// explorer
+		if (experiments.testExplorer === true) {
+			notifyUserOfExperiment(context.globalState).catch((x) =>
+				outputChannel.error('An error occurred while notifying the user', x)
+			);
+		}
+
+		const enabled = getGoConfig().get<boolean>('testExplorer.enable') && !experiments.testExplorer;
+		if (enabled && !state.instance) {
+			state.instance = this.new(context, goCtx);
+			context.subscriptions.push(state.instance);
+		} else if (!enabled && state.instance) {
+			state.instance.dispose();
+			state.instance = undefined;
+		}
+	}
+
+	static new(context: ExtensionContext, goCtx: GoExtensionContext): GoTestExplorer {
+		// This function is exposed for the purpose of testing
 		const ctrl = vscode.tests.createTestController('go', 'Go');
 		const symProvider = GoDocumentSymbolProvider(goCtx, true);
 		const inst = new this(goCtx, workspace, ctrl, context.workspaceState, (doc) =>
@@ -46,10 +84,9 @@ export class GoTestExplorer {
 			inst.documentUpdate(ed.document);
 		});
 
-		context.subscriptions.push(ctrl);
-		context.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
+		inst.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			vscode.commands.registerCommand('go.test.refresh', async (item) => {
 				if (!item) {
 					await vscode.window.showErrorMessage('No test selected');
@@ -68,7 +105,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			vscode.commands.registerCommand('go.test.showProfiles', async (item) => {
 				if (!item) {
 					await vscode.window.showErrorMessage('No test selected');
@@ -86,7 +123,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			vscode.commands.registerCommand('go.test.captureProfile', async (item) => {
 				if (!item) {
 					await vscode.window.showErrorMessage('No test selected');
@@ -110,7 +147,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			vscode.commands.registerCommand('go.test.deleteProfile', async (file) => {
 				if (!file) {
 					await vscode.window.showErrorMessage('No profile selected');
@@ -129,13 +166,13 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			vscode.commands.registerCommand('go.test.showProfileFile', async (file: Uri) => {
 				return inst.profiler.showFile(file.fsPath);
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			workspace.onDidChangeConfiguration(async (x) => {
 				try {
 					await inst.didChangeConfiguration(x);
@@ -146,7 +183,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			workspace.onDidOpenTextDocument(async (x) => {
 				try {
 					await inst.didOpenTextDocument(x);
@@ -157,7 +194,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			workspace.onDidChangeTextDocument(async (x) => {
 				try {
 					await inst.didChangeTextDocument(x);
@@ -168,7 +205,7 @@ export class GoTestExplorer {
 			})
 		);
 
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			workspace.onDidChangeWorkspaceFolders(async (x) => {
 				try {
 					await inst.didChangeWorkspaceFolders(x);
@@ -180,8 +217,8 @@ export class GoTestExplorer {
 		);
 
 		const watcher = workspace.createFileSystemWatcher('**/*_test.go', false, true, false);
-		context.subscriptions.push(watcher);
-		context.subscriptions.push(
+		inst.subscriptions.push(watcher);
+		inst.subscriptions.push(
 			watcher.onDidCreate(async (x) => {
 				try {
 					await inst.didCreateFile(x);
@@ -191,7 +228,7 @@ export class GoTestExplorer {
 				}
 			})
 		);
-		context.subscriptions.push(
+		inst.subscriptions.push(
 			watcher.onDidDelete(async (x) => {
 				try {
 					await inst.didDeleteFile(x);
@@ -208,6 +245,7 @@ export class GoTestExplorer {
 	public readonly resolver: GoTestResolver;
 	public readonly runner: GoTestRunner;
 	public readonly profiler: GoTestProfiler;
+	public readonly subscriptions: vscode.Disposable[] = [];
 
 	constructor(
 		private readonly goCtx: GoExtensionContext,
@@ -219,6 +257,12 @@ export class GoTestExplorer {
 		this.resolver = new GoTestResolver(workspace, ctrl, provideDocumentSymbols);
 		this.profiler = new GoTestProfiler(this.resolver, workspaceState);
 		this.runner = new GoTestRunner(goCtx, workspace, ctrl, this.resolver, this.profiler);
+		this.subscriptions.push(ctrl);
+	}
+
+	dispose() {
+		this.subscriptions.forEach((x) => x.dispose());
+		this.subscriptions.splice(0, this.subscriptions.length);
 	}
 
 	/* ***** Listeners ***** */
@@ -322,5 +366,33 @@ export class GoTestExplorer {
 
 		await this.resolver.processDocument(doc, ranges);
 		this.resolver.updateGoTestContext();
+	}
+}
+
+/**
+ * Notify the user that we're enabling the experimental explorer.
+ */
+async function notifyUserOfExperiment(state: Memento) {
+	// If the user has acknowledged the notification, don't show it again.
+	if (state.get('experiment.testExplorer.didAckNotification') === true) {
+		return;
+	}
+
+	const r = await vscode.window.showInformationMessage(
+		'Switching to the experimental test explorer. This experiments can be disabled by setting go.experiments.testExplorer to false.',
+		'Open settings',
+		'Ok'
+	);
+
+	switch (r) {
+		case 'Open settings':
+			await vscode.commands.executeCommand('workbench.action.openSettings2', {
+				query: 'go.experiments'
+			});
+			break;
+
+		case 'Ok':
+			state.update('experiment.testExplorer.didAckNotification', true);
+			break;
 	}
 }

@@ -65,7 +65,7 @@ import { getFormatTool } from './language/legacy/goFormat';
 import { resetSurveyConfigs, showSurveyConfig } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
-import { GoTestExplorer, isVscodeTestingAPIAvailable } from './goTest/explore';
+import { GoTestExplorer } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
 import { GoExtensionContext } from './context';
@@ -73,6 +73,7 @@ import * as commands from './commands';
 import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
 import { setTelemetryEnvVars, telemetryReporter } from './goTelemetry';
+import { experiments } from './experimental';
 
 const goCtx: GoExtensionContext = {};
 
@@ -147,6 +148,9 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
 	GoDebugConfigurationProvider.activate(ctx, goCtx);
 	GoDebugFactory.activate(ctx, goCtx);
+	experiments.activate(ctx);
+	GoTestExplorer.setup(ctx, goCtx);
+	GoExplorerProvider.setup(ctx);
 
 	goCtx.buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(goCtx.buildDiagnosticCollection);
@@ -184,12 +188,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.add.package.workspace', addImportToWorkspace);
 	registerCommand('go.tools.install', commands.installTools);
 	registerCommand('go.browse.packages', browsePackages);
-
-	if (isVscodeTestingAPIAvailable && cfg.get<boolean>('testExplorer.enable')) {
-		GoTestExplorer.setup(ctx, goCtx);
-	}
-
-	GoExplorerProvider.setup(ctx);
 
 	registerCommand('go.test.generate.package', goGenerateTests.generateTestCurrentPackage);
 	registerCommand('go.test.generate.file', goGenerateTests.generateTestCurrentFile);
@@ -331,15 +329,6 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 					ctx.subscriptions.push(goCtx.lintDiagnosticCollection);
 					// TODO: actively maintain our own disposables instead of keeping pushing to ctx.subscription.
 				}
-			}
-			if (e.affectsConfiguration('go.testExplorer.enable')) {
-				const msg =
-					'Go test explorer has been enabled or disabled. For this change to take effect, the window must be reloaded.';
-				vscode.window.showInformationMessage(msg, 'Reload').then((selected) => {
-					if (selected === 'Reload') {
-						vscode.commands.executeCommand('workbench.action.reloadWindow');
-					}
-				});
 			}
 		})
 	);

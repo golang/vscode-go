@@ -1477,6 +1477,20 @@
           "description": "Open the test output terminal when a test run is started.",
           "scope": "window"
         },
+        "go.experiments": {
+          "type": "object",
+          "default": {
+            "testExplorer": true
+          },
+          "description": "Disable experimental features. These features are only available in the pre-release version.",
+          "properties": {
+            "testExplorer": {
+              "type": "boolean",
+              "default": true,
+              "description": "Prefer the experimental test explorer"
+            }
+          }
+        },
         "go.generateTestsFlags": {
           "type": "array",
           "items": {
