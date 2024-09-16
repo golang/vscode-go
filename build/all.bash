@@ -77,32 +77,6 @@ run_test_in_docker() {
   docker run --cap-add SYS_PTRACE --shm-size=8G --workdir=/workspace -v "$(pwd):/workspace" vscode-test-env ci
 }
 
-prepare_nightly() {
-  # Version format: YYYY.MM.DDHH based on the latest commit timestamp.
-  # e.g. 2020.1.510 is the version built based on a commit that was made
-  #      on 2020/01/05 10:00
-  local VER=`git log -1 --format=%cd --date="format:%Y.%-m.%-d%H"`
-  local COMMIT=`git log -1 --format=%H`
-  echo "**** Preparing nightly release : ${VER} (${COMMIT}) ***"
-  # Update package.json
-  (cat extension/package.json | jq --arg VER "${VER}" '
-.version=$VER |
-.preview=true |
-.name="go-nightly" |
-.displayName="Go Nightly" |
-.publisher="golang" |
-.description="Rich Go language support for Visual Studio Code (Nightly)" |
-.contributes.configuration.properties."go.delveConfig".properties.hideSystemGoroutines.default=true
-') > /tmp/package.json && cp /tmp/package.json extension/package.json
-
-  # Replace CHANGELOG.md with CHANGELOG.md + Release commit info.
-  printf "**Release ${VER} @ ${COMMIT}** \n\n" | cat - extension/CHANGELOG.md > /tmp/CHANGELOG.md.new && mv /tmp/CHANGELOG.md.new extension/CHANGELOG.md
-  # Replace the heading of README.md with the heading for Go Nightly.
-  sed '/^# Go for Visual Studio Code$/d' README.md | cat build/nightly/README.md - > /tmp/README.md.new && mv /tmp/README.md.new README.md
-  # Replace src/const.ts with build/nightly/const.ts.
-  cp build/nightly/const.ts extension/src/const.ts
-}
-
 main() {
   cd "$(root_dir)"  # always start to run from the extension source root.
   case "$1" in
@@ -120,17 +94,10 @@ main() {
     "ci")
       go_binaries_info
       setup_virtual_display
-	  run_doc_test
+	    run_doc_test
       run_test
-	  run_lint
+	    run_lint
       ;;
-    "prepare_nightly")
-      prepare_nightly
-      ;;
-	"test_nightly")
-	  setup_virtual_display
-	  run_test
-	  ;;
     *)
       usage
       exit 2

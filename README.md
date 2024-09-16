@@ -125,11 +125,19 @@ modules or uncommon project layouts, you will need to configure your workspace
 by using [Workspace Folders]. See the
 [Supported workspace layouts documentation] for more information.
 
-## Preview version
+## Pre-release version
 
 If you'd like to get early access to new features and bug fixes, you can use the
-nightly build of this extension. Learn how to install it in by reading the
-[Go Nightly documentation](https://github.com/golang/vscode-go/wiki/nightly).
+pre-release extension. Following the vscode's [convention](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions),
+we use the minor version of the extension version number to distinguish stable
+and pre-release versions (`0.ODD_NUMBER.patch` for pre-release, `0.EVEN_NUMBER.patch`
+for stable release).
+
+To install the pre-release version, use the drop-down list
+to select "Install Pre-Release Version", or if already installed the Go extension,
+use the "Switch to Pre-Release Version" option in the Visual Studio Code
+extension management page. For more details about this mechanism, see the
+[Visual Studio Code's documentation](https://code.visualstudio.com/updates/v1_63#_pre-release-extensions).
 
 ## Telemetry
 

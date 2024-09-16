@@ -2,7 +2,7 @@
 
 We welcome your contributions and thank you for working to improve the Go development experience in VS Code.
 
-This guide will explain the process of setting up your development environment to work on the VS Code Go extension, as well as the process of sending out your change for review. If you're interested in testing the master branch or pre-releases of the extension, please see the [Go Nightly documentation](nightly.md).
+This guide will explain the process of setting up your development environment to work on the VS Code Go extension, as well as the process of sending out your change for review.
 
 Our canonical Git repository is located at https://go.googlesource.com/vscode-go and https://github.com/golang/vscode-go is a mirror.
 

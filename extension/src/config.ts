@@ -46,10 +46,8 @@ export class ExtensionInfo {
 		this.version = version?.format();
 		this.appName = vscode.env.appName;
 
-		// golang.go-nightly: packageJSON.preview is true.
 		// golang.go prerelease: minor version is an odd number.
-		this.isPreview =
-			!!packageJSON?.preview || !!(extensionId === 'golang.go' && version && version.minor % 2 === 1);
+		this.isPreview = !!(extensionId === 'golang.go' && version && version.minor % 2 === 1);
 		this.isInCloudIDE =
 			process.env.CLOUD_SHELL === 'true' ||
 			process.env.MONOSPACE_ENV === 'true' ||

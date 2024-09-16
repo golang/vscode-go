@@ -19,7 +19,7 @@ adapter in favor of direct communication with Delve via
  📣 **We are happy to announce that the new _`dlv-dap`_ mode of Delve
  integration is enabled for _local_ _debugging_ by default. For
  [_remote_ _debugging_](#remote-debugging) it is the default in
- [Go Nightly](nightly.md) and is available with stable builds on demand with
+ [pre-release versions](https://github.com/golang/vscode-go/blob/master/README.md#pre-release-version) and is available with stable builds on demand with
  `"debugAdapter": "dlv-dap"` attribute in `launch.json` or `settings.json`!**
 
 Many features and settings described in this document may be available only with

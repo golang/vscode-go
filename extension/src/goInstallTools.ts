@@ -902,8 +902,8 @@ export async function maybeInstallVSCGO(
 	extensionPath: string,
 	isPreview: boolean
 ): Promise<string> {
-	// golang.go stable, golang.go-nightly stable -> install once per version.
-	// golang.go dev through launch.json -> install every time.
+	// golang.go stable stable -> install once per version.
+	// golang.go pre-release/dev through launch.json -> install every time.
 	const progPath = path.join(extensionPath, 'bin', correctBinname('vscgo'));
 
 	if (extensionMode === vscode.ExtensionMode.Production && executableFileExists(progPath)) {
