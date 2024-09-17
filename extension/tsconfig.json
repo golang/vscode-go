@@ -3,9 +3,9 @@
 		"module": "commonjs",
 		"outDir": "out",
 		"sourceMap": true,
-		"target": "es2017",
+		"target": "es2022",
 		"lib": [
-			"es2017"
+			"es2022"
 		],
 		"strict": true,
 		"esModuleInterop": true,
