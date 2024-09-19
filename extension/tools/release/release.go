@@ -30,7 +30,6 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -226,17 +225,16 @@ func runPublish(cmd *command, args []string) {
 
 	checkWD()
 
-	requireTools("jq", "npx", "gh", "git")
+	requireTools("npx")
 
+	// npx vsce directly reads VSCE_PAT, so no parsing is needed.
+	// See https://github.com/microsoft/vscode-vsce/blob/ba6681809080ee8685fb86d4b4fca765f1d82708/src/main.ts#L186
 	requireEnv("VSCE_PAT")
-	requireEnv("GITHUB_TOKEN")
 	tagName := requireEnv("TAG_NAME")
 
 	version, isPrerelease := releaseVersionInfo(tagName)
-	checkPackageJSON(tagName, isPrerelease)
 	inDir := prepareInputDir(cmd.lookupFlag("in").String())
-	vsix := filepath.Join(inDir, fmt.Sprintf("go-%s.vsix", version))
-	publish(tagName, vsix, isPrerelease)
+	publish(tagName, filepath.Join(inDir, fmt.Sprintf("go-%s.vsix", version)), isPrerelease)
 }
 
 func fatalf(format string, args ...any) {
@@ -354,40 +352,6 @@ func parseVersionTagName(tagName string) (major, minor, patch int, label string)
 	return atoi("Major"), atoi("Minor"), atoi("Patch"), m[versionTagRE.SubexpIndex("Label")]
 }
 
-// checkPackageJSON checks if package.json has the expected version value.
-// If prerelease, the major/minor version should match.
-// Otherwise, major/minor/patch version should match.
-func checkPackageJSON(tagName string, isPrerelease bool) {
-	if !strings.HasPrefix(tagName, "v") {
-		fatalf("unexpected tagName in checkPackageJSON: %q", tagName)
-	}
-
-	if flagN {
-		tracef("jq -r .version package.json")
-		return
-	}
-	cmd := exec.Command("jq", "-r", ".version", "package.json")
-	cmd.Stderr = os.Stderr
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	if err := commandRun(cmd); err != nil {
-		fatalf("failed to read package.json version")
-	}
-
-	versionInPackageJSON := string(bytes.TrimSpace(buf.Bytes()))
-	if !isPrerelease {
-		if got, want := versionInPackageJSON, tagName[1:]; got != want {
-			fatalf("package.json version %q does not match wanted string %q", got, want)
-		}
-		return
-	}
-	// Check only major.minor for prerelease.
-	major, minor, _, _ := parseVersionTagName(tagName)
-	if want := fmt.Sprintf("%d.%d.", major, minor); !strings.HasPrefix(versionInPackageJSON, want) {
-		fatalf("package.json version %q does not match wanted string %q", versionInPackageJSON, want)
-	}
-}
-
 func commandRun(cmd *exec.Cmd) error {
 	if flagN {
 		if cmd.Dir != "" {
@@ -456,35 +420,20 @@ func buildPackage(version, tagName string, isPrerelease bool, output string) {
 	}
 }
 
-// publish publishes the extension to the VS Code Marketplace and GitHub, using npx vsce and gh release create.
+// publish publishes the extension to the VS Code Marketplace using npx vsce.
 func publish(tagName, packageFile string, isPrerelease bool) {
+	// Skip prerelease versions, as they are not published to the marketplace.
+	if strings.Contains(tagName, "-rc.") {
+		return
+	}
+
 	// check if the package file exists.
 	if flagN {
 		tracef("stat %s", packageFile)
 	} else {
 		if _, err := os.Stat(packageFile); os.IsNotExist(err) {
-			fatalf("package file %q does not exist. Did you run 'go run build/release.go package'?", packageFile)
+			fatalf("package file %q does not exist. Did you run 'go run tools/release/release.go package'?", packageFile)
 		}
-	}
-	isRC := strings.Contains(tagName, "-rc.")
-
-	// publish release to GitHub. This will create a draft release - manually publish it after reviewing the draft.
-	// TODO(hyangah): populate the changelog (the first section of CHANGELOG.md) and pass it using --notes-file instead of --generate-notes.
-	ghArgs := []string{"release", "create", "--generate-notes", "--target", commitSHA(), "--title", "Release " + tagName, "--draft"}
-	fmt.Printf("%s\n", strings.Join(ghArgs, " "))
-	if isRC || isPrerelease {
-		ghArgs = append(ghArgs, "--prerelease")
-	}
-	ghArgs = append(ghArgs, "-R", "github.com/golang/vscode-go")
-	ghArgs = append(ghArgs, tagName, packageFile)
-	cmd := exec.Command("gh", ghArgs...)
-	cmd.Stderr = os.Stderr
-	if err := commandRun(cmd); err != nil {
-		fatalf("failed to publish release: %v", err)
-	}
-
-	if isRC { // Do not publish RC versions to the marketplace.
-		return
 	}
 
 	npxVsceArgs := []string{"vsce", "publish", "-i", packageFile}
