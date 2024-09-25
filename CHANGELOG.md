@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Code Health
+
+* Extension build target is set to `es2022`. ([Issue 3540](https://github.com/golang/vscode-go/issues/3540))
+* The extension release workflow is migrated to the Go project's [Relui](https://pkg.go.dev/golang.org/x/build/cmd/relui#section-readme). ([Issue 3500](https://github.com/golang/vscode-go/issues/3500))
+
 ## v0.42.1
 
 Date: 9 Sep, 2024

@@ -1,7 +1,7 @@
 {
   "name": "go",
   "displayName": "Go",
-  "version": "0.43.0-dev",
+  "version": "0.44.0-dev",
   "publisher": "golang",
   "description": "Rich Go language support for Visual Studio Code",
   "author": {

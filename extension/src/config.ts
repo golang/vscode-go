@@ -46,8 +46,11 @@ export class ExtensionInfo {
 		this.version = version?.format();
 		this.appName = vscode.env.appName;
 
-		// golang.go prerelease: minor version is an odd number.
-		this.isPreview = !!(extensionId === 'golang.go' && version && version.minor % 2 === 1);
+		// golang.go prerelease: minor version is an odd number, or has the "-dev" suffix.
+		this.isPreview =
+			extensionId === 'golang.go' && !!version
+				? version.minor % 2 === 1 || version.toString().endsWith('-dev')
+				: false;
 		this.isInCloudIDE =
 			process.env.CLOUD_SHELL === 'true' ||
 			process.env.MONOSPACE_ENV === 'true' ||
