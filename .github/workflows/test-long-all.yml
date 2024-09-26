@@ -37,7 +37,7 @@ jobs:
          check-latest: true
          cache: true
 
-      - name: Install dependencies
+      - name: Install NPM dependencies
         run: npm ci
         working-directory: ./extension
 
@@ -45,14 +45,11 @@ jobs:
         run: npm run vscode:prepublish
         working-directory: ./extension
 
-      - name: Install Go tools (Modules mode)
+      - name: Install tools dependencies
         run: |
-            go version
-            go run ./tools/installtools/main.go
+          go install ./tools/installtools
+          installtools
         working-directory: ./extension
-        env:
-          GO111MODULE: on
-          EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"
 
       - name: Run unit tests
         run: npm run unit-test
