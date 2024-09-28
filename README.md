@@ -11,7 +11,7 @@ provides rich language support for the
 ## Requirements
 
 * Visual Studio Code 1.75 or newer (or editors compatible with VS Code 1.75+ APIs)
-* Go 1.19 or newer.
+* Go 1.21 or newer.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://go.dev) 1.19 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.21 or newer if you haven't already.
 
 1.  Install the [VS Code Go extension].
 
@@ -182,6 +182,30 @@ post series](https://research.swtch.com/telemetry-uses) contains many more.
 Go telemetry is designed to be transparent and privacy-preserving. Learn more at
 [https://go.dev/doc/telemetry](https://go.dev/doc/telemetry).
 
+## Support Policy
+
+The Go extension is maintained by engineers on the
+[Go tools team](https://github.com/orgs/golang/teams/tools-team/members),
+who actively monitor the [VS Code Go](https://github.com/golang/vscode-go/issues)
+and the [Go](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls)
+issue trackers.
+
+We support only the latest stable and pre-release versions of the extension.
+
+### Supported Go and tools
+
+The Go extension follows the [Go Release Policy](https://go.dev/doc/devel/release.html#policy),
+meaning that it _officially_ supports the two most recent major Go releases.
+The Go team maintains _best-effort_ support for the last three major Go versions.
+
+The Go extension relies on [tools](https://github.com/golang/vscode-go/wiki/tools)
+like `gopls` and `dlv` for its core functionalities and they have their own release
+policy and schedule. We test only against the latest versions of these tools.
+
+In case you need to work with an older version of Go, please check
+the [Compatibility] page and manually install the compatible version of
+the extension and tools.
+
 ## Contributing
 
 We welcome your contributions and thank you for working to improve the Go
@@ -211,6 +235,7 @@ conduct-related issue, please mail conduct@golang.org.
 [IntelliSense]: https://github.com/golang/vscode-go/wiki/features#intellisense
 [Code navigation]: https://github.com/golang/vscode-go/wiki/features#code-navigation
 [Code editing]: https://github.com/golang/vscode-go/wiki/features#code-editing
+[Compatibility]: https://github.com/golang/vscode-go/wiki/compatibility
 [diagnostics]: https://github.com/golang/vscode-go/wiki/features#diagnostics
 [testing]: https://github.com/golang/vscode-go/wiki/features#run-and-test-in-the-editor
 [debugging]: https://github.com/golang/vscode-go/wiki/debugging#features
