@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Changes
+
+#### Tools installation
+
+* The extension requires go1.21 or newer when it installs required tools. If your project must use go1.20 or older,
+please manually install [compatible versions of required tools](https://github.com/golang/vscode-go/wiki/compatibility),
+or configure the [`"go.toolsManagement.go"` setting](https://github.com/golang/vscode-go/wiki/settings#gotoolsmanagementgo)
+to use the go1.21 or newer when installing tools. ([Issue 3411](https://github.com/golang/vscode-go/issues/3411))
+
 ### Code Health
 
 * Extension build target is set to `es2022`. ([Issue 3540](https://github.com/golang/vscode-go/issues/3540))

@@ -20,12 +20,12 @@ export interface Tool {
 	replacedByGopls?: boolean;
 	description: string;
 
-	// If true, consider prerelease version in preview mode
-	// (nightly & dev)
+	// If true, consider prerelease version in prerelease mode
+	// (prerelease & dev)
 	usePrereleaseInPreviewMode?: boolean;
 	// If set, this string will be used when installing the tool
 	// instead of the default 'latest'. It can be used when
-	// we need to pin a tool version (`deadbeaf`) or to use
+	// we need to pin a tool version (`deadbeef`) or to use
 	// a dev version available in a branch (e.g. `master`).
 	defaultVersion?: string;
 
@@ -53,7 +53,7 @@ export interface ToolAtVersion extends Tool {
 export function getImportPathWithVersion(
 	tool: Tool,
 	version: semver.SemVer | string | undefined | null,
-	goVersion: GoVersion
+	goVersion: GoVersion // This is the Go version to build the project.
 ): string {
 	const importPath = tool.importPath;
 	if (version) {

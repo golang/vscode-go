@@ -44,6 +44,9 @@ import { allToolsInformation } from './goToolsInformation';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
+// minimum go version required for tools installation.
+const MINIMUM_GO_VERSION = '1.21.0';
+
 // declinedUpdates tracks the tools that the user has declined to update.
 const declinedUpdates: Tool[] = [];
 
@@ -52,7 +55,7 @@ const declinedInstalls: Tool[] = [];
 
 export interface IToolsManager {
 	getMissingTools(filter: (tool: Tool) => boolean): Promise<Tool[]>;
-	installTool(tool: Tool, goVersion: GoVersion, env: NodeJS.Dict<string>): Promise<string | undefined>;
+	installTool(tool: Tool, goVersionForInstall: GoVersion, env: NodeJS.Dict<string>): Promise<string | undefined>;
 }
 
 export const defaultToolsManager: IToolsManager = {
@@ -105,20 +108,27 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 	);
 }
 
-export const getGoForInstall = _getGoForInstall;
-async function _getGoForInstall(goVersion: GoVersion): Promise<GoVersion | undefined> {
-	let configured = getGoConfig().get<string>('toolsManagement.go');
-	if (!configured) {
-		configured = goVersion.binaryPath;
+// Returns the go version to be used for tools installation.
+// If `go.toolsManagement.go` is set, it is preferred. Otherwise, the provided
+// goVersion or the default version returned by getGoVersion is returned.
+export const getGoVersionForInstall = _getGoVersionForInstall;
+async function _getGoVersionForInstall(goVersion?: GoVersion): Promise<GoVersion | undefined> {
+	let configuredGoForInstall = getGoConfig().get<string>('toolsManagement.go');
+	if (!configuredGoForInstall) {
+		// A separate Go for install is not configured. Use the default Go.
+		const defaultGoVersion = goVersion ?? (await getGoVersion());
+		configuredGoForInstall = defaultGoVersion?.binaryPath;
 	}
 	try {
 		// goVersion may be the version picked based on the the minimum
 		// toolchain version requirement specified in go.mod or go.work.
 		// Compute the local toolchain version. (GOTOOLCHAIN=local go version)
-		const go = await getGoVersion(configured, 'local');
+		const go = await getGoVersion(configuredGoForInstall, 'local');
 		if (go) return go;
 	} catch (e) {
-		outputChannel.error(`failed to run "go version" with "${configured}". Provide a valid path to the Go binary`);
+		outputChannel.error(
+			`failed to run "go version" with "${configuredGoForInstall}". Provide a valid path to the Go binary`
+		);
 	}
 	return;
 }
@@ -155,7 +165,7 @@ export async function installTools(
 		outputChannel.show();
 	}
 
-	const goForInstall = await getGoForInstall(goVersion);
+	const goForInstall = await getGoVersionForInstall(goVersion);
 	if (!goForInstall || !goForInstall.isValid()) {
 		vscode.window.showErrorMessage('Failed to find a go command needed to install tools.');
 		outputChannel.show(); // show error.
@@ -164,16 +174,15 @@ export async function installTools(
 		});
 	}
 
-	const minVersion = goForInstall.lt('1.21') ? (goVersion.lt('1.19') ? '1.19' : goVersion.format()) : '1.21.0';
-	if (goForInstall.lt(minVersion)) {
+	if (goForInstall.lt(MINIMUM_GO_VERSION)) {
 		vscode.window.showErrorMessage(
-			`Failed to find a go command (go${minVersion} or newer) needed to install tools. ` +
+			`Failed to find a go command (go${MINIMUM_GO_VERSION} or newer) needed to install tools. ` +
 				`The go command (${goForInstall.binaryPath}) is too old (go${goForInstall.svString}). ` +
-				'If your project requires a Go version older than go1.19, either manually install the tools or, use the "go.toolsManagement.go" setting ' +
-				'to configure the Go version used for tools installation. See https://github.com/golang/vscode-go/issues/2898.'
+				`If your project requires a Go version older than go${MINIMUM_GO_VERSION}, please manually install the tools or, use the "go.toolsManagement.go" setting ` +
+				`to configure a different go command (go ${MINIMUM_GO_VERSION}+) to be used for tools installation. See https://github.com/golang/vscode-go/issues/3411.`
 		);
 		return missing.map((tool) => {
-			return { tool: tool, reason: `failed to find go (requires go${minVersion} or newer)` };
+			return { tool: tool, reason: `failed to find go (requires go${MINIMUM_GO_VERSION} or newer)` };
 		});
 	}
 
@@ -273,20 +282,21 @@ async function tmpDirForToolInstallation() {
 	return toolsTmpDir;
 }
 
-// installTool installs the specified tool.
+// installTool is used by goEnvironmentStatus.ts.
+// TODO(hyangah): replace the callsite to use defaultToolsManager and remove this.
 export async function installTool(tool: ToolAtVersion): Promise<string | undefined> {
-	const goVersion = await getGoForInstall(await getGoVersion());
-	if (!goVersion) {
+	const goVersionForInstall = await getGoVersionForInstall();
+	if (!goVersionForInstall) {
 		return 'failed to find "go" for install';
 	}
 	const envForTools = toolInstallationEnvironment();
 
-	return await installToolWithGo(tool, goVersion, envForTools);
+	return await installToolWithGo(tool, goVersionForInstall, envForTools);
 }
 
 async function installToolWithGo(
 	tool: ToolAtVersion,
-	goVersion: GoVersion, // go version to be used for installation.
+	goVersionForInstall: GoVersion, // go version used to install the tool.
 	envForTools: NodeJS.Dict<string>
 ): Promise<string | undefined> {
 	const env = Object.assign({}, envForTools);
@@ -295,10 +305,14 @@ async function installToolWithGo(
 	if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
 		version = await latestToolVersion(tool, true);
 	}
-	const importPath = getImportPathWithVersion(tool, version, goVersion);
+	// TODO(hyangah): should we allow to choose a different version of the tool
+	// depending on the project's go version (i.e. getGoVersion())? For example,
+	// if a user is using go1.20 for their project, should we pick gopls@v0.15
+	// instead? In that case, we should pass getGoVersion().
+	const importPath = getImportPathWithVersion(tool, version, goVersionForInstall);
 
 	try {
-		await installToolWithGoInstall(goVersion, env, importPath);
+		await installToolWithGoInstall(goVersionForInstall, env, importPath);
 		const toolInstallPath = getBinPath(tool.name);
 		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
@@ -533,8 +547,9 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	});
 }
 
-// maybeInstallImportantTools checks whether important tools are installed,
-// and tries to auto-install them if missing.
+// maybeInstallImportantTools checks whether important tools are installed
+// and they meet the version requirement.
+// Then it tries to auto-install them if missing.
 export async function maybeInstallImportantTools(
 	alternateTools: { [key: string]: string } | undefined,
 	tm: IToolsManager = defaultToolsManager
@@ -783,10 +798,10 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 }
 
 export async function suggestUpdates() {
-	const configuredGoVersion = await getGoVersion();
-	if (!configuredGoVersion || configuredGoVersion.lt('1.19')) {
-		// User is using an ancient or a dev version of go. Don't suggest updates -
-		// user should know what they are doing.
+	const configuredGoVersion = await getGoVersionForInstall();
+	if (!configuredGoVersion || configuredGoVersion.lt(MINIMUM_GO_VERSION)) {
+		// User is using an old or dev version of go.
+		// Don't suggest updates.
 		return;
 	}
 
@@ -830,15 +845,13 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 				return;
 			}
 			const m = await inspectGoToolVersion(toolPath);
-			if (!m) {
-				console.log(`failed to get go tool version: ${toolPath}`);
-				return;
-			}
-			const { goVersion } = m;
+			const { goVersion } = m || {};
 			if (!goVersion) {
-				// TODO: we cannot tell whether the tool was compiled with a newer version of go
+				// The tool was compiled with a newer version of go
+				// or a very old go (<go1.18)
 				// or compiled in an unconventional way.
-				return;
+				// Suggest to reinstall the tool anyway.
+				return tool;
 			}
 			const toolGoVersion = new GoVersion('', `go version ${goVersion} os/arch`);
 			if (!toolGoVersion || !toolGoVersion.sv) {
@@ -860,12 +873,12 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 				// We test the inequality by checking whether the exact beta or rc version
 				// appears in the `go version` output. e.g.,
 				//   configuredGoVersion.version      	goVersion(tool)		update
-				//   'go version go1.21 ...'    		'go1.21beta1'		Yes
-				//   'go version go1.21beta1 ...'		'go1.21beta1'		No
-				//   'go version go1.21beta2 ...'		'go1.21beta1'		Yes
-				//   'go version go1.21rc1 ...'			'go1.21beta1'		Yes
+				//   'go version go1.21 ...'    		'go1.21rc1'		Yes
+				//   'go version go1.21rc1 ...'		'go1.21rc1'		No
+				//   'go version go1.21rc2 ...'		'go1.21rc1'		Yes
+				//   'go version go1.21rc1 ...'			'go1.21rc1'		Yes
 				//   'go version go1.21rc1 ...'			'go1.21'			No
-				//   'go version devel go1.21-deadbeaf ...'	'go1.21beta1'	No (* rare)
+				//   'go version devel go1.21-deadbeef ...'	'go1.21rc1'	No (* rare)
 				!configuredGoVersion.version.includes(goVersion)
 			) {
 				return tool;
@@ -899,7 +912,7 @@ export async function maybeInstallVSCGO(
 	const execFile = util.promisify(cp.execFile);
 
 	const cwd = path.join(extensionPath);
-	const env = toolExecutionEnvironment();
+	const env = toolInstallationEnvironment();
 	env['GOBIN'] = path.dirname(progPath);
 
 	const importPath = allToolsInformation['vscgo'].importPath;
@@ -911,9 +924,14 @@ export async function maybeInstallVSCGO(
 			: `@v${extensionVersion}`;
 	// build from source acquired from the module proxy if this is a non-preview version.
 	try {
+		const goForInstall = await getGoVersionForInstall();
+		const goBinary = goForInstall?.binaryPath;
+		if (!goBinary) {
+			throw new Error('"go" binary is not found');
+		}
 		const args = ['install', '-trimpath', `${importPath}${version}`];
 		console.log(`installing vscgo: ${args.join(' ')}`);
-		await execFile(getBinPath('go'), args, { cwd, env });
+		await execFile(goBinary, args, { cwd, env });
 		return progPath;
 	} catch (e) {
 		telemetryReporter.add('vscgo_install_fail', 1);

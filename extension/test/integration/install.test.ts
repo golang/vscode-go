@@ -92,7 +92,7 @@ suite('Installation Tests', function () {
 		withLocalProxy?: boolean,
 		withGOBIN?: boolean,
 		withGoVersion?: string,
-		goForInstall?: GoVersion,
+		goVersionForInstall?: GoVersion,
 		toolsManager?: goInstallTools.IToolsManager
 	) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
@@ -133,7 +133,9 @@ suite('Installation Tests', function () {
 			: await getGoVersion();
 
 		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
-		sandbox.stub(goInstallTools, 'getGoForInstall').returns(Promise.resolve(goForInstall ?? goVersion));
+		sandbox
+			.stub(goInstallTools, 'getGoVersionForInstall')
+			.returns(Promise.resolve(goVersionForInstall ?? goVersion));
 
 		const opts = toolsManager ? { toolsManager } : undefined;
 		const failures = await installTools(missingTools, goVersion, opts);
@@ -226,8 +228,8 @@ suite('Installation Tests', function () {
 	});
 
 	test('Try to install with old go', async () => {
-		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.17 amd64/linux');
-		sandbox.stub(goInstallTools, 'getGoForInstall').returns(Promise.resolve(oldGo));
+		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.20 amd64/linux');
+		sandbox.stub(goInstallTools, 'getGoVersionForInstall').returns(Promise.resolve(oldGo));
 		const failures = await installTools([getToolAtVersion('gopls')], oldGo);
 		assert(failures?.length === 1 && failures[0].tool.name === 'gopls' && failures[0].reason.includes('or newer'));
 	});
@@ -235,36 +237,36 @@ suite('Installation Tests', function () {
 	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
 	test('Install gofumpt with old go', async () => {
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.4.0', 'v0.5.0', gofumptDefault], wantVersion: 'v0.5.0' }],
+			[{ name: 'gofumpt', versions: ['v0.5.0', 'v0.6.0', gofumptDefault], wantVersion: 'v0.6.0' }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.19' // Go Version
+			'go1.21' // Go Version
 		);
 	});
 	test('Install gofumpt with new go', async () => {
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.4.0', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
+			[{ name: 'gofumpt', versions: ['v0.4.7', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.22.0' // Go Version
+			'go1.23.0' // Go Version
 		);
 	});
 
-	test('Install a tool, with go1.21.0', async () => {
+	test('Install a tool, with go for install', async () => {
 		const systemGoVersion = await getGoVersion();
-		const oldGo = new GoVersion(systemGoVersion.binaryPath, 'go version go1.21.0 linux/amd64');
+		const wantGoForInstall = new GoVersion(systemGoVersion.binaryPath, 'go version go1.99.0 linux/amd64');
 		const tm: IToolsManager = {
 			getMissingTools: () => {
 				assert.fail('must not be called');
 			},
-			installTool: (tool, goVersion, env) => {
+			installTool: (tool, goVersionForInstall, env) => {
 				// Assert the go install command is what we expect.
 				assert.strictEqual(tool.name, 'gopls');
-				assert.strictEqual(goVersion, oldGo);
+				assert.strictEqual(goVersionForInstall, wantGoForInstall);
 				assert(env['GOTOOLCHAIN'], `go${systemGoVersion.format()}+auto`);
 				// runTest checks if the tool build succeeds. So, delegate the remaining
 				// build task to the default tools manager's installTool function.
-				return defaultToolsManager.installTool(tool, goVersion, env);
+				return defaultToolsManager.installTool(tool, systemGoVersion, env);
 			}
 		};
 		await runTest(
@@ -272,7 +274,7 @@ suite('Installation Tests', function () {
 			true, // LOCAL PROXY
 			true, // GOBIN
 			'go' + systemGoVersion.format(true), // Go Version
-			oldGo, // Go for install
+			wantGoForInstall, // Go for install
 			tm // stub installTool to
 		);
 	});
@@ -371,6 +373,8 @@ suite('listOutdatedTools', () => {
 	});
 	teardown(() => sandbox.restore());
 
+	// goVersion: go toolchain's version
+	// tools: toolname -> go toolchain version used to compile the tool
 	async function runTest(goVersion: string | undefined, tools: { [key: string]: string | undefined }) {
 		const binPathStub = sandbox.stub(utilModule, 'getBinPath');
 		const versionStub = sandbox.stub(goInstallTools, 'inspectGoToolVersion');
@@ -387,53 +391,53 @@ suite('listOutdatedTools', () => {
 	}
 
 	test('minor version difference requires updates', async () => {
-		const x = await runTest('go version go1.18 linux/amd64', {
-			gopls: 'go1.16', // 1.16 < 1.18
-			dlv: 'go1.17', // 1.17 < 1.18
-			staticcheck: 'go1.18', // 1.18 == 1.18
-			gotests: 'go1.19' // 1.19 > 1.18
+		const x = await runTest('go version go1.23.0 linux/amd64', {
+			gopls: 'go1.22.2',
+			dlv: 'go1.21.0',
+			staticcheck: 'go1.23.0',
+			gotests: 'go1.24.1'
 		});
 		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
 	test('patch version difference does not require updates', async () => {
-		const x = await runTest('go version go1.16.1 linux/amd64', {
-			gopls: 'go1.16', // 1.16 < 1.16.1
-			dlv: 'go1.16.1', // 1.16.1 == 1.16.1
-			staticcheck: 'go1.16.2', // 1.16.2 > 1.16.1
-			gotests: 'go1.16rc1' // 1.16rc1 != 1.16.1
+		const x = await runTest('go version go1.23.1 linux/amd64', {
+			gopls: 'go1.23.0', // 1.16 < 1.16.1
+			dlv: 'go1.23.1', // 1.16.1 == 1.16.1
+			staticcheck: 'go1.23.2', // 1.16.2 > 1.16.1
+			gotests: 'go1.23rc1' // go1.23rc1 != go1.23.0
 		});
 		assert.deepStrictEqual(x, ['gotests']);
 	});
-	test('go is beta version', async () => {
-		const x = await runTest('go version go1.18beta2 linux/amd64', {
-			gopls: 'go1.17.1', // 1.17.1 < 1.18beta2
-			dlv: 'go1.18beta1', // 1.18beta1 != 1.18beta2
-			staticcheck: 'go1.18beta2', // 1.18beta2 == 1.18beta2
-			gotests: 'go1.18' // 1.18 > 1.18beta2
+	test('go is rc version', async () => {
+		const x = await runTest('go version go1.23rc2 linux/amd64', {
+			gopls: 'go1.22.3', // go1.22.3 < go1.23rc2
+			dlv: 'go1.23rc1', // go1.23rc1 < go1.23rc2
+			staticcheck: 'go1.23rc2', // same
+			gotests: 'go1.23.0' // go1.23rc2 < go1.23.0
 		});
 		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
-	test('go is dev version', async () => {
-		const x = await runTest('go version devel go1.18-41f485b9a7 linux/amd64', {
-			gopls: 'go1.17.1',
-			dlv: 'go1.18beta1',
-			staticcheck: 'go1.18',
-			gotests: 'go1.19'
+	test('go is dev version - skip version check', async () => {
+		const x = await runTest('go version devel go1.24-41f485b9a7 linux/amd64', {
+			gopls: 'go1.13.1',
+			dlv: 'go1.24rc1',
+			staticcheck: 'go1.23.0',
+			gotests: 'go1.24.0'
 		});
 		assert.deepStrictEqual(x, []);
 	});
-	test('go is unknown version', async () => {
+	test('go is unknown version - skip version check', async () => {
 		const x = await runTest('', {
-			gopls: 'go1.17.1'
+			gopls: 'go1.23.1'
 		});
 		assert.deepStrictEqual(x, []);
 	});
 	test('tools are unknown versions', async () => {
-		const x = await runTest('go version go1.17 linux/amd64', {
+		const x = await runTest('go version go1.22.0 linux/amd64', {
 			gopls: undefined, // this can be because gopls was compiled with go1.18 or it's too old.
-			dlv: 'go1.16.1'
+			dlv: 'go1.20'
 		});
-		assert.deepStrictEqual(x, ['dlv']);
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
 });
 
