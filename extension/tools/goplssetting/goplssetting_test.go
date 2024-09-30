@@ -33,12 +33,12 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 	}
 	testCases := []struct {
 		name string
-		in   *OptionJSON
+		in   *Option
 		out  string
 	}{
 		{
 			name: "boolean",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "verboseOutput",
 				Type:    "bool",
 				Doc:     "verboseOutput enables additional debug logging.\n",
@@ -53,7 +53,7 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 		},
 		{
 			name: "time",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "completionBudget",
 				Type:    "time.Duration",
 				Default: "\"100ms\"",
@@ -66,7 +66,7 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 		},
 		{
 			name: "map",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "analyses",
 				Type:    "map[string]bool",
 				Default: "{}",
@@ -78,7 +78,7 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 		},
 		{
 			name: "enum",
-			in: &OptionJSON{
+			in: &Option{
 				Name: "matcher",
 				Type: "enum",
 				EnumValues: []EnumValue{
@@ -107,7 +107,7 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 		},
 		{
 			name: "array",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "directoryFilters",
 				Type:    "[]string",
 				Default: "[\"-node_modules\", \"-vendor\"]",
@@ -122,7 +122,7 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			options := []*OptionJSON{tc.in}
+			options := []*Option{tc.in}
 			b, err := asVSCodeSettings(options)
 			if err != nil {
 				t.Fatal(err)

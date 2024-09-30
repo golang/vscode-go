@@ -66,7 +66,7 @@ func Generate(inputFile string, skipCleanup bool) ([]byte, error) {
 }
 
 // readGoplsAPI returns the output of `gopls api-json`.
-func readGoplsAPI() (*APIJSON, error) {
+func readGoplsAPI() (*API, error) {
 	version, err := exec.Command("gopls", "-v", "version").Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check gopls version: %v", err)
@@ -78,7 +78,7 @@ func readGoplsAPI() (*APIJSON, error) {
 		return nil, fmt.Errorf("failed to run gopls: %v", err)
 	}
 
-	api := &APIJSON{}
+	api := &API{}
 	if err := json.Unmarshal(out, api); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
@@ -87,37 +87,37 @@ func readGoplsAPI() (*APIJSON, error) {
 
 // extractOptions extracts the options from APIJSON.
 // It may rearrange the ordering and documentation for better presentation.
-func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
+func extractOptions(api *API) ([]*Option, error) {
 	type sortableOptionJSON struct {
-		*OptionJSON
+		*Option
 		section string
 	}
 	options := []sortableOptionJSON{}
 	for k, v := range api.Options {
 		for _, o := range v {
-			options = append(options, sortableOptionJSON{OptionJSON: o, section: k})
+			options = append(options, sortableOptionJSON{Option: o, section: k})
 		}
 	}
 	sort.SliceStable(options, func(i, j int) bool {
-		pi := priority(options[i].OptionJSON)
-		pj := priority(options[j].OptionJSON)
+		pi := priority(options[i].Option)
+		pj := priority(options[j].Option)
 		if pi == pj {
 			return options[i].Name < options[j].Name
 		}
 		return pi < pj
 	})
 
-	opts := []*OptionJSON{}
+	opts := []*Option{}
 	for _, v := range options {
-		if name := statusName(v.OptionJSON); name != "" {
-			v.OptionJSON.Doc = name + " " + v.OptionJSON.Doc
+		if name := statusName(v.Option); name != "" {
+			v.Option.Doc = name + " " + v.Option.Doc
 		}
-		opts = append(opts, v.OptionJSON)
+		opts = append(opts, v.Option)
 	}
 	return opts, nil
 }
 
-func priority(opt *OptionJSON) int {
+func priority(opt *Option) int {
 	switch toStatus(opt.Status) {
 	case Experimental:
 		return 10
@@ -127,7 +127,7 @@ func priority(opt *OptionJSON) int {
 	return 1000
 }
 
-func statusName(opt *OptionJSON) string {
+func statusName(opt *Option) string {
 	switch toStatus(opt.Status) {
 	case Experimental:
 		return "(Experimental)"
@@ -171,8 +171,8 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 
 // asVSCodeSettings converts the given options to match the VS Code settings
 // format.
-func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
-	seen := map[string][]*OptionJSON{}
+func asVSCodeSettings(options []*Option) ([]byte, error) {
+	seen := map[string][]*Option{}
 	for _, opt := range options {
 		seen[opt.Hierarchy] = append(seen[opt.Hierarchy], opt)
 	}
@@ -195,7 +195,7 @@ func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
 	return json.Marshal(goProperties)
 }
 
-func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goProperties map[string]*Object, err error) {
+func collectProperties(m map[string][]*Option) (goplsProperties, goProperties map[string]*Object, err error) {
 	var sorted []string
 	var containsEmpty bool
 	for k := range m {
@@ -248,7 +248,7 @@ func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goPropertie
 	return goplsProperties, goProperties, nil
 }
 
-func toObject(opt *OptionJSON) (*Object, error) {
+func toObject(opt *Option) (*Object, error) {
 	doc := opt.Doc
 	if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
 		doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
@@ -295,7 +295,7 @@ func toObject(opt *OptionJSON) (*Object, error) {
 	return obj, nil
 }
 
-func formatOptionDefault(opt *OptionJSON) interface{} {
+func formatOptionDefault(opt *Option) interface{} {
 	// Each key will have its own default value, instead of one large global
 	// one. (Alternatively, we can build the default from the keys.)
 	if len(opt.EnumKeys.Keys) > 0 {
@@ -388,18 +388,18 @@ const (
 	None
 )
 
-// APIJSON is the output json type of `gopls api-json`.
-// Types copied from golang.org/x/tools/internal/lsp/source/options.go.
-type APIJSON struct {
-	Options   map[string][]*OptionJSON
-	Commands  []*CommandJSON
-	Lenses    []*LensJSON
-	Analyzers []*AnalyzerJSON
+// API is a JSON-encodable representation of gopls' public interfaces.
+//
+// Types are copied from golang.org/x/tools/gopls/internal/doc/api.go.
+type API struct {
+	Options   map[string][]*Option
+	Lenses    []*Lens
+	Analyzers []*Analyzer
 }
 
-type OptionJSON struct {
+type Option struct {
 	Name       string
-	Type       string
+	Type       string // T = bool | string | int | enum | any | []T | map[T]T | time.Duration
 	Doc        string
 	EnumKeys   EnumKeys
 	EnumValues []EnumValue
@@ -414,29 +414,32 @@ type EnumKeys struct {
 }
 
 type EnumKey struct {
-	Name    string
+	Name    string // in JSON syntax (quoted)
 	Doc     string
 	Default string
 }
 
 type EnumValue struct {
-	Value string
-	Doc   string
+	Value string // in JSON syntax (quoted)
+	Doc   string // doc comment; always starts with `Value`
 }
 
-type CommandJSON struct {
-	Command string
-	Title   string
-	Doc     string
+type Lens struct {
+	FileType string // e.g. "Go", "go.mod"
+	Lens     string
+	Title    string
+	Doc      string
+	Default  bool
 }
 
-type LensJSON struct {
-	Lens  string
-	Title string
-	Doc   string
+type Analyzer struct {
+	Name    string
+	Doc     string // from analysis.Analyzer.Doc ("title: summary\ndescription"; not Markdown)
+	URL     string
+	Default bool
 }
 
-type AnalyzerJSON struct {
+type Hint struct {
 	Name    string
 	Doc     string
 	Default bool
