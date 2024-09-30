@@ -289,14 +289,6 @@ async function installToolWithGo(
 	goVersion: GoVersion, // go version to be used for installation.
 	envForTools: NodeJS.Dict<string>
 ): Promise<string | undefined> {
-	// Some tools may have to be closed before we reinstall them.
-	if (tool.close) {
-		const reason = await tool.close(envForTools);
-		if (reason) {
-			return reason;
-		}
-	}
-
 	const env = Object.assign({}, envForTools);
 
 	let version: semver.SemVer | string | undefined | null = tool.version;
@@ -362,14 +354,6 @@ export async function promptForMissingTool(toolName: string) {
 			`You are using go${goVersion.format()}, but ${
 				tool.name
 			} requires at least go${tool.minimumGoVersion.format()}.`
-		);
-		return;
-	}
-	if (tool.maximumGoVersion && goVersion.gt(tool.maximumGoVersion.format())) {
-		vscode.window.showInformationMessage(
-			`You are using go${goVersion.format()}, but ${
-				tool.name
-			} only supports go${tool.maximumGoVersion.format()} and below.`
 		);
 		return;
 	}

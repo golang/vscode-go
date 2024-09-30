@@ -37,15 +37,9 @@ export interface Tool {
 	latestPrereleaseVersion?: semver.SemVer | null;
 	latestPrereleaseVersionTimestamp?: moment.Moment;
 
-	// minimumGoVersion and maximumGoVersion set the range for the versions of
-	// Go with which this tool can be used.
+	// minimumGoVersion sets the minimum required version of Go
+	// for the tool.
 	minimumGoVersion?: semver.SemVer | null;
-	maximumGoVersion?: semver.SemVer | null;
-
-	// close performs any shutdown tasks that a tool must execute before a new
-	// version is installed. It returns a string containing an error message on
-	// failure.
-	close?: (env: NodeJS.Dict<string>) => Promise<string>;
 }
 
 /**
