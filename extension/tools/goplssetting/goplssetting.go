@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"maps"
 	"os"
 	"os/exec"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,7 +49,7 @@ func Generate(inputFile string, skipCleanup bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := asVSCodeSettings(options)
+	b, err := asVSCodeSettingsJSON(options)
 	if err != nil {
 		return nil, err
 	}
@@ -169,9 +171,17 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 	return bytes.TrimSpace(stdout.Bytes()), nil
 }
 
-// asVSCodeSettings converts the given options to match the VS Code settings
+// asVSCodeSettingsJSON converts the given options to match the VS Code settings
 // format.
-func asVSCodeSettings(options []*Option) ([]byte, error) {
+func asVSCodeSettingsJSON(options []*Option) ([]byte, error) {
+	obj, err := asVSCodeSettings(options)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(obj)
+}
+
+func asVSCodeSettings(options []*Option) (map[string]*Object, error) {
 	seen := map[string][]*Option{}
 	for _, opt := range options {
 		seen[opt.Hierarchy] = append(seen[opt.Hierarchy], opt)
@@ -192,7 +202,7 @@ func asVSCodeSettings(options []*Option) ([]byte, error) {
 		AdditionalProperties: false,
 		Properties:           goplsProperties,
 	}
-	return json.Marshal(goProperties)
+	return goProperties, nil
 }
 
 func collectProperties(m map[string][]*Option) (goplsProperties, goProperties map[string]*Object, err error) {
@@ -261,18 +271,38 @@ func toObject(opt *Option) (*Object, error) {
 		// outputs acceptable properties.
 		// TODO: deprecation attribute
 	}
-	// Handle any enum types.
-	if opt.Type == "enum" {
+	if opt.Type != "enum" {
+		obj.Type = propertyType(opt.Type)
+	} else { // Map enum type to a sum type.
+		// Assume value type is bool | string.
+		seenTypes := map[string]bool{}
 		for _, v := range opt.EnumValues {
-			unquotedName, err := strconv.Unquote(v.Value)
-			if err != nil {
-				return nil, err
+			// EnumValue.Value: string in JSON syntax (quoted)
+			var x any
+			if err := json.Unmarshal([]byte(v.Value), &x); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal %q: %v", v.Value, err)
 			}
-			obj.Enum = append(obj.Enum, unquotedName)
+
+			switch t := x.(type) {
+			case string:
+				obj.Enum = append(obj.Enum, t)
+				seenTypes["string"] = true
+			case bool:
+				obj.Enum = append(obj.Enum, t)
+				seenTypes["bool"] = true
+			default:
+				panic(fmt.Sprintf("type %T %+v as enum value type is not supported", t, t))
+			}
 			obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
 		}
+		obj.Type = propertyType(slices.Sorted(maps.Keys(seenTypes))...)
 	}
-	// Handle any objects whose keys are enums.
+	// Handle objects whose keys are listed in EnumKeys.
+	// Gopls uses either enum or string as key types, for example,
+	//   map[string]bool: analyses
+	//   map[enum]bool: codelenses, annotations
+	// Both cases where 'enum' is used as a key type actually use
+	// only string type enum. For simplicity, map all to string-keyed objects.
 	if len(opt.EnumKeys.Keys) > 0 {
 		if obj.Properties == nil {
 			obj.Properties = map[string]*Object{}
@@ -289,7 +319,6 @@ func toObject(opt *Option) (*Object, error) {
 			}
 		}
 	}
-	obj.Type = propertyType(opt.Type)
 	obj.Default = formatOptionDefault(opt)
 
 	return obj, nil
@@ -337,14 +366,27 @@ var associatedToExtensionProperties = map[string][]string{
 	"buildFlags": {"go.buildFlags", "go.buildTags"},
 }
 
-func propertyType(t string) string {
+func propertyType(typs ...string) any /* string or []string */ {
+	if len(typs) == 0 {
+		panic("unexpected: len(typs) == 0")
+	}
+	if len(typs) == 1 {
+		return mapType(typs[0])
+	}
+
+	var ret []string
+	for _, t := range typs {
+		ret = append(ret, mapType(t))
+	}
+	return ret
+}
+
+func mapType(t string) string {
 	switch t {
 	case "string":
 		return "string"
 	case "bool":
 		return "boolean"
-	case "enum":
-		return "string"
 	case "time.Duration":
 		return "string"
 	case "[]string":
@@ -352,27 +394,18 @@ func propertyType(t string) string {
 	case "map[string]string", "map[string]bool", "map[enum]string", "map[enum]bool":
 		return "object"
 	case "any":
-		return "boolean" // TODO(hyangah): change to "" after https://go.dev/cl/593656 is released.
+		return "boolean"
 	}
 	log.Fatalf("unknown type %q", t)
 	return ""
 }
 
-func check(err error) {
-	if err == nil {
-		return
-	}
-
-	log.Output(1, err.Error())
-	os.Exit(1)
-}
-
 // Object represents a VS Code settings object.
 type Object struct {
-	Type                     string             `json:"type,omitempty"`
+	Type                     any                `json:"type,omitempty"` // string | []string
 	MarkdownDescription      string             `json:"markdownDescription,omitempty"`
 	AdditionalProperties     bool               `json:"additionalProperties,omitempty"`
-	Enum                     []string           `json:"enum,omitempty"`
+	Enum                     []any              `json:"enum,omitempty"`
 	MarkdownEnumDescriptions []string           `json:"markdownEnumDescriptions,omitempty"`
 	Default                  interface{}        `json:"default,omitempty"`
 	Scope                    string             `json:"scope,omitempty"`
@@ -395,6 +428,7 @@ type API struct {
 	Options   map[string][]*Option
 	Lenses    []*Lens
 	Analyzers []*Analyzer
+	Hints     []*Hint
 }
 
 type Option struct {

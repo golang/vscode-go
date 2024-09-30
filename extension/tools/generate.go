@@ -495,9 +495,18 @@ func enumDescriptionsSnippet(p *Property) string {
 	if hasDesc && len(desc) == len(p.Enum) {
 		b.WriteString("\n\n")
 		for i, e := range p.Enum {
-			fmt.Fprintf(b, "* `%v`", e)
-			if d := desc[i]; d != "" {
-				fmt.Fprintf(b, ": %v", strings.TrimRight(strings.ReplaceAll(d, "\n\n", "<br/>"), "\n"))
+			enumName := fmt.Sprintf("`%v`", e)
+			if d := desc[i]; d == "" {
+				fmt.Fprintf(b, "* %v", enumName)
+			} else {
+				enumDesc := strings.TrimRight(strings.ReplaceAll(d, "\n\n", "<br/>"), "\n")
+				if strings.HasPrefix(d, enumName+":") {
+					// gopls's enum descriptions are sometimes already formatted
+					// like `name: description` format. Remove the duplicate prefix.
+					fmt.Fprintf(b, "* %v", enumDesc)
+				} else {
+					fmt.Fprintf(b, "* %v: %v", enumName, enumDesc)
+				}
 			}
 			b.WriteString("\n")
 		}
@@ -644,7 +653,7 @@ func describeDebugProperty(p *Property) string {
 	if p.MarkdownDescription != "" {
 		desc = p.MarkdownDescription
 	}
-	if p == nil || strings.Contains(desc, "Not applicable when using `dlv-dap` mode.") {
+	if strings.Contains(desc, "Not applicable when using `dlv-dap` mode.") {
 		return ""
 	}
 
