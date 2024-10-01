@@ -238,7 +238,6 @@ func main() {
 		log.Fatalf("failed to list all module version: %v", err)
 	}
 	latestIndex := len(versions.Versions) - 1
-	latestPre := versions.Versions[latestIndex]
 	// We need to find the last version that was not a pre-release.
 	var latest string
 	for ; latestIndex >= 0; latestIndex-- {
@@ -252,10 +251,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to list gopls latest version: %v", err)
 	}
-	goplsVersionPre, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latestPre))
-	if err != nil {
-		log.Fatalf("failed to list gopls latest prerelease version: %v", err)
-	}
 
 	allToolsFile := filepath.Join(dir, "tools", "allTools.ts.in")
 
@@ -266,7 +261,7 @@ func main() {
 	}
 
 	// TODO(suzmue): change input to json and avoid magic string printing.
-	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")])
+	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")])
 
 	// Write tools section.
 	b.WriteString(toolsString)

@@ -30,12 +30,9 @@ export interface Tool {
 	defaultVersion?: string;
 
 	// latestVersion and latestVersionTimestamp are hardcoded default values
-	// for the last known version of the given tool. We also hardcode values
-	// for the latest known pre-release of the tool for the Nightly extension.
+	// for the last known version of the given tool.
 	latestVersion?: semver.SemVer | null;
 	latestVersionTimestamp?: moment.Moment;
-	latestPrereleaseVersion?: semver.SemVer | null;
-	latestPrereleaseVersionTimestamp?: moment.Moment;
 
 	// minimumGoVersion sets the minimum required version of Go
 	// for the tool.
