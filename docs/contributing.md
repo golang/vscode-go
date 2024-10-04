@@ -21,7 +21,7 @@ Our canonical Git repository is located at https://go.googlesource.com/vscode-go
 
 If you are interested in fixing a bug or contributing a feature, please [file an issue](https://github.com/golang/vscode-go/issues/new/choose) first. Wait for a project maintainer to respond before you spend time coding.
 
-If you wish to work on an existing issue, please add a comment saying so, as someone may already be working on it. A project maintainer may respond with advice on how to get started. If you're not sure which issues are available, search for issues with the [help wanted label](https://github.com/golang/vscode-go/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+If you wish to work on an existing issue, please add a comment saying so, as someone may already be working on it. A project maintainer may respond with advice on how to get started. If you're not sure which issues are available, search for issues with the [help wanted label](https://github.com/golang/vscode-go/labels/HelpWanted).
 
 ### Ask for help
 
@@ -38,7 +38,7 @@ For extending the language features or fixing bugs, please follow `gopls`'s
 
 ### Debug Adapter (`dlv dap`)
 
-Debugging features are implemented by Delve (`dlv`) and its native DAP implementation 
+Debugging features are implemented by Delve (`dlv`) and its native DAP implementation
 ([`dlv dap`](https://github.com/go-delve/delve/blob/master/Documentation/api/dap/README.md)).
 
 * goDebugConfiguration.ts: where launch configuration massaging occurs.
@@ -65,7 +65,7 @@ The debugging feature documentation has a dedicated section for tips for develop
 
 #### Lint
 
-You can run `npm run lint` on the command-line to check for lint errors in your program. You can also use the [TSLint](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-tslint-plugin) plugin to see errors as you code.
+You can run `npm run lint` on the command-line to check for lint errors in your program. You can also use the [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) plugin to see errors as you code.
 
 ### Run
 
@@ -96,7 +96,7 @@ When running them from terminal:
   - Option 1: Utilize `MOCHA_GREP` environment variable. That is equivalent with [`mocha --grep` flag](https://mochajs.org/#command-line-usage) that runs tests matching the given string or regexp. E.g. `MOCHA_GREP=gopls npm run test` which runs all integration tests whose suite/test names contain `"gopls"`.
   - Option 2: modify the test source code and set the [`only`](https://mochajs.org/#exclusive-tests) or [`skip`](https://mochajs.org/#inclusive-tests) depending on your need. If necessary, you can also modify `test/integration/index.ts` or `test/gopls/index.ts` to include only the test files you want to focus on. Make sure to revert them before sending the changes for review.
 
-#### (2) Debugging tests from VS Code: 
+#### (2) Debugging tests from VS Code:
 `.vscode/launch.json` defines test launch configurations. To run the tests locally, open the Run view (`Ctrl+Shift+D`), select the relevant launch configuration, and hit the Play button (`F5`). Output and results of the tests, including any logging written with `console.log` will appear in the `DEBUG CONSOLE` tab.
 You can supply environment variables (e.g. `MOCHA_GREP`) by modifying the launch configuration entry's `env` property.
   - `Launch Unit Tests`: runs unit tests in `test/unit` (same as `npm run unit-test`)
@@ -183,7 +183,7 @@ Once you've sent out your change, a maintainer will take a look at your contribu
 ### Presubmit Test in CI
 
 When you mail your CL or upload a new patch to an existing CL, *AND*
-you or a fellow contributor assigns the `Run-TryBot=+1` label in Gerrit, the test command defined in 
+you or a fellow contributor assigns the `Run-TryBot=+1` label in Gerrit, the test command defined in
 `build/all.bash` will run by `Kokoro`, which is Jenkins-like Google infrastructure
 for running Dockerized tests. `Kokoro` will post the result as a comment, and add its `TryBot-Result`
 vote after each test run completes.
