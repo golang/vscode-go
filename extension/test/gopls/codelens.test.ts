@@ -29,7 +29,7 @@ suite('Code lenses for testing and benchmarking', function () {
 	const testdataDir = path.join(projectDir, 'test', 'testdata', 'codelens');
 	const env = new Env();
 
-	this.afterEach(async function () {
+	this.afterEach(function () {
 		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 		// I don't know why but this.currentTest.state does not have the expected value when
 		// used with teardown.
@@ -229,16 +229,14 @@ suite('Code lenses for testing and benchmarking', function () {
 });
 
 suite('Code lenses with stretchr/testify/suite', function () {
-	if (process.platform === 'win32') {
-		this.timeout(20000); // Gopls on windows needs more time to load required modules.
-	}
+	this.timeout(20000); // Gopls needs to load modules from the internet for this test.
 
 	const ctx = MockExtensionContext.new();
 
 	const testdataDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata', 'stretchrTestSuite');
 	const env = new Env();
 
-	this.afterEach(async function () {
+	this.afterEach(function () {
 		// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 		// I don't know why but this.currentTest.state does not have the expected value when
 		// used with teardown.

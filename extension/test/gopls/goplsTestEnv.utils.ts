@@ -143,14 +143,11 @@ export class Env {
 	public async teardown() {
 		try {
 			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-			await this.languageClient?.stop(1000); // 1s timeout
+			await this.languageClient?.stop(10000); // 10s timeout
 		} catch (e) {
-			console.log(`failed to stop gopls within 1sec: ${e}`);
+			console.log(`failed to stop gopls within 10sec: ${e}`);
+			this.flushTrace(true);
 		} finally {
-			if (this.languageClient?.isRunning()) {
-				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
-				this.flushTrace(true);
-			}
 			for (const d of this.disposables) {
 				d.dispose();
 			}
