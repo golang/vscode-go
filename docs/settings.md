@@ -610,7 +610,7 @@ This setting is only supported when gopls is built with Go 1.16 or later.
 Default: `["ignore"]`
 ### `build.templateExtensions`
 
-templateExtensions gives the extensions of file names that are treateed
+templateExtensions gives the extensions of file names that are treated
 as template files. (The extension
 is the part of the file name after the final dot.)
 
