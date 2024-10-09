@@ -33,7 +33,8 @@ import {
 	ProvideCompletionItemsSignature,
 	ProvideDocumentFormattingEditsSignature,
 	ResponseError,
-	RevealOutputChannelOn
+	RevealOutputChannelOn,
+	Location
 } from 'vscode-languageclient';
 import { LanguageClient, ServerOptions } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
@@ -1664,4 +1665,40 @@ async function getGoplsStats(binpath?: string) {
 		console.log(`gopls stats -anon failed: ${JSON.stringify(e)}`);
 		return `gopls stats -anon failed after ${duration} ms. Please check if gopls is killed by OS.`;
 	}
+}
+
+export async function getSymbolImplementations(
+	goCtx: GoExtensionContext,
+	document: vscode.TextDocument,
+	symbol: vscode.DocumentSymbol
+): Promise<vscode.Location[]> {
+	const languageClient = goCtx.languageClient;
+	if (languageClient) {
+		const params = {
+			textDocument: { uri: document.uri.toString() },
+			position: {
+				line: symbol.selectionRange.start.line,
+				character: symbol.selectionRange.start.character
+			}
+		};
+		try {
+			const implementations = await languageClient.sendRequest<Location[]>('textDocument/implementation', params);
+			return (
+				implementations.map(
+					(i) =>
+						new vscode.Location(
+							vscode.Uri.parse(i.uri),
+							new vscode.Range(
+								new vscode.Position(i.range.start.line, i.range.start.character),
+								new vscode.Position(i.range.end.line, i.range.end.character)
+							)
+						)
+				) || []
+			);
+		} catch (error) {
+			console.error(`unable to get implementations for ${symbol.name}:`, error);
+			return [];
+		}
+	}
+	return [];
 }

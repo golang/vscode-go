@@ -211,11 +211,13 @@ Feature level setting to enable/disable code lens for references and run/debug t
 | Properties | Description |
 | --- | --- |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
+| `implementation` | If true, enables code lens for showing implementations <br/> Default: `true` |
 
 Default:
 ```
 {
 	"runtest" :	true,
+	"implementation" :	true,
 }
 ```
 ### `go.formatFlags`

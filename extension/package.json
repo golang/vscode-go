@@ -1551,6 +1551,11 @@
               "type": "boolean",
               "default": true,
               "description": "If true, enables code lens for running and debugging tests"
+            },
+            "implementation": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, enables code lens for showing implementations"
             }
           },
           "additionalProperties": false,
