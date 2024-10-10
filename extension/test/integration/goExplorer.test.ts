@@ -29,18 +29,36 @@ suite('GoExplorerProvider', () => {
 		ctx.teardown();
 	});
 
+	// The GoExplorerProvider extends vscode.TreeDataProvider,
+	// and presents tree view consisting of:
+	//   + env (env variable tree)
+	//      + GOENV
+	//      + GOMOD
+	//      + ....
+	//   + tools (tools info tree)
+	//      + various tools
+	//      + ....
+	// The ordering of children is deterministric. Env tree comes
+	// before Tools tree in the current implementation.
+	//
+	// Env tree changes depending on the open file.
+	// Tools tree is the list of tools used for the window and remains static.
 	test('env tree', async () => {
-		const [env] = await explorer.getChildren()!;
+		const [env] = await explorer.getChildren()!; // the first level has two children [env, tool]
 		assert.strictEqual(env.label, 'env');
 		assert.strictEqual(env.contextValue, 'go:explorer:envtree');
 	});
 
 	test('env tree items', async () => {
 		const [env] = await explorer.getChildren()!;
-		const [goenv, gomod] = (await explorer.getChildren(env)) as { key: string; value: string }[];
-		assert.strictEqual(goenv.key, 'GOENV');
-		assert.strictEqual(gomod.key, 'GOMOD');
-		assert.strictEqual(resolveHomeDir(gomod.value), path.join(fixtureDir, 'go.mod'));
+		const items = (await explorer.getChildren(env)) as { key: string; value: string }[];
+		for (const key of ['GOENV', 'GOTOOLCHAIN', 'GOMOD']) {
+			const item = items.find((item) => item.key === key);
+			assert(item, `missing ${key}: ${JSON.stringify(items)}`);
+			if (key === 'GOMOD') {
+				assert.strictEqual(resolveHomeDir(item.value), path.join(fixtureDir, 'go.mod'));
+			}
+		}
 	});
 
 	test('tools tree', async () => {

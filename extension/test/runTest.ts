@@ -4,6 +4,10 @@ import * as path from 'path';
 import { SilentReporter, runTests } from '@vscode/test-electron';
 
 async function main() {
+	// Use the local toolchain by default
+	// instead of getting affected by the extension/go.mod go or toolchain directives.
+	process.env['GOTOOLCHAIN'] = 'local';
+
 	// We are in test mode.
 	process.env['VSCODE_GO_IN_TEST'] = '1';
 	if (process.argv.length > 2) {
