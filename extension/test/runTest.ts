@@ -4,6 +4,9 @@ import * as path from 'path';
 import { SilentReporter, runTests } from '@vscode/test-electron';
 
 async function main() {
+	// Disable chatty electron's DBUS errors by unsetting this env var.
+	// DBUS is not required. https://github.com/microsoft/vscode-test/issues/127
+	process.env['DBUS_SESSION_BUS_ADDRESS'] = '';
 	// Use the local toolchain by default
 	// instead of getting affected by the extension/go.mod go or toolchain directives.
 	process.env['GOTOOLCHAIN'] = 'local';
