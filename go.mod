@@ -1,7 +1,10 @@
 module github.com/golang/vscode-go
 
-go 1.21
+go 1.23.1
 
-require golang.org/x/telemetry v0.0.0-20240712210958-268b4a8ec2d7
+require golang.org/x/telemetry v0.0.0-20241004145657-5eebfecbdf1f
 
-require golang.org/x/sys v0.22.0 // indirect
+require (
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+)

@@ -8,9 +8,9 @@ require (
 )
 
 require (
-	golang.org/x/mod v0.20.0
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/telemetry v0.0.0-20240712210958-268b4a8ec2d7 // indirect
+	golang.org/x/mod v0.21.0
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/telemetry v0.0.0-20241004145657-5eebfecbdf1f // indirect
 )
 
 // For development, use the vscgo in the same repo.
