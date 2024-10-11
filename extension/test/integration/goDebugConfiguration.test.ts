@@ -23,6 +23,10 @@ suite('Debug Environment Variable Merge Test', () => {
 	const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 
+	// updateGoVarsFromConfig mutates process.env.
+	// Stash the original value and restore it in suiteTeardown.
+	// TODO: avoid updateGoVarsFromConfig.
+	const prevEnv = Object.assign({}, process.env);
 	suiteSetup(async () => {
 		await goInstallTools.updateGoVarsFromConfig({});
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
@@ -30,6 +34,7 @@ suite('Debug Environment Variable Merge Test', () => {
 
 	suiteTeardown(() => {
 		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		process.env = prevEnv;
 	});
 
 	let sandbox: sinon.SinonSandbox;

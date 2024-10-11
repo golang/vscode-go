@@ -11,12 +11,19 @@ import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 
 suite('Go Test Runner', () => {
+	// updateGoVarsFromConfig mutates process.env. Restore the cached
+	// prevEnv when teardown.
+	// TODO: avoid updateGoVarsFromConfig call.
+	const prevEnv = Object.assign({}, process.env);
 	const fixtureDir = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 
 	let testExplorer: GoTestExplorer;
 
 	suiteSetup(async () => {
 		await updateGoVarsFromConfig({});
+	});
+	suiteTeardown(() => {
+		process.env = prevEnv;
 	});
 
 	suite('parseOutput', () => {
@@ -170,10 +177,13 @@ suite('Go Test Runner', () => {
 	});
 
 	suite('Subtest', function () {
+		// This test is slow, especially on Windows.
 		// WARNING: each call to testExplorer.runner.run triggers one or more
 		// `go test` command runs (testUtils.goTest is spied, not mocked or replaced).
 		// Each `go test` command invocation can take seconds on slow machines.
 		// As we add more cases, the timeout should be increased accordingly.
+		this.timeout(20000); // I don't know why but timeout chained after `suite` didn't work.
+
 		const sandbox = sinon.createSandbox();
 		const subTestDir = path.join(fixtureDir, 'subTest');
 		const ctx = MockExtensionContext.new();
@@ -204,7 +214,6 @@ suite('Go Test Runner', () => {
 		});
 
 		test('discover and run', async () => {
-			console.log('discover and run');
 			// Locate TestMain and TestOther
 			const tests = testExplorer.resolver.find(uri).filter((x) => GoTest.parseId(x.id).kind === 'test');
 			tests.sort((a, b) => a.label.localeCompare(b.label));
@@ -284,6 +293,6 @@ suite('Go Test Runner', () => {
 				'Failed to execute `go test`'
 			);
 			assert.strictEqual(spy.callCount, 0, 'expected no calls to goTest');
-		}).timeout(10000);
+		});
 	});
 });

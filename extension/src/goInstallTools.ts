@@ -480,6 +480,9 @@ export async function promptForUpdatingTool(
 }
 
 export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void> {
+	// TODO(hyangah): can we avoid modifying process.env? The `go env` output
+	// can be cached in memory and queried when functions in goEnv.ts are called
+	// instead of mutating process.env.
 	const { binPath, why } = getBinPathWithExplanation('go', false);
 	const goRuntimePath = binPath;
 
@@ -492,11 +495,14 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	}
 
 	return new Promise<void>((resolve, reject) => {
+		const env = toolExecutionEnvironment();
+		const cwd = getWorkspaceFolderPath();
+
 		cp.execFile(
 			goRuntimePath,
 			// -json is supported since go1.9
 			['env', '-json', 'GOPATH', 'GOROOT', 'GOPROXY', 'GOBIN', 'GOMODCACHE'],
-			{ env: toolExecutionEnvironment(), cwd: getWorkspaceFolderPath() },
+			{ env: env, cwd: cwd },
 			(err, stdout, stderr) => {
 				if (err) {
 					outputChannel.append(

@@ -26,20 +26,6 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	} else {
 		toolsGopath = getCurrentGoPath();
 	}
-	if (!toolsGopath) {
-		const msg = 'Cannot install Go tools. Set either go.gopath or go.toolsGopath in settings.';
-		vscode.window.showInformationMessage(msg, 'Open User Settings', 'Open Workspace Settings').then((selected) => {
-			switch (selected) {
-				case 'Open User Settings':
-					vscode.commands.executeCommand('workbench.action.openGlobalSettings');
-					break;
-				case 'Open Workspace Settings':
-					vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
-					break;
-			}
-		});
-		return {};
-	}
 	env['GOPATH'] = toolsGopath;
 
 	// Explicitly set 'auto' so tools that require

@@ -37,6 +37,10 @@ suite('Code lenses for testing and benchmarking', function () {
 		sinon.restore();
 	});
 
+	// updaetGoVarsFromConfig mutates env vars. Cache the value
+	// so we can restore it in suiteTeardown.
+	const prevEnv = Object.assign({}, process.env);
+
 	suiteSetup(async () => {
 		await updateGoVarsFromConfig({});
 
@@ -47,6 +51,7 @@ suite('Code lenses for testing and benchmarking', function () {
 
 	suiteTeardown(async () => {
 		await env.teardown();
+		process.env = prevEnv;
 	});
 
 	test('Subtests - runs a test with cursor on t.Run line', async () => {
