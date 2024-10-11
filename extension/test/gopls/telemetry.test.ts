@@ -194,7 +194,7 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 }
 
 describe('# telemetry reporter using vscgo', async function () {
-	this.timeout(10000); // go install can be slow.
+	this.timeout(20000); // go install can be slow.
 	// installVSCGO expects
 	//   {extensionPath}/vscgo: vscgo source code for testing.
 	//   {extensionPath}/bin: where compiled vscgo will be stored.
@@ -218,6 +218,7 @@ describe('# telemetry reporter using vscgo', async function () {
 		} catch (e) {
 			assert.fail(`failed to install vscgo needed for testing: ${e}`);
 		}
+		console.log(`vscgo installed: ${vscgo}`);
 	});
 	suiteTeardown(() => {
 		rmdirRecursive(tmpDir);
