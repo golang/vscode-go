@@ -27,7 +27,10 @@ import util = require('util');
 import { affectedByIssue832 } from './testutils';
 
 // For debugging test and streaming the trace instead of buffering, set this.
-const PRINT_TO_CONSOLE = false;
+const DEBUG = process.env['DEBUG'] === '1';
+function debugLog(msg: string) {
+	if (DEBUG) console.log(msg);
+}
 
 // Test suite adapted from:
 // https://github.com/microsoft/vscode-mock-debug/blob/master/src/tests/adapter.test.ts
@@ -190,7 +193,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			new Promise<void>(async (resolve) => {
 				const debugConfigCopy = Object.assign({}, debugConfig);
 				delete debugConfigCopy.env;
-				console.log(`Setting up attach request for ${JSON.stringify(debugConfigCopy)}.`);
+				debugLog(`Setting up attach request for ${JSON.stringify(debugConfigCopy)}.`);
 				const attachResult = await dc.attachRequest(debugConfig as DebugProtocol.AttachRequestArguments);
 				assert.ok(attachResult.success);
 				resolve();
@@ -199,7 +202,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		]);
 
 		if (breakpoints.length) {
-			console.log('Sending set breakpoints request for remote attach setup.');
+			debugLog('Sending set breakpoints request for remote attach setup.');
 			const breakpointsResult = await dc.setBreakpointsRequest({
 				source: { path: breakpoints[0].path },
 				breakpoints
@@ -210,7 +213,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				assert.ok(breakpoint.verified);
 			});
 		}
-		console.log('Sending configuration done request for remote attach setup.');
+		debugLog('Sending configuration done request for remote attach setup.');
 		const configurationDoneResult = await dc.configurationDoneRequest();
 		assert.ok(configurationDoneResult.success);
 	}
@@ -2099,21 +2102,10 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	}
 
 	private constructor(config: DebugConfiguration) {
-		const logger = {
-			trace: (msg: string) => {
-				console.log(msg);
-			},
-			debug: (msg: string) => {
-				console.log(msg);
-			},
-			info: (msg: string) => {
-				console.log(msg);
-			},
-			error: (msg: string) => {
-				console.error(msg);
-			}
+		const log = (msg: string) => {
+			debugLog(msg);
 		};
-		super(config, logger);
+		super(config, { trace: log, debug: log, info: log, error: log });
 	}
 
 	private static TWO_CRLF = '\r\n\r\n';
@@ -2277,7 +2269,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	private _log = [] as string[];
 	private log(msg: string) {
 		this._log.push(msg);
-		if (PRINT_TO_CONSOLE) {
+		if (DEBUG) {
 			console.log(msg);
 		}
 	}

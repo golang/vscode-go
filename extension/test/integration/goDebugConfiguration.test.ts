@@ -1023,7 +1023,8 @@ suite('Debug Configuration Infers Default Mode Property', () => {
 			name: 'Attach',
 			type: 'go',
 			request: 'attach',
-			program: '/path/to/main.go'
+			program: '/path/to/main.go',
+			processId: 12345 // set a bogus process ID to provent process quickPick popup.
 		};
 
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);
