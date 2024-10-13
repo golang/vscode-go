@@ -31,6 +31,10 @@ export class GoCodeLensProvider extends GoBaseCodeLensProvider {
 				}
 			})
 		);
+
+		codeLensProvider.goToImplementations = codeLensProvider.goToImplementations.bind(codeLensProvider);
+
+		vscode.commands.registerCommand('go.codeLens.goToImplementations', codeLensProvider.goToImplementations);
 	}
 
 	constructor(private readonly goCtx: GoExtensionContext) {
@@ -48,32 +52,42 @@ export class GoCodeLensProvider extends GoBaseCodeLensProvider {
 			return [];
 		}
 
-		const abstractCodelenses = this.getCodeLensForAbstractSymbols(document, token);
-		const concreteCodelenses = this.getCodeLensForConcreteSymbols(document, token);
+		const prefetchImpls = codeLensConfig ? codeLensConfig['prefetchImpls'] : false;
+
+		const abstractCodelenses = this.getCodeLensForAbstractSymbols(document, token, prefetchImpls);
+		const concreteCodelenses = this.getCodeLensForConcreteSymbols(document, token, prefetchImpls);
 
 		const codeLenses = await Promise.all([abstractCodelenses, concreteCodelenses]);
-
 		return codeLenses.flat();
 	}
 
-	private async getCodeLensForConcreteSymbols(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+	private async getCodeLensForConcreteSymbols(
+		document: TextDocument,
+		token: CancellationToken,
+		prefetchImpls: boolean
+	): Promise<CodeLens[]> {
 		const concreteTypes = await this.getConcreteTypes(document);
 		if (concreteTypes && concreteTypes.length) {
-			const concreteTypesCodeLens = await this.mapSymbolsToCodeLenses(document, concreteTypes);
+			const concreteTypesCodeLens = await this.mapSymbolsToCodeLenses(document, concreteTypes, prefetchImpls);
 			return concreteTypesCodeLens;
 		}
 
 		return [];
 	}
 
-	private async getCodeLensForAbstractSymbols(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+	private async getCodeLensForAbstractSymbols(
+		document: TextDocument,
+		token: CancellationToken,
+		prefetchImpls: boolean
+	): Promise<CodeLens[]> {
 		const interfaces = await this.getInterfaces(document);
 		if (interfaces && interfaces.length) {
-			const interfacesCodeLens = this.mapSymbolsToCodeLenses(document, interfaces);
+			const interfacesCodeLens = this.mapSymbolsToCodeLenses(document, interfaces, prefetchImpls);
 
 			const methodsCodeLens = this.mapSymbolsToCodeLenses(
 				document,
-				interfaces.flatMap((i) => i.children)
+				interfaces.flatMap((i) => i.children),
+				prefetchImpls
 			);
 
 			const codeLenses = await Promise.all([interfacesCodeLens, methodsCodeLens]);
@@ -125,24 +139,47 @@ export class GoCodeLensProvider extends GoBaseCodeLensProvider {
 
 	private async mapSymbolsToCodeLenses(
 		document: vscode.TextDocument,
-		symbols: vscode.DocumentSymbol[]
+		symbols: vscode.DocumentSymbol[],
+		prefetchImpls: boolean
 	): Promise<vscode.CodeLens[]> {
-		return Promise.all(
-			symbols.map(async (s) => {
-				const implementations = await this.getImplementations(document, s);
-				if (implementations.length) {
-					return new CodeLens(s.range, {
-						title: `${implementations.length} implementation${implementations.length > 1 ? 's' : ''}`,
-						command: 'editor.action.goToLocations',
-						arguments: [document.uri, s.range.start, implementations, 'peek']
-					});
-				}
+		if (prefetchImpls) {
+			return Promise.all(
+				symbols.map(async (s) => {
+					const implementations = await this.getImplementations(document, s);
+					if (implementations.length) {
+						return new CodeLens(s.range, {
+							title: `${implementations.length} implementation${implementations.length > 1 ? 's' : ''}`,
+							command: 'editor.action.goToLocations',
+							arguments: [document.uri, s.range.start, implementations, 'peek']
+						});
+					}
 
-				return new CodeLens(s.range, {
-					title: 'no implementation found',
-					command: ''
-				});
-			})
+					return new CodeLens(s.range, {
+						title: 'no implementation found',
+						command: ''
+					});
+				})
+			);
+		}
+
+		return symbols.map((s) => {
+			return new CodeLens(s.range, {
+				title: 'implementations',
+				command: 'go.codeLens.goToImplementations',
+				arguments: [document, s]
+			});
+		});
+	}
+
+	private async goToImplementations(document: vscode.TextDocument, symbol: vscode.DocumentSymbol) {
+		const implementations = await this.getImplementations(document, symbol);
+		await vscode.commands.executeCommand(
+			'editor.action.goToLocations',
+			document.uri,
+			symbol.range.start,
+			implementations,
+			'peek',
+			'No implementation found'
 		);
 	}
 

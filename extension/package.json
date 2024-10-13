@@ -1556,11 +1556,18 @@
               "type": "boolean",
               "default": true,
               "description": "If true, enables code lens for showing implementations"
+            },
+            "prefetchImpls": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, shows implementation count in the code lens text"
             }
           },
           "additionalProperties": false,
           "default": {
-            "runtest": true
+            "runtest": true,
+            "implementation": true,
+            "prefetchImpls": false
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"

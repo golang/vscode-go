@@ -1683,18 +1683,18 @@ export async function getSymbolImplementations(
 		};
 		try {
 			const implementations = await languageClient.sendRequest<Location[]>('textDocument/implementation', params);
-			return (
-				implementations.map(
-					(i) =>
-						new vscode.Location(
-							vscode.Uri.parse(i.uri),
-							new vscode.Range(
-								new vscode.Position(i.range.start.line, i.range.start.character),
-								new vscode.Position(i.range.end.line, i.range.end.character)
+			return implementations
+				? implementations.map(
+						(i) =>
+							new vscode.Location(
+								vscode.Uri.parse(i.uri),
+								new vscode.Range(
+									new vscode.Position(i.range.start.line, i.range.start.character),
+									new vscode.Position(i.range.end.line, i.range.end.character)
+								)
 							)
-						)
-				) || []
-			);
+				  )
+				: [];
 		} catch (error) {
 			console.error(`unable to get implementations for ${symbol.name}:`, error);
 			return [];
