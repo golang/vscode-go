@@ -29,6 +29,7 @@ import { debugTestAtCursor } from '../goTest';
 import { GoExtensionContext } from '../context';
 import path = require('path');
 import { escapeRegExp } from '../subTestUtils';
+import { GetCoverageCounts } from '../goCover';
 
 let debugSessionID = 0;
 
@@ -120,6 +121,21 @@ export class GoTestRunner {
 			async (request, token) => {
 				try {
 					await this.run(request, token, this.profiler.options);
+				} catch (error) {
+					const m = 'Failed to execute tests';
+					outputChannel.error(`${m}: ${error}`);
+					await vscode.window.showErrorMessage(m);
+				}
+			},
+			false
+		);
+
+		ctrl.createRunProfile(
+			'Go (Coverage)',
+			TestRunProfileKind.Coverage,
+			async (request, token) => {
+				try {
+					await this.run(request, token, {}, true);
 				} catch (error) {
 					const m = 'Failed to execute tests';
 					outputChannel.error(`${m}: ${error}`);
@@ -228,7 +244,7 @@ export class GoTestRunner {
 	}
 
 	// Execute tests - TestController.runTest callback
-	async run(request: TestRunRequest, token?: CancellationToken, options: ProfilingOptions = {}): Promise<boolean> {
+	async run(request: TestRunRequest, token?: CancellationToken, options: ProfilingOptions = {}, applyCodeCoverage = false): Promise<boolean> {
 		const collected = new Map<TestItem, CollectedTest[]>();
 		const files = new Set<TestItem>();
 		if (request.include) {
@@ -360,7 +376,8 @@ export class GoTestRunner {
 				options,
 				pkg,
 				record,
-				concat
+				concat,
+				applyCodeCoverage,
 			};
 
 			// Run tests
@@ -391,6 +408,10 @@ export class GoTestRunner {
 
 			if (token?.isCancellationRequested) {
 				break;
+			}
+
+			if (applyCodeCoverage) {
+				this.collectCoverage(run);
 			}
 		}
 
@@ -725,6 +746,19 @@ export class GoTestRunner {
 
 		// TODO(firelizzard18): Add more sophisticated check for build failures?
 		return output.some((x) => rePkg.test(x));
+	}
+
+	collectCoverage(run: TestRun) {
+		const coverageData = GetCoverageCounts();
+		for (const filename in coverageData) {
+			const data = coverageData[filename];
+			run.addCoverage(
+				new vscode.FileCoverage(
+					Uri.file(filename),
+					new vscode.TestCoverageCount(data.Covered, data.Total),
+				),
+			);
+		}
 	}
 }
 
