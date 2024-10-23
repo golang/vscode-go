@@ -184,12 +184,28 @@ function disposeDecorators() {
 	}
 }
 
+export function GetCoverageCounts(): CoverageCountsMap {
+	return coverageCounts;
+}
+
 interface CoverageData {
 	uncoveredOptions: vscode.DecorationOptions[];
 	coveredOptions: vscode.DecorationOptions[];
 }
 
+interface CoverageCounts {
+	Covered: number;
+	Total: number;
+}
+
+interface CoverageCountsMap {
+	[key: string]: CoverageCounts;
+}
+
+// type CoverageCounts = Map<string, {Covered: number, Total: number}>;
+
 let coverageData: { [key: string]: CoverageData } = {}; // actual file path to the coverage data.
+let coverageCounts: CoverageCountsMap = {}; // actual file path to the coverage counts.
 let isCoverageApplied = false;
 
 function emptyCoverageData(): CoverageData {
@@ -219,6 +235,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 		try {
 			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
 			const coveragePath = new Map<string, CoverageData>(); // <filename> from the cover profile to the coverage data.
+			const covCounts = new Map<string, CoverageCounts>(); // <filename> from the cover profile to the coverage counts.
 
 			// Clear existing coverage files
 			clearCoverage();
@@ -261,6 +278,8 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 
 				// and fill in coveragePath
 				const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
+				// fill in file stats
+				const fileCounts = covCounts.get(filename) || { Covered: 0, Total: 0 };
 				// When line directive is used this information is artificial and
 				// the source code file can be non-existent or wrong (go.dev/issues/41222).
 				// There is no perfect way to guess whether the line/col in coverage profile
@@ -280,6 +299,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 					endCol - 1
 				);
 
+				const statements = parseInt(parse[6], 10);
 				const counts = parseInt(parse[7], 10);
 				// If is Covered (CoverCount > 0)
 				if (counts > 0) {
@@ -288,11 +308,19 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 					coverage.uncoveredOptions.push(...elaborate(range, counts, showCounts));
 				}
 
+
+				if (counts > 0) {
+					fileCounts.Covered += statements;
+				}
+				fileCounts.Total += statements;
+
+				covCounts.set(filename, fileCounts);
 				coveragePath.set(filename, coverage);
 			});
 
 			getImportPathToFolder([...seenPaths], dir).then((pathsToDirs) => {
 				createCoverageData(pathsToDirs, coveragePath);
+				createCoverageCounts(pathsToDirs, covCounts);
 				setDecorators();
 				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
 				resolve();
@@ -346,6 +374,26 @@ function createCoverageData(pathsToDirs: Map<string, string>, coveragePath: Map<
 		const fileDir = pathsToDirs.get(maybePkgPath) || path.resolve(maybePkgPath);
 		const file = fileDir + path.sep + ip.slice(lastSlash + 1);
 		setCoverageDataByFilePath(file, cd);
+	});
+}
+
+function createCoverageCounts(pathsToDirs: Map<string, string>, counts: Map<string, CoverageCounts>) {
+	counts.forEach((cc, ip) => {
+		if (path.isAbsolute(ip)) {
+			coverageCounts[ip] = cc;
+			return;
+		}
+
+		const lastSlash = ip.lastIndexOf('/');
+		if (lastSlash === -1) {
+			coverageCounts[ip] = cc;
+			return;
+		}
+
+		const maybePkgPath = ip.slice(0, lastSlash);
+		const fileDir = pathsToDirs.get(maybePkgPath) || path.resolve(maybePkgPath);
+		const file = fileDir + path.sep + ip.slice(lastSlash + 1);
+		coverageCounts[file] = cc;
 	});
 }
 
