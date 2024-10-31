@@ -1134,9 +1134,9 @@ package. Follow Delve project's
 to send PRs.
 
 Code for integration with the Go extension is mostly in
-[`src/goDebugFactory.ts`](https://github.com/golang/vscode-go/blob/master/src/goDebugFactory.ts)
+[`src/goDebugFactory.ts`](https://github.com/golang/vscode-go/blob/master/extension/src/goDebugFactory.ts)
 and tests are in
-[`test/integration/goDebug.test.ts`](https://github.com/golang/vscode-go/blob/master/test/integration/goDebug.test.ts).
+[`test/integration/goDebug.test.ts`](https://github.com/golang/vscode-go/blob/master/extension/test/integration/goDebug.test.ts).
 Please take a look at VS Code Go project's
 [contribution guideline](contributing.md) to learn about how to prepare a change
 and send it for review.
