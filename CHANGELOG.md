@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Changes
 
+* Gopls v0.17: The latest gopls version as of this release is [gopls v0.17](https://github.com/golang/tools/releases/tag/gopls%2Fv0.17.0). The extension settings documentation has been updated to align with the latest gopls settings.
+
 #### Tools installation
 
 * The extension requires go1.21 or newer when it installs required tools. If your project must use go1.20 or older,

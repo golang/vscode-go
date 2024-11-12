@@ -1952,12 +1952,6 @@
           "markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
           "scope": "resource",
           "properties": {
-            "build.allowImplicitNetworkAccess": {
-              "type": "boolean",
-              "markdownDescription": "(Experimental) allowImplicitNetworkAccess disables GOPROXY=off, allowing implicit module\ndownloads rather than requiring user action. This option will eventually\nbe removed.\n",
-              "default": false,
-              "scope": "resource"
-            },
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
@@ -1999,7 +1993,7 @@
             },
             "build.templateExtensions": {
               "type": "array",
-              "markdownDescription": "templateExtensions gives the extensions of file names that are treateed\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
+              "markdownDescription": "templateExtensions gives the extensions of file names that are treated\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
               "default": [],
               "scope": "resource"
             },
@@ -2011,7 +2005,7 @@
             },
             "formatting.local": {
               "type": "string",
-              "markdownDescription": "local is the equivalent of the `goimports -local` flag, which puts\nimports beginning with this string after third-party packages. It should\nbe the prefix of the import path whose imports should be grouped\nseparately.\n",
+              "markdownDescription": "local is the equivalent of the `goimports -local` flag, which puts\nimports beginning with this string after third-party packages. It should\nbe the prefix of the import path whose imports should be grouped\nseparately.\n\nIt is used when tidying imports (during an LSP Organize\nImports request) or when inserting new ones (for example,\nduring completion); an LSP Formatting request merely sorts the\nexisting imports.\n",
               "default": "",
               "scope": "resource"
             },
@@ -2037,7 +2031,7 @@
                 },
                 "run_govulncheck": {
                   "type": "boolean",
-                  "markdownDescription": "`\"run_govulncheck\"`: Run govulncheck\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with a command to run Govulncheck.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static\nanalysis tool that computes the set of functions reachable\nwithin your application, including dependencies;\nqueries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
+                  "markdownDescription": "`\"run_govulncheck\"`: Run govulncheck (legacy)\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run Govulncheck asynchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
                   "default": false
                 },
                 "test": {
@@ -2059,6 +2053,11 @@
                   "type": "boolean",
                   "markdownDescription": "`\"vendor\"`: Update vendor directory\n\nThis codelens source annotates the `module` directive in a\ngo.mod file with a command to run [`go mod\nvendor`](https://go.dev/ref/mod#go-mod-vendor), which\ncreates or updates the directory named `vendor` in the\nmodule root so that it contains an up-to-date copy of all\nnecessary package dependencies.\n",
                   "default": true
+                },
+                "vulncheck": {
+                  "type": "boolean",
+                  "markdownDescription": "`\"vulncheck\"`: Run govulncheck\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run govulncheck synchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
+                  "default": false
                 }
               }
             },
@@ -2187,11 +2186,6 @@
                   "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analysis reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.",
                   "default": true
                 },
-                "fieldalignment": {
-                  "type": "boolean",
-                  "markdownDescription": "find structs that would use less memory if their fields were sorted\n\nThis analyzer find structs that can be rearranged to use less memory, and provides\na suggested edit with the most compact order.\n\nNote that there are two different diagnostics reported. One checks struct size,\nand the other reports \"pointer bytes\" used. Pointer bytes is how many bytes of the\nobject that the garbage collector has to potentially scan for pointers, for example:\n\n\tstruct { uint32; string }\n\nhave 16 pointer bytes because the garbage collector has to scan up through the string's\ninner pointer.\n\n\tstruct { string; *uint32 }\n\nhas 24 pointer bytes because it has to scan further through the *uint32.\n\n\tstruct { string; uint32 }\n\nhas 8 because it can stop immediately after the string pointer.\n\nBe aware that the most compact order is not always the most efficient.\nIn rare cases it may cause two variables each updated by its own goroutine\nto occupy the same CPU cache line, inducing a form of memory contention\nknown as \"false sharing\" that slows down both goroutines.\n",
-                  "default": false
-                },
                 "fillreturns": {
                   "type": "boolean",
                   "markdownDescription": "suggest fixes for errors due to an incorrect number of return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"wrong number of return values (want %d, got %d)\". For example:\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn\n\t}\n\nwill turn into\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn 0, \"\", nil, nil\n\t}\n\nThis functionality is similar to https://github.com/sqs/goreturns.",
@@ -2224,7 +2218,7 @@
                 },
                 "lostcancel": {
                   "type": "boolean",
-                  "markdownDescription": "check cancel func returned by context.WithCancel is called\n\nThe cancellation function returned by context.WithCancel, WithTimeout,\nand WithDeadline must be called or the new context will remain live\nuntil its parent context is cancelled.\n(The background context is never cancelled.)",
+                  "markdownDescription": "check cancel func returned by context.WithCancel is called\n\nThe cancellation function returned by context.WithCancel, WithTimeout,\nWithDeadline and variants such as WithCancelCause must be called,\nor the new context will remain live until its parent context is cancelled.\n(The background context is never cancelled.)",
                   "default": true
                 },
                 "nilfunc": {
@@ -2269,17 +2263,17 @@
                 },
                 "simplifycompositelit": {
                   "type": "boolean",
-                  "markdownDescription": "check for composite literal simplifications\n\nAn array, slice, or map composite literal of the form:\n\n\t[]T{T{}, T{}}\n\nwill be simplified to:\n\n\t[]T{{}, {}}\n\nThis is one of the simplifications that \"gofmt -s\" applies.",
+                  "markdownDescription": "check for composite literal simplifications\n\nAn array, slice, or map composite literal of the form:\n\n\t[]T{T{}, T{}}\n\nwill be simplified to:\n\n\t[]T{{}, {}}\n\nThis is one of the simplifications that \"gofmt -s\" applies.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
                 "simplifyrange": {
                   "type": "boolean",
-                  "markdownDescription": "check for range statement simplifications\n\nA range of the form:\n\n\tfor x, _ = range v {...}\n\nwill be simplified to:\n\n\tfor x = range v {...}\n\nA range of the form:\n\n\tfor _ = range v {...}\n\nwill be simplified to:\n\n\tfor range v {...}\n\nThis is one of the simplifications that \"gofmt -s\" applies.",
+                  "markdownDescription": "check for range statement simplifications\n\nA range of the form:\n\n\tfor x, _ = range v {...}\n\nwill be simplified to:\n\n\tfor x = range v {...}\n\nA range of the form:\n\n\tfor _ = range v {...}\n\nwill be simplified to:\n\n\tfor range v {...}\n\nThis is one of the simplifications that \"gofmt -s\" applies.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
                 "simplifyslice": {
                   "type": "boolean",
-                  "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\n\ts[a:len(s)]\n\nwill be simplified to:\n\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.",
+                  "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\n\ts[a:len(s)]\n\nwill be simplified to:\n\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
                 "slog": {
@@ -2310,11 +2304,6 @@
                 "structtag": {
                   "type": "boolean",
                   "markdownDescription": "check that struct field tags conform to reflect.StructTag.Get\n\nAlso report certain struct tags (json, xml) used with unexported fields.",
-                  "default": true
-                },
-                "stubmethods": {
-                  "type": "boolean",
-                  "markdownDescription": "detect missing methods and fix with stub implementations\n\nThis analyzer detects type-checking errors due to missing methods\nin assignments from concrete types to interface types, and offers\na suggested fix that will create a set of stub methods so that\nthe concrete type satisfies the interface.\n\nFor example, this function will not compile because the value\nNegativeErr{} does not implement the \"error\" interface:\n\n\tfunc sqrt(x float64) (float64, error) {\n\t\tif x < 0 {\n\t\t\treturn 0, NegativeErr{} // error: missing method\n\t\t}\n\t\t...\n\t}\n\n\ttype NegativeErr struct{}\n\nThis analyzer will suggest a fix to declare this method:\n\n\t// Error implements error.Error.\n\tfunc (NegativeErr) Error() string {\n\t\tpanic(\"unimplemented\")\n\t}\n\n(At least, it appears to behave that way, but technically it\ndoesn't use the SuggestedFix mechanism and the stub is created by\nlogic in gopls's golang.stub function.)",
                   "default": true
                 },
                 "testinggoroutine": {
@@ -2460,13 +2449,26 @@
             },
             "ui.documentation.linkTarget": {
               "type": "string",
-              "markdownDescription": "linkTarget controls where documentation links go.\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n\nModules matching the GOPRIVATE environment variable will not have\ndocumentation links in hover.\n",
+              "markdownDescription": "linkTarget is the base URL for links to Go package\ndocumentation returned by LSP operations such as Hover and\nDocumentLinks and in the CodeDescription field of each\nDiagnostic.\n\nIt might be one of:\n\n* `\"godoc.org\"`\n* `\"pkg.go.dev\"`\n\nIf company chooses to use its own `godoc.org`, its address can be used as well.\n\nModules matching the GOPRIVATE environment variable will not have\ndocumentation links in hover.\n",
               "default": "pkg.go.dev",
               "scope": "resource"
             },
             "ui.documentation.linksInHover": {
-              "type": "boolean",
-              "markdownDescription": "linksInHover controls the presence of documentation links\nin hover markdown.\n\nIts legal values are:\n- `false`, for no links;\n- `true`, for links to the `linkTarget` domain; or\n- `\"gopls\"`, for links to gopls' internal documentation viewer.\n",
+              "type": [
+                "boolean",
+                "string"
+              ],
+              "markdownDescription": "linksInHover controls the presence of documentation links in hover markdown.\n",
+              "enum": [
+                false,
+                true,
+                "gopls"
+              ],
+              "markdownEnumDescriptions": [
+                "false: do not show links",
+                "true: show links to the `linkTarget` domain",
+                "`\"gopls\"`: show links to gopls' internal documentation viewer"
+              ],
               "default": true,
               "scope": "resource"
             },
@@ -2576,37 +2578,37 @@
         },
         "go.inlayHints.assignVariableTypes": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```",
+          "markdownDescription": "`\"assignVariableTypes\"` controls inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```\n",
           "default": false
         },
         "go.inlayHints.compositeLiteralFields": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for composite literal field names:\n```go\n\t{/*in: */\"Hello, world\", /*want: */\"dlrow ,olleH\"}\n```",
+          "markdownDescription": "`\"compositeLiteralFields\"` inlay hints for composite literal field names:\n```go\n\t{/*in: */\"Hello, world\", /*want: */\"dlrow ,olleH\"}\n```\n",
           "default": false
         },
         "go.inlayHints.compositeLiteralTypes": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t/*struct{ in string; want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```",
+          "markdownDescription": "`\"compositeLiteralTypes\"` controls inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t/*struct{ in string; want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```\n",
           "default": false
         },
         "go.inlayHints.constantValues": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota/* = 0*/\n\t\tKindPrint/*  = 1*/\n\t\tKindPrintf/* = 2*/\n\t\tKindErrorf/* = 3*/\n\t)\n```",
+          "markdownDescription": "`\"constantValues\"` controls inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota/* = 0*/\n\t\tKindPrint/*  = 1*/\n\t\tKindPrintf/* = 2*/\n\t\tKindErrorf/* = 3*/\n\t)\n```\n",
           "default": false
         },
         "go.inlayHints.functionTypeParameters": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo/*[int, string]*/(1, \"hello\")\n```",
+          "markdownDescription": "`\"functionTypeParameters\"` inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo/*[int, string]*/(1, \"hello\")\n```\n",
           "default": false
         },
         "go.inlayHints.parameterNames": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for parameter names:\n```go\n\tparseInt(/* str: */ \"123\", /* radix: */ 8)\n```",
+          "markdownDescription": "`\"parameterNames\"` controls inlay hints for parameter names:\n```go\n\tparseInt(/* str: */ \"123\", /* radix: */ 8)\n```\n",
           "default": false
         },
         "go.inlayHints.rangeVariableTypes": {
           "type": "boolean",
-          "markdownDescription": "Enable/disable inlay hints for variable types in range statements:\n```go\n\tfor k/* int*/, v/* string*/ := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```",
+          "markdownDescription": "`\"rangeVariableTypes\"` controls inlay hints for variable types in range statements:\n```go\n\tfor k/* int*/, v/* string*/ := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```\n",
           "default": false
         }
       }
