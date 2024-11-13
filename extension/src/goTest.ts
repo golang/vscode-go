@@ -301,7 +301,9 @@ export async function debugTestAtCursor(
 	};
 	lastDebugConfig = debugConfig;
 	lastDebugWorkspaceFolder = workspaceFolder;
-	vscode.commands.executeCommand('workbench.debug.action.focusRepl');
+	if (vscode.workspace.getConfiguration().get('debug.internalConsoleOptions') !== 'neverOpen') {
+		vscode.commands.executeCommand('workbench.debug.action.focusRepl');
+	}
 	return await vscode.debug.startDebugging(workspaceFolder, debugConfig);
 }
 
