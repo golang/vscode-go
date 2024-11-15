@@ -65,6 +65,9 @@
 					"include": "#semver"
 				},
 				{
+					"include": "#semver_range"
+				},
+				{
 					"include": "#unquoted_string"
 				}
 			]
@@ -141,6 +144,15 @@
 			"comment": "Semver version strings (v1.2.3)",
 			"match": "v(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[\\da-z-]+(?:\\.[\\da-z-]+)*)?(?:\\+[\\da-z-]+(?:\\.[\\da-z-]+)*)?",
 			"name": "constant.language.go.mod"
+		},
+		"semver_range": {
+			"begin": "\\[",
+			"patterns": [
+				{
+					"include": "#semver"
+				}
+			],
+			"end": "\\]"
 		},
 		"string_escaped_char": {
 			"patterns": [
