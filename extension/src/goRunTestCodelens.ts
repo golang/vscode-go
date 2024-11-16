@@ -15,19 +15,26 @@ import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
 import { GoExtensionContext } from './context';
 import { GO_MODE } from './goMode';
+import { experiments } from './experimental';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 		const testCodeLensProvider = new this(goCtx);
+		const setEnabled = () => {
+			const updatedGoConfig = getGoConfig();
+			if (updatedGoConfig['enableCodeLens']) {
+				testCodeLensProvider.setEnabled(
+					updatedGoConfig['enableCodeLens']['runtest'] && !experiments.testExplorer
+				);
+			}
+		};
+
 		ctx.subscriptions.push(vscode.languages.registerCodeLensProvider(GO_MODE, testCodeLensProvider));
+		ctx.subscriptions.push(experiments.onDidChange(() => setEnabled()));
 		ctx.subscriptions.push(
 			vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
-				if (!e.affectsConfiguration('go')) {
-					return;
-				}
-				const updatedGoConfig = getGoConfig();
-				if (updatedGoConfig['enableCodeLens']) {
-					testCodeLensProvider.setEnabled(updatedGoConfig['enableCodeLens']['runtest']);
+				if (e.affectsConfiguration('go')) {
+					setEnabled();
 				}
 			})
 		);
