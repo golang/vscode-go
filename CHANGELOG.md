@@ -25,6 +25,15 @@ to use the go1.21 or newer when installing tools. ([Issue 3411](https://github.c
 
 A new extension, [Go Companion](https://marketplace.visualstudio.com/items?itemName=ethan-reesor.exp-vscode-go), has been released with experimental support for gopls-based test discovery. If Go Companion is installed, pre-release versions of this extension will automatically disable its test explorer in favor of Go Companion's implementation. See [experiments](./docs/experiments.md#test-explorer) for details on Go Companion's features and for disabling the automatic switchover.
 
+## v0.43.3 (prerelease)
+
+Date: 2024-11-18
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.44.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.42.0-rc.1...v0.43.3
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.44.0
+
 ## v0.42.1
 
 Date: 9 Sep, 2024
