@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Changes
 
 * Gopls v0.17: The latest gopls version as of this release is [gopls v0.17](https://github.com/golang/tools/releases/tag/gopls%2Fv0.17.0). The extension settings documentation has been updated to align with the latest gopls settings.
+* Increased the [Go telemetry](https://go.dev/doc/telemetry) prompt rate to 100%.
+* Debugging: will not open Debug Console when `debug.internalConsoleOption` is `neverOpen`. ([CL 627675](https://go-review.googlesource.com/c/vscode-go/+/627675))
 
 #### Tools installation
 
