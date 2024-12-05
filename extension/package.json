@@ -2321,11 +2321,6 @@
                   "markdownDescription": "check for calls of (time.Time).Format or time.Parse with 2006-02-01\n\nThe timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm)\nformat. Internationally, \"yyyy-dd-mm\" does not occur in common calendar date\nstandards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended.",
                   "default": true
                 },
-                "undeclaredname": {
-                  "type": "boolean",
-                  "markdownDescription": "suggested fixes for \"undeclared name: <>\"\n\nThis checker provides suggested fixes for type errors of the\ntype \"undeclared name: <>\". It will either insert a new statement,\nsuch as:\n\n\t<> :=\n\nor a new function declaration, such as:\n\n\tfunc <>(inferred parameters) {\n\t\tpanic(\"implement me!\")\n\t}",
-                  "default": true
-                },
                 "unmarshal": {
                   "type": "boolean",
                   "markdownDescription": "report passing non-pointer or non-interface values to unmarshal\n\nThe unmarshal analysis reports calls to functions such as json.Unmarshal\nin which the argument type is not a pointer or an interface.",
@@ -2365,6 +2360,16 @@
                   "type": "boolean",
                   "markdownDescription": "check for constraints that could be simplified to \"any\"",
                   "default": false
+                },
+                "waitgroup": {
+                  "type": "boolean",
+                  "markdownDescription": "check for misuses of sync.WaitGroup\n\nThis analyzer detects mistaken calls to the (*sync.WaitGroup).Add\nmethod from inside a new goroutine, causing Add to race with Wait:\n\n\t// WRONG\n\tvar wg sync.WaitGroup\n\tgo func() {\n\t        wg.Add(1) // \"WaitGroup.Add called from inside new goroutine\"\n\t        defer wg.Done()\n\t        ...\n\t}()\n\twg.Wait() // (may return prematurely before new goroutine starts)\n\nThe correct code calls Add before starting the goroutine:\n\n\t// RIGHT\n\tvar wg sync.WaitGroup\n\twg.Add(1)\n\tgo func() {\n\t\tdefer wg.Done()\n\t\t...\n\t}()\n\twg.Wait()",
+                  "default": true
+                },
+                "yield": {
+                  "type": "boolean",
+                  "markdownDescription": "report calls to yield where the result is ignored\n\nAfter a yield function returns false, the caller should not call\nthe yield function again; generally the iterator should return\npromptly.\n\nThis example fails to check the result of the call to yield,\ncausing this analyzer to report a diagnostic:\n\n\tyield(1) // yield may be called again (on L2) after returning false\n\tyield(2)\n\nThe corrected code is either this:\n\n\tif yield(1) { yield(2) }\n\nor simply:\n\n\t_ = yield(1) && yield(2)\n\nIt is not always a mistake to ignore the result of yield.\nFor example, this is a valid single-element iterator:\n\n\tyield(1) // ok to ignore result\n\treturn\n\nIt is only a mistake when the yield call that returned false may be\nfollowed by another call.",
+                  "default": true
                 }
               }
             },
