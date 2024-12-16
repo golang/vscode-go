@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.44.0
+
+Date: 2024-12-16
+
 ### Changes
 
 * Gopls v0.17: The latest gopls version as of this release is [gopls v0.17](https://github.com/golang/tools/releases/tag/gopls%2Fv0.17.0). The extension settings documentation has been updated to align with the latest gopls settings.
