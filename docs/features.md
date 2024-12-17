@@ -212,10 +212,10 @@ The extension organizes imports automatically and can add missing imports if the
 
 #### Custom formatter
 
-In addition to the default [`go fmt`](https://pkg.go.dev/cmd/gofmt) style formatter, the language server (`gopls`) supports `github.com/mvdan/gofumpt` style formmating. Use gopls's [`formatting.gofumpt`](settings.md#formattinggofumpt) setting:
+In addition to the default [`go fmt`](https://pkg.go.dev/cmd/gofmt) style formatter, the language server (`gopls`) supports `github.com/mvdan/gofumpt` style formatting. Use gopls's [`formatting.gofumpt`](settings.md#formattinggofumpt) setting:
 
 ```json
-"gopls": { "fomatting.gofumpt": true }
+"gopls": { "formatting.gofumpt": true }
 ```
 
 You can  also configure to use other custom formatter (`golines`) by using the `"go.formatTool"` setting. The custom formatter must operate on file contents from STDIN, and output the formatted result to STDOUT.

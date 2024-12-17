@@ -622,7 +622,7 @@
               },
               "program": {
                 "type": "string",
-                "description": "Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interpretes it as a workspace relative path.",
+                "description": "Path to the program folder (or any go file within that folder) when in `debug` or `test` mode, and to the pre-built binary file to debug in `exec` mode. If it is not an absolute path, the extension interprets it as a workspace relative path.",
                 "default": "${workspaceFolder}"
               },
               "mode": {
@@ -961,7 +961,7 @@
                     }
                   }
                 },
-                "description": "An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.  Overriden by `remotePath`.",
+                "description": "An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.  Overridden by `remotePath`.",
                 "default": []
               },
               "trace": {
@@ -1898,7 +1898,7 @@
                   }
                 }
               },
-              "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request).",
+              "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overridden by `remotePath` (in attach request).",
               "default": []
             }
           },

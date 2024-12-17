@@ -19,7 +19,7 @@ To view the list of settings:
 
 ## Security
 
-This extension runs a few [third-party command-line tools](tools.md) found from the locations determined by the `PATH` or `Path` environment variable, and the settings such as `"go.alternateTools"` or `"go.toolsGopath"`. Configuring them in workspace settings allows users to conveniently select a different set of tools based on project's need, but also allows attackers to run arbitrary binaries on your machine if they successfuly convince you to open a random repository. In order to reduce the security risk, the extension reads those settings from user settings by default. If the repository can be trusted and workspace settings must be used, you can mark the workspace as a trusted workspace using the `"Go: Toggle Workspace Trust Flag"` command.
+This extension runs a few [third-party command-line tools](tools.md) found from the locations determined by the `PATH` or `Path` environment variable, and the settings such as `"go.alternateTools"` or `"go.toolsGopath"`. Configuring them in workspace settings allows users to conveniently select a different set of tools based on project's need, but also allows attackers to run arbitrary binaries on your machine if they successfully convince you to open a random repository. In order to reduce the security risk, the extension reads those settings from user settings by default. If the repository can be trusted and workspace settings must be used, you can mark the workspace as a trusted workspace using the `"Go: Toggle Workspace Trust Flag"` command.
 
 ## Detailed list
 
@@ -146,7 +146,7 @@ Delve settings that applies to all debugging sessions. Debug configuration in th
 | `showGlobalVariables` | Boolean value to indicate whether global package variables should be shown in the variables pane or not. <br/> Default: `false` |
 | `showLog` | Show log output from the delve debugger. Maps to dlv's `--log` flag. <br/> Default: `false` |
 | `showRegisters` | Boolean value to indicate whether register variables should be shown in the variables pane or not. <br/> Default: `false` |
-| `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overriden by `remotePath` (in attach request). |
+| `substitutePath` | An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overridden by `remotePath` (in attach request). |
 ### `go.diagnostic.vulncheck`
 
 (Experimental) vulncheck enables vulnerability scanning.
