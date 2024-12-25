@@ -100,7 +100,9 @@ async function _subTestAtCursor(
 	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(false, goCtx, editor.document);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
-	const currentTestFunctions = testFunctions.filter((func) => func.range.contains(editor.selection.start));
+	const currentTestFunctions = args.functionName
+		? testFunctions.filter((func) => func.name === args.functionName)
+		: testFunctions.filter((func) => func.range.contains(editor.selection.start));
 	const testFunctionName =
 		args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
 
