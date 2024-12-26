@@ -109,7 +109,7 @@
 					"name": "punctuation.definition.string.end.go.mod"
 				}
 			},
-			"name": "string.quoted.double",
+			"name": "string.quoted.double.go.mod",
 			"patterns": [
 				{
 					"include": "#string_escaped_char"
@@ -133,7 +133,7 @@
 					"name": "punctuation.definition.string.end.go.mod"
 				}
 			},
-			"name": "string.quoted.raw",
+			"name": "string.quoted.raw.go.mod",
 			"patterns": [
 				{
 					"include": "#string_placeholder"
