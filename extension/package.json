@@ -355,8 +355,8 @@
       },
       {
         "command": "go.toggle.gc_details",
-        "title": "Go: Toggle gc details",
-        "description": "Toggle the display of compiler optimization choices"
+        "title": "Go: Toggle compiler optimization details",
+        "description": "Toggle the per-package flag that causes compiler optimization details to be reported as diagnostics"
       },
       {
         "command": "go.import.add",

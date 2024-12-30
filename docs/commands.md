@@ -139,9 +139,9 @@ Extract logs in the `gopls (server)` output channel to the editor.
 
 Open the welcome page for the Go extension.
 
-### `Go: Toggle gc details`
+### `Go: Toggle compiler optimization details`
 
-Toggle the display of compiler optimization choices
+Toggle the per-package flag that causes compiler optimization details to be reported as diagnostics
 
 ### `Go: Add Import`
 
