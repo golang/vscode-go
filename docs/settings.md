@@ -242,7 +242,7 @@ Allowed Options:
 * `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
 * `gofmt`: Formats the file according to the standard Go style. (not applicable when the language server is enabled)
 * `goimports`: Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)
-* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat.
+* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat. (Deprecated due to the lack of generics support)
 * `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)
 * `custom`: Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT.
 
