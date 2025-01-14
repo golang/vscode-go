@@ -137,6 +137,12 @@ func TestBuildVSCGO(t *testing.T) {
 		want[platform.goos+"_"+platform.goarch] = true
 	}
 	for _, f := range zipReader.File {
+		// CL 578415 modifies the behavior of archive/zip.Writer.AddFS regarding
+		// writing headers to zip files.
+		// See golang/go#66831 for details.
+		if f.FileInfo().IsDir() {
+			continue
+		}
 		dirname := path.Base(path.Dir(f.Name))
 		if !want[dirname] {
 			t.Errorf("unexpected file in zip: %v", f.Name)
