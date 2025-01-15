@@ -16,6 +16,13 @@ RUN mkdir /go
 COPY --from=gobuilder /gobin /go/bin
 COPY --from=gobuilder /usr/local/go /usr/local/go
 
+# Copy vscode-go repo from host machine to docker image.
+COPY . /workspace
+
+# Tests run in a Docker container as user 'node' (uid 1000), so file ownership
+# is changed to uid 1000 to prevent permission issues.
+RUN chown -R 1000:1000 /workspace
+
 # Add the default GOPATH/bin to the PATH.
 # Add the directories of the go tool chains to PATH.
 ENV PATH /go/bin:/usr/local/go/bin:${PATH}
