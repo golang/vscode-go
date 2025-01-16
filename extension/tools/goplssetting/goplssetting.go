@@ -269,7 +269,7 @@ func toObject(opt *Option) (*Object, error) {
 		Scope: "resource",
 		// TODO: consider 'additionalProperties' if gopls api-json
 		// outputs acceptable properties.
-		// TODO: deprecation attribute
+		DeprecationMessage: opt.DeprecationMessage,
 	}
 	if opt.Type != "enum" {
 		obj.Type = propertyType(opt.Type)
@@ -410,6 +410,7 @@ type Object struct {
 	Default                  interface{}        `json:"default,omitempty"`
 	Scope                    string             `json:"scope,omitempty"`
 	Properties               map[string]*Object `json:"properties,omitempty"`
+	DeprecationMessage       string             `json:"deprecationMessage,omitempty"`
 }
 
 type Status int
@@ -432,14 +433,15 @@ type API struct {
 }
 
 type Option struct {
-	Name       string
-	Type       string // T = bool | string | int | enum | any | []T | map[T]T | time.Duration
-	Doc        string
-	EnumKeys   EnumKeys
-	EnumValues []EnumValue
-	Default    string
-	Status     string
-	Hierarchy  string
+	Name               string
+	Type               string // T = bool | string | int | enum | any | []T | map[T]T | time.Duration
+	Doc                string
+	EnumKeys           EnumKeys
+	EnumValues         []EnumValue
+	Default            string
+	Status             string
+	Hierarchy          string
+	DeprecationMessage string
 }
 
 type EnumKeys struct {
