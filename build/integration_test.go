@@ -17,7 +17,6 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read current dir: %v", err)
 	}
-	root := filepath.Dir(dir)
 
 	// Build docker image.
 	// TODO(hxjiang): use Go in PATH instead of env GOVERSION. LUCI will prepare
@@ -25,7 +24,7 @@ func TestIntegration(t *testing.T) {
 	dockerBuild := exec.Command("docker", "build", "-q", "-f", "./build/Dockerfile", ".")
 	// The docker build must be executed at the root of the vscode-go repository
 	// to ensure the entire repository is copied into the image.
-	dockerBuild.Dir = root
+	dockerBuild.Dir = filepath.Dir(dir)
 	output, err := dockerBuild.Output()
 	if err != nil {
 		t.Fatalf("failed to build docker image: %v", err)
@@ -42,14 +41,42 @@ func TestIntegration(t *testing.T) {
 		t.Logf("image cleanup log:\n%s\n", output)
 	}()
 
-	// Run integration test using previous build docker image.
+	// Run tests using previous build docker image.
+	//
+	// Coloring is disabled for integration tests but preserved for manual
+	// triggers.
+	// Use "npm config set color false" to disable npm color output globally,
+	// and because we cannot access the Mocha command directly in this script,
+	// we use env "FORCE_COLOR=0" to disable its color output.
+	script := `npm config set color false;
+npm ci;
+
+echo "**** Set up virtual display ****";
+/usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+trap "kill \"\$(jobs -p)\"" EXIT;
+export DISPLAY=:99;
+sleep 3;
+
+echo "**** Run settings generator ****";
+go run ./tools/generate.go -w=false -gopls=true;
+
+echo "**** Test build ****";
+npm run compile;
+
+echo "**** Run Go tests ****";
+go test ./...;
+
+echo "**** Run test ****";
+FORCE_COLOR=0 npm run unit-test;
+FORCE_COLOR=0 npm test --silent;
+
+echo "**** Run lint ****";
+npm run lint`
 	// For debug tests, we need ptrace.
-	// TODO(hxjiang): migrate the shell based ci test with go test.
-	// TODO(hxjiang): remove ANSI escape codes from npm log.
-	dockerRun := exec.Command("docker", "run", "--cap-add", "SYS_PTRACE", "--shm-size=8G", "--workdir=/workspace", imageID, "ci")
-	output, err = dockerRun.CombinedOutput()
+	cmd := exec.Command("docker", "run", "--cap-add", "SYS_PTRACE", "--shm-size=8G", "--workdir=/workspace/extension", "--entrypoint", "/bin/bash", imageID, "-c", script)
+	output, err = cmd.CombinedOutput()
 	t.Logf("integration test log:\n%s\n", output)
 	if err != nil {
-		t.Errorf("failed to run integration test: %v", err)
+		t.Errorf("failed to run integration test in docker: %v", err)
 	}
 }

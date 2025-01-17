@@ -47,7 +47,7 @@
     "test": "npm run test-compile && node ./out/test/runTest.js",
     "lint": "gts lint src test",
     "fix-lint": "gts fix src test",
-    "unit-test": "npm run test-compile && node ./node_modules/mocha/bin/_mocha -u tdd --timeout 5000 --colors ./out/test/unit",
+    "unit-test": "npm run test-compile && node ./node_modules/mocha/bin/_mocha -u tdd --timeout 5000 ./out/test/unit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
   "extensionDependencies": [],
