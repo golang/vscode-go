@@ -39,6 +39,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestRelease(t *testing.T) {
+	if _, err := exec.LookPath("npx"); err != nil {
+		if value, found := os.LookupEnv("VSCODE_GO_TEST_ALL"); found && value == "true" {
+			t.Errorf("required tool npx not found: %v", err)
+		} else {
+			t.Skipf("npx is not found (%v), skipping...", err)
+		}
+	}
 	for _, fullCommand := range []string{
 		"build-vscgo -out=/tmp/artifacts",
 		"package -out=/tmp/artifacts",

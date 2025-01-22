@@ -53,7 +53,7 @@ run_test() {
   npm run compile
 
   echo "**** Run Go tests ****"
-  go test ./...
+  VSCODE_GO_TEST_ALL="true" go test ./...
 
   echo "**** Run test ****"
   npm run unit-test
