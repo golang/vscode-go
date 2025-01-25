@@ -33,6 +33,7 @@ import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
 import { createRegisterCommand } from './commands';
 import { GoExtensionContext } from './context';
+import { spawn } from 'child_process';
 
 let dlvDAPVersionChecked = false;
 
@@ -182,12 +183,23 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				debugConfiguration['debugAdapter'] = dlvConfig['debugAdapter'];
 			}
 		}
-		// If neither launch.json nor settings.json gave us the debugAdapter value, we go with the default
-		// from package.json (dlv-dap) unless this is remote attach with a stable release.
+
+		// If neither launch.json nor settings.json gave us the debugAdapter, we go with the default from pacakge.json (dlv-dap) for all modes except 'remote'.
+		// For remote we will use 'dlv-dap' if we can call 'dlv substitute-path-guess-helper' or 'legacy' otherwise.
 		if (!debugConfiguration['debugAdapter']) {
+			// set dlv-dap by default
 			debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
-			if (debugConfiguration['mode'] === 'remote' && !extensionInfo.isPreview) {
-				debugConfiguration['debugAdapter'] = 'legacy';
+			if (debugConfiguration['mode'] === 'remote') {
+				const substitutePathGuess = await this.guessSubstitutePath();
+				if (substitutePathGuess === null) {
+					if (!extensionInfo.isPreview) {
+						// can't guess substitute path and isPreview isn't set, fall back to legacy.
+						debugConfiguration['debugAdapter'] = 'legacy';
+					}
+				} else {
+					debugConfiguration['debugAdapter'] = defaultConfig.debugAdapter.default;
+					debugConfiguration['guessSubstitutePath'] = substitutePathGuess;
+				}
 			}
 		}
 		if (debugConfiguration['debugAdapter'] === 'dlv-dap') {
@@ -370,6 +382,41 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 		return debugConfiguration;
+	}
+
+	/**
+	 * Calls `dlv substitute-path-guess-helper` to get a set of parameters used by Delve to guess the substitutePath configuration after also examining the executable.
+	 *
+	 * See https://github.com/go-delve/delve/blob/d5fb3bee427202f0d4b1683bf743bfd2adb41757/service/debugger/debugger.go#L2466
+	 */
+	private async guessSubstitutePath(): Promise<object | null> {
+		return new Promise((resolve) => {
+			const child = spawn(getBinPath('dlv'), ['substitute-path-guess-helper']);
+			let stdoutData = '';
+			let stderrData = '';
+			child.stdout.on('data', (data) => {
+				stdoutData += data;
+			});
+			child.stderr.on('data', (data) => {
+				stderrData += data;
+			});
+
+			child.on('close', (code) => {
+				if (code !== 0) {
+					resolve(null);
+				} else {
+					try {
+						resolve(JSON.parse(stdoutData));
+					} catch (error) {
+						resolve(null);
+					}
+				}
+			});
+
+			child.on('error', (error) => {
+				resolve(null);
+			});
+		});
 	}
 
 	public removeGcflags(args: string): { args: string; removed: boolean } {
