@@ -6,7 +6,7 @@ import assert from 'assert';
 import path = require('path');
 import sinon = require('sinon');
 import vscode = require('vscode');
-import { VulncheckTerminal } from '../../src/goVulncheck';
+import { ProgressTerminal } from '../../src/progressTerminal';
 import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserver-protocol';
 import { Env, FakeOutputChannel } from './goplsTestEnv.utils';
 import { URI } from 'vscode-uri';
@@ -34,7 +34,7 @@ suite('writeVulns', function () {
 		sandbox.stub(config, 'getGoConfig').returns(goConfig);
 		await env.startGopls(undefined, goConfig, fixtureDir);
 
-		sandbox.stub(VulncheckTerminal, 'Open').returns({
+		sandbox.stub(ProgressTerminal, 'Open').returns({
 			appendLine: fakeTerminal.appendLine,
 			show: () => {},
 			exit: () => {}

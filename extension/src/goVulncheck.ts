@@ -7,57 +7,7 @@ import cp = require('child_process');
 import { URI } from 'vscode-uri';
 import { getGoConfig } from './config';
 import { getWorkspaceFolderPath } from './util';
-
-export interface IVulncheckTerminal {
-	appendLine: (str: string) => void;
-	show: (preserveFocus?: boolean) => void;
-	exit: () => void;
-}
-export class VulncheckTerminal implements IVulncheckTerminal {
-	private term: vscode.Terminal;
-	private writeEmitter = new vscode.EventEmitter<string>();
-
-	// Buffer messages emitted before vscode is ready.  VSC calls pty.open when it is ready.
-	private ptyReady = false;
-	private buf: string[] = [];
-
-	// Constructor function to stub during test.
-	static Open(): IVulncheckTerminal {
-		return new VulncheckTerminal();
-	}
-
-	private constructor() {
-		const pty: vscode.Pseudoterminal = {
-			onDidWrite: this.writeEmitter.event,
-			handleInput: () => this.exit(),
-			open: () => {
-				this.ptyReady = true;
-				this.buf.forEach((l) => this.writeEmitter.fire(l));
-				this.buf = [];
-			},
-			close: () => {}
-		};
-		this.term = vscode.window.createTerminal({ name: 'govulncheck', pty }); // TODO: iconPath
-	}
-
-	appendLine(str: string) {
-		if (!str.endsWith('\n')) {
-			str += '\n';
-		}
-		str = str.replace(/\n/g, '\n\r'); // replaceAll('\n', '\n\r').
-		if (!this.ptyReady) {
-			this.buf.push(str); // print when `open` is called.
-		} else {
-			this.writeEmitter.fire(str);
-		}
-	}
-
-	show(preserveFocus?: boolean) {
-		this.term.show(preserveFocus);
-	}
-
-	exit() {}
-}
+import { IProgressTerminal } from './progressTerminal';
 
 // VulncheckReport is the JSON data type of gopls's vulncheck result.
 export interface VulncheckReport {
@@ -72,7 +22,7 @@ export interface VulncheckReport {
 
 export async function writeVulns(
 	res: VulncheckReport,
-	term: IVulncheckTerminal | undefined,
+	term: IProgressTerminal | undefined,
 	goplsBinPath: string
 ): Promise<void> {
 	if (term === undefined) {

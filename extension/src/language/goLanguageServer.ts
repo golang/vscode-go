@@ -14,6 +14,7 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
+import { InitializeParams, LSPAny, LSPObject } from 'vscode-languageserver-protocol';
 import {
 	CancellationToken,
 	CloseAction,
@@ -59,7 +60,8 @@ import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
 import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
-import { IVulncheckTerminal, VulncheckReport, VulncheckTerminal, writeVulns } from '../goVulncheck';
+import { VulncheckReport, writeVulns } from '../goVulncheck';
+import { ActiveProgressTerminals, IProgressTerminal, ProgressTerminal } from '../progressTerminal';
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
 import { GoDocumentSelector } from '../goMode';
@@ -379,8 +381,22 @@ export class GoLanguageClient extends LanguageClient implements vscode.Disposabl
 		this.onDidChangeVulncheckResultEmitter.dispose();
 		return super.dispose(timeout);
 	}
+
 	public get onDidChangeVulncheckResult(): vscode.Event<VulncheckEvent> {
 		return this.onDidChangeVulncheckResultEmitter.event;
+	}
+
+	protected fillInitializeParams(params: InitializeParams): void {
+		super.fillInitializeParams(params);
+
+		// VSCode-Go honors most client capabilities from the vscode-languageserver-node
+		// library. Experimental capabilities not used by vscode-languageserver-node
+		// can be used for custom communication between vscode-go and gopls.
+		// See https://github.com/microsoft/vscode-languageserver-node/issues/1607
+		const experimental: LSPObject = {
+			progressMessageStyles: ['log']
+		};
+		params.capabilities.experimental = experimental;
 	}
 }
 
@@ -402,10 +418,12 @@ export async function buildLanguageClient(
 	// we want to handle the connection close error case specially. Capture the error
 	// in initializationFailedHandler and handle it in the connectionCloseHandler.
 	let initializationError: ResponseError<InitializeError> | undefined = undefined;
-	let govulncheckTerminal: IVulncheckTerminal | undefined;
 
+	// TODO(hxjiang): deprecate special handling for async call gopls.run_govulncheck.
+	let govulncheckTerminal: IProgressTerminal | undefined;
 	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
 	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
+
 	// cfg is captured by closures for later use during error report.
 	const c = new GoLanguageClient(
 		'go', // id
@@ -489,13 +507,34 @@ export async function buildLanguageClient(
 				handleWorkDoneProgress: async (token, params, next) => {
 					switch (params.kind) {
 						case 'begin':
+							if (typeof params.message === 'string') {
+								const paragraphs = params.message.split('\n\n', 2);
+								const metadata = paragraphs[0].trim();
+								if (!metadata.startsWith('style: ')) {
+									break;
+								}
+								const style = metadata.substring('style: '.length);
+								if (style === 'log') {
+									const term = ProgressTerminal.Open(params.title, token);
+									if (paragraphs.length > 1) {
+										term.appendLine(paragraphs[1]);
+									}
+									term.show();
+								}
+							}
 							break;
 						case 'report':
+							if (params.message) {
+								ActiveProgressTerminals.get(token)?.appendLine(params.message);
+							}
 							if (pendingVulncheckProgressToken.has(token) && params.message) {
 								govulncheckTerminal?.appendLine(params.message);
 							}
 							break;
 						case 'end':
+							if (params.message) {
+								ActiveProgressTerminals.get(token)?.appendLine(params.message);
+							}
 							if (pendingVulncheckProgressToken.has(token)) {
 								const out = pendingVulncheckProgressToken.get(token);
 								pendingVulncheckProgressToken.delete(token);
@@ -507,7 +546,7 @@ export async function buildLanguageClient(
 				},
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
 					try {
-						if (command === 'gopls.tidy') {
+						if (command === 'gopls.tidy' || command === 'gopls.vulncheck') {
 							await vscode.workspace.saveAll(false);
 						}
 						if (command === 'gopls.run_govulncheck' && args.length && args[0].URI) {
@@ -520,17 +559,35 @@ export async function buildLanguageClient(
 							await vscode.workspace.saveAll(false);
 							const uri = args[0].URI ? URI.parse(args[0].URI) : undefined;
 							const dir = uri?.fsPath?.endsWith('.mod') ? path.dirname(uri.fsPath) : uri?.fsPath;
-							govulncheckTerminal = VulncheckTerminal.Open();
+							govulncheckTerminal = ProgressTerminal.Open('govulncheck');
 							govulncheckTerminal.appendLine(`⚡ govulncheck -C ${dir} ./...\n\n`);
 							govulncheckTerminal.show();
 						}
 						const res = await next(command, args);
-						if (command === 'gopls.run_govulncheck') {
-							const progressToken = res.Token;
-							if (progressToken) {
-								pendingVulncheckProgressToken.set(progressToken, args[0]);
+
+						const progressToken = <ProgressToken>res.Token;
+						// The progressToken from executeCommand indicates that
+						// gopls may trigger a related workDoneProgress
+						// notification, either before or after the command
+						// completes.
+						// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#serverInitiatedProgress
+						if (progressToken !== undefined) {
+							switch (command) {
+								case 'gopls.run_govulncheck':
+									pendingVulncheckProgressToken.set(progressToken, args[0]);
+									break;
+								case 'gopls.vulncheck':
+									// Write the vulncheck report to the terminal.
+									if (ActiveProgressTerminals.has(progressToken)) {
+										writeVulns(res.Result, ActiveProgressTerminals.get(progressToken), cfg.path);
+									}
+									break;
+								default:
+									// By default, dump the result to the terminal.
+									ActiveProgressTerminals.get(progressToken)?.appendLine(res.Result);
 							}
 						}
+
 						return res;
 					} catch (e) {
 						// TODO: how to print ${e} reliably???
