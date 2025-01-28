@@ -57,7 +57,6 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		minimumGoVersion: semver.coerce('1.9'),
 		defaultVersion: 'v1.6.0'
 	},
-	// TODO(github.com/golang/vscode-go/issues/189): consider disabling lint when gopls is turned on.
 	'golint': {
 		name: 'golint',
 		importPath: 'golang.org/x/lint/golint',
