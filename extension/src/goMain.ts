@@ -68,6 +68,7 @@ import extensionAPI from './extensionAPI';
 import { GoTestExplorer } from './goTest/explore';
 import { killRunningPprof } from './goTest/profile';
 import { GoExplorerProvider } from './goExplorer';
+import { GoPackageOutlineProvider } from './goPackageOutline';
 import { GoExtensionContext } from './context';
 import * as commands from './commands';
 import { toggleVulncheckCommandFactory } from './goVulncheck';
@@ -151,6 +152,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	experiments.activate(ctx);
 	GoTestExplorer.setup(ctx, goCtx);
 	GoExplorerProvider.setup(ctx);
+	GoPackageOutlineProvider.setup(ctx);
 
 	goCtx.buildDiagnosticCollection = vscode.languages.createDiagnosticCollection('go');
 	ctx.subscriptions.push(goCtx.buildDiagnosticCollection);

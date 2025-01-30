@@ -2783,6 +2783,12 @@
           "name": "go",
           "icon": "media/go-logo-white.svg",
           "when": "go.showExplorer"
+        },
+        {
+          "id": "go.package.outline",
+          "name": "Package Outline",
+          "icon": "media/go-logo-white.svg",
+          "when": "go.showPackageOutline"
         }
       ],
       "test": [
