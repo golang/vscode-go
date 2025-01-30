@@ -183,12 +183,14 @@ Once you've sent out your change, a maintainer will take a look at your contribu
 ### Presubmit Test in CI
 
 When you mail your CL or upload a new patch to an existing CL, *AND*
-you or a fellow contributor assigns the `Run-TryBot=+1` label in Gerrit, the test command defined in
-`build/all.bash` will run by `Kokoro`, which is Jenkins-like Google infrastructure
-for running Dockerized tests. `Kokoro` will post the result as a comment, and add its `TryBot-Result`
-vote after each test run completes.
+you or a fellow contributor assigns the `Commit-Queue=+1` label in Gerrit, all the
+tests (including go test and typescript test) defined in vscode-go will be
+triggered by `LUCI`.
 
-To force a re-run of the Kokoro CI, add comment `kokoro rerun` to the CL.
+`LUCI` will post the result as a comment, and add its `LUCI-TryBot-Result` vote
+after all tests run completes.
+
+To force a re-run of the LUCI CI, re-assigns the `Commit-Queue=+1` label in Gerrit.
 
 [#vscode-dev]: https://gophers.slack.com/archives/CUWGEKH5Z
 [Gophers Slack]: https://invite.slack.golangbridge.org/
