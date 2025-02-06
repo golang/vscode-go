@@ -253,7 +253,7 @@ For known issues with this feature see [golang/go#37170](https://github.com/gola
 
 ### Add or remove struct tags
 
-Use the [`Go: Add Tags to Struct Fields`](commands.md#go-add-tags-to-struct-fields) command to automatically generate or remove [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool.
+Use the [`Go: Add Tags to Struct Fields`](commands.md#go-add-tags-to-struct-fields) command to automatically generate or remove [tags](https://pkg.go.dev/reflect?tab=doc#StructTag) for your struct. This feature is provided by the [`gomodifytags`](tools.md#gomodifytags) tool invoked via gopls.
 
 <div style="text-align: center;"><img src="images/addtagstostructfields.gif" alt="Add tags to struct fields" style="width: 75%"> </div>
 

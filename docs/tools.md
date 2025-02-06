@@ -48,7 +48,9 @@ This tool provides support for the [`Go: Run on Go Playground`](features.md#go-p
 
 ### [`gomodifytags`](https://pkg.go.dev/github.com/fatih/gomodifytags?tab=overview)
 
-This tool provides support for the [`Go: Add Tags to Struct Fields`](features.md#add-or-remove-struct-tags) and [`Go: Remove Tags From Struct Fields`](features.md#add-or-remove-struct-tags) commands.
+This tool provides support for the [`Go: Add Tags to Struct Fields`](features.md#add-or-remove-struct-tags) and [`Go: Remove Tags From Struct Fields`](features.md#add-or-remove-struct-tags) commands when using older versions of gopls. The latest
+version of gopls has a gopls.modify_tags command which directly invokes the
+gomodifytags library.
 
 ### [`impl`](https://github.com/josharian/impl)
 

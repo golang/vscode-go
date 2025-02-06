@@ -391,12 +391,12 @@
       {
         "command": "go.add.tags",
         "title": "Go: Add Tags To Struct Fields",
-        "description": "Add tags configured in go.addTags setting to selected struct using gomodifytags"
+        "description": "Add tags configured in go.addTags setting to selected struct using gomodifytags (via gopls)"
       },
       {
         "command": "go.remove.tags",
         "title": "Go: Remove Tags From Struct Fields",
-        "description": "Remove tags configured in go.removeTags setting from selected struct using gomodifytags"
+        "description": "Remove tags configured in go.removeTags setting from selected struct using gomodifytags (via gopls)"
       },
       {
         "command": "go.show.commands",

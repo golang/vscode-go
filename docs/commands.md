@@ -169,11 +169,11 @@ Start the Go language server's maintainer interface (a web server).
 
 ### `Go: Add Tags To Struct Fields`
 
-Add tags configured in go.addTags setting to selected struct using gomodifytags
+Add tags configured in go.addTags setting to selected struct using gomodifytags (via gopls)
 
 ### `Go: Remove Tags From Struct Fields`
 
-Remove tags configured in go.removeTags setting from selected struct using gomodifytags
+Remove tags configured in go.removeTags setting from selected struct using gomodifytags (via gopls)
 
 ### `Go: Show All Commands...`
 
