@@ -1997,6 +1997,12 @@
               "default": [],
               "scope": "resource"
             },
+            "build.workspaceFiles": {
+              "type": "array",
+              "markdownDescription": "workspaceFiles configures the set of globs that match files defining the\nlogical build of the current workspace. Any on-disk changes to any files\nmatching a glob specified here will trigger a reload of the workspace.\n\nThis setting need only be customized in environments with a custom\nGOPACKAGESDRIVER.\n",
+              "default": [],
+              "scope": "resource"
+            },
             "formatting.gofumpt": {
               "type": "boolean",
               "markdownDescription": "gofumpt indicates if we should run gofumpt formatting.\n",
@@ -2011,14 +2017,9 @@
             },
             "ui.codelenses": {
               "type": "object",
-              "markdownDescription": "codelenses overrides the enabled/disabled state of each of gopls'\nsources of [Code Lenses](codelenses.md).\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n    \"gc_details\": true  // Show a code lens toggling the display of gc's choices.\n  }\n...\n}\n```\n",
+              "markdownDescription": "codelenses overrides the enabled/disabled state of each of gopls'\nsources of [Code Lenses](codelenses.md).\n\nExample Usage:\n\n```json5\n\"gopls\": {\n...\n  \"codelenses\": {\n    \"generate\": false,  // Don't show the `go generate` lens.\n  }\n...\n}\n```\n",
               "scope": "resource",
               "properties": {
-                "gc_details": {
-                  "type": "boolean",
-                  "markdownDescription": "`\"gc_details\"`: Toggle display of Go compiler optimization decisions\n\nThis codelens source causes the `package` declaration of\neach file to be annotated with a command to toggle the\nstate of the per-session variable that controls whether\noptimization decisions from the Go compiler (formerly known\nas \"gc\") should be displayed as diagnostics.\n\nOptimization decisions include:\n- whether a variable escapes, and how escape is inferred;\n- whether a nil-pointer check is implied or eliminated;\n- whether a function can be inlined.\n\nTODO(adonovan): this source is off by default because the\nannotation is annoying and because VS Code has a separate\n\"Toggle gc details\" command. Replace it with a Code Action\n(\"Source action...\").\n",
-                  "default": false
-                },
                 "generate": {
                   "type": "boolean",
                   "markdownDescription": "`\"generate\"`: Run `go generate`\n\nThis codelens source annotates any `//go:generate` comments\nwith commands to run `go generate` in this directory, on\nall directories recursively beneath this one.\n\nSee [Generating code](https://go.dev/blog/generate) for\nmore details.\n",
@@ -2196,6 +2197,16 @@
                   "markdownDescription": "report assembly that clobbers the frame pointer before saving it",
                   "default": true
                 },
+                "gofix": {
+                  "type": "boolean",
+                  "markdownDescription": "apply fixes based on go:fix comment directives\n\nThe gofix analyzer inlines functions that are marked for inlining\nand forwards constants that are marked for forwarding.",
+                  "default": true
+                },
+                "hostport": {
+                  "type": "boolean",
+                  "markdownDescription": "check format of addresses passed to net.Dial\n\nThis analyzer flags code that produce network address strings using\nfmt.Sprintf, as in this example:\n\n    addr := fmt.Sprintf(\"%s:%d\", host, 12345) // \"will not work with IPv6\"\n    ...\n    conn, err := net.Dial(\"tcp\", addr)       // \"when passed to dial here\"\n\nThe analyzer suggests a fix to use the correct approach, a call to\nnet.JoinHostPort:\n\n    addr := net.JoinHostPort(host, \"12345\")\n    ...\n    conn, err := net.Dial(\"tcp\", addr)\n\nA similar diagnostic and fix are produced for a format string of \"%s:%s\".\n",
+                  "default": true
+                },
                 "httpresponse": {
                   "type": "boolean",
                   "markdownDescription": "check for mistakes using HTTP responses\n\nA common mistake when using the net/http package is to defer a function\ncall to close the http.Response Body before checking the error that\ndetermines whether the response is valid:\n\n\tresp, err := http.Head(url)\n\tdefer resp.Body.Close()\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\t// (defer statement belongs here)\n\nThis checker helps uncover latent nil dereference bugs by reporting a\ndiagnostic for such mistakes.",
@@ -2219,6 +2230,11 @@
                 "lostcancel": {
                   "type": "boolean",
                   "markdownDescription": "check cancel func returned by context.WithCancel is called\n\nThe cancellation function returned by context.WithCancel, WithTimeout,\nWithDeadline and variants such as WithCancelCause must be called,\nor the new context will remain live until its parent context is cancelled.\n(The background context is never cancelled.)",
+                  "default": true
+                },
+                "modernize": {
+                  "type": "boolean",
+                  "markdownDescription": "simplify code by using modern constructs\n\nThis analyzer reports opportunities for simplifying and clarifying\nexisting code by using more modern features of Go, such as:\n\n  - replacing an if/else conditional assignment by a call to the\n    built-in min or max functions added in go1.21;\n  - replacing sort.Slice(x, func(i, j int) bool) { return s[i] < s[j] }\n    by a call to slices.Sort(s), added in go1.21;\n  - replacing interface{} by the 'any' type added in go1.18;\n  - replacing append([]T(nil), s...) by slices.Clone(s) or\n    slices.Concat(s), added in go1.21;\n  - replacing a loop around an m[k]=v map update by a call\n    to one of the Collect, Copy, Clone, or Insert functions\n    from the maps package, added in go1.21;\n  - replacing []byte(fmt.Sprintf...) by fmt.Appendf(nil, ...),\n    added in go1.19;\n  - replacing uses of context.WithCancel in tests with t.Context, added in\n    go1.24;\n  - replacing omitempty by omitzero on structs, added in go1.24;\n  - replacing append(s[:i], s[i+1]...) by slices.Delete(s, i, i+1),\n    added in go1.21\n  - replacing a 3-clause for i := 0; i < n; i++ {} loop by\n    for i := range n {}, added in go1.22;",
                   "default": true
                 },
                 "nilfunc": {
@@ -2328,7 +2344,7 @@
                 },
                 "unreachable": {
                   "type": "boolean",
-                  "markdownDescription": "check for unreachable code\n\nThe unreachable analyzer finds statements that execution can never reach\nbecause they are preceded by an return statement, a call to panic, an\ninfinite loop, or similar constructs.",
+                  "markdownDescription": "check for unreachable code\n\nThe unreachable analyzer finds statements that execution can never reach\nbecause they are preceded by a return statement, a call to panic, an\ninfinite loop, or similar constructs.",
                   "default": true
                 },
                 "unsafeptr": {
@@ -2336,9 +2352,14 @@
                   "markdownDescription": "check for invalid conversions of uintptr to unsafe.Pointer\n\nThe unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer\nto convert integers to pointers. A conversion from uintptr to\nunsafe.Pointer is invalid if it implies that there is a uintptr-typed\nword in memory that holds a pointer value, because that word will be\ninvisible to stack copying and to the garbage collector.",
                   "default": true
                 },
+                "unusedfunc": {
+                  "type": "boolean",
+                  "markdownDescription": "check for unused functions and methods\n\nThe unusedfunc analyzer reports functions and methods that are\nnever referenced outside of their own declaration.\n\nA function is considered unused if it is unexported and not\nreferenced (except within its own declaration).\n\nA method is considered unused if it is unexported, not referenced\n(except within its own declaration), and its name does not match\nthat of any method of an interface type declared within the same\npackage.\n\nThe tool may report a false positive for a declaration of an\nunexported function that is referenced from another package using\nthe go:linkname mechanism, if the declaration's doc comment does\nnot also have a go:linkname comment. (Such code is in any case\nstrongly discouraged: linkname annotations, if they must be used at\nall, should be used on both the declaration and the alias.)\n\nThe unusedfunc algorithm is not as precise as the\ngolang.org/x/tools/cmd/deadcode tool, but it has the advantage that\nit runs within the modular analysis framework, enabling near\nreal-time feedback within gopls.",
+                  "default": true
+                },
                 "unusedparams": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo ensure soundness, it ignores:\n  - \"address-taken\" functions, that is, functions that are used as\n    a value rather than being called directly; their signatures may\n    be required to conform to a func type.\n  - exported functions or methods, since they may be address-taken\n    in another package.\n  - unexported methods whose name matches an interface method\n    declared in the same package, since the method's signature\n    may be required to conform to the interface type.\n  - functions with empty bodies, or containing just a call to panic.\n  - parameters that are unnamed, or named \"_\", the blank identifier.\n\nThe analyzer suggests a fix of replacing the parameter name by \"_\",\nbut in such cases a deeper fix can be obtained by invoking the\n\"Refactor: remove unused parameter\" code action, which will\neliminate the parameter entirely, along with all corresponding\narguments at call sites, while taking care to preserve any side\neffects in the argument expressions; see\nhttps://github.com/golang/tools/releases/tag/gopls%2Fv0.14.",
+                  "markdownDescription": "check for unused parameters of functions\n\nThe unusedparams analyzer checks functions to see if there are\nany parameters that are not being used.\n\nTo ensure soundness, it ignores:\n  - \"address-taken\" functions, that is, functions that are used as\n    a value rather than being called directly; their signatures may\n    be required to conform to a func type.\n  - exported functions or methods, since they may be address-taken\n    in another package.\n  - unexported methods whose name matches an interface method\n    declared in the same package, since the method's signature\n    may be required to conform to the interface type.\n  - functions with empty bodies, or containing just a call to panic.\n  - parameters that are unnamed, or named \"_\", the blank identifier.\n\nThe analyzer suggests a fix of replacing the parameter name by \"_\",\nbut in such cases a deeper fix can be obtained by invoking the\n\"Refactor: remove unused parameter\" code action, which will\neliminate the parameter entirely, along with all corresponding\narguments at call sites, while taking care to preserve any side\neffects in the argument expressions; see\nhttps://github.com/golang/tools/releases/tag/gopls%2Fv0.14.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
                 "unusedresult": {
@@ -2349,17 +2370,12 @@
                 "unusedvariable": {
                   "type": "boolean",
                   "markdownDescription": "check for unused variables and suggest fixes",
-                  "default": false
+                  "default": true
                 },
                 "unusedwrite": {
                   "type": "boolean",
                   "markdownDescription": "checks for unused writes\n\nThe analyzer reports instances of writes to struct fields and\narrays that are never read. Specifically, when a struct object\nor an array is copied, its elements are copied implicitly by\nthe compiler, and any element write to this copy does nothing\nwith the original object.\n\nFor example:\n\n\ttype T struct { x int }\n\n\tfunc f(input []T) {\n\t\tfor i, v := range input {  // v is a copy\n\t\t\tv.x = i  // unused write to field x\n\t\t}\n\t}\n\nAnother example is about non-pointer receiver:\n\n\ttype T struct { x int }\n\n\tfunc (t T) f() {  // t is a copy\n\t\tt.x = i  // unused write to field x\n\t}",
                   "default": true
-                },
-                "useany": {
-                  "type": "boolean",
-                  "markdownDescription": "check for constraints that could be simplified to \"any\"",
-                  "default": false
                 },
                 "waitgroup": {
                   "type": "boolean",
@@ -2378,33 +2394,6 @@
               "markdownDescription": "analysisProgressReporting controls whether gopls sends progress\nnotifications when construction of its index of analysis facts is taking a\nlong time. Cancelling these notifications will cancel the indexing task,\nthough it will restart after the next change in the workspace.\n\nWhen a package is opened for the first time and heavyweight analyses such as\nstaticcheck are enabled, it can take a while to construct the index of\nanalysis facts for all its dependencies. The index is cached in the\nfilesystem, so subsequent analysis should be faster.\n",
               "default": true,
               "scope": "resource"
-            },
-            "ui.diagnostic.annotations": {
-              "type": "object",
-              "markdownDescription": "(Experimental) annotations specifies the various kinds of optimization diagnostics\nthat should be reported by the gc_details command.\n",
-              "scope": "resource",
-              "properties": {
-                "bounds": {
-                  "type": "boolean",
-                  "markdownDescription": "`\"bounds\"` controls bounds checking diagnostics.\n",
-                  "default": true
-                },
-                "escape": {
-                  "type": "boolean",
-                  "markdownDescription": "`\"escape\"` controls diagnostics about escape choices.\n",
-                  "default": true
-                },
-                "inline": {
-                  "type": "boolean",
-                  "markdownDescription": "`\"inline\"` controls diagnostics about inlining choices.\n",
-                  "default": true
-                },
-                "nil": {
-                  "type": "boolean",
-                  "markdownDescription": "`\"nil\"` controls nil checks.\n",
-                  "default": true
-                }
-              }
             },
             "ui.diagnostic.diagnosticsDelay": {
               "type": "string",
@@ -2434,19 +2423,17 @@
             },
             "ui.documentation.hoverKind": {
               "type": "string",
-              "markdownDescription": "hoverKind controls the information that appears in the hover text.\nSingleLine and Structured are intended for use only by authors of editor plugins.\n",
+              "markdownDescription": "hoverKind controls the information that appears in the hover text.\nSingleLine is intended for use only by authors of editor plugins.\n",
               "enum": [
                 "FullDocumentation",
                 "NoDocumentation",
                 "SingleLine",
-                "Structured",
                 "SynopsisDocumentation"
               ],
               "markdownEnumDescriptions": [
                 "",
                 "",
                 "",
-                "`\"Structured\"` is an experimental setting that returns a structured hover format.\nThis format separates the signature from the documentation, so that the client\ncan do more manipulation of these fields.\n\nThis should only be used by clients that support this behavior.\n",
                 ""
               ],
               "default": "FullDocumentation",
@@ -2543,14 +2530,26 @@
             },
             "ui.noSemanticNumber": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'\n",
+              "markdownDescription": "(Experimental) noSemanticNumber turns off the sending of the semantic token 'number'\n\nDeprecated: Use SemanticTokenTypes[\"number\"] = false instead. See\ngolang/vscode-go#3632.\n",
               "default": false,
-              "scope": "resource"
+              "scope": "resource",
+              "deprecationMessage": "use SemanticTokenTypes[\"number\"] = false instead. See\ngolang/vscode-go#3632.\n"
             },
             "ui.noSemanticString": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) noSemanticString turns off the sending of the semantic token 'string'\n",
+              "markdownDescription": "(Experimental) noSemanticString turns off the sending of the semantic token 'string'\n\nDeprecated: Use SemanticTokenTypes[\"string\"] = false instead. See\ngolang/vscode-go#3632\n",
               "default": false,
+              "scope": "resource",
+              "deprecationMessage": "use SemanticTokenTypes[\"string\"] = false instead. See\ngolang/vscode-go#3632\n"
+            },
+            "ui.semanticTokenModifiers": {
+              "type": "object",
+              "markdownDescription": "(Experimental) semanticTokenModifiers configures the semantic token modifiers. It allows\ndisabling modifiers by setting each value to false.\nBy default, all modifiers are enabled.\n",
+              "scope": "resource"
+            },
+            "ui.semanticTokenTypes": {
+              "type": "object",
+              "markdownDescription": "(Experimental) semanticTokenTypes configures the semantic token types. It allows\ndisabling types by setting each value to false.\nBy default, all types are enabled.\n",
               "scope": "resource"
             },
             "ui.semanticTokens": {

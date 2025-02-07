@@ -626,6 +626,15 @@ templateExtensions gives the extensions of file names that are treated
 as template files. (The extension
 is the part of the file name after the final dot.)
 
+### `build.workspaceFiles`
+
+workspaceFiles configures the set of globs that match files defining the
+logical build of the current workspace. Any on-disk changes to any files
+matching a glob specified here will trigger a reload of the workspace.
+
+This setting need only be customized in environments with a custom
+GOPACKAGESDRIVER.
+
 ### `formatting.gofumpt`
 
 gofumpt indicates if we should run gofumpt formatting.
@@ -658,7 +667,6 @@ Example Usage:
 ...
   "codelenses": {
     "generate": false,  // Don't show the `go generate` lens.
-    "gc_details": true  // Show a code lens toggling the display of gc's choices.
   }
 ...
 }
@@ -666,7 +674,6 @@ Example Usage:
 
 | Properties | Description |
 | --- | --- |
-| `gc_details` | `"gc_details"`: Toggle display of Go compiler optimization decisions <br/> This codelens source causes the `package` declaration of each file to be annotated with a command to toggle the state of the per-session variable that controls whether optimization decisions from the Go compiler (formerly known as "gc") should be displayed as diagnostics. <br/> Optimization decisions include: - whether a variable escapes, and how escape is inferred; - whether a nil-pointer check is implied or eliminated; - whether a function can be inlined. <br/> TODO(adonovan): this source is off by default because the annotation is annoying and because VS Code has a separate "Toggle gc details" command. Replace it with a Code Action ("Source action..."). <br/> <br/> Default: `false` |
 | `generate` | `"generate"`: Run `go generate` <br/> This codelens source annotates any `//go:generate` comments with commands to run `go generate` in this directory, on all directories recursively beneath this one. <br/> See [Generating code](https://go.dev/blog/generate) for more details. <br/> <br/> Default: `true` |
 | `regenerate_cgo` | `"regenerate_cgo"`: Re-generate cgo declarations <br/> This codelens source annotates an `import "C"` declaration with a command to re-run the [cgo command](https://pkg.go.dev/cmd/cgo) to regenerate the corresponding Go declarations. <br/> Use this after editing the C code in comments attached to the import, or in C header files included by it. <br/> <br/> Default: `true` |
 | `run_govulncheck` | `"run_govulncheck"`: Run govulncheck (legacy) <br/> This codelens source annotates the `module` directive in a go.mod file with a command to run Govulncheck asynchronously. <br/> [Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that computes the set of functions reachable within your application, including dependencies; queries a database of known security vulnerabilities; and reports any potential problems it finds. <br/> <br/> Default: `false` |
@@ -755,11 +762,14 @@ Example Usage:
 | `errorsas` | report passing non-pointer or non-error values to errors.As <br/> The errorsas analysis reports calls to errors.As where the type of the second argument is not a pointer to a type implementing error. <br/> Default: `true` |
 | `fillreturns` | suggest fixes for errors due to an incorrect number of return values <br/> This checker provides suggested fixes for type errors of the type "wrong number of return values (want %d, got %d)". For example: <br/> <pre>func m() (int, string, *bool, error) {<br/>	return<br/>}</pre><br/> will turn into <br/> <pre>func m() (int, string, *bool, error) {<br/>	return 0, "", nil, nil<br/>}</pre><br/> This functionality is similar to https://github.com/sqs/goreturns. <br/> Default: `true` |
 | `framepointer` | report assembly that clobbers the frame pointer before saving it <br/> Default: `true` |
+| `gofix` | apply fixes based on go:fix comment directives <br/> The gofix analyzer inlines functions that are marked for inlining and forwards constants that are marked for forwarding. <br/> Default: `true` |
+| `hostport` | check format of addresses passed to net.Dial <br/> This analyzer flags code that produce network address strings using fmt.Sprintf, as in this example: <br/>     addr := fmt.Sprintf("%s:%d", host, 12345) // "will not work with IPv6"     ...     conn, err := net.Dial("tcp", addr)       // "when passed to dial here" <br/> The analyzer suggests a fix to use the correct approach, a call to net.JoinHostPort: <br/>     addr := net.JoinHostPort(host, "12345")     ...     conn, err := net.Dial("tcp", addr) <br/> A similar diagnostic and fix are produced for a format string of "%s:%s". <br/> <br/> Default: `true` |
 | `httpresponse` | check for mistakes using HTTP responses <br/> A common mistake when using the net/http package is to defer a function call to close the http.Response Body before checking the error that determines whether the response is valid: <br/> <pre>resp, err := http.Head(url)<br/>defer resp.Body.Close()<br/>if err != nil {<br/>	log.Fatal(err)<br/>}<br/>// (defer statement belongs here)</pre><br/> This checker helps uncover latent nil dereference bugs by reporting a diagnostic for such mistakes. <br/> Default: `true` |
 | `ifaceassert` | detect impossible interface-to-interface type assertions <br/> This checker flags type assertions v.(T) and corresponding type-switch cases in which the static type V of v is an interface that cannot possibly implement the target interface T. This occurs when V and T contain methods with the same name but different signatures. Example: <br/> <pre>var v interface {<br/>	Read()<br/>}<br/>_ = v.(io.Reader)</pre><br/> The Read method in v has a different signature than the Read method in io.Reader, so this assertion cannot succeed. <br/> Default: `true` |
 | `infertypeargs` | check for unnecessary type arguments in call expressions <br/> Explicit type arguments may be omitted from call expressions if they can be inferred from function arguments, or from other type arguments: <br/> <pre>func f[T any](T) {}<br/><br/><br/>func _() {<br/>	f[string]("foo") // string could be inferred<br/>}</pre><br/> <br/> Default: `true` |
 | `loopclosure` | check references to loop variables from within nested functions <br/> This analyzer reports places where a function literal references the iteration variable of an enclosing loop, and the loop calls the function in such a way (e.g. with go or defer) that it may outlive the loop iteration and possibly observe the wrong value of the variable. <br/> Note: An iteration variable can only outlive a loop iteration in Go versions <=1.21. In Go 1.22 and later, the loop variable lifetimes changed to create a new iteration variable per loop iteration. (See go.dev/issue/60078.) <br/> In this example, all the deferred functions run after the loop has completed, so all observe the final value of v [<go1.22]. <br/> <pre>for _, v := range list {<br/>    defer func() {<br/>        use(v) // incorrect<br/>    }()<br/>}</pre><br/> One fix is to create a new variable for each iteration of the loop: <br/> <pre>for _, v := range list {<br/>    v := v // new var per iteration<br/>    defer func() {<br/>        use(v) // ok<br/>    }()<br/>}</pre><br/> After Go version 1.22, the previous two for loops are equivalent and both are correct. <br/> The next example uses a go statement and has a similar problem [<go1.22]. In addition, it has a data race because the loop updates v concurrent with the goroutines accessing it. <br/> <pre>for _, v := range elem {<br/>    go func() {<br/>        use(v)  // incorrect, and a data race<br/>    }()<br/>}</pre><br/> A fix is the same as before. The checker also reports problems in goroutines started by golang.org/x/sync/errgroup.Group. A hard-to-spot variant of this form is common in parallel tests: <br/> <pre>func Test(t *testing.T) {<br/>    for _, test := range tests {<br/>        t.Run(test.name, func(t *testing.T) {<br/>            t.Parallel()<br/>            use(test) // incorrect, and a data race<br/>        })<br/>    }<br/>}</pre><br/> The t.Parallel() call causes the rest of the function to execute concurrent with the loop [<go1.22]. <br/> The analyzer reports references only in the last statement, as it is not deep enough to understand the effects of subsequent statements that might render the reference benign. ("Last statement" is defined recursively in compound statements such as if, switch, and select.) <br/> See: https://golang.org/doc/go_faq.html#closures_and_goroutines <br/> Default: `true` |
 | `lostcancel` | check cancel func returned by context.WithCancel is called <br/> The cancellation function returned by context.WithCancel, WithTimeout, WithDeadline and variants such as WithCancelCause must be called, or the new context will remain live until its parent context is cancelled. (The background context is never cancelled.) <br/> Default: `true` |
+| `modernize` | simplify code by using modern constructs <br/> This analyzer reports opportunities for simplifying and clarifying existing code by using more modern features of Go, such as: <br/>   - replacing an if/else conditional assignment by a call to the     built-in min or max functions added in go1.21;   - replacing sort.Slice(x, func(i, j int) bool) { return s[i] < s[j] }     by a call to slices.Sort(s), added in go1.21;   - replacing interface{} by the 'any' type added in go1.18;   - replacing append([]T(nil), s...) by slices.Clone(s) or     slices.Concat(s), added in go1.21;   - replacing a loop around an m[k]=v map update by a call     to one of the Collect, Copy, Clone, or Insert functions     from the maps package, added in go1.21;   - replacing []byte(fmt.Sprintf...) by fmt.Appendf(nil, ...),     added in go1.19;   - replacing uses of context.WithCancel in tests with t.Context, added in     go1.24;   - replacing omitempty by omitzero on structs, added in go1.24;   - replacing append(s[:i], s[i+1]...) by slices.Delete(s, i, i+1),     added in go1.21   - replacing a 3-clause for i := 0; i < n; i++ {} loop by     for i := range n {}, added in go1.22; <br/> Default: `true` |
 | `nilfunc` | check for useless comparisons between functions and nil <br/> A useless comparison is one like f == nil as opposed to f() == nil. <br/> Default: `true` |
 | `nilness` | check for redundant or impossible nil comparisons <br/> The nilness checker inspects the control-flow graph of each function in a package and reports nil pointer dereferences, degenerate nil pointers, and panics with nil values. A degenerate comparison is of the form x==nil or x!=nil where x is statically known to be nil or non-nil. These are often a mistake, especially in control flow related to errors. Panics with nil values are checked because they are not detectable by <br/> <pre>if r := recover(); r != nil {</pre><br/> This check reports conditions such as: <br/> <pre>if f == nil { // impossible condition (f is a function)<br/>}</pre><br/> and: <br/> <pre>p := &v<br/>...<br/>if p != nil { // tautological condition<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	print(*p) // nil dereference<br/>}</pre><br/> and: <br/> <pre>if p == nil {<br/>	panic(p)<br/>}</pre><br/> Sometimes the control flow may be quite complex, making bugs hard to spot. In the example below, the err.Error expression is guaranteed to panic because, after the first return, err must be nil. The intervening loop is just a distraction. <br/> <pre>...<br/>err := g.Wait()<br/>if err != nil {<br/>	return err<br/>}<br/>partialSuccess := false<br/>for _, err := range errs {<br/>	if err == nil {<br/>		partialSuccess = true<br/>		break<br/>	}<br/>}<br/>if partialSuccess {<br/>	reportStatus(StatusMessage{<br/>		Code:   code.ERROR,<br/>		Detail: err.Error(), // "nil dereference in dynamic method call"<br/>	})<br/>	return nil<br/>}</pre><br/> ... <br/> Default: `true` |
 | `nonewvars` | suggested fixes for "no new vars on left side of :=" <br/> This checker provides suggested fixes for type errors of the type "no new vars on left side of :=". For example: <br/> <pre>z := 1<br/>z := 2</pre><br/> will turn into <br/> <pre>z := 1<br/>z = 2</pre><br/> Default: `true` |
@@ -781,13 +791,13 @@ Example Usage:
 | `tests` | check for common mistaken usages of tests and examples <br/> The tests checker walks Test, Benchmark, Fuzzing and Example functions checking malformed names, wrong signatures and examples documenting non-existent identifiers. <br/> Please see the documentation for package testing in golang.org/pkg/testing for the conventions that are enforced for Tests, Benchmarks, and Examples. <br/> Default: `true` |
 | `timeformat` | check for calls of (time.Time).Format or time.Parse with 2006-02-01 <br/> The timeformat checker looks for time formats with the 2006-02-01 (yyyy-dd-mm) format. Internationally, "yyyy-dd-mm" does not occur in common calendar date standards, and so it is more likely that 2006-01-02 (yyyy-mm-dd) was intended. <br/> Default: `true` |
 | `unmarshal` | report passing non-pointer or non-interface values to unmarshal <br/> The unmarshal analysis reports calls to functions such as json.Unmarshal in which the argument type is not a pointer or an interface. <br/> Default: `true` |
-| `unreachable` | check for unreachable code <br/> The unreachable analyzer finds statements that execution can never reach because they are preceded by an return statement, a call to panic, an infinite loop, or similar constructs. <br/> Default: `true` |
+| `unreachable` | check for unreachable code <br/> The unreachable analyzer finds statements that execution can never reach because they are preceded by a return statement, a call to panic, an infinite loop, or similar constructs. <br/> Default: `true` |
 | `unsafeptr` | check for invalid conversions of uintptr to unsafe.Pointer <br/> The unsafeptr analyzer reports likely incorrect uses of unsafe.Pointer to convert integers to pointers. A conversion from uintptr to unsafe.Pointer is invalid if it implies that there is a uintptr-typed word in memory that holds a pointer value, because that word will be invisible to stack copying and to the garbage collector. <br/> Default: `true` |
-| `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To ensure soundness, it ignores:   - "address-taken" functions, that is, functions that are used as     a value rather than being called directly; their signatures may     be required to conform to a func type.   - exported functions or methods, since they may be address-taken     in another package.   - unexported methods whose name matches an interface method     declared in the same package, since the method's signature     may be required to conform to the interface type.   - functions with empty bodies, or containing just a call to panic.   - parameters that are unnamed, or named "_", the blank identifier. <br/> The analyzer suggests a fix of replacing the parameter name by "_", but in such cases a deeper fix can be obtained by invoking the "Refactor: remove unused parameter" code action, which will eliminate the parameter entirely, along with all corresponding arguments at call sites, while taking care to preserve any side effects in the argument expressions; see https://github.com/golang/tools/releases/tag/gopls%2Fv0.14. <br/> Default: `true` |
+| `unusedfunc` | check for unused functions and methods <br/> The unusedfunc analyzer reports functions and methods that are never referenced outside of their own declaration. <br/> A function is considered unused if it is unexported and not referenced (except within its own declaration). <br/> A method is considered unused if it is unexported, not referenced (except within its own declaration), and its name does not match that of any method of an interface type declared within the same package. <br/> The tool may report a false positive for a declaration of an unexported function that is referenced from another package using the go:linkname mechanism, if the declaration's doc comment does not also have a go:linkname comment. (Such code is in any case strongly discouraged: linkname annotations, if they must be used at all, should be used on both the declaration and the alias.) <br/> The unusedfunc algorithm is not as precise as the golang.org/x/tools/cmd/deadcode tool, but it has the advantage that it runs within the modular analysis framework, enabling near real-time feedback within gopls. <br/> Default: `true` |
+| `unusedparams` | check for unused parameters of functions <br/> The unusedparams analyzer checks functions to see if there are any parameters that are not being used. <br/> To ensure soundness, it ignores:   - "address-taken" functions, that is, functions that are used as     a value rather than being called directly; their signatures may     be required to conform to a func type.   - exported functions or methods, since they may be address-taken     in another package.   - unexported methods whose name matches an interface method     declared in the same package, since the method's signature     may be required to conform to the interface type.   - functions with empty bodies, or containing just a call to panic.   - parameters that are unnamed, or named "_", the blank identifier. <br/> The analyzer suggests a fix of replacing the parameter name by "_", but in such cases a deeper fix can be obtained by invoking the "Refactor: remove unused parameter" code action, which will eliminate the parameter entirely, along with all corresponding arguments at call sites, while taking care to preserve any side effects in the argument expressions; see https://github.com/golang/tools/releases/tag/gopls%2Fv0.14. <br/> This analyzer ignores generated code. <br/> Default: `true` |
 | `unusedresult` | check for unused results of calls to some functions <br/> Some functions like fmt.Errorf return a result and have no side effects, so it is always a mistake to discard the result. Other functions may return an error that must not be ignored, or a cleanup operation that must be called. This analyzer reports calls to functions like these when the result of the call is ignored. <br/> The set of functions may be controlled using flags. <br/> Default: `true` |
-| `unusedvariable` | check for unused variables and suggest fixes <br/> Default: `false` |
+| `unusedvariable` | check for unused variables and suggest fixes <br/> Default: `true` |
 | `unusedwrite` | checks for unused writes <br/> The analyzer reports instances of writes to struct fields and arrays that are never read. Specifically, when a struct object or an array is copied, its elements are copied implicitly by the compiler, and any element write to this copy does nothing with the original object. <br/> For example: <br/> <pre>type T struct { x int }</pre><br/> <pre>func f(input []T) {<br/>	for i, v := range input {  // v is a copy<br/>		v.x = i  // unused write to field x<br/>	}<br/>}</pre><br/> Another example is about non-pointer receiver: <br/> <pre>type T struct { x int }</pre><br/> <pre>func (t T) f() {  // t is a copy<br/>	t.x = i  // unused write to field x<br/>}</pre><br/> Default: `true` |
-| `useany` | check for constraints that could be simplified to "any" <br/> Default: `false` |
 | `waitgroup` | check for misuses of sync.WaitGroup <br/> This analyzer detects mistaken calls to the (*sync.WaitGroup).Add method from inside a new goroutine, causing Add to race with Wait: <br/> <pre>// WRONG<br/>var wg sync.WaitGroup<br/>go func() {<br/>        wg.Add(1) // "WaitGroup.Add called from inside new goroutine"<br/>        defer wg.Done()<br/>        ...<br/>}()<br/>wg.Wait() // (may return prematurely before new goroutine starts)</pre><br/> The correct code calls Add before starting the goroutine: <br/> <pre>// RIGHT<br/>var wg sync.WaitGroup<br/>wg.Add(1)<br/>go func() {<br/>	defer wg.Done()<br/>	...<br/>}()<br/>wg.Wait()</pre><br/> Default: `true` |
 | `yield` | report calls to yield where the result is ignored <br/> After a yield function returns false, the caller should not call the yield function again; generally the iterator should return promptly. <br/> This example fails to check the result of the call to yield, causing this analyzer to report a diagnostic: <br/> <pre>yield(1) // yield may be called again (on L2) after returning false<br/>yield(2)</pre><br/> The corrected code is either this: <br/> <pre>if yield(1) { yield(2) }</pre><br/> or simply: <br/> <pre>_ = yield(1) && yield(2)</pre><br/> It is not always a mistake to ignore the result of yield. For example, this is a valid single-element iterator: <br/> <pre>yield(1) // ok to ignore result<br/>return</pre><br/> It is only a mistake when the yield call that returned false may be followed by another call. <br/> Default: `true` |
 ### `ui.diagnostic.analysisProgressReporting`
@@ -804,17 +814,6 @@ filesystem, so subsequent analysis should be faster.
 
 
 Default: `true`
-### `ui.diagnostic.annotations`
-
-(Experimental) annotations specifies the various kinds of optimization diagnostics
-that should be reported by the gc_details command.
-
-| Properties | Description |
-| --- | --- |
-| `bounds` | `"bounds"` controls bounds checking diagnostics. <br/> <br/> Default: `true` |
-| `escape` | `"escape"` controls diagnostics about escape choices. <br/> <br/> Default: `true` |
-| `inline` | `"inline"` controls diagnostics about inlining choices. <br/> <br/> Default: `true` |
-| `nil` | `"nil"` controls nil checks. <br/> <br/> Default: `true` |
 ### `ui.diagnostic.diagnosticsDelay`
 
 (Advanced) diagnosticsDelay controls the amount of time that gopls waits
@@ -849,18 +848,9 @@ Default: `false`
 ### `ui.documentation.hoverKind`
 
 hoverKind controls the information that appears in the hover text.
-SingleLine and Structured are intended for use only by authors of editor plugins.
+SingleLine is intended for use only by authors of editor plugins.
 <br/>
-Allowed Options:
-
-* `FullDocumentation`
-* `NoDocumentation`
-* `SingleLine`
-* `Structured`: `"Structured"` is an experimental setting that returns a structured hover format.
-This format separates the signature from the documentation, so that the client
-can do more manipulation of these fields.<br/>This should only be used by clients that support this behavior.
-* `SynopsisDocumentation`
-
+Allowed Options: `FullDocumentation`, `NoDocumentation`, `SingleLine`, `SynopsisDocumentation`
 
 Default: `"FullDocumentation"`
 ### `ui.documentation.linkTarget`
@@ -951,18 +941,42 @@ just "Foo.Field".
 
 
 Default: `"Dynamic"`
-### `ui.noSemanticNumber`
+### `ui.noSemanticNumber (deprecated)`
 
-(Experimental) noSemanticNumber  turns off the sending of the semantic token 'number'
+use SemanticTokenTypes["number"] = false instead. See
+golang/vscode-go#3632.
+
+(Experimental) noSemanticNumber turns off the sending of the semantic token 'number'
+
+Deprecated: Use SemanticTokenTypes["number"] = false instead. See
+golang/vscode-go#3632.
 
 
 Default: `false`
-### `ui.noSemanticString`
+### `ui.noSemanticString (deprecated)`
+
+use SemanticTokenTypes["string"] = false instead. See
+golang/vscode-go#3632
 
 (Experimental) noSemanticString turns off the sending of the semantic token 'string'
 
+Deprecated: Use SemanticTokenTypes["string"] = false instead. See
+golang/vscode-go#3632
+
 
 Default: `false`
+### `ui.semanticTokenModifiers`
+
+(Experimental) semanticTokenModifiers configures the semantic token modifiers. It allows
+disabling modifiers by setting each value to false.
+By default, all modifiers are enabled.
+
+### `ui.semanticTokenTypes`
+
+(Experimental) semanticTokenTypes configures the semantic token types. It allows
+disabling types by setting each value to false.
+By default, all types are enabled.
+
 ### `ui.semanticTokens`
 
 (Experimental) semanticTokens controls whether the LSP server will send
