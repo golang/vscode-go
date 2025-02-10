@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * The testing framework is migrated from `Kokoro` to `LUCI`. The presubmit tests will be triggered against multiple go versions.
 
+### Changes
+
+#### Package Outline View
+
+* Added new "Package Outline" explorer view that displays all the symbols in the currently open file's package.
+
 ## v0.45.0 (prerelease)
 
 Date: 2024-12-16
