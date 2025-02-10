@@ -75,6 +75,7 @@ import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
 import { setTelemetryEnvVars, telemetryReporter } from './goTelemetry';
 import { experiments } from './experimental';
+import { allToolsInformation } from './goToolsInformation';
 
 const goCtx: GoExtensionContext = {};
 
@@ -300,7 +301,16 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 			}
 
 			if (e.affectsConfiguration('go.formatTool')) {
-				checkToolExists(getFormatTool(updatedGoConfig));
+				const tool = getFormatTool(updatedGoConfig);
+				// When language server gopls is active (by default), existence
+				// checks are skipped only for tools that gopls replaces. Other
+				// tools are still checked.
+				if (
+					updatedGoConfig['useLanguageServer'] === false ||
+					!new Set(['gofmt', 'goimports', 'goformat']).has(tool)
+				) {
+					checkToolExists(tool);
+				}
 			}
 			if (e.affectsConfiguration('go.lintTool')) {
 				checkToolExists(updatedGoConfig['lintTool']);
