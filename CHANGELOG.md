@@ -15,6 +15,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * Added new "Package Outline" explorer view that displays all the symbols in the currently open file's package.
 
+## v0.45.1 (prerelease)
+
+Date: 2025-02-11
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.46.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.44.0-rc.1...v0.45.1
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.46.0
+
 ## v0.45.0 (prerelease)
 
 Date: 2024-12-16
