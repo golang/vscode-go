@@ -768,6 +768,20 @@ export async function buildLanguageClient(
 						}
 						return ret;
 					}
+				},
+				resolveCodeAction: async (item, token, next) => {
+					try {
+						return await next(item, token);
+					} catch (e) {
+						const answer = await vscode.window.showErrorMessage(
+							`code action resolve failed: ${e}.`,
+							'Show Trace'
+						);
+						if (answer === 'Show Trace') {
+							goCtx.serverOutputChannel?.show();
+						}
+						return null;
+					}
 				}
 			}
 		} as LanguageClientOptions,

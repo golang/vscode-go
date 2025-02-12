@@ -15,6 +15,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * Added new "Package Outline" explorer view that displays all the symbols in the currently open file's package.
 
+### Fixes
+
+* Improved Error Reporting: Code action resolution failures now display error messages via notifications from gopls.
+* Removed unnecessary prompts for missing formatter tools when gopls is enabled ([Issue 3677](https://github.com/golang/vscode-go/issues/3677)).
+
 ## v0.45.1 (prerelease)
 
 Date: 2025-02-11
