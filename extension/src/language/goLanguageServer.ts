@@ -590,6 +590,10 @@ export async function buildLanguageClient(
 
 						return res;
 					} catch (e) {
+						// Suppress error messages for frequently triggered commands.
+						if (command === 'gopls.package_symbols') {
+							return null;
+						}
 						// TODO: how to print ${e} reliably???
 						const answer = await vscode.window.showErrorMessage(
 							`Command '${command}' failed: ${e}.`,

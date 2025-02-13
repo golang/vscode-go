@@ -34,7 +34,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	constructor(ctx: vscode.ExtensionContext) {
 		this.reload(vscode.window.activeTextEditor?.document);
 		let previousVersion: number | undefined;
-		// Reload package symbol data on saving document with changes
+		// Reload package symbol data on saving active document with changes.
 		ctx.subscriptions.push(
 			vscode.workspace.onDidSaveTextDocument((d) => {
 				if (d.uri === vscode.window.activeTextEditor?.document.uri) {
@@ -45,12 +45,9 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 				}
 			})
 		);
-		// Reload package symbol data when switching active file
+		// Reload package symbol data when switching active file.
 		ctx.subscriptions.push(
 			vscode.window.onDidChangeActiveTextEditor((e) => {
-				if (!e?.document?.fileName.endsWith('.go')) {
-					return;
-				}
 				this.reload(e?.document);
 			})
 		);
@@ -105,7 +102,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	}
 
 	async reload(e?: vscode.TextDocument) {
-		if (!e) {
+		if (e?.languageId !== 'go' || e?.uri?.scheme !== 'file') {
 			this.result = undefined;
 			this.activeDocument = undefined;
 			return;
