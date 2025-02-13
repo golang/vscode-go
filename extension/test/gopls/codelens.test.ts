@@ -145,7 +145,7 @@ suite('Code lenses for testing and benchmarking', function () {
 
 	test('Test codelenses include only valid test function names', async () => {
 		const codeLensProvider = new GoRunTestCodeLensProvider(env.goCtx);
-		const uri = vscode.Uri.file(path.join(testdataDir, 'codelens2_test.go'));
+		const uri = vscode.Uri.file(path.join(testdataDir, 'testnames', 'testnames_test.go'));
 		const benchmarkDocument = await vscode.workspace.openTextDocument(uri);
 		const codeLenses = await codeLensProvider.provideCodeLenses(benchmarkDocument, cancellationTokenSource.token);
 		assert.equal(codeLenses.length, 20, JSON.stringify(codeLenses, null, 2));

@@ -74,7 +74,7 @@ suite('Go Test Runner', () => {
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			uri = Uri.file(path.join(fixtureDir, 'codelens', 'codelens2_test.go'));
+			uri = Uri.file(path.join(fixtureDir, 'codelens', 'testnames', 'testnames_test.go'));
 			await env.startGopls(uri.fsPath);
 			testExplorer = GoTestExplorer.new(ctx, env.goCtx);
 			ctx.subscriptions.push(testExplorer);

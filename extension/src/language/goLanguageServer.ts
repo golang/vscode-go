@@ -14,7 +14,7 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
-import { InitializeParams, LSPAny, LSPObject } from 'vscode-languageserver-protocol';
+import { InitializeParams, LSPObject } from 'vscode-languageserver-protocol';
 import {
 	CancellationToken,
 	CloseAction,

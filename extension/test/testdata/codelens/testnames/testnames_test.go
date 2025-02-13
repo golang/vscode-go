@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// As of Go1.16, `go test codelens2_test.go -list .` returns
+// As of Go1.16, `go test testnames_test.go -list .` returns
 //   TestFunction
 //   Test1Function
 //   TestΣυνάρτηση
