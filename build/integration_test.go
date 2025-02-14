@@ -48,7 +48,9 @@ func TestIntegration(t *testing.T) {
 	// Use "npm config set color false" to disable npm color output globally,
 	// and because we cannot access the Mocha command directly in this script,
 	// we use env "FORCE_COLOR=0" to disable its color output.
-	script := `npm config set color false;
+	script := `set -e;
+
+npm config set color false;
 npm ci;
 
 echo "**** Set up virtual display ****";
