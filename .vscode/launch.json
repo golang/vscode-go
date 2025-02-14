@@ -1,6 +1,7 @@
 {
 	"version": "0.2.0",
-	"configurations": [
+	"configurations": [l
+	],			"user"
 		{
 			"name": "Launch tools/generate",
 			"type": "go",
@@ -100,5 +101,4 @@
 			"preLaunchTask": "npm: watch",
 			"cwd": "${workspaceFolder}/extension"
 		},
-	]
 }
