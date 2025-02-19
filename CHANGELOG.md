@@ -20,6 +20,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 * Improved Error Reporting: Code action resolution failures now display error messages via notifications from gopls.
 * Removed unnecessary prompts for missing formatter tools when gopls is enabled ([Issue 3677](https://github.com/golang/vscode-go/issues/3677)).
 
+## v0.45.2 (prerelease)
+
+Date: 2025-02-19
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.46.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.44.0-rc.1...v0.45.2
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.46.0
+
 ## v0.45.1 (prerelease)
 
 Date: 2025-02-11
