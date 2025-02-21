@@ -850,7 +850,16 @@ Default: `false`
 hoverKind controls the information that appears in the hover text.
 SingleLine is intended for use only by authors of editor plugins.
 <br/>
-Allowed Options: `FullDocumentation`, `NoDocumentation`, `SingleLine`, `SynopsisDocumentation`
+Allowed Options:
+
+* `FullDocumentation`
+* `NoDocumentation`
+* `SingleLine`
+* `Structured`: `"Structured"` is a misguided experimental setting that returns a JSON
+hover format. This setting should not be used, as it will be removed in a
+future release of gopls.
+* `SynopsisDocumentation`
+
 
 Default: `"FullDocumentation"`
 ### `ui.documentation.linkTarget`
