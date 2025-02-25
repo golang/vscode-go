@@ -111,8 +111,19 @@ func extractOptions(api *API) ([]*Option, error) {
 
 	opts := []*Option{}
 	for _, v := range options {
-		if name := statusName(v.Option); name != "" {
+		if name := statusName(v.Option.Status); name != "" {
 			v.Option.Doc = name + " " + v.Option.Doc
+		}
+		// Enum keys or values can be marked with status individually.
+		for i, key := range v.EnumKeys.Keys {
+			if name := statusName(key.Status); name != "" {
+				v.EnumKeys.Keys[i].Doc = name + " " + key.Doc
+			}
+		}
+		for i, value := range v.EnumValues {
+			if name := statusName(value.Status); name != "" {
+				v.EnumValues[i].Doc = name + " " + value.Doc
+			}
 		}
 		opts = append(opts, v.Option)
 	}
@@ -129,8 +140,8 @@ func priority(opt *Option) int {
 	return 1000
 }
 
-func statusName(opt *Option) string {
-	switch toStatus(opt.Status) {
+func statusName(s string) string {
+	switch toStatus(s) {
 	case Experimental:
 		return "(Experimental)"
 	case Advanced:
@@ -453,11 +464,13 @@ type EnumKey struct {
 	Name    string // in JSON syntax (quoted)
 	Doc     string
 	Default string
+	Status  string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
 type EnumValue struct {
-	Value string // in JSON syntax (quoted)
-	Doc   string // doc comment; always starts with `Value`
+	Value  string // in JSON syntax (quoted)
+	Doc    string // doc comment; always starts with `Value`
+	Status string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
 type Lens struct {
@@ -466,6 +479,7 @@ type Lens struct {
 	Title    string
 	Doc      string
 	Default  bool
+	Status   string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
 type Analyzer struct {
@@ -479,4 +493,5 @@ type Hint struct {
 	Name    string
 	Doc     string
 	Default bool
+	Status  string // = "" | "advanced" | "experimental" | "deprecated"
 }
