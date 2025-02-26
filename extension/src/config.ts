@@ -37,7 +37,7 @@ export class ExtensionInfo {
 	readonly appName: string;
 	/** True if the extension runs in preview mode (e.g. Nightly, prerelease) */
 	readonly isPreview: boolean;
-	/** True if the extension runs in well-kwnon cloud IDEs */
+	/** True if the extension runs in well-known cloud IDEs */
 	readonly isInCloudIDE: boolean;
 
 	constructor() {
