@@ -167,7 +167,7 @@ interface PackageSymbolData {
 	file: number;
 }
 
-class PackageSymbol extends vscode.TreeItem {
+export class PackageSymbol extends vscode.TreeItem {
 	constructor(
 		private readonly data: PackageSymbolData,
 		private readonly files: string[],
