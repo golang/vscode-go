@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.46.0
+
+Date: 2025-02-27
+
 ### Code Health
 
 * The testing framework is migrated from `Kokoro` to `LUCI`. The presubmit tests will be triggered against multiple go versions.
