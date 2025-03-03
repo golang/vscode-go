@@ -11,7 +11,6 @@ import { GoExtensionContext } from '../context';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
 import {
 	buildLanguageClient,
-	buildLanguageClientOption,
 	buildLanguageServerConfig,
 	errorKind,
 	RestartReason,
@@ -85,7 +84,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				return;
 			}
 
-			goCtx.languageClient = await buildLanguageClient(goCtx, buildLanguageClientOption(goCtx, cfg));
+			goCtx.languageClient = await buildLanguageClient(goCtx, cfg);
 			await goCtx.languageClient.start();
 			goCtx.serverInfo = toServerInfo(goCtx.languageClient.initializeResult);
 			goCtx.telemetryService = new TelemetryService(

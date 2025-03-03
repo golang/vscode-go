@@ -12,7 +12,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
 import {
 	buildLanguageClient,
-	BuildLanguageClientOption,
+	LanguageServerConfig,
 	buildLanguageServerConfig,
 	toServerInfo
 } from '../../src/language/goLanguageServer';
@@ -108,14 +108,16 @@ export class Env {
 		if (!goConfig) {
 			goConfig = getGoConfig();
 		}
-		const cfg: BuildLanguageClientOption = await buildLanguageServerConfig(
+		const cfg: LanguageServerConfig = await buildLanguageServerConfig(
 			Object.create(goConfig, {
 				useLanguageServer: { value: true },
 				languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
 			})
 		);
-		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
 		this.goCtx.latestConfig = cfg;
+		// Inject fake output channel.
+		this.goCtx.serverOutputChannel = this.fakeOutputChannel;
+		this.goCtx.serverTraceChannel = this.fakeOutputChannel;
 		this.languageClient = await buildLanguageClient(this.goCtx, cfg);
 		if (!this.languageClient) {
 			throw new Error('Language client not initialized.');

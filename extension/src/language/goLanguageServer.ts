@@ -36,7 +36,7 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { LanguageClient, ServerOptions } from 'vscode-languageclient/node';
+import { Executable, LanguageClient, ServerOptions } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
@@ -336,36 +336,6 @@ export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
 	return info;
 }
 
-export interface BuildLanguageClientOption extends LanguageServerConfig {
-	outputChannel?: vscode.OutputChannel;
-	traceOutputChannel?: vscode.OutputChannel;
-}
-
-// buildLanguageClientOption returns the default, extra configuration
-// used in building a new LanguageClient instance. Options specified
-// in LanguageServerConfig
-export function buildLanguageClientOption(
-	goCtx: GoExtensionContext,
-	cfg: LanguageServerConfig
-): BuildLanguageClientOption {
-	// Reuse the same output channel for each instance of the server.
-	if (cfg.enabled) {
-		if (!goCtx.serverOutputChannel) {
-			goCtx.serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
-		}
-		if (!goCtx.serverTraceChannel) {
-			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
-		}
-	}
-	return Object.assign(
-		{
-			outputChannel: goCtx.serverOutputChannel,
-			traceOutputChannel: goCtx.serverTraceChannel
-		},
-		cfg
-	);
-}
-
 export class GoLanguageClient extends LanguageClient implements vscode.Disposable {
 	constructor(
 		id: string,
@@ -409,8 +379,18 @@ type VulncheckEvent = {
 // The returned language client need to be started before use.
 export async function buildLanguageClient(
 	goCtx: GoExtensionContext,
-	cfg: BuildLanguageClientOption
+	cfg: LanguageServerConfig
 ): Promise<GoLanguageClient> {
+	// Reuse the same output channel for each instance of the server.
+	if (cfg.enabled) {
+		if (!goCtx.serverOutputChannel) {
+			goCtx.serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
+		}
+		if (!goCtx.serverTraceChannel) {
+			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
+		}
+	}
+
 	await getLocalGoplsVersion(cfg); // populate and cache cfg.version
 	const goplsWorkspaceConfig = await adjustGoplsWorkspaceConfiguration(cfg, getGoplsConfig(), 'gopls', undefined);
 
@@ -424,15 +404,20 @@ export async function buildLanguageClient(
 	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
 	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
 
+	// VSCode-Go prepares the information needed to start the language server.
+	// vscode-languageclient-node.LanguageClient will spin up the language
+	// server based on the provided information below.
+	const serverOption: Executable = {
+		command: cfg.path,
+		args: cfg.flags,
+		options: { env: cfg.env }
+	};
+
 	// cfg is captured by closures for later use during error report.
 	const c = new GoLanguageClient(
 		'go', // id
 		cfg.serverName, // name e.g. gopls
-		{
-			command: cfg.path,
-			args: ['-mode=stdio', ...cfg.flags],
-			options: { env: cfg.env }
-		} as ServerOptions,
+		serverOption as ServerOptions,
 		{
 			initializationOptions: goplsWorkspaceConfig,
 			documentSelector: GoDocumentSelector,
@@ -442,8 +427,8 @@ export async function buildLanguageClient(
 					(uri.scheme ? uri : uri.with({ scheme: 'file' })).toString(),
 				protocol2Code: (uri: string) => vscode.Uri.parse(uri)
 			},
-			outputChannel: cfg.outputChannel,
-			traceOutputChannel: cfg.traceOutputChannel,
+			outputChannel: goCtx.serverOutputChannel,
+			traceOutputChannel: goCtx.serverTraceChannel,
 			revealOutputChannelOn: RevealOutputChannelOn.Never,
 			initializationFailedHandler: (error: ResponseError<InitializeError>): boolean => {
 				initializationError = error;
