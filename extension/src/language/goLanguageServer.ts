@@ -565,7 +565,7 @@ export async function buildLanguageClient(
 						}
 						const res = await next(command, args);
 
-						const progressToken = <ProgressToken>res.Token;
+						const progressToken = res?.Token as ProgressToken;
 						// The progressToken from executeCommand indicates that
 						// gopls may trigger a related workDoneProgress
 						// notification, either before or after the command
