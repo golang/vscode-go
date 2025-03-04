@@ -5,11 +5,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Changes
+
+* Introduced quick pick separator in command `Go: Choose Go Environment` showing
+diff between options locally discovered and options available for download.
+
+### Fixes
+
+* Addressed an issue that caused a `Cannot read properties of null (reading 'Token')`
+error during command execution when the command result did not include a token.
+([Issue 3698](https://github.com/golang/vscode-go/issues/3698))
+
 ## v0.46.1
 
 Date: 2025-03-04
 
-**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.46.1...v0.46.1
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.46.0...v0.46.1
 **Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.46.1
 
 ## v0.47.1 (prerelease)
