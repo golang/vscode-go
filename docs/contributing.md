@@ -101,7 +101,7 @@ When running them from terminal:
 You can supply environment variables (e.g. `MOCHA_GREP`) by modifying the launch configuration entry's `env` property.
   - `Launch Unit Tests`: runs unit tests in `test/unit` (same as `npm run unit-test`)
   - `Launch Extension Tests`: runs tests in `test/integration` directory (similar to `npm run test` but runs only tests under `test/integration` directory)
-  - `Launch Extension Tests with Gopls`: runs tests in `test/gopls directory (similar to `npm run test` but runs only tests under `test/gopls` directory)
+  - `Launch Extension Tests with Gopls`: runs tests in `test/gopls` directory (similar to `npm run test` but runs only tests under `test/gopls` directory)
 
 When you want to filter tests while debugging, utilize the `MOCAH_GREP` environment variable discussed previously - i.e., set the environment variable in the `env` property of the launch configuration.
 
