@@ -15,6 +15,7 @@ diff between options locally discovered and options available for download.
 * Addressed an issue that caused a `Cannot read properties of null (reading 'Token')`
 error during command execution when the command result did not include a token.
 ([Issue 3698](https://github.com/golang/vscode-go/issues/3698))
+* Addressed an issue that broke the `Debug Subtest At Cursor` command. ([Issue 3718](https://github.com/golang/vscode-go/issues/3718))
 
 ## v0.46.1
 

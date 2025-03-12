@@ -25,6 +25,7 @@ import {
 	SuiteToTestMap,
 	getTestFunctions
 } from './testUtils';
+import type { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.
@@ -80,11 +81,27 @@ async function _testAtCursor(
 	}
 }
 
+/**
+ * Arguments for the run/debug subtest at cursor command.
+ */
+type SubTestAtCursorArgs = {
+	/**
+	 * The name of the test that contains the subtest. If unspecified, this will
+	 * be deduced from the cursor location.
+	 */
+	functionName?: string;
+
+	/**
+	 * The name of the subtest. If unspecified, this will prompt the user.
+	 */
+	subTestName?: string;
+} & TestAtCursor;
+
 async function _subTestAtCursor(
 	goCtx: GoExtensionContext,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: SubTestAtCursorCmd,
-	args: any
+	args?: SubTestAtCursorArgs
 ) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
@@ -100,7 +117,7 @@ async function _subTestAtCursor(
 	const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(false, goCtx, editor.document);
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
-	const currentTestFunctions = args.functionName
+	const currentTestFunctions = args?.functionName
 		? testFunctions.filter((func) => func.name === args.functionName)
 		: testFunctions.filter((func) => func.range.contains(editor.selection.start));
 	const testFunctionName =
@@ -203,6 +220,16 @@ export function testAtCursorOrPrevious(cmd: TestAtCursorCmd): CommandFactory {
 }
 
 /**
+ * Arguments for the run test at cursor command.
+ */
+type TestAtCursor = {
+	/**
+	 * Flags to be passed to `go test`.
+	 */
+	flags?: string[];
+};
+
+/**
  * Runs the test at cursor.
  */
 async function runTestAtCursor(
@@ -212,7 +239,7 @@ async function runTestAtCursor(
 	suiteToTest: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: TestAtCursorCmd,
-	args: any
+	args?: TestAtCursor
 ) {
 	const testConfigFns = [testFunctionName];
 	if (cmd !== 'benchmark' && extractInstanceTestName(testFunctionName)) {
@@ -240,9 +267,17 @@ async function runTestAtCursor(
  * @param cmd Whether the command is test or debug.
  */
 export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
-	return (_, goCtx) => async (args: string[]) => {
+	return (_, goCtx) => async (
+		/**
+		 * When this command is run manually by the user (e.g. via vscode's
+		 * command pallet), args is undefined. When this command is run via a
+		 * codelens provided by {@link GoRunTestCodeLensProvider}, args
+		 * specifies the function and subtest names.
+		 */
+		args?: [SubTestAtCursorArgs]
+	) => {
 		try {
-			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
+			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args?.[0]);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
