@@ -254,6 +254,7 @@ async function runTestAtCursor(
 		functions: testConfigFns,
 		isBenchmark: cmd === 'benchmark',
 		isMod,
+		background: !!args?.background,
 		applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
 	};
 	// Remember this config as the last executed test.
@@ -365,6 +366,7 @@ export function testCurrentPackage(isBenchmark: boolean): CommandFactory {
 			flags: getTestFlags(goConfig, args),
 			isBenchmark,
 			isMod,
+			background: !!args?.background,
 			applyCodeCoverage: goConfig.get<boolean>('coverOnTestPackage')
 		};
 		// Remember this config as the last executed test.
@@ -395,6 +397,7 @@ export const testWorkspace: CommandFactory = () => (args: any) => {
 	const testConfig: TestConfig = {
 		goConfig,
 		dir: workspaceUri.fsPath,
+		background: !!args?.background,
 		flags: getTestFlags(goConfig, args),
 		includeSubDirectories: true
 	};
@@ -442,6 +445,7 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 						functions: testFunctions?.map((sym) => sym.name),
 						isBenchmark,
 						isMod,
+						background: !!args?.background,
 						applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTestFile')
 					};
 					// Remember this config as the last executed test.
