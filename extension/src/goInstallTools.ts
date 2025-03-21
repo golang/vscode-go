@@ -822,7 +822,7 @@ export async function suggestUpdates() {
 	const toolsManagementConfig = getGoConfig()['toolsManagement'];
 	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
 		installTools(toolsToUpdate, configuredGoVersion, { silent: true });
-	} else {
+	} else if (toolsManagementConfig && toolsManagementConfig['warnOutdated'] === true) {
 		const updateToolsCmdText = 'Update tools';
 		const selected = await vscode.window.showWarningMessage(
 			`Tools (${toolsToUpdate.map((tool) => tool.name).join(', ')}) need recompiling to work with ${
