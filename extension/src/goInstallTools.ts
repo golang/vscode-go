@@ -44,13 +44,19 @@ import { allToolsInformation } from './goToolsInformation';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
 
-// minimum go version required for tools installation.
+/**
+ * Minimum go version required for tools installation.
+ */
 const MINIMUM_GO_VERSION = '1.21.0';
 
-// declinedUpdates tracks the tools that the user has declined to update.
+/**
+ * Tracks the tools that the user has declined to update.
+ */
 const declinedUpdates: Tool[] = [];
 
-// declinedUpdates tracks the tools that the user has declined to install.
+/**
+ * Tracks the tools that the user has declined to install.
+ */
 const declinedInstalls: Tool[] = [];
 
 export interface IToolsManager {
@@ -107,10 +113,11 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 		goVersion
 	);
 }
-
-// Returns the go version to be used for tools installation.
-// If `go.toolsManagement.go` is set, it is preferred. Otherwise, the provided
-// goVersion or the default version returned by getGoVersion is returned.
+/**
+ * Returns the go version to be used for tools installation.
+ * If `go.toolsManagement.go` is set, it is preferred. Otherwise, the provided
+ * goVersion or the default version returned by getGoVersion is returned.
+ */
 export const getGoVersionForInstall = _getGoVersionForInstall;
 async function _getGoVersionForInstall(goVersion?: GoVersion): Promise<GoVersion | undefined> {
 	let configuredGoForInstall = getGoConfig().get<string>('toolsManagement.go');
@@ -282,8 +289,10 @@ async function tmpDirForToolInstallation() {
 	return toolsTmpDir;
 }
 
-// installTool is used by goEnvironmentStatus.ts.
-// TODO(hyangah): replace the callsite to use defaultToolsManager and remove this.
+/**
+ * installTool is used by goEnvironmentStatus.ts.
+ * TODO(hyangah): replace the callsite to use defaultToolsManager and remove this.
+ */
 export async function installTool(tool: ToolAtVersion): Promise<string | undefined> {
 	const goVersionForInstall = await getGoVersionForInstall();
 	if (!goVersionForInstall) {
@@ -553,9 +562,11 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	});
 }
 
-// maybeInstallImportantTools checks whether important tools are installed
-// and they meet the version requirement.
-// Then it tries to auto-install them if missing.
+/**
+ * Checks whether important tools are installed and they meet the version
+ * requirement.
+ * Then it tries to auto-install them if missing.
+ */
 export async function maybeInstallImportantTools(
 	alternateTools: { [key: string]: string } | undefined,
 	tm: IToolsManager = defaultToolsManager
@@ -648,8 +659,10 @@ async function updateImportantToolsStatus(tm: IToolsManager = defaultToolsManage
 	}
 }
 
-// getMissingTools returns missing tools.
-// If matcher is provided, only the tools that match the filter will be checked.
+/**
+ * Returns missing tools.
+ * If matcher is provided, only the tools that match the filter will be checked.
+ */
 function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
 	let keys = getConfiguredTools(getGoConfig(), getGoplsConfig());
 	if (matcher) {
@@ -688,13 +701,17 @@ async function suggestDownloadGo() {
 	suggestedDownloadGo = true;
 }
 
-// ListVersionsOutput is the output of `go list -m -versions -json`.
+/**
+ * The output of `go list -m -versions -json`.
+ */
 interface ListVersionsOutput {
 	Version: string; // module version
 	Versions?: string[]; // available module versions (with -versions)
 }
 
-// latestToolVersion returns the latest version of the tool.
+/**
+ * Returns the latest version of the tool.
+ */
 export async function latestToolVersion(tool: Tool, includePrerelease?: boolean): Promise<semver.SemVer | null> {
 	const goCmd = getBinPath('go');
 	const tmpDir = await tmpDirForToolInstallation();
@@ -729,8 +746,10 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 	return ret;
 }
 
-// inspectGoToolVersion reads the go version and module version
-// of the given go tool using `go version -m` command.
+/**
+ * Reads the go version and module version of the given go tool using
+ * `go version -m` command.
+ */
 export const inspectGoToolVersion = defaultInspectGoToolVersion;
 async function defaultInspectGoToolVersion(
 	binPath: string
@@ -803,6 +822,10 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 	// tool.latestVersion is released when checkForUpdates === 'proxy'
 }
 
+/**
+ * Updates outdated Go tools, prompting for approval if user setting
+ * `go.toolsManagement.autoUpdate` is unset or disabled.
+ */
 export async function suggestUpdates() {
 	const configuredGoVersion = await getGoVersionForInstall();
 	if (!configuredGoVersion || configuredGoVersion.lt(MINIMUM_GO_VERSION)) {
@@ -895,9 +918,11 @@ export async function listOutdatedTools(configuredGoVersion: GoVersion | undefin
 	return oldTools.filter((tool): tool is Tool => !!tool);
 }
 
-// maybeInstallVSCGO is a special program released and installed with the Go extension.
-// Unlike other tools, it is installed under the extension path (which is cleared
-// when a new version is installed).
+/**
+ * VSCGO is a special program released and installed with the Go extension.
+ * Unlike other tools, it is installed under the extension path
+ * (which is cleared when a new version is installed).
+ */
 export async function maybeInstallVSCGO(
 	extensionMode: vscode.ExtensionMode,
 	extensionId: string,

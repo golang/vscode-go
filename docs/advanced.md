@@ -63,7 +63,7 @@ name.
 
 The extension uses pinned versions of command-line tools. See the pinned versions
 in tools information
-[here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts).
+[here](https://github.com/golang/vscode-go/blob/master/extension/src/goToolsInformation.ts).
 To use an alternate version of a tool install it manually with with go install.
 
 ## Using a custom linter
