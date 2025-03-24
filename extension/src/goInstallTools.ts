@@ -221,8 +221,10 @@ export async function installTools(
 	}
 	outputChannel.appendLine(envMsg);
 
+	let installingPath = '';
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
 	if (envForTools['GOBIN']) {
+		installingPath = envForTools['GOBIN'];
 		installingMsg += `the configured GOBIN: ${envForTools['GOBIN']}`;
 	} else {
 		const p = toolsGopath
@@ -230,6 +232,10 @@ export async function installTools(
 			.map((e) => path.join(e, 'bin'))
 			.join(path.delimiter);
 		installingMsg += `${p}`;
+
+		if (p) {
+			installingPath = p;
+		}
 	}
 
 	outputChannel.appendLine(installingMsg);
@@ -246,12 +252,32 @@ export async function installTools(
 	const failures: { tool: ToolAtVersion; reason: string }[] = [];
 	const tm = options?.toolsManager ?? defaultToolsManager;
 	for (const tool of missing) {
+		// v2, v3... of the tools are installed with the same name as v1,
+		// but must be able to co-exist with other major versions in the GOBIN.
+		// Thus, we install it in a tmp directory and copy it to the GOBIN.
+		// See detail: golang/vscode-go#3732
+		if (tool.name.match('-v\\d+$')) {
+			envForTools['GOBIN'] = path.join(installingPath, 'tmp');
+		}
+
 		const failed = await tm.installTool(tool, goForInstall, envForTools);
 		if (failed) {
 			failures.push({ tool, reason: failed });
 		} else if (tool.name === 'gopls' && !skipRestartGopls) {
 			// Restart the language server if a new binary has been installed.
 			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
+		}
+
+		if (tool.name.match('-v\\d+$')) {
+			// grep the tool name without version.
+			const toolName = tool.name.match('^(?<tool>.+)-v\\d+$')?.groups?.tool;
+			if (!toolName) {
+				failures.push({ tool, reason: 'failed to grep tool name with regex' });
+				continue;
+			}
+
+			fs.copyFileSync(path.join(installingPath, 'tmp', toolName), path.join(installingPath, tool.name));
+			fs.rmdirSync(path.join(installingPath, 'tmp'), { recursive: true });
 		}
 	}
 

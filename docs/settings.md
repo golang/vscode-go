@@ -362,7 +362,7 @@ Default: `"package"`
 ### `go.lintTool`
 
 Specifies Lint tool name.<br/>
-Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `revive`
+Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `golangci-lint-v2`, `revive`
 
 Default: `"staticcheck"`
 ### `go.logging.level (deprecated)`

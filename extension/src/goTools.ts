@@ -156,7 +156,9 @@ export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig
 	if (goConfig['lintTool'] !== 'staticcheck' || !goplsStaticheckEnabled) {
 		maybeAddTool(goConfig['lintTool']);
 	}
-	return tools;
+
+	// Remove duplicates since tools like golangci-lint v2 are both linter and formatter
+	return tools.filter((v, i, self) => self.indexOf(v) === i);
 }
 
 export function goplsStaticcheckEnabled(

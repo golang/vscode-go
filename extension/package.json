@@ -1174,6 +1174,7 @@
             "staticcheck",
             "golint",
             "golangci-lint",
+            "golangci-lint-v2",
             "revive"
           ]
         },
