@@ -33,8 +33,7 @@ describe('# prompt for telemetry', async () => {
 		testTelemetryPrompt(
 			{
 				noLangClient: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
@@ -44,8 +43,7 @@ describe('# prompt for telemetry', async () => {
 		testTelemetryPrompt(
 			{
 				goplsWithoutTelemetry: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
@@ -54,8 +52,7 @@ describe('# prompt for telemetry', async () => {
 		'prompt when telemetry started a while ago',
 		testTelemetryPrompt(
 			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1000
+				firstDate: new Date('2022-01-01')
 			},
 			true
 		)
@@ -64,8 +61,7 @@ describe('# prompt for telemetry', async () => {
 		'do not prompt if telemetry started two days ago',
 		testTelemetryPrompt(
 			{
-				firstDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // two days ago!
-				samplingInterval: 1000
+				firstDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // two days ago!
 			},
 			false
 		)
@@ -74,40 +70,7 @@ describe('# prompt for telemetry', async () => {
 		'do not prompt if gopls with telemetry never ran',
 		testTelemetryPrompt(
 			{
-				firstDate: undefined, // gopls with telemetry not seen before.
-				samplingInterval: 1000
-			},
-			false
-		)
-	);
-	it(
-		'do not prompt if not sampled',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 0
-			},
-			false
-		)
-	);
-	it(
-		'prompt only if sampled (machineID = 0, samplingInterval = 1)',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1,
-				hashMachineID: 0
-			},
-			true
-		)
-	);
-	it(
-		'prompt only if sampled (machineID = 1, samplingInterval = 1)',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1,
-				hashMachineID: 1
+				firstDate: undefined // gopls with telemetry not seen before.
 			},
 			false
 		)
@@ -117,8 +80,7 @@ describe('# prompt for telemetry', async () => {
 		testTelemetryPrompt(
 			{
 				firstDate: new Date('2022-01-01'),
-				previewExtension: true,
-				samplingInterval: 0
+				previewExtension: true
 			},
 			true
 		)
@@ -129,8 +91,7 @@ describe('# prompt for telemetry', async () => {
 			{
 				firstDate: new Date('2022-01-01'),
 				vsTelemetryDisabled: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
@@ -145,7 +106,6 @@ describe('# prompt for telemetry', async () => {
 		testExtensionAPI.globalState.update(TELEMETRY_START_TIME_KEY, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
 		await testTelemetryPrompt(
 			{
-				samplingInterval: 1000,
 				mementoInstance: testExtensionAPI.globalState
 			},
 			true
@@ -159,8 +119,6 @@ interface testCase {
 	firstDate?: Date; // first date the extension observed gopls with telemetry feature.
 	previewExtension?: boolean; // assume we are in dev/nightly extension.
 	vsTelemetryDisabled?: boolean; // assume the user disabled vscode general telemetry.
-	samplingInterval: number; // N where N out of 1000 are sampled.
-	hashMachineID?: number; // stub the machine id hash computation function.
 	mementoInstance?: Memento; // if set, use this instead of mock memento.
 }
 
@@ -181,10 +139,7 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 		const commands = tc.goplsWithoutTelemetry ? [] : [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY];
 
 		const sut = new TelemetryService(lc, memento, commands);
-		if (tc.hashMachineID !== undefined) {
-			sinon.stub(sut, 'hashMachineID').returns(tc.hashMachineID);
-		}
-		await sut.promptForTelemetry(!!tc.previewExtension, !tc.vsTelemetryDisabled, tc.samplingInterval);
+		await sut.promptForTelemetry(!tc.vsTelemetryDisabled);
 		if (wantPrompt) {
 			sinon.assert.calledOnce(spy);
 		} else {

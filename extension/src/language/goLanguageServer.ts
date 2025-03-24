@@ -1702,7 +1702,7 @@ export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
 			setTimeout(callback, 5 * timeMinute - Math.max(idleTime, 0));
 			return;
 		}
-		goCtx.telemetryService?.promptForTelemetry(extensionInfo.isPreview);
+		goCtx.telemetryService?.promptForTelemetry();
 	};
 	callback();
 }

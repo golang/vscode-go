@@ -79,6 +79,13 @@ export class TelemetryReporter implements vscode.Disposable {
 	private _counters: { [key: string]: number } = {};
 	private _flushTimer: NodeJS.Timeout | undefined;
 	private _tool = '';
+
+	/**
+	 * @param flushIntervalMs is the interval (in milliseconds) between periodic
+	 * `flush()` calls.
+	 * @param counterFile is the file path for writing telemetry data (used for
+	 * testing).
+	 */
 	constructor(flushIntervalMs = 60_000, private counterFile: string = '') {
 		if (flushIntervalMs > 0) {
 			// Periodically call flush.
@@ -203,15 +210,15 @@ export class TelemetryService {
 	constructor(
 		private languageClient: Pick<LanguageClient, 'sendRequest'> | undefined,
 		private globalState: vscode.Memento,
-		commands: string[] = []
+		serverCommands: string[] = []
 	) {
-		if (!languageClient || !commands.includes(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY)) {
-			// we are not backed by the gopls version that supports telemetry.
+		if (!languageClient || !serverCommands.includes(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY)) {
+			// We are not backed by the gopls version that supports telemetry.
 			return;
 		}
 
 		this.active = true;
-		// record the first time we see the gopls with telemetry support.
+		// Record the first time we see the gopls with telemetry support.
 		// The timestamp will be used to avoid prompting too early.
 		const telemetryStartTime = readTelemetryStartTime(globalState);
 		if (!telemetryStartTime) {
@@ -219,16 +226,11 @@ export class TelemetryService {
 		}
 	}
 
-	async promptForTelemetry(
-		isPreviewExtension: boolean,
-		isVSCodeTelemetryEnabled: boolean = vscode.env.isTelemetryEnabled,
-		samplingInterval = 1000 /* prompt N out of 1000. 1000 = 100% */
-	) {
+	async promptForTelemetry(isVSCodeTelemetryEnabled: boolean = vscode.env.isTelemetryEnabled) {
 		if (!this.active) return;
 
-		// Do not prompt yet if the user disabled vscode's telemetry.
-		// TODO(hyangah): remove this condition after we roll out to 100%. It's possible
-		// users who don't want vscode's telemetry are still willing to opt in.
+		// Do not prompt if the user disabled vscode's telemetry.
+		// See https://code.visualstudio.com/api/extension-guides/telemetry#without-the-telemetry-module
 		if (!isVSCodeTelemetryEnabled) return;
 
 		// Allow at least 7days for gopls to collect some data.
@@ -240,11 +242,6 @@ export class TelemetryService {
 			return;
 		}
 
-		// For official extension users, prompt only N out of 1000.
-		if (!isPreviewExtension && this.hashMachineID() % 1000 >= samplingInterval) {
-			return;
-		}
-
 		try {
 			await this.languageClient?.sendRequest(ExecuteCommandRequest.type, {
 				command: GOPLS_MAYBE_PROMPT_FOR_TELEMETRY
@@ -252,11 +249,6 @@ export class TelemetryService {
 		} catch (e) {
 			console.log(`failed to send telemetry request: ${e}`);
 		}
-	}
-
-	// exported for testing.
-	public hashMachineID(salt?: string): number {
-		return hashMachineID(salt);
 	}
 }
 

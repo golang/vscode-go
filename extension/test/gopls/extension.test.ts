@@ -211,11 +211,7 @@ suite('Go Extension Tests With Gopls', function () {
 			await Promise.all([
 				// we want to see the prompt command flowing.
 				env.onMessageInTrace(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, 60_000),
-				sut.promptForTelemetry(
-					false /* not a preview */,
-					true /* vscode telemetry not disabled */,
-					1000 /* 1000 out of 1000 users */
-				)
+				sut.promptForTelemetry(true /* vscode telemetry not disabled */)
 			]);
 		} catch (e) {
 			assert(false, `unexpected failure: ${e}`);
