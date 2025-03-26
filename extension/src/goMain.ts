@@ -73,7 +73,7 @@ import { GoExtensionContext } from './context';
 import * as commands from './commands';
 import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
-import { setTelemetryEnvVars, telemetryReporter } from './goTelemetry';
+import { setTelemetryEnvVars, activationLatency, telemetryReporter } from './goTelemetry';
 import { experiments } from './experimental';
 import { allToolsInformation } from './goToolsInformation';
 
@@ -238,22 +238,6 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	telemetryReporter.add(activationLatency(Date.now() - start), 1);
 
 	return extensionAPI;
-}
-
-function activationLatency(duration: number): string {
-	// TODO: generalize and move to goTelemetry.ts
-	let bucket = '>=5s';
-
-	if (duration < 100) {
-		bucket = '<100ms';
-	} else if (duration < 500) {
-		bucket = '<500ms';
-	} else if (duration < 1000) {
-		bucket = '<1s';
-	} else if (duration < 5000) {
-		bucket = '<5s';
-	}
-	return 'activation_latency:' + bucket;
 }
 
 export function deactivate() {

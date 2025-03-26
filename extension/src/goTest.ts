@@ -25,7 +25,6 @@ import {
 	SuiteToTestMap,
 	getTestFunctions
 } from './testUtils';
-import type { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.

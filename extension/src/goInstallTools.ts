@@ -39,7 +39,7 @@ import {
 import util = require('util');
 import vscode = require('vscode');
 import { RestartReason } from './language/goLanguageServer';
-import { telemetryReporter } from './goTelemetry';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 import { allToolsInformation } from './goToolsInformation';
 
 const STATUS_BAR_ITEM_NAME = 'Go Tools';
@@ -937,7 +937,7 @@ export async function maybeInstallVSCGO(
 	if (extensionMode === vscode.ExtensionMode.Production && executableFileExists(progPath)) {
 		return progPath; // reuse existing executable.
 	}
-	telemetryReporter.add('vscgo_install', 1);
+	telemetryReporter.add(TelemetryKey.VSCGO_INSTALL, 1);
 	const mkdir = util.promisify(fs.mkdir);
 	await mkdir(path.dirname(progPath), { recursive: true });
 	const execFile = util.promisify(cp.execFile);
@@ -965,7 +965,7 @@ export async function maybeInstallVSCGO(
 		await execFile(goBinary, args, { cwd, env });
 		return progPath;
 	} catch (e) {
-		telemetryReporter.add('vscgo_install_fail', 1);
+		telemetryReporter.add(TelemetryKey.VSCGO_INSTALL_FAIL, 1);
 		return Promise.reject(`failed to install vscgo - ${e}`);
 	}
 }

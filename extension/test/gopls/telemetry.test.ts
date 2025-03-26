@@ -9,6 +9,7 @@ import { describe, it } from 'mocha';
 import {
 	GOPLS_MAYBE_PROMPT_FOR_TELEMETRY,
 	TELEMETRY_START_TIME_KEY,
+	TelemetryKey,
 	TelemetryReporter,
 	TelemetryService,
 	recordTelemetryStartTime
@@ -189,8 +190,8 @@ describe('# telemetry reporter using vscgo', async function () {
 	});
 
 	it('add succeeds before telemetryReporter.setTool runs', () => {
-		sut.add('hello', 1);
-		sut.add('world', 2);
+		sut.add(TelemetryKey.VSCGO_INSTALL, 1);
+		sut.add(TelemetryKey.VSCGO_INSTALL_FAIL, 2);
 	});
 
 	it('flush is noop before setTool', async () => {
@@ -202,13 +203,13 @@ describe('# telemetry reporter using vscgo', async function () {
 		sut.setTool(vscgo);
 		await sut.flush();
 		const readAll = fs.readFileSync(counterfile).toString();
-		assert(readAll.includes('hello 1\n') && readAll.includes('world 2\n'), readAll);
+		assert(readAll.includes('vscgo_install 1\n') && readAll.includes('vscgo_install_fail 2\n'), readAll);
 	});
 
 	it('dispose triggers flush', async () => {
-		sut.add('bye', 3);
+		sut.add(TelemetryKey.ACTIVATION_LATENCY_GE_5S, 3);
 		await sut.dispose();
 		const readAll = fs.readFileSync(counterfile).toString();
-		assert(readAll.includes('bye 3\n'), readAll);
+		assert(readAll.includes('activation_latency:>=5s 3\n'), readAll);
 	});
 });

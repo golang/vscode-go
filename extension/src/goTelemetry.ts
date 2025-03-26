@@ -36,6 +36,41 @@ export function recordTelemetryStartTime(storage: vscode.Memento, date: Date) {
 	storage.update(TELEMETRY_START_TIME_KEY, date.toJSON());
 }
 
+/**
+ * TelemetryKey represents the different types of telemetry events.
+ */
+export enum TelemetryKey {
+	// Indicates the installation of vscgo binary.
+	VSCGO_INSTALL = 'vscgo_install',
+	VSCGO_INSTALL_FAIL = 'vscgo_install_fail',
+
+	// Indicates the activation latency.
+	ACTIVATION_LATENCY_L_100MS = 'activation_latency:<100ms',
+	ACTIVATION_LATENCY_L_500MS = 'activation_latency:<500ms',
+	ACTIVATION_LATENCY_L_1000MS = 'activation_latency:<1000ms',
+	ACTIVATION_LATENCY_L_5000MS = 'activation_latency:<5000ms',
+	ACTIVATION_LATENCY_GE_5S = 'activation_latency:>=5s'
+}
+
+/**
+ * Categorizes a duration into a specific latency bucket.
+ *
+ * @param duration The duration in milliseconds.
+ * @returns The TelemetryKey representing the latency bucket.
+ */
+export function activationLatency(duration: number): TelemetryKey {
+	if (duration < 100) {
+		return TelemetryKey.ACTIVATION_LATENCY_L_100MS;
+	} else if (duration < 500) {
+		return TelemetryKey.ACTIVATION_LATENCY_L_500MS;
+	} else if (duration < 1000) {
+		return TelemetryKey.ACTIVATION_LATENCY_L_1000MS;
+	} else if (duration < 5000) {
+		return TelemetryKey.ACTIVATION_LATENCY_L_5000MS;
+	}
+	return TelemetryKey.ACTIVATION_LATENCY_GE_5S;
+}
+
 function readTelemetryStartTime(storage: vscode.Memento): Date | null {
 	const value = storage.get<string | number | Date>(TELEMETRY_START_TIME_KEY);
 	if (!value) {
@@ -109,12 +144,12 @@ export class TelemetryReporter implements vscode.Disposable {
 	/**
 	 * Adds a numeric value to a counter associated with the given key.
 	 */
-	public add(key: string, value: number) {
+	public add(key: TelemetryKey, value: number) {
 		if (value <= 0) {
 			return;
 		}
-		key = key.replace(/[\s\n]/g, '_');
-		this._counters[key] = (this._counters[key] || 0) + value;
+		const sanitized = key.replace(/[\s\n]/g, '_');
+		this._counters[sanitized] = (this._counters[sanitized] || 0) + value;
 	}
 
 	/**
@@ -197,7 +232,7 @@ export const telemetryReporter = new TelemetryReporter();
 
 // TODO(hyangah): consolidate the list of all the telemetries and bucketting functions.
 
-export function addTelemetryEvent(name: string, count: number) {
+export function addTelemetryEvent(name: TelemetryKey, count: number) {
 	telemetryReporter.add(name, count);
 }
 
