@@ -12,6 +12,7 @@ import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 const TOOL_CMD_NAME = 'goplay';
 
@@ -46,6 +47,8 @@ export const playgroundCommand: CommandFactory = () => () => {
 };
 
 export function goPlay(code: string, goConfig?: vscode.WorkspaceConfiguration): Thenable<string> {
+	telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOPLAY, 1);
+
 	const cliArgs = goConfig ? Object.keys(goConfig).map((key) => `-${key}=${goConfig[key]}`) : [];
 	const binaryLocation = getBinPath(TOOL_CMD_NAME);
 

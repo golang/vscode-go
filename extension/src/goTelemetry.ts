@@ -49,7 +49,12 @@ export enum TelemetryKey {
 	ACTIVATION_LATENCY_L_500MS = 'activation_latency:<500ms',
 	ACTIVATION_LATENCY_L_1000MS = 'activation_latency:<1000ms',
 	ACTIVATION_LATENCY_L_5000MS = 'activation_latency:<5000ms',
-	ACTIVATION_LATENCY_GE_5S = 'activation_latency:>=5s'
+	ACTIVATION_LATENCY_GE_5S = 'activation_latency:>=5s',
+
+	// Indicates the tools usage.
+	TOOL_USAGE_GOTESTS = 'vscode-go/tool/usage:gotests',
+	TOOL_USAGE_GOPLAY = 'vscode-go/tool/usage:goplay',
+	TOOL_USAGE_GOMODIFYTAGS = 'vscode-go/tool/usage:gomodifytags'
 }
 
 /**

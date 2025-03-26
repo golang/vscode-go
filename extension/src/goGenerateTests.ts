@@ -19,6 +19,7 @@ import { outputChannel } from './goStatus';
 import { getBinPath, resolvePath } from './util';
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 const generatedWord = 'Generated ';
 
@@ -165,6 +166,8 @@ function generateTests(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<boolean> {
 	return new Promise<boolean>((resolve, reject) => {
+		telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOTESTS, 1);
+
 		const cmd = getBinPath('gotests');
 		let args = ['-w'];
 		const goGenerateTestsFlags: string[] = goConfig['generateTestsFlags'] || [];

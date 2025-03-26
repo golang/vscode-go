@@ -14,6 +14,7 @@ import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive } from './util';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {
@@ -162,6 +163,8 @@ function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): The
 }
 
 function runGomodifytags(args: string[]) {
+	telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOMODIFYTAGS, 1);
+
 	const gomodifytags = getBinPath('gomodifytags');
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
