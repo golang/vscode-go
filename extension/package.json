@@ -1558,6 +1558,12 @@
           "description": "Automatically update the tools used by the extension, without prompting the user.",
           "scope": "resource"
         },
+        "go.toolsManagement.warnOutdated": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn the user if the tools used by the extension appear outdated, or are not regular Go binaries. This has no effect if `go.toolsManagement.autoUpdate` is true.",
+          "scope": "resource"
+        },
         "go.enableCodeLens": {
           "type": "object",
           "properties": {
