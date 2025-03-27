@@ -717,6 +717,29 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		);
 	});
 
+	test('allow package path in dlv-dap mode', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = 'example.com/foo/bar';
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		)!;
+		assert.deepStrictEqual(
+			{ program, cwd, __buildDir },
+			{
+				program: 'example.com/foo/bar',
+				cwd: workspaceDir,
+				__buildDir: undefined
+			}
+		);
+	});
+
 	test('program and __buildDir are updated while resolving debug configuration in dlv-dap mode', () => {
 		createDirRecursively(path.join(workspaceDir, 'foo', 'bar', 'pkg'));
 

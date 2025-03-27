@@ -2051,6 +2051,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		// second test has a chance to run it.
 		if (!config['output'] && ['debug', 'auto', 'test'].includes(config['mode'])) {
 			const dir = parseDebugProgramArgSync(config['program']).dirname;
+			if (!dir) throw new Error('Debug configuration does not define an output directory');
 			config['output'] = path.join(dir, `__debug_bin_${testNumber}`);
 		}
 		testNumber++;
