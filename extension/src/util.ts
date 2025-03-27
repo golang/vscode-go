@@ -18,10 +18,10 @@ import { toolExecutionEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
 import {
-	getEnvPath,
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopathGorootWithExplanation,
 	getCurrentGoRoot,
+	getEnvPath,
 	getInferredGopath,
 	resolveHomeDir
 } from './utils/pathUtils';

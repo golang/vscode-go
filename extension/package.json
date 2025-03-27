@@ -50,7 +50,7 @@
     "unit-test": "npm run test-compile && node ./node_modules/mocha/bin/_mocha -u tdd --timeout 5000 ./out/test/unit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
-  "extensionDependencies": [],
+  "extensionDependencies": [ ],
   "dependencies": {
     "diff": "4.0.2",
     "glob": "7.1.7",
@@ -610,7 +610,7 @@
         ],
         "configurationAttributes": {
           "launch": {
-            "required": [],
+            "required": [ ],
             "properties": {
               "debugAdapter": {
                 "enum": [
@@ -661,7 +661,7 @@
                 "items": {
                   "type": "string"
                 },
-                "default": []
+                "default": [ ]
               },
               "showLog": {
                 "type": "boolean",
@@ -676,7 +676,7 @@
               "env": {
                 "type": "object",
                 "description": "Environment variables passed to the launched debuggee program. Format as string key:value pairs. Merged with `envFile` and `go.toolsEnvVars` with precedence `env` > `envFile` > `go.toolsEnvVars`.",
-                "default": {}
+                "default": { }
               },
               "substitutePath": {
                 "type": "array",
@@ -696,7 +696,7 @@
                   }
                 },
                 "description": "An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.",
-                "default": []
+                "default": [ ]
               },
               "buildFlags": {
                 "type": [
@@ -707,7 +707,7 @@
                   "type": "string"
                 },
                 "description": "Build flags, to be passed to the Go compiler. Maps to dlv's `--build-flags` flag.",
-                "default": []
+                "default": [ ]
               },
               "dlvFlags": {
                 "type": "array",
@@ -715,7 +715,7 @@
                 "items": {
                   "type": "string"
                 },
-                "default": []
+                "default": [ ]
               },
               "port": {
                 "type": "number",
@@ -867,7 +867,7 @@
             }
           },
           "attach": {
-            "required": [],
+            "required": [ ],
             "properties": {
               "debugAdapter": {
                 "enum": [
@@ -916,7 +916,7 @@
                 "items": {
                   "type": "string"
                 },
-                "default": []
+                "default": [ ]
               },
               "showLog": {
                 "type": "boolean",
@@ -962,7 +962,7 @@
                   }
                 },
                 "description": "An array of mappings from a local path (editor) to the remote path (debugee). This setting is useful when working in a file system with symbolic links, running remote debugging, or debugging an executable compiled externally. The debug adapter will replace the local path with the remote path in all of the calls.  Overridden by `remotePath`.",
-                "default": []
+                "default": [ ]
               },
               "trace": {
                 "type": "string",
@@ -1116,7 +1116,7 @@
           "items": {
             "type": "string"
           },
-          "default": [],
+          "default": [ ],
           "description": "Flags to `go build`/`go test` used during build-on-save or running tests. (e.g. [\"-ldflags='-s'\"]) This is propagated to the language server if `gopls.build.buildFlags` is not specified.",
           "scope": "resource"
         },
@@ -1174,6 +1174,7 @@
             "staticcheck",
             "golint",
             "golangci-lint",
+            "golangci-lint-v2",
             "revive"
           ]
         },
@@ -1182,7 +1183,7 @@
           "items": {
             "type": "string"
           },
-          "default": [],
+          "default": [ ],
           "description": "Flags to pass to Lint tool (e.g. [\"-min_confidence=.8\"])",
           "scope": "resource"
         },
@@ -1207,7 +1208,7 @@
           "items": {
             "type": "string"
           },
-          "default": [],
+          "default": [ ],
           "description": "Flags to pass to `go tool vet` (e.g. [\"-all\", \"-shadow\"]). Not applicable when using the language server's diagnostics.",
           "scope": "resource"
         },
@@ -1238,7 +1239,7 @@
           "items": {
             "type": "string"
           },
-          "default": [],
+          "default": [ ],
           "description": "Flags to pass to format tool (e.g. [\"-s\"]). Not applicable when using the language server.",
           "scope": "resource"
         },
@@ -1415,7 +1416,7 @@
         },
         "go.testEnvVars": {
           "type": "object",
-          "default": {},
+          "default": { },
           "description": "Environment variables that will be passed to the process that runs the Go tests",
           "scope": "resource"
         },
@@ -1496,13 +1497,13 @@
           "items": {
             "type": "string"
           },
-          "default": [],
+          "default": [ ],
           "description": "Additional command line flags to pass to `gotests` for generating tests.",
           "scope": "resource"
         },
         "go.toolsEnvVars": {
           "type": "object",
-          "default": {},
+          "default": { },
           "description": "Environment variables that will be passed to the tools that run the Go tools (e.g. CGO_CFLAGS) and debuggee process launched by Delve. Format as string key:value pairs. When debugging, merged with `envFile` and `env` values with precedence `env` > `envFile` > `go.toolsEnvVars`.",
           "scope": "resource"
         },
@@ -1513,7 +1514,7 @@
         },
         "go.languageServerFlags": {
           "type": "array",
-          "default": [],
+          "default": [ ],
           "description": "Flags like -rpc.trace and -logfile to be used while running the language server."
         },
         "go.trace.server": {
@@ -1879,7 +1880,7 @@
               "items": {
                 "type": "string"
               },
-              "default": []
+              "default": [ ]
             },
             "substitutePath": {
               "type": "array",
@@ -1899,16 +1900,16 @@
                 }
               },
               "description": "An array of mappings from a local path to the remote path that is used by the debuggee. The debug adapter will replace the local path with the remote path in all of the calls. Overridden by `remotePath` (in attach request).",
-              "default": []
+              "default": [ ]
             }
           },
-          "default": {},
+          "default": { },
           "description": "Delve settings that applies to all debugging sessions. Debug configuration in the launch.json file will override these values.",
           "scope": "resource"
         },
         "go.alternateTools": {
           "type": "object",
-          "default": {},
+          "default": { },
           "description": "Alternate tools or alternate paths for the same tools used by the Go extension. Provide either absolute path or the name of the binary in GOPATH/bin, GOROOT/bin or PATH. Useful when you want to use wrapper script for the Go tools.",
           "scope": "resource",
           "properties": {
@@ -1955,7 +1956,7 @@
             "build.buildFlags": {
               "type": "array",
               "markdownDescription": "buildFlags is the set of flags passed on to the build system when invoked.\nIt is applied to queries like `go list`, which is used when discovering files.\nThe most common use is to set `-tags`.\n\nIf unspecified, values of `go.buildFlags, go.buildTags` will be propagated.\n",
-              "default": [],
+              "default": [ ],
               "scope": "resource"
             },
             "build.directoryFilters": {
@@ -1994,13 +1995,13 @@
             "build.templateExtensions": {
               "type": "array",
               "markdownDescription": "templateExtensions gives the extensions of file names that are treated\nas template files. (The extension\nis the part of the file name after the final dot.)\n",
-              "default": [],
+              "default": [ ],
               "scope": "resource"
             },
             "build.workspaceFiles": {
               "type": "array",
               "markdownDescription": "workspaceFiles configures the set of globs that match files defining the\nlogical build of the current workspace. Any on-disk changes to any files\nmatching a glob specified here will trigger a reload of the workspace.\n\nThis setting need only be customized in environments with a custom\nGOPACKAGESDRIVER.\n",
-              "default": [],
+              "default": [ ],
               "scope": "resource"
             },
             "formatting.gofumpt": {
