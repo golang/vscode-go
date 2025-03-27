@@ -112,6 +112,7 @@ export function goLint(
 		}
 		args.push(flag);
 	});
+
 	if (lintTool === 'golangci-lint') {
 		if (args.indexOf('run') === -1) {
 			args.unshift('run');
@@ -124,6 +125,34 @@ export function goLint(
 			// print file:number:column.
 			// Explicit override in case .golangci.yml calls for a format we don't understand
 			args.push('--out-format=colored-line-number');
+		}
+		if (args.indexOf('--issues-exit-code=') === -1) {
+			// adds an explicit no-error-code return argument, to avoid npm error
+			// message detection logic. See golang/vscode-go/issues/411
+			args.push('--issues-exit-code=0');
+		}
+	}
+
+	if (lintTool === 'golangci-lint-v2') {
+		if (args.indexOf('run') === -1) {
+			args.unshift('run');
+		}
+		if (args.indexOf('--output.text.print-issued-lines') === -1) {
+			// print only file:number:column
+			args.push('--output.text.print-issued-lines=false');
+		}
+		if (args.indexOf('--output.text.colors') === -1) {
+			// print only file:number:column
+			args.push('--output.text.colors=true');
+		}
+		if (args.indexOf('--show-stats') === -1) {
+			// print only file:number:column
+			args.push('--show-stats=false');
+		}
+		if (args.indexOf('--output.text.path') === -1) {
+			// print file:number:column.
+			// Explicit override in case .golangci.yml calls for a format we don't understand
+			args.push('--output.text.path=stdout');
 		}
 		if (args.indexOf('--issues-exit-code=') === -1) {
 			// adds an explicit no-error-code return argument, to avoid npm error
