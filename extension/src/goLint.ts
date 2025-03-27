@@ -74,6 +74,8 @@ export function goLint(
 		return Promise.resolve([]);
 	}
 
+	console.log('goLint', lintTool, scope);
+
 	epoch++;
 	const closureEpoch = epoch;
 	if (tokenSource) {
@@ -159,6 +161,8 @@ export function goLint(
 			// message detection logic. See golang/vscode-go/issues/411
 			args.push('--issues-exit-code=0');
 		}
+
+		console.log('golangci-lint-v2', args);
 	}
 
 	if (scope === 'workspace' && currentWorkspace) {
