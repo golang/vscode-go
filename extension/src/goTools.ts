@@ -8,8 +8,8 @@
 
 import moment = require('moment');
 import semver = require('semver');
-import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
 import { allToolsInformation } from './goToolsInformation';
+import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
 import { GoVersion } from './util';
 
 export interface Tool {

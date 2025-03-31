@@ -64,6 +64,11 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 	alternateTool?: string,
 	useCache = true
 ): { binPath: string; why?: string } {
+	// fix for binname of golangci-lint when using v2
+	if (toolName === 'golangci-lint-v2') {
+		toolName = 'golangci-lint';
+	}
+
 	if (alternateTool && path.isAbsolute(alternateTool) && executableFileExists(alternateTool)) {
 		binPathCache[toolName] = alternateTool;
 		return { binPath: alternateTool, why: 'alternateTool' };
