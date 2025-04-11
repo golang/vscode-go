@@ -165,6 +165,10 @@ export async function goLint(
 					// Explicit override in case .golangci.yml calls for a format we don't understand
 					args.push('--output.text.colors=true');
 				}
+				if (args.indexOf('--path-mode=abs') === -1) {
+					// print file name as absolute path
+					args.push('--path-mode=abs');
+				}
 				break;
 		}
 	}
