@@ -13,6 +13,7 @@ diff between options locally discovered and options available for download.
   * Added a new lint tool, `golangci-lint-v2`. It's added as an installable tool, so you can install it via the `Go: Install/Update Tools` command.
   * You can switch v1 and v2 per workspace by using `golangci-lint` and `golangci-lint-v2` option. You must keep the `golangci-lint` executable version on your machine to v1 for that.
   * You can also use `golangci-lint` executable updated to v2. Just keep using the `golangci-lint` option for that.
+  * The `path-mode` flag set by vscode-go can be overridden by the`go.lintFlags` option.
   * Looking for a way to format your code with golangci-lint v2 on VS Code? Check the [golangci-lint documentation](https://golangci-lint.run/welcome/integrations/#visual-studio-code).
 
 ### Fixes

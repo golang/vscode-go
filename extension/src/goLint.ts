@@ -121,7 +121,7 @@ export async function goLint(
 			const { moduleVersion } = await inspectGoToolVersion(getBinPath(lintTool));
 			// if moduleVersion is undefined, treat it as version=1
 			// if moduleVersion is higher than v1 (v2, v3...), treat it as version=2
-			!moduleVersion || moduleVersion.startsWith('v1') ? (version = 1) : (version = 2);
+			version = !moduleVersion || moduleVersion.startsWith('v1') ? 1 : 2;
 		}
 
 		// append common flags
@@ -139,10 +139,10 @@ export async function goLint(
 					// print only file:number:column
 					args.push('--print-issued-lines=false');
 				}
-				if (args.indexOf('--out-format=colored-line-number') === -1) {
+				if (args.indexOf('--out-format=line-number') === -1) {
 					// print file:number:column.
 					// Explicit override in case .golangci.yml calls for a format we don't understand
-					args.push('--out-format=colored-line-number');
+					args.push('--out-format=line-number');
 				}
 				break;
 
@@ -160,12 +160,7 @@ export async function goLint(
 					// Explicit override in case .golangci.yml calls for a format we don't understand
 					args.push('--output.text.path=stdout');
 				}
-				if (args.indexOf('--output.text.colors=true') === -1) {
-					// print file:number:column.
-					// Explicit override in case .golangci.yml calls for a format we don't understand
-					args.push('--output.text.colors=true');
-				}
-				if (args.indexOf('--path-mode=abs') === -1) {
+				if (!args.some((v) => v.startsWith('--path-mode='))) {
 					// print file name as absolute path
 					args.push('--path-mode=abs');
 				}
