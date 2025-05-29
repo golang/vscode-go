@@ -117,7 +117,8 @@ suite('Go Test Runner', () => {
 					{
 						include: [test],
 						exclude: undefined,
-						profile: undefined
+						profile: undefined,
+						preserveFocus: false
 					},
 					undefined,
 					{ kind: 'cpu' }
@@ -137,7 +138,8 @@ suite('Go Test Runner', () => {
 				await testExplorer.runner.run({
 					include: tests,
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				}),
 				'Failed to execute `go test`'
 			);
@@ -159,7 +161,8 @@ suite('Go Test Runner', () => {
 					{
 						include: tests,
 						exclude: undefined,
-						profile: undefined
+						profile: undefined,
+						preserveFocus: false
 					},
 					undefined,
 					{ kind: 'cpu' }
@@ -232,7 +235,8 @@ suite('Go Test Runner', () => {
 				await testExplorer.runner.run({
 					include: [tMain],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				}),
 				'Failed to execute `go test`'
 			);
@@ -268,7 +272,8 @@ suite('Go Test Runner', () => {
 				await testExplorer.runner.run({
 					include: [tSub],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				}),
 				'Failed to execute `go test`'
 			);
@@ -291,7 +296,8 @@ suite('Go Test Runner', () => {
 				await testExplorer.runner.run({
 					include: [tSub, tOther],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				}),
 				'Failed to execute `go test`'
 			);

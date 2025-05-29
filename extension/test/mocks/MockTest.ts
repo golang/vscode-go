@@ -8,6 +8,9 @@ import path = require('path');
 import {
 	CancellationToken,
 	EndOfLine,
+	Event,
+	EventEmitter,
+	FileCoverage,
 	FileType,
 	MarkdownString,
 	Position,
@@ -111,9 +114,13 @@ class MockTestRunProfile implements TestRunProfile {
 		public kind: TestRunProfileKind,
 		public runHandler: TestRunHandler,
 		public isDefault: boolean
-	) {}
+	) {
+		const emitter = new EventEmitter<boolean>();
+		this.onDidChangeDefault = emitter.event;
+	}
 	tag: TestTag | undefined;
-
+	onDidChangeDefault: Event<boolean>;
+	supportsContinuousRun = false;
 	configureHandler(): void {}
 	dispose(): void {}
 }
@@ -126,6 +133,13 @@ class MockTestRun implements TestRun {
 		throw new Error('Method not implemented.');
 	}
 
+	constructor() {
+		const emitter = new EventEmitter<void>();
+		this.onDidDispose = emitter.event;
+	}
+
+	addCoverage(fileCoverage: FileCoverage): void {}
+	onDidDispose: Event<void>;
 	enqueued(test: TestItem): void {}
 	started(test: TestItem): void {}
 	skipped(test: TestItem): void {}
@@ -161,6 +175,7 @@ export class MockTestController implements TestController {
 		return new MockTestItem(id, label, uri, this);
 	}
 
+	invalidateTestResults(items?: TestItem | readonly TestItem[]): void {}
 	dispose(): void {}
 }
 

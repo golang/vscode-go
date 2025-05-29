@@ -74,9 +74,9 @@
     "@types/node-fetch": "2.6.9",
     "@types/semver": "7.3.4",
     "@types/sinon": "9.0.11",
-    "@types/vscode": "1.75.0",
-    "@vscode/debugadapter-testsupport": "1.58.0",
-    "@vscode/test-electron": "2.3.8",
+    "@types/vscode": "1.90.0",
+    "@vscode/debugadapter-testsupport": "1.68.0",
+    "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "2.23.0",
     "adm-zip": "0.4.16",
     "esbuild": "0.17.10",
@@ -91,7 +91,7 @@
     "yarn": "1.22.22"
   },
   "engines": {
-    "vscode": "^1.75.0",
+    "vscode": "^1.90.0",
     "node": ">=16.14.2"
   },
   "activationEvents": [

@@ -361,7 +361,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [tests[0]],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 				assert.deepStrictEqual(runStub.lastCall.args[0].functions, ['TestFoo']);
@@ -383,7 +384,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [tests[0]],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 2, 'Expected goTest to be called twice');
 				assert.deepStrictEqual(runStub.firstCall.args[0].functions, ['TestFoo']);
@@ -431,7 +433,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [test],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
@@ -456,7 +459,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [test],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
