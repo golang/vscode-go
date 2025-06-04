@@ -2033,7 +2033,7 @@
                 },
                 "run_govulncheck": {
                   "type": "boolean",
-                  "markdownDescription": "`\"run_govulncheck\"`: Run govulncheck (legacy)\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run Govulncheck asynchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
+                  "markdownDescription": "(Experimental) `\"run_govulncheck\"`: Run govulncheck (legacy)\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run Govulncheck asynchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
                   "default": false
                 },
                 "test": {
@@ -2058,7 +2058,7 @@
                 },
                 "vulncheck": {
                   "type": "boolean",
-                  "markdownDescription": "`\"vulncheck\"`: Run govulncheck\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run govulncheck synchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
+                  "markdownDescription": "(Experimental) `\"vulncheck\"`: Run govulncheck\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run govulncheck synchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
                   "default": false
                 }
               }
@@ -2108,6 +2108,781 @@
               "markdownDescription": "analyses specify analyses that the user would like to enable or disable.\nA map of the names of analysis passes that should be enabled/disabled.\nA full list of analyzers that gopls uses can be found in\n[analyzers.md](https://github.com/golang/tools/blob/master/gopls/doc/analyzers.md).\n\nExample Usage:\n\n```json5\n...\n\"analyses\": {\n  \"unreachable\": false, // Disable the unreachable analyzer.\n  \"unusedvariable\": true  // Enable the unusedvariable analyzer.\n}\n...\n```\n",
               "scope": "resource",
               "properties": {
+                "QF1001": {
+                  "type": "boolean",
+                  "markdownDescription": "Apply De Morgan's law\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1002": {
+                  "type": "boolean",
+                  "markdownDescription": "Convert untagged switch to tagged switch\n\nAn untagged switch that compares a single variable against a series of\nvalues can be replaced with a tagged switch.\n\nBefore:\n\n    switch {\n    case x == 1 || x == 2, x == 3:\n        ...\n    case x == 4:\n        ...\n    default:\n        ...\n    }\n\nAfter:\n\n    switch x {\n    case 1, 2, 3:\n        ...\n    case 4:\n        ...\n    default:\n        ...\n    }\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "QF1003": {
+                  "type": "boolean",
+                  "markdownDescription": "Convert if/else-if chain to tagged switch\n\nA series of if/else-if checks comparing the same variable against\nvalues can be replaced with a tagged switch.\n\nBefore:\n\n    if x == 1 || x == 2 {\n        ...\n    } else if x == 3 {\n        ...\n    } else {\n        ...\n    }\n\nAfter:\n\n    switch x {\n    case 1, 2:\n        ...\n    case 3:\n        ...\n    default:\n        ...\n    }\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "QF1004": {
+                  "type": "boolean",
+                  "markdownDescription": "Use strings.ReplaceAll instead of strings.Replace with n == -1\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "QF1005": {
+                  "type": "boolean",
+                  "markdownDescription": "Expand call to math.Pow\n\nSome uses of math.Pow can be simplified to basic multiplication.\n\nBefore:\n\n    math.Pow(x, 2)\n\nAfter:\n\n    x * x\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1006": {
+                  "type": "boolean",
+                  "markdownDescription": "Lift if+break into loop condition\n\nBefore:\n\n    for {\n        if done {\n            break\n        }\n        ...\n    }\n\nAfter:\n\n    for !done {\n        ...\n    }\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1007": {
+                  "type": "boolean",
+                  "markdownDescription": "Merge conditional assignment into variable declaration\n\nBefore:\n\n    x := false\n    if someCondition {\n        x = true\n    }\n\nAfter:\n\n    x := someCondition\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1008": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit embedded fields from selector expression\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1009": {
+                  "type": "boolean",
+                  "markdownDescription": "Use time.Time.Equal instead of == operator\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "QF1010": {
+                  "type": "boolean",
+                  "markdownDescription": "Convert slice of bytes to string when printing it\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "QF1011": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit redundant type from variable declaration\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "QF1012": {
+                  "type": "boolean",
+                  "markdownDescription": "Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...))\n\nAvailable since\n    2022.1\n",
+                  "default": true
+                },
+                "S1000": {
+                  "type": "boolean",
+                  "markdownDescription": "Use plain channel send or receive instead of single-case select\n\nSelect statements with a single case can be replaced with a simple\nsend or receive.\n\nBefore:\n\n    select {\n    case x := <-ch:\n        fmt.Println(x)\n    }\n\nAfter:\n\n    x := <-ch\n    fmt.Println(x)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1001": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace for loop with call to copy\n\nUse copy() for copying elements from one slice to another. For\narrays of identical size, you can use simple assignment.\n\nBefore:\n\n    for i, x := range src {\n        dst[i] = x\n    }\n\nAfter:\n\n    copy(dst, src)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1002": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit comparison with boolean constant\n\nBefore:\n\n    if x == true {}\n\nAfter:\n\n    if x {}\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1003": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace call to strings.Index with strings.Contains\n\nBefore:\n\n    if strings.Index(x, y) != -1 {}\n\nAfter:\n\n    if strings.Contains(x, y) {}\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1004": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace call to bytes.Compare with bytes.Equal\n\nBefore:\n\n    if bytes.Compare(x, y) == 0 {}\n\nAfter:\n\n    if bytes.Equal(x, y) {}\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1005": {
+                  "type": "boolean",
+                  "markdownDescription": "Drop unnecessary use of the blank identifier\n\nIn many cases, assigning to the blank identifier is unnecessary.\n\nBefore:\n\n    for _ = range s {}\n    x, _ = someMap[key]\n    _ = <-ch\n\nAfter:\n\n    for range s{}\n    x = someMap[key]\n    <-ch\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1006": {
+                  "type": "boolean",
+                  "markdownDescription": "Use 'for { ... }' for infinite loops\n\nFor infinite loops, using for { ... } is the most idiomatic choice.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1007": {
+                  "type": "boolean",
+                  "markdownDescription": "Simplify regular expression by using raw string literal\n\nRaw string literals use backticks instead of quotation marks and do not support\nany escape sequences. This means that the backslash can be used\nfreely, without the need of escaping.\n\nSince regular expressions have their own escape sequences, raw strings\ncan improve their readability.\n\nBefore:\n\n    regexp.Compile(\"\\\\A(\\\\w+) profile: total \\\\d+\\\\n\\\\z\")\n\nAfter:\n\n    regexp.Compile(`\\A(\\w+) profile: total \\d+\\n\\z`)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1008": {
+                  "type": "boolean",
+                  "markdownDescription": "Simplify returning boolean expression\n\nBefore:\n\n    if <expr> {\n        return true\n    }\n    return false\n\nAfter:\n\n    return <expr>\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1009": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit redundant nil check on slices, maps, and channels\n\nThe len function is defined for all slices, maps, and\nchannels, even nil ones, which have a length of zero. It is not necessary to\ncheck for nil before checking that their length is not zero.\n\nBefore:\n\n    if x != nil && len(x) != 0 {}\n\nAfter:\n\n    if len(x) != 0 {}\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1010": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit default slice index\n\nWhen slicing, the second index defaults to the length of the value,\nmaking s[n:len(s)] and s[n:] equivalent.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1011": {
+                  "type": "boolean",
+                  "markdownDescription": "Use a single append to concatenate two slices\n\nBefore:\n\n    for _, e := range y {\n        x = append(x, e)\n    }\n    \n    for i := range y {\n        x = append(x, y[i])\n    }\n    \n    for i := range y {\n        v := y[i]\n        x = append(x, v)\n    }\n\nAfter:\n\n    x = append(x, y...)\n    x = append(x, y...)\n    x = append(x, y...)\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1012": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace time.Now().Sub(x) with time.Since(x)\n\nThe time.Since helper has the same effect as using time.Now().Sub(x)\nbut is easier to read.\n\nBefore:\n\n    time.Now().Sub(x)\n\nAfter:\n\n    time.Since(x)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1016": {
+                  "type": "boolean",
+                  "markdownDescription": "Use a type conversion instead of manually copying struct fields\n\nTwo struct types with identical fields can be converted between each\nother. In older versions of Go, the fields had to have identical\nstruct tags. Since Go 1.8, however, struct tags are ignored during\nconversions. It is thus not necessary to manually copy every field\nindividually.\n\nBefore:\n\n    var x T1\n    y := T2{\n        Field1: x.Field1,\n        Field2: x.Field2,\n    }\n\nAfter:\n\n    var x T1\n    y := T2(x)\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1017": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace manual trimming with strings.TrimPrefix\n\nInstead of using strings.HasPrefix and manual slicing, use the\nstrings.TrimPrefix function. If the string doesn't start with the\nprefix, the original string will be returned. Using strings.TrimPrefix\nreduces complexity, and avoids common bugs, such as off-by-one\nmistakes.\n\nBefore:\n\n    if strings.HasPrefix(str, prefix) {\n        str = str[len(prefix):]\n    }\n\nAfter:\n\n    str = strings.TrimPrefix(str, prefix)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1018": {
+                  "type": "boolean",
+                  "markdownDescription": "Use 'copy' for sliding elements\n\ncopy() permits using the same source and destination slice, even with\noverlapping ranges. This makes it ideal for sliding elements in a\nslice.\n\nBefore:\n\n    for i := 0; i < n; i++ {\n        bs[i] = bs[offset+i]\n    }\n\nAfter:\n\n    copy(bs[:n], bs[offset:])\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1019": {
+                  "type": "boolean",
+                  "markdownDescription": "Simplify 'make' call by omitting redundant arguments\n\nThe 'make' function has default values for the length and capacity\narguments. For channels, the length defaults to zero, and for slices,\nthe capacity defaults to the length.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1020": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit redundant nil check in type assertion\n\nBefore:\n\n    if _, ok := i.(T); ok && i != nil {}\n\nAfter:\n\n    if _, ok := i.(T); ok {}\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1021": {
+                  "type": "boolean",
+                  "markdownDescription": "Merge variable declaration and assignment\n\nBefore:\n\n    var x uint\n    x = 1\n\nAfter:\n\n    var x uint = 1\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1023": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit redundant control flow\n\nFunctions that have no return value do not need a return statement as\nthe final statement of the function.\n\nSwitches in Go do not have automatic fallthrough, unlike languages\nlike C. It is not necessary to have a break statement as the final\nstatement in a case block.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1024": {
+                  "type": "boolean",
+                  "markdownDescription": "Replace x.Sub(time.Now()) with time.Until(x)\n\nThe time.Until helper has the same effect as using x.Sub(time.Now())\nbut is easier to read.\n\nBefore:\n\n    x.Sub(time.Now())\n\nAfter:\n\n    time.Until(x)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1025": {
+                  "type": "boolean",
+                  "markdownDescription": "Don't use fmt.Sprintf(\"%s\", x) unnecessarily\n\nIn many instances, there are easier and more efficient ways of getting\na value's string representation. Whenever a value's underlying type is\na string already, or the type has a String method, they should be used\ndirectly.\n\nGiven the following shared definitions\n\n    type T1 string\n    type T2 int\n\n    func (T2) String() string { return \"Hello, world\" }\n\n    var x string\n    var y T1\n    var z T2\n\nwe can simplify\n\n    fmt.Sprintf(\"%s\", x)\n    fmt.Sprintf(\"%s\", y)\n    fmt.Sprintf(\"%s\", z)\n\nto\n\n    x\n    string(y)\n    z.String()\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1028": {
+                  "type": "boolean",
+                  "markdownDescription": "Simplify error construction with fmt.Errorf\n\nBefore:\n\n    errors.New(fmt.Sprintf(...))\n\nAfter:\n\n    fmt.Errorf(...)\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1029": {
+                  "type": "boolean",
+                  "markdownDescription": "Range over the string directly\n\nRanging over a string will yield byte offsets and runes. If the offset\nisn't used, this is functionally equivalent to converting the string\nto a slice of runes and ranging over that. Ranging directly over the\nstring will be more performant, however, as it avoids allocating a new\nslice, the size of which depends on the length of the string.\n\nBefore:\n\n    for _, r := range []rune(s) {}\n\nAfter:\n\n    for _, r := range s {}\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "S1030": {
+                  "type": "boolean",
+                  "markdownDescription": "Use bytes.Buffer.String or bytes.Buffer.Bytes\n\nbytes.Buffer has both a String and a Bytes method. It is almost never\nnecessary to use string(buf.Bytes()) or []byte(buf.String()) – simply\nuse the other method.\n\nThe only exception to this are map lookups. Due to a compiler optimization,\nm[string(buf.Bytes())] is more efficient than m[buf.String()].\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1031": {
+                  "type": "boolean",
+                  "markdownDescription": "Omit redundant nil check around loop\n\nYou can use range on nil slices and maps, the loop will simply never\nexecute. This makes an additional nil check around the loop\nunnecessary.\n\nBefore:\n\n    if s != nil {\n        for _, x := range s {\n            ...\n        }\n    }\n\nAfter:\n\n    for _, x := range s {\n        ...\n    }\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "S1032": {
+                  "type": "boolean",
+                  "markdownDescription": "Use sort.Ints(x), sort.Float64s(x), and sort.Strings(x)\n\nThe sort.Ints, sort.Float64s and sort.Strings functions are easier to\nread than sort.Sort(sort.IntSlice(x)), sort.Sort(sort.Float64Slice(x))\nand sort.Sort(sort.StringSlice(x)).\n\nBefore:\n\n    sort.Sort(sort.StringSlice(x))\n\nAfter:\n\n    sort.Strings(x)\n\nAvailable since\n    2019.1\n",
+                  "default": true
+                },
+                "S1033": {
+                  "type": "boolean",
+                  "markdownDescription": "Unnecessary guard around call to 'delete'\n\nCalling delete on a nil map is a no-op.\n\nAvailable since\n    2019.2\n",
+                  "default": true
+                },
+                "S1034": {
+                  "type": "boolean",
+                  "markdownDescription": "Use result of type assertion to simplify cases\n\nAvailable since\n    2019.2\n",
+                  "default": true
+                },
+                "S1035": {
+                  "type": "boolean",
+                  "markdownDescription": "Redundant call to net/http.CanonicalHeaderKey in method call on net/http.Header\n\nThe methods on net/http.Header, namely Add, Del, Get\nand Set, already canonicalize the given header name.\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "S1036": {
+                  "type": "boolean",
+                  "markdownDescription": "Unnecessary guard around map access\n\nWhen accessing a map key that doesn't exist yet, one receives a zero\nvalue. Often, the zero value is a suitable value, for example when\nusing append or doing integer math.\n\nThe following\n\n    if _, ok := m[\"foo\"]; ok {\n        m[\"foo\"] = append(m[\"foo\"], \"bar\")\n    } else {\n        m[\"foo\"] = []string{\"bar\"}\n    }\n\ncan be simplified to\n\n    m[\"foo\"] = append(m[\"foo\"], \"bar\")\n\nand\n\n    if _, ok := m2[\"k\"]; ok {\n        m2[\"k\"] += 4\n    } else {\n        m2[\"k\"] = 4\n    }\n\ncan be simplified to\n\n    m[\"k\"] += 4\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "S1037": {
+                  "type": "boolean",
+                  "markdownDescription": "Elaborate way of sleeping\n\nUsing a select statement with a single case receiving\nfrom the result of time.After is a very elaborate way of sleeping that\ncan much simpler be expressed with a simple call to time.Sleep.\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "S1038": {
+                  "type": "boolean",
+                  "markdownDescription": "Unnecessarily complex way of printing formatted string\n\nInstead of using fmt.Print(fmt.Sprintf(...)), one can use fmt.Printf(...).\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "S1039": {
+                  "type": "boolean",
+                  "markdownDescription": "Unnecessary use of fmt.Sprint\n\nCalling fmt.Sprint with a single string argument is unnecessary\nand identical to using the string directly.\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "S1040": {
+                  "type": "boolean",
+                  "markdownDescription": "Type assertion to current type\n\nThe type assertion x.(SomeInterface), when x already has type\nSomeInterface, can only fail if x is nil. Usually, this is\nleft-over code from when x had a different type and you can safely\ndelete the type assertion. If you want to check that x is not nil,\nconsider being explicit and using an actual if x == nil comparison\ninstead of relying on the type assertion panicking.\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "SA1000": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid regular expression\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1001": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid template\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1002": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid format in time.Parse\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1003": {
+                  "type": "boolean",
+                  "markdownDescription": "Unsupported argument to functions in encoding/binary\n\nThe encoding/binary package can only serialize types with known sizes.\nThis precludes the use of the int and uint types, as their sizes\ndiffer on different architectures. Furthermore, it doesn't support\nserializing maps, channels, strings, or functions.\n\nBefore Go 1.8, bool wasn't supported, either.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1004": {
+                  "type": "boolean",
+                  "markdownDescription": "Suspiciously small untyped constant in time.Sleep\n\nThe time.Sleep function takes a time.Duration as its only argument.\nDurations are expressed in nanoseconds. Thus, calling time.Sleep(1)\nwill sleep for 1 nanosecond. This is a common source of bugs, as sleep\nfunctions in other languages often accept seconds or milliseconds.\n\nThe time package provides constants such as time.Second to express\nlarge durations. These can be combined with arithmetic to express\narbitrary durations, for example 5 * time.Second for 5 seconds.\n\nIf you truly meant to sleep for a tiny amount of time, use\nn * time.Nanosecond to signal to Staticcheck that you did mean to sleep\nfor some amount of nanoseconds.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1005": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid first argument to exec.Command\n\nos/exec runs programs directly (using variants of the fork and exec\nsystem calls on Unix systems). This shouldn't be confused with running\na command in a shell. The shell will allow for features such as input\nredirection, pipes, and general scripting. The shell is also\nresponsible for splitting the user's input into a program name and its\narguments. For example, the equivalent to\n\n    ls / /tmp\n\nwould be\n\n    exec.Command(\"ls\", \"/\", \"/tmp\")\n\nIf you want to run a command in a shell, consider using something like\nthe following – but be aware that not all systems, particularly\nWindows, will have a /bin/sh program:\n\n    exec.Command(\"/bin/sh\", \"-c\", \"ls | grep Awesome\")\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1007": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid URL in net/url.Parse\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1008": {
+                  "type": "boolean",
+                  "markdownDescription": "Non-canonical key in http.Header map\n\nKeys in http.Header maps are canonical, meaning they follow a specific\ncombination of uppercase and lowercase letters. Methods such as\nhttp.Header.Add and http.Header.Del convert inputs into this canonical\nform before manipulating the map.\n\nWhen manipulating http.Header maps directly, as opposed to using the\nprovided methods, care should be taken to stick to canonical form in\norder to avoid inconsistencies. The following piece of code\ndemonstrates one such inconsistency:\n\n    h := http.Header{}\n    h[\"etag\"] = []string{\"1234\"}\n    h.Add(\"etag\", \"5678\")\n    fmt.Println(h)\n\n    // Output:\n    // map[Etag:[5678] etag:[1234]]\n\nThe easiest way of obtaining the canonical form of a key is to use\nhttp.CanonicalHeaderKey.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1010": {
+                  "type": "boolean",
+                  "markdownDescription": "(*regexp.Regexp).FindAll called with n == 0, which will always return zero results\n\nIf n >= 0, the function returns at most n matches/submatches. To\nreturn all results, specify a negative number.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1011": {
+                  "type": "boolean",
+                  "markdownDescription": "Various methods in the 'strings' package expect valid UTF-8, but invalid input is provided\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1012": {
+                  "type": "boolean",
+                  "markdownDescription": "A nil context.Context is being passed to a function, consider using context.TODO instead\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1013": {
+                  "type": "boolean",
+                  "markdownDescription": "io.Seeker.Seek is being called with the whence constant as the first argument, but it should be the second\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1014": {
+                  "type": "boolean",
+                  "markdownDescription": "Non-pointer value passed to Unmarshal or Decode\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1015": {
+                  "type": "boolean",
+                  "markdownDescription": "Using time.Tick in a way that will leak. Consider using time.NewTicker, and only use time.Tick in tests, commands and endless functions\n\nBefore Go 1.23, time.Tickers had to be closed to be able to be garbage\ncollected. Since time.Tick doesn't make it possible to close the underlying\nticker, using it repeatedly would leak memory.\n\nGo 1.23 fixes this by allowing tickers to be collected even if they weren't closed.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1016": {
+                  "type": "boolean",
+                  "markdownDescription": "Trapping a signal that cannot be trapped\n\nNot all signals can be intercepted by a process. Specifically, on\nUNIX-like systems, the syscall.SIGKILL and syscall.SIGSTOP signals are\nnever passed to the process, but instead handled directly by the\nkernel. It is therefore pointless to try and handle these signals.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA1017": {
+                  "type": "boolean",
+                  "markdownDescription": "Channels used with os/signal.Notify should be buffered\n\nThe os/signal package uses non-blocking channel sends when delivering\nsignals. If the receiving end of the channel isn't ready and the\nchannel is either unbuffered or full, the signal will be dropped. To\navoid missing signals, the channel should be buffered and of the\nappropriate size. For a channel used for notification of just one\nsignal value, a buffer of size 1 is sufficient.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1018": {
+                  "type": "boolean",
+                  "markdownDescription": "strings.Replace called with n == 0, which does nothing\n\nWith n == 0, zero instances will be replaced. To replace all\ninstances, use a negative number, or use strings.ReplaceAll.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1020": {
+                  "type": "boolean",
+                  "markdownDescription": "Using an invalid host:port pair with a net.Listen-related function\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1021": {
+                  "type": "boolean",
+                  "markdownDescription": "Using bytes.Equal to compare two net.IP\n\nA net.IP stores an IPv4 or IPv6 address as a slice of bytes. The\nlength of the slice for an IPv4 address, however, can be either 4 or\n16 bytes long, using different ways of representing IPv4 addresses. In\norder to correctly compare two net.IPs, the net.IP.Equal method should\nbe used, as it takes both representations into account.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1023": {
+                  "type": "boolean",
+                  "markdownDescription": "Modifying the buffer in an io.Writer implementation\n\nWrite must not modify the slice data, even temporarily.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1024": {
+                  "type": "boolean",
+                  "markdownDescription": "A string cutset contains duplicate characters\n\nThe strings.TrimLeft and strings.TrimRight functions take cutsets, not\nprefixes. A cutset is treated as a set of characters to remove from a\nstring. For example,\n\n    strings.TrimLeft(\"42133word\", \"1234\")\n\nwill result in the string \"word\" – any characters that are 1, 2, 3 or\n4 are cut from the left of the string.\n\nIn order to remove one string from another, use strings.TrimPrefix instead.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA1025": {
+                  "type": "boolean",
+                  "markdownDescription": "It is not possible to use (*time.Timer).Reset's return value correctly\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "SA1026": {
+                  "type": "boolean",
+                  "markdownDescription": "Cannot marshal channels or functions\n\nAvailable since\n    2019.2\n",
+                  "default": false
+                },
+                "SA1027": {
+                  "type": "boolean",
+                  "markdownDescription": "Atomic access to 64-bit variable must be 64-bit aligned\n\nOn ARM, x86-32, and 32-bit MIPS, it is the caller's responsibility to\narrange for 64-bit alignment of 64-bit words accessed atomically. The\nfirst word in a variable or in an allocated struct, array, or slice\ncan be relied upon to be 64-bit aligned.\n\nYou can use the structlayout tool to inspect the alignment of fields\nin a struct.\n\nAvailable since\n    2019.2\n",
+                  "default": false
+                },
+                "SA1028": {
+                  "type": "boolean",
+                  "markdownDescription": "sort.Slice can only be used on slices\n\nThe first argument of sort.Slice must be a slice.\n\nAvailable since\n    2020.1\n",
+                  "default": false
+                },
+                "SA1029": {
+                  "type": "boolean",
+                  "markdownDescription": "Inappropriate key in call to context.WithValue\n\nThe provided key must be comparable and should not be\nof type string or any other built-in type to avoid collisions between\npackages using context. Users of WithValue should define their own\ntypes for keys.\n\nTo avoid allocating when assigning to an interface{},\ncontext keys often have concrete type struct{}. Alternatively,\nexported context key variables' static type should be a pointer or\ninterface.\n\nAvailable since\n    2020.1\n",
+                  "default": false
+                },
+                "SA1030": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid argument in call to a strconv function\n\nThis check validates the format, number base and bit size arguments of\nthe various parsing and formatting functions in strconv.\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "SA1031": {
+                  "type": "boolean",
+                  "markdownDescription": "Overlapping byte slices passed to an encoder\n\nIn an encoding function of the form Encode(dst, src), dst and\nsrc were found to reference the same memory. This can result in\nsrc bytes being overwritten before they are read, when the encoder\nwrites more than one byte per src byte.\n\nAvailable since\n    2024.1\n",
+                  "default": false
+                },
+                "SA1032": {
+                  "type": "boolean",
+                  "markdownDescription": "Wrong order of arguments to errors.Is\n\nThe first argument of the function errors.Is is the error\nthat we have and the second argument is the error we're trying to match against.\nFor example:\n\n\tif errors.Is(err, io.EOF) { ... }\n\nThis check detects some cases where the two arguments have been swapped. It\nflags any calls where the first argument is referring to a package-level error\nvariable, such as\n\n\tif errors.Is(io.EOF, err) { /* this is wrong */ }\n\nAvailable since\n    2024.1\n",
+                  "default": false
+                },
+                "SA2001": {
+                  "type": "boolean",
+                  "markdownDescription": "Empty critical section, did you mean to defer the unlock?\n\nEmpty critical sections of the kind\n\n    mu.Lock()\n    mu.Unlock()\n\nare very often a typo, and the following was intended instead:\n\n    mu.Lock()\n    defer mu.Unlock()\n\nDo note that sometimes empty critical sections can be useful, as a\nform of signaling to wait on another goroutine. Many times, there are\nsimpler ways of achieving the same effect. When that isn't the case,\nthe code should be amply commented to avoid confusion. Combining such\ncomments with a //lint:ignore directive can be used to suppress this\nrare false positive.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA2002": {
+                  "type": "boolean",
+                  "markdownDescription": "Called testing.T.FailNow or SkipNow in a goroutine, which isn't allowed\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA2003": {
+                  "type": "boolean",
+                  "markdownDescription": "Deferred Lock right after locking, likely meant to defer Unlock instead\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA3000": {
+                  "type": "boolean",
+                  "markdownDescription": "TestMain doesn't call os.Exit, hiding test failures\n\nTest executables (and in turn 'go test') exit with a non-zero status\ncode if any tests failed. When specifying your own TestMain function,\nit is your responsibility to arrange for this, by calling os.Exit with\nthe correct code. The correct code is returned by (*testing.M).Run, so\nthe usual way of implementing TestMain is to end it with\nos.Exit(m.Run()).\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA3001": {
+                  "type": "boolean",
+                  "markdownDescription": "Assigning to b.N in benchmarks distorts the results\n\nThe testing package dynamically sets b.N to improve the reliability of\nbenchmarks and uses it in computations to determine the duration of a\nsingle operation. Benchmark code must not alter b.N as this would\nfalsify results.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4000": {
+                  "type": "boolean",
+                  "markdownDescription": "Binary operator has identical expressions on both sides\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4001": {
+                  "type": "boolean",
+                  "markdownDescription": "&*x gets simplified to x, it does not copy x\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4003": {
+                  "type": "boolean",
+                  "markdownDescription": "Comparing unsigned values against negative values is pointless\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4004": {
+                  "type": "boolean",
+                  "markdownDescription": "The loop exits unconditionally after one iteration\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4005": {
+                  "type": "boolean",
+                  "markdownDescription": "Field assignment that will never be observed. Did you mean to use a pointer receiver?\n\nAvailable since\n    2021.1\n",
+                  "default": false
+                },
+                "SA4006": {
+                  "type": "boolean",
+                  "markdownDescription": "A value assigned to a variable is never read before being overwritten. Forgotten error check or dead code?\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4008": {
+                  "type": "boolean",
+                  "markdownDescription": "The variable in the loop condition never changes, are you incrementing the wrong variable?\n\nFor example:\n\n\tfor i := 0; i < 10; j++ { ... }\n\nThis may also occur when a loop can only execute once because of unconditional\ncontrol flow that terminates the loop. For example, when a loop body contains an\nunconditional break, return, or panic:\n\n\tfunc f() {\n\t\tpanic(\"oops\")\n\t}\n\tfunc g() {\n\t\tfor i := 0; i < 10; i++ {\n\t\t\t// f unconditionally calls panic, which means \"i\" is\n\t\t\t// never incremented.\n\t\t\tf()\n\t\t}\n\t}\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4009": {
+                  "type": "boolean",
+                  "markdownDescription": "A function argument is overwritten before its first use\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4010": {
+                  "type": "boolean",
+                  "markdownDescription": "The result of append will never be observed anywhere\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4011": {
+                  "type": "boolean",
+                  "markdownDescription": "Break statement with no effect. Did you mean to break out of an outer loop?\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4012": {
+                  "type": "boolean",
+                  "markdownDescription": "Comparing a value against NaN even though no value is equal to NaN\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4013": {
+                  "type": "boolean",
+                  "markdownDescription": "Negating a boolean twice (!!b) is the same as writing b. This is either redundant, or a typo.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4014": {
+                  "type": "boolean",
+                  "markdownDescription": "An if/else if chain has repeated conditions and no side-effects; if the condition didn't match the first time, it won't match the second time, either\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4015": {
+                  "type": "boolean",
+                  "markdownDescription": "Calling functions like math.Ceil on floats converted from integers doesn't do anything useful\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4016": {
+                  "type": "boolean",
+                  "markdownDescription": "Certain bitwise operations, such as x ^ 0, do not do anything useful\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4017": {
+                  "type": "boolean",
+                  "markdownDescription": "Discarding the return values of a function without side effects, making the call pointless\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4018": {
+                  "type": "boolean",
+                  "markdownDescription": "Self-assignment of variables\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA4019": {
+                  "type": "boolean",
+                  "markdownDescription": "Multiple, identical build constraints in the same file\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA4020": {
+                  "type": "boolean",
+                  "markdownDescription": "Unreachable case clause in a type switch\n\nIn a type switch like the following\n\n    type T struct{}\n    func (T) Read(b []byte) (int, error) { return 0, nil }\n\n    var v any = T{}\n\n    switch v.(type) {\n    case io.Reader:\n        // ...\n    case T:\n        // unreachable\n    }\n\nthe second case clause can never be reached because T implements\nio.Reader and case clauses are evaluated in source order.\n\nAnother example:\n\n    type T struct{}\n    func (T) Read(b []byte) (int, error) { return 0, nil }\n    func (T) Close() error { return nil }\n\n    var v any = T{}\n\n    switch v.(type) {\n    case io.Reader:\n        // ...\n    case io.ReadCloser:\n        // unreachable\n    }\n\nEven though T has a Close method and thus implements io.ReadCloser,\nio.Reader will always match first. The method set of io.Reader is a\nsubset of io.ReadCloser. Thus it is impossible to match the second\ncase without matching the first case.\n\n\nStructurally equivalent interfaces\n\nA special case of the previous example are structurally identical\ninterfaces. Given these declarations\n\n    type T error\n    type V error\n\n    func doSomething() error {\n        err, ok := doAnotherThing()\n        if ok {\n            return T(err)\n        }\n\n        return U(err)\n    }\n\nthe following type switch will have an unreachable case clause:\n\n    switch doSomething().(type) {\n    case T:\n        // ...\n    case V:\n        // unreachable\n    }\n\nT will always match before V because they are structurally equivalent\nand therefore doSomething()'s return value implements both.\n\nAvailable since\n    2019.2\n",
+                  "default": true
+                },
+                "SA4022": {
+                  "type": "boolean",
+                  "markdownDescription": "Comparing the address of a variable against nil\n\nCode such as 'if &x == nil' is meaningless, because taking the address of a variable always yields a non-nil pointer.\n\nAvailable since\n    2020.1\n",
+                  "default": true
+                },
+                "SA4023": {
+                  "type": "boolean",
+                  "markdownDescription": "Impossible comparison of interface value with untyped nil\n\nUnder the covers, interfaces are implemented as two elements, a\ntype T and a value V. V is a concrete value such as an int,\nstruct or pointer, never an interface itself, and has type T. For\ninstance, if we store the int value 3 in an interface, the\nresulting interface value has, schematically, (T=int, V=3). The\nvalue V is also known as the interface's dynamic value, since a\ngiven interface variable might hold different values V (and\ncorresponding types T) during the execution of the program.\n\nAn interface value is nil only if the V and T are both\nunset, (T=nil, V is not set), In particular, a nil interface will\nalways hold a nil type. If we store a nil pointer of type *int\ninside an interface value, the inner type will be *int regardless\nof the value of the pointer: (T=*int, V=nil). Such an interface\nvalue will therefore be non-nil even when the pointer value V\ninside is nil.\n\nThis situation can be confusing, and arises when a nil value is\nstored inside an interface value such as an error return:\n\n    func returnsError() error {\n        var p *MyError = nil\n        if bad() {\n            p = ErrBad\n        }\n        return p // Will always return a non-nil error.\n    }\n\nIf all goes well, the function returns a nil p, so the return\nvalue is an error interface value holding (T=*MyError, V=nil).\nThis means that if the caller compares the returned error to nil,\nit will always look as if there was an error even if nothing bad\nhappened. To return a proper nil error to the caller, the\nfunction must return an explicit nil:\n\n    func returnsError() error {\n        if bad() {\n            return ErrBad\n        }\n        return nil\n    }\n\nIt's a good idea for functions that return errors always to use\nthe error type in their signature (as we did above) rather than a\nconcrete type such as *MyError, to help guarantee the error is\ncreated correctly. As an example, os.Open returns an error even\nthough, if not nil, it's always of concrete type *os.PathError.\n\nSimilar situations to those described here can arise whenever\ninterfaces are used. Just keep in mind that if any concrete value\nhas been stored in the interface, the interface will not be nil.\nFor more information, see The Laws of\nReflection at https://golang.org/doc/articles/laws_of_reflection.html.\n\nThis text has been copied from\nhttps://golang.org/doc/faq#nil_error, licensed under the Creative\nCommons Attribution 3.0 License.\n\nAvailable since\n    2020.2\n",
+                  "default": false
+                },
+                "SA4024": {
+                  "type": "boolean",
+                  "markdownDescription": "Checking for impossible return value from a builtin function\n\nReturn values of the len and cap builtins cannot be negative.\n\nSee https://golang.org/pkg/builtin/#len and https://golang.org/pkg/builtin/#cap.\n\nExample:\n\n    if len(slice) < 0 {\n        fmt.Println(\"unreachable code\")\n    }\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "SA4025": {
+                  "type": "boolean",
+                  "markdownDescription": "Integer division of literals that results in zero\n\nWhen dividing two integer constants, the result will\nalso be an integer. Thus, a division such as 2 / 3 results in 0.\nThis is true for all of the following examples:\n\n\t_ = 2 / 3\n\tconst _ = 2 / 3\n\tconst _ float64 = 2 / 3\n\t_ = float64(2 / 3)\n\nStaticcheck will flag such divisions if both sides of the division are\ninteger literals, as it is highly unlikely that the division was\nintended to truncate to zero. Staticcheck will not flag integer\ndivision involving named constants, to avoid noisy positives.\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "SA4026": {
+                  "type": "boolean",
+                  "markdownDescription": "Go constants cannot express negative zero\n\nIn IEEE 754 floating point math, zero has a sign and can be positive\nor negative. This can be useful in certain numerical code.\n\nGo constants, however, cannot express negative zero. This means that\nthe literals -0.0 and 0.0 have the same ideal value (zero) and\nwill both represent positive zero at runtime.\n\nTo explicitly and reliably create a negative zero, you can use the\nmath.Copysign function: math.Copysign(0, -1).\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "SA4027": {
+                  "type": "boolean",
+                  "markdownDescription": "(*net/url.URL).Query returns a copy, modifying it doesn't change the URL\n\n(*net/url.URL).Query parses the current value of net/url.URL.RawQuery\nand returns it as a map of type net/url.Values. Subsequent changes to\nthis map will not affect the URL unless the map gets encoded and\nassigned to the URL's RawQuery.\n\nAs a consequence, the following code pattern is an expensive no-op:\nu.Query().Add(key, value).\n\nAvailable since\n    2021.1\n",
+                  "default": true
+                },
+                "SA4028": {
+                  "type": "boolean",
+                  "markdownDescription": "x % 1 is always zero\n\nAvailable since\n    2022.1\n",
+                  "default": true
+                },
+                "SA4029": {
+                  "type": "boolean",
+                  "markdownDescription": "Ineffective attempt at sorting slice\n\nsort.Float64Slice, sort.IntSlice, and sort.StringSlice are\ntypes, not functions. Doing x = sort.StringSlice(x) does nothing,\nespecially not sort any values. The correct usage is\nsort.Sort(sort.StringSlice(x)) or sort.StringSlice(x).Sort(),\nbut there are more convenient helpers, namely sort.Float64s,\nsort.Ints, and sort.Strings.\n\nAvailable since\n    2022.1\n",
+                  "default": true
+                },
+                "SA4030": {
+                  "type": "boolean",
+                  "markdownDescription": "Ineffective attempt at generating random number\n\nFunctions in the math/rand package that accept upper limits, such\nas Intn, generate random numbers in the half-open interval [0,n). In\nother words, the generated numbers will be >= 0 and < n – they\ndon't include n. rand.Intn(1) therefore doesn't generate 0\nor 1, it always generates 0.\n\nAvailable since\n    2022.1\n",
+                  "default": true
+                },
+                "SA4031": {
+                  "type": "boolean",
+                  "markdownDescription": "Checking never-nil value against nil\n\nAvailable since\n    2022.1\n",
+                  "default": false
+                },
+                "SA4032": {
+                  "type": "boolean",
+                  "markdownDescription": "Comparing runtime.GOOS or runtime.GOARCH against impossible value\n\nAvailable since\n    2024.1\n",
+                  "default": true
+                },
+                "SA5000": {
+                  "type": "boolean",
+                  "markdownDescription": "Assignment to nil map\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA5001": {
+                  "type": "boolean",
+                  "markdownDescription": "Deferring Close before checking for a possible error\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA5002": {
+                  "type": "boolean",
+                  "markdownDescription": "The empty for loop ('for {}') spins and can block the scheduler\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA5003": {
+                  "type": "boolean",
+                  "markdownDescription": "Defers in infinite loops will never execute\n\nDefers are scoped to the surrounding function, not the surrounding\nblock. In a function that never returns, i.e. one containing an\ninfinite loop, defers will never execute.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA5004": {
+                  "type": "boolean",
+                  "markdownDescription": "'for { select { ...' with an empty default branch spins\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA5005": {
+                  "type": "boolean",
+                  "markdownDescription": "The finalizer references the finalized object, preventing garbage collection\n\nA finalizer is a function associated with an object that runs when the\ngarbage collector is ready to collect said object, that is when the\nobject is no longer referenced by anything.\n\nIf the finalizer references the object, however, it will always remain\nas the final reference to that object, preventing the garbage\ncollector from collecting the object. The finalizer will never run,\nand the object will never be collected, leading to a memory leak. That\nis why the finalizer should instead use its first argument to operate\non the object. That way, the number of references can temporarily go\nto zero before the object is being passed to the finalizer.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA5007": {
+                  "type": "boolean",
+                  "markdownDescription": "Infinite recursive call\n\nA function that calls itself recursively needs to have an exit\ncondition. Otherwise it will recurse forever, until the system runs\nout of memory.\n\nThis issue can be caused by simple bugs such as forgetting to add an\nexit condition. It can also happen \"on purpose\". Some languages have\ntail call optimization which makes certain infinite recursive calls\nsafe to use. Go, however, does not implement TCO, and as such a loop\nshould be used instead.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA5008": {
+                  "type": "boolean",
+                  "markdownDescription": "Invalid struct tag\n\nAvailable since\n    2019.2\n",
+                  "default": true
+                },
+                "SA5010": {
+                  "type": "boolean",
+                  "markdownDescription": "Impossible type assertion\n\nSome type assertions can be statically proven to be\nimpossible. This is the case when the method sets of both\narguments of the type assertion conflict with each other, for\nexample by containing the same method with different\nsignatures.\n\nThe Go compiler already applies this check when asserting from an\ninterface value to a concrete type. If the concrete type misses\nmethods from the interface, or if function signatures don't match,\nthen the type assertion can never succeed.\n\nThis check applies the same logic when asserting from one interface to\nanother. If both interface types contain the same method but with\ndifferent signatures, then the type assertion can never succeed,\neither.\n\nAvailable since\n    2020.1\n",
+                  "default": false
+                },
+                "SA5011": {
+                  "type": "boolean",
+                  "markdownDescription": "Possible nil pointer dereference\n\nA pointer is being dereferenced unconditionally, while\nalso being checked against nil in another place. This suggests that\nthe pointer may be nil and dereferencing it may panic. This is\ncommonly a result of improperly ordered code or missing return\nstatements. Consider the following examples:\n\n    func fn(x *int) {\n        fmt.Println(*x)\n\n        // This nil check is equally important for the previous dereference\n        if x != nil {\n            foo(*x)\n        }\n    }\n\n    func TestFoo(t *testing.T) {\n        x := compute()\n        if x == nil {\n            t.Errorf(\"nil pointer received\")\n        }\n\n        // t.Errorf does not abort the test, so if x is nil, the next line will panic.\n        foo(*x)\n    }\n\nStaticcheck tries to deduce which functions abort control flow.\nFor example, it is aware that a function will not continue\nexecution after a call to panic or log.Fatal. However, sometimes\nthis detection fails, in particular in the presence of\nconditionals. Consider the following example:\n\n    func Log(msg string, level int) {\n        fmt.Println(msg)\n        if level == levelFatal {\n            os.Exit(1)\n        }\n    }\n\n    func Fatal(msg string) {\n        Log(msg, levelFatal)\n    }\n\n    func fn(x *int) {\n        if x == nil {\n            Fatal(\"unexpected nil pointer\")\n        }\n        fmt.Println(*x)\n    }\n\nStaticcheck will flag the dereference of x, even though it is perfectly\nsafe. Staticcheck is not able to deduce that a call to\nFatal will exit the program. For the time being, the easiest\nworkaround is to modify the definition of Fatal like so:\n\n    func Fatal(msg string) {\n        Log(msg, levelFatal)\n        panic(\"unreachable\")\n    }\n\nWe also hard-code functions from common logging packages such as\nlogrus. Please file an issue if we're missing support for a\npopular package.\n\nAvailable since\n    2020.1\n",
+                  "default": false
+                },
+                "SA5012": {
+                  "type": "boolean",
+                  "markdownDescription": "Passing odd-sized slice to function expecting even size\n\nSome functions that take slices as parameters expect the slices to have an even number of elements. \nOften, these functions treat elements in a slice as pairs. \nFor example, strings.NewReplacer takes pairs of old and new strings, \nand calling it with an odd number of elements would be an error.\n\nAvailable since\n    2020.2\n",
+                  "default": false
+                },
+                "SA6000": {
+                  "type": "boolean",
+                  "markdownDescription": "Using regexp.Match or related in a loop, should use regexp.Compile\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA6001": {
+                  "type": "boolean",
+                  "markdownDescription": "Missing an optimization opportunity when indexing maps by byte slices\n\nMap keys must be comparable, which precludes the use of byte slices.\nThis usually leads to using string keys and converting byte slices to\nstrings.\n\nNormally, a conversion of a byte slice to a string needs to copy the data and\ncauses allocations. The compiler, however, recognizes m[string(b)] and\nuses the data of b directly, without copying it, because it knows that\nthe data can't change during the map lookup. This leads to the\ncounter-intuitive situation that\n\n    k := string(b)\n    println(m[k])\n    println(m[k])\n\nwill be less efficient than\n\n    println(m[string(b)])\n    println(m[string(b)])\n\nbecause the first version needs to copy and allocate, while the second\none does not.\n\nFor some history on this optimization, check out commit\nf5f5a8b6209f84961687d993b93ea0d397f5d5bf in the Go repository.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA6002": {
+                  "type": "boolean",
+                  "markdownDescription": "Storing non-pointer values in sync.Pool allocates memory\n\nA sync.Pool is used to avoid unnecessary allocations and reduce the\namount of work the garbage collector has to do.\n\nWhen passing a value that is not a pointer to a function that accepts\nan interface, the value needs to be placed on the heap, which means an\nadditional allocation. Slices are a common thing to put in sync.Pools,\nand they're structs with 3 fields (length, capacity, and a pointer to\nan array). In order to avoid the extra allocation, one should store a\npointer to the slice instead.\n\nSee the comments on https://go-review.googlesource.com/c/go/+/24371\nthat discuss this problem.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA6003": {
+                  "type": "boolean",
+                  "markdownDescription": "Converting a string to a slice of runes before ranging over it\n\nYou may want to loop over the runes in a string. Instead of converting\nthe string to a slice of runes and looping over that, you can loop\nover the string itself. That is,\n\n    for _, r := range s {}\n\nand\n\n    for _, r := range []rune(s) {}\n\nwill yield the same values. The first version, however, will be faster\nand avoid unnecessary memory allocations.\n\nDo note that if you are interested in the indices, ranging over a\nstring and over a slice of runes will yield different indices. The\nfirst one yields byte offsets, while the second one yields indices in\nthe slice of runes.\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA6005": {
+                  "type": "boolean",
+                  "markdownDescription": "Inefficient string comparison with strings.ToLower or strings.ToUpper\n\nConverting two strings to the same case and comparing them like so\n\n    if strings.ToLower(s1) == strings.ToLower(s2) {\n        ...\n    }\n\nis significantly more expensive than comparing them with\nstrings.EqualFold(s1, s2). This is due to memory usage as well as\ncomputational complexity.\n\nstrings.ToLower will have to allocate memory for the new strings, as\nwell as convert both strings fully, even if they differ on the very\nfirst byte. strings.EqualFold, on the other hand, compares the strings\none character at a time. It doesn't need to create two intermediate\nstrings and can return as soon as the first non-matching character has\nbeen found.\n\nFor a more in-depth explanation of this issue, see\nhttps://blog.digitalocean.com/how-to-efficiently-compare-strings-in-go/\n\nAvailable since\n    2019.2\n",
+                  "default": true
+                },
+                "SA6006": {
+                  "type": "boolean",
+                  "markdownDescription": "Using io.WriteString to write []byte\n\nUsing io.WriteString to write a slice of bytes, as in\n\n    io.WriteString(w, string(b))\n\nis both unnecessary and inefficient. Converting from []byte to string\nhas to allocate and copy the data, and we could simply use w.Write(b)\ninstead.\n\nAvailable since\n    2024.1\n",
+                  "default": true
+                },
+                "SA9001": {
+                  "type": "boolean",
+                  "markdownDescription": "Defers in range loops may not run when you expect them to\n\nAvailable since\n    2017.1\n",
+                  "default": false
+                },
+                "SA9002": {
+                  "type": "boolean",
+                  "markdownDescription": "Using a non-octal os.FileMode that looks like it was meant to be in octal.\n\nAvailable since\n    2017.1\n",
+                  "default": true
+                },
+                "SA9003": {
+                  "type": "boolean",
+                  "markdownDescription": "Empty body in an if or else branch\n\nAvailable since\n    2017.1, non-default\n",
+                  "default": false
+                },
+                "SA9004": {
+                  "type": "boolean",
+                  "markdownDescription": "Only the first constant has an explicit type\n\nIn a constant declaration such as the following:\n\n    const (\n        First byte = 1\n        Second     = 2\n    )\n\nthe constant Second does not have the same type as the constant First.\nThis construct shouldn't be confused with\n\n    const (\n        First byte = iota\n        Second\n    )\n\nwhere First and Second do indeed have the same type. The type is only\npassed on when no explicit value is assigned to the constant.\n\nWhen declaring enumerations with explicit values it is therefore\nimportant not to write\n\n    const (\n          EnumFirst EnumType = 1\n          EnumSecond         = 2\n          EnumThird          = 3\n    )\n\nThis discrepancy in types can cause various confusing behaviors and\nbugs.\n\n\nWrong type in variable declarations\n\nThe most obvious issue with such incorrect enumerations expresses\nitself as a compile error:\n\n    package pkg\n\n    const (\n        EnumFirst  uint8 = 1\n        EnumSecond       = 2\n    )\n\n    func fn(useFirst bool) {\n        x := EnumSecond\n        if useFirst {\n            x = EnumFirst\n        }\n    }\n\nfails to compile with\n\n    ./const.go:11:5: cannot use EnumFirst (type uint8) as type int in assignment\n\n\nLosing method sets\n\nA more subtle issue occurs with types that have methods and optional\ninterfaces. Consider the following:\n\n    package main\n\n    import \"fmt\"\n\n    type Enum int\n\n    func (e Enum) String() string {\n        return \"an enum\"\n    }\n\n    const (\n        EnumFirst  Enum = 1\n        EnumSecond      = 2\n    )\n\n    func main() {\n        fmt.Println(EnumFirst)\n        fmt.Println(EnumSecond)\n    }\n\nThis code will output\n\n    an enum\n    2\n\nas EnumSecond has no explicit type, and thus defaults to int.\n\nAvailable since\n    2019.1\n",
+                  "default": true
+                },
+                "SA9005": {
+                  "type": "boolean",
+                  "markdownDescription": "Trying to marshal a struct with no public fields nor custom marshaling\n\nThe encoding/json and encoding/xml packages only operate on exported\nfields in structs, not unexported ones. It is usually an error to try\nto (un)marshal structs that only consist of unexported fields.\n\nThis check will not flag calls involving types that define custom\nmarshaling behavior, e.g. via MarshalJSON methods. It will also not\nflag empty structs.\n\nAvailable since\n    2019.2\n",
+                  "default": false
+                },
+                "SA9006": {
+                  "type": "boolean",
+                  "markdownDescription": "Dubious bit shifting of a fixed size integer value\n\nBit shifting a value past its size will always clear the value.\n\nFor instance:\n\n    v := int8(42)\n    v >>= 8\n\nwill always result in 0.\n\nThis check flags bit shifting operations on fixed size integer values only.\nThat is, int, uint and uintptr are never flagged to avoid potential false\npositives in somewhat exotic but valid bit twiddling tricks:\n\n    // Clear any value above 32 bits if integers are more than 32 bits.\n    func f(i int) int {\n        v := i >> 32\n        v = v << 32\n        return i-v\n    }\n\nAvailable since\n    2020.2\n",
+                  "default": true
+                },
+                "SA9007": {
+                  "type": "boolean",
+                  "markdownDescription": "Deleting a directory that shouldn't be deleted\n\nIt is virtually never correct to delete system directories such as\n/tmp or the user's home directory. However, it can be fairly easy to\ndo by mistake, for example by mistakenly using os.TempDir instead\nof ioutil.TempDir, or by forgetting to add a suffix to the result\nof os.UserHomeDir.\n\nWriting\n\n    d := os.TempDir()\n    defer os.RemoveAll(d)\n\nin your unit tests will have a devastating effect on the stability of your system.\n\nThis check flags attempts at deleting the following directories:\n\n- os.TempDir\n- os.UserCacheDir\n- os.UserConfigDir\n- os.UserHomeDir\n\nAvailable since\n    2022.1\n",
+                  "default": false
+                },
+                "SA9008": {
+                  "type": "boolean",
+                  "markdownDescription": "else branch of a type assertion is probably not reading the right value\n\nWhen declaring variables as part of an if statement (like in 'if\nfoo := ...; foo {'), the same variables will also be in the scope of\nthe else branch. This means that in the following example\n\n    if x, ok := x.(int); ok {\n        // ...\n    } else {\n        fmt.Printf(\"unexpected type %T\", x)\n    }\n\nx in the else branch will refer to the x from x, ok\n:=; it will not refer to the x that is being type-asserted. The\nresult of a failed type assertion is the zero value of the type that\nis being asserted to, so x in the else branch will always have the\nvalue 0 and the type int.\n\nAvailable since\n    2022.1\n",
+                  "default": false
+                },
+                "SA9009": {
+                  "type": "boolean",
+                  "markdownDescription": "Ineffectual Go compiler directive\n\nA potential Go compiler directive was found, but is ineffectual as it begins\nwith whitespace.\n\nAvailable since\n    2024.1\n",
+                  "default": true
+                },
+                "ST1000": {
+                  "type": "boolean",
+                  "markdownDescription": "Incorrect or missing package comment\n\nPackages must have a package comment that is formatted according to\nthe guidelines laid out in\nhttps://go.dev/wiki/CodeReviewComments#package-comments.\n\nAvailable since\n    2019.1, non-default\n",
+                  "default": false
+                },
+                "ST1001": {
+                  "type": "boolean",
+                  "markdownDescription": "Dot imports are discouraged\n\nDot imports that aren't in external test packages are discouraged.\n\nThe dot_import_whitelist option can be used to whitelist certain\nimports.\n\nQuoting Go Code Review Comments:\n\n> The import . form can be useful in tests that, due to circular\n> dependencies, cannot be made part of the package being tested:\n> \n>     package foo_test\n> \n>     import (\n>         \"bar/testutil\" // also imports \"foo\"\n>         . \"foo\"\n>     )\n> \n> In this case, the test file cannot be in package foo because it\n> uses bar/testutil, which imports foo. So we use the import .\n> form to let the file pretend to be part of package foo even though\n> it is not. Except for this one case, do not use import . in your\n> programs. It makes the programs much harder to read because it is\n> unclear whether a name like Quux is a top-level identifier in the\n> current package or in an imported package.\n\nAvailable since\n    2019.1\n\nOptions\n    dot_import_whitelist\n",
+                  "default": false
+                },
+                "ST1003": {
+                  "type": "boolean",
+                  "markdownDescription": "Poorly chosen identifier\n\nIdentifiers, such as variable and package names, follow certain rules.\n\nSee the following links for details:\n\n- https://go.dev/doc/effective_go#package-names\n- https://go.dev/doc/effective_go#mixed-caps\n- https://go.dev/wiki/CodeReviewComments#initialisms\n- https://go.dev/wiki/CodeReviewComments#variable-names\n\nAvailable since\n    2019.1, non-default\n\nOptions\n    initialisms\n",
+                  "default": false
+                },
+                "ST1005": {
+                  "type": "boolean",
+                  "markdownDescription": "Incorrectly formatted error string\n\nError strings follow a set of guidelines to ensure uniformity and good\ncomposability.\n\nQuoting Go Code Review Comments:\n\n> Error strings should not be capitalized (unless beginning with\n> proper nouns or acronyms) or end with punctuation, since they are\n> usually printed following other context. That is, use\n> fmt.Errorf(\"something bad\") not fmt.Errorf(\"Something bad\"), so\n> that log.Printf(\"Reading %s: %v\", filename, err) formats without a\n> spurious capital letter mid-message.\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1006": {
+                  "type": "boolean",
+                  "markdownDescription": "Poorly chosen receiver name\n\nQuoting Go Code Review Comments:\n\n> The name of a method's receiver should be a reflection of its\n> identity; often a one or two letter abbreviation of its type\n> suffices (such as \"c\" or \"cl\" for \"Client\"). Don't use generic\n> names such as \"me\", \"this\" or \"self\", identifiers typical of\n> object-oriented languages that place more emphasis on methods as\n> opposed to functions. The name need not be as descriptive as that\n> of a method argument, as its role is obvious and serves no\n> documentary purpose. It can be very short as it will appear on\n> almost every line of every method of the type; familiarity admits\n> brevity. Be consistent, too: if you call the receiver \"c\" in one\n> method, don't call it \"cl\" in another.\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1008": {
+                  "type": "boolean",
+                  "markdownDescription": "A function's error value should be its last return value\n\nA function's error value should be its last return value.\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1011": {
+                  "type": "boolean",
+                  "markdownDescription": "Poorly chosen name for variable of type time.Duration\n\ntime.Duration values represent an amount of time, which is represented\nas a count of nanoseconds. An expression like 5 * time.Microsecond\nyields the value 5000. It is therefore not appropriate to suffix a\nvariable of type time.Duration with any time unit, such as Msec or\nMilli.\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1012": {
+                  "type": "boolean",
+                  "markdownDescription": "Poorly chosen name for error variable\n\nError variables that are part of an API should be called errFoo or\nErrFoo.\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1013": {
+                  "type": "boolean",
+                  "markdownDescription": "Should use constants for HTTP error codes, not magic numbers\n\nHTTP has a tremendous number of status codes. While some of those are\nwell known (200, 400, 404, 500), most of them are not. The net/http\npackage provides constants for all status codes that are part of the\nvarious specifications. It is recommended to use these constants\ninstead of hard-coding magic numbers, to vastly improve the\nreadability of your code.\n\nAvailable since\n    2019.1\n\nOptions\n    http_status_code_whitelist\n",
+                  "default": false
+                },
+                "ST1015": {
+                  "type": "boolean",
+                  "markdownDescription": "A switch's default case should be the first or last case\n\nAvailable since\n    2019.1\n",
+                  "default": false
+                },
+                "ST1016": {
+                  "type": "boolean",
+                  "markdownDescription": "Use consistent method receiver names\n\nAvailable since\n    2019.1, non-default\n",
+                  "default": false
+                },
+                "ST1017": {
+                  "type": "boolean",
+                  "markdownDescription": "Don't use Yoda conditions\n\nYoda conditions are conditions of the kind 'if 42 == x', where the\nliteral is on the left side of the comparison. These are a common\nidiom in languages in which assignment is an expression, to avoid bugs\nof the kind 'if (x = 42)'. In Go, which doesn't allow for this kind of\nbug, we prefer the more idiomatic 'if x == 42'.\n\nAvailable since\n    2019.2\n",
+                  "default": false
+                },
+                "ST1018": {
+                  "type": "boolean",
+                  "markdownDescription": "Avoid zero-width and control characters in string literals\n\nAvailable since\n    2019.2\n",
+                  "default": false
+                },
+                "ST1019": {
+                  "type": "boolean",
+                  "markdownDescription": "Importing the same package multiple times\n\nGo allows importing the same package multiple times, as long as\ndifferent import aliases are being used. That is, the following\nbit of code is valid:\n\n    import (\n        \"fmt\"\n        fumpt \"fmt\"\n        format \"fmt\"\n        _ \"fmt\"\n    )\n\nHowever, this is very rarely done on purpose. Usually, it is a\nsign of code that got refactored, accidentally adding duplicate\nimport statements. It is also a rarely known feature, which may\ncontribute to confusion.\n\nDo note that sometimes, this feature may be used\nintentionally (see for example\nhttps://github.com/golang/go/commit/3409ce39bfd7584523b7a8c150a310cea92d879d)\n– if you want to allow this pattern in your code base, you're\nadvised to disable this check.\n\nAvailable since\n    2020.1\n",
+                  "default": false
+                },
+                "ST1020": {
+                  "type": "boolean",
+                  "markdownDescription": "The documentation of an exported function should start with the function's name\n\nDoc comments work best as complete sentences, which\nallow a wide variety of automated presentations. The first sentence\nshould be a one-sentence summary that starts with the name being\ndeclared.\n\nIf every doc comment begins with the name of the item it describes,\nyou can use the doc subcommand of the go tool and run the output\nthrough grep.\n\nSee https://go.dev/doc/effective_go#commentary for more\ninformation on how to write good documentation.\n\nAvailable since\n    2020.1, non-default\n",
+                  "default": false
+                },
+                "ST1021": {
+                  "type": "boolean",
+                  "markdownDescription": "The documentation of an exported type should start with type's name\n\nDoc comments work best as complete sentences, which\nallow a wide variety of automated presentations. The first sentence\nshould be a one-sentence summary that starts with the name being\ndeclared.\n\nIf every doc comment begins with the name of the item it describes,\nyou can use the doc subcommand of the go tool and run the output\nthrough grep.\n\nSee https://go.dev/doc/effective_go#commentary for more\ninformation on how to write good documentation.\n\nAvailable since\n    2020.1, non-default\n",
+                  "default": false
+                },
+                "ST1022": {
+                  "type": "boolean",
+                  "markdownDescription": "The documentation of an exported variable or constant should start with variable's name\n\nDoc comments work best as complete sentences, which\nallow a wide variety of automated presentations. The first sentence\nshould be a one-sentence summary that starts with the name being\ndeclared.\n\nIf every doc comment begins with the name of the item it describes,\nyou can use the doc subcommand of the go tool and run the output\nthrough grep.\n\nSee https://go.dev/doc/effective_go#commentary for more\ninformation on how to write good documentation.\n\nAvailable since\n    2020.1, non-default\n",
+                  "default": false
+                },
+                "ST1023": {
+                  "type": "boolean",
+                  "markdownDescription": "Redundant type in variable declaration\n\nAvailable since\n    2021.1, non-default\n",
+                  "default": false
+                },
                 "appends": {
                   "type": "boolean",
                   "markdownDescription": "check for missing values after append\n\nThis checker reports calls to append that pass\nno values to be appended to the slice.\n\n\ts := []string{\"a\", \"b\", \"c\"}\n\t_ = append(s)\n\nSuch calls are always no-ops and often indicate an\nunderlying mistake.",
@@ -2200,7 +2975,7 @@
                 },
                 "gofix": {
                   "type": "boolean",
-                  "markdownDescription": "apply fixes based on go:fix comment directives\n\nThe gofix analyzer inlines functions and constants that are marked for inlining.",
+                  "markdownDescription": "apply fixes based on go:fix comment directives\n\nThe gofix analyzer inlines functions and constants that are marked for inlining.\n\n## Functions\n\nGiven a function that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nthis analyzer will recommend that calls to the function elsewhere, in the same\nor other packages, should be inlined.\n\nInlining can be used to move off of a deprecated function:\n\n\t// Deprecated: prefer Pow(x, 2).\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nIt can also be used to move off of an obsolete package,\nas when the import path has changed or a higher major version is available:\n\n\tpackage pkg\n\n\timport pkg2 \"pkg/v2\"\n\n\t//go:fix inline\n\tfunc F() { pkg2.F(nil) }\n\nReplacing a call pkg.F() by pkg2.F(nil) can have no effect on the program,\nso this mechanism provides a low-risk way to update large numbers of calls.\nWe recommend, where possible, expressing the old API in terms of the new one\nto enable automatic migration.\n\nThe inliner takes care to avoid behavior changes, even subtle ones,\nsuch as changes to the order in which argument expressions are\nevaluated. When it cannot safely eliminate all parameter variables,\nit may introduce a \"binding declaration\" of the form\n\n\tvar params = args\n\nto evaluate argument expressions in the correct order and bind them to\nparameter variables. Since the resulting code transformation may be\nstylistically suboptimal, such inlinings may be disabled by specifying\nthe -gofix.allow_binding_decl=false flag to the analyzer driver.\n\n(In cases where it is not safe to \"reduce\" a call—that is, to replace\na call f(x) by the body of function f, suitably substituted—the\ninliner machinery is capable of replacing f by a function literal,\nfunc(){...}(). However, the gofix analyzer discards all such\n\"literalizations\" unconditionally, again on grounds of style.)\n\n## Constants\n\nGiven a constant that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tconst Ptr = Pointer\n\nthis analyzer will recommend that uses of Ptr should be replaced with Pointer.\n\nAs with functions, inlining can be used to replace deprecated constants and\nconstants in obsolete packages.\n\nA constant definition can be marked for inlining only if it refers to another\nnamed constant.\n\nThe \"//go:fix inline\" comment must appear before a single const declaration on its own,\nas above; before a const declaration that is part of a group, as in this case:\n\n\tconst (\n\t   C = 1\n\t   //go:fix inline\n\t   Ptr = Pointer\n\t)\n\nor before a group, applying to every constant in the group:\n\n\t//go:fix inline\n\tconst (\n\t\tPtr = Pointer\n\t    Val = Value\n\t)\n\nThe proposal https://go.dev/issue/32816 introduces the \"//go:fix\" directives.\n\nYou can use this (officially unsupported) command to apply gofix fixes en masse:\n\n\t$ go run golang.org/x/tools/internal/gofix/cmd/gofix@latest -test ./...\n\n(Do not use \"go get -tool\" to add gopls as a dependency of your\nmodule; gopls commands must be built from their release branch.)",
                   "default": true
                 },
                 "hostport": {
@@ -2233,9 +3008,14 @@
                   "markdownDescription": "check cancel func returned by context.WithCancel is called\n\nThe cancellation function returned by context.WithCancel, WithTimeout,\nWithDeadline and variants such as WithCancelCause must be called,\nor the new context will remain live until its parent context is cancelled.\n(The background context is never cancelled.)",
                   "default": true
                 },
+                "maprange": {
+                  "type": "boolean",
+                  "markdownDescription": "checks for unnecessary calls to maps.Keys and maps.Values in range statements\n\nConsider a loop written like this:\n\n\tfor val := range maps.Values(m) {\n\t\tfmt.Println(val)\n\t}\n\nThis should instead be written without the call to maps.Values:\n\n\tfor _, val := range m {\n\t\tfmt.Println(val)\n\t}\n\ngolang.org/x/exp/maps returns slices for Keys/Values instead of iterators,\nbut unnecessary calls should similarly be removed:\n\n\tfor _, key := range maps.Keys(m) {\n\t\tfmt.Println(key)\n\t}\n\nshould be rewritten as:\n\n\tfor key := range m {\n\t\tfmt.Println(key)\n\t}",
+                  "default": true
+                },
                 "modernize": {
                   "type": "boolean",
-                  "markdownDescription": "simplify code by using modern constructs\n\nThis analyzer reports opportunities for simplifying and clarifying\nexisting code by using more modern features of Go, such as:\n\n  - replacing an if/else conditional assignment by a call to the\n    built-in min or max functions added in go1.21;\n  - replacing sort.Slice(x, func(i, j int) bool) { return s[i] < s[j] }\n    by a call to slices.Sort(s), added in go1.21;\n  - replacing interface{} by the 'any' type added in go1.18;\n  - replacing append([]T(nil), s...) by slices.Clone(s) or\n    slices.Concat(s), added in go1.21;\n  - replacing a loop around an m[k]=v map update by a call\n    to one of the Collect, Copy, Clone, or Insert functions\n    from the maps package, added in go1.21;\n  - replacing []byte(fmt.Sprintf...) by fmt.Appendf(nil, ...),\n    added in go1.19;\n  - replacing uses of context.WithCancel in tests with t.Context, added in\n    go1.24;\n  - replacing omitempty by omitzero on structs, added in go1.24;\n  - replacing append(s[:i], s[i+1]...) by slices.Delete(s, i, i+1),\n    added in go1.21\n  - replacing a 3-clause for i := 0; i < n; i++ {} loop by\n    for i := range n {}, added in go1.22;\n  - replacing Split in \"for range strings.Split(...)\" by go1.24's\n    more efficient SplitSeq;\n\nTo apply all modernization fixes en masse, you can use the\nfollowing command:\n\n\t$ go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -test ./...\n\nIf the tool warns of conflicting fixes, you may need to run it more\nthan once until it has applied all fixes cleanly. This command is\nnot an officially supported interface and may change in the future.",
+                  "markdownDescription": "simplify code by using modern constructs\n\nThis analyzer reports opportunities for simplifying and clarifying\nexisting code by using more modern features of Go and its standard\nlibrary.\n\nEach diagnostic provides a fix. Our intent is that these fixes may\nbe safely applied en masse without changing the behavior of your\nprogram. In some cases the suggested fixes are imperfect and may\nlead to (for example) unused imports or unused local variables,\ncausing build breakage. However, these problems are generally\ntrivial to fix. We regard any modernizer whose fix changes program\nbehavior to have a serious bug and will endeavor to fix it.\n\nTo apply all modernization fixes en masse, you can use the\nfollowing command:\n\n\t$ go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...\n\n(Do not use \"go get -tool\" to add gopls as a dependency of your\nmodule; gopls commands must be built from their release branch.)\n\nIf the tool warns of conflicting fixes, you may need to run it more\nthan once until it has applied all fixes cleanly. This command is\nnot an officially supported interface and may change in the future.\n\nChanges produced by this tool should be reviewed as usual before\nbeing merged. In some cases, a loop may be replaced by a simple\nfunction call, causing comments within the loop to be discarded.\nHuman judgment may be required to avoid losing comments of value.\n\nEach diagnostic reported by modernize has a specific category. (The\ncategories are listed below.) Diagnostics in some categories, such\nas \"efaceany\" (which replaces \"interface{}\" with \"any\" where it is\nsafe to do so) are particularly numerous. It may ease the burden of\ncode review to apply fixes in two passes, the first change\nconsisting only of fixes of category \"efaceany\", the second\nconsisting of all others. This can be achieved using the -category flag:\n\n\t$ modernize -category=efaceany  -fix -test ./...\n\t$ modernize -category=-efaceany -fix -test ./...\n\nCategories of modernize diagnostic:\n\n  - forvar: remove x := x variable declarations made unnecessary by the new semantics of loops in go1.22.\n\n  - slicescontains: replace 'for i, elem := range s { if elem == needle { ...; break }'\n    by a call to slices.Contains, added in go1.21.\n\n  - minmax: replace an if/else conditional assignment by a call to\n    the built-in min or max functions added in go1.21.\n\n  - sortslice: replace sort.Slice(x, func(i, j int) bool) { return s[i] < s[j] }\n    by a call to slices.Sort(s), added in go1.21.\n\n  - efaceany: replace interface{} by the 'any' type added in go1.18.\n\n  - mapsloop: replace a loop around an m[k]=v map update by a call\n    to one of the Collect, Copy, Clone, or Insert functions from\n    the maps package, added in go1.21.\n\n  - fmtappendf: replace []byte(fmt.Sprintf...) by fmt.Appendf(nil, ...),\n    added in go1.19.\n\n  - testingcontext: replace uses of context.WithCancel in tests\n    with t.Context, added in go1.24.\n\n  - omitzero: replace omitempty by omitzero on structs, added in go1.24.\n\n  - bloop: replace \"for i := range b.N\" or \"for range b.N\" in a\n    benchmark with \"for b.Loop()\", and remove any preceding calls\n    to b.StopTimer, b.StartTimer, and b.ResetTimer.\n\n    B.Loop intentionally defeats compiler optimizations such as\n    inlining so that the benchmark is not entirely optimized away.\n    Currently, however, it may cause benchmarks to become slower\n    in some cases due to increased allocation; see\n    https://go.dev/issue/73137.\n\n  - rangeint: replace a 3-clause \"for i := 0; i < n; i++\" loop by\n    \"for i := range n\", added in go1.22.\n\n  - stringsseq: replace Split in \"for range strings.Split(...)\" by go1.24's\n    more efficient SplitSeq, or Fields with FieldSeq.\n\n  - stringscutprefix: replace some uses of HasPrefix followed by TrimPrefix with CutPrefix,\n    added to the strings package in go1.20.\n\n  - waitgroup: replace old complex usages of sync.WaitGroup by less complex WaitGroup.Go method in go1.25.",
                   "default": true
                 },
                 "nilfunc": {
@@ -2261,6 +3041,11 @@
                 "printf": {
                   "type": "boolean",
                   "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions such as [log.Printf]. It reports a variety of\nmistakes such as syntax errors in the format string and mismatches\n(of number and type) between the verbs and their arguments.\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.",
+                  "default": true
+                },
+                "recursiveiter": {
+                  "type": "boolean",
+                  "markdownDescription": "check for inefficient recursive iterators\n\nThis analyzer reports when a function that returns an iterator\n(iter.Seq or iter.Seq2) calls itself as the operand of a range\nstatement, as this is inefficient.\n\nWhen implementing an iterator (e.g. iter.Seq[T]) for a recursive\ndata type such as a tree or linked list, it is tempting to\nrecursively range over the iterator for each child element.\n\nHere's an example of a naive iterator over a binary tree:\n\n\ttype tree struct {\n\t\tvalue       int\n\t\tleft, right *tree\n\t}\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\tif t != nil {\n\t\t\t\tfor elem := range t.left.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif !yield(t.value) {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tfor elem := range t.right.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\nThough it correctly enumerates the elements of the tree, it hides a\nsignificant performance problem--two, in fact. Consider a balanced\ntree of N nodes. Iterating the root node will cause All to be\ncalled once on every node of the tree. This results in a chain of\nnested active range-over-func statements when yield(t.value) is\ncalled on a leaf node.\n\nThe first performance problem is that each range-over-func\nstatement must typically heap-allocate a variable, so iteration of\nthe tree allocates as many variables as there are elements in the\ntree, for a total of O(N) allocations, all unnecessary.\n\nThe second problem is that each call to yield for a leaf of the\ntree causes each of the enclosing range loops to receive a value,\nwhich they then immediately pass on to their respective yield\nfunction. This results in a chain of log(N) dynamic yield calls per\nelement, a total of O(N*log N) dynamic calls overall, when only\nO(N) are necessary.\n\nA better implementation strategy for recursive iterators is to\nfirst define the \"every\" operator for your recursive data type,\nwhere every(f) reports whether f(x) is true for every element x in\nthe data type. For our tree, the every function would be:\n\n\tfunc (t *tree) every(f func(int) bool) bool {\n\t\treturn t == nil ||\n\t\t\tt.left.every(f) && f(t.value) && t.right.every(f)\n\t}\n\nThen the iterator can be simply expressed as a trivial wrapper\naround this function:\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\t_ = t.every(yield)\n\t\t}\n\t}\n\nIn effect, tree.All computes whether yield returns true for each\nelement, short-circuiting if it every returns false, then discards\nthe final boolean result.\n\nThis has much better performance characteristics: it makes one\ndynamic call per element of the tree, and it doesn't heap-allocate\nanything. It is also clearer.",
                   "default": true
                 },
                 "shadow": {
@@ -2396,6 +3181,33 @@
               "default": true,
               "scope": "resource"
             },
+            "ui.diagnostic.annotations": {
+              "type": "object",
+              "markdownDescription": "annotations specifies the various kinds of compiler\noptimization details that should be reported as diagnostics\nwhen enabled for a package by the \"Toggle compiler\noptimization details\" (`gopls.gc_details`) command.\n\n(Some users care only about one kind of annotation in their\nprofiling efforts. More importantly, in large packages, the\nnumber of annotations can sometimes overwhelm the user\ninterface and exceed the per-file diagnostic limit.)\n\nTODO(adonovan): rename this field to CompilerOptDetail.\n",
+              "scope": "resource",
+              "properties": {
+                "bounds": {
+                  "type": "boolean",
+                  "markdownDescription": "`\"bounds\"` controls bounds checking diagnostics.\n",
+                  "default": true
+                },
+                "escape": {
+                  "type": "boolean",
+                  "markdownDescription": "`\"escape\"` controls diagnostics about escape choices.\n",
+                  "default": true
+                },
+                "inline": {
+                  "type": "boolean",
+                  "markdownDescription": "`\"inline\"` controls diagnostics about inlining choices.\n",
+                  "default": true
+                },
+                "nil": {
+                  "type": "boolean",
+                  "markdownDescription": "`\"nil\"` controls nil checks.\n",
+                  "default": true
+                }
+              }
+            },
             "ui.diagnostic.diagnosticsDelay": {
               "type": "string",
               "markdownDescription": "(Advanced) diagnosticsDelay controls the amount of time that gopls waits\nafter the most recent file modification before computing deep diagnostics.\nSimple diagnostics (parsing and type-checking) are always run immediately\non recently modified packages.\n\nThis option must be set to a valid duration string, for example `\"250ms\"`.\n",
@@ -2418,7 +3230,13 @@
             },
             "ui.diagnostic.staticcheck": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) staticcheck enables additional analyses from staticcheck.io.\nThese analyses are documented on\n[Staticcheck's website](https://staticcheck.io/docs/checks/).\n",
+              "markdownDescription": "(Experimental) staticcheck configures the default set of analyses staticcheck.io.\nThese analyses are documented on\n[Staticcheck's website](https://staticcheck.io/docs/checks/).\n\nThe \"staticcheck\" option has three values:\n- false: disable all staticcheck analyzers\n- true: enable all staticcheck analyzers\n- unset: enable a subset of staticcheck analyzers\n  selected by gopls maintainers for runtime efficiency\n  and analytic precision.\n\nRegardless of this setting, individual analyzers can be\nselectively enabled or disabled using the `analyses` setting.\n",
+              "default": false,
+              "scope": "resource"
+            },
+            "ui.diagnostic.staticcheckProvided": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) ",
               "default": false,
               "scope": "resource"
             },
