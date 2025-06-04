@@ -9,7 +9,7 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		name: 'gomodifytags',
 		importPath: 'github.com/fatih/gomodifytags',
 		modulePath: 'github.com/fatih/gomodifytags',
-		replacedByGopls: false,
+		replacedByGopls: true,
 		isImportant: false,
 		description: 'Modify tags on structs',
 		defaultVersion: 'v1.17.0'
