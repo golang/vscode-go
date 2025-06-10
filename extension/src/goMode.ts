@@ -21,6 +21,7 @@ export function isGoFile(document: vscode.TextDocument): boolean {
 export const GoDocumentSelector = [
 	// gopls handles only file URIs.
 	{ language: 'go', scheme: 'file' },
+	{ language: 'go.asm', scheme: 'file' },
 	{ language: 'go.mod', scheme: 'file' },
 	{ language: 'go.sum', scheme: 'file' },
 	{ language: 'go.work', scheme: 'file' },

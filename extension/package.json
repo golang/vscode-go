@@ -98,6 +98,7 @@
     "onLanguage:go",
     "onLanguage:go.sum",
     "onLanguage:gotmpl",
+    "onLanguage:go.asm",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onWebviewPanel:welcomeGo"
@@ -127,6 +128,15 @@
         ],
         "aliases": [
           "Go"
+        ]
+      },
+      {
+        "id": "go.asm",
+        "extensions": [
+          ".s"
+        ],
+        "aliases": [
+          "Go Assembly"
         ]
       },
       {
