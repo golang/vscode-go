@@ -255,8 +255,10 @@ export async function installTools(
 		// v2, v3... of the tools are installed with the same name as v1,
 		// but must be able to co-exist with other major versions in the GOBIN.
 		// Thus, we install it in a tmp directory and copy it to the GOBIN.
-		// See detail: golang/vscode-go#3732
-		if (tool.name.match('-v\\d+$')) {
+		// See detail: https://github.com/golang/vscode-go/issues/3732#issuecomment-2752026894
+		const isUpgradedMajorVersion = tool.name.match('-v\\d+$');
+
+		if (isUpgradedMajorVersion) {
 			envForTools['GOBIN'] = path.join(installingPath, 'tmp');
 		}
 
@@ -268,7 +270,7 @@ export async function installTools(
 			vscode.commands.executeCommand('go.languageserver.restart', RestartReason.INSTALLATION);
 		}
 
-		if (tool.name.match('-v\\d+$')) {
+		if (isUpgradedMajorVersion) {
 			// grep the tool name without version.
 			const toolName = tool.name.match('^(?<tool>.+)-v\\d+$')?.groups?.tool;
 			if (!toolName) {
@@ -276,7 +278,10 @@ export async function installTools(
 				continue;
 			}
 
-			fs.copyFileSync(path.join(installingPath, 'tmp', toolName), path.join(installingPath, tool.name));
+			fs.copyFileSync(
+				path.join(installingPath, 'tmp', correctBinname(toolName)),
+				path.join(installingPath, correctBinname(tool.name))
+			);
 			fs.rmdirSync(path.join(installingPath, 'tmp'), { recursive: true });
 		}
 	}
