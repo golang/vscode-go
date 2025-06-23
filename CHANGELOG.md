@@ -23,6 +23,15 @@ error during command execution when the command result did not include a token.
 ([Issue 3698](https://github.com/golang/vscode-go/issues/3698))
 * Addressed an issue that broke the `Debug Subtest At Cursor` command. ([Issue 3718](https://github.com/golang/vscode-go/issues/3718))
 
+## v0.47.4 (prerelease)
+
+Date: 2025-06-23
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.48.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.46.0-rc.1...v0.47.4
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.48.0
+
 ## v0.47.3 (prerelease)
 
 Date: 2025-06-05
