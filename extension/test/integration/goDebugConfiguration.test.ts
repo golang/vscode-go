@@ -979,7 +979,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test("default debugAdapter for remote mode should be 'legacy' when not in Preview mode", async () => {
+	test('default debugAdapter for remote mode should be determined by `dlv substitute-path-guess-helper`', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -989,9 +989,14 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = extensionInfo.isPreview ? 'dlv-dap' : 'legacy';
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
+
+		const substitutePathGuess = await debugConfigProvider.guessSubstitutePath();
+		let want = 'dlv-dap';
+		if (substitutePathGuess === null) {
+			want = 'legacy';
+		}
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
 	});
 

@@ -387,9 +387,11 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	/**
 	 * Calls `dlv substitute-path-guess-helper` to get a set of parameters used by Delve to guess the substitutePath configuration after also examining the executable.
 	 *
+	 * Exported for testing.
+	 *
 	 * See https://github.com/go-delve/delve/blob/d5fb3bee427202f0d4b1683bf743bfd2adb41757/service/debugger/debugger.go#L2466
 	 */
-	private async guessSubstitutePath(): Promise<object | null> {
+	public async guessSubstitutePath(): Promise<object | null> {
 		return new Promise((resolve) => {
 			const child = spawn(getBinPath('dlv'), ['substitute-path-guess-helper']);
 			let stdoutData = '';
