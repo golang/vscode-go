@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.48.0
+
+Date: 2025-06-30
+
 ### Changes
 
 * Introduced quick pick separator in command `Go: Choose Go Environment` showing
