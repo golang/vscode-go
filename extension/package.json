@@ -1448,6 +1448,12 @@
           "description": "Flags to pass to `go test`. If null, then buildFlags will be used. This is not propagated to the language server.",
           "scope": "resource"
         },
+        "go.coverShort": {
+          "type": "boolean",
+          "default": false,
+          "description": "Add -short flag when running tests with code coverage to skip long-running tests.",
+          "scope": "resource"
+        },
         "go.testExplorer.enable": {
           "type": "boolean",
           "default": true,

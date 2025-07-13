@@ -127,8 +127,8 @@ export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
 	);
 	Object.keys(testEnvConfig).forEach(
 		(key) =>
-			(envVars[key] =
-				typeof testEnvConfig[key] === 'string' ? resolvePath(testEnvConfig[key]) : testEnvConfig[key])
+		(envVars[key] =
+			typeof testEnvConfig[key] === 'string' ? resolvePath(testEnvConfig[key]) : testEnvConfig[key])
 	);
 
 	return envVars;
@@ -437,11 +437,11 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 			const testResultLines: string[] = [];
 			const processTestResultLine = addJSONFlag
 				? processTestResultLineInJSONMode(
-						pkgMap,
-						currentGoWorkspace,
-						outputChannel,
-						testconfig.goTestOutputConsumer
-				  )
+					pkgMap,
+					currentGoWorkspace,
+					outputChannel,
+					testconfig.goTestOutputConsumer
+				)
 				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 			outBuf.onLine((line) => processTestResultLine(line));
@@ -568,6 +568,12 @@ export function computeTestCommand(
 	if (testconfig.applyCodeCoverage) {
 		tmpCoverPath = getTempFilePath('go-code-cover');
 		args.push('-coverprofile=' + tmpCoverPath);
+
+		// Add -short flag if go.coverShort is enabled
+		if (testconfig.goConfig.get<boolean>('coverShort')) {
+			args.push('-short');
+		}
+
 		const coverMode = testconfig.goConfig['coverMode'];
 		switch (coverMode) {
 			case 'default':
