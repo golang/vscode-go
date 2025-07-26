@@ -213,6 +213,10 @@
     },
     "commands": [
       {
+        "command": "go.debug.openVariableAsDoc",
+        "title": "Go: Open in new Document"
+      },
+      {
         "command": "go.gopath",
         "title": "Go: Current GOPATH",
         "description": "See the currently set GOPATH."
@@ -3488,6 +3492,13 @@
         {
           "command": "go.debug.toggleHideSystemGoroutines",
           "when": "debugType == 'go' && callStackItemType == 'stackFrame' || (callStackItemType == 'thread' && callStackItemStopped)"
+        }
+      ],
+      "debug/variables/context": [
+        {
+          "command": "go.debug.openVariableAsDoc",
+          "when": "debugType=='go'",
+          "group": "navigation"
         }
       ],
       "editor/context": [
