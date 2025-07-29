@@ -23,6 +23,10 @@ Finally, you can also see a full list by using a meta command: `Go: Show All Com
 
 <!-- Everything below this line is generated. DO NOT EDIT. -->
 
+### `Open in new Document`
+
+
+
 ### `Go: Current GOPATH`
 
 See the currently set GOPATH.
