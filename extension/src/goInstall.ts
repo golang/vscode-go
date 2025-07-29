@@ -58,14 +58,14 @@ export const installCurrentPackage: CommandFactory = () => async () => {
 	const importPath = currentGoWorkspace && !isMod ? cwd.substr(currentGoWorkspace.length + 1) : '.';
 	args.push(importPath);
 
-	outputChannel.appendLine(`Installing ${importPath === '.' ? 'current package' : importPath}`);
+	outputChannel.info(`Installing ${importPath === '.' ? 'current package' : importPath}`);
 
 	cp.execFile(goRuntimePath, args, { env, cwd }, (err, _, stderr) => {
 		if (err) {
 			outputChannel.error(`Installation failed: ${stderr}`);
 			outputChannel.show();
 		} else {
-			outputChannel.appendLine('Installation successful');
+			outputChannel.info('Installation successful');
 			vscode.window.showInformationMessage('Installation successful');
 		}
 	});

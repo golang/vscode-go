@@ -172,7 +172,7 @@ export async function getGoVersion(goBinPath?: string, GOTOOLCHAIN?: string): Pr
 	const goRuntimePath = goBinPath ?? getBinPath('go');
 
 	const error = (msg: string) => {
-		outputChannel.appendLine(msg);
+		outputChannel.info(msg);
 		console.warn(msg);
 		return new Error(msg);
 	};
@@ -545,7 +545,7 @@ export function runTool(
 					return resolve([]);
 				}
 				const lines = (useStdErr ? stderr : stdout).toString().split('\n');
-				outputChannel.appendLine([cwd + '>Finished running tool:', cmd, ...args].join(' '));
+				outputChannel.info([cwd + '>Finished running tool:', cmd, ...args].join(' '));
 
 				const ret: ICheckResult[] = [];
 				let unexpectedOutput = false;
@@ -579,7 +579,7 @@ export function runTool(
 
 					const filePath = path.resolve(cwd, file);
 					ret.push({ file: filePath, line, col, msg, severity });
-					outputChannel.appendLine(`${filePath}:${line}:${col ?? ''} ${msg}`);
+					outputChannel.info(`${filePath}:${line}:${col ?? ''} ${msg}`);
 				}
 				if (!atLeastSingleMatch && unexpectedOutput && vscode.window.activeTextEditor) {
 					outputChannel.error(stderr);
@@ -593,7 +593,7 @@ export function runTool(
 						});
 					}
 				}
-				outputChannel.appendLine('');
+				outputChannel.info('');
 				resolve(ret);
 			} catch (e) {
 				reject(e);

@@ -342,7 +342,7 @@ export class GoTestRunner {
 				);
 				Object.keys(tests)
 					.concat(Object.keys(benchmarks))
-					.forEach((x) => outputChannel.appendLine(x));
+					.forEach((x) => outputChannel.info(x));
 				outputChannel.show();
 				vscode.window.showErrorMessage(
 					`Cannot run the selected tests in package ${pkg.label} - see the Go output panel for details`

@@ -219,7 +219,7 @@ export async function installTools(
 	if (envForTools['GOTOOLCHAIN']) {
 		envMsg += `, GOTOOLCHAIN=${envForTools['GOTOOLCHAIN']}`;
 	}
-	outputChannel.appendLine(envMsg);
+	outputChannel.info(envMsg);
 
 	let installingPath = '';
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
@@ -238,16 +238,16 @@ export async function installTools(
 		}
 	}
 
-	outputChannel.appendLine(installingMsg);
+	outputChannel.info(installingMsg);
 	missing.forEach((missingTool) => {
 		let toolName = missingTool.name;
 		if (missingTool.version) {
 			toolName += '@' + missingTool.version;
 		}
-		outputChannel.appendLine('  ' + toolName);
+		outputChannel.info('  ' + toolName);
 	});
 
-	outputChannel.appendLine(''); // Blank line for spacing.
+	outputChannel.info(''); // Blank line for spacing.
 
 	const failures: { tool: ToolAtVersion; reason: string }[] = [];
 	const tm = options?.toolsManager ?? defaultToolsManager;
@@ -287,18 +287,18 @@ export async function installTools(
 	}
 
 	// Report detailed information about any failures.
-	outputChannel.appendLine(''); // blank line for spacing
+	outputChannel.info(''); // blank line for spacing
 	if (failures.length === 0) {
-		outputChannel.appendLine('All tools successfully installed. You are ready to Go. :)');
+		outputChannel.info('All tools successfully installed. You are ready to Go. :)');
 	} else {
 		// Show the output channel on failures, even if the installation should
 		// be silent.
 		if (silent) {
 			outputChannel.show();
 		}
-		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+		outputChannel.info(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
-			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+			outputChannel.info(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
 	if (missing.some((tool) => tool.isImportant)) {
@@ -354,10 +354,10 @@ async function installToolWithGo(
 	try {
 		await installToolWithGoInstall(goVersionForInstall, env, importPath);
 		const toolInstallPath = getBinPath(tool.name);
-		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
+		outputChannel.info(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
+		outputChannel.info(`Installing ${importPath} FAILED`);
+		outputChannel.info(`${JSON.stringify(e, null, 1)}`);
 		return `failed to install ${tool.name}(${importPath}): ${e}`;
 	}
 }
@@ -545,7 +545,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 			{ env: env, cwd: cwd },
 			(err, stdout, stderr) => {
 				if (err) {
-					outputChannel.append(
+					outputChannel.info(
 						`Failed to run '${goRuntimePath} env' (cwd: ${getWorkspaceFolderPath()}): ${err}\n${stderr}`
 					);
 					outputChannel.show();
@@ -558,7 +558,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 				if (stderr) {
 					// 'go env' may output warnings about potential misconfiguration.
 					// Show the messages to users but keep processing the stdout.
-					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.info(`'${goRuntimePath} env': ${stderr}`);
 					outputChannel.show();
 				}
 				outputChannel.trace(`${goRuntimePath} env ...:\n${stdout}`);
@@ -623,7 +623,7 @@ export async function maybeInstallImportantTools(
 				missing = missing
 					.map((tool) => {
 						if (alternateTools[tool.name]) {
-							outputChannel.appendLine(
+							outputChannel.info(
 								`skip installing ${
 									tool.name
 								} because the 'alternateTools' setting is configured to use ${
@@ -642,7 +642,7 @@ export async function maybeInstallImportantTools(
 			await updateImportantToolsStatus(tm);
 		}
 	} catch (e) {
-		outputChannel.appendLine('install missing tools failed - ' + JSON.stringify(e));
+		outputChannel.info('install missing tools failed - ' + JSON.stringify(e));
 	} finally {
 		statusBarItem.busy = false;
 	}

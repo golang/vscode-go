@@ -98,7 +98,7 @@ export class GoTestExplorer {
 					inst.resolver.updateGoTestContext();
 				} catch (error) {
 					const m = 'Failed to resolve tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.info(`${m}: ${error}`);
 					outputChannel.show();
 					await vscode.window.showErrorMessage(m);
 				}
@@ -116,7 +116,7 @@ export class GoTestExplorer {
 					await inst.profiler.show(item);
 				} catch (error) {
 					const m = 'Failed to open profiles';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.info(`${m}: ${error}`);
 					outputChannel.show();
 					await vscode.window.showErrorMessage(m);
 				}
@@ -137,7 +137,7 @@ export class GoTestExplorer {
 					await inst.runner.run(new TestRunRequest([item]), undefined, options);
 				} catch (error) {
 					const m = 'Failed to execute tests';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.info(`${m}: ${error}`);
 					outputChannel.show();
 					await vscode.window.showErrorMessage(m);
 					return;
@@ -158,7 +158,7 @@ export class GoTestExplorer {
 					await inst.profiler.delete(file);
 				} catch (error) {
 					const m = 'Failed to delete profile';
-					outputChannel.appendLine(`${m}: ${error}`);
+					outputChannel.info(`${m}: ${error}`);
 					outputChannel.show();
 					await vscode.window.showErrorMessage(m);
 					return;
@@ -211,7 +211,7 @@ export class GoTestExplorer {
 					await inst.didChangeWorkspaceFolders(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'onDidChangeWorkspaceFolders': ${error}`);
+					else outputChannel.info(`Failed while handling 'onDidChangeWorkspaceFolders': ${error}`);
 				}
 			})
 		);
@@ -224,7 +224,7 @@ export class GoTestExplorer {
 					await inst.didCreateFile(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'FileSystemWatcher.onDidCreate': ${error}`);
+					else outputChannel.info(`Failed while handling 'FileSystemWatcher.onDidCreate': ${error}`);
 				}
 			})
 		);
@@ -234,7 +234,7 @@ export class GoTestExplorer {
 					await inst.didDeleteFile(x);
 				} catch (error) {
 					if (isInTest()) throw error;
-					else outputChannel.appendLine(`Failed while handling 'FileSystemWatcher.onDidDelete': ${error}`);
+					else outputChannel.info(`Failed while handling 'FileSystemWatcher.onDidDelete': ${error}`);
 				}
 			})
 		);

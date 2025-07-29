@@ -248,12 +248,12 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 
 export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
 	// TODO(rstambler): Add developer survey config.
-	outputChannel.appendLine('HaTs Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
+	outputChannel.info('HaTs Survey Configuration');
+	outputChannel.info(JSON.stringify(getGoplsSurveyConfig(), null, 2));
 	outputChannel.show();
 
-	outputChannel.appendLine('Developer Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getDeveloperSurveyConfig(), null, 2));
+	outputChannel.info('Developer Survey Configuration');
+	outputChannel.info(JSON.stringify(getDeveloperSurveyConfig(), null, 2));
 	outputChannel.show();
 
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');

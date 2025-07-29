@@ -127,7 +127,7 @@ export async function goBuild(
 	}
 
 	if (buildWorkspace && currentWorkspace && !isTestFile) {
-		outputChannel.appendLine(`Starting building the current workspace at ${currentWorkspace}`);
+		outputChannel.info(`Starting building the current workspace at ${currentWorkspace}`);
 		return getNonVendorPackages(currentWorkspace).then((pkgs) => {
 			running = true;
 			return runTool(
@@ -146,7 +146,7 @@ export async function goBuild(
 		});
 	}
 
-	outputChannel.appendLine(`Starting building the current package at ${cwd}`);
+	outputChannel.info(`Starting building the current package at ${cwd}`);
 
 	const currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), cwd);
 	let importPath = '.';

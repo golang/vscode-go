@@ -29,18 +29,18 @@ export const playgroundCommand: CommandFactory = () => () => {
 	}
 
 	outputChannel.show();
-	outputChannel.appendLine('Upload to the Go Playground in progress...\n');
+	outputChannel.info('Upload to the Go Playground in progress...\n');
 
 	const selection = editor.selection;
 	const code = selection.isEmpty ? editor.document.getText() : editor.document.getText(selection);
 	const config: vscode.WorkspaceConfiguration | undefined = getGoConfig(editor.document.uri).get('playground');
 	goPlay(code, config).then(
 		(result) => {
-			outputChannel.append(result);
+			outputChannel.info(result);
 		},
 		(e: string) => {
 			if (e) {
-				outputChannel.append(e);
+				outputChannel.info(e);
 			}
 		}
 	);
