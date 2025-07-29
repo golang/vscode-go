@@ -60,11 +60,13 @@ export const installCurrentPackage: CommandFactory = () => async () => {
 
 	outputChannel.appendLine(`Installing ${importPath === '.' ? 'current package' : importPath}`);
 
-	cp.execFile(goRuntimePath, args, { env, cwd }, (err, stdout, stderr) => {
+	cp.execFile(goRuntimePath, args, { env, cwd }, (err, _, stderr) => {
 		if (err) {
 			outputChannel.error(`Installation failed: ${stderr}`);
+			outputChannel.show();
 		} else {
 			outputChannel.appendLine('Installation successful');
+			vscode.window.showInformationMessage('Installation successful');
 		}
 	});
 };
