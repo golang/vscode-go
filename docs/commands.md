@@ -117,15 +117,19 @@ Displays test coverage in the current package.
 
 ### `Go: Generate Unit Tests For Package`
 
-Generates unit tests for the current package
+Generates unit tests for the current package using gotests
 
 ### `Go: Generate Unit Tests For File`
 
-Generates unit tests for the current file
+Generates unit tests for the current file using gotests
 
 ### `Go: Generate Unit Tests For Function`
 
-Generates unit tests for the selected function in the current file
+Generates unit tests for the selected function in the current file using gopls
+
+### `Go: Generate Unit Tests For Function (legacy)`
+
+Generates unit tests for the selected function in the current file using gotests
 
 ### `Go: Generate Interface Stubs`
 

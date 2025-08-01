@@ -251,7 +251,6 @@ const testAll = (isModuleMode: boolean) => {
 	});
 
 	test('Test Generate unit tests skeleton for file', async () => {
-		const gotestsPath = getBinPath('gotests');
 		const uri = vscode.Uri.file(path.join(generateTestsSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);
@@ -263,7 +262,6 @@ const testAll = (isModuleMode: boolean) => {
 	});
 
 	test('Test Generate unit tests skeleton for a function', async () => {
-		const gotestsPath = getBinPath('gotests');
 		const uri = vscode.Uri.file(path.join(generateFunctionTestSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		const editor = await vscode.window.showTextDocument(document);
@@ -276,7 +274,6 @@ const testAll = (isModuleMode: boolean) => {
 	});
 
 	test('Test Generate unit tests skeleton for package', async () => {
-		const gotestsPath = getBinPath('gotests');
 		const uri = vscode.Uri.file(path.join(generatePackageTestSourcePath, 'generatetests.go'));
 		const document = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(document);

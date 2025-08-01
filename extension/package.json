@@ -336,17 +336,22 @@
       {
         "command": "go.test.generate.package",
         "title": "Go: Generate Unit Tests For Package",
-        "description": "Generates unit tests for the current package"
+        "description": "Generates unit tests for the current package using gotests"
       },
       {
         "command": "go.test.generate.file",
         "title": "Go: Generate Unit Tests For File",
-        "description": "Generates unit tests for the current file"
+        "description": "Generates unit tests for the current file using gotests"
       },
       {
         "command": "go.test.generate.function",
         "title": "Go: Generate Unit Tests For Function",
-        "description": "Generates unit tests for the selected function in the current file"
+        "description": "Generates unit tests for the selected function in the current file using gopls"
+      },
+      {
+        "command": "go.test.generate.function.legacy",
+        "title": "Go: Generate Unit Tests For Function (legacy)",
+        "description": "Generates unit tests for the selected function in the current file using gotests"
       },
       {
         "command": "go.impl.cursor",
@@ -3534,6 +3539,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.generateTestForFunction && resourceLangId == go",
           "command": "go.test.generate.function",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.generateTestForFunction && resourceLangId == go",
+          "command": "go.test.generate.function.legacy",
           "group": "Go group 1"
         },
         {

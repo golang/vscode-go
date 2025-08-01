@@ -23,6 +23,8 @@ import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 const generatedWord = 'Generated ';
 
+const COMMAND = 'gopls.add_test';
+
 /**
  * If current active editor has a Go file, returns the editor.
  */
@@ -103,6 +105,26 @@ export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 		},
 		getGoConfig(editor.document.uri)
 	);
+};
+
+/**
+ * Generates a test for the selected function using 'gopls.add_test'.
+ */
+export const goplsGenerateTest: CommandFactory = (_, goCtx) => async () => {
+	if (!goCtx.serverInfo?.Commands?.includes(COMMAND)) {
+		vscode.window.showWarningMessage(`Please upgrade gopls to use the '${COMMAND}' command`);
+		return;
+	}
+
+	const editor = checkActiveEditor();
+	if (!editor) {
+		return;
+	}
+
+	await vscode.commands.executeCommand(COMMAND, {
+		URI: editor.document.uri.toString(),
+		range: editor.selection
+	});
 };
 
 export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async () => {
