@@ -873,6 +873,16 @@
                 "default": false,
                 "description": "(Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.",
                 "type": "boolean"
+              },
+              "followExec": {
+                "default": false,
+                "description": "(Experimental) followExec enables or disables follow exec mode.",
+                "type": "boolean"
+              },
+              "followExecRegex": {
+                "default": "",
+                "description": "(Experimental) followExecRegex is a regular expression. Only child processes with a command line matching the regular expression will be followed.",
+                "type": "string"
               }
             }
           },
