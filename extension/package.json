@@ -906,6 +906,16 @@
                 },
                 "description": "Configures which pprof lables to show as the goroutine name in the threads view",
                 "default": []
+              },
+              "followExec": {
+                "default": false,
+                "description": "(Experimental) followExec enables or disables follow exec mode.",
+                "type": "boolean"
+              },
+              "followExecRegex": {
+                "default": "",
+                "description": "(Experimental) followExecRegex is a regular expression. Only child processes with a command line matching the regular expression will be followed.",
+                "type": "string"
               }
             }
           },
