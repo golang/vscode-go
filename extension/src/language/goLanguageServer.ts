@@ -65,6 +65,9 @@ import { ActiveProgressTerminals, IProgressTerminal, ProgressTerminal } from '..
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
 import { GoDocumentSelector } from '../goMode';
+import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
+import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
+import { TelemetryKey, telemetryReporter } from '../goTelemetry';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -755,6 +758,16 @@ export async function buildLanguageClient(
 					}
 				},
 				resolveCodeAction: async (item, token, next) => {
+					if (item.command) {
+						switch (item.command.command) {
+							case GOPLS_ADD_TEST_COMMAND:
+								telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_CODE_ACTION, 1);
+								break;
+							case GOPLS_MODIFY_TAGS_COMMAND:
+								telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CODE_ACTION, 1);
+								break;
+						}
+					}
 					try {
 						return await next(item, token);
 					} catch (e) {

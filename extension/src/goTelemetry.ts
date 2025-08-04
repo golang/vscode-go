@@ -54,7 +54,23 @@ export enum TelemetryKey {
 	// Indicates the tools usage.
 	TOOL_USAGE_GOTESTS = 'vscode-go/tool/usage:gotests',
 	TOOL_USAGE_GOPLAY = 'vscode-go/tool/usage:goplay',
-	TOOL_USAGE_GOMODIFYTAGS = 'vscode-go/tool/usage:gomodifytags'
+	TOOL_USAGE_GOMODIFYTAGS = 'vscode-go/tool/usage:gomodifytags',
+
+	// Indicates the command and the source of trigger.
+	// The bucket have two elements, the command and it's trigger source.
+	COMMAND_TRIGGER_GOPLS_ADD_TEST_COMMAND_PALETTE = 'vscode-go/command/trigger:gopls.add_test-command_palette',
+	COMMAND_TRIGGER_GOPLS_ADD_TEST_CONTEXT_MENU = 'vscode-go/command/trigger:gopls.add_test-context_menu',
+	COMMAND_TRIGGER_GOPLS_ADD_TEST_CODE_ACTION = 'vscode-go/command/trigger:gopls.add_test-code_action',
+
+	COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_COMMAND_PALETTE = 'vscode-go/command/trigger:gopls.modify_tags-command_palette',
+	COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU = 'vscode-go/command/trigger:gopls.modify_tags-context_menu',
+	COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CODE_ACTION = 'vscode-go/command/trigger:gopls.modify_tags-code_action',
+
+	COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE = 'vscode-go/command/trigger:gotests-command_palette',
+	COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU = 'vscode-go/command/trigger:gotests-context_menu',
+
+	COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE = 'vscode-go/command/trigger:gomodifytags-command_palette',
+	COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU = 'vscode-go/command/trigger:gomodifytags-context_menu'
 }
 
 /**

@@ -23,7 +23,7 @@ import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 const generatedWord = 'Generated ';
 
-const COMMAND = 'gopls.add_test';
+export const COMMAND = 'gopls.add_test';
 
 /**
  * If current active editor has a Go file, returns the editor.
@@ -74,7 +74,13 @@ export const toggleTestFile: CommandFactory = () => () => {
 	vscode.commands.executeCommand('vscode.open', vscode.Uri.file(targetFilePath));
 };
 
-export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => {
+export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;
@@ -90,7 +96,13 @@ export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => 
 	);
 };
 
-export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
+export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;
@@ -110,7 +122,16 @@ export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 /**
  * Generates a test for the selected function using 'gopls.add_test'.
  */
-export const goplsGenerateTest: CommandFactory = (_, goCtx) => async () => {
+export const goplsGenerateTest: CommandFactory = (_, goCtx) => async (uri: vscode.Uri) => {
+	// When invoked from command palette, the input uri is undefined.
+	// When invoked from an editor, the URI of the document is passed in to the
+	// function.
+	// https://code.visualstudio.com/api/references/contribution-points#contributes.menus
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_COMMAND_PALETTE, 1);
+	}
 	if (!goCtx.serverInfo?.Commands?.includes(COMMAND)) {
 		vscode.window.showWarningMessage(`Please upgrade gopls to use the '${COMMAND}' command`);
 		return;
@@ -127,7 +148,13 @@ export const goplsGenerateTest: CommandFactory = (_, goCtx) => async () => {
 	});
 };
 
-export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async () => {
+export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;

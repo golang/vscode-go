@@ -16,7 +16,7 @@ import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive } from './util';
 import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
-const COMMAND = 'gopls.modify_tags';
+export const COMMAND = 'gopls.modify_tags';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {
@@ -50,14 +50,20 @@ interface GoTagsConfig {
 	template: string;
 }
 
-export const addTags: CommandFactory = (_ctx, goCtx) => async (commandArgs: GoTagsConfig) => {
+export const addTags: CommandFactory = (_ctx, goCtx) => async (uri: vscode.Uri) => {
 	const useGoplsCommand = goCtx.serverInfo?.Commands?.includes(COMMAND);
 	if (useGoplsCommand) {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_COMMAND_PALETTE, 1);
+		}
+
 		const args = getCommonArgs();
 		if (!args) {
 			return;
 		}
-		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags, commandArgs);
+		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
 		if (!tags && !options) {
 			return;
 		}
@@ -75,11 +81,17 @@ export const addTags: CommandFactory = (_ctx, goCtx) => async (commandArgs: GoTa
 		}
 		await vscode.commands.executeCommand(COMMAND, args);
 	} else {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE, 1);
+		}
+
 		const args = getCommonArgsOld();
 		if (!args) {
 			return;
 		}
-		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags, commandArgs);
+		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
 		if (!tags && !options) {
 			return;
 		}
@@ -103,14 +115,20 @@ export const addTags: CommandFactory = (_ctx, goCtx) => async (commandArgs: GoTa
 	}
 };
 
-export const removeTags: CommandFactory = (_ctx, goCtx) => async (commandArgs: GoTagsConfig) => {
+export const removeTags: CommandFactory = (_ctx, goCtx) => async (uri: vscode.Uri) => {
 	const useGoplsCommand = goCtx.serverInfo?.Commands?.includes(COMMAND);
 	if (useGoplsCommand) {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_COMMAND_PALETTE, 1);
+		}
+
 		const args = getCommonArgs();
 		if (!args) {
 			return;
 		}
-		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags, commandArgs);
+		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
 		if (!tags && !options) {
 			args.clear = true;
 			args.clearOptions = true;
@@ -123,11 +141,17 @@ export const removeTags: CommandFactory = (_ctx, goCtx) => async (commandArgs: G
 		}
 		vscode.commands.executeCommand(COMMAND, args);
 	} else {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE, 1);
+		}
+
 		const args = getCommonArgsOld();
 		if (!args) {
 			return;
 		}
-		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags, commandArgs);
+		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
 		if (!tags && !options) {
 			args.push('--clear-tags');
 			args.push('--clear-options');
@@ -191,31 +215,25 @@ function getCommonArgs(): GoModifyTagsArgs | undefined {
 	return args;
 }
 
-async function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Promise<(string | undefined)[]> {
-	const tags = commandArgs && commandArgs.tags ? commandArgs.tags : config.tags;
-	const options = commandArgs && commandArgs.options ? commandArgs.options : config.options;
-	const promptForTags = commandArgs && commandArgs.promptForTags ? commandArgs.promptForTags : config.promptForTags;
-	const transformValue: string = commandArgs && commandArgs.transform ? commandArgs.transform : config.transform;
-	const format: string = commandArgs && commandArgs.template ? commandArgs.template : config.template;
-
-	if (!promptForTags) {
-		return Promise.resolve([tags, options, transformValue, format]);
+async function getTagsAndOptions(config: GoTagsConfig): Promise<(string | undefined)[]> {
+	if (!config.promptForTags) {
+		return Promise.resolve([config.tags, config.options, config.transform, config.template]);
 	}
 
 	const inputTags = await vscode.window.showInputBox({
-		value: tags,
+		value: config.tags,
 		prompt: 'Enter comma separated tag names'
 	});
 	const inputOptions = await vscode.window.showInputBox({
-		value: options,
+		value: config.options,
 		prompt: 'Enter comma separated options'
 	});
 	const transformOption = await vscode.window.showInputBox({
-		value: transformValue,
+		value: config.transform,
 		prompt: 'Enter transform value'
 	});
 	const template = await vscode.window.showInputBox({
-		value: format,
+		value: config.template,
 		prompt: 'Enter template value'
 	});
 	return [inputTags, inputOptions, transformOption, template];
