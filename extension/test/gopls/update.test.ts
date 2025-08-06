@@ -98,7 +98,7 @@ suite('gopls update tests', () => {
 			sinon.replace(lsp, 'getLocalGoplsVersion', async () => {
 				return { version: usersVersion };
 			});
-			sinon.replace(goInstallTools, 'latestToolVersion', async () => {
+			sinon.replace(goInstallTools, 'latestModuleVersion', async () => {
 				if (acceptPrerelease) {
 					return latestPrereleaseVersion;
 				}

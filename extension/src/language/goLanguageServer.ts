@@ -40,7 +40,7 @@ import { Executable, LanguageClient, ServerOptions } from 'vscode-languageclient
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
-import { installTools, latestToolVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
+import { installTools, latestModuleVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
 import { getTool, Tool } from '../goTools';
 import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
@@ -1139,20 +1139,20 @@ export async function shouldUpdateLanguageServer(
 		return null;
 	}
 
-	// Get the latest gopls version. If it is for nightly, using the prereleased version is ok.
-	let latestVersion =
-		cfg.checkForUpdates === 'local' ? tool.latestVersion : await latestToolVersion(tool, extensionInfo.isPreview);
-
-	// If we failed to get the gopls version, pick the one we know to be latest at the time of this extension's last update
-	if (!latestVersion) {
-		latestVersion = tool.latestVersion;
+	let version = tool.latestVersion;
+	if (cfg.checkForUpdates === 'proxy') {
+		// Allow installation of gopls pre-releases on insider versions of the extension.
+		const latest = await latestModuleVersion(tool.modulePath, extensionInfo.isPreview);
+		if (latest) {
+			version = latest;
+		}
 	}
 
 	// If "gopls" is so old that it doesn't have the "gopls version" command,
 	// or its version doesn't match our expectations, usersVersion will be empty or invalid.
 	// Suggest the latestVersion.
 	if (!usersVersion || !semver.valid(usersVersion.version)) {
-		return latestVersion;
+		return version;
 	}
 
 	// The user may have downloaded golang.org/x/tools/gopls@master,
@@ -1161,12 +1161,12 @@ export async function shouldUpdateLanguageServer(
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
 	if (usersTime) {
 		let latestTime = cfg.checkForUpdates
-			? await getTimestampForVersion(tool, latestVersion!)
+			? await getTimestampForVersion(tool, version!)
 			: tool.latestVersionTimestamp;
 		if (!latestTime) {
 			latestTime = tool.latestVersionTimestamp;
 		}
-		return usersTime.isBefore(latestTime) ? latestVersion : null;
+		return usersTime.isBefore(latestTime) ? version : null;
 	}
 
 	// If the user's version does not contain a timestamp,
@@ -1175,7 +1175,7 @@ export async function shouldUpdateLanguageServer(
 		includePrerelease: true,
 		loose: true
 	});
-	return semver.lt(usersVersionSemver!, latestVersion!) ? latestVersion : null;
+	return semver.lt(usersVersionSemver!, version!) ? version : null;
 }
 
 // Copied from src/cmd/go/internal/modfetch.go.

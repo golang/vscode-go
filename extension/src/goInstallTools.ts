@@ -343,7 +343,7 @@ async function installToolWithGo(
 
 	let version: semver.SemVer | string | undefined | null = tool.version;
 	if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
-		version = await latestToolVersion(tool, true);
+		version = await latestModuleVersion(tool.modulePath, true);
 	}
 	// TODO(hyangah): should we allow to choose a different version of the tool
 	// depending on the project's go version (i.e. getGoVersion())? For example,
@@ -733,17 +733,28 @@ async function suggestDownloadGo() {
 }
 
 /**
- * The output of `go list -m -versions -json`.
+ * Interface for the expected JSON output from `go list -m -versions -json`.
+ * See https://go.dev/ref/mod#go-list-m for details.
  */
 interface ListVersionsOutput {
-	Version: string; // module version
-	Versions?: string[]; // available module versions (with -versions)
+	/**
+	 * The latest tagged release version (e.g., v1.2.3). Excludes pre-releases.
+	 */
+	Version: string;
+	/**
+	 * All known versions of the module, sorted semantically from earliest to
+	 * latest. Includes pre-release versions.
+	 */
+	Versions?: string[];
 }
 
 /**
- * Returns the latest version of the tool.
+ * Returns the latest published versions of a Go module.
  */
-export async function latestToolVersion(tool: Tool, includePrerelease?: boolean): Promise<semver.SemVer | null> {
+export async function latestModuleVersion(
+	modulePath: string,
+	includePrerelease?: boolean
+): Promise<semver.SemVer | null> {
 	const goCmd = getBinPath('go');
 	const tmpDir = await tmpDirForToolInstallation();
 	const execFile = util.promisify(cp.execFile);
@@ -753,27 +764,28 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 	try {
 		const env = toolInstallationEnvironment();
 		env['GO111MODULE'] = 'on';
-		// Run go list in a temp directory to avoid altering go.mod
-		// when using older versions of go (<1.16).
-		const version = 'latest'; // TODO(hyangah): use 'master' for delve-dap.
-		const { stdout } = await execFile(
-			goCmd,
-			['list', '-m', '--versions', '-json', `${tool.modulePath}@${version}`],
-			{
-				env,
-				cwd: tmpDir
-			}
-		);
-		const m = <ListVersionsOutput>JSON.parse(stdout);
-		// Versions field is a list of all known versions of the module,
-		// ordered according to semantic versioning, earliest to latest.
-		const latest = includePrerelease && m.Versions && m.Versions.length > 0 ? m.Versions.pop() : m.Version;
+		// Run go list in a temp directory to avoid altering go.mod when using
+		// older versions of go (<1.16).
+		const { stdout } = await execFile(goCmd, ['list', '-m', '--versions', '-json', `${modulePath}@latest`], {
+			env,
+			cwd: tmpDir
+		});
+		const moduleInfo = JSON.parse(stdout) as ListVersionsOutput;
+
+		let latest: string;
+		if (includePrerelease && moduleInfo.Versions && moduleInfo.Versions.length > 0) {
+			latest = moduleInfo.Versions[moduleInfo.Versions.length - 1];
+		} else {
+			latest = moduleInfo.Version;
+		}
+
 		ret = semver.parse(latest);
 	} catch (e) {
-		console.log(`failed to retrieve the latest tool ${tool.name} version: ${e}`);
+		console.log(`failed to retrieve the latest version of module ${modulePath}: ${e}`);
 	} finally {
 		rmdirRecursive(tmpDir);
 	}
+
 	return ret;
 }
 
