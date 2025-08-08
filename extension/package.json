@@ -3492,7 +3492,7 @@
       "debug/callstack/context": [
         {
           "command": "go.debug.toggleHideSystemGoroutines",
-          "when": "debugType == 'go' && callStackItemType == 'stackFrame' || (callStackItemType == 'thread' && callStackItemStopped)"
+          "when": "debugType == 'go' && (callStackItemType == 'stackFrame' || (callStackItemType == 'thread' && callStackItemStopped))"
         }
       ],
       "editor/context": [
