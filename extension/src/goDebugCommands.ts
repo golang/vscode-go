@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { TextDecoder } from 'util';
 
 // Track sessions since vscode doesn't provide a list of them.
 const sessions = new Map<string, vscode.DebugSession>();
@@ -25,21 +26,45 @@ export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 			const session = sessions.get(sessionId);
 			if (!session) return 'Debug session has been terminated';
 
-			const r: { variables: Variable[] } = await session.customRequest('variables', {
+			const { variables } = await session.customRequest('variables', {
 				variablesReference: parseInt(container, 10)
-			});
+			}) as { variables: Variable[] };
 
-			const v = r.variables.find((v) => v.name === name);
+			const v = variables.find(v => v.name === name);
 			if (!v) return `Cannot resolve variable ${name}`;
 
-			const { result } = await session.customRequest('evaluate', {
-				expression: v.evaluateName,
-				context: 'clipboard'
-			});
+			if (!v.memoryReference) {
+				const { result } = await session.customRequest('evaluate', {
+					expression: v.evaluateName,
+					context: 'clipboard'
+				}) as { result: string };
 
-			v.value = result ?? v.value;
+				v.value = result ?? v.value;
 
-			return parseVariable(v);
+				return parseVariable(v);
+			}
+
+			const chunk = 1 << 14;
+			let offset = 0;
+			let full: Uint8Array[] = [];
+
+			while (true) {
+				const resp = await session.customRequest('readMemory', {
+					memoryReference: v.memoryReference,
+					offset,
+					count: chunk
+				}) as { address: string; data: string; unreadableBytes: number };
+
+				if (!resp.data) break;
+				full.push(Buffer.from(resp.data, 'base64'));
+
+				if (resp.unreadableBytes === 0) break;
+				offset += chunk;
+			}
+
+			const allBytes = Buffer.concat(full);
+
+			return new TextDecoder('utf-8').decode(allBytes);
 		}
 	}
 
@@ -72,6 +97,7 @@ export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 		value: string;
 		evaluateName: string;
 		variablesReference: number;
+		memoryReference?: string;
 	}
 
 	const escapeCodes: Record<string, string> = {
@@ -83,14 +109,9 @@ export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 	function parseVariable(variable: Variable) {
 		let raw = variable.value.trim();
 		try {
-			// Attempt to parse as JSON
 			return JSON.parse(raw);
 		} catch (_) {
-			// Fall back to manual unescaping
-			raw = raw.slice(1, -1);
+			return raw.replace(/\\[nrt\\"'`]/, (_, s) => (s in escapeCodes ? escapeCodes[s] : s));
 		}
-
-		// Manually unescape
-		return raw.replace(/\\[nrt\\"'`]/, (_, s) => (s in escapeCodes ? escapeCodes[s] : s));
 	}
 }
