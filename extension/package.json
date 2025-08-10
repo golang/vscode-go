@@ -214,7 +214,8 @@
     "commands": [
       {
         "command": "go.debug.openVariableAsDoc",
-        "title": "Open in new Document"
+        "title": "Open in new Document",
+        "description": "Open selected variable in a new document."
       },
       {
         "command": "go.gopath",

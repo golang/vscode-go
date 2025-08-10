@@ -25,7 +25,7 @@ Finally, you can also see a full list by using a meta command: `Go: Show All Com
 
 ### `Open in new Document`
 
-
+Open selected variable in a new document.
 
 ### `Go: Current GOPATH`
 
