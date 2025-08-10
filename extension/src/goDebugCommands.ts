@@ -11,6 +11,11 @@ const sessions = new Map<string, vscode.DebugSession>();
 vscode.debug.onDidStartDebugSession((s) => sessions.set(s.id, s));
 vscode.debug.onDidTerminateDebugSession((s) => sessions.delete(s.id));
 
+/**
+ * Registers commands to improve the debugging experience for Go.
+ *
+ * Currently, it adds a command to open a variable in a new text document.
+ */
 export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 	class VariableContentProvider implements vscode.TextDocumentContentProvider {
 		static uriForRef(ref: VariableRef) {
@@ -85,18 +90,27 @@ export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 		})
 	);
 
+	/**
+	 * A reference to a variable, used to pass data between commands.
+	 */
 	interface VariableRef {
 		sessionId: string;
 		container: Container;
 		variable: Variable;
 	}
 
+	/**
+	 * A container for variables, used to pass data between commands.
+	 */
 	interface Container {
 		name: string;
 		variablesReference: number;
 		expensive: boolean;
 	}
 
+	/**
+	 * A variable, used to pass data between commands.
+	 */
 	interface Variable {
 		name: string;
 		value: string;
@@ -111,6 +125,9 @@ export function registerGoDebugCommands(ctx: vscode.ExtensionContext) {
 		t: '\t'
 	};
 
+	/**
+	 * Parses a variable value, unescaping special characters.
+	 */
 	function parseVariable(variable: Variable) {
 		let raw = variable.value.trim();
 		try {
