@@ -6,14 +6,15 @@
 import assert from 'assert';
 import sinon = require('sinon');
 import vscode = require('vscode');
-import goLanguageServer = require('../../src/language/goLanguageServer');
-import goSurvey = require('../../src/goSurvey');
-import goDeveloperSurvey = require('../../src/goDeveloperSurvey');
+import * as goLanguageServer from '../../src/language/goLanguageServer';
+import * as goSurvey from '../../src/goSurvey';
+import * as goDeveloperSurvey from '../../src/developerSurvey/prompt';
+import { DeveloperSurveyConfig } from '../../src/developerSurvey/config';
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goSurvey.GoplsSurveyConfig, boolean | undefined][] = [
+		const testCases: [goSurvey.GoplsSurveyState, boolean | undefined][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -91,15 +92,15 @@ suite('developer survey tests', () => {
 			[new Date('2021-09-01'), new Date('2021-11-10'), new Date('2020-10-31'), false],
 			[new Date('2021-09-01'), new Date('2021-11-10'), new Date('2022-10-31'), false]
 		];
-		testCases.map(([start, end, date, want]) => {
-			const got = goDeveloperSurvey.inDateRange(start, end, date);
-			assert.equal(got, want, `expected inRange(${start}, ${end}, ${date} = ${want}, got: ${got})`);
+		testCases.map(([Start, End, date, want]) => {
+			const got = goDeveloperSurvey.inDateRange({ Start, End, URL: '' }, date);
+			assert.strictEqual(got, want, `expected inRange(${Start}, ${End}, ${date} = ${want}, got: ${got})`);
 		});
 	});
 
 	test('prompt for survey', () => {
 		// global state -> offer survey
-		const testCases: [goDeveloperSurvey.DeveloperSurveyConfig, boolean | undefined][] = [
+		const testCases: [goDeveloperSurvey.DeveloperSurveyState, boolean][] = [
 			// User who is activating the extension for the first time.
 			[{}, true],
 			// User who has already taken the survey.
@@ -110,7 +111,7 @@ suite('developer survey tests', () => {
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: true
 				},
-				undefined
+				false
 			],
 			// User who has declined survey prompting.
 			[
@@ -119,7 +120,7 @@ suite('developer survey tests', () => {
 					lastDatePrompted: new Date('2020-04-02'),
 					prompt: false
 				},
-				undefined
+				false
 			],
 			// User who has opted into prompting, but hasn't opened the
 			// extension in a while.
@@ -161,26 +162,30 @@ suite('developer survey tests', () => {
 				true
 			]
 		];
-		testCases.map(([testConfig, wantPrompt], i) => {
+		testCases.map(([state, want], i) => {
 			// Replace Math.Random so that it always returns a value less than
-			// 0.2. This means that we will always choose to prompt, in the
+			// 0.1. This means that we will always choose to prompt, in the
 			// event that the user can be prompted that month.
 			sinon.replace(Math, 'random', () => 0);
 
-			sinon.replace(goDeveloperSurvey, 'startDate', new Date('2020-03-10'));
-			sinon.replace(goDeveloperSurvey, 'endDate', new Date('2020-07-10'));
-
 			const now = new Date('2020-04-29');
-			const gotPrompt = goDeveloperSurvey.shouldPromptForSurvey(now, testConfig);
-			if (wantPrompt) {
-				assert.ok(gotPrompt, `prompt determination failed for ${i}: expected ${wantPrompt}, got ${gotPrompt}`);
+			const surveyConfig: DeveloperSurveyConfig = {
+				Start: new Date('2020-03-10'),
+				End: new Date('2020-07-10'),
+				URL: ''
+			};
+
+			const got = goDeveloperSurvey.shouldPromptForSurvey(now, state, surveyConfig);
+			if (want) {
+				assert.ok(got, `prompt determination failed for ${i}: expected ${want}, got ${got}`);
 			} else {
-				assert.equal(
-					gotPrompt,
-					wantPrompt,
-					`prompt determination failed for ${i}: expected undefined, got ${gotPrompt}`
+				assert.strictEqual(
+					got,
+					undefined,
+					`prompt determination failed for ${i}: expected undefined, got ${got}`
 				);
 			}
+
 			sinon.restore();
 		});
 	});

@@ -56,7 +56,7 @@ import fetch from 'node-fetch';
 import { CompletionItemKind, FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
-import { maybePromptForDeveloperSurvey } from '../goDeveloperSurvey';
+import { maybePromptForDeveloperSurvey } from '../developerSurvey/prompt';
 import { CommandFactory } from '../commands';
 import { updateLanguageServerIconGoStatusBar } from '../goStatus';
 import { URI } from 'vscode-uri';
