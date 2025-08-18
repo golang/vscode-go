@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -6,18 +5,18 @@
 
 'use strict';
 
-import vscode = require('vscode');
-import { getGoConfig } from '../config';
-import { daysBetween, storeSurveyState, getStateConfig, minutesBetween, timeMinute } from '../goSurvey';
+import * as vscode from 'vscode';
 import { GoExtensionContext } from '../context';
-import { DeveloperSurveyConfig, latestSurveyConfig } from './config';
+import { getGoConfig } from '../config';
+import { daysBetween, getStateConfig, minutesBetween, storeSurveyState, timeMinute } from '../goSurvey';
+import { DeveloperSurveyConfig, getLatestDeveloperSurvey } from './config';
 
 /**
- * DEVELOPER_SURVEY_KEY is the key for the go developer survey state stored in
- * VSCode memento. It should not be changed to maintain backward compatibility
- * with previous extension versions.
+ * DEVELOPER_SURVEY_STATE_KEY is the key for the go developer survey state
+ * stored in VSCode memento. It should not be changed to maintain backward
+ * compatibility with previous extension versions.
  */
-export const DEVELOPER_SURVEY_KEY = 'developerSurveyConfig';
+export const DEVELOPER_SURVEY_STATE_KEY = 'developerSurveyConfig';
 
 /**
  * DeveloperSurveyState is the set of global properties used to determine if
@@ -46,7 +45,7 @@ export interface DeveloperSurveyState {
 	lastDateAccepted?: Date;
 }
 
-export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
+export async function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 	// First, check the value of the 'go.survey.prompt' setting to see
 	// if the user has opted out of all survey prompts.
 	const goConfig = getGoConfig();
@@ -55,7 +54,11 @@ export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 	}
 
 	const now = new Date();
-	const config = getLatestDeveloperSurvey();
+	const config = await getLatestDeveloperSurvey(now);
+	if (!config) {
+		return;
+	}
+
 	const state = shouldPromptForSurvey(now, getDeveloperSurveyState(), config);
 	if (!state) {
 		return;
@@ -71,7 +74,7 @@ export function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 		}
 		state = await promptForDeveloperSurvey(now, state, config);
 		if (state) {
-			storeSurveyState(DEVELOPER_SURVEY_KEY, state);
+			storeSurveyState(DEVELOPER_SURVEY_STATE_KEY, state);
 		}
 	};
 	prompt(state);
@@ -106,7 +109,7 @@ export function shouldPromptForSurvey(
 		state.prompt = Math.random() < promptProbability;
 
 		// The state have changed, store it to memento.
-		storeSurveyState(DEVELOPER_SURVEY_KEY, state);
+		storeSurveyState(DEVELOPER_SURVEY_STATE_KEY, state);
 	}
 
 	if (!state.prompt) {
@@ -130,7 +133,7 @@ export function shouldPromptForSurvey(
 		}
 		// If the survey will end in 5 days, prompt on the next day.
 		// Otherwise, wait for 5 days.
-		if (daysBetween(now, config.End) > 5) {
+		if (daysBetween(now, config.EndDate) > 5) {
 			return;
 		}
 	}
@@ -145,7 +148,7 @@ export async function promptForDeveloperSurvey(
 ): Promise<DeveloperSurveyState> {
 	const selected = await vscode.window.showInformationMessage(
 		`Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
-by participating in this 10-minute Go Developer Survey (${config.End.getMonth.toString()} ${config.End.getFullYear.toString()}) before ${config.End.toDateString()}?`,
+by participating in this 10-minute Go Developer Survey (${config.EndDate.getFullYear().toString()}-${config.EndDate.getMonth().toString()}) before ${config.EndDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
@@ -196,24 +199,18 @@ If you'd like to opt-out of all survey prompts, you can set 'go.survey.prompt' t
 }
 
 export function getDeveloperSurveyState(): DeveloperSurveyState {
-	return getStateConfig(DEVELOPER_SURVEY_KEY) as DeveloperSurveyState;
+	return getStateConfig(DEVELOPER_SURVEY_STATE_KEY) as DeveloperSurveyState;
 }
 
 // Assumes that end > start.
 export function inDateRange(cfg: DeveloperSurveyConfig, date: Date): boolean {
 	// date is before the start time.
-	if (date.getTime() - cfg.Start.getTime() < 0) {
+	if (date.getTime() - cfg.StartDate.getTime() < 0) {
 		return false;
 	}
 	// end is before the date.
-	if (cfg.End.getTime() - date.getTime() < 0) {
+	if (cfg.EndDate.getTime() - date.getTime() < 0) {
 		return false;
 	}
 	return true;
-}
-
-export function getLatestDeveloperSurvey(): DeveloperSurveyConfig {
-	// TODO(golang/vscode-go#2891): fetch latest developer survey config from
-	// module and compare with hard coded developr survey.
-	return latestSurveyConfig;
 }

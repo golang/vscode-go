@@ -12,12 +12,16 @@ import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { GoExtensionContext } from './context';
 import {
-	DEVELOPER_SURVEY_KEY,
+	DEVELOPER_SURVEY_STATE_KEY,
 	getDeveloperSurveyState,
-	getLatestDeveloperSurvey,
 	maybePromptForDeveloperSurvey,
 	promptForDeveloperSurvey
 } from './developerSurvey/prompt';
+import {
+	DEVELOPER_SURVEY_CONFIG_STATE_KEY,
+	getLatestDeveloperSurvey,
+	getDeveloperSurveyConfigState
+} from './developerSurvey/config';
 import { outputChannel } from './goStatus';
 import { getLocalGoplsVersion } from './language/goLanguageServer';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
@@ -29,7 +33,7 @@ import { promptNext4Weeks } from './utils/randomDayutils';
  * memento. It should not be changed to maintain backward compatibility
  * with previous extension versions.
  */
-export const GOPLS_SURVEY_KEY = 'goplsSurveyConfig';
+export const GOPLS_SURVEY_STATE_KEY = 'goplsSurveyConfig';
 
 /**
  * GoplsSurveyState is the set of global properties used to determine if
@@ -88,7 +92,7 @@ export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 		}
 		state = await promptForGoplsSurvey(goCtx, state, now);
 		if (state) {
-			storeSurveyState(GOPLS_SURVEY_KEY, state);
+			storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
 		}
 	};
 
@@ -105,7 +109,7 @@ export function shouldPromptForSurvey(now: Date, state: GoplsSurveyState): Gopls
 	if (state.prompt === undefined) {
 		state.prompt = true;
 	}
-	storeSurveyState(GOPLS_SURVEY_KEY, state);
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
 	if (!state.prompt) {
 		return;
 	}
@@ -148,7 +152,7 @@ export function shouldPromptForSurvey(now: Date, state: GoplsSurveyState): Gopls
 		state.dateToPromptThisMonth = undefined;
 	}
 	state.dateComputedPromptThisMonth = now;
-	storeSurveyState(GOPLS_SURVEY_KEY, state);
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
 	return state;
 }
 
@@ -215,12 +219,13 @@ To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setti
 }
 
 function getGoplsSurveyState(): GoplsSurveyState {
-	return getStateConfig(GOPLS_SURVEY_KEY) as GoplsSurveyState;
+	return getStateConfig(GOPLS_SURVEY_STATE_KEY) as GoplsSurveyState;
 }
 
 export const resetSurveyStates: CommandFactory = () => () => {
-	storeSurveyState(GOPLS_SURVEY_KEY, null);
-	storeSurveyState(DEVELOPER_SURVEY_KEY, null);
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, null);
+	storeSurveyState(DEVELOPER_SURVEY_STATE_KEY, null);
+	storeSurveyState(DEVELOPER_SURVEY_CONFIG_STATE_KEY, null);
 };
 
 export function storeSurveyState(key: string, state: any) {
@@ -231,6 +236,14 @@ export function storeSurveyState(key: string, state: any) {
 	}
 }
 
+/**
+ * Retrieves and parses a JSON state object from either workspace or global storage.
+ *
+ * This function fetches a string from the state, safely parses it as JSON, and
+ * automatically converts any values with keys containing "date" or "timestamp"
+ * into `Date` objects. It returns an empty object if no state is found or if
+ * parsing fails.
+ */
 export function getStateConfig(globalStateKey: string, workspace?: boolean): any {
 	let saved: any;
 	if (workspace === true) {
@@ -256,20 +269,24 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 	}
 }
 
-export const showSurveyStates: CommandFactory = (ctx, goCtx) => async () => {
-	// TODO(rstambler): Add developer survey config.
-	outputChannel.info('HaTs Survey Configuration');
+export const showSurveyStates: CommandFactory = (_, goCtx) => async () => {
+	outputChannel.info('HaTs Survey State');
 	outputChannel.info(JSON.stringify(getGoplsSurveyState(), null, 2));
 	outputChannel.show();
 
-	outputChannel.info('Developer Survey Configuration');
+	outputChannel.info('Developer Survey State');
 	outputChannel.info(JSON.stringify(getDeveloperSurveyState(), null, 2));
 	outputChannel.show();
 
+	outputChannel.info('Latest Developer Survey Configuration');
+	outputChannel.info(JSON.stringify(getDeveloperSurveyConfigState(), null, 2));
+	outputChannel.show();
+
+	const now = new Date();
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(goCtx, getGoplsSurveyState(), new Date());
+			promptForGoplsSurvey(goCtx, getGoplsSurveyState(), now);
 			break;
 		case 'Maybe':
 			maybePromptForGoplsSurvey(goCtx);
@@ -279,9 +296,14 @@ export const showSurveyStates: CommandFactory = (ctx, goCtx) => async () => {
 	}
 	selected = await vscode.window.showInformationMessage('Prompt for Developer survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
-		case 'Yes':
-			promptForDeveloperSurvey(new Date(), getDeveloperSurveyState(), getLatestDeveloperSurvey());
+		case 'Yes': {
+			const config = await getLatestDeveloperSurvey(now);
+			if (!config) {
+				return;
+			}
+			promptForDeveloperSurvey(now, getDeveloperSurveyState(), config);
 			break;
+		}
 		case 'Maybe':
 			maybePromptForDeveloperSurvey(goCtx);
 			break;
