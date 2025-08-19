@@ -7,6 +7,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as util from 'util';
+import { URL } from 'url';
 import { getStateConfig } from '../goSurvey';
 import { getBinPath } from '../util';
 import { updateGlobalState } from '../stateUtils';
@@ -99,6 +100,13 @@ export async function getLatestDeveloperSurvey(now: Date): Promise<DeveloperSurv
 		version: version,
 		lastDateUpdated: now
 	};
+
+	// The survey URL stored in config.json is the raw survey URL. We add the
+	// s=v (for vscode) query parameter to identify the source of the survey
+	// respondent.
+	const url = new URL(config.URL);
+	url.searchParams.append('s', 'v');
+	config.URL = url.toString();
 
 	updateGlobalState(DEVELOPER_SURVEY_CONFIG_STATE_KEY, JSON.stringify(newState));
 

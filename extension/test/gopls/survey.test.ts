@@ -112,13 +112,13 @@ suite('developer survey tests', () => {
 		const oldConfig: config.DeveloperSurveyConfig = {
 			StartDate: new Date('2025-07-01T00:00:00Z'),
 			EndDate: new Date('2025-08-01T00:00:00Z'),
-			URL: 'https://google.com/survey/old'
+			URL: 'https://google.com/survey/old?s=v'
 		};
 
 		const newConfig = {
 			StartDate: new Date('2025-09-01T00:00:00Z'),
 			EndDate: new Date('2025-10-01T00:00:00Z'),
-			URL: 'https://google.com/survey/new'
+			URL: 'https://google.com/survey/new?s=v'
 		};
 
 		// old state, now, module survey config => return survey config
