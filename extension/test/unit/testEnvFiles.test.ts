@@ -18,7 +18,7 @@ suite('parseEnvFiles Tests', () => {
 
 	teardown(() => {
 		if (tmpDir && fs.existsSync(tmpDir)) {
-			fs.rmSync(tmpDir, { recursive: true });
+			fs.rmdirSync(tmpDir, { recursive: true });
 		}
 	});
 
