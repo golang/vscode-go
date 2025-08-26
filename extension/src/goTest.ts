@@ -44,7 +44,7 @@ async function _testAtCursor(
 	goCtx: GoExtensionContext,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: TestAtCursorCmd,
-	args: any
+	args?: SubTestAtCursorArgs
 ) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
@@ -72,7 +72,7 @@ async function _testAtCursor(
 	await editor.document.save();
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig);
+		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, undefined, args);
 	} else if (cmd === 'benchmark' || cmd === 'test') {
 		return runTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
@@ -165,7 +165,7 @@ async function _subTestAtCursor(
 	const escapedName = escapeSubTestName(testFunctionName, subTestName);
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig);
+		return debugTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig, undefined, args);
 	} else if (cmd === 'test') {
 		return runTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
@@ -308,10 +308,11 @@ export async function debugTestAtCursor(
 	testFunctions: vscode.DocumentSymbol[],
 	suiteToFunc: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
-	sessionID?: string
+	sessionID?: string,
+	testArgs?: { isTestSuite?: boolean },
 ) {
 	const doc = 'document' in editorOrDocument ? editorOrDocument.document : editorOrDocument;
-	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc);
+	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc, testArgs?.isTestSuite);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);

@@ -250,12 +250,14 @@ export function extractInstanceTestName(symbolName: string): string {
  * @param document  The document containing the tests
  * @param testFunctionName The test function to get the debug args
  * @param testFunctions The test functions found in the document
+ * @param isTestSuite Indicator if the test function is part of a test suite
  */
 export function getTestFunctionDebugArgs(
 	document: vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
-	suiteToFunc: SuiteToTestMap
+	suiteToFunc: SuiteToTestMap,
+	isTestSuite ?: boolean,
 ): string[] {
 	if (benchmarkRegex.test(testFunctionName)) {
 		return ['-test.bench', '^' + testFunctionName + '$', '-test.run', 'a^'];
@@ -265,7 +267,7 @@ export function getTestFunctionDebugArgs(
 		const testFns = findAllTestSuiteRuns(document, testFunctions, suiteToFunc);
 		return ['-test.run', `^${testFns.map((t) => t.name).join('|')}$/^${instanceMethod}$`];
 	} else {
-		return ['-test.run', `^${testFunctionName}$`];
+		return ['-test.run', `${!!isTestSuite ? '/': ''}^${testFunctionName}$`];
 	}
 }
 /**
