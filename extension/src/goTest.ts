@@ -117,7 +117,7 @@ async function _subTestAtCursor(
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const currentTestFunctions = args?.functionName
-		? testFunctions.filter((func) => func.name === args.functionName)
+		? testFunctions.filter((func) => func.name.endsWith(String(args.functionName)))
 		: testFunctions.filter((func) => func.range.contains(editor.selection.start));
 	const testFunctionName =
 		args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
@@ -226,6 +226,10 @@ type TestAtCursor = {
 	 * Flags to be passed to `go test`.
 	 */
 	flags?: string[];
+	/**
+	 * Whether it's a test suite.
+	 */
+	isTestSuite?: boolean;
 };
 
 /**
@@ -252,6 +256,7 @@ async function runTestAtCursor(
 		flags: getTestFlags(goConfig, args),
 		functions: testConfigFns,
 		isBenchmark: cmd === 'benchmark',
+		isTestSuite: !!args?.isTestSuite,
 		isMod,
 		applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
 	};
@@ -273,10 +278,10 @@ export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
 		 * codelens provided by {@link GoRunTestCodeLensProvider}, args
 		 * specifies the function and subtest names.
 		 */
-		args?: [SubTestAtCursorArgs]
+		args?:SubTestAtCursorArgs
 	) => {
 		try {
-			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args?.[0]);
+			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);

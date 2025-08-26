@@ -86,6 +86,10 @@ export interface TestConfig {
 	 */
 	isBenchmark?: boolean;
 	/**
+	 * Whether this is a test suite
+	 */
+	isTestSuite?: boolean;
+	/**
 	 * Whether the tests are being run in a project that uses Go modules
 	 */
 	isMod?: boolean;
@@ -736,7 +740,14 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			// which will result in the correct thing to happen
 			if (testFunctions.length > 0) {
 				if (testFunctions.length === 1) {
-					params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
+					// If it's a test suite, it means the test function is not a root test function.
+					// By prepending '/', the command will interpret and execute all child test functions
+					// that matches the pattern of anyTestSuite/givenFunctionName/givenCaseName.
+					if (testconfig.isTestSuite) {
+						params = params.concat(['-run', util.format('/^%s$', testFunctions[0])]);
+					} else {
+						params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
+					}
 				} else {
 					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
 				}
