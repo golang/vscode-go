@@ -12,20 +12,36 @@ import { getGoConfig } from './config';
 import { extensionId } from './const';
 import { GoExtensionContext } from './context';
 import {
-	developerSurveyConfig,
-	getDeveloperSurveyConfig,
+	DEVELOPER_SURVEY_STATE_KEY,
+	getDeveloperSurveyState,
 	maybePromptForDeveloperSurvey,
 	promptForDeveloperSurvey
-} from './goDeveloperSurvey';
+} from './developerSurvey/prompt';
+import {
+	DEVELOPER_SURVEY_CONFIG_STATE_KEY,
+	getLatestDeveloperSurvey,
+	getDeveloperSurveyConfigState
+} from './developerSurvey/config';
 import { outputChannel } from './goStatus';
 import { getLocalGoplsVersion } from './language/goLanguageServer';
 import { getFromGlobalState, getFromWorkspaceState, updateGlobalState } from './stateUtils';
 import { getGoVersion } from './util';
 import { promptNext4Weeks } from './utils/randomDayutils';
 
-// GoplsSurveyConfig is the set of global properties used to determine if
-// we should prompt a user to take the gopls survey.
-export interface GoplsSurveyConfig {
+/**
+ * GOPLS_SURVEY_KEY is the key for the gopls survey state stored in VSCode
+ * memento. It should not be changed to maintain backward compatibility
+ * with previous extension versions.
+ */
+export const GOPLS_SURVEY_STATE_KEY = 'goplsSurveyConfig';
+
+/**
+ * GoplsSurveyState is the set of global properties used to determine if
+ * we should prompt a user to take the gopls survey.
+ * This interface is stored in VS Code's memento. The field names should not
+ * be changed as they are key to parsing the stored data from previous releases.
+ */
+export interface GoplsSurveyState {
 	// prompt is true if the user can be prompted to take the survey.
 	// It is false if the user has responded "Never" to the prompt.
 	prompt?: boolean;
@@ -59,11 +75,11 @@ export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 		return;
 	}
 	const now = new Date();
-	let cfg = shouldPromptForSurvey(now, getGoplsSurveyConfig());
-	if (!cfg) {
+	let state = shouldPromptForSurvey(now, getGoplsSurveyState());
+	if (!state) {
 		return;
 	}
-	if (!cfg.dateToPromptThisMonth) {
+	if (!state.dateToPromptThisMonth) {
 		return;
 	}
 	const callback = async () => {
@@ -74,52 +90,52 @@ export function maybePromptForGoplsSurvey(goCtx: GoExtensionContext) {
 			setTimeout(callback, 5 * timeMinute);
 			return;
 		}
-		cfg = await promptForGoplsSurvey(goCtx, cfg, now);
-		if (cfg) {
-			flushSurveyConfig(goplsSurveyConfig, cfg);
+		state = await promptForGoplsSurvey(goCtx, state, now);
+		if (state) {
+			storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
 		}
 	};
 
 	// 0 if we passed the computed dateToPromptThisMonth past.
 	// If the prompt date was computed a while ago (dateComputedPromptThisMonth),
 	// shouldPromptForSurvey should've made a new decision before we get here.
-	const delayMs = Math.max(cfg.dateToPromptThisMonth.getTime() - now.getTime(), 0);
+	const delayMs = Math.max(state.dateToPromptThisMonth.getTime() - now.getTime(), 0);
 	setTimeout(callback, delayMs);
 }
 
-export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsSurveyConfig | undefined {
+export function shouldPromptForSurvey(now: Date, state: GoplsSurveyState): GoplsSurveyState | undefined {
 	// If the prompt value is not set, assume we haven't prompted the user
 	// and should do so.
-	if (cfg.prompt === undefined) {
-		cfg.prompt = true;
+	if (state.prompt === undefined) {
+		state.prompt = true;
 	}
-	flushSurveyConfig(goplsSurveyConfig, cfg);
-	if (!cfg.prompt) {
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
+	if (!state.prompt) {
 		return;
 	}
 
 	// Check if the user has taken the survey in the last year.
 	// Don't prompt them if they have been.
-	if (cfg.lastDateAccepted) {
-		if (daysBetween(now, cfg.lastDateAccepted) < 365) {
+	if (state.lastDateAccepted) {
+		if (daysBetween(now, state.lastDateAccepted) < 365) {
 			return;
 		}
 	}
 
 	// Check if the user has been prompted for the survey in the last 90 days.
 	// Don't prompt them if they have been.
-	if (cfg.lastDatePrompted) {
-		if (daysBetween(now, cfg.lastDatePrompted) < 90) {
+	if (state.lastDatePrompted) {
+		if (daysBetween(now, state.lastDatePrompted) < 90) {
 			return;
 		}
 	}
 
 	// Check if the extension has been activated this month.
-	if (cfg.dateComputedPromptThisMonth) {
+	if (state.dateComputedPromptThisMonth) {
 		// The extension has been activated this month, so we should have already
 		// decided if the user should be prompted.
-		if (daysBetween(now, cfg.dateComputedPromptThisMonth) < 28) {
-			return cfg;
+		if (daysBetween(now, state.dateComputedPromptThisMonth) < 28) {
+			return state;
 		}
 	}
 	// This is the first activation this month (or ever), so decide if we
@@ -129,22 +145,22 @@ export function shouldPromptForSurvey(now: Date, cfg: GoplsSurveyConfig): GoplsS
 	// Probability is set based on the # of responses received, and will be
 	// decreased if we begin receiving > 200 responses/month.
 	const probability = 0.06;
-	cfg.promptThisMonth = Math.random() < probability;
-	if (cfg.promptThisMonth) {
-		cfg.dateToPromptThisMonth = promptNext4Weeks(now);
+	state.promptThisMonth = Math.random() < probability;
+	if (state.promptThisMonth) {
+		state.dateToPromptThisMonth = promptNext4Weeks(now);
 	} else {
-		cfg.dateToPromptThisMonth = undefined;
+		state.dateToPromptThisMonth = undefined;
 	}
-	cfg.dateComputedPromptThisMonth = now;
-	flushSurveyConfig(goplsSurveyConfig, cfg);
-	return cfg;
+	state.dateComputedPromptThisMonth = now;
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, state);
+	return state;
 }
 
 async function promptForGoplsSurvey(
 	goCtx: GoExtensionContext,
-	cfg: GoplsSurveyConfig = {},
+	state: GoplsSurveyState = {},
 	now: Date
-): Promise<GoplsSurveyConfig> {
+): Promise<GoplsSurveyState> {
 	const selected = await vscode.window.showInformationMessage(
 		`Looks like you are using the Go extension for VS Code.
 Could you help us improve this extension by filling out a 1-2 minute survey about your experience with it?`,
@@ -154,14 +170,14 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 	);
 
 	// Update the time last asked.
-	cfg.lastDatePrompted = now;
+	state.lastDatePrompted = now;
 
 	switch (selected) {
 		case 'Yes':
 			{
 				const { latestConfig } = goCtx;
-				cfg.lastDateAccepted = now;
-				cfg.prompt = true;
+				state.lastDateAccepted = now;
+				state.prompt = true;
 				const goplsEnabled = latestConfig?.enabled;
 				const usersGoplsVersion = await getLocalGoplsVersion(latestConfig);
 				const goV = await getGoVersion();
@@ -171,12 +187,12 @@ Could you help us improve this extension by filling out a 1-2 minute survey abou
 			}
 			break;
 		case 'Not now':
-			cfg.prompt = true;
+			state.prompt = true;
 
 			vscode.window.showInformationMessage("No problem! We'll ask you again another time.");
 			break;
 		case 'Never': {
-			cfg.prompt = false;
+			state.prompt = false;
 
 			const selected = await vscode.window.showInformationMessage(
 				`No problem! We won't ask again.
@@ -195,32 +211,39 @@ To opt-out of all survey prompts, please disable the 'Go > Survey: Prompt' setti
 		default:
 			// If the user closes the prompt without making a selection, treat it
 			// like a "Not now" response.
-			cfg.prompt = true;
+			state.prompt = true;
 
 			break;
 	}
-	return cfg;
+	return state;
 }
 
-export const goplsSurveyConfig = 'goplsSurveyConfig';
-
-function getGoplsSurveyConfig(): GoplsSurveyConfig {
-	return getStateConfig(goplsSurveyConfig) as GoplsSurveyConfig;
+function getGoplsSurveyState(): GoplsSurveyState {
+	return getStateConfig(GOPLS_SURVEY_STATE_KEY) as GoplsSurveyState;
 }
 
-export const resetSurveyConfigs: CommandFactory = () => () => {
-	flushSurveyConfig(goplsSurveyConfig, null);
-	flushSurveyConfig(developerSurveyConfig, null);
+export const resetSurveyStates: CommandFactory = () => () => {
+	storeSurveyState(GOPLS_SURVEY_STATE_KEY, null);
+	storeSurveyState(DEVELOPER_SURVEY_STATE_KEY, null);
+	storeSurveyState(DEVELOPER_SURVEY_CONFIG_STATE_KEY, null);
 };
 
-export function flushSurveyConfig(key: string, cfg: any) {
-	if (cfg) {
-		updateGlobalState(key, JSON.stringify(cfg));
+export function storeSurveyState(key: string, state: any) {
+	if (state) {
+		updateGlobalState(key, JSON.stringify(state));
 	} else {
 		updateGlobalState(key, null); // reset
 	}
 }
 
+/**
+ * Retrieves and parses a JSON state object from either workspace or global storage.
+ *
+ * This function fetches a string from the state, safely parses it as JSON, and
+ * automatically converts any values with keys containing "date" or "timestamp"
+ * into `Date` objects. It returns an empty object if no state is found or if
+ * parsing fails.
+ */
 export function getStateConfig(globalStateKey: string, workspace?: boolean): any {
 	let saved: any;
 	if (workspace === true) {
@@ -232,34 +255,38 @@ export function getStateConfig(globalStateKey: string, workspace?: boolean): any
 		return {};
 	}
 	try {
-		const cfg = JSON.parse(saved, (key: string, value: any) => {
+		const state = JSON.parse(saved, (key: string, value: any) => {
 			// Make sure values that should be dates are correctly converted.
 			if (key.toLowerCase().includes('date') || key.toLowerCase().includes('timestamp')) {
 				return new Date(value);
 			}
 			return value;
 		});
-		return cfg || {};
+		return state || {};
 	} catch (err) {
 		console.log(`Error parsing JSON from ${saved}: ${err}`);
 		return {};
 	}
 }
 
-export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
-	// TODO(rstambler): Add developer survey config.
-	outputChannel.appendLine('HaTs Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getGoplsSurveyConfig(), null, 2));
+export const showSurveyStates: CommandFactory = (_, goCtx) => async () => {
+	outputChannel.info('HaTs Survey State');
+	outputChannel.info(JSON.stringify(getGoplsSurveyState(), null, 2));
 	outputChannel.show();
 
-	outputChannel.appendLine('Developer Survey Configuration');
-	outputChannel.appendLine(JSON.stringify(getDeveloperSurveyConfig(), null, 2));
+	outputChannel.info('Developer Survey State');
+	outputChannel.info(JSON.stringify(getDeveloperSurveyState(), null, 2));
 	outputChannel.show();
 
+	outputChannel.info('Latest Developer Survey Configuration');
+	outputChannel.info(JSON.stringify(getDeveloperSurveyConfigState(), null, 2));
+	outputChannel.show();
+
+	const now = new Date();
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(goCtx, getGoplsSurveyConfig(), new Date());
+			promptForGoplsSurvey(goCtx, getGoplsSurveyState(), now);
 			break;
 		case 'Maybe':
 			maybePromptForGoplsSurvey(goCtx);
@@ -269,9 +296,14 @@ export const showSurveyConfig: CommandFactory = (ctx, goCtx) => async () => {
 	}
 	selected = await vscode.window.showInformationMessage('Prompt for Developer survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
-		case 'Yes':
-			promptForDeveloperSurvey(getDeveloperSurveyConfig(), new Date());
+		case 'Yes': {
+			const config = await getLatestDeveloperSurvey(now);
+			if (!config) {
+				return;
+			}
+			promptForDeveloperSurvey(now, getDeveloperSurveyState(), config);
 			break;
+		}
 		case 'Maybe':
 			maybePromptForDeveloperSurvey(goCtx);
 			break;

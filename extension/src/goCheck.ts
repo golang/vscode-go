@@ -61,7 +61,7 @@ export function check(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<IToolCheckResults[]> {
 	diagnosticsStatusBarItem.hide();
-	outputChannel.appendLine('Running checks...');
+	outputChannel.info('Running checks...');
 	const runningToolsPromises = [];
 	const cwd = path.dirname(fileUri.fsPath);
 

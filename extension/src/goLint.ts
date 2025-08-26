@@ -36,7 +36,7 @@ export function lintCode(scope?: string): CommandFactory {
 		const goConfig = getGoConfig(documentUri);
 		const goplsConfig = getGoplsConfig(documentUri);
 
-		outputChannel.appendLine('Linting...');
+		outputChannel.info('Linting...');
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Linting...';
 
@@ -170,12 +170,12 @@ export async function goLint(
 
 	if (scope === 'workspace' && currentWorkspace) {
 		args.push('./...');
-		outputChannel.appendLine(`Starting linting the current workspace at ${currentWorkspace}`);
+		outputChannel.info(`Starting linting the current workspace at ${currentWorkspace}`);
 	} else if (scope === 'file') {
 		args.push(fileUri?.fsPath ?? '');
-		outputChannel.appendLine(`Starting linting the current file at ${fileUri?.fsPath}`);
+		outputChannel.info(`Starting linting the current file at ${fileUri?.fsPath}`);
 	} else {
-		outputChannel.appendLine(`Starting linting the current package at ${cwd}`);
+		outputChannel.info(`Starting linting the current package at ${cwd}`);
 	}
 
 	running = true;

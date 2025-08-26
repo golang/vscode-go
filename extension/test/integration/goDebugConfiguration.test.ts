@@ -965,6 +965,16 @@ suite('Debug Configuration Auto Mode', () => {
 
 suite('Debug Configuration Default DebugAdapter', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
+	let sandbox: sinon.SinonSandbox;
+
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+
+	teardown(() => {
+		sandbox.restore();
+	});
+
 	test("default debugAdapter should be 'dlv-dap'", async () => {
 		const config = {
 			name: 'Launch',
@@ -979,7 +989,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test('default debugAdapter for remote mode should be determined by `dlv substitute-path-guess-helper`', async () => {
+	test('remote mode: sets adapter based on the extension preview status when dlv path guessing fails', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -989,15 +999,33 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
+		const guessStub = sandbox.stub(debugConfigProvider, 'guessSubstitutePath').resolves(null);
+
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 
-		const substitutePathGuess = await debugConfigProvider.guessSubstitutePath();
-		let want = 'dlv-dap';
-		if (substitutePathGuess === null) {
-			want = 'legacy';
-		}
+		const want = extensionInfo.isPreview ? 'dlv-dap' : 'legacy';
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+		assert.ok(guessStub.calledOnce, 'guessSubstitutePath should have been called');
+	});
+
+	test('remote mode: sets debugAdapter to dlv-dap when dlv path guessing succeeds', async () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const guessStub = sandbox.stub(debugConfigProvider, 'guessSubstitutePath').resolves({});
+
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+
+		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
+		assert.ok(guessStub.calledOnce, 'guessSubstitutePath should have been called');
 	});
 
 	test('debugAdapter=dlv-dap is allowed with remote mode', async () => {

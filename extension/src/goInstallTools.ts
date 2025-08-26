@@ -219,7 +219,7 @@ export async function installTools(
 	if (envForTools['GOTOOLCHAIN']) {
 		envMsg += `, GOTOOLCHAIN=${envForTools['GOTOOLCHAIN']}`;
 	}
-	outputChannel.appendLine(envMsg);
+	outputChannel.info(envMsg);
 
 	let installingPath = '';
 	let installingMsg = `Installing ${missing.length} ${missing.length > 1 ? 'tools' : 'tool'} at `;
@@ -238,16 +238,16 @@ export async function installTools(
 		}
 	}
 
-	outputChannel.appendLine(installingMsg);
+	outputChannel.info(installingMsg);
 	missing.forEach((missingTool) => {
 		let toolName = missingTool.name;
 		if (missingTool.version) {
 			toolName += '@' + missingTool.version;
 		}
-		outputChannel.appendLine('  ' + toolName);
+		outputChannel.info('  ' + toolName);
 	});
 
-	outputChannel.appendLine(''); // Blank line for spacing.
+	outputChannel.info(''); // Blank line for spacing.
 
 	const failures: { tool: ToolAtVersion; reason: string }[] = [];
 	const tm = options?.toolsManager ?? defaultToolsManager;
@@ -287,18 +287,18 @@ export async function installTools(
 	}
 
 	// Report detailed information about any failures.
-	outputChannel.appendLine(''); // blank line for spacing
+	outputChannel.info(''); // blank line for spacing
 	if (failures.length === 0) {
-		outputChannel.appendLine('All tools successfully installed. You are ready to Go. :)');
+		outputChannel.info('All tools successfully installed. You are ready to Go. :)');
 	} else {
 		// Show the output channel on failures, even if the installation should
 		// be silent.
 		if (silent) {
 			outputChannel.show();
 		}
-		outputChannel.appendLine(failures.length + ' tools failed to install.\n');
+		outputChannel.info(failures.length + ' tools failed to install.\n');
 		for (const failure of failures) {
-			outputChannel.appendLine(`${failure.tool.name}: ${failure.reason} `);
+			outputChannel.info(`${failure.tool.name}: ${failure.reason} `);
 		}
 	}
 	if (missing.some((tool) => tool.isImportant)) {
@@ -343,7 +343,7 @@ async function installToolWithGo(
 
 	let version: semver.SemVer | string | undefined | null = tool.version;
 	if (!version && tool.usePrereleaseInPreviewMode && extensionInfo.isPreview) {
-		version = await latestToolVersion(tool, true);
+		version = await latestModuleVersion(tool.modulePath, true);
 	}
 	// TODO(hyangah): should we allow to choose a different version of the tool
 	// depending on the project's go version (i.e. getGoVersion())? For example,
@@ -354,10 +354,10 @@ async function installToolWithGo(
 	try {
 		await installToolWithGoInstall(goVersionForInstall, env, importPath);
 		const toolInstallPath = getBinPath(tool.name);
-		outputChannel.appendLine(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
+		outputChannel.info(`Installing ${importPath} (${toolInstallPath}) SUCCEEDED`);
 	} catch (e) {
-		outputChannel.appendLine(`Installing ${importPath} FAILED`);
-		outputChannel.appendLine(`${JSON.stringify(e, null, 1)}`);
+		outputChannel.info(`Installing ${importPath} FAILED`);
+		outputChannel.info(`${JSON.stringify(e, null, 1)}`);
 		return `failed to install ${tool.name}(${importPath}): ${e}`;
 	}
 }
@@ -545,7 +545,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 			{ env: env, cwd: cwd },
 			(err, stdout, stderr) => {
 				if (err) {
-					outputChannel.append(
+					outputChannel.info(
 						`Failed to run '${goRuntimePath} env' (cwd: ${getWorkspaceFolderPath()}): ${err}\n${stderr}`
 					);
 					outputChannel.show();
@@ -558,7 +558,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 				if (stderr) {
 					// 'go env' may output warnings about potential misconfiguration.
 					// Show the messages to users but keep processing the stdout.
-					outputChannel.append(`'${goRuntimePath} env': ${stderr}`);
+					outputChannel.info(`'${goRuntimePath} env': ${stderr}`);
 					outputChannel.show();
 				}
 				outputChannel.trace(`${goRuntimePath} env ...:\n${stdout}`);
@@ -623,7 +623,7 @@ export async function maybeInstallImportantTools(
 				missing = missing
 					.map((tool) => {
 						if (alternateTools[tool.name]) {
-							outputChannel.appendLine(
+							outputChannel.info(
 								`skip installing ${
 									tool.name
 								} because the 'alternateTools' setting is configured to use ${
@@ -642,7 +642,7 @@ export async function maybeInstallImportantTools(
 			await updateImportantToolsStatus(tm);
 		}
 	} catch (e) {
-		outputChannel.appendLine('install missing tools failed - ' + JSON.stringify(e));
+		outputChannel.info('install missing tools failed - ' + JSON.stringify(e));
 	} finally {
 		statusBarItem.busy = false;
 	}
@@ -733,17 +733,28 @@ async function suggestDownloadGo() {
 }
 
 /**
- * The output of `go list -m -versions -json`.
+ * Interface for the expected JSON output from `go list -m -versions -json`.
+ * See https://go.dev/ref/mod#go-list-m for details.
  */
 interface ListVersionsOutput {
-	Version: string; // module version
-	Versions?: string[]; // available module versions (with -versions)
+	/**
+	 * The latest tagged release version (e.g., v1.2.3). Excludes pre-releases.
+	 */
+	Version: string;
+	/**
+	 * All known versions of the module, sorted semantically from earliest to
+	 * latest. Includes pre-release versions.
+	 */
+	Versions?: string[];
 }
 
 /**
- * Returns the latest version of the tool.
+ * Returns the latest published versions of a Go module.
  */
-export async function latestToolVersion(tool: Tool, includePrerelease?: boolean): Promise<semver.SemVer | null> {
+export async function latestModuleVersion(
+	modulePath: string,
+	includePrerelease?: boolean
+): Promise<semver.SemVer | null> {
 	const goCmd = getBinPath('go');
 	const tmpDir = await tmpDirForToolInstallation();
 	const execFile = util.promisify(cp.execFile);
@@ -753,27 +764,28 @@ export async function latestToolVersion(tool: Tool, includePrerelease?: boolean)
 	try {
 		const env = toolInstallationEnvironment();
 		env['GO111MODULE'] = 'on';
-		// Run go list in a temp directory to avoid altering go.mod
-		// when using older versions of go (<1.16).
-		const version = 'latest'; // TODO(hyangah): use 'master' for delve-dap.
-		const { stdout } = await execFile(
-			goCmd,
-			['list', '-m', '--versions', '-json', `${tool.modulePath}@${version}`],
-			{
-				env,
-				cwd: tmpDir
-			}
-		);
-		const m = <ListVersionsOutput>JSON.parse(stdout);
-		// Versions field is a list of all known versions of the module,
-		// ordered according to semantic versioning, earliest to latest.
-		const latest = includePrerelease && m.Versions && m.Versions.length > 0 ? m.Versions.pop() : m.Version;
+		// Run go list in a temp directory to avoid altering go.mod when using
+		// older versions of go (<1.16).
+		const { stdout } = await execFile(goCmd, ['list', '-m', '--versions', '-json', `${modulePath}@latest`], {
+			env,
+			cwd: tmpDir
+		});
+		const moduleInfo = JSON.parse(stdout) as ListVersionsOutput;
+
+		let latest: string;
+		if (includePrerelease && moduleInfo.Versions && moduleInfo.Versions.length > 0) {
+			latest = moduleInfo.Versions[moduleInfo.Versions.length - 1];
+		} else {
+			latest = moduleInfo.Version;
+		}
+
 		ret = semver.parse(latest);
 	} catch (e) {
-		console.log(`failed to retrieve the latest tool ${tool.name} version: ${e}`);
+		console.log(`failed to retrieve the latest version of module ${modulePath}: ${e}`);
 	} finally {
 		rmdirRecursive(tmpDir);
 	}
+
 	return ret;
 }
 

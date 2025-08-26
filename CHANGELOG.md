@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Added menu in a debugger that will show variable in a new document with respect to special chars like `\r\n\t`
 
+## v0.49.1 (prerelease)
+
+Date: 2025-08-21
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.50.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.48.0-rc.1...v0.49.1
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.50.0
+
 ## v0.49.0 (prerelease)
 
 Date: 2025-07-07

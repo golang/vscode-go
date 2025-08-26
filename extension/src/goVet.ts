@@ -38,7 +38,7 @@ export function vetCode(vetWorkspace?: boolean): CommandFactory {
 		const documentUri = editor?.document.uri;
 		const goConfig = getGoConfig(documentUri);
 
-		outputChannel.appendLine('Vetting...');
+		outputChannel.info('Vetting...');
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Vetting...';
 
@@ -111,7 +111,7 @@ export async function goVet(
 		vetArgs = ['tool', 'vet', ...args, ...tagsArg, '.'];
 	}
 
-	outputChannel.appendLine(`Starting "go vet" under the folder ${cwd}`);
+	outputChannel.info(`Starting "go vet" under the folder ${cwd}`);
 
 	running = true;
 	return runTool(vetArgs, cwd, 'warning', true, '', vetEnv, false, tokenSource.token).then((result) => {
