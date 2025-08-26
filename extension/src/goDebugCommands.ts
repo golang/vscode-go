@@ -71,7 +71,7 @@ class VariableContentProvider implements vscode.TextDocumentContentProvider {
 
 		const chunk = 1 << 14;
 		let offset = 0;
-		let full: Uint8Array[] = [];
+		const full: Uint8Array[] = [];
 
 		while (true) {
 			const resp = await session.customRequest('readMemory', {
@@ -120,8 +120,6 @@ interface Variable {
 	memoryReference?: string;
 }
 
-
-
 const escapeCodes: Record<string, string> = {
 	r: '\r',
 	n: '\n',
@@ -132,7 +130,8 @@ const escapeCodes: Record<string, string> = {
  * Parses a variable value, unescaping special characters.
  */
 function parseVariable(variable: Variable) {
-	let raw = variable.value.trim();
+	const raw = variable.value.trim();
+
 	try {
 		return JSON.parse(raw);
 	} catch (_) {
