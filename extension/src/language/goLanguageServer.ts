@@ -42,7 +42,7 @@ import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
 import { installTools, latestModuleVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
 import { getTool, Tool } from '../goTools';
-import { getFromGlobalState, updateGlobalState, updateWorkspaceState } from '../stateUtils';
+import { updateGlobalState, updateWorkspaceState } from '../stateUtils';
 import {
 	getBinPath,
 	getCheckForToolsUpdatesConfig,
@@ -97,14 +97,6 @@ export function updateRestartHistory(goCtx: GoExtensionContext, reason: RestartR
 		goCtx.restartHistory = goCtx.restartHistory.slice(1);
 	}
 	goCtx.restartHistory.push(new Restart(reason, new Date(), enabled));
-}
-
-function formatRestartHistory(goCtx: GoExtensionContext): string {
-	const result: string[] = [];
-	for (const restart of goCtx.restartHistory ?? []) {
-		result.push(`${restart.timestamp.toUTCString()}: ${restart.reason} (enabled: ${restart.enabled})`);
-	}
-	return result.join('\n');
 }
 
 export enum RestartReason {
@@ -453,13 +445,7 @@ export async function buildLanguageClient(
 				},
 				closed: () => {
 					if (initializationError !== undefined) {
-						suggestGoplsIssueReport(
-							goCtx,
-							cfg,
-							'The gopls server failed to initialize.',
-							errorKind.initializationFailure,
-							initializationError
-						);
+						suggestActionAfterGoplsStartError(goCtx, cfg);
 						initializationError = undefined;
 						// In case of initialization failure, do not try to restart.
 						return {
@@ -478,12 +464,7 @@ export async function buildLanguageClient(
 							action: CloseAction.Restart
 						};
 					}
-					suggestGoplsIssueReport(
-						goCtx,
-						cfg,
-						'The connection to gopls has been closed. The gopls server may have crashed.',
-						errorKind.crash
-					);
+					suggestActionAfterGoplsStartError(goCtx, cfg);
 					updateLanguageServerIconGoStatusBar(c, true);
 					return {
 						message: '', // suppresses error popups - there will be other popups.
@@ -1371,31 +1352,21 @@ export enum errorKind {
 	manualRestart
 }
 
-// suggestGoplsIssueReport prompts users to file an issue with gopls.
-export async function suggestGoplsIssueReport(
+// suggestActionAfterStartError potentially suggests actions to the user when gopls fails to start, either
+// updating the language server or double checking their go.languageServerFlags setting.
+export async function suggestActionAfterGoplsStartError(
 	goCtx: GoExtensionContext,
-	cfg: LanguageServerConfig, // config used when starting this gopls.
-	msg: string,
-	reason: errorKind,
-	initializationError?: ResponseError<InitializeError>
+	cfg: LanguageServerConfig // config used when starting this gopls.
 ) {
-	const issueTime = new Date();
-
-	// Don't prompt users who manually restart to file issues until gopls/v1.0.
-	if (reason === errorKind.manualRestart) {
-		return;
-	}
-
 	// cfg is the config used when starting this crashed gopls instance, while
 	// goCtx.latestConfig is the config used by the latest gopls instance.
 	// They may be different if gopls upgrade occurred in between.
-	// Let's not report issue yet if they don't match.
 	if (JSON.stringify(goCtx.latestConfig?.version) !== JSON.stringify(cfg.version)) {
 		return;
 	}
 
 	// The user may have an outdated version of gopls, in which case we should
-	// just prompt them to update, not file an issue.
+	// just prompt them to update.
 	const tool = getTool('gopls');
 	if (tool) {
 		const versionToUpdate = await shouldUpdateLanguageServer(tool, goCtx.latestConfig, true);
@@ -1411,30 +1382,13 @@ export async function suggestGoplsIssueReport(
 	if (goCtx.latestConfig?.serverName !== 'gopls') {
 		return;
 	}
-	const promptForIssueOnGoplsRestartKey = 'promptForIssueOnGoplsRestart';
-	let saved: any;
-	try {
-		saved = JSON.parse(getFromGlobalState(promptForIssueOnGoplsRestartKey, false));
-	} catch (err) {
-		console.log(`Failed to parse as JSON ${getFromGlobalState(promptForIssueOnGoplsRestartKey, true)}: ${err}`);
-		return;
-	}
-	// If the user has already seen this prompt, they may have opted-out for
-	// the future. Only prompt again if it's been more than a year since.
-	if (saved) {
-		const dateSaved = new Date(saved['date']);
-		const prompt = <boolean>saved['prompt'];
-		if (!prompt && daysBetween(new Date(), dateSaved) <= 365) {
-			return;
-		}
-	}
 
-	const { sanitizedLog, failureReason } = await collectGoplsLog(goCtx);
+	const isIncorrectUsage = await isIncorrectCommandUsage(goCtx);
 
 	// If the user has invalid values for "go.languageServerFlags", we may get
 	// this error. Prompt them to double check their flags.
 	let selected: string | undefined;
-	if (failureReason === GoplsFailureModes.INCORRECT_COMMAND_USAGE) {
+	if (isIncorrectUsage) {
 		const languageServerFlags = getGoConfig()['languageServerFlags'] as string[];
 		if (languageServerFlags && languageServerFlags.length > 0) {
 			selected = await vscode.window.showErrorMessage(
@@ -1454,87 +1408,6 @@ Please correct the setting.`,
 					break;
 			}
 		}
-	}
-	const showMessage = sanitizedLog ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
-	selected = await showMessage(
-		`${msg} Would you like to report a gopls issue on GitHub?
-You will be asked to provide additional information and logs, so PLEASE READ THE CONTENT IN YOUR BROWSER.`,
-		'Yes',
-		'Next time',
-		'Never'
-	);
-	switch (selected) {
-		case 'Yes':
-			{
-				// Prefill an issue title and report.
-				let errKind: string;
-				switch (reason) {
-					case errorKind.crash:
-						errKind = 'crash';
-						break;
-					case errorKind.initializationFailure:
-						errKind = 'initialization';
-						break;
-				}
-				const settings = goCtx.latestConfig.flags.join(' ');
-				const title = `gopls: automated issue report (${errKind})`;
-				const goplsStats = await getGoplsStats(goCtx.latestConfig?.path);
-				const goplsLog = sanitizedLog
-					? `<pre>${sanitizedLog}</pre>`
-					: `Please attach the stack trace from the crash.
-A window with the error message should have popped up in the lower half of your screen.
-Please copy the stack trace and error messages from that window and paste it in this issue.
-
-<PASTE STACK TRACE HERE>
-
-Failed to auto-collect gopls trace: ${failureReason}.
-`;
-
-				const body = `
-gopls version: ${cfg.version?.version}/${cfg.version?.goVersion}
-gopls flags: ${settings}
-update flags: ${cfg.checkForUpdates}
-extension version: ${extensionInfo.version}
-environment: ${extensionInfo.appName} ${process.platform}
-initialization error: ${initializationError}
-issue timestamp: ${issueTime.toUTCString()}
-restart history:
-${formatRestartHistory(goCtx)}
-
-ATTENTION: PLEASE PROVIDE THE DETAILS REQUESTED BELOW.
-
-Describe what you observed.
-
-<ANSWER HERE>
-
-${goplsLog}
-
-<details><summary>gopls stats -anon</summary>
-${goplsStats}
-</details>
-
-OPTIONAL: If you would like to share more information, you can attach your complete gopls logs.
-
-NOTE: THESE MAY CONTAIN SENSITIVE INFORMATION ABOUT YOUR CODEBASE.
-DO NOT SHARE LOGS IF YOU ARE WORKING IN A PRIVATE REPOSITORY.
-
-<OPTIONAL: ATTACH LOGS HERE>
-`;
-				const url = `https://github.com/golang/vscode-go/issues/new?title=${title}&labels=automatedReport&body=${body}`;
-				await vscode.env.openExternal(vscode.Uri.parse(url));
-			}
-			break;
-		case 'Next time':
-			break;
-		case 'Never':
-			updateGlobalState(
-				promptForIssueOnGoplsRestartKey,
-				JSON.stringify({
-					prompt: false,
-					date: new Date()
-				})
-			);
-			break;
 	}
 }
 
@@ -1570,7 +1443,7 @@ function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function collectGoplsLog(goCtx: GoExtensionContext): Promise<{ sanitizedLog?: string; failureReason?: string }> {
+async function isIncorrectCommandUsage(goCtx: GoExtensionContext): Promise<boolean> {
 	goCtx.serverOutputChannel?.show();
 	// Find the logs in the output channel. There is no way to read
 	// an output channel directly, but we can find the open text
@@ -1597,78 +1470,7 @@ async function collectGoplsLog(goCtx: GoExtensionContext): Promise<{ sanitizedLo
 		// sleep a bit before the next try. The choice of the sleep time is arbitrary.
 		await sleep((i + 1) * 100);
 	}
-	return sanitizeGoplsTrace(logs);
-}
-
-enum GoplsFailureModes {
-	NO_GOPLS_LOG = 'no gopls log',
-	EMPTY_PANIC_TRACE = 'empty panic trace',
-	INCORRECT_COMMAND_USAGE = 'incorrect gopls command usage',
-	UNRECOGNIZED_CRASH_PATTERN = 'unrecognized crash pattern'
-}
-
-// capture only panic stack trace and the initialization error message.
-// exported for testing.
-export function sanitizeGoplsTrace(logs?: string): { sanitizedLog?: string; failureReason?: string } {
-	if (!logs) {
-		return { failureReason: GoplsFailureModes.NO_GOPLS_LOG };
-	}
-	const panicMsgBegin = logs.lastIndexOf('panic: ');
-	if (panicMsgBegin > -1) {
-		// panic message was found.
-		let panicTrace = logs.substr(panicMsgBegin);
-		const panicMsgEnd = panicTrace.search(/\[(Info|Warning|Error)\s+-\s+/);
-		if (panicMsgEnd > -1) {
-			panicTrace = panicTrace.substr(0, panicMsgEnd);
-		}
-		const filePattern = /(\S+\.go):\d+/;
-		const sanitized = panicTrace
-			.split('\n')
-			.map((line: string) => {
-				// Even though this is a crash from gopls, the file path
-				// can contain user names and user's filesystem directory structure.
-				// We can still locate the corresponding file if the file base is
-				// available because the full package path is part of the function
-				// name. So, leave only the file base.
-				const m = line.match(filePattern);
-				if (!m) {
-					return line;
-				}
-				const filePath = m[1];
-				const fileBase = path.basename(filePath);
-				return line.replace(filePath, '  ' + fileBase);
-			})
-			.join('\n');
-
-		if (sanitized) {
-			return { sanitizedLog: sanitized };
-		}
-		return { failureReason: GoplsFailureModes.EMPTY_PANIC_TRACE };
-	}
-	// Capture Fatal
-	//    foo.go:1: the last message (caveat - we capture only the first log line)
-	const m = logs.match(/(^\S+\.go:\d+:.*$)/gm);
-	if (m && m.length > 0) {
-		return { sanitizedLog: m[0].toString() };
-	}
-	const initFailMsgBegin = logs.lastIndexOf('gopls client:');
-	if (initFailMsgBegin > -1) {
-		// client start failed. Capture up to the 'Code:' line.
-		const initFailMsgEnd = logs.indexOf('Code: ', initFailMsgBegin);
-		if (initFailMsgEnd > -1) {
-			const lineEnd = logs.indexOf('\n', initFailMsgEnd);
-			return {
-				sanitizedLog:
-					lineEnd > -1
-						? logs.substr(initFailMsgBegin, lineEnd - initFailMsgBegin)
-						: logs.substr(initFailMsgBegin)
-			};
-		}
-	}
-	if (logs.lastIndexOf('Usage:') > -1) {
-		return { failureReason: GoplsFailureModes.INCORRECT_COMMAND_USAGE };
-	}
-	return { failureReason: GoplsFailureModes.UNRECOGNIZED_CRASH_PATTERN };
+	return logs ? logs.lastIndexOf('Usage:') > -1 : false;
 }
 
 const GOPLS_FETCH_VULNCHECK_RESULT = 'gopls.fetch_vulncheck_result';
@@ -1718,23 +1520,4 @@ export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
 		goCtx.telemetryService?.promptForTelemetry();
 	};
 	callback();
-}
-
-async function getGoplsStats(binpath?: string) {
-	if (!binpath) {
-		return 'gopls path unknown';
-	}
-	const env = toolExecutionEnvironment();
-	const cwd = getWorkspaceFolderPath();
-	const start = new Date();
-	const execFile = util.promisify(cp.execFile);
-	try {
-		const timeout = 60 * 1000; // 60sec;
-		const { stdout } = await execFile(binpath, ['stats', '-anon'], { env, cwd, timeout });
-		return stdout;
-	} catch (e) {
-		const duration = new Date().getTime() - start.getTime();
-		console.log(`gopls stats -anon failed: ${JSON.stringify(e)}`);
-		return `gopls stats -anon failed after ${duration} ms. Please check if gopls is killed by OS.`;
-	}
 }
