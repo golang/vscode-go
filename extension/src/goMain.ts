@@ -45,7 +45,7 @@ import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
-import { disposeGoStatusBar, expandGoStatusBar, outputChannel, updateGoStatusBar } from './goStatus';
+import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
 
 import { vetCode } from './goVet';
 import {
@@ -75,7 +75,6 @@ import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
 import { setTelemetryEnvVars, activationLatency, telemetryReporter } from './goTelemetry';
 import { experiments } from './experimental';
-import { allToolsInformation } from './goToolsInformation';
 
 const goCtx: GoExtensionContext = {};
 

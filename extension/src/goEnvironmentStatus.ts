@@ -13,6 +13,7 @@ import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
+import semverCoerce from 'semver/functions/coerce';
 import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
@@ -549,7 +550,12 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 }
 
 const STATUS_BAR_ITEM_NAME = 'Go Update Notification';
-const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
+
+/**
+ * Key for the global state that tracks Go versions for which the user has
+ * explicitly dismissed the upgrade notification.
+ */
+const DISMISSED_GO_VERSION_KEY = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
 	if (extensionInfo.isInCloudIDE) {
@@ -564,83 +570,96 @@ export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionCo
 		return;
 	}
 
-	let options = await getLatestGoVersions();
+	let latestVersions = await getLatestGoVersions();
 
-	// Filter out Go versions the user has already dismissed.
-	let dismissedOptions: GoEnvironmentOption[];
-	dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-	if (dismissedOptions) {
-		options = options.filter((version) => !dismissedOptions.find((x) => x.label === version.label));
+	const currentVersion = await getGoVersion();
+
+	// The official support for vscode-go is last three minor versions of Go.
+	// Try to start with last four minor versions.
+	let minimumVersion = semverCoerce(latestVersions[0].label);
+	if (minimumVersion) {
+		minimumVersion.minor = minimumVersion.minor - 3;
+		minimumVersion.patch = 0;
 	}
 
-	// Compare to current go version.
-	const currentVersion = await getGoVersion();
+	const download = {
+		title: 'Download',
+		async command() {
+			await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
+		}
+	};
+
+	// Popup if the Go version is beyond support.
+	if (minimumVersion && currentVersion.lt(minimumVersion.format())) {
+		let text = `The minimum supported Go version is ${minimumVersion.format()}. Please update your Go to ensure the extension functions correctly. You are currently using ${formatGoVersion(
+			currentVersion
+		)}.`;
+		vscode.window.showInformationMessage(text, download).then((selection) => {
+			selection?.command();
+		});
+	}
+
+	// Filter out Go versions the user has already dismissed.
+	const dismissedVersions: GoEnvironmentOption[] = await getFromGlobalState(DISMISSED_GO_VERSION_KEY);
+	if (dismissedVersions) {
+		latestVersions = latestVersions.filter((version) => !dismissedVersions.find((x) => x.label === version.label));
+	}
+
+	// Filter out Go versions below the current go versions.
 	if (currentVersion) {
-		options = options.filter((version) => currentVersion.lt(version.label));
+		latestVersions = latestVersions.filter((version) => currentVersion.lt(version.label));
 	}
 
 	// Notify user that there is a newer version of Go available.
-	if (options.length > 0) {
-		const versionsText = options.map((x) => x.label).join(', ');
-		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
-		statusBarItem.name = STATUS_BAR_ITEM_NAME;
-		statusBarItem.text = 'New Go version is available';
-		statusBarItem.detail = versionsText;
-		statusBarItem.command = {
-			title: 'Upgrade',
-			command: 'go.promptforgoinstall',
-			arguments: [options],
-			tooltip: 'Upgrade or silence notification'
-		};
-		// TODO: Error level is more visible. Consider to make it configurable?
-		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
-
+	if (latestVersions.length > 0) {
 		ctx.subscriptions.push(
 			vscode.commands.registerCommand('go.promptforgoinstall', () => {
-				const download = {
-					title: 'Download',
-					async command() {
-						await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
-					}
-				};
-
 				const neverAgain = {
 					title: "Don't Show Again",
 					async command() {
 						// Mark these versions as seen.
-						dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-						if (!dismissedOptions) {
-							dismissedOptions = [];
+						let dismissedVersions: GoEnvironmentOption[] = await getFromGlobalState(
+							DISMISSED_GO_VERSION_KEY
+						);
+						if (!dismissedVersions) {
+							dismissedVersions = [];
 						}
-						options.forEach((version) => {
-							dismissedOptions.push(version);
+						latestVersions.forEach((version) => {
+							dismissedVersions.push(version);
 						});
-						await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+						await updateGlobalState(DISMISSED_GO_VERSION_KEY, dismissedVersions);
 					}
 				};
 
-				let versionsText: string;
-				if (options.length > 1) {
-					versionsText = `${options
+				let text: string;
+				if (latestVersions.length > 1) {
+					text = `${latestVersions
 						.map((x) => x.label)
 						.reduce((prev, next) => {
 							return prev + ' and ' + next;
 						})} are available`;
 				} else {
-					versionsText = `${options[0].label} is available`;
+					text = `${latestVersions[0].label} is available.`;
 				}
-
-				vscode.window
-					.showInformationMessage(
-						`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
-						download,
-						neverAgain
-					)
-					.then((selection) => {
-						selection?.command();
-						removeGoStatus(STATUS_BAR_ITEM_NAME);
-					});
+				text = text + ` You are currently using ${formatGoVersion(currentVersion)}.`;
+				vscode.window.showInformationMessage(text, download, neverAgain).then((selection) => {
+					selection?.command();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
+				});
 			})
 		);
+
+		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+		statusBarItem.name = STATUS_BAR_ITEM_NAME;
+		statusBarItem.text = 'New Go version is available';
+		statusBarItem.detail = latestVersions.map((x) => x.label).join(', ');
+		statusBarItem.command = {
+			title: 'Upgrade',
+			command: 'go.promptforgoinstall',
+			arguments: [latestVersions],
+			tooltip: 'Upgrade or silence notification'
+		};
+		// TODO: Error level is more visible. Consider to make it configurable?
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
 	}
 }

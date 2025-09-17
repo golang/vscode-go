@@ -544,7 +544,8 @@ export function computeTestCommand(
 	tmpCoverPath?: string; // coverage file path if coverage info is necessary.
 	addJSONFlag: boolean | undefined; // true if we add extra -json flag for stream processing.
 } {
-	const args: Array<string> = ['test'];
+	// By default, enable full path mode to address golang/vscode-go#3853.
+	const args: Array<string> = ['test', '-test.fullpath=true'];
 	// user-specified flags
 	const argsFlagIdx = testconfig.flags?.indexOf('-args') ?? -1;
 	const userFlags = argsFlagIdx < 0 ? testconfig.flags : testconfig.flags.slice(0, argsFlagIdx);

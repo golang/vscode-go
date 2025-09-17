@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Important
+
+* To ensure the extension remains fully compatible and stable, the required
+minimum Go version remains Go 1.23. A new notification will now be sent to help
+users running older versions upgrade to Go 1.23+.
+
+### Fixes
+
+* Corrected an issue where clicking on a failing test in the Test Explorer would
+open a non-existent Go file (golang/vscode-go#3853). This occurred when the test
+entry point (e.g., .../foo_test.go) was in a different directory than the file
+where the failure actually occurred (e.g., .../bar/bar_test.go).
+
 ## v0.51.0 (prerelease)
 
 Date: 2025-09-04
