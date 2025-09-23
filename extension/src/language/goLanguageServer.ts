@@ -33,6 +33,7 @@ import {
 	ProvideCodeLensesSignature,
 	ProvideCompletionItemsSignature,
 	ProvideDocumentFormattingEditsSignature,
+	Hover,
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
@@ -473,6 +474,40 @@ export async function buildLanguageClient(
 				}
 			},
 			middleware: {
+				provideHover: async (doc, pos, token, next) => {
+					// gopls.lsp is a command that acts as a dispatcher, allowing
+					// the client to trigger any LSP RPC via "workspace/executeCommand"
+					// request with custom param.
+					const supportLSPCommand = goCtx.serverInfo?.Commands?.includes('gopls.lsp');
+					if (!supportLSPCommand) {
+						return await next(doc, pos, token);
+					}
+
+					const editor = vscode.window.activeTextEditor;
+					if (!editor || doc !== editor.document) {
+						return await next(doc, pos, token);
+					}
+
+					const selection = editor?.selection;
+					if (!selection || !selection.contains(pos)) {
+						return await next(doc, pos, token);
+					}
+
+					if (!goCtx.languageClient) {
+						return await next(doc, pos, token);
+					}
+
+					// Attaching selected range to gopls hover request.
+					// See golang/go#69058.
+					const param = goCtx.languageClient.code2ProtocolConverter.asTextDocumentPositionParams(doc, pos);
+					(param as any).range = goCtx.languageClient.code2ProtocolConverter.asRange(selection);
+
+					const result: Hover = await vscode.commands.executeCommand('gopls.lsp', {
+						method: 'textDocument/hover',
+						param: param
+					});
+					return goCtx.languageClient.protocol2CodeConverter.asHover(result);
+				},
 				handleWorkDoneProgress: async (token, params, next) => {
 					switch (params.kind) {
 						case 'begin':
