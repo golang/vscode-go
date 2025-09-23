@@ -17,7 +17,11 @@ function stripBOM(s: string): string {
 }
 
 /**
- * returns the environment variable collection created by parsing the given .env file.
+ * Returns the environment variable collection created by parsing the given .env file.
+ * Each line in the .env file is expected to be in the format `KEY=VALUE` or `export KEY=VALUE`.
+ * Keys can contain alphanumeric characters, periods, and hyphens.
+ * Values can be optionally enclosed in single or double quotes. Double-quoted values support `\n` for newlines.
+ * Environment variable substitution using `${VAR}` syntax is also supported within values.
  */
 export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<string>): { [key: string]: string } {
 	const env: { [key: string]: string } = {};
@@ -31,14 +35,14 @@ export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<strin
 	try {
 		const buffer = stripBOM(fs.readFileSync(envFilePath, 'utf8'));
 		buffer.split('\n').forEach((line) => {
-			const r = line.match(/^\s*([\w\.\-]+)\s*=\s*(.*)?\s*$/);
+			const r = line.match(/^\s*(export\s+)?([\w\.\-]+)\s*=\s*(.*)?\s*$/);
 			if (r !== null) {
-				let value = r[2] || '';
+				let value = r[3] || '';
 				if (value.length > 0 && value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
 					value = value.replace(/\\n/gm, '\n');
 				}
 				const v = value.replace(/(^['"]|['"]$)/g, '');
-				env[r[1]] = substituteEnvVars(v, env, globalVars!);
+				env[r[2]] = substituteEnvVars(v, env, globalVars!);
 			}
 		});
 		return env;

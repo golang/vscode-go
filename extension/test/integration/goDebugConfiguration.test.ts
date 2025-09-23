@@ -130,7 +130,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	test('launchArgs.env overwrites launchArgs.envFile', () => {
 		const env = { SOMEVAR1: 'valueFromEnv' };
 		const envFile = path.join(tmpDir, 'env');
-		fs.writeFileSync(envFile, ['SOMEVAR1=valueFromEnvFile1', 'SOMEVAR2=valueFromEnvFile2'].join('\n'));
+		fs.writeFileSync(envFile, ['SOMEVAR1=valueFromEnvFile1', 'export SOMEVAR2=valueFromEnvFile2'].join('\n'));
 
 		runTest(
 			{ env, envFile },
