@@ -234,7 +234,7 @@ suite('Installation Tests', function () {
 		assert(failures?.length === 1 && failures[0].tool.name === 'gopls' && failures[0].reason.includes('or newer'));
 	});
 
-	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
+	const gofumptDefault = allToolsInformation.get('gofumpt')!.defaultVersion!;
 	test('Install gofumpt with old go', async () => {
 		await runTest(
 			[{ name: 'gofumpt', versions: ['v0.5.0', 'v0.6.0', gofumptDefault], wantVersion: 'v0.6.0' }],
@@ -285,10 +285,14 @@ suite('Installation Tests', function () {
 			return;
 		}
 		const goVersion = await getGoVersion();
-		const tools = Object.keys(allToolsInformation).filter((tool) => {
-			const minGoVersion = allToolsInformation[tool].minimumGoVersion;
-			return !minGoVersion || goVersion.gt(minGoVersion.format());
-		});
+
+		const tools: string[] = [];
+		for (const [name, info] of allToolsInformation) {
+			const minGoVersion = info.minimumGoVersion;
+			if (!minGoVersion || goVersion.gt(minGoVersion.format())) {
+				tools.push(name);
+			}
+		}
 		assert(tools.includes('gopls') && tools.includes('dlv'), `selected tools ${JSON.stringify(tools)}`);
 		await runTest(
 			tools.map((tool) => {
@@ -303,7 +307,7 @@ suite('Installation Tests', function () {
 function buildFakeProxy(testCases: installationTestCase[]) {
 	const proxyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proxydir'));
 	for (const tc of testCases) {
-		const tool = getTool(tc.name);
+		const tool: Tool = getTool(tc.name)!;
 		const module = tool.modulePath;
 		const pathInModule =
 			tool.modulePath === tool.importPath ? '' : tool.importPath.slice(tool.modulePath.length + 1) + '/';

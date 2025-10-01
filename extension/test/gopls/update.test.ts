@@ -17,7 +17,7 @@ import semver = require('semver');
 import sinon = require('sinon');
 
 suite('gopls okForStagedRollout', () => {
-	const tool = getTool('gopls');
+	const tool: Tool = getTool('gopls')!;
 	const sandbox = sinon.createSandbox();
 	teardown(() => {
 		sandbox.restore();
@@ -53,7 +53,7 @@ suite('gopls okForStagedRollout', () => {
 
 suite('gopls update tests', () => {
 	test('prompt for update', async () => {
-		const tool = getTool('gopls');
+		const tool: Tool = getTool('gopls')!;
 
 		const toSemver = (v: string) => semver.parse(v, { includePrerelease: true, loose: true });
 
@@ -131,7 +131,7 @@ suite('gopls update tests', () => {
 });
 
 suite('version comparison', () => {
-	const tool = getTool('dlv');
+	const tool: Tool = getTool('dlv')!;
 	const latestVersion = tool.latestVersion;
 
 	teardown(() => {

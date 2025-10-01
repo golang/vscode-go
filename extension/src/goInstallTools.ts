@@ -109,7 +109,8 @@ export async function installAllTools(updateExistingToolsOnly = false) {
 		return;
 	}
 	await installTools(
-		selected.map((x) => getTool(x.label)),
+		// Selected tools must be tool that defined in allToolsInformation.
+		selected.map((x) => getTool(x.label)!),
 		goVersion
 	);
 }
@@ -376,8 +377,13 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	await execFile(goBinary, ['install', '-v', importPath], opts);
 }
 
-export function declinedToolInstall(toolName: string) {
+export function declinedToolInstall(toolName: string): boolean {
 	const tool = getTool(toolName);
+	if (!tool) {
+		// Tool that extension doesnt recognize will not be prompt for
+		// installation and will not be declined for installation.
+		return false;
+	}
 
 	// If user has declined to install this tool, don't prompt for it.
 	return !!containsTool(declinedInstalls, tool);
@@ -989,7 +995,7 @@ export async function maybeInstallVSCGO(
 	const env = toolInstallationEnvironment();
 	env['GOBIN'] = path.dirname(progPath);
 
-	const importPath = allToolsInformation['vscgo'].importPath;
+	const importPath = allToolsInformation.get('vscgo')!.importPath;
 	const version =
 		extensionMode !== vscode.ExtensionMode.Production
 			? ''

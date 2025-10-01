@@ -95,13 +95,13 @@ export function containsString(tools: Tool[], toolName: string): boolean {
 	return tools.some((tool) => tool.name === toolName);
 }
 
-export function getTool(name: string): Tool {
+export function getTool(name: string): Tool | undefined {
 	const [n] = name.split('@');
-	return allToolsInformation[n];
+	return allToolsInformation.get(n);
 }
 
 export function getToolAtVersion(name: string, version?: semver.SemVer): ToolAtVersion {
-	return { ...allToolsInformation[name], version };
+	return { ...allToolsInformation.get(name)!, version };
 }
 
 // hasModSuffix returns true if the given tool has a different, module-specific
@@ -119,7 +119,7 @@ export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig
 
 	const tools: Tool[] = [];
 	function maybeAddTool(name: string) {
-		const tool = allToolsInformation[name];
+		const tool = allToolsInformation.get(name);
 		if (tool) {
 			if (!useLanguageServer || !tool.replacedByGopls) {
 				tools.push(tool);

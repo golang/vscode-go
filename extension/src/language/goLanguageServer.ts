@@ -161,7 +161,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 		return vscode.workspace.textDocuments.some((doc) => doc.languageId === 'go');
 	};
 	const installGopls = async (cfg: LanguageServerConfig) => {
-		const tool = getTool('gopls');
+		const tool: Tool = getTool('gopls')!;
 		const versionToUpdate = await shouldUpdateLanguageServer(tool, cfg);
 		if (!versionToUpdate) {
 			return;
@@ -1402,13 +1402,11 @@ export async function suggestActionAfterGoplsStartError(
 
 	// The user may have an outdated version of gopls, in which case we should
 	// just prompt them to update.
-	const tool = getTool('gopls');
-	if (tool) {
-		const versionToUpdate = await shouldUpdateLanguageServer(tool, goCtx.latestConfig, true);
-		if (versionToUpdate) {
-			promptForUpdatingTool(tool.name, versionToUpdate, true);
-			return;
-		}
+	const tool: Tool = getTool('gopls')!;
+	const versionToUpdate = await shouldUpdateLanguageServer(tool, goCtx.latestConfig, true);
+	if (versionToUpdate) {
+		promptForUpdatingTool(tool.name, versionToUpdate, true);
+		return;
 	}
 
 	// Show the user the output channel content to alert them to the issue.
