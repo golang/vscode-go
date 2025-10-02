@@ -114,14 +114,9 @@ export async function goLint(
 		args.push(flag);
 	});
 	if (lintTool.startsWith('golangci-lint')) {
-		let version: number;
+		let version = 1;
 		if (lintTool === 'golangci-lint-v2') {
 			version = 2;
-		} else {
-			const { moduleVersion } = await inspectGoToolVersion(getBinPath(lintTool));
-			// if moduleVersion is undefined, treat it as version=1
-			// if moduleVersion is higher than v1 (v2, v3...), treat it as version=2
-			version = !moduleVersion || moduleVersion.startsWith('v1') ? 1 : 2;
 		}
 
 		// append common flags
