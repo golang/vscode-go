@@ -44,7 +44,7 @@ async function _testAtCursor(
 	goCtx: GoExtensionContext,
 	goConfig: vscode.WorkspaceConfiguration,
 	cmd: TestAtCursorCmd,
-	args: any
+	args?: SubTestAtCursorArgs
 ) {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
@@ -72,7 +72,7 @@ async function _testAtCursor(
 	await editor.document.save();
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig);
+		return debugTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, undefined, args);
 	} else if (cmd === 'benchmark' || cmd === 'test') {
 		return runTestAtCursor(editor, testFunctionName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
@@ -117,7 +117,7 @@ async function _subTestAtCursor(
 	// We use functionName if it was provided as argument
 	// Otherwise find any test function containing the cursor.
 	const currentTestFunctions = args?.functionName
-		? testFunctions.filter((func) => func.name === args.functionName)
+		? testFunctions.filter((func) => func.name.endsWith(String(args.functionName)))
 		: testFunctions.filter((func) => func.range.contains(editor.selection.start));
 	const testFunctionName =
 		args && args.functionName ? args.functionName : currentTestFunctions.map((el) => el.name)[0];
@@ -165,7 +165,7 @@ async function _subTestAtCursor(
 	const escapedName = escapeSubTestName(testFunctionName, subTestName);
 
 	if (cmd === 'debug') {
-		return debugTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig);
+		return debugTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig, undefined, args);
 	} else if (cmd === 'test') {
 		return runTestAtCursor(editor, escapedName, testFunctions, suiteToTest, goConfig, cmd, args);
 	} else {
@@ -226,6 +226,10 @@ type TestAtCursor = {
 	 * Flags to be passed to `go test`.
 	 */
 	flags?: string[];
+	/**
+	 * Whether it's a test suite.
+	 */
+	isTestSuite?: boolean;
 };
 
 /**
@@ -252,6 +256,7 @@ async function runTestAtCursor(
 		flags: getTestFlags(goConfig, args),
 		functions: testConfigFns,
 		isBenchmark: cmd === 'benchmark',
+		isTestSuite: !!args?.isTestSuite,
 		isMod,
 		applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
 	};
@@ -273,10 +278,10 @@ export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
 		 * codelens provided by {@link GoRunTestCodeLensProvider}, args
 		 * specifies the function and subtest names.
 		 */
-		args?: [SubTestAtCursorArgs]
+		args?:SubTestAtCursorArgs
 	) => {
 		try {
-			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args?.[0]);
+			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
@@ -303,10 +308,11 @@ export async function debugTestAtCursor(
 	testFunctions: vscode.DocumentSymbol[],
 	suiteToFunc: SuiteToTestMap,
 	goConfig: vscode.WorkspaceConfiguration,
-	sessionID?: string
+	sessionID?: string,
+	testArgs?: { isTestSuite?: boolean },
 ) {
 	const doc = 'document' in editorOrDocument ? editorOrDocument.document : editorOrDocument;
-	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc);
+	const args = getTestFunctionDebugArgs(doc, testFunctionName, testFunctions, suiteToFunc, testArgs?.isTestSuite);
 	const tags = getTestTags(goConfig);
 	const buildFlags = tags ? ['-tags', tags] : [];
 	const flagsFromConfig = getTestFlags(goConfig);
