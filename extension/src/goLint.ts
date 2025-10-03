@@ -6,12 +6,10 @@
 import path = require('path');
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
-import { getGoConfig, getGoplsConfig } from './config';
+import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import { goplsStaticcheckEnabled } from './goTools';
-import { inspectGoToolVersion } from './goInstallTools';
-import { getBinPath, getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
+import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
 
 /**
  * Runs linter on the current file, package or workspace.
@@ -34,13 +32,12 @@ export function lintCode(scope?: string): CommandFactory {
 
 		const documentUri = editor ? editor.document.uri : undefined;
 		const goConfig = getGoConfig(documentUri);
-		const goplsConfig = getGoplsConfig(documentUri);
 
 		outputChannel.info('Linting...');
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Linting...';
 
-		goLint(documentUri, goConfig, goplsConfig, scope)
+		goLint(documentUri, goConfig, scope)
 			.then((warnings) => {
 				handleDiagnosticErrors(
 					goCtx,
@@ -58,7 +55,8 @@ export function lintCode(scope?: string): CommandFactory {
 }
 
 /**
- * Runs linter and presents the output in the 'Go' channel and in the diagnostic collections.
+ * Runs linter and presents the output in the 'Go' channel and in the diagnostic
+ * collections.
  *
  * @param fileUri Document uri.
  * @param goConfig Configuration for the Go extension.
@@ -67,11 +65,11 @@ export function lintCode(scope?: string): CommandFactory {
 export async function goLint(
 	fileUri: vscode.Uri | undefined,
 	goConfig: vscode.WorkspaceConfiguration,
-	goplsConfig: vscode.WorkspaceConfiguration,
 	scope?: string
 ): Promise<ICheckResult[]> {
-	const lintTool = goConfig['lintTool'] || 'staticcheck';
-	if (lintTool === 'staticcheck' && goplsStaticcheckEnabled(goConfig, goplsConfig)) {
+	const linter = goConfig.get<string>('lintTool');
+	if (linter === undefined || linter === '') {
+		// Yield the linter functionality to gopls by returning empty.
 		return Promise.resolve([]);
 	}
 
@@ -93,7 +91,7 @@ export async function goLint(
 		return Promise.resolve([]);
 	}
 
-	const lintFlags: string[] = goConfig['lintFlags'] || [];
+	const lintFlags = goConfig.get<string[]>('lintFlags') === undefined ? [] : goConfig.get<string[]>('lintFlags')!;
 	const lintEnv = toolExecutionEnvironment();
 	const args: string[] = [];
 
@@ -113,9 +111,9 @@ export async function goLint(
 		}
 		args.push(flag);
 	});
-	if (lintTool.startsWith('golangci-lint')) {
+	if (linter.startsWith('golangci-lint')) {
 		let version = 1;
-		if (lintTool === 'golangci-lint-v2') {
+		if (linter === 'golangci-lint-v2') {
 			version = 2;
 		}
 
@@ -174,7 +172,7 @@ export async function goLint(
 	}
 
 	running = true;
-	const lintPromise = runTool(args, cwd, 'warning', false, lintTool, lintEnv, false, tokenSource.token).then(
+	const lintPromise = runTool(args, cwd, 'warning', false, linter, lintEnv, false, tokenSource.token).then(
 		(result) => {
 			if (closureEpoch === epoch) {
 				running = false;

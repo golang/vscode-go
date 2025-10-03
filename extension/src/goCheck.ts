@@ -9,7 +9,6 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { getGoplsConfig } from './config';
 import { goBuild } from './goBuild';
 import { goLint } from './goLint';
 import { isModSupported } from './goModules';
@@ -120,9 +119,8 @@ export function check(
 	}
 
 	if (lintDiagnosticCollection && !!goConfig['lintOnSave'] && goConfig['lintOnSave'] !== 'off') {
-		const goplsConfig = getGoplsConfig(fileUri);
 		runningToolsPromises.push(
-			goLint(fileUri, goConfig, goplsConfig, goConfig['lintOnSave']).then((errors) => ({
+			goLint(fileUri, goConfig, goConfig['lintOnSave']).then((errors) => ({
 				diagnosticCollection: lintDiagnosticCollection,
 				errors
 			}))

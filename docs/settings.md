@@ -379,10 +379,15 @@ Allowed Options:
 Default: `"package"`
 ### `go.lintTool`
 
-Specifies Lint tool name.<br/>
-Allowed Options: `staticcheck`, `golint`, `golangci-lint`, `golangci-lint-v2`, `revive`
+Specifies an additional client-side linting tool that should be run by the Go extension. By default (unset), no additional linter is run. This feature is additional to diagnostics reported by the language server, gopls. Since Gopls incorporates the entire staticcheck analyzer suite, it is typically unnecessary to run the staticcheck tool as well. To configure gopls's linting, see the 'gopls.ui.diagnostic' settings.<br/>
+Allowed Options:
 
-Default: `"staticcheck"`
+* `staticcheck`: Run `staticcheck`.
+* `golint`: Run `golint`.
+* `golangci-lint`: Run `golangci-lint` v1.
+* `golangci-lint-v2`: Run `golangci-lint` v2.
+* `revive`: Run `revive`.
+
 ### `go.logging.level (deprecated)`
 
 This setting is deprecated. Use 'Developer: Set Log Level...' command to control logging level instead.

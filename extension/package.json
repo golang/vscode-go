@@ -1182,8 +1182,7 @@
         },
         "go.lintTool": {
           "type": "string",
-          "default": "staticcheck",
-          "description": "Specifies Lint tool name.",
+          "description": "Specifies an additional client-side linting tool that should be run by the Go extension. By default (unset), no additional linter is run. This feature is additional to diagnostics reported by the language server, gopls. Since Gopls incorporates the entire staticcheck analyzer suite, it is typically unnecessary to run the staticcheck tool as well. To configure gopls's linting, see the 'gopls.ui.diagnostic' settings.",
           "scope": "resource",
           "enum": [
             "staticcheck",
@@ -1191,6 +1190,13 @@
             "golangci-lint",
             "golangci-lint-v2",
             "revive"
+          ],
+          "markdownEnumDescriptions": [
+            "Run `staticcheck`.",
+            "Run `golint`.",
+            "Run `golangci-lint` v1.",
+            "Run `golangci-lint` v2.",
+            "Run `revive`."
           ]
         },
         "go.lintFlags": {

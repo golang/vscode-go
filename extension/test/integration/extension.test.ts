@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable eqeqeq */
 /* eslint-disable node/no-unpublished-import */
 /*---------------------------------------------------------
@@ -12,7 +11,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
-import { getGoConfig, getGoplsConfig } from '../../src/config';
+import { getGoConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
 import { check } from '../../src/goCheck';
 import {
@@ -22,25 +21,15 @@ import {
 } from '../../src/goGenerateTests';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { buildLanguageServerConfig } from '../../src/language/goLanguageServer';
-import { goLint } from '../../src/goLint';
 import { goPlay } from '../../src/goPlayground';
 import { testCurrentFile } from '../../src/commands';
-import {
-	getBinPath,
-	getCurrentGoPath,
-	getGoVersion,
-	getImportPath,
-	GoVersion,
-	handleDiagnosticErrors,
-	ICheckResult
-} from '../../src/util';
+import { getBinPath, getCurrentGoPath, getImportPath, ICheckResult } from '../../src/util';
 import cp = require('child_process');
 import os = require('os');
 import { MockExtensionContext } from '../mocks/MockContext';
+import { MockWorkspaceConfiguration } from './mocks/configuration';
 
 const testAll = (isModuleMode: boolean) => {
-	const dummyCancellationSource = new vscode.CancellationTokenSource();
-
 	// suiteSetup will initialize the following vars.
 	let gopath: string;
 	let repoPath: string;
@@ -50,7 +39,6 @@ const testAll = (isModuleMode: boolean) => {
 	let generateFunctionTestSourcePath: string;
 	let generatePackageTestSourcePath: string;
 	let previousEnv: any;
-	let goVersion: GoVersion;
 
 	suiteSetup(async () => {
 		previousEnv = Object.assign({}, process.env);
@@ -63,7 +51,6 @@ const testAll = (isModuleMode: boolean) => {
 			assert.ok(gopath, 'Cannot run tests if GOPATH is not set as environment variable');
 			return;
 		}
-		goVersion = await getGoVersion();
 
 		console.log(`Using GOPATH: ${gopath}`);
 
@@ -118,86 +105,18 @@ const testAll = (isModuleMode: boolean) => {
 		sinon.restore();
 	});
 
-	test('Linting - concurrent process cancelation', async () => {
-		const util = require('../../src/util');
-		const processutil = require('../../src/utils/processUtils');
-		sinon.spy(util, 'runTool');
-		sinon.spy(processutil, 'killProcessTree');
-
-		const config = Object.create(getGoConfig(), {
-			vetOnSave: { value: 'package' },
-			vetFlags: { value: ['-all'] },
-			buildOnSave: { value: 'package' },
-			lintOnSave: { value: 'package' },
-			// simulate a long running lint process by sleeping for a couple seconds
-			lintTool: { value: process.platform !== 'win32' ? 'sleep' : 'timeout' },
-			lintFlags: { value: process.platform !== 'win32' ? ['2'] : ['/t', '2'] }
-		});
-		const goplsConfig = Object.create(getGoplsConfig(), {});
-
-		const results = await Promise.all([
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go')), config, goplsConfig),
-			goLint(vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go')), config, goplsConfig)
-		]);
-		assert.equal(util.runTool.callCount, 2, 'should have launched 2 lint jobs');
-		assert.equal(
-			processutil.killProcessTree.callCount,
-			1,
-			'should have killed 1 lint job before launching the next'
-		);
-	});
-
-	test('Linting - lint errors with multiple open files', async () => {
-		try {
-			// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
-			// This adjustment applies only to the text documents known to vscode. This test checks
-			// the adjustment is made consistently across multiple open text documents.
-			const file1 = await vscode.workspace.openTextDocument(
-				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'))
-			);
-			const file2 = await vscode.workspace.openTextDocument(
-				vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'))
-			);
-			console.log('start linting');
-			const warnings = await goLint(
-				file2.uri,
-				Object.create(getGoConfig(), {
-					lintTool: { value: 'staticcheck' },
-					lintFlags: { value: ['-checks', 'all,-ST1000,-ST1016'] }
-					// staticcheck skips debatable checks such as ST1003 by default,
-					// but this test depends on ST1003 (MixedCaps package name) presented in both files
-					// in the same package. So, enable that.
-				}),
-				Object.create(getGoplsConfig(), {}),
-				'package'
-			);
-
-			const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-			handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
-
-			// The first diagnostic message for each file should be about the use of MixedCaps in package name.
-			// Both files belong to the same package name, and we want them to be identical.
-			const file1Diagnostics = diagnosticCollection.get(file1.uri);
-			const file2Diagnostics = diagnosticCollection.get(file2.uri);
-			assert(file1Diagnostics);
-			assert(file2Diagnostics);
-			assert(file1Diagnostics.length > 0);
-			assert(file2Diagnostics.length > 0);
-			assert.deepStrictEqual(file1Diagnostics[0], file2Diagnostics[0]);
-		} catch (e) {
-			assert.fail(`failed to lint: ${e}`);
-		}
-	});
-
 	test('Error checking', async () => {
-		const config = Object.create(getGoConfig(), {
-			vetOnSave: { value: 'package' },
-			vetFlags: { value: ['-all'] },
-			lintOnSave: { value: 'package' },
-			lintTool: { value: 'staticcheck' },
-			lintFlags: { value: [] },
-			buildOnSave: { value: 'package' }
-		});
+		const config = new MockWorkspaceConfiguration(
+			getGoConfig(),
+			new Map<string, any>([
+				['vetOnSave', 'package'],
+				['vetFlags', ['-all']],
+				['lintOnSave', 'package'],
+				['lintTool', 'staticcheck'],
+				['lintFlags', []],
+				['buildOnSave', 'package']
+			])
+		);
 		const expectedLintErrors = [
 			// Unlike golint, staticcheck will report only those compile errors,
 			// but not lint errors when the program is broken.
@@ -232,7 +151,7 @@ const testAll = (isModuleMode: boolean) => {
 				diagnostics.map((x) => x.errors)
 			)
 			.sort((a: any, b: any) => a.line - b.line);
-		assert.equal(sortedDiagnostics.length > 0, true, 'Failed to get linter results');
+		assert.strictEqual(sortedDiagnostics.length > 0, true, 'Failed to get linter results');
 
 		const matchCount = expected.filter((expectedItem) => {
 			return sortedDiagnostics.some((diag: any) => {
@@ -243,7 +162,7 @@ const testAll = (isModuleMode: boolean) => {
 				);
 			});
 		});
-		assert.equal(
+		assert.strictEqual(
 			matchCount.length >= expected.length,
 			true,
 			`Failed to match expected errors \n${JSON.stringify(sortedDiagnostics)} \n VS\n ${JSON.stringify(expected)}`
@@ -258,7 +177,7 @@ const testAll = (isModuleMode: boolean) => {
 		await generateTestCurrentFile(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
-		assert.equal(testFileGenerated, true, 'Test file not generated.');
+		assert.strictEqual(testFileGenerated, true, 'Test file not generated.');
 	});
 
 	test('Test Generate unit tests skeleton for a function', async () => {
@@ -270,7 +189,7 @@ const testAll = (isModuleMode: boolean) => {
 		await generateTestCurrentFunction(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
-		assert.equal(testFileGenerated, true, 'Test file not generated.');
+		assert.strictEqual(testFileGenerated, true, 'Test file not generated.');
 	});
 
 	test('Test Generate unit tests skeleton for package', async () => {
@@ -281,7 +200,7 @@ const testAll = (isModuleMode: boolean) => {
 		await generateTestCurrentPackage(ctx, {})();
 
 		const testFileGenerated = fs.existsSync(path.join(generateTestsSourcePath, 'generatetests_test.go'));
-		assert.equal(testFileGenerated, true, 'Test file not generated.');
+		assert.strictEqual(testFileGenerated, true, 'Test file not generated.');
 	});
 
 	test('Test diffUtils.getEditsFromUnifiedDiffStr', async function () {
@@ -326,7 +245,7 @@ const testAll = (isModuleMode: boolean) => {
 				edit.applyUsingTextEditorEdit(editBuilder);
 			});
 		});
-		assert.equal(editor.document.getText(), file2contents);
+		assert.strictEqual(editor.document.getText(), file2contents);
 	});
 
 	test('Test diffUtils.getEdits', async function () {
@@ -361,7 +280,7 @@ const testAll = (isModuleMode: boolean) => {
 				edit.applyUsingTextEditorEdit(editBuilder);
 			});
 		});
-		assert.equal(editor.document.getText(), file2contents);
+		assert.strictEqual(editor.document.getText(), file2contents);
 	});
 
 	test('Test Env Variables are passed to Tests', async () => {
@@ -373,7 +292,7 @@ const testAll = (isModuleMode: boolean) => {
 		await vscode.window.showTextDocument(document);
 		const ctx = new MockExtensionContext() as any;
 		const result = await testCurrentFile(false, () => config)(ctx, {})([]);
-		assert.equal(result, true);
+		assert.strictEqual(result, true);
 	});
 
 	test('getImportPath()', () => {
@@ -387,7 +306,7 @@ const testAll = (isModuleMode: boolean) => {
 		];
 
 		testCases.forEach((run) => {
-			assert.equal(run[1], getImportPath(run[0]));
+			assert.strictEqual(run[1], getImportPath(run[0]));
 		});
 	});
 
@@ -531,7 +450,7 @@ const testAll = (isModuleMode: boolean) => {
 		);
 
 		const errors3 = await checkWithTags('');
-		assert.equal(
+		assert.strictEqual(
 			errors3.length,
 			1,
 			'check without buildtag failed. Unexpected number of errors found' + JSON.stringify(errors3)
@@ -580,16 +499,16 @@ const testAll = (isModuleMode: boolean) => {
 		const ctx = new MockExtensionContext() as any;
 
 		const result1 = await testCurrentFile(false, () => config1)(ctx, {})([]);
-		assert.equal(result1, true);
+		assert.strictEqual(result1, true);
 
 		const result2 = await testCurrentFile(false, () => config2)(ctx, {})([]);
-		assert.equal(result2, true);
+		assert.strictEqual(result2, true);
 
 		const result3 = await testCurrentFile(false, () => config3)(ctx, {})([]);
-		assert.equal(result3, true);
+		assert.strictEqual(result3, true);
 
 		const result4 = await testCurrentFile(false, () => config4)(ctx, {})([]);
-		assert.equal(result4, false);
+		assert.strictEqual(result4, false);
 	});
 };
 

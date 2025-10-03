@@ -150,26 +150,9 @@ export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig
 		maybeAddTool(getFormatTool(goConfig));
 	}
 
-	// Add the linter that was chosen by the user, but don't add staticcheck
-	// if it is enabled via gopls.
-	const goplsStaticheckEnabled = useLanguageServer && goplsStaticcheckEnabled(goConfig, goplsConfig);
-	if (goConfig['lintTool'] !== 'staticcheck' || !goplsStaticheckEnabled) {
-		maybeAddTool(goConfig['lintTool']);
-	}
+	maybeAddTool(goConfig['lintTool']);
 
-	// Remove duplicates since tools like golangci-lint v2 are both linter and formatter
+	// Remove duplicates since tools like golangci-lint v2 and gopls are both
+	// capable of linting and formatting.
 	return tools.filter((v, i, self) => self.indexOf(v) === i);
-}
-
-export function goplsStaticcheckEnabled(
-	goConfig: { [key: string]: any },
-	goplsConfig: { [key: string]: any }
-): boolean {
-	if (
-		goplsConfig['ui.diagnostic.staticcheck'] === false ||
-		(goplsConfig['ui.diagnostic.staticcheck'] === undefined && goplsConfig['staticcheck'] !== true)
-	) {
-		return false;
-	}
-	return true;
 }

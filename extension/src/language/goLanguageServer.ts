@@ -1012,27 +1012,6 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	];
 }
 
-export async function watchLanguageServerConfiguration(goCtx: GoExtensionContext, e: vscode.ConfigurationChangeEvent) {
-	if (!e.affectsConfiguration('go')) {
-		return;
-	}
-
-	if (
-		e.affectsConfiguration('go.useLanguageServer') ||
-		e.affectsConfiguration('go.languageServerFlags') ||
-		e.affectsConfiguration('go.alternateTools') ||
-		e.affectsConfiguration('go.toolsEnvVars') ||
-		e.affectsConfiguration('go.formatTool')
-		// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
-	) {
-		vscode.commands.executeCommand('go.languageserver.restart', RestartReason.CONFIG_CHANGE);
-	}
-
-	if (e.affectsConfiguration('go.useLanguageServer') && getGoConfig()['useLanguageServer'] === false) {
-		promptAboutGoplsOptOut(goCtx);
-	}
-}
-
 export async function buildLanguageServerConfig(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<LanguageServerConfig> {

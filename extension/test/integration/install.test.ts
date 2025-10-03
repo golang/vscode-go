@@ -493,18 +493,18 @@ suite('maybeInstallImportantTools tests', () => {
 
 	test('Successfully install gopls & linter', async () => {
 		await runTest(
-			toolsManagerForTest(),
+			mockToolsManager(['gopls', 'staticcheck']),
 			{}, // emtpry alternateTools.
 			[] // no missing tools after run.
 		);
 	});
 
 	test('Do not install alternate tools', async () => {
-		await runTest(toolsManagerForTest(), { gopls: 'fork.example.com/gopls' }, ['gopls']);
+		await runTest(mockToolsManager(['gopls', 'staticcheck']), { gopls: 'fork.example.com/gopls' }, ['gopls']);
 	});
 
 	test('Recover when installation fails', async () => {
-		const tm = toolsManagerForTest();
+		const tm = mockToolsManager(['gopls', 'staticcheck']);
 		tm.installTool = () => {
 			return Promise.resolve('failed');
 		};
@@ -512,18 +512,29 @@ suite('maybeInstallImportantTools tests', () => {
 	});
 
 	test('Recover when installation crashes', async () => {
-		const tm = toolsManagerForTest();
+		const tm = mockToolsManager(['gopls', 'staticcheck']);
 		tm.installTool = () => {
 			throw new Error('crash');
 		};
 		await runTest(tm, {}, ['gopls', 'staticcheck']);
 	});
 
-	function toolsManagerForTest() {
+	/**
+	 * Creates a mock IToolsManager for testing purposes. Both method can be
+	 * overwritten in test to control the manager behavior.
+	 *
+	 * @param requiredTools An array of tool names that this mock manager
+	 * should treat as its universe of known tools for the test.
+	 * @returns A mock object that implements the IToolsManager interface.
+	 */
+	function mockToolsManager(requiredTools: string[] = []) {
 		const installed: string[] = [];
+
 		const toolsManager: goInstallTools.IToolsManager = {
 			getMissingTools: function (matcher: (tool: Tool) => boolean): Promise<Tool[]> {
-				let tools = getConfiguredTools(config.getGoConfig(), {});
+				let tools: Tool[] = requiredTools.map((t) => {
+					return allToolsInformation.get(t)!;
+				});
 				// apply user's filter;
 				tools = matcher ? tools.filter(matcher) : tools;
 				// remove tools that are installed.
@@ -535,6 +546,7 @@ suite('maybeInstallImportantTools tests', () => {
 				return Promise.resolve(undefined); // no error.
 			}
 		};
+
 		return toolsManager;
 	}
 });

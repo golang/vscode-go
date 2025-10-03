@@ -8,7 +8,6 @@
 
 'use strict';
 
-import { extensionInfo, getGoConfig } from './config';
 import { browsePackages } from './goBrowsePackage';
 import { buildCode } from './goBuild';
 import { notifyIfGeneratedFile, removeTestStatus } from './goCheck';
@@ -39,7 +38,7 @@ import {
 	maybeInstallVSCGO,
 	maybeInstallImportantTools
 } from './goInstallTools';
-import { RestartReason, showServerOutputChannel, watchLanguageServerConfiguration } from './language/goLanguageServer';
+import { RestartReason, showServerOutputChannel, promptAboutGoplsOptOut } from './language/goLanguageServer';
 import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit } from './goModules';
@@ -58,10 +57,8 @@ import {
 } from './stateUtils';
 import { cancelRunningTests, showTestOutput } from './testUtils';
 import { cleanupTempDir, getBinPath, getToolsGopath } from './util';
-import { clearCacheForTools } from './utils/pathUtils';
 import { WelcomePanel } from './welcome';
 import vscode = require('vscode');
-import { getFormatTool } from './language/legacy/goFormat';
 import { resetSurveyStates, showSurveyStates } from './goSurvey';
 import { ExtensionAPI } from './export';
 import extensionAPI from './extensionAPI';
@@ -75,6 +72,9 @@ import { toggleVulncheckCommandFactory } from './goVulncheck';
 import { GoTaskProvider } from './goTaskProvider';
 import { setTelemetryEnvVars, activationLatency, telemetryReporter } from './goTelemetry';
 import { experiments } from './experimental';
+import { extensionInfo, getGoConfig, getGoplsConfig, validateConfig } from './config';
+import { clearCacheForTools } from './utils/pathUtils';
+import { getFormatTool } from './language/legacy/goFormat';
 
 const goCtx: GoExtensionContext = {};
 
@@ -222,7 +222,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.survey.showConfig', showSurveyStates);
 	registerCommand('go.survey.resetConfig', resetSurveyStates);
 
-	addOnDidChangeConfigListeners(ctx);
+	addConfigChangeListener(ctx);
 	addOnChangeTextDocumentListeners(ctx);
 	addOnChangeActiveTextEditorListeners(ctx);
 	addOnSaveTextDocumentListeners(ctx);
@@ -251,21 +251,48 @@ export function deactivate() {
 	]);
 }
 
-function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
+export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 	// Subscribe to notifications for changes to the configuration
 	// of the language server, even if it's not currently in use.
 	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => watchLanguageServerConfiguration(goCtx, e))
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			const goConfig = getGoConfig();
+			const goplsConfig = getGoplsConfig();
+
+			validateConfig(goConfig, goplsConfig);
+
+			if (!e.affectsConfiguration('go')) {
+				return;
+			}
+
+			if (
+				e.affectsConfiguration('go.useLanguageServer') ||
+				e.affectsConfiguration('go.languageServerFlags') ||
+				e.affectsConfiguration('go.alternateTools') ||
+				e.affectsConfiguration('go.toolsEnvVars') ||
+				e.affectsConfiguration('go.formatTool')
+				// TODO: Should we check http.proxy too? That affects toolExecutionEnvironment too.
+			) {
+				vscode.commands.executeCommand('go.languageserver.restart', RestartReason.CONFIG_CHANGE);
+			}
+
+			if (e.affectsConfiguration('go.useLanguageServer') && goConfig['useLanguageServer'] === false) {
+				promptAboutGoplsOptOut(goCtx);
+			}
+		})
 	);
 	ctx.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
 			if (!e.affectsConfiguration('go')) {
 				return;
 			}
-			const updatedGoConfig = getGoConfig();
+			const goConfig = getGoConfig();
+			const goplsConfig = getGoplsConfig();
+
+			validateConfig(goConfig, goplsConfig);
 
 			if (e.affectsConfiguration('go.goroot')) {
-				const configGOROOT = updatedGoConfig['goroot'];
+				const configGOROOT = goConfig['goroot'];
 				if (configGOROOT) {
 					await setGOROOTEnvVar(configGOROOT);
 				}
@@ -285,25 +312,19 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 			}
 
 			if (e.affectsConfiguration('go.formatTool')) {
-				const tool = getFormatTool(updatedGoConfig);
+				const tool = getFormatTool(goConfig);
 				// When language server gopls is active (by default), existence
 				// checks are skipped only for tools that gopls replaces. Other
 				// tools are still checked.
-				if (
-					updatedGoConfig['useLanguageServer'] === false ||
-					!new Set(['gofmt', 'goimports', 'goformat']).has(tool)
-				) {
+				if (goConfig['useLanguageServer'] === false || !new Set(['gofmt', 'goimports', 'goformat']).has(tool)) {
 					checkToolExists(tool);
 				}
 			}
-			if (e.affectsConfiguration('go.lintTool')) {
-				checkToolExists(updatedGoConfig['lintTool']);
-			}
 			if (e.affectsConfiguration('go.docsTool')) {
-				checkToolExists(updatedGoConfig['docsTool']);
+				checkToolExists(goConfig['docsTool']);
 			}
 			if (e.affectsConfiguration('go.coverageDecorator')) {
-				updateCodeCoverageDecorators(updatedGoConfig['coverageDecorator']);
+				updateCodeCoverageDecorators(goConfig['coverageDecorator']);
 			}
 			if (e.affectsConfiguration('go.toolsEnvVars')) {
 				const env = toolExecutionEnvironment();
@@ -318,7 +339,9 @@ function addOnDidChangeConfigListeners(ctx: vscode.ExtensionContext) {
 				}
 			}
 			if (e.affectsConfiguration('go.lintTool')) {
-				const lintTool = lintDiagnosticCollectionName(updatedGoConfig['lintTool']);
+				checkToolExists(goConfig['lintTool']);
+
+				const lintTool = lintDiagnosticCollectionName(goConfig['lintTool']);
 				if (goCtx.lintDiagnosticCollection && goCtx.lintDiagnosticCollection.name !== lintTool) {
 					goCtx.lintDiagnosticCollection.dispose();
 					goCtx.lintDiagnosticCollection = vscode.languages.createDiagnosticCollection(lintTool);
@@ -381,6 +404,9 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 }
 
 function checkToolExists(tool: string) {
+	if (tool === '') {
+		return;
+	}
 	if (tool === getBinPath(tool)) {
 		promptForMissingTool(tool);
 	}
