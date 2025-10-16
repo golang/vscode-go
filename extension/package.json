@@ -1780,6 +1780,11 @@
               "type": "boolean",
               "default": false,
               "description": "If true, adds command to benchmark the test under the cursor to the editor context menu"
+            },
+            "compilerDetails": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, adds command to show compiler optimization details under the cursor to the editor context menu"
             }
           },
           "additionalProperties": false,
@@ -1798,7 +1803,8 @@
             "testCoverage": true,
             "playground": true,
             "debugTestAtCursor": true,
-            "benchmarkAtCursor": false
+            "benchmarkAtCursor": false,
+            "compilerDetails": false
           },
           "description": "Experimental Feature: Enable/Disable entries from the context menu in the editor.",
           "scope": "resource"
@@ -3575,6 +3581,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.playground && resourceLangId == go",
           "command": "go.playground",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.compilerDetails && resourceLangId == go",
+          "command": "go.toggle.gc_details",
           "group": "Go group 1"
         },
         {

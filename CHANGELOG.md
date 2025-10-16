@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Changes
+
+* Added a new field, 'compilerDetails', on the 'go.editorContextMenuCommands' setting that when set to true will show the "Go: Toggle compiler optimization details" command in the context menu.
+
 ### Important
 
 * To ensure the extension remains fully compatible and stable, the required
