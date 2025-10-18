@@ -84,7 +84,7 @@
     "get-port": "5.1.1",
     "gts": "4.0.0",
     "js-green-licenses": "4.0.0",
-    "mocha": "9.2.2",
+    "mocha": "11.7.4",
     "prettier": "2.2.1",
     "sinon": "9.2.4",
     "typescript": "4.6.4",
