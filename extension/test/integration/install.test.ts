@@ -1,4 +1,5 @@
 /* eslint-disable no-async-promise-executor */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -28,6 +29,8 @@ import vscode = require('vscode');
 import { allToolsInformation } from '../../src/goToolsInformation';
 import * as goInstallTools from '../../src/goInstallTools';
 import * as utilModule from '../../src/util';
+import { getGoConfig, getGoplsConfig } from '../../src/config';
+import { MockWorkspaceConfiguration } from './mocks/configuration';
 
 interface installationTestCase {
 	name: string;
@@ -354,13 +357,25 @@ function shouldRunSlowTests(): boolean {
 
 suite('getConfiguredTools', () => {
 	test('require gopls when using language server', async () => {
-		const configured = getConfiguredTools({ useLanguageServer: true }, {});
+		const configured = getConfiguredTools(
+			new MockWorkspaceConfiguration(
+				getGoConfig(),
+				new Map<string, any>([['useLanguageServer', true]])
+			),
+			new MockWorkspaceConfiguration(getGoplsConfig())
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
 	});
 
 	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools({ useLanguageServer: false }, {});
+		const configured = getConfiguredTools(
+			new MockWorkspaceConfiguration(
+				getGoConfig(),
+				new Map<string, any>([['useLanguageServer', false]])
+			),
+			new MockWorkspaceConfiguration(getGoplsConfig())
+		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
 	});

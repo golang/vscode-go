@@ -86,6 +86,13 @@ This will result in duplicate diagnostics.`;
 			vscode.commands.executeCommand('workbench.action.openSettingsJson');
 		}
 	}
+
+	// Format tool check.
+	// TODO(hxjiang): send warning to user if "go.formatTool" is "gofumpt" and
+	// "gopls.formatting.gofumpt" is true.
+	// TODO(hxjiang): send one time notification suggest user to switch "gofmt",
+	// "gofumpt" and "goimports" formatter to gopls. Configure using setting
+	// "gopls.formatting".
 }
 
 /**

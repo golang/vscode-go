@@ -40,7 +40,7 @@ import {
 import { Executable, LanguageClient, ServerOptions } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
-import { GoDocumentFormattingEditProvider, usingCustomFormatTool } from './legacy/goFormat';
+import { GoDocumentFormattingEditProvider, getFormatTool } from './legacy/goFormat';
 import { installTools, latestModuleVersion, promptForMissingTool, promptForUpdatingTool } from '../goInstallTools';
 import { getTool, Tool } from '../goTools';
 import { updateGlobalState, updateWorkspaceState } from '../stateUtils';
@@ -79,6 +79,9 @@ export interface LanguageServerConfig {
 	flags: string[];
 	env: any;
 	features: {
+		// A custom formatter can be configured to run instead of gopls.
+		// This is enabled when the user has configured a specific format
+		// tool in the "go.formatTool" setting.
 		formatter?: GoDocumentFormattingEditProvider;
 	};
 	checkForUpdates: string;
@@ -650,9 +653,11 @@ export async function buildLanguageClient(
 					token: vscode.CancellationToken,
 					next: ProvideDocumentFormattingEditsSignature
 				) => {
+					// If a custom formatter is configured, use it.
 					if (cfg.features.formatter) {
 						return cfg.features.formatter.provideDocumentFormattingEdits(document, options, token);
 					}
+					// Otherwise, fall back to gopls.
 					return next(document, options, token);
 				},
 				handleDiagnostics: (
@@ -1016,9 +1021,10 @@ export async function buildLanguageServerConfig(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<LanguageServerConfig> {
 	let formatter: GoDocumentFormattingEditProvider | undefined;
-	if (usingCustomFormatTool(goConfig)) {
+	if (getFormatTool(goConfig) !== '') {
 		formatter = new GoDocumentFormattingEditProvider();
 	}
+
 	const cfg: LanguageServerConfig = {
 		serverName: '', // remain empty if gopls binary can't be found.
 		path: '',

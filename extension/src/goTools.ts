@@ -6,9 +6,10 @@
 
 'use strict';
 
-import moment = require('moment');
-import semver = require('semver');
-import { getFormatTool, usingCustomFormatTool } from './language/legacy/goFormat';
+import * as moment from 'moment';
+import * as semver from 'semver';
+import * as vscode from 'vscode';
+import { getFormatTool } from './language/legacy/goFormat';
 import { allToolsInformation } from './goToolsInformation';
 import { GoVersion } from './util';
 
@@ -110,7 +111,10 @@ export function hasModSuffix(tool: Tool): boolean {
 	return tool.name.endsWith('-gomod');
 }
 
-export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig: { [key: string]: any }): Tool[] {
+export function getConfiguredTools(
+	goConfig: vscode.WorkspaceConfiguration,
+	goplsConfig: vscode.WorkspaceConfiguration
+): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
@@ -144,11 +148,7 @@ export function getConfiguredTools(goConfig: { [key: string]: any }, goplsConfig
 		maybeAddTool('dlv');
 	}
 
-	// Only add format tools if the language server is disabled or the
-	// format tool is known to us.
-	if (!useLanguageServer || usingCustomFormatTool(goConfig)) {
-		maybeAddTool(getFormatTool(goConfig));
-	}
+	maybeAddTool(getFormatTool(goConfig));
 
 	maybeAddTool(goConfig['lintTool']);
 

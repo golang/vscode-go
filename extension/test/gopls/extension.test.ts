@@ -7,7 +7,6 @@
 import assert from 'assert';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getGoConfig } from '../../src/config';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
 import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, recordTelemetryStartTime, TelemetryService } from '../../src/goTelemetry';
@@ -157,48 +156,6 @@ suite('Go Extension Tests With Gopls', function () {
 			}
 			assert(itemKindFound, `failed to find expected item kind ${wantItemKind}: got ${JSON.stringify(list)}`);
 		}
-	});
-
-	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
-		const config = require('../../src/config');
-		sandbox.stub(config, 'getGoConfig').returns(goConfig);
-		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
-		await env.startGopls(path.join(workspaceDir, 'test.go'), goConfig, workspaceDir);
-		const { doc } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
-		await vscode.window.showTextDocument(doc);
-
-		const formatFeature = env.languageClient?.getFeature('textDocument/formatting');
-		const formatter = formatFeature?.getProvider(doc);
-		const tokensrc = new vscode.CancellationTokenSource();
-		try {
-			const result = await formatter?.provideDocumentFormattingEdits(
-				doc,
-				{} as vscode.FormattingOptions,
-				tokensrc.token
-			);
-			assert.fail(`formatter unexpectedly succeeded and returned a result: ${JSON.stringify(result)}`);
-		} catch (e) {
-			assert(`${e}`.includes(`errors when formatting with ${customFormatter}`), `${e}`);
-		}
-	}
-
-	test('Nonexistent formatter', async () => {
-		const customFormatter = 'nonexistent';
-		const goConfig = Object.create(getGoConfig(), {
-			formatTool: { value: customFormatter } // this should make the formatter fail.
-		}) as vscode.WorkspaceConfiguration;
-
-		await testCustomFormatter(goConfig, customFormatter);
-	});
-
-	test('Custom formatter', async () => {
-		const customFormatter = 'coolCustomFormatter';
-		const goConfig = Object.create(getGoConfig(), {
-			formatTool: { value: 'custom' }, // this should make the formatter fail.
-			alternateTools: { value: { customFormatter: customFormatter } } // this should make the formatter fail.
-		}) as vscode.WorkspaceConfiguration;
-
-		await testCustomFormatter(goConfig, customFormatter);
 	});
 
 	test('Prompt For telemetry', async () => {

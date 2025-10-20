@@ -238,15 +238,15 @@ Default:
 Flags to pass to format tool (e.g. ["-s"]). Not applicable when using the language server.
 ### `go.formatTool`
 
-When the language server is enabled and one of `default`/`gofmt`/`goimports`/`gofumpt` is chosen, the language server will handle formatting. If `custom` tool is selected, the extension will use the `customFormatter` tool in the `#go.alternateTools#` section.<br/>
+Specifies the tool for formatting Go code. The default is `default`, which uses the language server `gopls` as formatting provider. To configure gopls's formatting, see the 'gopls.formatting' settings. When a specific tool (e.g., `gofmt`, `goimports`) is selected, the extension will run it instead.<br/>
 Allowed Options:
 
-* `default`: If the language server is enabled, format via the language server, which already supports gofmt, goimports, goreturns, and gofumpt. Otherwise, goimports.
-* `gofmt`: Formats the file according to the standard Go style. (not applicable when the language server is enabled)
-* `goimports`: Organizes imports and formats the file with gofmt. (not applicable when the language server is enabled)
-* `goformat`: Configurable gofmt, see https://github.com/mbenkmann/goformat. (Deprecated due to the lack of generics support)
-* `gofumpt`: Stricter version of gofmt, see https://github.com/mvdan/gofumpt. . Use `#gopls.format.gofumpt#` instead)
-* `custom`: Formats using the custom tool specified as `customFormatter` in the `#go.alternateTools#` setting. The tool should take the input as STDIN and output the formatted code as STDOUT.
+* `default`: Formatting is performed by the language server, gopls. (recommended)
+* `gofmt`: Formats using `gofmt`, the standard Go formatter. See https://pkg.go.dev/cmd/gofmt.
+* `goimports`: Formats using `goimports`, which organizes imports and applies `gofmt`. See https://pkg.go.dev/golang.org/x/tools/cmd/goimports.
+* `goformat`: Formats using `goformat`, a configurable version of `gofmt`. See https://github.com/mbenkmann/goformat. (Deprecated due to lack of generics support)
+* `gofumpt`: Formats using `gofumpt`, a stricter version of `gofmt`. See https://github.com/mvdan/gofumpt. Note: `gopls` can also be configured to use `gofumpt` via the `#gopls.formatting.gofumpt#` setting.
+* `custom`: Formats using a custom tool. The tool's path must be specified in the `#go.alternateTools#` setting under the `customFormatter` key.
 
 
 Default: `"default"`

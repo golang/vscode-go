@@ -13,7 +13,6 @@ import { GoDebugConfigurationProvider, maybeJoinFlags } from '../../src/goDebugC
 import * as goInstallTools from '../../src/goInstallTools';
 import { rmdirRecursive } from '../../src/util';
 import { MockCfg } from '../mocks/MockCfg';
-import { MockWorkspaceConfiguration } from './mocks/configuration';
 import { affectedByIssue832 } from './testutils';
 import goEnv = require('../../src/goEnv');
 
