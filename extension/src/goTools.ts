@@ -111,10 +111,7 @@ export function hasModSuffix(tool: Tool): boolean {
 	return tool.name.endsWith('-gomod');
 }
 
-export function getConfiguredTools(
-	goConfig: vscode.WorkspaceConfiguration,
-	goplsConfig: vscode.WorkspaceConfiguration
-): Tool[] {
+export function getConfiguredTools(goConfig: vscode.WorkspaceConfiguration): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are

@@ -29,7 +29,7 @@ import vscode = require('vscode');
 import { allToolsInformation } from '../../src/goToolsInformation';
 import * as goInstallTools from '../../src/goInstallTools';
 import * as utilModule from '../../src/util';
-import { getGoConfig, getGoplsConfig } from '../../src/config';
+import { getGoConfig } from '../../src/config';
 import { MockWorkspaceConfiguration } from './mocks/configuration';
 
 interface installationTestCase {
@@ -361,8 +361,7 @@ suite('getConfiguredTools', () => {
 			new MockWorkspaceConfiguration(
 				getGoConfig(),
 				new Map<string, any>([['useLanguageServer', true]])
-			),
-			new MockWorkspaceConfiguration(getGoplsConfig())
+			)
 		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
@@ -373,8 +372,7 @@ suite('getConfiguredTools', () => {
 			new MockWorkspaceConfiguration(
 				getGoConfig(),
 				new Map<string, any>([['useLanguageServer', false]])
-			),
-			new MockWorkspaceConfiguration(getGoplsConfig())
+			)
 		);
 		const got = configured.map((tool) => tool.name) ?? [];
 		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);

@@ -6,7 +6,7 @@ import vscode = require('vscode');
 import vscodeUri = require('vscode-uri');
 import os = require('os');
 import path = require('path');
-import { getGoConfig, getGoplsConfig } from './config';
+import { getGoConfig } from './config';
 import { getBinPath } from './util';
 import { getConfiguredTools } from './goTools';
 import { inspectGoToolVersion } from './goInstallTools';
@@ -159,7 +159,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 
 	private async toolTreeItems() {
-		const allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
+		const allTools = getConfiguredTools(getGoConfig());
 		const toolsInfo = await Promise.all(allTools.map((tool) => this.toolDetailCache.get(tool.name)));
 		const items = [];
 		for (const t of toolsInfo) {

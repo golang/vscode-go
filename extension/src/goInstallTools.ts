@@ -71,7 +71,7 @@ export const defaultToolsManager: IToolsManager = {
 
 export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
-	let allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
+	let allTools = getConfiguredTools(getGoConfig());
 
 	// exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
@@ -701,7 +701,7 @@ async function updateImportantToolsStatus(tm: IToolsManager = defaultToolsManage
  * If matcher is provided, only the tools that match the filter will be checked.
  */
 function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
-	let keys = getConfiguredTools(getGoConfig(), getGoplsConfig());
+	let keys = getConfiguredTools(getGoConfig());
 	if (matcher) {
 		keys = keys.filter(matcher);
 	}
@@ -883,7 +883,7 @@ export async function suggestUpdates() {
 		return;
 	}
 
-	const allTools = getConfiguredTools(getGoConfig(), getGoplsConfig());
+	const allTools = getConfiguredTools(getGoConfig());
 	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
 	if (toolsToUpdate.length === 0) {
 		return;
