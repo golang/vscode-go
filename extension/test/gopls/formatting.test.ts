@@ -5,8 +5,8 @@
 
 /* eslint-disable node/no-unpublished-import */
 
-// We suppress the any-type warning here because vscode.WorkspaceConfiguration.get() returns any type.
-// So the MockWorkspaceConfiguration need to take a input of any type.
+// vscode.WorkspaceConfiguration.get() returns any type. So MockWorkspaceConfiguration
+// need to take a input of a Map containing any type.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as assert from 'assert';

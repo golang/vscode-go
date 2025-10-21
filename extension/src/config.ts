@@ -1,12 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-import vscode = require('vscode');
-import semver = require('semver');
+// vscode.WorkspaceConfiguration.get() returns any type.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import * as semver from 'semver';
+import * as vscode from 'vscode';
 import { extensionId } from './const';
+import { getFormatTool } from './language/legacy/goFormat';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 
 /** getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing. */
 export const getGoConfig = (uri?: vscode.Uri) => {
@@ -62,6 +66,16 @@ export class ExtensionInfo {
 export const extensionInfo = new ExtensionInfo();
 
 /**
+ * FORMATTER_SUGGESTION_PREFIX_KEY is the prefix of key storing whether we
+ * we have suggested user to switch from the formatter they configured
+ * through "go.formatTool" to "gopls".
+ * The corresponding value is type boolean indicating whether we have suggested
+ * or not.
+ * Right now, the only formatters we are suggesting to user are gofmt and gofumpt.
+ */
+export const FORMATTER_SUGGESTION_PREFIX_KEY = 'formatter-suggestion-';
+
+/**
  * Performs cross-validation between the 'go' and 'gopls' configurations.
  *
  * This function's purpose is to detect conflicts where a setting in 'go'
@@ -88,11 +102,35 @@ This will result in duplicate diagnostics.`;
 	}
 
 	// Format tool check.
-	// TODO(hxjiang): send warning to user if "go.formatTool" is "gofumpt" and
-	// "gopls.formatting.gofumpt" is true.
-	// TODO(hxjiang): send one time notification suggest user to switch "gofmt",
-	// "gofumpt" and "goimports" formatter to gopls. Configure using setting
-	// "gopls.formatting".
+	const formatTool = getFormatTool(goConfig);
+	if (formatTool !== '' && goplsConfig['formatting.gofumpt'] === true) {
+		const message = `Warning: formatter is configured to run from both client side (go.formatTool=${formatTool}) and server side (gopls.formatting.gofumpt=true).
+This may result in double formatting.`;
+
+		const selected = await vscode.window.showWarningMessage(message, 'Open Settings');
+		if (selected === 'Open Settings') {
+			vscode.commands.executeCommand('workbench.action.openSettingsJson');
+		}
+	}
+
+	if (formatTool === 'gofumpt' || formatTool === 'gofmt') {
+		const key = FORMATTER_SUGGESTION_PREFIX_KEY + formatTool;
+
+		const suggested = getFromGlobalState(key, false);
+		if (!suggested) {
+			updateGlobalState(key, true);
+			let instructions = 'change "go.formatTool" to default value'; // gopls will use gofmt by default.
+			if (formatTool === 'gofumpt') {
+				instructions += ' , set "gopls.formatting.gofumpt" to true'; // gofumpt need to be enabled explicitly.
+			}
+			const message = `Recommendation: the format tool ${formatTool} specified is available in gopls. You can enable it by: ${instructions}`;
+
+			const selected = await vscode.window.showWarningMessage(message, 'Open Settings');
+			if (selected === 'Open Settings') {
+				vscode.commands.executeCommand('workbench.action.openSettingsJson');
+			}
+		}
+	}
 }
 
 /**
