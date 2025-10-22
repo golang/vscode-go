@@ -15,12 +15,65 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 minimum Go version remains Go 1.23. A new notification will now be sent to help
 users running older versions upgrade to Go 1.23+.
 
+### Changse
+
+* **Tool Management Refactoring**: The extension now correctly uses the tools
+specified in the `"go.lintTool"` and `"go.formatTool"` settings.
+
+  * **Linting**: The extension will now run the linter specified in `"go.lintTool"`
+  in addition to gopls's diagnostics. If you have `staticcheck` enabled in both
+  `"go.lintTool"` and `gopls`, you may see duplicate diagnostics. For better
+  performance, we recommend using the `gopls` integration for `staticcheck`.
+  You can learn more in the [`gopls` analyzer](https://go.googlesource.com/tools/+/refs/heads/master/gopls/doc/analyzers.md).
+
+    * To run the partial set of `staticcheck` analyzers from gopls, leave
+	`"go.lintTool"` and `"gopls.ui.diagnostic.staticcheck"` unset.
+    * To run the full set of `staticcheck` analyzers from gopls, leave
+	`"go.lintTool"` unset and configure it through gopls:
+      ```json
+      "gopls": {
+        "ui.diagnostic.staticcheck": true
+      }
+      ```
+	* To run the `staticcheck` binary, set through `"go.lintTool"` and disable `staticcheck` analyzers from gopls.
+      ```json
+	  "go.lintTool": "staticcheck",
+      "gopls": {
+        "ui.diagnostic.staticcheck": false
+      }
+      ```
+
+  * **Formatting**: The extension will now use the formatter specified in
+  `"go.formatTool"`. We recommend using `gopls` for formatting, as it includes
+  support for both `gofmt` and `gofumpt`. For configuration details, see the
+  [`gopls` formatting](https://go.googlesource.com/tools/+/refs/heads/master/gopls/doc/features/transformation.md#formatting).
+
+    * To format with `gofumpt` via `gopls`, leave `"go.formatTool"` unset or
+	`"default"` and configure it through gopls:
+      ```json
+      "gopls": {
+        "formatting.gofumpt": true
+      }
+      ```
+    * To format with `gofmt`, simply leave `"go.formatTool"` unset or `"default"`.
+	* To format with `gofumpt` binary, configure it through `"go.formatTool"`
+      ```json
+      "go.formatTool": "gofumpt"
+      ```
+
 ### Fixes
 
 * Corrected an issue where clicking on a failing test in the Test Explorer would
 open a non-existent Go file (golang/vscode-go#3853). This occurred when the test
 entry point (e.g., .../foo_test.go) was in a different directory than the file
 where the failure actually occurred (e.g., .../bar/bar_test.go).
+
+* Fixed an issue where `"go.formatTool"` and `"go.lintTool"` were not correctly
+overridden by tools specified in `"go.alternateTools"` (golang/vscode-go#3861,
+golang/vscode-go#3862).
+
+* Resolved a problem where `staticcheck` was being installed automatically even
+when it was not in use (golang/vscode-go#3898).
 
 ## v0.51.0 (prerelease)
 
