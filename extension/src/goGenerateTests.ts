@@ -20,6 +20,7 @@ import { getBinPath, resolvePath } from './util';
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
 import { TelemetryKey, telemetryReporter } from './goTelemetry';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 
 const generatedWord = 'Generated ';
 
@@ -208,6 +209,43 @@ interface Config {
 	isTestFile?: boolean;
 }
 
+/**
+ * THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY is the prefix of key storing whether
+ * we have suggested user to provide feedbacks about gopls's source code actions.
+ */
+export const THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY = 'third-party-tool-suggested-';
+
+export async function promptForFeedback(tool: string) {
+	let command: string;
+	if (tool === 'gotests') {
+		command = 'add_test';
+	} else if (tool === 'gomodifytags') {
+		command = 'modify_tags';
+	} else {
+		return;
+	}
+
+	const suggested: Boolean = getFromGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, false);
+	if (suggested) {
+		return;
+	}
+	updateGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, true);
+
+	const message = `It looks like you are using legacy tool "${tool}". Do you know gopls offers the same functionality builtin to gopls through the context menu, the command palette, or source code actions? Would you be willing to tell us why you choose the legacy tools, so that we can improve gopls?`;
+
+	const selected = await vscode.window.showWarningMessage(message, 'Yes', 'No');
+
+	if (selected === undefined || selected === 'No') {
+		return;
+	}
+
+	await vscode.env.openExternal(
+		vscode.Uri.parse(
+			`https://github.com/golang/go/issues/new?title=x%2Ftools%2Fgopls%3A+${command}+source+code+action+feedback&labels=tools,gopls`
+		)
+	);
+}
+
 function generateTests(
 	ctx: vscode.ExtensionContext,
 	goCtx: GoExtensionContext,
@@ -216,6 +254,10 @@ function generateTests(
 ): Promise<boolean> {
 	return new Promise<boolean>((resolve, reject) => {
 		telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOTESTS, 1);
+
+		if (goConfig.get('useLanguageServer') === 'true') {
+			promptForFeedback('gotests');
+		}
 
 		const cmd = getBinPath('gotests');
 		let args = ['-w'];

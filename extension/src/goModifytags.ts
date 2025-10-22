@@ -15,6 +15,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive } from './util';
 import { TelemetryKey, telemetryReporter } from './goTelemetry';
+import { promptForFeedback } from './goGenerateTests';
 
 export const COMMAND = 'gopls.modify_tags';
 
@@ -241,6 +242,11 @@ async function getTagsAndOptions(config: GoTagsConfig): Promise<(string | undefi
 
 async function runGomodifytags(args: string[]) {
 	telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOMODIFYTAGS, 1);
+
+	if (getGoConfig().get('useLanguageServer') === 'true') {
+		promptForFeedback('gomodifytags');
+	}
+
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		return;
