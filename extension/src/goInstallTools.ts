@@ -18,7 +18,7 @@ import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
-import { containsTool, getConfiguredTools, getImportPathWithVersion, getTool, Tool, ToolAtVersion } from './goTools';
+import { containsTool, getRequiredTools, getImportPathWithVersion, getTool, Tool, ToolAtVersion } from './goTools';
 import {
 	getBinPath,
 	getBinPathWithExplanation,
@@ -71,7 +71,7 @@ export const defaultToolsManager: IToolsManager = {
 
 export async function installAllTools(updateExistingToolsOnly = false) {
 	const goVersion = await getGoVersion();
-	let allTools = getConfiguredTools(getGoConfig());
+	let allTools = getRequiredTools(getGoConfig());
 
 	// exclude tools replaced by alternateTools.
 	const alternateTools: { [key: string]: string } = getGoConfig().get('alternateTools') ?? {};
@@ -701,7 +701,7 @@ async function updateImportantToolsStatus(tm: IToolsManager = defaultToolsManage
  * If matcher is provided, only the tools that match the filter will be checked.
  */
 function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
-	let keys = getConfiguredTools(getGoConfig());
+	let keys = getRequiredTools(getGoConfig());
 	if (matcher) {
 		keys = keys.filter(matcher);
 	}
@@ -883,7 +883,7 @@ export async function suggestUpdates() {
 		return;
 	}
 
-	const allTools = getConfiguredTools(getGoConfig());
+	const allTools = getRequiredTools(getGoConfig());
 	const toolsToUpdate = await listOutdatedTools(configuredGoVersion, allTools);
 	if (toolsToUpdate.length === 0) {
 		return;

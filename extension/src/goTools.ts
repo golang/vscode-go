@@ -111,45 +111,53 @@ export function hasModSuffix(tool: Tool): boolean {
 	return tool.name.endsWith('-gomod');
 }
 
-export function getConfiguredTools(goConfig: vscode.WorkspaceConfiguration): Tool[] {
+/**
+ * getRequiredTools returns the tools that required explicitly by the user
+ * through settings like "go.lintTool", "go.formatTool" and implicitly by the
+ * extension's functionality like "goplay".
+ *
+ * Tools that is replaced by gopls will not be returned if gopls is enabled.
+ */
+export function getRequiredTools(goConfig: vscode.WorkspaceConfiguration): Tool[] {
 	// If language server is enabled, don't suggest tools that are replaced by gopls.
 	// TODO(github.com/golang/vscode-go/issues/388): decide what to do when
 	// the go version is no longer supported by gopls while the legacy tools are
 	// no longer working (or we remove the legacy language feature providers completely).
-	const useLanguageServer = goConfig['useLanguageServer'];
+	const useLanguageServer = goConfig.get<boolean>('useLanguageServer');
 
-	const tools: Tool[] = [];
-	function maybeAddTool(name: string) {
-		const tool = allToolsInformation.get(name);
-		if (tool) {
-			if (!useLanguageServer || !tool.replacedByGopls) {
-				tools.push(tool);
-			}
-		}
-	}
-
-	// Add the language server if the user has chosen to do so.
-	if (useLanguageServer) {
-		maybeAddTool('gopls');
-	}
-
-	// Start with default tools that should always be installed.
-	for (const name of ['gotests', 'gomodifytags', 'impl', 'goplay']) {
-		maybeAddTool(name);
-	}
+	// The default tools that is required by the extension's functionality.
+	const toolNames = new Set<string>(['gotests', 'gomodifytags', 'impl', 'goplay']);
 
 	// Check if the system supports dlv, i.e. is 64-bit.
 	// There doesn't seem to be a good way to check if the mips and s390
 	// families are 64-bit, so just try to install it and hope for the best.
 	if (process.arch.match(/^(mips|mipsel|ppc64|s390|s390x|x64|arm64)$/)) {
-		maybeAddTool('dlv');
+		toolNames.add('dlv');
 	}
 
-	maybeAddTool(getFormatTool(goConfig));
+	// Configurable linter and formatter through "go.formatTool" and "go.lintTool".
+	toolNames.add(getFormatTool(goConfig));
+	const lintToolName = goConfig.get<string>('lintTool');
+	if (lintToolName) {
+		toolNames.add(lintToolName);
+	}
 
-	maybeAddTool(goConfig['lintTool']);
+	// Add the language server if the user has chosen to do so.
+	if (useLanguageServer) {
+		toolNames.add('gopls');
+	}
 
-	// Remove duplicates since tools like golangci-lint v2 and gopls are both
-	// capable of linting and formatting.
-	return tools.filter((v, i, self) => self.indexOf(v) === i);
+	const tools: Tool[] = [];
+	for (const name of toolNames) {
+		const tool = allToolsInformation.get(name);
+		if (!tool) {
+			continue;
+		}
+		// If language server is enabled, filter out tools that are replaced by gopls.
+		if (useLanguageServer && tool.replacedByGopls) {
+			continue;
+		}
+		tools.push(tool);
+	}
+	return tools;
 }

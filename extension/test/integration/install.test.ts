@@ -15,7 +15,7 @@ import {
 	installTools,
 	maybeInstallImportantTools
 } from '../../src/goInstallTools';
-import { Tool, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
+import { Tool, getRequiredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
 import cp = require('child_process');
@@ -355,28 +355,47 @@ function shouldRunSlowTests(): boolean {
 	return !!process.env['VSCODEGO_BEFORE_RELEASE_TESTS'];
 }
 
-suite('getConfiguredTools', () => {
-	test('require gopls when using language server', async () => {
-		const configured = getConfiguredTools(
-			new MockWorkspaceConfiguration(
-				getGoConfig(),
-				new Map<string, any>([['useLanguageServer', true]])
-			)
-		);
-		const got = configured.map((tool) => tool.name) ?? [];
-		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
-	});
+suite('getRequiredTools', () => {
+	const testCases: {
+		name: string;
+		goConfig: Map<string, any>;
+		expectedTools: string[];
+	}[] = [
+		{
+			name: 'include gopls when {"go.useLanguageServer": true}',
+			goConfig: new Map<string, any>([['useLanguageServer', true]]),
+			// exclude third party tool that is replaced by gopls
+			expectedTools: ['gopls', 'dlv', 'gotests', 'impl', 'goplay']
+		},
+		{
+			name: 'exclude gopls when {"go.useLanguageServer": true}',
+			goConfig: new Map<string, any>([['useLanguageServer', false]]),
+			expectedTools: [
+				'dlv',
+				'impl',
+				'goplay',
+				// include third party tool that is replaced by gopls
+				'gomodifytags',
+				'gotests'
+			]
+		},
+		{
+			name: 'include golangci-lint specified in "go.lintTool"',
+			goConfig: new Map<string, any>([
+				['useLanguageServer', true],
+				['lintTool', 'golangci-lint']
+			]),
+			expectedTools: ['golangci-lint', 'gopls', 'dlv', 'gotests', 'impl', 'goplay']
+		}
+	];
 
-	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools(
-			new MockWorkspaceConfiguration(
-				getGoConfig(),
-				new Map<string, any>([['useLanguageServer', false]])
-			)
-		);
-		const got = configured.map((tool) => tool.name) ?? [];
-		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
-	});
+	for (const tc of testCases) {
+		test(tc.name, async () => {
+			const configured = getRequiredTools(new MockWorkspaceConfiguration(getGoConfig(), tc.goConfig));
+			const got = configured.map((tool) => tool.name) ?? [];
+			assert.deepStrictEqual(got.sort(), tc.expectedTools.sort());
+		});
+	}
 });
 
 function fakeGoVersion(versionStr: string) {

@@ -9,7 +9,7 @@ import path from 'path';
 import { CommandFactory } from '.';
 import { getGoConfig } from '../config';
 import { inspectGoToolVersion } from '../goInstallTools';
-import { getConfiguredTools } from '../goTools';
+import { getRequiredTools } from '../goTools';
 import { getBinPath, getCurrentGoPath, getGoEnv, getGoVersion, getToolsGopath } from '../util';
 import { getEnvPath, initialEnvPath, getCurrentGoRoot } from '../utils/pathUtils';
 
@@ -40,7 +40,7 @@ export const getConfiguredGoTools: CommandFactory = () => {
 		buf.push('\n## Tools\n');
 		try {
 			const goVersion = await getGoVersion();
-			const allTools = getConfiguredTools(getGoConfig());
+			const allTools = getRequiredTools(getGoConfig());
 			const goVersionTooOld = goVersion?.lt('1.18') || false;
 
 			buf.push(`\tgo:\t${goVersion?.binaryPath}: ${goVersion?.version}`);

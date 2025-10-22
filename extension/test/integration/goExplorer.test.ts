@@ -9,7 +9,7 @@ import { TreeItem, Uri, window, workspace } from 'vscode';
 import { getGoConfig } from '../../src/config';
 
 import { GoExplorerProvider } from '../../src/goExplorer';
-import { getConfiguredTools } from '../../src/goTools';
+import { getRequiredTools } from '../../src/goTools';
 import { resolveHomeDir } from '../../src/utils/pathUtils';
 import { MockExtensionContext } from '../mocks/MockContext';
 
@@ -68,7 +68,7 @@ suite('GoExplorerProvider', () => {
 	});
 
 	test('tools tree items', async () => {
-		const allTools = getConfiguredTools(getGoConfig());
+		const allTools = getRequiredTools(getGoConfig());
 		const expectTools = allTools.map((t) => t.name);
 		const [, tools] = await explorer.getChildren()!;
 		const items = (await explorer.getChildren(tools)) as TreeItem[];

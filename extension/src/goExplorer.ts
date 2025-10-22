@@ -8,7 +8,7 @@ import os = require('os');
 import path = require('path');
 import { getGoConfig } from './config';
 import { getBinPath } from './util';
-import { getConfiguredTools } from './goTools';
+import { getRequiredTools } from './goTools';
 import { inspectGoToolVersion } from './goInstallTools';
 import { runGoEnv } from './goModules';
 
@@ -159,7 +159,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 
 	private async toolTreeItems() {
-		const allTools = getConfiguredTools(getGoConfig());
+		const allTools = getRequiredTools(getGoConfig());
 		const toolsInfo = await Promise.all(allTools.map((tool) => this.toolDetailCache.get(tool.name)));
 		const items = [];
 		for (const t of toolsInfo) {
