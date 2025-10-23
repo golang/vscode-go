@@ -308,6 +308,12 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	// We expect the extension processes .env files
 	// and send the information to DA using the 'env' property.
 	envFile?: string | string[];
+
+	stdinFrom?: string;
+	stdoutTo?: string;
+	stderrTo?: string;
+	goroutineFilters?: string;
+	showPprofLables?: string[];
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -334,6 +340,9 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	stackTraceDepth: number;
 
 	showGlobalVariables?: boolean;
+	waitFor?: string;
+	goroutineFilters?: string;
+	showPprofLables?: string[];
 }
 
 process.on('uncaughtException', (err: any) => {

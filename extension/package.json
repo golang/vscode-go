@@ -878,6 +878,34 @@
                 "default": false,
                 "description": "(Experimental) Debug with elevated permissions (on Unix). It requires `integrated` or `external` console modes and is ignored in remote debugging.",
                 "type": "boolean"
+              },
+              "stdinFrom": {
+                "type": "string",
+                "default": "",
+                "description": "Reads the program's standard input from a file"
+              },
+              "stdoutTo": {
+                "type": "string",
+                "default": "",
+                "description": "Writes the program's standard output to a file"
+              },
+              "stderrTo": {
+                "type": "string",
+                "default": "",
+                "description": "Writes the program's standard error to a file"
+              },
+              "goroutineFilters": {
+                "type": "string",
+                "default": "",
+                "description": "Configures which system goroutines should be shown in the call stack. See https://github.com/go-delve/delve/blob/master/Documentation/cli/README.md#goroutines"
+              },
+              "showPprofLabels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Configures which pprof lables to show as the goroutine name in the threads view",
+                "default": []
               }
             }
           },
@@ -1099,6 +1127,23 @@
                 "default": false,
                 "description": "(Experimental) Debug with elevated permissions (on Unix). This requires `integrated` or `external` console modes and is ignored in remote debugging.",
                 "type": "boolean"
+              },
+              "waitFor": {
+                "type": "string",
+                "default": "",
+                "description": "Wait for a process with a name beginning with the given prefix"
+              },
+              "goroutineFilters": {
+                "type": "string",
+                "default": "",
+                "description": "Configures which system goroutines should be shown in the call stack. See https://github.com/go-delve/delve/blob/master/Documentation/cli/README.md#goroutines"
+              },
+              "showPprofLabels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Configures which pprof lables to show as the goroutine name in the threads view"
               }
             }
           }
