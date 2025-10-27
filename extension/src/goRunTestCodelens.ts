@@ -109,27 +109,44 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 				return codelens;
 			}
 
-			const simpleRunRegex = /t.Run\("([^"]+)",/;
+			// Captures receiver name and function name.
+			// reason is: function name coming from f.name is not compatible with struct methods.
+			const testSuiteRegex = /func \((.*?) .*?\) (Test.*?)\(/;
 
 			for (const f of testFunctions) {
-				const functionName = f.name;
+				let functionName = f.name;
+				const line = document.lineAt(f.range.start.line);
+				const testSuiteMatch = line.text.match(testSuiteRegex);
+				if (testSuiteMatch) functionName = testSuiteMatch[2]
+				var receiverName = testSuiteMatch ? testSuiteMatch[1] : 't';
 
 				codelens.push(
 					new CodeLens(f.range, {
 						title: 'run test',
 						command: 'go.test.cursor',
-						arguments: [{ functionName }]
+						arguments: [{ 
+							functionName: functionName,
+							isTestSuite: !!testSuiteMatch
+						}]
 					}),
 					new CodeLens(f.range, {
 						title: 'debug test',
 						command: 'go.debug.cursor',
-						arguments: [{ functionName }]
+						arguments: [{ 
+							functionName: functionName,
+							isTestSuite: !!testSuiteMatch
+						}]
 					})
 				);
 
+				// Dynamic regex for capturing receiverName.Run("testName", ...)
+				// receiver name is either t for normal test functions or the receiver of a test suite.
+				// example: func (s *testSuite) TestFunc() // Returns 's'
+				let testCaseRegex = new RegExp(receiverName + "\.Run\\(\"([^\"]+)\",");
+
 				for (let i = f.range.start.line; i < f.range.end.line; i++) {
 					const line = document.lineAt(i);
-					const simpleMatch = line.text.match(simpleRunRegex);
+					const simpleMatch = line.text.match(testCaseRegex);
 
 					// BUG: this does not handle nested subtests. This should
 					// be solved once codelens is handled by gopls and not by
@@ -141,12 +158,20 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 							new CodeLens(line.range, {
 								title: 'run test',
 								command: 'go.subtest.cursor',
-								arguments: [{ functionName, subTestName }]
+								arguments: [{ 
+									functionName: functionName, 
+									subTestName: subTestName,
+									isTestSuite: !!testSuiteMatch
+								}]
 							}),
 							new CodeLens(line.range, {
 								title: 'debug test',
 								command: 'go.debug.subtest.cursor',
-								arguments: [{ functionName, subTestName }]
+								arguments: [{ 
+									functionName: functionName, 
+									subTestName: subTestName,
+									isTestSuite: !!testSuiteMatch
+								}]
 							})
 						);
 					}
