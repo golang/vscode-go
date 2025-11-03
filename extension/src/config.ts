@@ -103,6 +103,19 @@ This will result in duplicate diagnostics.`;
 
 	// Format tool check.
 	const formatTool = getFormatTool(goConfig);
+	if (formatTool === 'customFormatter') {
+		const alternateTools = goConfig.get<any>('alternateTools');
+		if (alternateTools === undefined || alternateTools['customFormatter'] === undefined) {
+			const message =
+				"Error: formatter is configured to custom (go.formatTool=custom) but custom formatter path is not provided in go.alternateTools['customFormatter']";
+
+			const selected = await vscode.window.showWarningMessage(message, 'Open Settings');
+			if (selected === 'Open Settings') {
+				vscode.commands.executeCommand('workbench.action.openSettingsJson');
+			}
+		}
+	}
+
 	if (formatTool !== '' && goplsConfig['formatting.gofumpt'] === true) {
 		const message = `Warning: formatter is configured to run from both client side (go.formatTool=${formatTool}) and server side (gopls.formatting.gofumpt=true).
 This may result in double formatting.`;

@@ -108,6 +108,25 @@ suite('Configuration validation tests', () => {
 		},
 		// Format tool setting tests.
 		{
+			name: 'Error: formatTool is custom but path not provided',
+			goConfig: new Map<string, any>([
+				['useLanguageServer', true],
+				['formatTool', 'custom']
+			]),
+			expectWarning: true,
+			warningMessage:
+				"Error: formatter is configured to custom (go.formatTool=custom) but custom formatter path is not provided in go.alternateTools['customFormatter']"
+		},
+		{
+			name: 'Happy path: formatTool is custom and path is provided',
+			goConfig: new Map<string, any>([
+				['useLanguageServer', true],
+				['formatTool', 'custom'],
+				['alternateTools', { customFormatter: 'foo' }]
+			]),
+			expectWarning: false
+		},
+		{
 			name: 'Conflict: formatTool is gofumpt and gopls gofumpt setting is true',
 			suggested: true,
 			goConfig: new Map<string, any>([

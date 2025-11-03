@@ -12,7 +12,7 @@ import vscode = require('vscode');
 import { getGoConfig } from '../../config';
 import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
-import { getBinPath, resolvePath } from '../../util';
+import { getBinPath } from '../../util';
 import { killProcessTree } from '../../utils/processUtils';
 
 /**
@@ -130,8 +130,8 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
  * getFormatTool returns the formatter tool configured through the "go.formatTool"
  * setting.
  *
- * If "go.formatTool" is set to "custom", it returns the "customFormatter"
- * specified in "go.alternateTools".
+ * If "go.formatTool" is set to "custom", it returns "customFormatter". User
+ * should specify "customFormatter" in setting "go.alternateTools".
  *
  * If "go.formatTool" is not set, it returns an empty string, indicating that
  * no specific format tool is selected and gopls should be used.
@@ -143,7 +143,7 @@ export function getFormatTool(goConfig: vscode.WorkspaceConfiguration): string {
 		return ''; // not specified, yield to gopls by return empty string.
 	}
 	if (formatTool === 'custom') {
-		return resolvePath(goConfig['alternateTools']['customFormatter']);
+		return 'customFormatter';
 	}
 	return formatTool;
 }

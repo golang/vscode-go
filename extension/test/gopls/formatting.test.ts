@@ -155,6 +155,13 @@ fmt.Println("hello")
 			const config = require('../../src/config');
 			sandbox.stub(config, 'getGoConfig').returns(goConfig);
 
+			// Disable path resolver's cache.
+			const util = require('../../src/util');
+			sandbox.stub(util, 'getBinPath').callsFake((...args: any[]) => {
+				const [tool] = args;
+				return util.getBinPathWithExplanation(tool, false).binPath;
+			});
+
 			// Create formatter script under tool dir and make it executable.
 			if (tc.formatter && tc.formatterScript) {
 				fs.writeFileSync(path.join(toolPath, tc.formatter), tc.formatterScript);

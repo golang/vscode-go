@@ -312,13 +312,7 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			}
 
 			if (e.affectsConfiguration('go.formatTool')) {
-				const tool = getFormatTool(goConfig);
-				// When language server gopls is active (by default), existence
-				// checks are skipped only for tools that gopls replaces. Other
-				// tools are still checked.
-				if (goConfig['useLanguageServer'] === false || !new Set(['gofmt', 'goimports', 'goformat']).has(tool)) {
-					checkToolExists(tool);
-				}
+				checkToolExists(getFormatTool(goConfig));
 			}
 			if (e.affectsConfiguration('go.docsTool')) {
 				checkToolExists(goConfig['docsTool']);
