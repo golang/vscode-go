@@ -86,6 +86,10 @@ export interface TestConfig {
 	 */
 	isBenchmark?: boolean;
 	/**
+	 * Whether this is a test suite
+	 */
+	isTestSuite?: boolean;
+	/**
 	 * Whether the tests are being run in a project that uses Go modules
 	 */
 	isMod?: boolean;
@@ -246,12 +250,14 @@ export function extractInstanceTestName(symbolName: string): string {
  * @param document  The document containing the tests
  * @param testFunctionName The test function to get the debug args
  * @param testFunctions The test functions found in the document
+ * @param isTestSuite Indicator if the test function is part of a test suite
  */
 export function getTestFunctionDebugArgs(
 	document: vscode.TextDocument,
 	testFunctionName: string,
 	testFunctions: vscode.DocumentSymbol[],
-	suiteToFunc: SuiteToTestMap
+	suiteToFunc: SuiteToTestMap,
+	isTestSuite ?: boolean,
 ): string[] {
 	if (benchmarkRegex.test(testFunctionName)) {
 		return ['-test.bench', '^' + testFunctionName + '$', '-test.run', 'a^'];
@@ -261,7 +267,7 @@ export function getTestFunctionDebugArgs(
 		const testFns = findAllTestSuiteRuns(document, testFunctions, suiteToFunc);
 		return ['-test.run', `^${testFns.map((t) => t.name).join('|')}$/^${instanceMethod}$`];
 	} else {
-		return ['-test.run', `^${testFunctionName}$`];
+		return ['-test.run', `${!!isTestSuite ? '/': ''}^${testFunctionName}$`];
 	}
 }
 /**
@@ -737,7 +743,14 @@ function targetArgs(testconfig: TestConfig): Array<string> {
 			// which will result in the correct thing to happen
 			if (testFunctions.length > 0) {
 				if (testFunctions.length === 1) {
-					params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
+					// If it's a test suite, it means the test function is not a root test function.
+					// By prepending '/', the command will interpret and execute all child test functions
+					// that matches the pattern of anyTestSuite/givenFunctionName/givenCaseName.
+					if (testconfig.isTestSuite) {
+						params = params.concat(['-run', util.format('/^%s$', testFunctions[0])]);
+					} else {
+						params = params.concat(['-run', util.format('^%s$', testFunctions[0])]);
+					}
 				} else {
 					params = params.concat(['-run', util.format('^(%s)$', testFunctions.join('|'))]);
 				}
