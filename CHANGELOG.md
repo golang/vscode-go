@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 minimum Go version remains Go 1.23. A new notification will now be sent to help
 users running older versions upgrade to Go 1.23+.
 
-### Changse
+### Changes
 
 * **Tool Management Refactoring**: The extension now correctly uses the tools
 specified in the `"go.lintTool"` and `"go.formatTool"` settings.
@@ -74,6 +74,9 @@ golang/vscode-go#3862).
 
 * Resolved a problem where `staticcheck` was being installed automatically even
 when it was not in use (golang/vscode-go#3898).
+
+* Fix issue where sub test codelens runs sub test based on the cursor instead of
+the codelens' position (golang/vscode-go#3908).
 
 ## v0.51.1 (prerelease)
 

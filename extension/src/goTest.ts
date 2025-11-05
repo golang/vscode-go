@@ -181,7 +181,7 @@ async function _subTestAtCursor(
  * @param args
  */
 export function testAtCursor(cmd: TestAtCursorCmd): CommandFactory {
-	return (ctx, goCtx) => (args: any) => {
+	return (_, goCtx) => (args: any) => {
 		const goConfig = getGoConfig();
 		return _testAtCursor(goCtx, goConfig, cmd, args).catch((err) => {
 			if (err instanceof NotFoundError) {
@@ -261,7 +261,10 @@ async function runTestAtCursor(
 }
 
 /**
- * Executes the sub unit test at the primary cursor.
+ * Executes the sub unit test.
+ *
+ * If the `args` is provided, run the subtest based on the test info provided in
+ * the args. Otherwise, infer the test info from the cursor.
  *
  * @param cmd Whether the command is test or debug.
  */
@@ -273,10 +276,10 @@ export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
 		 * codelens provided by {@link GoRunTestCodeLensProvider}, args
 		 * specifies the function and subtest names.
 		 */
-		args?: [SubTestAtCursorArgs]
+		args?: SubTestAtCursorArgs
 	) => {
 		try {
-			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args?.[0]);
+			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				vscode.window.showInformationMessage(err.message);
