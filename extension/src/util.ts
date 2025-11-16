@@ -110,7 +110,7 @@ export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfigurati
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
 	const text = document.getText();
-	return Buffer.byteLength(text.substr(0, offset));
+	return Buffer.byteLength(text.substring(0, offset));
 }
 
 export interface Prelude {
@@ -271,7 +271,7 @@ function resolveToolsGopath(): string {
 
 	// In case of multi-root, resolve ~ and ${workspaceFolder}
 	if (toolsGopathForWorkspace.startsWith('~')) {
-		toolsGopathForWorkspace = path.join(os.homedir(), toolsGopathForWorkspace.substr(1));
+		toolsGopathForWorkspace = path.join(os.homedir(), toolsGopathForWorkspace.substring(1));
 	}
 	if (
 		toolsGopathForWorkspace &&

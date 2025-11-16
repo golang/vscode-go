@@ -356,7 +356,7 @@ function createCoverageData(pathsToDirs: Map<string, string>, coveragePath: Map<
  */
 function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
 	if (filePath.startsWith('_')) {
-		filePath = filePath.substr(1);
+		filePath = filePath.substring(1);
 	}
 	if (process.platform === 'win32') {
 		const parts = filePath.split('/');

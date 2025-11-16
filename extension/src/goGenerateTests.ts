@@ -61,9 +61,9 @@ export const toggleTestFile: CommandFactory = () => () => {
 	}
 	let targetFilePath = '';
 	if (currentFilePath.endsWith('_test.go')) {
-		targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.go')) + '.go';
+		targetFilePath = currentFilePath.substring(0, currentFilePath.lastIndexOf('_test.go')) + '.go';
 	} else {
-		targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.go')) + '_test.go';
+		targetFilePath = currentFilePath.substring(0, currentFilePath.lastIndexOf('.go')) + '_test.go';
 	}
 	for (const doc of vscode.window.visibleTextEditors) {
 		if (doc.document.fileName === targetFilePath) {
@@ -269,7 +269,7 @@ function generateTests(
 							return element.startsWith(generatedWord);
 						})
 						.map((element) => {
-							return element.substr(generatedWord.length);
+							return element.substring(generatedWord.length);
 						});
 					message = `Generated ${lines.join(', ')}`;
 					testsGenerated = true;

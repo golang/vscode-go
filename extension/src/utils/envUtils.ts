@@ -11,7 +11,7 @@ import fs = require('fs');
 
 function stripBOM(s: string): string {
 	if (s && s[0] === '\uFEFF') {
-		s = s.substr(1);
+		s = s.substring(1);
 	}
 	return s;
 }

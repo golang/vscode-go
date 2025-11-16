@@ -253,18 +253,21 @@ export function deactivate() {
 
 export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 	// Subscribe to notifications for changes to the configuration
-	// of the language server, even if it's not currently in use.
+	// Merged into a single listener for better performance
 	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => {
+		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
 			const goConfig = getGoConfig();
 			const goplsConfig = getGoplsConfig();
 
+			// Validate configuration once for all changes
 			validateConfig(goConfig, goplsConfig);
 
+			// Early return if this doesn't affect Go configuration
 			if (!e.affectsConfiguration('go')) {
 				return;
 			}
 
+			// Handle language server restart
 			if (
 				e.affectsConfiguration('go.useLanguageServer') ||
 				e.affectsConfiguration('go.languageServerFlags') ||
@@ -276,27 +279,20 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 				vscode.commands.executeCommand('go.languageserver.restart', RestartReason.CONFIG_CHANGE);
 			}
 
+			// Handle gopls opt-out
 			if (e.affectsConfiguration('go.useLanguageServer') && goConfig['useLanguageServer'] === false) {
 				promptAboutGoplsOptOut(goCtx);
 			}
-		})
-	);
-	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
-			if (!e.affectsConfiguration('go')) {
-				return;
-			}
-			const goConfig = getGoConfig();
-			const goplsConfig = getGoplsConfig();
 
-			validateConfig(goConfig, goplsConfig);
-
+			// Handle GOROOT changes
 			if (e.affectsConfiguration('go.goroot')) {
 				const configGOROOT = goConfig['goroot'];
 				if (configGOROOT) {
 					await setGOROOTEnvVar(configGOROOT);
 				}
 			}
+
+			// Update Go variables when relevant settings change
 			if (
 				e.affectsConfiguration('go.goroot') ||
 				e.affectsConfiguration('go.alternateTools') ||
@@ -306,20 +302,28 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			) {
 				updateGoVarsFromConfig(goCtx);
 			}
-			// If there was a change in "toolsGopath" setting, then clear cache for go tools
-			if (getToolsGopath() !== getToolsGopath(false)) {
+
+			// Clear tool cache if toolsGopath changed
+			if (e.affectsConfiguration('go.toolsGopath') || e.affectsConfiguration('go.alternateTools')) {
 				clearCacheForTools();
 			}
 
+			// Check tool existence for format tool
 			if (e.affectsConfiguration('go.formatTool')) {
 				checkToolExists(getFormatTool(goConfig));
 			}
+
+			// Check tool existence for docs tool
 			if (e.affectsConfiguration('go.docsTool')) {
 				checkToolExists(goConfig['docsTool']);
 			}
+
+			// Update coverage decorators
 			if (e.affectsConfiguration('go.coverageDecorator')) {
 				updateCodeCoverageDecorators(goConfig['coverageDecorator']);
 			}
+
+			// Handle GO111MODULE changes
 			if (e.affectsConfiguration('go.toolsEnvVars')) {
 				const env = toolExecutionEnvironment();
 				if (GO111MODULE !== env['GO111MODULE']) {
@@ -332,6 +336,8 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 					});
 				}
 			}
+
+			// Handle lint tool changes
 			if (e.affectsConfiguration('go.lintTool')) {
 				checkToolExists(goConfig['lintTool']);
 
