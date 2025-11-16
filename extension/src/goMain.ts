@@ -251,7 +251,13 @@ export function deactivate() {
 	]);
 }
 
-export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
+/**
+ * Adds configuration change listeners for the Go extension.
+ * Handles changes to Go settings, language server configuration, and tool paths.
+ * Consolidated into a single listener for optimal performance.
+ * @param ctx - The extension context for registering disposables
+ */
+export function addConfigChangeListener(ctx: vscode.ExtensionContext): void {
 	// Subscribe to notifications for changes to the configuration
 	// Merged into a single listener for better performance
 	ctx.subscriptions.push(
@@ -403,7 +409,11 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 	});
 }
 
-function checkToolExists(tool: string) {
+/**
+ * Checks if a tool exists at its expected location and prompts for installation if missing.
+ * @param tool - The name of the tool to check
+ */
+function checkToolExists(tool: string): void {
 	if (tool === '') {
 		return;
 	}
@@ -412,7 +422,12 @@ function checkToolExists(tool: string) {
 	}
 }
 
-function lintDiagnosticCollectionName(lintToolName: string) {
+/**
+ * Returns the diagnostic collection name for a given lint tool.
+ * @param lintToolName - The name of the lint tool (e.g., 'golangci-lint', 'staticcheck')
+ * @returns The diagnostic collection name (e.g., 'go-golangci-lint')
+ */
+function lintDiagnosticCollectionName(lintToolName: string): string {
 	if (!lintToolName || lintToolName === 'golint') {
 		return 'go-lint';
 	}
