@@ -214,95 +214,91 @@ function clearCoverage() {
  * @param packageDirPath Absolute path of the package for which the coverage was calculated
  * @param dir Directory to execute go list in
  */
-export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: string): Promise<void> {
-	const v = new Promise<void>((resolve, reject) => {
-		try {
-			const showCounts = getGoConfig().get('coverShowCounts') as boolean;
-			const coveragePath = new Map<string, CoverageData>(); // <filename> from the cover profile to the coverage data.
+export async function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: string): Promise<void> {
+	try {
+		const showCounts = getGoConfig().get('coverShowCounts') as boolean;
+		const coveragePath = new Map<string, CoverageData>(); // <filename> from the cover profile to the coverage data.
 
-			// Clear existing coverage files
-			clearCoverage();
+		// Clear existing coverage files
+		clearCoverage();
 
-			// collect the packages named in the coverage file
-			const seenPaths = new Set<string>();
-			// for now read synchronously and hope for no errors
-			const contents = fs.readFileSync(coverProfilePath).toString();
-			contents.split('\n').forEach((line) => {
-				// go test coverageprofile generates output:
-				//    filename:StartLine.StartColumn,EndLine.EndColumn Hits CoverCount
-				// where the filename is either the import path + '/' + base file name, or
-				// the actual file path (either absolute or starting with .)
-				// See https://golang.org/issues/40251.
-				//
-				// The first line will be like "mode: set" which we will ignore.
-				// TODO: port https://golang.org/cl/179377 for faster parsing.
+		// collect the packages named in the coverage file
+		const seenPaths = new Set<string>();
+		// Read coverage file asynchronously to avoid blocking the UI
+		const contents = await fs.promises.readFile(coverProfilePath, 'utf8');
+		contents.split('\n').forEach((line) => {
+			// go test coverageprofile generates output:
+			//    filename:StartLine.StartColumn,EndLine.EndColumn Hits CoverCount
+			// where the filename is either the import path + '/' + base file name, or
+			// the actual file path (either absolute or starting with .)
+			// See https://golang.org/issues/40251.
+			//
+			// The first line will be like "mode: set" which we will ignore.
+			// TODO: port https://golang.org/cl/179377 for faster parsing.
 
-				const parse = line.match(/^(\S+)\:(\d+)\.(\d+)\,(\d+)\.(\d+)\s(\d+)\s(\d+)/);
-				if (!parse) {
-					return;
+			const parse = line.match(/^(\S+)\:(\d+)\.(\d+)\,(\d+)\.(\d+)\s(\d+)\s(\d+)/);
+			if (!parse) {
+				return;
+			}
+
+			let filename = parse[1];
+			if (filename.startsWith('.' + path.sep)) {
+				// If it's a relative file path, convert it to an absolute path.
+				// From now on, we can assume that it's a real file name if it is
+				// an absolute path.
+				filename = path.resolve(filename);
+			}
+			// If this is not a real file name, that's package_path + file name,
+			// Record it in seenPaths for `go list` call to resolve package path ->
+			// directory mapping.
+			if (!path.isAbsolute(filename)) {
+				const lastSlash = filename.lastIndexOf('/');
+				if (lastSlash !== -1) {
+					seenPaths.add(filename.slice(0, lastSlash));
 				}
+			}
 
-				let filename = parse[1];
-				if (filename.startsWith('.' + path.sep)) {
-					// If it's a relative file path, convert it to an absolute path.
-					// From now on, we can assume that it's a real file name if it is
-					// an absolute path.
-					filename = path.resolve(filename);
-				}
-				// If this is not a real file name, that's package_path + file name,
-				// Record it in seenPaths for `go list` call to resolve package path ->
-				// directory mapping.
-				if (!path.isAbsolute(filename)) {
-					const lastSlash = filename.lastIndexOf('/');
-					if (lastSlash !== -1) {
-						seenPaths.add(filename.slice(0, lastSlash));
-					}
-				}
+			// and fill in coveragePath
+			const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
+			// When line directive is used this information is artificial and
+			// the source code file can be non-existent or wrong (go.dev/issues/41222).
+			// There is no perfect way to guess whether the line/col in coverage profile
+			// is bogus. At least, we know that 0 or negative values are not true line/col.
+			const startLine = parseInt(parse[2], 10);
+			const startCol = parseInt(parse[3], 10);
+			const endLine = parseInt(parse[4], 10);
+			const endCol = parseInt(parse[5], 10);
+			if (startLine < 1 || startCol < 1 || endLine < 1 || endCol < 1) {
+				return;
+			}
+			const range = new vscode.Range(
+				// Convert lines and columns to 0-based
+				startLine - 1,
+				startCol - 1,
+				endLine - 1,
+				endCol - 1
+			);
 
-				// and fill in coveragePath
-				const coverage = coveragePath.get(parse[1]) || emptyCoverageData();
-				// When line directive is used this information is artificial and
-				// the source code file can be non-existent or wrong (go.dev/issues/41222).
-				// There is no perfect way to guess whether the line/col in coverage profile
-				// is bogus. At least, we know that 0 or negative values are not true line/col.
-				const startLine = parseInt(parse[2], 10);
-				const startCol = parseInt(parse[3], 10);
-				const endLine = parseInt(parse[4], 10);
-				const endCol = parseInt(parse[5], 10);
-				if (startLine < 1 || startCol < 1 || endLine < 1 || endCol < 1) {
-					return;
-				}
-				const range = new vscode.Range(
-					// Convert lines and columns to 0-based
-					startLine - 1,
-					startCol - 1,
-					endLine - 1,
-					endCol - 1
-				);
+			const counts = parseInt(parse[7], 10);
+			// If is Covered (CoverCount > 0)
+			if (counts > 0) {
+				coverage.coveredOptions.push(...elaborate(range, counts, showCounts));
+			} else {
+				coverage.uncoveredOptions.push(...elaborate(range, counts, showCounts));
+			}
 
-				const counts = parseInt(parse[7], 10);
-				// If is Covered (CoverCount > 0)
-				if (counts > 0) {
-					coverage.coveredOptions.push(...elaborate(range, counts, showCounts));
-				} else {
-					coverage.uncoveredOptions.push(...elaborate(range, counts, showCounts));
-				}
+			coveragePath.set(filename, coverage);
+		});
 
-				coveragePath.set(filename, coverage);
-			});
-
-			getImportPathToFolder([...seenPaths], dir).then((pathsToDirs) => {
-				createCoverageData(pathsToDirs, coveragePath);
-				setDecorators();
-				vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
-				resolve();
-			});
-		} catch (e) {
-			vscode.window.showInformationMessage((e as any).msg);
-			reject(e);
-		}
-	});
-	return v;
+		const pathsToDirs = await getImportPathToFolder([...seenPaths], dir);
+		createCoverageData(pathsToDirs, coveragePath);
+		setDecorators();
+		vscode.window.visibleTextEditors.forEach(applyCodeCoverage);
+	} catch (e) {
+		const errorMsg = (e as any).msg || String(e);
+		vscode.window.showInformationMessage(errorMsg);
+		throw e;
+	}
 }
 
 // add decorations to the range

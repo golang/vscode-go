@@ -23,7 +23,7 @@ function stripBOM(s: string): string {
  * Values can be optionally enclosed in single or double quotes. Double-quoted values support `\n` for newlines.
  * Environment variable substitution using `${VAR}` syntax is also supported within values.
  */
-export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<string>): { [key: string]: string } {
+export async function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<string>): Promise<{ [key: string]: string }> {
 	const env: { [key: string]: string } = {};
 	if (!envFilePath) {
 		return env;
@@ -33,7 +33,8 @@ export function parseEnvFile(envFilePath: string, globalVars?: NodeJS.Dict<strin
 	}
 
 	try {
-		const buffer = stripBOM(fs.readFileSync(envFilePath, 'utf8'));
+		// Read file asynchronously to avoid blocking the UI
+		const buffer = stripBOM(await fs.promises.readFile(envFilePath, 'utf8'));
 		buffer.split('\n').forEach((line) => {
 			const r = line.match(/^\s*(export\s+)?([\w\.\-]+)\s*=\s*(.*)?\s*$/);
 			if (r !== null) {
@@ -78,18 +79,18 @@ function substituteEnvVars(
 	return value.replace(/\\\$/g, '$');
 }
 
-export function parseEnvFiles(
+export async function parseEnvFiles(
 	envFiles: string[] | string | undefined,
 	globalVars?: NodeJS.Dict<string>
-): { [key: string]: string } {
+): Promise<{ [key: string]: string }> {
 	const fileEnvs = [];
 	if (typeof envFiles === 'string') {
-		fileEnvs.push(parseEnvFile(envFiles, globalVars));
+		fileEnvs.push(await parseEnvFile(envFiles, globalVars));
 	}
 	if (Array.isArray(envFiles)) {
-		envFiles.forEach((envFile) => {
-			fileEnvs.push(parseEnvFile(envFile, globalVars));
-		});
+		for (const envFile of envFiles) {
+			fileEnvs.push(await parseEnvFile(envFile, globalVars));
+		}
 	}
 	return Object.assign({}, ...fileEnvs);
 }
