@@ -83,6 +83,29 @@ interface ExtensionTestAPI {
 	globalState: vscode.Memento;
 }
 
+/**
+ * Extension activation entry point called by VS Code when the Go extension loads.
+ * This is the main initialization function that sets up all Go development features.
+ *
+ * Activation sequence:
+ * 1. Initialize global and workspace state
+ * 2. Configure GOROOT and environment variables
+ * 3. Build and install vscgo helper tool
+ * 4. Register all extension commands
+ * 5. Set up language features (code lens, formatting, testing, etc.)
+ * 6. Start gopls language server (if enabled)
+ * 7. Install missing/outdated Go tools
+ * 8. Configure telemetry and surveys
+ *
+ * @param ctx - VS Code extension context providing subscriptions, storage, and paths
+ * @returns ExtensionAPI for production use or ExtensionTestAPI for testing
+ *
+ * @example
+ * // Called automatically by VS Code, not by user code
+ * // Returns API that can be accessed by other extensions via:
+ * const goExt = vscode.extensions.getExtension('golang.go');
+ * const api = await goExt?.activate();
+ */
 export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | ExtensionTestAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// TODO: VSCODE_GO_IN_TEST was introduced long before we learned about
@@ -240,6 +263,26 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	return extensionAPI;
 }
 
+/**
+ * Extension deactivation called by VS Code when the extension is being unloaded.
+ * Performs cleanup to ensure no resources are leaked and all background processes are stopped.
+ *
+ * Cleanup operations (all run in parallel):
+ * - Stop gopls language server and wait for graceful shutdown
+ * - Cancel any running test sessions
+ * - Kill any active pprof profiling processes
+ * - Clean up temporary directories and files
+ * - Dispose status bar items
+ * - Flush and dispose telemetry reporter
+ *
+ * @returns Promise that resolves when all cleanup is complete
+ *
+ * @example
+ * // Called automatically by VS Code when:
+ * // - Extension is disabled
+ * // - Extension is being updated
+ * // - VS Code is shutting down
+ */
 export function deactivate() {
 	return Promise.all([
 		goCtx.languageClient?.stop(),

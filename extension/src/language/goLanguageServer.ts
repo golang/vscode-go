@@ -85,7 +85,7 @@ export interface LanguageServerConfig {
 	modtime?: Date;
 	enabled: boolean;
 	flags: string[];
-	env: any;
+	env: NodeJS.ProcessEnv;
 	features: {
 		// A custom formatter can be configured to run instead of gopls.
 		// This is enabled when the user has configured a specific format
@@ -94,6 +94,12 @@ export interface LanguageServerConfig {
 	};
 	checkForUpdates: string;
 }
+
+/**
+ * Represents a configuration object for gopls or Go settings.
+ * This is a flexible object that can contain any configuration key-value pairs.
+ */
+export type ConfigurationObject = { [key: string]: unknown };
 
 export interface ServerInfo {
 	Name: string;
@@ -382,8 +388,27 @@ type VulncheckEvent = {
 	message?: string;
 };
 
-// buildLanguageClient returns a language client built using the given language server config.
-// The returned language client need to be started before use.
+/**
+ * Builds a VS Code Language Server Protocol (LSP) client for gopls.
+ * The returned client is configured but not started - caller must call .start() on it.
+ *
+ * This function sets up:
+ * - Output channels for server logs and traces
+ * - Language server executable options (path, flags, environment)
+ * - Client options (document selectors, middleware, synchronization)
+ * - Progress handlers for gopls operations
+ * - Command execution middleware
+ * - Configuration synchronization with gopls
+ *
+ * @param goCtx - Go extension context containing output channels and state
+ * @param cfg - Language server configuration with path, flags, and features
+ * @returns Configured GoLanguageClient instance ready to be started
+ *
+ * @example
+ * const cfg = await buildLanguageServerConfig(getGoConfig());
+ * const client = await buildLanguageClient(goCtx, cfg);
+ * await client.start(); // Start the language server
+ */
 export async function buildLanguageClient(
 	goCtx: GoExtensionContext,
 	cfg: LanguageServerConfig
@@ -408,7 +433,7 @@ export async function buildLanguageClient(
 
 	// TODO(hxjiang): deprecate special handling for async call gopls.run_govulncheck.
 	let govulncheckTerminal: IProgressTerminal | undefined;
-	const pendingVulncheckProgressToken = new Map<ProgressToken, any>();
+	const pendingVulncheckProgressToken = new Map<ProgressToken, { URI: string }>();
 	const onDidChangeVulncheckResultEmitter = new vscode.EventEmitter<VulncheckEvent>();
 
 	// VSCode-Go prepares the information needed to start the language server.
@@ -850,12 +875,12 @@ export async function buildLanguageClient(
 // and selects only those the user explicitly specifies in their settings.
 // This returns a new object created based on the filtered properties of workspaceConfig.
 // Exported for testing.
-export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource?: vscode.Uri): any {
+export function filterGoplsDefaultConfigValues(workspaceConfig: ConfigurationObject, resource?: vscode.Uri): ConfigurationObject {
 	if (!workspaceConfig) {
 		workspaceConfig = {};
 	}
 	const cfg = getGoplsConfig(resource);
-	const filtered = {} as { [key: string]: any };
+	const filtered: ConfigurationObject = {};
 	for (const [key, value] of Object.entries(workspaceConfig)) {
 		if (typeof value === 'function') {
 			continue;
@@ -888,7 +913,7 @@ export function filterGoplsDefaultConfigValues(workspaceConfig: any, resource?: 
 //   - go.buildTags and go.buildFlags are passed as gopls.build.buildFlags
 //     if goplsWorkspaceConfig doesn't explicitly set it yet.
 // Exported for testing.
-export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWorkspaceConfig: any): any {
+export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: ConfigurationObject, goWorkspaceConfig: ConfigurationObject): ConfigurationObject {
 	if (!goplsWorkspaceConfig) {
 		goplsWorkspaceConfig = {};
 	}
@@ -913,10 +938,10 @@ export function passGoConfigToGoplsConfigValues(goplsWorkspaceConfig: any, goWor
 // If this is for the nightly extension, we also request to activate features under experiments.
 async function adjustGoplsWorkspaceConfiguration(
 	cfg: LanguageServerConfig,
-	workspaceConfig: any,
+	workspaceConfig: ConfigurationObject,
 	section?: string,
 	resource?: vscode.Uri
-): Promise<any> {
+): Promise<ConfigurationObject> {
 	// We process only gopls config
 	if (section !== 'gopls') {
 		return workspaceConfig;
@@ -940,7 +965,7 @@ async function adjustGoplsWorkspaceConfiguration(
 	return workspaceConfig;
 }
 
-async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
+async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig: ConfigurationObject, goConfig: vscode.WorkspaceConfiguration): Promise<ConfigurationObject> {
 	const goplsVersion = await getLocalGoplsVersion(cfg);
 	if (!goplsVersion) return goplsConfig ?? {};
 	const version = semver.parse(goplsVersion.version);
@@ -953,7 +978,7 @@ async function passInlayHintConfigToGopls(cfg: LanguageServerConfig, goplsConfig
 	return goplsConfig;
 }
 
-async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig: any, goConfig: any) {
+async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig: ConfigurationObject, goConfig: vscode.WorkspaceConfiguration): Promise<ConfigurationObject> {
 	const goplsVersion = await getLocalGoplsVersion(cfg);
 	if (!goplsVersion) return goplsConfig ?? {};
 	const version = semver.parse(goplsVersion.version);
@@ -966,7 +991,7 @@ async function passVulncheckConfigToGopls(cfg: LanguageServerConfig, goplsConfig
 	return goplsConfig;
 }
 
-async function passLinkifyShowMessageToGopls(cfg: LanguageServerConfig, goplsConfig: any) {
+async function passLinkifyShowMessageToGopls(cfg: LanguageServerConfig, goplsConfig: ConfigurationObject): Promise<ConfigurationObject> {
 	goplsConfig = goplsConfig ?? {};
 
 	const goplsVersion = await getLocalGoplsVersion(cfg);
@@ -1025,6 +1050,29 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	];
 }
 
+/**
+ * Builds the configuration object for the Go language server (gopls).
+ * This function locates gopls, validates it exists, and constructs the config needed to start it.
+ *
+ * Configuration includes:
+ * - Server executable path (from go.languageServerPath setting or auto-detected)
+ * - Server command-line flags (from go.languageServerFlags)
+ * - Environment variables for gopls process
+ * - Custom formatter (if go.formatTool is set to override gopls formatting)
+ * - Update check preferences (from go.toolsManagement.checkForUpdates)
+ * - Server version and modification time (for tracking updates)
+ *
+ * @param goConfig - VS Code workspace configuration for the Go extension
+ * @returns LanguageServerConfig object, with `enabled: false` if gopls is disabled or not found
+ *
+ * @example
+ * const goConfig = getGoConfig();
+ * const cfg = await buildLanguageServerConfig(goConfig);
+ * if (cfg.enabled) {
+ *   console.log(`Found gopls at: ${cfg.path}`);
+ *   const client = await buildLanguageClient(goCtx, cfg);
+ * }
+ */
 export async function buildLanguageServerConfig(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<LanguageServerConfig> {
