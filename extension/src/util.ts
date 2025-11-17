@@ -308,14 +308,48 @@ function resolveToolsGopath(): string {
 	return toolsGopathForWorkspace;
 }
 
-// getBinPath returns the path to the tool.
+/**
+ * Returns the absolute path to a Go tool's executable.
+ * This is the primary function used throughout the extension to locate Go tools.
+ *
+ * Search order:
+ * 1. Alternate tools configured in go.alternateTools
+ * 2. GOBIN environment variable
+ * 3. Configured toolsGopath (go.toolsGopath setting)
+ * 4. Current workspace GOPATH
+ * 5. GOROOT/bin (for go, gofmt, godoc)
+ * 6. PATH environment variable
+ * 7. Default system locations (e.g., /usr/local/go/bin)
+ *
+ * @param tool - Name of the tool (e.g., 'gopls', 'dlv', 'staticcheck')
+ * @param useCache - Whether to use cached tool paths (default: true)
+ * @returns Absolute path to the tool executable, or just the tool name if not found
+ *
+ * @example
+ * const goplsPath = getBinPath('gopls'); // Returns '/Users/me/go/bin/gopls'
+ * const goPath = getBinPath('go'); // Returns '/usr/local/go/bin/go'
+ */
 export function getBinPath(tool: string, useCache = true): string {
 	const r = getBinPathWithExplanation(tool, useCache);
 	return r.binPath;
 }
 
-// getBinPathWithExplanation returns the path to the tool, and the explanation on why
-// the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
+/**
+ * Returns the absolute path to a Go tool's executable along with an explanation
+ * of where the path was found. Useful for diagnostics and troubleshooting.
+ *
+ * @param tool - Name of the tool (e.g., 'gopls', 'dlv', 'staticcheck')
+ * @param useCache - Whether to use cached tool paths (default: true)
+ * @param uri - Optional workspace URI for multi-root workspace support
+ * @returns Object containing the tool path and optional explanation
+ *   - binPath: Absolute path to the tool executable
+ *   - why: Optional explanation ('gobin', 'gopath', 'goroot', 'path', 'alternateTool', 'cached', 'default')
+ *
+ * @example
+ * const result = getBinPathWithExplanation('gopls');
+ * console.log(`Found gopls at ${result.binPath} (source: ${result.why})`);
+ * // Output: "Found gopls at /Users/me/go/bin/gopls (source: gobin)"
+ */
 export function getBinPathWithExplanation(
 	tool: string,
 	useCache = true,
@@ -342,6 +376,19 @@ export function getBinPathWithExplanation(
 	);
 }
 
+/**
+ * Serializes a VS Code document into the archive format expected by Go tools.
+ * This format is used to pass modified/unsaved file contents to tools like gopls and goimports.
+ *
+ * Format: `filename\nbytelength\ncontents`
+ *
+ * @param document - The VS Code text document to serialize
+ * @returns Serialized document in archive format
+ *
+ * @example
+ * const archive = getFileArchive(document);
+ * // Returns: "/path/to/file.go\n1234\npackage main..."
+ */
 export function getFileArchive(document: vscode.TextDocument): string {
 	const fileContents = document.getText();
 	return document.fileName + '\n' + Buffer.byteLength(fileContents, 'utf8') + '\n' + fileContents;
@@ -640,6 +687,28 @@ export function runTool(
 	});
 }
 
+/**
+ * Converts tool output errors into VS Code diagnostics and displays them in the Problems panel.
+ * This is the central function for surfacing errors from Go tools (gopls, staticcheck, golint, etc.)
+ * to the VS Code UI.
+ *
+ * Features:
+ * - Clears existing diagnostics before adding new ones
+ * - Maps error positions to VS Code ranges using token-based column calculation
+ * - Groups diagnostics by file for efficient display
+ * - Handles both open and closed files
+ * - Filters out diagnostics that overlap with gopls diagnostics (if gopls is enabled)
+ *
+ * @param goCtx - Go extension context for accessing configuration
+ * @param document - Optional document that triggered the check (for optimization)
+ * @param errors - Array of check results from Go tools
+ * @param diagnosticCollection - VS Code diagnostic collection to update (e.g., 'go-lint', 'go-vet')
+ * @param diagnosticSource - Optional source label for the diagnostics (e.g., 'staticcheck', 'golint')
+ *
+ * @example
+ * const errors = await runGoVet(document);
+ * handleDiagnosticErrors(goCtx, document, errors, vetDiagnosticCollection, 'go-vet');
+ */
 export function handleDiagnosticErrors(
 	goCtx: GoExtensionContext,
 	document: vscode.TextDocument | undefined,

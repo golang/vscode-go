@@ -388,8 +388,27 @@ type VulncheckEvent = {
 	message?: string;
 };
 
-// buildLanguageClient returns a language client built using the given language server config.
-// The returned language client need to be started before use.
+/**
+ * Builds a VS Code Language Server Protocol (LSP) client for gopls.
+ * The returned client is configured but not started - caller must call .start() on it.
+ *
+ * This function sets up:
+ * - Output channels for server logs and traces
+ * - Language server executable options (path, flags, environment)
+ * - Client options (document selectors, middleware, synchronization)
+ * - Progress handlers for gopls operations
+ * - Command execution middleware
+ * - Configuration synchronization with gopls
+ *
+ * @param goCtx - Go extension context containing output channels and state
+ * @param cfg - Language server configuration with path, flags, and features
+ * @returns Configured GoLanguageClient instance ready to be started
+ *
+ * @example
+ * const cfg = await buildLanguageServerConfig(getGoConfig());
+ * const client = await buildLanguageClient(goCtx, cfg);
+ * await client.start(); // Start the language server
+ */
 export async function buildLanguageClient(
 	goCtx: GoExtensionContext,
 	cfg: LanguageServerConfig
@@ -1031,6 +1050,29 @@ function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	];
 }
 
+/**
+ * Builds the configuration object for the Go language server (gopls).
+ * This function locates gopls, validates it exists, and constructs the config needed to start it.
+ *
+ * Configuration includes:
+ * - Server executable path (from go.languageServerPath setting or auto-detected)
+ * - Server command-line flags (from go.languageServerFlags)
+ * - Environment variables for gopls process
+ * - Custom formatter (if go.formatTool is set to override gopls formatting)
+ * - Update check preferences (from go.toolsManagement.checkForUpdates)
+ * - Server version and modification time (for tracking updates)
+ *
+ * @param goConfig - VS Code workspace configuration for the Go extension
+ * @returns LanguageServerConfig object, with `enabled: false` if gopls is disabled or not found
+ *
+ * @example
+ * const goConfig = getGoConfig();
+ * const cfg = await buildLanguageServerConfig(goConfig);
+ * if (cfg.enabled) {
+ *   console.log(`Found gopls at: ${cfg.path}`);
+ *   const client = await buildLanguageClient(goCtx, cfg);
+ * }
+ */
 export async function buildLanguageServerConfig(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<LanguageServerConfig> {
