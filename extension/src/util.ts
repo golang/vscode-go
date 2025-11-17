@@ -27,6 +27,16 @@ import {
 } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
+/**
+ * Represents a command defined in the extension's package.json.
+ * Used for command palette and keybindings.
+ */
+export interface ExtensionCommand {
+	command: string;
+	title: string;
+	category?: string;
+}
+
 export class GoVersion {
 	public sv?: semver.SemVer;
 	// Go version tags are not following the strict semver format
@@ -407,14 +417,18 @@ export function getModuleCache(): string | undefined {
 	}
 }
 
-export function getExtensionCommands(): any[] {
+/**
+ * Returns all commands defined in the extension's package.json.
+ * @returns Array of extension commands (excluding 'go.show.commands')
+ */
+export function getExtensionCommands(): ExtensionCommand[] {
 	const pkgJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
 	if (!pkgJSON.contributes || !pkgJSON.contributes.commands) {
 		return [];
 	}
-	const extensionCommands: any[] = vscode.extensions
+	const extensionCommands: ExtensionCommand[] = vscode.extensions
 		.getExtension(extensionId)
-		?.packageJSON.contributes.commands.filter((x: any) => x.command !== 'go.show.commands');
+		?.packageJSON.contributes.commands.filter((x: ExtensionCommand) => x.command !== 'go.show.commands');
 	return extensionCommands;
 }
 
@@ -530,7 +544,7 @@ export function runTool(
 	severity: string,
 	useStdErr: boolean,
 	toolName: string,
-	env: any,
+	env: NodeJS.ProcessEnv,
 	printUnexpectedOutput: boolean,
 	token?: vscode.CancellationToken
 ): Promise<ICheckResult[]> {
@@ -557,7 +571,7 @@ export function runTool(
 	return new Promise((resolve, reject) => {
 		p = cp.execFile(cmd, args, { env, cwd }, (err, stdout, stderr) => {
 			try {
-				if (err && (<any>err).code === 'ENOENT') {
+				if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
 					// Since the tool is run on save which can be frequent
 					// we avoid sending explicit notification if tool is missing
 					console.log(`Cannot find ${toolName ? toolName : 'go'}`);
