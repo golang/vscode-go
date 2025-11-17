@@ -241,7 +241,12 @@ export class GoTestRunner {
 				const p = this.collectTests(item, true, request.exclude || [], collected, files);
 				promises.push(p);
 			});
-			await Promise.all(promises);
+			// Use allSettled to handle partial failures gracefully
+			const results = await Promise.allSettled(promises);
+			const failures = results.filter((r) => r.status === 'rejected');
+			if (failures.length > 0) {
+				outputChannel.error(`Failed to collect ${failures.length} test(s): ${failures.map((f) => (f as PromiseRejectedResult).reason).join(', ')}`);
+			}
 		}
 
 		// Save all documents that contain a test we're about to run, to ensure `go

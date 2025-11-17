@@ -70,6 +70,14 @@ import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
 
+// Constants for scheduled task delays and thresholds
+const UPDATE_CHECK_DELAY_MINUTES = 10;
+const SURVEY_PROMPT_DELAY_MINUTES = 30;
+const TELEMETRY_PROMPT_DELAY_MINUTES = 6;
+const MIN_IDLE_TIME_FOR_TELEMETRY_MINUTES = 5;
+const GOPLS_SHUTDOWN_TIMEOUT_MS = 2000;
+const MAX_GOPLS_CRASHES_BEFORE_SHUTDOWN = 5;
+
 export interface LanguageServerConfig {
 	serverName: string;
 	path: string;
@@ -209,9 +217,9 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 		}
 		maybePromptForTelemetry(goCtx);
 	};
-	setTimeout(update, 10 * timeMinute);
-	setTimeout(survey, 30 * timeMinute);
-	setTimeout(telemetry, 6 * timeMinute);
+	setTimeout(update, UPDATE_CHECK_DELAY_MINUTES * timeMinute);
+	setTimeout(survey, SURVEY_PROMPT_DELAY_MINUTES * timeMinute);
+	setTimeout(telemetry, TELEMETRY_PROMPT_DELAY_MINUTES * timeMinute);
 }
 
 // Ask users to fill out opt-out survey.
@@ -436,7 +444,7 @@ export async function buildLanguageClient(
 			errorHandler: {
 				error: (error: Error, message: Message, count: number) => {
 					// Allow 5 crashes before shutdown.
-					if (count < 5) {
+					if (count < MAX_GOPLS_CRASHES_BEFORE_SHUTDOWN) {
 						return {
 							message: '', // suppresses error popups
 							action: ErrorAction.Continue
@@ -1531,8 +1539,8 @@ export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
 
 		// Make sure the user has been idle for at least 5 minutes.
 		const idleTime = currentTime.getTime() - lastUserAction.getTime();
-		if (idleTime < 5 * timeMinute) {
-			setTimeout(callback, 5 * timeMinute - Math.max(idleTime, 0));
+		if (idleTime < MIN_IDLE_TIME_FOR_TELEMETRY_MINUTES * timeMinute) {
+			setTimeout(callback, MIN_IDLE_TIME_FOR_TELEMETRY_MINUTES * timeMinute - Math.max(idleTime, 0));
 			return;
 		}
 		goCtx.telemetryService?.promptForTelemetry();

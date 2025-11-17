@@ -55,7 +55,7 @@ async function askUserForImport(goCtx: GoExtensionContext): Promise<string | und
 		return vscode.window.showQuickPick(packages);
 	} catch (err) {
 		if (typeof err === 'string' && err.startsWith(missingToolMsg)) {
-			promptForMissingTool(err.substr(missingToolMsg.length));
+			promptForMissingTool(err.substring(missingToolMsg.length));
 		}
 	}
 }

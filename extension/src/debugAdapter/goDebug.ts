@@ -406,7 +406,7 @@ export function normalizeSeparators(filePath: string): string {
 	// casing.
 	// This is a workaround for issue in https://github.com/Microsoft/vscode/issues/9448#issuecomment-244804026
 	if (filePath.indexOf(':') === 1) {
-		filePath = filePath.substr(0, 1).toUpperCase() + filePath.substr(1);
+		filePath = filePath.substring(0, 1).toUpperCase() + filePath.substring(1);
 	}
 	return filePath.replace(/\/|\\/g, '/');
 }
@@ -634,7 +634,7 @@ export class Delve {
 				if (mode === 'exec' || (mode === 'debug' && !isProgramDirectory)) {
 					dlvArgs.push(program);
 				} else if (currentGOWorkspace && !launchArgs.packagePathToGoModPathMap[dirname]) {
-					dlvArgs.push(dirname.substr(currentGOWorkspace.length + 1));
+					dlvArgs.push(dirname.substring(currentGOWorkspace.length + 1));
 				}
 				// add user-specified dlv flags first. When duplicate flags are specified,
 				// dlv doesn't mind but accepts the last flag value.
@@ -1212,7 +1212,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		const relativeRemotePath = remotePath
-			.substr(importPathIndex)
+			.substring(importPathIndex)
 			.split(this.remotePathSeparator)
 			.join(this.localPathSeparator);
 		const pathToConvertWithLocalSeparator = remotePath
@@ -1253,7 +1253,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		const goroot = this.getGOROOT();
 		const localGoRootImportPath = path.join(
 			goroot,
-			srcIndex >= 0 ? remotePathWithLocalSeparator.substr(srcIndex) : path.join('src', relativeRemotePath)
+			srcIndex >= 0 ? remotePathWithLocalSeparator.substring(srcIndex) : path.join('src', relativeRemotePath)
 		);
 		if (this.fileSystem.existsSync(localGoRootImportPath)) {
 			return localGoRootImportPath;
@@ -1281,7 +1281,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		const localGoPathImportPath = path.join(
 			gopath,
 			indexGoModCache >= 0
-				? remotePathWithLocalSeparator.substr(indexGoModCache)
+				? remotePathWithLocalSeparator.substring(indexGoModCache)
 				: path.join('pkg', 'mod', relativeRemotePath)
 		);
 		if (this.fileSystem.existsSync(localGoPathImportPath)) {
@@ -1340,7 +1340,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			const index = pathToConvert.indexOf(`${this.remotePathSeparator}src${this.remotePathSeparator}`);
 			const goroot = this.getGOROOT();
 			if (goroot && index > 0) {
-				return path.join(goroot, pathToConvert.substr(index));
+				return path.join(goroot, pathToConvert.substring(index));
 			}
 
 			const indexGoModCache = pathToConvert.indexOf(
@@ -1352,7 +1352,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				return path.join(
 					gopath,
 					pathToConvert
-						.substr(indexGoModCache)
+						.substring(indexGoModCache)
 						.split(this.remotePathSeparator ?? '')
 						.join(this.localPathSeparator)
 				);
@@ -1647,7 +1647,7 @@ export class GoDebugSession extends LoggingDebugSession {
 										: (<ListVarsOut>listPkgVarsOut).Variables;
 									let initdoneIndex = -1;
 									for (let i = 0; i < globals.length; i++) {
-										globals[i].name = globals[i].name.substr(packageName.length + 1);
+										globals[i].name = globals[i].name.substring(packageName.length + 1);
 										if (initdoneIndex === -1 && globals[i].name === this.initdone) {
 											initdoneIndex = i;
 										}
@@ -2308,7 +2308,7 @@ export class GoDebugSession extends LoggingDebugSession {
 						return resolve();
 					}
 					const spaceIndex = stdout.indexOf(' ');
-					const result = stdout.substr(0, spaceIndex) === 'main' ? 'main' : stdout.substr(spaceIndex).trim();
+					const result = stdout.substring(0, spaceIndex) === 'main' ? 'main' : stdout.substring(spaceIndex).trim();
 					this.packageInfo.set(dir, result);
 					resolve(result);
 				}

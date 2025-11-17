@@ -242,7 +242,7 @@ function getRelativePackagePath(currentFileDirPath: string, currentWorkspace: st
 	// If yes, then vendor pkg can be replaced with its relative path to the "vendor" folder
 	// If not, then the vendor pkg should not be allowed to be imported.
 	if (vendorIndex > -1) {
-		const rootProjectForVendorPkg = path.join(currentWorkspace, pkgPath.substr(0, vendorIndex));
+		const rootProjectForVendorPkg = path.join(currentWorkspace, pkgPath.substring(0, vendorIndex));
 		const relativePathForVendorPkg = pkgPath.substring(vendorIndex + magicVendorString.length);
 		const subVendor = relativePathForVendorPkg.indexOf('/vendor/') !== -1;
 
@@ -317,7 +317,7 @@ function isAllowToImportPackage(toDirPath: string, currentWorkspace: string, pkg
 
 	const internalPkgFound = pkgPath.match(/\/internal\/|\/internal$/);
 	if (internalPkgFound) {
-		const rootProjectForInternalPkg = path.join(currentWorkspace, pkgPath.substr(0, internalPkgFound.index));
+		const rootProjectForInternalPkg = path.join(currentWorkspace, pkgPath.substring(0, internalPkgFound.index));
 		return toDirPath.startsWith(rootProjectForInternalPkg + path.sep) || toDirPath === rootProjectForInternalPkg;
 	}
 	return true;

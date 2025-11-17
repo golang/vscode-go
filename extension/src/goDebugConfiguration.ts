@@ -394,14 +394,27 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			const child = spawn(getBinPath('dlv'), ['substitute-path-guess-helper']);
 			let stdoutData = '';
 			let stderrData = '';
-			child.stdout.on('data', (data) => {
+
+			const stdoutHandler = (data: Buffer) => {
 				stdoutData += data;
-			});
-			child.stderr.on('data', (data) => {
+			};
+			const stderrHandler = (data: Buffer) => {
 				stderrData += data;
-			});
+			};
+
+			// Cleanup function to remove all listeners
+			const cleanup = () => {
+				child.stdout?.removeListener('data', stdoutHandler);
+				child.stderr?.removeListener('data', stderrHandler);
+				child.removeAllListeners('close');
+				child.removeAllListeners('error');
+			};
+
+			child.stdout.on('data', stdoutHandler);
+			child.stderr.on('data', stderrHandler);
 
 			child.on('close', (code) => {
+				cleanup();
 				if (code !== 0) {
 					resolve(null);
 				} else {
@@ -414,6 +427,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			});
 
 			child.on('error', (error) => {
+				cleanup();
 				resolve(null);
 			});
 		});
