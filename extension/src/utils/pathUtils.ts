@@ -69,7 +69,8 @@ export function getBinPathWithPreferredGopathGorootWithExplanation(
 		return { binPath: alternateTool, why: 'alternateTool' };
 	}
 
-	// FIXIT: this cache needs to be invalidated when go.goroot or go.alternateTool is changed.
+	// Note: Cache is invalidated when go.toolsGopath or go.alternateTools changes (see goMain.ts)
+	// The clearCacheForTools() function is called from the configuration change listener
 	if (useCache && binPathCache[toolName]) {
 		return { binPath: binPathCache[toolName], why: 'cached' };
 	}
@@ -186,13 +187,13 @@ export function clearCacheForTools() {
 }
 
 /**
- * Exapnds ~ to homedir in non-Windows platform
+ * Expands ~ to homedir in non-Windows platform
  */
 export function resolveHomeDir(inputPath: string): string {
 	if (!inputPath || !inputPath.trim()) {
 		return inputPath;
 	}
-	return inputPath.startsWith('~') ? path.join(os.homedir(), inputPath.substr(1)) : inputPath;
+	return inputPath.startsWith('~') ? path.join(os.homedir(), inputPath.substring(1)) : inputPath;
 }
 
 // Walks up given folder path to return the closest ancestor that has `src` as a child
@@ -206,7 +207,7 @@ export function getInferredGopath(folderPath: string): string | undefined {
 	// find src directory closest to given folder path
 	const srcIdx = dirs.lastIndexOf('src');
 	if (srcIdx > 0) {
-		return folderPath.substr(0, dirs.slice(0, srcIdx).join(path.sep).length);
+		return folderPath.substring(0, dirs.slice(0, srcIdx).join(path.sep).length);
 	}
 }
 
@@ -236,7 +237,7 @@ export function getCurrentGoWorkspaceFromGOPATH(gopath: string | undefined, curr
 			// both parent & child workspace in the nested workspaces pair can make it inside the above if block
 			// Therefore, the below check will take longer (more specific to current file) of the two
 			if (possibleCurrentWorkspace.length > currentWorkspace.length) {
-				currentWorkspace = currentFileDirPath.substr(0, possibleCurrentWorkspace.length);
+				currentWorkspace = currentFileDirPath.substring(0, possibleCurrentWorkspace.length);
 			}
 		}
 	}
@@ -246,7 +247,7 @@ export function getCurrentGoWorkspaceFromGOPATH(gopath: string | undefined, curr
 // Workaround for issue in https://github.com/Microsoft/vscode/issues/9448#issuecomment-244804026
 export function fixDriveCasingInWindows(pathToFix: string): string {
 	return process.platform === 'win32' && pathToFix
-		? pathToFix.substr(0, 1).toUpperCase() + pathToFix.substr(1)
+		? pathToFix.substring(0, 1).toUpperCase() + pathToFix.substring(1)
 		: pathToFix;
 }
 
@@ -260,7 +261,7 @@ export function getToolFromToolPath(toolPath: string): string | undefined {
 	}
 	let tool = path.basename(toolPath);
 	if (process.platform === 'win32' && tool.endsWith('.exe')) {
-		tool = tool.substr(0, tool.length - 4);
+		tool = tool.slice(0, -4);
 	}
 	return tool;
 }

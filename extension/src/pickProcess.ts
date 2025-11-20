@@ -139,7 +139,7 @@ export function parseGoVersionOutput(stdout: string): string[] {
 	lines.forEach((line) => {
 		const match = line.match(goVersionRegexp);
 		if (match && match.length > 0) {
-			const exe = line.substr(0, line.length - match[0].length);
+			const exe = line.substring(0, line.length - match[0].length);
 			goProcessExes.push(exe);
 		}
 	});

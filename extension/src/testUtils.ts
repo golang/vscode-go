@@ -508,7 +508,7 @@ async function getTestTargetPackages(testconfig: TestConfig, outputChannel: vsco
 		// GOPATH mode
 		currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), testconfig.dir);
 		getCurrentPackagePromise = Promise.resolve(
-			currentGoWorkspace ? testconfig.dir.substr(currentGoWorkspace.length + 1) : ''
+			currentGoWorkspace ? testconfig.dir.substring(currentGoWorkspace.length + 1) : ''
 		);
 		// We dont need mapping, as we can derive the absolute paths from package path
 		pkgMapPromise = Promise.resolve();

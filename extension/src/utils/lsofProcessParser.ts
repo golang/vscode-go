@@ -36,7 +36,7 @@ function parseProcessesFromLsofArray(processArray: string[], includesEnv?: boole
 		}
 		// The output for each process begins with a line containing the pid.
 		const out = line[0];
-		const val = line.substr(1);
+		const val = line.substring(1);
 		if (out !== 'p') {
 			continue;
 		}
@@ -74,7 +74,7 @@ function parseFile(start: number, lines: string[]): { fd?: string; name?: string
 			continue;
 		}
 		const out = line[0];
-		const val = line.substr(1);
+		const val = line.substring(1);
 		switch (out) {
 			case 'f':
 				file.fd = val;

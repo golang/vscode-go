@@ -101,12 +101,12 @@ export async function goLint(
 			return;
 		}
 		if (flag.startsWith('--config=') || flag.startsWith('-config=')) {
-			let configFilePath = flag.substr(flag.indexOf('=') + 1).trim();
+			let configFilePath = flag.substring(flag.indexOf('=') + 1).trim();
 			if (!configFilePath) {
 				return;
 			}
 			configFilePath = resolvePath(configFilePath);
-			args.push(`${flag.substr(0, flag.indexOf('=') + 1)}${configFilePath}`);
+			args.push(`${flag.substring(0, flag.indexOf('=') + 1)}${configFilePath}`);
 			return;
 		}
 		args.push(flag);
