@@ -88,12 +88,12 @@ export async function goVet(
 
 	vetFlags.forEach((flag) => {
 		if (flag.startsWith('--vettool=') || flag.startsWith('-vettool=')) {
-			let vetToolPath = flag.substr(flag.indexOf('=') + 1).trim();
+			let vetToolPath = flag.substring(flag.indexOf('=') + 1).trim();
 			if (!vetToolPath) {
 				return;
 			}
 			vetToolPath = resolvePath(vetToolPath);
-			args.push(`${flag.substr(0, flag.indexOf('=') + 1)}${vetToolPath}`);
+			args.push(`${flag.substring(0, flag.indexOf('=') + 1)}${vetToolPath}`);
 			return;
 		}
 		args.push(flag);

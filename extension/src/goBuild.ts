@@ -153,7 +153,7 @@ export async function goBuild(
 	if (!isMod) {
 		// Find the right importPath instead of directly using `.`. Fixes https://github.com/Microsoft/vscode-go/issues/846
 		if (currentGoWorkspace && !isMod) {
-			importPath = cwd.substr(currentGoWorkspace.length + 1);
+			importPath = cwd.substring(currentGoWorkspace.length + 1);
 		} else {
 			outputChannel.error(
 				`Not able to determine import path of current package by using cwd: ${cwd} and Go workspace: ${currentGoWorkspace}`

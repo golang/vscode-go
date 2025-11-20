@@ -27,6 +27,16 @@ import {
 } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 
+/**
+ * Represents a command defined in the extension's package.json.
+ * Used for command palette and keybindings.
+ */
+export interface ExtensionCommand {
+	command: string;
+	title: string;
+	category?: string;
+}
+
 export class GoVersion {
 	public sv?: semver.SemVer;
 	// Go version tags are not following the strict semver format
@@ -110,7 +120,7 @@ export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfigurati
 export function byteOffsetAt(document: vscode.TextDocument, position: vscode.Position): number {
 	const offset = document.offsetAt(position);
 	const text = document.getText();
-	return Buffer.byteLength(text.substr(0, offset));
+	return Buffer.byteLength(text.substring(0, offset));
 }
 
 export interface Prelude {
@@ -199,11 +209,13 @@ export async function getGoVersion(goBinPath?: string, GOTOOLCHAIN?: string): Pr
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
-			error(`failed to run "${goRuntimePath} version": stdout: ${stdout}, stderr: ${stderr}`);
+			// Log stderr but don't fail - some Go versions output warnings
+			outputChannel.debug(`stderr from "${goRuntimePath} version": ${stderr}`);
 		}
 		goVersion = new GoVersion(goRuntimePath, stdout);
 	} catch (err) {
-		throw error(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
+		const errMsg = `failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`;
+		throw error(errMsg);
 	}
 	if (!goBinPath && GOTOOLCHAIN === undefined) {
 		// if getGoVersion was called with a given goBinPath or an explicit GOTOOLCHAIN env var, don't cache the result.
@@ -232,8 +244,8 @@ export async function getGoEnv(cwd?: string): Promise<string> {
 }
 
 /**
- * Returns boolean indicating if GOPATH is set or not
- * If not set, then prompts user to do set GOPATH
+ * Checks if GOPATH is set and prompts the user if not.
+ * @returns True if GOPATH is set, false otherwise
  */
 export function isGoPathSet(): boolean {
 	if (!getCurrentGoPath()) {
@@ -271,7 +283,7 @@ function resolveToolsGopath(): string {
 
 	// In case of multi-root, resolve ~ and ${workspaceFolder}
 	if (toolsGopathForWorkspace.startsWith('~')) {
-		toolsGopathForWorkspace = path.join(os.homedir(), toolsGopathForWorkspace.substr(1));
+		toolsGopathForWorkspace = path.join(os.homedir(), toolsGopathForWorkspace.substring(1));
 	}
 	if (
 		toolsGopathForWorkspace &&
@@ -296,14 +308,48 @@ function resolveToolsGopath(): string {
 	return toolsGopathForWorkspace;
 }
 
-// getBinPath returns the path to the tool.
+/**
+ * Returns the absolute path to a Go tool's executable.
+ * This is the primary function used throughout the extension to locate Go tools.
+ *
+ * Search order:
+ * 1. Alternate tools configured in go.alternateTools
+ * 2. GOBIN environment variable
+ * 3. Configured toolsGopath (go.toolsGopath setting)
+ * 4. Current workspace GOPATH
+ * 5. GOROOT/bin (for go, gofmt, godoc)
+ * 6. PATH environment variable
+ * 7. Default system locations (e.g., /usr/local/go/bin)
+ *
+ * @param tool - Name of the tool (e.g., 'gopls', 'dlv', 'staticcheck')
+ * @param useCache - Whether to use cached tool paths (default: true)
+ * @returns Absolute path to the tool executable, or just the tool name if not found
+ *
+ * @example
+ * const goplsPath = getBinPath('gopls'); // Returns '/Users/me/go/bin/gopls'
+ * const goPath = getBinPath('go'); // Returns '/usr/local/go/bin/go'
+ */
 export function getBinPath(tool: string, useCache = true): string {
 	const r = getBinPathWithExplanation(tool, useCache);
 	return r.binPath;
 }
 
-// getBinPathWithExplanation returns the path to the tool, and the explanation on why
-// the path was chosen. See getBinPathWithPreferredGopathGorootWithExplanation for details.
+/**
+ * Returns the absolute path to a Go tool's executable along with an explanation
+ * of where the path was found. Useful for diagnostics and troubleshooting.
+ *
+ * @param tool - Name of the tool (e.g., 'gopls', 'dlv', 'staticcheck')
+ * @param useCache - Whether to use cached tool paths (default: true)
+ * @param uri - Optional workspace URI for multi-root workspace support
+ * @returns Object containing the tool path and optional explanation
+ *   - binPath: Absolute path to the tool executable
+ *   - why: Optional explanation ('gobin', 'gopath', 'goroot', 'path', 'alternateTool', 'cached', 'default')
+ *
+ * @example
+ * const result = getBinPathWithExplanation('gopls');
+ * console.log(`Found gopls at ${result.binPath} (source: ${result.why})`);
+ * // Output: "Found gopls at /Users/me/go/bin/gopls (source: gobin)"
+ */
 export function getBinPathWithExplanation(
 	tool: string,
 	useCache = true,
@@ -330,18 +376,43 @@ export function getBinPathWithExplanation(
 	);
 }
 
+/**
+ * Serializes a VS Code document into the archive format expected by Go tools.
+ * This format is used to pass modified/unsaved file contents to tools like gopls and goimports.
+ *
+ * Format: `filename\nbytelength\ncontents`
+ *
+ * @param document - The VS Code text document to serialize
+ * @returns Serialized document in archive format
+ *
+ * @example
+ * const archive = getFileArchive(document);
+ * // Returns: "/path/to/file.go\n1234\npackage main..."
+ */
 export function getFileArchive(document: vscode.TextDocument): string {
 	const fileContents = document.getText();
 	return document.fileName + '\n' + Buffer.byteLength(fileContents, 'utf8') + '\n' + fileContents;
 }
 
+/**
+ * Substitutes environment variables in a string using the ${env:VAR_NAME} syntax.
+ * @param input - String containing environment variable references
+ * @returns String with environment variables substituted
+ * @example
+ * substituteEnv("${env:HOME}/go") // Returns "/Users/username/go" on macOS
+ */
 export function substituteEnv(input: string): string {
 	return input.replace(/\${env:([^}]+)}/g, (match, capture) => {
 		return process.env[capture.trim()] || '';
 	});
 }
 
-let currentGopath = '';
+/**
+ * Returns the current GOPATH based on configuration and workspace context.
+ * Falls back to inferred GOPATH or environment variable if not explicitly configured.
+ * @param workspaceUri - Optional workspace URI for multi-root workspaces
+ * @returns The current GOPATH as a string
+ */
 export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 	const activeEditorUri = vscode.window.activeTextEditor?.document.uri;
 	const currentFilePath = fixDriveCasingInWindows(activeEditorUri?.fsPath ?? '');
@@ -359,7 +430,8 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 					inferredGopath = currentRoot;
 				}
 			} catch (e) {
-				// No op
+				// Directory doesn't exist or can't be accessed - not a GOPATH
+				outputChannel.debug(`Could not infer GOPATH from current root: ${e}`);
 			}
 		}
 		if (inferredGopath) {
@@ -369,7 +441,8 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 					inferredGopath = '';
 				}
 			} catch (e) {
-				// No op
+				// File system error checking for go.mod - treat as if no go.mod exists
+				outputChannel.debug(`Error checking for go.mod in inferred GOPATH: ${e}`);
 			}
 		}
 		if (inferredGopath && process.env['GOPATH'] && inferredGopath !== process.env['GOPATH']) {
@@ -391,14 +464,18 @@ export function getModuleCache(): string | undefined {
 	}
 }
 
-export function getExtensionCommands(): any[] {
+/**
+ * Returns all commands defined in the extension's package.json.
+ * @returns Array of extension commands (excluding 'go.show.commands')
+ */
+export function getExtensionCommands(): ExtensionCommand[] {
 	const pkgJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
 	if (!pkgJSON.contributes || !pkgJSON.contributes.commands) {
 		return [];
 	}
-	const extensionCommands: any[] = vscode.extensions
+	const extensionCommands: ExtensionCommand[] = vscode.extensions
 		.getExtension(extensionId)
-		?.packageJSON.contributes.commands.filter((x: any) => x.command !== 'go.show.commands');
+		?.packageJSON.contributes.commands.filter((x: ExtensionCommand) => x.command !== 'go.show.commands');
 	return extensionCommands;
 }
 
@@ -442,8 +519,11 @@ export class LineBuffer {
 }
 
 /**
- * Expands ~ to homedir in non-Windows platform and resolves
- * ${workspaceFolder}, ${workspaceRoot} and ${workspaceFolderBasename}
+ * Resolves workspace variables and home directory in a given path.
+ * Supports ${workspaceFolder}, ${workspaceRoot}, ${workspaceFolderBasename}, and ~ expansion.
+ * @param inputPath - Path that may contain variables to resolve
+ * @param workspaceFolder - Optional workspace folder path for variable resolution
+ * @returns Resolved absolute path
  */
 export function resolvePath(inputPath: string, workspaceFolder?: string): string {
 	if (!inputPath || !inputPath.trim()) {
@@ -464,8 +544,13 @@ export function resolvePath(inputPath: string, workspaceFolder?: string): string
 }
 
 /**
- * Returns the import path in a passed in string.
- * @param text The string to search for an import path
+ * Extracts the import path from a Go import statement.
+ * Handles both single-line imports and imports within import blocks.
+ * @param text - Line of Go code containing an import statement
+ * @returns The extracted import path, or empty string if not found
+ * @example
+ * getImportPath('import "fmt"') // Returns "fmt"
+ * getImportPath('import alias "github.com/pkg/errors"') // Returns "github.com/pkg/errors"
  */
 export function getImportPath(text: string): string {
 	// Catch cases like `import alias "importpath"` and `import "importpath"`
@@ -506,7 +591,7 @@ export function runTool(
 	severity: string,
 	useStdErr: boolean,
 	toolName: string,
-	env: any,
+	env: NodeJS.ProcessEnv,
 	printUnexpectedOutput: boolean,
 	token?: vscode.CancellationToken
 ): Promise<ICheckResult[]> {
@@ -533,7 +618,7 @@ export function runTool(
 	return new Promise((resolve, reject) => {
 		p = cp.execFile(cmd, args, { env, cwd }, (err, stdout, stderr) => {
 			try {
-				if (err && (<any>err).code === 'ENOENT') {
+				if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
 					// Since the tool is run on save which can be frequent
 					// we avoid sending explicit notification if tool is missing
 					console.log(`Cannot find ${toolName ? toolName : 'go'}`);
@@ -602,6 +687,28 @@ export function runTool(
 	});
 }
 
+/**
+ * Converts tool output errors into VS Code diagnostics and displays them in the Problems panel.
+ * This is the central function for surfacing errors from Go tools (gopls, staticcheck, golint, etc.)
+ * to the VS Code UI.
+ *
+ * Features:
+ * - Clears existing diagnostics before adding new ones
+ * - Maps error positions to VS Code ranges using token-based column calculation
+ * - Groups diagnostics by file for efficient display
+ * - Handles both open and closed files
+ * - Filters out diagnostics that overlap with gopls diagnostics (if gopls is enabled)
+ *
+ * @param goCtx - Go extension context for accessing configuration
+ * @param document - Optional document that triggered the check (for optimization)
+ * @param errors - Array of check results from Go tools
+ * @param diagnosticCollection - VS Code diagnostic collection to update (e.g., 'go-lint', 'go-vet')
+ * @param diagnosticSource - Optional source label for the diagnostics (e.g., 'staticcheck', 'golint')
+ *
+ * @example
+ * const errors = await runGoVet(document);
+ * handleDiagnosticErrors(goCtx, document, errors, vetDiagnosticCollection, 'go-vet');
+ */
 export function handleDiagnosticErrors(
 	goCtx: GoExtensionContext,
 	document: vscode.TextDocument | undefined,
@@ -721,6 +828,12 @@ function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
 	}
 }
 
+/**
+ * Returns the workspace folder path for a given file URI.
+ * Falls back to the first workspace folder if the file is not in any workspace.
+ * @param fileUri - Optional file URI to find the containing workspace
+ * @returns The workspace folder path, or undefined if no workspace is open
+ */
 export function getWorkspaceFolderPath(fileUri?: vscode.Uri): string | undefined {
 	if (fileUri) {
 		const workspace = vscode.workspace.getWorkspaceFolder(fileUri);

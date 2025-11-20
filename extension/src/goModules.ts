@@ -85,10 +85,10 @@ export async function getCurrentPackage(cwd: string): Promise<string> {
 
 	const moduleCache = getModuleCache();
 	if (moduleCache && cwd.startsWith(moduleCache)) {
-		let importPath = cwd.substr(moduleCache.length + 1);
+		let importPath = cwd.substring(moduleCache.length + 1);
 		const matches = /@v\d+(\.\d+)?(\.\d+)?/.exec(importPath);
 		if (matches) {
-			importPath = importPath.substr(0, matches.index);
+			importPath = importPath.substring(0, matches.index);
 		}
 
 		folderToPackageMapping[cwd] = importPath;

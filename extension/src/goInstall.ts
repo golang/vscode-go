@@ -55,7 +55,7 @@ export const installCurrentPackage: CommandFactory = () => async () => {
 
 	// Find the right importPath instead of directly using `.`. Fixes https://github.com/Microsoft/vscode-go/issues/846
 	const currentGoWorkspace = getCurrentGoWorkspaceFromGOPATH(getCurrentGoPath(), cwd);
-	const importPath = currentGoWorkspace && !isMod ? cwd.substr(currentGoWorkspace.length + 1) : '.';
+	const importPath = currentGoWorkspace && !isMod ? cwd.substring(currentGoWorkspace.length + 1) : '.';
 	args.push(importPath);
 
 	outputChannel.info(`Installing ${importPath === '.' ? 'current package' : importPath}`);

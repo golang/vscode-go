@@ -36,17 +36,35 @@ export async function writeVulns(
 			cwd: getWorkspaceFolderPath()
 		});
 
-		p.stdout.on('data', (data) => {
+		const stdoutHandler = (data: Buffer) => {
 			stdout += data;
-		});
-		p.stderr.on('data', (data) => {
+		};
+		const stderrHandler = (data: Buffer) => {
 			stderr += data;
-		});
+		};
+
+		// Cleanup function to remove all listeners and prevent memory leaks
+		const cleanup = () => {
+			p.stdout?.removeListener('data', stdoutHandler);
+			p.stderr?.removeListener('data', stderrHandler);
+			p.removeAllListeners('close');
+			p.removeAllListeners('error');
+		};
+
+		p.stdout.on('data', stdoutHandler);
+		p.stderr.on('data', stderrHandler);
+
 		// 'close' fires after exit or error when the subprocess closes all stdio.
 		p.on('close', (exitCode) => {
+			cleanup();
 			// When vulnerabilities are found, vulncheck -mode=convert returns a non-zero exit code.
 			// TODO: can we use the exitCode to set the status of terminal?
 			resolve(exitCode);
+		});
+
+		p.on('error', (err) => {
+			cleanup();
+			resolve(null);
 		});
 
 		// vulncheck -mode=convert expects a stream of osv.Entry and govulncheck Finding json objects.

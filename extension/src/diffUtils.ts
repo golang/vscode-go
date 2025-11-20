@@ -95,7 +95,7 @@ function parseUniDiffs(diffOutput: jsDiff.IUniDiff[]): FilePatch[] {
 		uniDiff.hunks.forEach((hunk: jsDiff.IHunk) => {
 			let startLine = hunk.oldStart;
 			hunk.lines.forEach((line) => {
-				switch (line.substr(0, 1)) {
+				switch (line.substring(0, 1)) {
 					case '-':
 						edit = new Edit(EditTypes.EDIT_DELETE, new Position(startLine - 1, 0));
 						edit.end = new Position(startLine, 0);
@@ -104,7 +104,7 @@ function parseUniDiffs(diffOutput: jsDiff.IUniDiff[]): FilePatch[] {
 						break;
 					case '+':
 						edit = new Edit(EditTypes.EDIT_INSERT, new Position(startLine - 1, 0));
-						edit.text += line.substr(1) + '\n';
+						edit.text += line.substring(1) + '\n';
 						edits.push(edit);
 						break;
 					case ' ':

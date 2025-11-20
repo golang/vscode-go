@@ -83,6 +83,29 @@ interface ExtensionTestAPI {
 	globalState: vscode.Memento;
 }
 
+/**
+ * Extension activation entry point called by VS Code when the Go extension loads.
+ * This is the main initialization function that sets up all Go development features.
+ *
+ * Activation sequence:
+ * 1. Initialize global and workspace state
+ * 2. Configure GOROOT and environment variables
+ * 3. Build and install vscgo helper tool
+ * 4. Register all extension commands
+ * 5. Set up language features (code lens, formatting, testing, etc.)
+ * 6. Start gopls language server (if enabled)
+ * 7. Install missing/outdated Go tools
+ * 8. Configure telemetry and surveys
+ *
+ * @param ctx - VS Code extension context providing subscriptions, storage, and paths
+ * @returns ExtensionAPI for production use or ExtensionTestAPI for testing
+ *
+ * @example
+ * // Called automatically by VS Code, not by user code
+ * // Returns API that can be accessed by other extensions via:
+ * const goExt = vscode.extensions.getExtension('golang.go');
+ * const api = await goExt?.activate();
+ */
 export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionAPI | ExtensionTestAPI | undefined> {
 	if (process.env['VSCODE_GO_IN_TEST'] === '1') {
 		// TODO: VSCODE_GO_IN_TEST was introduced long before we learned about
@@ -240,6 +263,26 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	return extensionAPI;
 }
 
+/**
+ * Extension deactivation called by VS Code when the extension is being unloaded.
+ * Performs cleanup to ensure no resources are leaked and all background processes are stopped.
+ *
+ * Cleanup operations (all run in parallel):
+ * - Stop gopls language server and wait for graceful shutdown
+ * - Cancel any running test sessions
+ * - Kill any active pprof profiling processes
+ * - Clean up temporary directories and files
+ * - Dispose status bar items
+ * - Flush and dispose telemetry reporter
+ *
+ * @returns Promise that resolves when all cleanup is complete
+ *
+ * @example
+ * // Called automatically by VS Code when:
+ * // - Extension is disabled
+ * // - Extension is being updated
+ * // - VS Code is shutting down
+ */
 export function deactivate() {
 	return Promise.all([
 		goCtx.languageClient?.stop(),
@@ -251,20 +294,29 @@ export function deactivate() {
 	]);
 }
 
-export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
+/**
+ * Adds configuration change listeners for the Go extension.
+ * Handles changes to Go settings, language server configuration, and tool paths.
+ * Consolidated into a single listener for optimal performance.
+ * @param ctx - The extension context for registering disposables
+ */
+export function addConfigChangeListener(ctx: vscode.ExtensionContext): void {
 	// Subscribe to notifications for changes to the configuration
-	// of the language server, even if it's not currently in use.
+	// Merged into a single listener for better performance
 	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => {
+		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
 			const goConfig = getGoConfig();
 			const goplsConfig = getGoplsConfig();
 
+			// Validate configuration once for all changes
 			validateConfig(goConfig, goplsConfig);
 
+			// Early return if this doesn't affect Go configuration
 			if (!e.affectsConfiguration('go')) {
 				return;
 			}
 
+			// Handle language server restart
 			if (
 				e.affectsConfiguration('go.useLanguageServer') ||
 				e.affectsConfiguration('go.languageServerFlags') ||
@@ -276,27 +328,20 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 				vscode.commands.executeCommand('go.languageserver.restart', RestartReason.CONFIG_CHANGE);
 			}
 
+			// Handle gopls opt-out
 			if (e.affectsConfiguration('go.useLanguageServer') && goConfig['useLanguageServer'] === false) {
 				promptAboutGoplsOptOut(goCtx);
 			}
-		})
-	);
-	ctx.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
-			if (!e.affectsConfiguration('go')) {
-				return;
-			}
-			const goConfig = getGoConfig();
-			const goplsConfig = getGoplsConfig();
 
-			validateConfig(goConfig, goplsConfig);
-
+			// Handle GOROOT changes
 			if (e.affectsConfiguration('go.goroot')) {
 				const configGOROOT = goConfig['goroot'];
 				if (configGOROOT) {
 					await setGOROOTEnvVar(configGOROOT);
 				}
 			}
+
+			// Update Go variables when relevant settings change
 			if (
 				e.affectsConfiguration('go.goroot') ||
 				e.affectsConfiguration('go.alternateTools') ||
@@ -306,20 +351,28 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			) {
 				updateGoVarsFromConfig(goCtx);
 			}
-			// If there was a change in "toolsGopath" setting, then clear cache for go tools
-			if (getToolsGopath() !== getToolsGopath(false)) {
+
+			// Clear tool cache if toolsGopath changed
+			if (e.affectsConfiguration('go.toolsGopath') || e.affectsConfiguration('go.alternateTools')) {
 				clearCacheForTools();
 			}
 
+			// Check tool existence for format tool
 			if (e.affectsConfiguration('go.formatTool')) {
 				checkToolExists(getFormatTool(goConfig));
 			}
+
+			// Check tool existence for docs tool
 			if (e.affectsConfiguration('go.docsTool')) {
 				checkToolExists(goConfig['docsTool']);
 			}
+
+			// Update coverage decorators
 			if (e.affectsConfiguration('go.coverageDecorator')) {
 				updateCodeCoverageDecorators(goConfig['coverageDecorator']);
 			}
+
+			// Handle GO111MODULE changes
 			if (e.affectsConfiguration('go.toolsEnvVars')) {
 				const env = toolExecutionEnvironment();
 				if (GO111MODULE !== env['GO111MODULE']) {
@@ -332,6 +385,8 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 					});
 				}
 			}
+
+			// Handle lint tool changes
 			if (e.affectsConfiguration('go.lintTool')) {
 				checkToolExists(goConfig['lintTool']);
 
@@ -397,7 +452,11 @@ function addOnChangeActiveTextEditorListeners(ctx: vscode.ExtensionContext) {
 	});
 }
 
-function checkToolExists(tool: string) {
+/**
+ * Checks if a tool exists at its expected location and prompts for installation if missing.
+ * @param tool - The name of the tool to check
+ */
+function checkToolExists(tool: string): void {
 	if (tool === '') {
 		return;
 	}
@@ -406,7 +465,12 @@ function checkToolExists(tool: string) {
 	}
 }
 
-function lintDiagnosticCollectionName(lintToolName: string) {
+/**
+ * Returns the diagnostic collection name for a given lint tool.
+ * @param lintToolName - The name of the lint tool (e.g., 'golangci-lint', 'staticcheck')
+ * @returns The diagnostic collection name (e.g., 'go-golangci-lint')
+ */
+function lintDiagnosticCollectionName(lintToolName: string): string {
 	if (!lintToolName || lintToolName === 'golint') {
 		return 'go-lint';
 	}
