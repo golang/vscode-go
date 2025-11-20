@@ -42,12 +42,14 @@ suite('Go Extension Tests With Gopls', function () {
 		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
 		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
+
+		// TODO(hxjiang): add hover over range test case.
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
 			['keyword', new vscode.Position(0, 3), null, null], // keyword
 			['inside a string', new vscode.Position(23, 14), null, null], // inside a string
 			['just a }', new vscode.Position(20, 0), null, null], // just a }
-			['inside a number', new vscode.Position(28, 16), null, null], // inside a number
+			['inside a number', new vscode.Position(28, 17), null, null], // inside a number
 			['func main()', new vscode.Position(22, 5), 'func main()', null],
 			['import "math"', new vscode.Position(40, 23), 'package math', '`math` on'],
 			[

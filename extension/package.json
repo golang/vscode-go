@@ -2105,8 +2105,8 @@
                 },
                 "run_govulncheck": {
                   "type": "boolean",
-                  "markdownDescription": "(Experimental) `\"run_govulncheck\"`: Run govulncheck (legacy)\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run Govulncheck asynchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
-                  "default": false
+                  "markdownDescription": "`\"run_govulncheck\"`: Run govulncheck (legacy)\n\nThis codelens source annotates the `module` directive in a go.mod file\nwith a command to run Govulncheck asynchronously.\n\n[Govulncheck](https://go.dev/blog/vuln) is a static analysis tool that\ncomputes the set of functions reachable within your application, including\ndependencies; queries a database of known security vulnerabilities; and\nreports any potential problems it finds.\n",
+                  "default": true
                 },
                 "test": {
                   "type": "boolean",
@@ -2955,6 +2955,16 @@
                   "markdownDescription": "Redundant type in variable declaration\n\nAvailable since\n    2021.1, non-default\n",
                   "default": false
                 },
+                "any": {
+                  "type": "boolean",
+                  "markdownDescription": "replace interface{} with any\n\nThe any analyzer suggests replacing uses of the empty interface type,\n`interface{}`, with the `any` alias, which was introduced in Go 1.18.\nThis is a purely stylistic change that makes code more readable.",
+                  "default": true
+                },
+                "appendclipped": {
+                  "type": "boolean",
+                  "markdownDescription": "simplify append chains using slices.Concat\n\nThe appendclipped analyzer suggests replacing chains of append calls with a\nsingle call to slices.Concat, which was added in Go 1.21. For example,\nappend(append(s, s1...), s2...) would be simplified to slices.Concat(s, s1, s2).\n\nIn the simple case of appending to a newly allocated slice, such as\nappend([]T(nil), s...), the analyzer suggests the more concise slices.Clone(s).\nFor byte slices, it will prefer bytes.Clone if the \"bytes\" package is\nalready imported.\n\nThis fix is only applied when the base of the append tower is a\n\"clipped\" slice, meaning its length and capacity are equal (e.g.\nx[:0:0] or []T{}). This is to avoid changing program behavior by\neliminating intended side effects on the base slice's underlying\narray.\n\nThis analyzer is currently disabled by default as the\ntransformation does not preserve the nilness of the base slice in\nall cases; see https://go.dev/issue/73557.",
+                  "default": false
+                },
                 "appends": {
                   "type": "boolean",
                   "markdownDescription": "check for missing values after append\n\nThis checker reports calls to append that pass\nno values to be appended to the slice.\n\n\ts := []string{\"a\", \"b\", \"c\"}\n\t_ = append(s)\n\nSuch calls are always no-ops and often indicate an\nunderlying mistake.",
@@ -2978,6 +2988,11 @@
                 "atomicalign": {
                   "type": "boolean",
                   "markdownDescription": "check for non-64-bits-aligned arguments to sync/atomic functions",
+                  "default": true
+                },
+                "bloop": {
+                  "type": "boolean",
+                  "markdownDescription": "replace for-range over b.N with b.Loop\n\nThe bloop analyzer suggests replacing benchmark loops of the form\n`for i := 0; i < b.N; i++` or `for range b.N` with the more modern\n`for b.Loop()`, which was added in Go 1.24.\n\nThis change makes benchmark code more readable and also removes the need for\nmanual timer control, so any preceding calls to b.StartTimer, b.StopTimer,\nor b.ResetTimer within the same function will also be removed.\n\nCaveats: The b.Loop() method is designed to prevent the compiler from\noptimizing away the benchmark loop, which can occasionally result in\nslower execution due to increased allocations in some specific cases.",
                   "default": true
                 },
                 "bools": {
@@ -3032,7 +3047,12 @@
                 },
                 "errorsas": {
                   "type": "boolean",
-                  "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analysis reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.",
+                  "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analyzer reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.",
+                  "default": true
+                },
+                "errorsastype": {
+                  "type": "boolean",
+                  "markdownDescription": "replace errors.As with errors.AsType[T]\n\nThis analyzer suggests fixes to simplify uses of [errors.As] of\nthis form:\n\n\tvar myerr *MyErr\n\tif errors.As(err, &myerr) {\n\t\thandle(myerr)\n\t}\n\nby using the less error-prone generic [errors.AsType] function,\nintroduced in Go 1.26:\n\n\tif myerr, ok := errors.AsType[*MyErr](err); ok {\n\t\thandle(myerr)\n\t}\n\nThe fix is only offered if the var declaration has the form shown and\nthere are no uses of myerr outside the if statement.",
                   "default": true
                 },
                 "fillreturns": {
@@ -3040,14 +3060,19 @@
                   "markdownDescription": "suggest fixes for errors due to an incorrect number of return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"wrong number of return values (want %d, got %d)\". For example:\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn\n\t}\n\nwill turn into\n\n\tfunc m() (int, string, *bool, error) {\n\t\treturn 0, \"\", nil, nil\n\t}\n\nThis functionality is similar to https://github.com/sqs/goreturns.",
                   "default": true
                 },
+                "fmtappendf": {
+                  "type": "boolean",
+                  "markdownDescription": "replace []byte(fmt.Sprintf) with fmt.Appendf\n\nThe fmtappendf analyzer suggests replacing `[]byte(fmt.Sprintf(...))` with\n`fmt.Appendf(nil, ...)`. This avoids the intermediate allocation of a string\nby Sprintf, making the code more efficient. The suggestion also applies to\nfmt.Sprint and fmt.Sprintln.",
+                  "default": true
+                },
+                "forvar": {
+                  "type": "boolean",
+                  "markdownDescription": "remove redundant re-declaration of loop variables\n\nThe forvar analyzer removes unnecessary shadowing of loop variables.\nBefore Go 1.22, it was common to write `for _, x := range s { x := x ... }`\nto create a fresh variable for each iteration. Go 1.22 changed the semantics\nof `for` loops, making this pattern redundant. This analyzer removes the\nunnecessary `x := x` statement.\n\nThis fix only applies to `range` loops.",
+                  "default": true
+                },
                 "framepointer": {
                   "type": "boolean",
                   "markdownDescription": "report assembly that clobbers the frame pointer before saving it",
-                  "default": true
-                },
-                "gofix": {
-                  "type": "boolean",
-                  "markdownDescription": "apply fixes based on go:fix comment directives\n\nThe gofix analyzer inlines functions and constants that are marked for inlining.\n\n## Functions\n\nGiven a function that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nthis analyzer will recommend that calls to the function elsewhere, in the same\nor other packages, should be inlined.\n\nInlining can be used to move off of a deprecated function:\n\n\t// Deprecated: prefer Pow(x, 2).\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nIt can also be used to move off of an obsolete package,\nas when the import path has changed or a higher major version is available:\n\n\tpackage pkg\n\n\timport pkg2 \"pkg/v2\"\n\n\t//go:fix inline\n\tfunc F() { pkg2.F(nil) }\n\nReplacing a call pkg.F() by pkg2.F(nil) can have no effect on the program,\nso this mechanism provides a low-risk way to update large numbers of calls.\nWe recommend, where possible, expressing the old API in terms of the new one\nto enable automatic migration.\n\nThe inliner takes care to avoid behavior changes, even subtle ones,\nsuch as changes to the order in which argument expressions are\nevaluated. When it cannot safely eliminate all parameter variables,\nit may introduce a \"binding declaration\" of the form\n\n\tvar params = args\n\nto evaluate argument expressions in the correct order and bind them to\nparameter variables. Since the resulting code transformation may be\nstylistically suboptimal, such inlinings may be disabled by specifying\nthe -gofix.allow_binding_decl=false flag to the analyzer driver.\n\n(In cases where it is not safe to \"reduce\" a call—that is, to replace\na call f(x) by the body of function f, suitably substituted—the\ninliner machinery is capable of replacing f by a function literal,\nfunc(){...}(). However, the gofix analyzer discards all such\n\"literalizations\" unconditionally, again on grounds of style.)\n\n## Constants\n\nGiven a constant that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tconst Ptr = Pointer\n\nthis analyzer will recommend that uses of Ptr should be replaced with Pointer.\n\nAs with functions, inlining can be used to replace deprecated constants and\nconstants in obsolete packages.\n\nA constant definition can be marked for inlining only if it refers to another\nnamed constant.\n\nThe \"//go:fix inline\" comment must appear before a single const declaration on its own,\nas above; before a const declaration that is part of a group, as in this case:\n\n\tconst (\n\t   C = 1\n\t   //go:fix inline\n\t   Ptr = Pointer\n\t)\n\nor before a group, applying to every constant in the group:\n\n\t//go:fix inline\n\tconst (\n\t\tPtr = Pointer\n\t    Val = Value\n\t)\n\nThe proposal https://go.dev/issue/32816 introduces the \"//go:fix\" directives.\n\nYou can use this (officially unsupported) command to apply gofix fixes en masse:\n\n\t$ go run golang.org/x/tools/internal/gofix/cmd/gofix@latest -test ./...\n\n(Do not use \"go get -tool\" to add gopls as a dependency of your\nmodule; gopls commands must be built from their release branch.)",
                   "default": true
                 },
                 "hostport": {
@@ -3070,6 +3095,11 @@
                   "markdownDescription": "check for unnecessary type arguments in call expressions\n\nExplicit type arguments may be omitted from call expressions if they can be\ninferred from function arguments, or from other type arguments:\n\n\tfunc f[T any](T) {}\n\t\n\tfunc _() {\n\t\tf[string](\"foo\") // string could be inferred\n\t}\n",
                   "default": true
                 },
+                "inline": {
+                  "type": "boolean",
+                  "markdownDescription": "apply fixes based on 'go:fix inline' comment directives\n\nThe inline analyzer inlines functions and constants that are marked for inlining.\n\n## Functions\n\nGiven a function that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nthis analyzer will recommend that calls to the function elsewhere, in the same\nor other packages, should be inlined.\n\nInlining can be used to move off of a deprecated function:\n\n\t// Deprecated: prefer Pow(x, 2).\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nIt can also be used to move off of an obsolete package,\nas when the import path has changed or a higher major version is available:\n\n\tpackage pkg\n\n\timport pkg2 \"pkg/v2\"\n\n\t//go:fix inline\n\tfunc F() { pkg2.F(nil) }\n\nReplacing a call pkg.F() by pkg2.F(nil) can have no effect on the program,\nso this mechanism provides a low-risk way to update large numbers of calls.\nWe recommend, where possible, expressing the old API in terms of the new one\nto enable automatic migration.\n\nThe inliner takes care to avoid behavior changes, even subtle ones,\nsuch as changes to the order in which argument expressions are\nevaluated. When it cannot safely eliminate all parameter variables,\nit may introduce a \"binding declaration\" of the form\n\n\tvar params = args\n\nto evaluate argument expressions in the correct order and bind them to\nparameter variables. Since the resulting code transformation may be\nstylistically suboptimal, such inlinings may be disabled by specifying\nthe -inline.allow_binding_decl=false flag to the analyzer driver.\n\n(In cases where it is not safe to \"reduce\" a call—that is, to replace\na call f(x) by the body of function f, suitably substituted—the\ninliner machinery is capable of replacing f by a function literal,\nfunc(){...}(). However, the inline analyzer discards all such\n\"literalizations\" unconditionally, again on grounds of style.)\n\n## Constants\n\nGiven a constant that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tconst Ptr = Pointer\n\nthis analyzer will recommend that uses of Ptr should be replaced with Pointer.\n\nAs with functions, inlining can be used to replace deprecated constants and\nconstants in obsolete packages.\n\nA constant definition can be marked for inlining only if it refers to another\nnamed constant.\n\nThe \"//go:fix inline\" comment must appear before a single const declaration on its own,\nas above; before a const declaration that is part of a group, as in this case:\n\n\tconst (\n\t   C = 1\n\t   //go:fix inline\n\t   Ptr = Pointer\n\t)\n\nor before a group, applying to every constant in the group:\n\n\t//go:fix inline\n\tconst (\n\t\tPtr = Pointer\n\t    Val = Value\n\t)\n\nThe proposal https://go.dev/issue/32816 introduces the \"//go:fix inline\" directives.\n\nYou can use this command to apply inline fixes en masse:\n\n\t$ go run golang.org/x/tools/go/analysis/passes/inline/cmd/inline@latest -fix ./...",
+                  "default": true
+                },
                 "loopclosure": {
                   "type": "boolean",
                   "markdownDescription": "check references to loop variables from within nested functions\n\nThis analyzer reports places where a function literal references the\niteration variable of an enclosing loop, and the loop calls the function\nin such a way (e.g. with go or defer) that it may outlive the loop\niteration and possibly observe the wrong value of the variable.\n\nNote: An iteration variable can only outlive a loop iteration in Go versions <=1.21.\nIn Go 1.22 and later, the loop variable lifetimes changed to create a new\niteration variable per loop iteration. (See go.dev/issue/60078.)\n\nIn this example, all the deferred functions run after the loop has\ncompleted, so all observe the final value of v [<go1.22].\n\n\tfor _, v := range list {\n\t    defer func() {\n\t        use(v) // incorrect\n\t    }()\n\t}\n\nOne fix is to create a new variable for each iteration of the loop:\n\n\tfor _, v := range list {\n\t    v := v // new var per iteration\n\t    defer func() {\n\t        use(v) // ok\n\t    }()\n\t}\n\nAfter Go version 1.22, the previous two for loops are equivalent\nand both are correct.\n\nThe next example uses a go statement and has a similar problem [<go1.22].\nIn addition, it has a data race because the loop updates v\nconcurrent with the goroutines accessing it.\n\n\tfor _, v := range elem {\n\t    go func() {\n\t        use(v)  // incorrect, and a data race\n\t    }()\n\t}\n\nA fix is the same as before. The checker also reports problems\nin goroutines started by golang.org/x/sync/errgroup.Group.\nA hard-to-spot variant of this form is common in parallel tests:\n\n\tfunc Test(t *testing.T) {\n\t    for _, test := range tests {\n\t        t.Run(test.name, func(t *testing.T) {\n\t            t.Parallel()\n\t            use(test) // incorrect, and a data race\n\t        })\n\t    }\n\t}\n\nThe t.Parallel() call causes the rest of the function to execute\nconcurrent with the loop [<go1.22].\n\nThe analyzer reports references only in the last statement,\nas it is not deep enough to understand the effects of subsequent\nstatements that might render the reference benign.\n(\"Last statement\" is defined recursively in compound\nstatements such as if, switch, and select.)\n\nSee: https://golang.org/doc/go_faq.html#closures_and_goroutines",
@@ -3085,9 +3115,19 @@
                   "markdownDescription": "checks for unnecessary calls to maps.Keys and maps.Values in range statements\n\nConsider a loop written like this:\n\n\tfor val := range maps.Values(m) {\n\t\tfmt.Println(val)\n\t}\n\nThis should instead be written without the call to maps.Values:\n\n\tfor _, val := range m {\n\t\tfmt.Println(val)\n\t}\n\ngolang.org/x/exp/maps returns slices for Keys/Values instead of iterators,\nbut unnecessary calls should similarly be removed:\n\n\tfor _, key := range maps.Keys(m) {\n\t\tfmt.Println(key)\n\t}\n\nshould be rewritten as:\n\n\tfor key := range m {\n\t\tfmt.Println(key)\n\t}",
                   "default": true
                 },
-                "modernize": {
+                "mapsloop": {
                   "type": "boolean",
-                  "markdownDescription": "simplify code by using modern constructs\n\nThis analyzer reports opportunities for simplifying and clarifying\nexisting code by using more modern features of Go and its standard\nlibrary.\n\nEach diagnostic provides a fix. Our intent is that these fixes may\nbe safely applied en masse without changing the behavior of your\nprogram. In some cases the suggested fixes are imperfect and may\nlead to (for example) unused imports or unused local variables,\ncausing build breakage. However, these problems are generally\ntrivial to fix. We regard any modernizer whose fix changes program\nbehavior to have a serious bug and will endeavor to fix it.\n\nTo apply all modernization fixes en masse, you can use the\nfollowing command:\n\n\t$ go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...\n\n(Do not use \"go get -tool\" to add gopls as a dependency of your\nmodule; gopls commands must be built from their release branch.)\n\nIf the tool warns of conflicting fixes, you may need to run it more\nthan once until it has applied all fixes cleanly. This command is\nnot an officially supported interface and may change in the future.\n\nChanges produced by this tool should be reviewed as usual before\nbeing merged. In some cases, a loop may be replaced by a simple\nfunction call, causing comments within the loop to be discarded.\nHuman judgment may be required to avoid losing comments of value.\n\nEach diagnostic reported by modernize has a specific category. (The\ncategories are listed below.) Diagnostics in some categories, such\nas \"efaceany\" (which replaces \"interface{}\" with \"any\" where it is\nsafe to do so) are particularly numerous. It may ease the burden of\ncode review to apply fixes in two passes, the first change\nconsisting only of fixes of category \"efaceany\", the second\nconsisting of all others. This can be achieved using the -category flag:\n\n\t$ modernize -category=efaceany  -fix -test ./...\n\t$ modernize -category=-efaceany -fix -test ./...\n\nCategories of modernize diagnostic:\n\n  - forvar: remove x := x variable declarations made unnecessary by the new semantics of loops in go1.22.\n\n  - slicescontains: replace 'for i, elem := range s { if elem == needle { ...; break }'\n    by a call to slices.Contains, added in go1.21.\n\n  - minmax: replace an if/else conditional assignment by a call to\n    the built-in min or max functions added in go1.21.\n\n  - sortslice: replace sort.Slice(s, func(i, j int) bool) { return s[i] < s[j] }\n    by a call to slices.Sort(s), added in go1.21.\n\n  - efaceany: replace interface{} by the 'any' type added in go1.18.\n\n  - mapsloop: replace a loop around an m[k]=v map update by a call\n    to one of the Collect, Copy, Clone, or Insert functions from\n    the maps package, added in go1.21.\n\n  - fmtappendf: replace []byte(fmt.Sprintf...) by fmt.Appendf(nil, ...),\n    added in go1.19.\n\n  - testingcontext: replace uses of context.WithCancel in tests\n    with t.Context, added in go1.24.\n\n  - omitzero: replace omitempty by omitzero on structs, added in go1.24.\n\n  - bloop: replace \"for i := range b.N\" or \"for range b.N\" in a\n    benchmark with \"for b.Loop()\", and remove any preceding calls\n    to b.StopTimer, b.StartTimer, and b.ResetTimer.\n\n    B.Loop intentionally defeats compiler optimizations such as\n    inlining so that the benchmark is not entirely optimized away.\n    Currently, however, it may cause benchmarks to become slower\n    in some cases due to increased allocation; see\n    https://go.dev/issue/73137.\n\n  - rangeint: replace a 3-clause \"for i := 0; i < n; i++\" loop by\n    \"for i := range n\", added in go1.22.\n\n  - stringsseq: replace Split in \"for range strings.Split(...)\" by go1.24's\n    more efficient SplitSeq, or Fields with FieldSeq.\n\n  - stringscutprefix: replace some uses of HasPrefix followed by TrimPrefix with CutPrefix,\n    added to the strings package in go1.20.\n\n  - waitgroup: replace old complex usages of sync.WaitGroup by less complex WaitGroup.Go method in go1.25.",
+                  "markdownDescription": "replace explicit loops over maps with calls to maps package\n\nThe mapsloop analyzer replaces loops of the form\n\n\tfor k, v := range x { m[k] = v }\n\nwith a single call to a function from the `maps` package, added in Go 1.23.\nDepending on the context, this could be `maps.Copy`, `maps.Insert`,\n`maps.Clone`, or `maps.Collect`.\n\nThe transformation to `maps.Clone` is applied conservatively, as it\npreserves the nilness of the source map, which may be a subtle change in\nbehavior if the original code did not handle a nil map in the same way.",
+                  "default": true
+                },
+                "minmax": {
+                  "type": "boolean",
+                  "markdownDescription": "replace if/else statements with calls to min or max\n\nThe minmax analyzer simplifies conditional assignments by suggesting the use\nof the built-in `min` and `max` functions, introduced in Go 1.21. For example,\n\n\tif a < b { x = a } else { x = b }\n\nis replaced by\n\n\tx = min(a, b).\n\nThis analyzer avoids making suggestions for floating-point types,\nas the behavior of `min` and `max` with NaN values can differ from\nthe original if/else statement.",
+                  "default": true
+                },
+                "newexpr": {
+                  "type": "boolean",
+                  "markdownDescription": "simplify code by using go1.26's new(expr)\n\nThis analyzer finds declarations of functions of this form:\n\n\tfunc varOf(x int) *int { return &x }\n\nand suggests a fix to turn them into inlinable wrappers around\ngo1.26's built-in new(expr) function:\n\n\t//go:fix inline\n\tfunc varOf(x int) *int { return new(x) }\n\n(The directive comment causes the 'inline' analyzer to suggest\nthat calls to such functions are inlined.)\n\nIn addition, this analyzer suggests a fix for each call\nto one of the functions before it is transformed, so that\n\n\tuse(varOf(123))\n\nis replaced by:\n\n\tuse(new(123))\n\nWrapper functions such as varOf are common when working with Go\nserialization packages such as for JSON or protobuf, where pointers\nare often used to express optionality.",
                   "default": true
                 },
                 "nilfunc": {
@@ -3110,14 +3150,34 @@
                   "markdownDescription": "suggested fixes for unexpected return values\n\nThis checker provides suggested fixes for type errors of the\ntype \"no result values expected\" or \"too many return values\".\nFor example:\n\n\tfunc z() { return nil }\n\nwill turn into\n\n\tfunc z() { return }",
                   "default": true
                 },
+                "omitzero": {
+                  "type": "boolean",
+                  "markdownDescription": "suggest replacing omitempty with omitzero for struct fields\n\nThe omitzero analyzer identifies uses of the `omitempty` JSON struct tag on\nfields that are themselves structs. The `omitempty` tag has no effect on\nstruct-typed fields. The analyzer offers two suggestions: either remove the\ntag, or replace it with `omitzero` (added in Go 1.24), which correctly\nomits the field if the struct value is zero.\n\nReplacing `omitempty` with `omitzero` is a change in behavior. The\noriginal code would always encode the struct field, whereas the\nmodified code will omit it if it is a zero-value.",
+                  "default": true
+                },
+                "plusbuild": {
+                  "type": "boolean",
+                  "markdownDescription": "remove obsolete //+build comments\n\nThe plusbuild analyzer suggests a fix to remove obsolete build tags\nof the form:\n\n\t//+build linux,amd64\n\nin files that also contain a Go 1.18-style tag such as:\n\n\t//go:build linux && amd64\n\n(It does not check that the old and new tags are consistent;\nthat is the job of the 'buildtag' analyzer in the vet suite.)",
+                  "default": true
+                },
                 "printf": {
                   "type": "boolean",
                   "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions such as [log.Printf]. It reports a variety of\nmistakes such as syntax errors in the format string and mismatches\n(of number and type) between the verbs and their arguments.\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.",
                   "default": true
                 },
+                "rangeint": {
+                  "type": "boolean",
+                  "markdownDescription": "replace 3-clause for loops with for-range over integers\n\nThe rangeint analyzer suggests replacing traditional for loops such\nas\n\n\tfor i := 0; i < n; i++ { ... }\n\nwith the more idiomatic Go 1.22 style:\n\n\tfor i := range n { ... }\n\nThis transformation is applied only if (a) the loop variable is not\nmodified within the loop body and (b) the loop's limit expression\nis not modified within the loop, as `for range` evaluates its\noperand only once.",
+                  "default": true
+                },
                 "recursiveiter": {
                   "type": "boolean",
-                  "markdownDescription": "check for inefficient recursive iterators\n\nThis analyzer reports when a function that returns an iterator\n(iter.Seq or iter.Seq2) calls itself as the operand of a range\nstatement, as this is inefficient.\n\nWhen implementing an iterator (e.g. iter.Seq[T]) for a recursive\ndata type such as a tree or linked list, it is tempting to\nrecursively range over the iterator for each child element.\n\nHere's an example of a naive iterator over a binary tree:\n\n\ttype tree struct {\n\t\tvalue       int\n\t\tleft, right *tree\n\t}\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\tif t != nil {\n\t\t\t\tfor elem := range t.left.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif !yield(t.value) {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tfor elem := range t.right.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\nThough it correctly enumerates the elements of the tree, it hides a\nsignificant performance problem--two, in fact. Consider a balanced\ntree of N nodes. Iterating the root node will cause All to be\ncalled once on every node of the tree. This results in a chain of\nnested active range-over-func statements when yield(t.value) is\ncalled on a leaf node.\n\nThe first performance problem is that each range-over-func\nstatement must typically heap-allocate a variable, so iteration of\nthe tree allocates as many variables as there are elements in the\ntree, for a total of O(N) allocations, all unnecessary.\n\nThe second problem is that each call to yield for a leaf of the\ntree causes each of the enclosing range loops to receive a value,\nwhich they then immediately pass on to their respective yield\nfunction. This results in a chain of log(N) dynamic yield calls per\nelement, a total of O(N*log N) dynamic calls overall, when only\nO(N) are necessary.\n\nA better implementation strategy for recursive iterators is to\nfirst define the \"every\" operator for your recursive data type,\nwhere every(f) reports whether f(x) is true for every element x in\nthe data type. For our tree, the every function would be:\n\n\tfunc (t *tree) every(f func(int) bool) bool {\n\t\treturn t == nil ||\n\t\t\tt.left.every(f) && f(t.value) && t.right.every(f)\n\t}\n\nThen the iterator can be simply expressed as a trivial wrapper\naround this function:\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\t_ = t.every(yield)\n\t\t}\n\t}\n\nIn effect, tree.All computes whether yield returns true for each\nelement, short-circuiting if it every returns false, then discards\nthe final boolean result.\n\nThis has much better performance characteristics: it makes one\ndynamic call per element of the tree, and it doesn't heap-allocate\nanything. It is also clearer.",
+                  "markdownDescription": "check for inefficient recursive iterators\n\nThis analyzer reports when a function that returns an iterator\n(iter.Seq or iter.Seq2) calls itself as the operand of a range\nstatement, as this is inefficient.\n\nWhen implementing an iterator (e.g. iter.Seq[T]) for a recursive\ndata type such as a tree or linked list, it is tempting to\nrecursively range over the iterator for each child element.\n\nHere's an example of a naive iterator over a binary tree:\n\n\ttype tree struct {\n\t\tvalue       int\n\t\tleft, right *tree\n\t}\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\tif t != nil {\n\t\t\t\tfor elem := range t.left.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif !yield(t.value) {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tfor elem := range t.right.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\nThough it correctly enumerates the elements of the tree, it hides a\nsignificant performance problem--two, in fact. Consider a balanced\ntree of N nodes. Iterating the root node will cause All to be\ncalled once on every node of the tree. This results in a chain of\nnested active range-over-func statements when yield(t.value) is\ncalled on a leaf node.\n\nThe first performance problem is that each range-over-func\nstatement must typically heap-allocate a variable, so iteration of\nthe tree allocates as many variables as there are elements in the\ntree, for a total of O(N) allocations, all unnecessary.\n\nThe second problem is that each call to yield for a leaf of the\ntree causes each of the enclosing range loops to receive a value,\nwhich they then immediately pass on to their respective yield\nfunction. This results in a chain of log(N) dynamic yield calls per\nelement, a total of O(N*log N) dynamic calls overall, when only\nO(N) are necessary.\n\nA better implementation strategy for recursive iterators is to\nfirst define the \"every\" operator for your recursive data type,\nwhere every(f) reports whether an arbitrary predicate f(x) is true\nfor every element x in the data type. For our tree, the every\nfunction would be:\n\n\tfunc (t *tree) every(f func(int) bool) bool {\n\t\treturn t == nil ||\n\t\t\tt.left.every(f) && f(t.value) && t.right.every(f)\n\t}\n\nFor example, this use of the every operator prints whether every\nelement in the tree is an even number:\n\n\teven := func(x int) bool { return x&1 == 0 }\n\tprintln(t.every(even))\n\nThen the iterator can be simply expressed as a trivial wrapper\naround the every operator:\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\t_ = t.every(yield)\n\t\t}\n\t}\n\nIn effect, tree.All computes whether yield returns true for each\nelement, short-circuiting if it ever returns false, then discards\nthe final boolean result.\n\nThis has much better performance characteristics: it makes one\ndynamic call per element of the tree, and it doesn't heap-allocate\nanything. It is also clearer.",
+                  "default": true
+                },
+                "reflecttypefor": {
+                  "type": "boolean",
+                  "markdownDescription": "replace reflect.TypeOf(x) with TypeFor[T]()\n\nThis analyzer suggests fixes to replace uses of reflect.TypeOf(x) with\nreflect.TypeFor, introduced in go1.22, when the desired runtime type\nis known at compile time, for example:\n\n\treflect.TypeOf(uint32(0))        -> reflect.TypeFor[uint32]()\n\treflect.TypeOf((*ast.File)(nil)) -> reflect.TypeFor[*ast.File]()\n\nIt also offers a fix to simplify the construction below, which uses\nreflect.TypeOf to return the runtime type for an interface type,\n\n\treflect.TypeOf((*io.Reader)(nil)).Elem()\n\nto:\n\n\treflect.TypeFor[io.Reader]()\n\nNo fix is offered in cases when the runtime type is dynamic, such as:\n\n\tvar r io.Reader = ...\n\treflect.TypeOf(r)\n\nor when the operand has potential side effects.",
                   "default": true
                 },
                 "shadow": {
@@ -3150,6 +3210,21 @@
                   "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\n\ts[a:len(s)]\n\nwill be simplified to:\n\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
+                "slicescontains": {
+                  "type": "boolean",
+                  "markdownDescription": "replace loops with slices.Contains or slices.ContainsFunc\n\nThe slicescontains analyzer simplifies loops that check for the existence of\nan element in a slice. It replaces them with calls to `slices.Contains` or\n`slices.ContainsFunc`, which were added in Go 1.21.\n\nIf the expression for the target element has side effects, this\ntransformation will cause those effects to occur only once, not\nonce per tested slice element.",
+                  "default": true
+                },
+                "slicesdelete": {
+                  "type": "boolean",
+                  "markdownDescription": "replace append-based slice deletion with slices.Delete\n\nThe slicesdelete analyzer suggests replacing the idiom\n\n\ts = append(s[:i], s[j:]...)\n\nwith the more explicit\n\n\ts = slices.Delete(s, i, j)\n\nintroduced in Go 1.21.\n\nThis analyzer is disabled by default. The `slices.Delete` function\nzeros the elements between the new length and the old length of the\nslice to prevent memory leaks, which is a subtle difference in\nbehavior compared to the append-based idiom; see https://go.dev/issue/73686.",
+                  "default": false
+                },
+                "slicessort": {
+                  "type": "boolean",
+                  "markdownDescription": "replace sort.Slice with slices.Sort for basic types\n\nThe slicessort analyzer simplifies sorting slices of basic ordered\ntypes. It replaces\n\n\tsort.Slice(s, func(i, j int) bool { return s[i] < s[j] })\n\nwith the simpler `slices.Sort(s)`, which was added in Go 1.21.",
+                  "default": true
+                },
                 "slog": {
                   "type": "boolean",
                   "markdownDescription": "check for invalid structured logging calls\n\nThe slog checker looks for calls to functions from the log/slog\npackage that take alternating key-value pairs. It reports calls\nwhere an argument in a key position is neither a string nor a\nslog.Attr, and where a final key is missing its value.\nFor example,it would report\n\n\tslog.Warn(\"message\", 11, \"k\") // slog.Warn arg \"11\" should be a string or a slog.Attr\n\nand\n\n\tslog.Info(\"message\", \"k1\", v1, \"k2\") // call to slog.Info missing a final value",
@@ -3158,6 +3233,11 @@
                 "sortslice": {
                   "type": "boolean",
                   "markdownDescription": "check the argument type of sort.Slice\n\nsort.Slice requires an argument of a slice type. Check that\nthe interface{} value passed to sort.Slice is actually a slice.",
+                  "default": true
+                },
+                "stditerators": {
+                  "type": "boolean",
+                  "markdownDescription": "use iterators instead of Len/At-style APIs\n\nThis analyzer suggests a fix to replace each loop of the form:\n\n\tfor i := 0; i < x.Len(); i++ {\n\t\tuse(x.At(i))\n\t}\n\nor its \"for elem := range x.Len()\" equivalent by a range loop over an\niterator offered by the same data type:\n\n\tfor elem := range x.All() {\n\t\tuse(x.At(i)\n\t}\n\nwhere x is one of various well-known types in the standard library.",
                   "default": true
                 },
                 "stdmethods": {
@@ -3175,9 +3255,34 @@
                   "markdownDescription": "check for string(int) conversions\n\nThis checker flags conversions of the form string(x) where x is an integer\n(but not byte or rune) type. Such conversions are discouraged because they\nreturn the UTF-8 representation of the Unicode code point x, and not a decimal\nstring representation of x as one might expect. Furthermore, if x denotes an\ninvalid code point, the conversion cannot be statically rejected.\n\nFor conversions that intend on using the code point, consider replacing them\nwith string(rune(x)). Otherwise, strconv.Itoa and its equivalents return the\nstring representation of the value in the desired base.",
                   "default": true
                 },
+                "stringsbuilder": {
+                  "type": "boolean",
+                  "markdownDescription": "replace += with strings.Builder\n\nThis analyzer replaces repeated string += string concatenation\noperations with calls to Go 1.10's strings.Builder.\n\nFor example:\n\n\tvar s = \"[\"\n\tfor x := range seq {\n\t\ts += x\n\t\ts += \".\"\n\t}\n\ts += \"]\"\n\tuse(s)\n\nis replaced by:\n\n\tvar s strings.Builder\n\ts.WriteString(\"[\")\n\tfor x := range seq {\n\t\ts.WriteString(x)\n\t\ts.WriteString(\".\")\n\t}\n\ts.WriteString(\"]\")\n\tuse(s.String())\n\nThis avoids quadratic memory allocation and improves performance.\n\nThe analyzer requires that all references to s except the final one\nare += operations. To avoid warning about trivial cases, at least one\nmust appear within a loop. The variable s must be a local\nvariable, not a global or parameter.\n\nThe sole use of the finished string must be the last reference to the\nvariable s. (It may appear within an intervening loop or function literal,\nsince even s.String() is called repeatedly, it does not allocate memory.)",
+                  "default": true
+                },
+                "stringscut": {
+                  "type": "boolean",
+                  "markdownDescription": "replace strings.Index etc. with strings.Cut\n\nThis analyzer replaces certain patterns of use of [strings.Index] and string slicing by [strings.Cut], added in go1.18.\n\nFor example:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return s[:idx]\n\t}\n\nis replaced by:\n\n\tbefore, _, ok := strings.Cut(s, substr)\n\tif ok {\n\t    return before\n\t}\n\nAnd:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return\n\t}\n\nis replaced by:\n\n\tfound := strings.Contains(s, substr)\n\tif found {\n\t    return\n\t}\n\nIt also handles variants using [strings.IndexByte] instead of Index, or the bytes package instead of strings.\n\nFixes are offered only in cases in which there are no potential modifications of the idx, s, or substr expressions between their definition and use.",
+                  "default": true
+                },
+                "stringscutprefix": {
+                  "type": "boolean",
+                  "markdownDescription": "replace HasPrefix/TrimPrefix with CutPrefix\n\nThe stringscutprefix analyzer simplifies a common pattern where code first\nchecks for a prefix with `strings.HasPrefix` and then removes it with\n`strings.TrimPrefix`. It replaces this two-step process with a single call\nto `strings.CutPrefix`, introduced in Go 1.20. The analyzer also handles\nthe equivalent functions in the `bytes` package.\n\nFor example, this input:\n\n\tif strings.HasPrefix(s, prefix) {\n\t    use(strings.TrimPrefix(s, prefix))\n\t}\n\nis fixed to:\n\n\tif after, ok := strings.CutPrefix(s, prefix); ok {\n\t    use(after)\n\t}\n\nThe analyzer also offers fixes to use CutSuffix in a similar way.\nThis input:\n\n\tif strings.HasSuffix(s, suffix) {\n\t    use(strings.TrimSuffix(s, suffix))\n\t}\n\nis fixed to:\n\n\tif before, ok := strings.CutSuffix(s, suffix); ok {\n\t    use(before)\n\t}",
+                  "default": true
+                },
+                "stringsseq": {
+                  "type": "boolean",
+                  "markdownDescription": "replace ranging over Split/Fields with SplitSeq/FieldsSeq\n\nThe stringsseq analyzer improves the efficiency of iterating over substrings.\nIt replaces\n\n\tfor range strings.Split(...)\n\nwith the more efficient\n\n\tfor range strings.SplitSeq(...)\n\nwhich was added in Go 1.24 and avoids allocating a slice for the\nsubstrings. The analyzer also handles strings.Fields and the\nequivalent functions in the bytes package.",
+                  "default": true
+                },
                 "structtag": {
                   "type": "boolean",
                   "markdownDescription": "check that struct field tags conform to reflect.StructTag.Get\n\nAlso report certain struct tags (json, xml) used with unexported fields.",
+                  "default": true
+                },
+                "testingcontext": {
+                  "type": "boolean",
+                  "markdownDescription": "replace context.WithCancel with t.Context in tests\n\nThe testingcontext analyzer simplifies context management in tests. It\nreplaces the manual creation of a cancellable context,\n\n\tctx, cancel := context.WithCancel(context.Background())\n\tdefer cancel()\n\nwith a single call to t.Context(), which was added in Go 1.24.\n\nThis change is only suggested if the `cancel` function is not used\nfor any other purpose.",
                   "default": true
                 },
                 "testinggoroutine": {
@@ -3212,7 +3317,7 @@
                 },
                 "unusedfunc": {
                   "type": "boolean",
-                  "markdownDescription": "check for unused functions, methods, etc\n\nThe unusedfunc analyzer reports functions and methods that are\nnever referenced outside of their own declaration.\n\nA function is considered unused if it is unexported and not\nreferenced (except within its own declaration).\n\nA method is considered unused if it is unexported, not referenced\n(except within its own declaration), and its name does not match\nthat of any method of an interface type declared within the same\npackage.\n\nThe tool may report false positives in some situations, for\nexample:\n\n  - For a declaration of an unexported function that is referenced\n    from another package using the go:linkname mechanism, if the\n    declaration's doc comment does not also have a go:linkname\n    comment.\n\n    (Such code is in any case strongly discouraged: linkname\n    annotations, if they must be used at all, should be used on both\n    the declaration and the alias.)\n\n  - For compiler intrinsics in the \"runtime\" package that, though\n    never referenced, are known to the compiler and are called\n    indirectly by compiled object code.\n\n  - For functions called only from assembly.\n\n  - For functions called only from files whose build tags are not\n    selected in the current build configuration.\n\nSee https://github.com/golang/go/issues/71686 for discussion of\nthese limitations.\n\nThe unusedfunc algorithm is not as precise as the\ngolang.org/x/tools/cmd/deadcode tool, but it has the advantage that\nit runs within the modular analysis framework, enabling near\nreal-time feedback within gopls.\n\nThe unusedfunc analyzer also reports unused types, vars, and\nconstants. Enums--constants defined with iota--are ignored since\neven the unused values must remain present to preserve the logical\nordering.",
+                  "markdownDescription": "check for unused functions, methods, etc\n\nThe unusedfunc analyzer reports functions and methods that are\nnever referenced outside of their own declaration.\n\nA function is considered unused if it is unexported and not\nreferenced (except within its own declaration).\n\nA method is considered unused if it is unexported, not referenced\n(except within its own declaration), and its name does not match\nthat of any method of an interface type declared within the same\npackage.\n\nThe tool may report false positives in some situations, for\nexample:\n\n  - for a declaration of an unexported function that is referenced\n    from another package using the go:linkname mechanism, if the\n    declaration's doc comment does not also have a go:linkname\n    comment.\n\n    (Such code is in any case strongly discouraged: linkname\n    annotations, if they must be used at all, should be used on both\n    the declaration and the alias.)\n\n  - for compiler intrinsics in the \"runtime\" package that, though\n    never referenced, are known to the compiler and are called\n    indirectly by compiled object code.\n\n  - for functions called only from assembly.\n\n  - for functions called only from files whose build tags are not\n    selected in the current build configuration.\n\nSince these situations are relatively common in the low-level parts\nof the runtime, this analyzer ignores the standard library.\nSee https://go.dev/issue/71686 and https://go.dev/issue/74130 for\nfurther discussion of these limitations.\n\nThe unusedfunc algorithm is not as precise as the\ngolang.org/x/tools/cmd/deadcode tool, but it has the advantage that\nit runs within the modular analysis framework, enabling near\nreal-time feedback within gopls.\n\nThe unusedfunc analyzer also reports unused types, vars, and\nconstants. Enums--constants defined with iota--are ignored since\neven the unused values must remain present to preserve the logical\nordering.",
                   "default": true
                 },
                 "unusedparams": {
@@ -3237,7 +3342,7 @@
                 },
                 "waitgroup": {
                   "type": "boolean",
-                  "markdownDescription": "check for misuses of sync.WaitGroup\n\nThis analyzer detects mistaken calls to the (*sync.WaitGroup).Add\nmethod from inside a new goroutine, causing Add to race with Wait:\n\n\t// WRONG\n\tvar wg sync.WaitGroup\n\tgo func() {\n\t        wg.Add(1) // \"WaitGroup.Add called from inside new goroutine\"\n\t        defer wg.Done()\n\t        ...\n\t}()\n\twg.Wait() // (may return prematurely before new goroutine starts)\n\nThe correct code calls Add before starting the goroutine:\n\n\t// RIGHT\n\tvar wg sync.WaitGroup\n\twg.Add(1)\n\tgo func() {\n\t\tdefer wg.Done()\n\t\t...\n\t}()\n\twg.Wait()",
+                  "markdownDescription": "replace wg.Add(1)/go/wg.Done() with wg.Go\n\nThe waitgroup analyzer simplifies goroutine management with `sync.WaitGroup`.\nIt replaces the common pattern\n\n\twg.Add(1)\n\tgo func() {\n\t\tdefer wg.Done()\n\t\t...\n\t}()\n\nwith a single call to\n\n\twg.Go(func(){ ... })\n\nwhich was added in Go 1.25.",
                   "default": true
                 },
                 "yield": {
@@ -3421,6 +3526,12 @@
               "default": "Dynamic",
               "scope": "resource"
             },
+            "ui.newGoFileHeader": {
+              "type": "boolean",
+              "markdownDescription": "newGoFileHeader enables automatic insertion of the copyright comment\nand package declaration in a newly created Go file.\n",
+              "default": true,
+              "scope": "resource"
+            },
             "ui.noSemanticNumber": {
               "type": "boolean",
               "markdownDescription": "(Experimental) noSemanticNumber turns off the sending of the semantic token 'number'\n\nDeprecated: Use SemanticTokenTypes[\"number\"] = false instead. See\ngolang/vscode-go#3632.\n",
@@ -3434,6 +3545,12 @@
               "default": false,
               "scope": "resource",
               "deprecationMessage": "use SemanticTokenTypes[\"string\"] = false instead. See\ngolang/vscode-go#3632\n"
+            },
+            "ui.renameMovesSubpackages": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) renameMovesSubpackages enables Rename operations on packages to\nmove subdirectories of the target package.\n",
+              "default": false,
+              "scope": "resource"
             },
             "ui.semanticTokenModifiers": {
               "type": "object",
@@ -3464,13 +3581,15 @@
           "markdownDescription": "(Experimental) vulncheck enables vulnerability scanning.\n",
           "enum": [
             "Imports",
-            "Off"
+            "Off",
+            "Prompt"
           ],
           "markdownEnumDescriptions": [
             "`\"Imports\"`: In Imports mode, `gopls` will report vulnerabilities that affect packages\ndirectly and indirectly used by the analyzed main module.\n",
-            "`\"Off\"`: Disable vulnerability analysis.\n"
+            "`\"Off\"`: Disable vulnerability analysis.\n",
+            "`\"Prompt\"`: Vulncheck can be triggered via prompt.\n"
           ],
-          "default": "Off",
+          "default": "Prompt",
           "scope": "resource"
         },
         "go.inlayHints.assignVariableTypes": {
