@@ -69,6 +69,7 @@ import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
+import { ResolveCommand } from './form';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -577,6 +578,20 @@ export async function buildLanguageClient(
 					next(token, params);
 				},
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
+					// TODO(hxjiang): determine whether the language server
+					// support interactive resolving ExecuteCommandParams.
+					const x = false;
+					if (x) {
+						const resolved = await ResolveCommand(goCtx, command, args);
+						if (!resolved) {
+							return undefined;
+						}
+
+						// Replace original command and result with resolved command and args.
+						command = resolved.command;
+						args = resolved.args;
+					}
+
 					try {
 						if (command === 'gopls.tidy' || command === 'gopls.vulncheck') {
 							await vscode.workspace.saveAll(false);
