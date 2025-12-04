@@ -10,6 +10,7 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
+import { maybeJoinFlags } from './goDebugConfiguration';
 import { isModSupported } from './goModules';
 import { escapeSubTestName } from './subTestUtils';
 import {
@@ -25,6 +26,7 @@ import {
 	SuiteToTestMap,
 	getTestFunctions
 } from './testUtils';
+import { getBinPath } from './util';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.
@@ -326,6 +328,11 @@ export async function debugTestAtCursor(
 		buildFlags.push(x);
 	});
 	const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
+	
+	// Use maybeJoinFlags to handle buildFlags properly based on delve version
+	const dlvToolPath = getBinPath('dlv');
+	const processedBuildFlags = await maybeJoinFlags(dlvToolPath, buildFlags);
+	
 	const debugConfig: vscode.DebugConfiguration = {
 		name: 'Debug Test',
 		type: 'go',
@@ -335,7 +342,7 @@ export async function debugTestAtCursor(
 		env: goConfig.get('testEnvVars', {}),
 		envFile: goConfig.get('testEnvFile'),
 		args,
-		buildFlags: buildFlags.join(' '),
+		buildFlags: processedBuildFlags,
 		sessionID
 	};
 	lastDebugConfig = debugConfig;
