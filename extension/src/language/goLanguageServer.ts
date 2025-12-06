@@ -477,6 +477,31 @@ export async function buildLanguageClient(
 				}
 			},
 			middleware: {
+				provideTypeDefinition: async (doc, pos, token, next) => {
+					if (!goCtx.languageClient) {
+						return await next(doc, pos, token);
+					}
+
+					const editor = vscode.window.activeTextEditor;
+					if (!editor || doc !== editor.document) {
+						return await next(doc, pos, token);
+					}
+
+					const selection = editor?.selection;
+					if (selection.isEmpty || !selection.contains(pos)) {
+						return await next(doc, pos, token);
+					}
+
+					// Attaching selected range to gopls type def request.
+					const param = goCtx.languageClient.code2ProtocolConverter.asTextDocumentPositionParams(doc, pos);
+					(param as any).range = goCtx.languageClient.code2ProtocolConverter.asRange(selection);
+
+					const result: any = await vscode.commands.executeCommand('gopls.lsp', {
+						method: 'textDocument/typeDefinition',
+						param: param
+					});
+					return goCtx.languageClient.protocol2CodeConverter.asDefinitionResult(result);
+				},
 				provideHover: async (doc, pos, token, next) => {
 					// gopls.lsp is a command that acts as a dispatcher, allowing
 					// the client to trigger any LSP RPC via "workspace/executeCommand"
@@ -492,7 +517,7 @@ export async function buildLanguageClient(
 					}
 
 					const selection = editor?.selection;
-					if (!selection || !selection.contains(pos)) {
+					if (selection.isEmpty || !selection.contains(pos)) {
 						return await next(doc, pos, token);
 					}
 
@@ -597,8 +622,9 @@ export async function buildLanguageClient(
 
 						return res;
 					} catch (e) {
-						// Suppress error messages for frequently triggered commands.
-						if (command === 'gopls.package_symbols') {
+						// Suppress error messages for frequently triggered
+						// or programmatically triggered commads.
+						if (command === 'gopls.package_symbols' || command === 'gopls.lsp') {
 							return null;
 						}
 						// TODO: how to print ${e} reliably???
