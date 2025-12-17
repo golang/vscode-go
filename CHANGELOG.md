@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.52.0
+
+Date: 2025-12-17
+
 ### Untrusted code execution in 'Restricted Mode'
 To prevent accidental untrusted code execution, vscode-go no longer allows invocations of the Go CLI in untrusted workspaces.
 
