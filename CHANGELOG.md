@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+### Untrusted code execution in 'Restricted Mode'
+To prevent accidental untrusted code execution, vscode-go no longer allows invocations of the Go CLI in untrusted workspaces.
+
+This is CVE-2025-68120.
+
 ### Changes
 
 * Added a new field, 'compilerDetails', on the 'go.editorContextMenuCommands' setting that when set to true will show the "Go: Toggle compiler optimization details" command in the context menu.
