@@ -107,16 +107,7 @@
   "capabilities": {
     "virtualWorkspaces": false,
     "untrustedWorkspaces": {
-      "supported": "limited",
-      "restrictedConfigurations": [
-        "go.alternateTools",
-        "go.gopath",
-        "go.goroot",
-        "go.inferGopath",
-        "go.toolsGopath",
-        "go.toolsEnvVars",
-        "go.toolsManagement.go"
-      ]
+      "supported": false
     }
   },
   "contributes": {
