@@ -34,6 +34,7 @@ import { resolveHomeDir } from './utils/pathUtils';
 import { createRegisterCommand } from './commands';
 import { GoExtensionContext } from './context';
 import { spawn } from 'child_process';
+import { registerGoDebugCommands } from './goDebugCommands';
 
 let dlvDAPVersionChecked = false;
 
@@ -45,6 +46,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		const registerCommand = createRegisterCommand(ctx, goCtx);
 		registerCommand('go.debug.pickProcess', () => pickProcess);
 		registerCommand('go.debug.pickGoProcess', () => pickGoProcess);
+		registerGoDebugCommands(ctx);
 	}
 
 	constructor(private defaultDebugAdapterType: string = 'go') {}
