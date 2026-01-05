@@ -9,7 +9,8 @@ import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import { getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
+import { inspectGoToolVersion } from './goInstallTools';
+import { getBinPath, getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
 
 /**
  * Runs linter on the current file, package or workspace.
@@ -112,9 +113,14 @@ export async function goLint(
 		args.push(flag);
 	});
 	if (linter.startsWith('golangci-lint')) {
-		let version = 1;
+		let version: number;
 		if (linter === 'golangci-lint-v2') {
 			version = 2;
+		} else {
+			const { moduleVersion } = await inspectGoToolVersion(getBinPath(linter));
+			// if moduleVersion is undefined, treat it as version=1
+			// if moduleVersion is higher than v1 (v2, v3...), treat it as version=2
+			version = !moduleVersion || moduleVersion.startsWith('v1') ? 1 : 2;
 		}
 
 		// append common flags
