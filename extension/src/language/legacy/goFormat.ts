@@ -14,6 +14,7 @@ import { toolExecutionEnvironment } from '../../goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from '../../goInstallTools';
 import { getBinPath } from '../../util';
 import { killProcessTree } from '../../utils/processUtils';
+import { resolvePath } from '../../util';
 
 /**
  * GoDocumentFormattingEditProvider is a feature that provides formatting
@@ -56,7 +57,22 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			formatFlags.push('-style=indent=' + options.tabSize);
 		}
 
-		return this.runFormatter(formatTool, formatFlags, document, token).then(
+		const resolvedFormatFlags: string[] = [];
+		formatFlags.forEach((flag) => {
+			// Ensure that flags like --config=${workspaceFolder} are resolved before their use.
+			if (flag.startsWith('--config=') || flag.startsWith('-config=')) {
+				let configFilePath = flag.substring(flag.indexOf('=') + 1).trim();
+				if (!configFilePath) {
+					return;
+				}
+				configFilePath = resolvePath(configFilePath);
+				resolvedFormatFlags.push(`${flag.substring(0, flag.indexOf('=') + 1)}${configFilePath}`);
+				return;
+			}
+			resolvedFormatFlags.push(flag);
+		});
+
+		return this.runFormatter(formatTool, resolvedFormatFlags, document, token).then(
 			(edits) => edits,
 			(err) => {
 				if (typeof err === 'string' && err.startsWith('flag provided but not defined: -srcdir')) {
