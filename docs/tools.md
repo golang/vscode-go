@@ -66,13 +66,15 @@ This is the default lint tool. See the [full list of checks](https://staticcheck
 Other options include:
 
   * [`golangci-lint`]: This meta-linter combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
+  * [`golangci-lint-v2`]: golangci-lint but v2.
   * [`revive`]: This tool is an enhancement on top of [`golint`], and it provides additional checks.
   * [`golint`]: This used to be the default linter used by this extension before it was officially deprecated.
 
 You can use the [`"go.lintFlags"`](settings.md#go.lintFlags) setting to further configure your linter of choice. Most linters can be configured via special configuration files, but you may still need to pass these command-line flags. The configuration documentation for each supported linter is listed here:
 
 * [`staticcheck`](https://staticcheck.io/docs/#configuration)
-* [`golangci-lint`](https://golangci-lint.run/usage/configuration/)
+* [`golangci-lint`](https://golangci.github.io/legacy-v1-doc/usage/configuration/)
+* [`golangci-lint-v2`](https://golangci-lint.run/docs/configuration/cli/)
 * [`revive`](https://github.com/mgechev/revive#command-line-flags)
 
 #### Examples
@@ -96,7 +98,8 @@ Configure `revive` to exclude `vendor` directories and apply extra configuration
 [`gofmt`]: https://golang.org/cmd/gofmt/
 [`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
 [`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
-[`golangci-lint`]: https://golangci-lint.run/
+[`golangci-lint`]: https://golangci.github.io/legacy-v1-doc/
+[`golangci-lint-v2`]: https://golangci-lint.run/
 [`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
 [`gopls`]: https://golang.org/s/gopls
 [`go`]: https://golang.org/cmd/go
