@@ -73,8 +73,8 @@ Other options include:
 You can use the [`"go.lintFlags"`](settings.md#go.lintFlags) setting to further configure your linter of choice. Most linters can be configured via special configuration files, but you may still need to pass these command-line flags. The configuration documentation for each supported linter is listed here:
 
 * [`staticcheck`](https://staticcheck.io/docs/#configuration)
-* [`golangci-lint`](https://golangci.github.io/legacy-v1-doc/)
-* [`golangci-lint-v2`](https://golangci-lint.run/docs/)
+* [`golangci-lint`](https://golangci.github.io/legacy-v1-doc/usage/configuration/)
+* [`golangci-lint-v2`](https://golangci-lint.run/docs/configuration/cli/)
 * [`revive`](https://github.com/mgechev/revive#command-line-flags)
 
 #### Examples
