@@ -304,6 +304,11 @@ function pathEnvVarName(): string | undefined {
 	}
 }
 
+const defaultMutatorOptions: vscode.EnvironmentVariableMutatorOptions = {
+	applyAtProcessCreation: true,
+	applyAtShellIntegration: true
+};
+
 /**
  * addGoRuntimeBaseToPATH adds the given path to the front of the PATH
  * environment variable. It removes duplicates.
@@ -333,7 +338,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	// Calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
-		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, defaultMutatorOptions);
 	} else {
 		// When '-l' or '--login' flags are set, the terminal will invoke a login
 		// shell again and the paths from the user's login shell will be prepended
@@ -355,7 +360,11 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			}
 			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
 		} else {
-			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+			environmentVariableCollection?.prepend(
+				pathEnvVar,
+				newGoRuntimeBase + path.delimiter,
+				defaultMutatorOptions
+			);
 		}
 	}
 
