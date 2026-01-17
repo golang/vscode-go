@@ -466,12 +466,23 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	}
 	const readdir = promisify(fs.readdir);
 	const subdirs = await readdir(sdkPath);
+	const stat = promisify(fs.stat);
+
 	// The dir happens to be the version, which will be used as the label.
 	// The path is assembled and used as the description.
-	return subdirs.map(
-		(dir: string) =>
-			new GoEnvironmentOption(path.join(sdkPath, dir, 'bin', correctBinname('go')), dir.replace('go', 'Go '))
+	const options = await Promise.all(
+		subdirs.map(async (dir) => {
+			const binpath = path.join(sdkPath, dir, 'bin', correctBinname('go'));
+			try {
+				if ((await stat(binpath)).isFile()) {
+					return new GoEnvironmentOption(binpath, dir.replace('go', 'Go '));
+				}
+			} catch {
+				// ignore
+			}
+		})
 	);
+	return options.filter(Boolean) as GoEnvironmentOption[];
 }
 
 export async function getDefaultGoOption(): Promise<GoEnvironmentOption | undefined> {
