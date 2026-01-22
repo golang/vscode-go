@@ -364,7 +364,8 @@ export class GoLanguageClient extends LanguageClient implements vscode.Disposabl
 		// can be used for custom communication between vscode-go and gopls.
 		// See https://github.com/microsoft/vscode-languageserver-node/issues/1607
 		const experimental: LSPObject = {
-			progressMessageStyles: ['log']
+			progressMessageStyles: ['log'],
+			interactiveInputTypes: ['string', 'bool', 'number', 'enum']
 		};
 		params.capabilities.experimental = experimental;
 	}
