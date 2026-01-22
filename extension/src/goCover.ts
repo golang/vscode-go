@@ -376,14 +376,27 @@ export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 		return;
 	}
 	let doc = editor.document.fileName;
+	// Normalize the document path.
 	if (path.isAbsolute(doc)) {
 		doc = fixDriveCasingInWindows(doc);
+		try {
+			doc = fs.realpathSync(doc);
+		} catch (e) {
+			// Failed to resolve the path, but we can still try using the original.
+		}
 	}
 
 	const cfg = getGoConfig(editor.document.uri);
 	const coverageOptions = cfg['coverageOptions'];
 	for (const filename in coverageData) {
-		if (doc !== fixDriveCasingInWindows(filename)) {
+		let normalizedFilename = fixDriveCasingInWindows(filename);
+		try {
+			normalizedFilename = fs.realpathSync(normalizedFilename);
+		} catch (e) {
+			// Failed to resolve the path, but we can still try using the original.
+		}
+
+		if (doc !== normalizedFilename) {
 			continue;
 		}
 		isCoverageApplied = true;
@@ -561,7 +574,20 @@ export function initForTest() {
 		// nor the normal flow of initializations
 		const x = 'rgba(0,0,0,0)';
 		if (!gutterSvgs) {
-			gutterSvgs = { x };
+			gutterSvgs = {
+				blockred: x,
+				blockgreen: x,
+				blockblue: x,
+				blockyellow: x,
+				slashred: x,
+				slashgreen: x,
+				slashblue: x,
+				slashyellow: x,
+				verticalred: x,
+				verticalgreen: x,
+				verticalblue: x,
+				verticalyellow: x
+			};
 		}
 		decoratorConfig = {
 			type: 'highlight',
