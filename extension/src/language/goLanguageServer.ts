@@ -579,10 +579,8 @@ export async function buildLanguageClient(
 					next(token, params);
 				},
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
-					// TODO(hxjiang): determine whether the language server
-					// support interactive resolving ExecuteCommandParams.
-					const x = false;
-					if (x) {
+					const supported = c.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
+					if (Array.isArray(supported) && supported.includes('command')) {
 						const resolved = await ResolveCommand(goCtx, command, args);
 						if (!resolved) {
 							return undefined;
