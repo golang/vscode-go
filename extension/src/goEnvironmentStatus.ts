@@ -304,7 +304,11 @@ function pathEnvVarName(): string | undefined {
 	}
 }
 
-const defaultMutatorOptions: vscode.EnvironmentVariableMutatorOptions = {
+/**
+ * These options overwrite profiles such as `.bashrc`.
+ * Users who do not want this behavior should set `go.terminal.activateEnvironment` to `false`.
+ */
+const envVarMutatorOptions: vscode.EnvironmentVariableMutatorOptions = {
 	applyAtProcessCreation: true,
 	applyAtShellIntegration: true
 };
@@ -338,7 +342,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	// Calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
-		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, defaultMutatorOptions);
+		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, envVarMutatorOptions);
 	} else {
 		// When '-l' or '--login' flags are set, the terminal will invoke a login
 		// shell again and the paths from the user's login shell will be prepended
@@ -363,7 +367,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			environmentVariableCollection?.prepend(
 				pathEnvVar,
 				newGoRuntimeBase + path.delimiter,
-				defaultMutatorOptions
+				envVarMutatorOptions
 			);
 		}
 	}
