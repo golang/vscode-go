@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.52.2
+
+Date: 2026-01-26
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.52.1...v0.52.2
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.52.2
+
 ## v0.53.0 (prerelease)
 
 Date: 2025-12-18
