@@ -835,7 +835,7 @@ async function defaultInspectGoToolVersion(
 		*/
 		const lines = stdout.split('\n', 3);
 		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)?.[1];
-		const moduleVersion = lines[2].split(/\s+/)[3];
+		const moduleVersion = lines.length > 2 ? lines[2].split(/\s+/)[3] : "unknown";
 		return { goVersion, moduleVersion };
 	} catch (e) {
 		// either go version failed (e.g. the tool was compiled with a more recent version of go)
