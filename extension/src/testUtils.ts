@@ -19,7 +19,7 @@ import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getNonVendorPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getTempFilePath, LineBuffer, resolvePath } from './util';
-import { parseEnvFile } from './utils/envUtils';
+import { parseEnvFile, parseEnvFiles } from './utils/envUtils';
 import {
 	getEnvPath,
 	expandFilePathInOutput,
@@ -111,12 +111,28 @@ export function getTestEnvVars(config: vscode.WorkspaceConfiguration): any {
 	const envVars = toolExecutionEnvironment();
 	const testEnvConfig = config['testEnvVars'] || {};
 
-	let fileEnv: { [key: string]: any } = {};
-	let testEnvFile = config['testEnvFile'];
+	// Collect environment files from both settings
+	const envFiles: string[] = [];
+
+	// Add files from the new testEnvFiles setting (array)
+	const testEnvFiles = config['testEnvFiles'] || [];
+	if (Array.isArray(testEnvFiles)) {
+		envFiles.push(...testEnvFiles);
+	}
+
+	// Add the deprecated testEnvFile setting (single file) for backward compatibility
+	const testEnvFile = config['testEnvFile'];
 	if (testEnvFile) {
-		testEnvFile = resolvePath(testEnvFile);
+		envFiles.push(testEnvFile);
+	}
+
+	// Parse all environment files
+	let fileEnv: { [key: string]: any } = {};
+	if (envFiles.length > 0) {
 		try {
-			fileEnv = parseEnvFile(testEnvFile, envVars);
+			// Resolve paths for all files
+			const resolvedFiles = envFiles.map((file) => resolvePath(file));
+			fileEnv = parseEnvFiles(resolvedFiles, envVars);
 		} catch (e) {
 			console.log(e);
 		}
