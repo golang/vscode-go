@@ -109,7 +109,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 				return codelens;
 			}
 
-			const simpleRunRegex = /t.Run\("([^"]+)",/;
+			const simpleRunRegex = /t.Run\(/;
 
 			for (const f of testFunctions) {
 				const functionName = f.name;
