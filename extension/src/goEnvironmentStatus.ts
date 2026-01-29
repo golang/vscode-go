@@ -305,6 +305,15 @@ function pathEnvVarName(): string | undefined {
 }
 
 /**
+ * These options overwrite profiles such as `.bashrc`.
+ * Users who do not want this behavior should set `go.terminal.activateEnvironment` to `false`.
+ */
+const envVarMutatorOptions: vscode.EnvironmentVariableMutatorOptions = {
+	applyAtProcessCreation: true,
+	applyAtShellIntegration: true
+};
+
+/**
  * addGoRuntimeBaseToPATH adds the given path to the front of the PATH
  * environment variable. It removes duplicates.
  * TODO: can we avoid changing PATH but utilize toolExecutionEnv?
@@ -333,7 +342,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	// Calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
-		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, envVarMutatorOptions);
 	} else {
 		// When '-l' or '--login' flags are set, the terminal will invoke a login
 		// shell again and the paths from the user's login shell will be prepended
@@ -355,7 +364,11 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			}
 			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
 		} else {
-			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+			environmentVariableCollection?.prepend(
+				pathEnvVar,
+				newGoRuntimeBase + path.delimiter,
+				envVarMutatorOptions
+			);
 		}
 	}
 
