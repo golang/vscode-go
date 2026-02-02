@@ -364,11 +364,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			}
 			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
 		} else {
-			environmentVariableCollection?.prepend(
-				pathEnvVar,
-				newGoRuntimeBase + path.delimiter,
-				envVarMutatorOptions
-			);
+			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, envVarMutatorOptions);
 		}
 	}
 
