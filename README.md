@@ -1,4 +1,4 @@
-# Go for Visual Studio Code
+# Go for Visual Studio
 
 [![Slack](https://img.shields.io/badge/slack-gophers-green.svg?style=flat)](https://gophers.slack.com/messages/vscode/)
 
