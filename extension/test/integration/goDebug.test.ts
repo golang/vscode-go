@@ -823,9 +823,11 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 	});
 
-	// The file paths returned from delve use '/' not the native path
-	// separator, so we can replace any instances of '\' with '/', which
-	// allows the hitBreakpoint check to match.
+	/**
+	 * The file paths returned from delve use '/' not the native path separator,
+	 * so we can replace any instances of '\' with '/', which allows the
+	 * hitBreakpoint check to match.
+	 */
 	const getBreakpointLocation = (FILE: string, LINE: number) => {
 		return { path: FILE.replace(/\\/g, '/'), line: LINE };
 	};

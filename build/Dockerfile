@@ -9,7 +9,8 @@ RUN mkdir -p /scratch/installtools
 ADD extension/tools/installtools/main.go /scratch/installtools/main.go
 RUN go run /scratch/installtools/main.go
 
-FROM node:latest
+# TODO(hxjiang): Revert back to latest after nodejs/node#61971.
+FROM node:24
 
 # GO111MODULE=auto
 RUN mkdir /go
