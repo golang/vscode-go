@@ -15,7 +15,7 @@ export class MockMemento implements Memento {
 	public get(key: any, defaultValue?: any): any;
 	public get<T>(key: string, defaultValue?: T): T {
 		const exists = this._value.hasOwnProperty(key);
-		return exists ? this._value[key] : (defaultValue! as any);
+		return exists ? (this._value[key] as T) : (defaultValue as T);
 	}
 
 	public update(key: string, value: any): Thenable<void> {

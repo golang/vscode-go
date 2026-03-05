@@ -41,19 +41,58 @@ export interface FormFieldTypeNumber {
 	kind: 'number';
 }
 
+// FormEnumEntry represents a single option in an enumeration.
+export interface FormEnumEntry {
+	// Value is the unique string identifier for this option.
+	//
+	// This is the value that will be sent back to the server in
+	// 'FormAnswers' if the user selects this option.
+	value: string;
+
+	// Description is the human-readable label presented to the user.
+	description: string;
+}
+
 // FormFieldTypeEnum defines a selection from a set of values.
+//
+// Use this type when:
+// - The number of options is small (e.g., < 20).
+// - All options are known at the time the form is created.
 export interface FormFieldTypeEnum {
 	kind: 'enum';
 
 	// Name is an optional identifier for the enum type.
 	name?: string;
 
-	// Values is the set of allowable options.
-	values: string[];
+	// Entries is the list of allowable options.
+	entries: FormEnumEntry[];
+}
 
-	// Description provides human-readable labels for the options.
-	// This array must have the same length as values.
-	description: string[];
+// FormFieldTypeLazyEnum defines a selection from a large or dynamic enum entry set.
+//
+// Use this type when:
+//  1. The dataset is too large to send efficiently in a single payload
+//     (e.g., thousands of workspace symbols, file uri or cloud resources).
+//  2. The available options depend on the user's input (e.g., semantic search).
+//  3. Generating the list is expensive and should only be done if requested.
+//
+// The client is expected to render a search interface (e.g., a combo box with
+// a text input) and query the server via 'interactive/listEnum' as the user types.
+export interface FormFieldTypeLazyEnum {
+	kind: 'lazyEnum';
+
+	// TODO(hxjiang): consider make debounce configurable since fetching
+	// cloud resources could be expensive and slow.
+
+	// Source identifies the data source on the server.
+	//
+	// Examples: "workspace/symbol", "database/schema", "git/tags".
+	source: string;
+
+	// Config contains the static settings for the source.
+	// The client treats this as opaque data and echoes it back in the
+	// 'interactive/listEnum' request.
+	config?: any;
 }
 
 // FormFieldTypeList defines a homogenous list of items.
@@ -72,6 +111,7 @@ export type FormFieldType =
 	| FormFieldTypeBool
 	| FormFieldTypeNumber
 	| FormFieldTypeEnum
+	| FormFieldTypeLazyEnum
 	| FormFieldTypeList;
 
 // ----------------------------------------------------------------------------
@@ -254,6 +294,110 @@ export async function CollectAnswers(
 }
 
 /**
+ * InteractiveListEnumParams defines the parameters for the
+ * 'interactive/listEnum' request.
+ */
+interface InteractiveListEnumParams {
+	/**
+	 * Source identifies the data source on the server.
+	 *
+	 * The client treats this as opaque data and echoes it back in the
+	 * 'interactive/listEnum' request.
+	 *
+	 * Examples: "workspace/symbol", "database/schema", "git/tags".
+	 */
+	source: string;
+
+	/**
+	 * Config contains the static settings for the specified source.
+	 *
+	 * The client treats this as opaque data and echoes it back in the
+	 * 'interactive/listEnum' request.
+	 */
+	config?: any;
+
+	/**
+	 * A query string to filter enum entries by.
+	 *
+	 * The exact interpretation of this string (e.g., fuzzy matching, exact
+	 * match, prefix search, or regular expression) is entirely up to the
+	 * server and may vary depending on the source. This follows the similar
+	 * semantics as the standard 'workspace/symbol' request. Clients may
+	 * send an empty string here to request a default set of enum entries.
+	 */
+	query: string;
+}
+
+/**
+ * Opens a Quick Pick that dynamically fetches options from the Language Server.
+ */
+export async function pickLazyEnum(description: string, source: string, config: any = {}): Promise<string | undefined> {
+	return new Promise((resolve) => {
+		const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { value: string }>();
+
+		quickPick.title = description;
+		quickPick.placeholder = 'Type to search ' + source;
+		quickPick.matchOnDescription = true;
+
+		let debounceTimeout: NodeJS.Timeout | undefined;
+		let isResolved = false;
+
+		// Call "interactive/listEnum" and render result as entries as quick
+		// pick items.
+		const search = async (query: string) => {
+			quickPick.busy = true;
+			try {
+				const params: InteractiveListEnumParams = {
+					source: source,
+					config: config,
+					query: query
+				};
+				const result = await vscode.commands.executeCommand<FormEnumEntry[]>('gopls.lsp', {
+					method: 'interactive/listEnum',
+					param: params
+				});
+
+				if (!result) {
+					quickPick.items = [];
+					return;
+				}
+
+				quickPick.items = result.map((entry) => ({
+					label: entry.description,
+					detail: entry.value !== entry.description ? entry.value : undefined,
+					value: entry.value
+				}));
+			} catch (e) {
+				console.error('Error fetching enum options:', e);
+				quickPick.items = [];
+			} finally {
+				quickPick.busy = false;
+			}
+		};
+
+		quickPick.onDidChangeValue((value) => {
+			if (debounceTimeout) clearTimeout(debounceTimeout);
+			debounceTimeout = setTimeout(() => search(value), 400);
+		});
+
+		quickPick.onDidAccept(() => {
+			const selection = quickPick.selectedItems[0];
+			isResolved = true;
+			resolve(selection ? selection.value : undefined);
+			quickPick.hide();
+		});
+
+		quickPick.onDidHide(() => {
+			if (!isResolved) resolve(undefined);
+			quickPick.dispose();
+		});
+
+		quickPick.show();
+		search(''); // Initial Trigger
+	});
+}
+
+/**
  * Helper to prompt for a single field based on its type.
  */
 async function promptForField(field: FormField, prevAnswer: any | undefined): Promise<any | undefined> {
@@ -344,17 +488,13 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 			} as vscode.InputBoxOptions);
 
 		case 'enum': {
-			const descriptions = type.description || [];
-
-			const pickItems = type.values.map((value, index) => {
-				const description = descriptions[index];
-
+			const pickItems = type.entries.map((entry, _) => {
 				return {
 					// Use description if it exists, otherwise use value
-					label: description || value,
+					label: entry.description || entry.value,
 					// Show value in detail if description exists
-					description: description ? value : undefined,
-					value: value
+					description: entry.description ? entry.value : undefined,
+					value: entry.value
 				};
 			});
 
@@ -364,6 +504,10 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 			});
 
 			return selected ? selected.value : undefined;
+		}
+
+		case 'lazyEnum': {
+			return await pickLazyEnum(field.description, type.source, type.config);
 		}
 
 		case 'bool': {
