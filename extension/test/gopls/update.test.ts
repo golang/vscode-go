@@ -71,6 +71,8 @@ suite('gopls update tests', () => {
 			['up-to-date tagged (pre-release)', 'v0.4.0', true, latestPrereleaseVersion],
 			['developer version', '(devel)', false, null],
 			['developer version (pre-release)', '(devel)', true, null],
+			['developer version dirty', 'v0.0.0-20200521000000-2212a7e161a5+dirty', false, null],
+			['developer version dirty (pre-release)', 'v0.0.0-20200521000000-2212a7e161a5+dirty', true, null],
 			['nonsense version', 'nosuchversion', false, latestVersion],
 			['nonsense version (pre-release)', 'nosuchversion', true, latestPrereleaseVersion],
 			['latest pre-release', 'v0.4.2-pre1', false, null],

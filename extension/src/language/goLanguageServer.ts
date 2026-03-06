@@ -1189,7 +1189,13 @@ export async function shouldUpdateLanguageServer(
 	const usersVersion = await getLocalGoplsVersion(cfg);
 
 	// We might have a developer version. Don't make the user update.
-	if (usersVersion && usersVersion.version === '(devel)') {
+	if (
+		usersVersion &&
+		(usersVersion.version === '(devel)' ||
+			// "+dirty" suffix is considered as a developer version.
+			// See golang/go#50603.
+			usersVersion.version.endsWith('+dirty'))
+	) {
 		return null;
 	}
 
@@ -1209,7 +1215,7 @@ export async function shouldUpdateLanguageServer(
 		return version;
 	}
 
-	// The user may have downloaded golang.org/x/tools/gopls@master,
+	// The user may have build the gopls from the source (without a build tag)
 	// which means that they have a pseudoversion.
 	const usersTime = parseTimestampFromPseudoversion(usersVersion.version);
 	// If the user has a pseudoversion, get the timestamp for the latest gopls version and compare.
@@ -1232,8 +1238,8 @@ export async function shouldUpdateLanguageServer(
 	return semver.lt(usersVersionSemver!, version!) ? version : null;
 }
 
-// Copied from src/cmd/go/internal/modfetch.go.
-const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+incompatible)?$/;
+// Copied from src/cmd/vendor/golang.org/x/mod/module/pseudo.go
+const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/;
 
 // parseTimestampFromPseudoversion returns the timestamp for the given
 // pseudoversion. The timestamp is the center component, and it has the
@@ -1253,7 +1259,8 @@ function parseTimestampFromPseudoversion(version: string): moment.Moment | null 
 	if (!sv) {
 		return null;
 	}
-	// Copied from src/cmd/go/internal/modfetch.go.
+
+	// Copied from src/cmd/vendor/golang.org/x/mod/module/pseudo.go
 	const build = sv.build.join('.');
 	const buildIndex = version.lastIndexOf(build);
 	if (buildIndex >= 0) {
