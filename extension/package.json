@@ -224,6 +224,26 @@
         "description": "List all the Go tools being used by this extension along with their locations."
       },
       {
+        "command": "go.packageOutline.enableFollowCursor",
+        "title": "Package Outline: Enable Follow Cursor",
+        "description": "Keep the Package Outline selection synced with the active editor cursor."
+      },
+      {
+        "command": "go.packageOutline.disableFollowCursor",
+        "title": "Package Outline: Disable Follow Cursor",
+        "description": "Stop syncing the Package Outline selection with the active editor cursor."
+      },
+      {
+        "command": "go.packageOutline.sortByName",
+        "title": "Package Outline: Sort By Name",
+        "description": "Sort Package Outline symbols alphabetically."
+      },
+      {
+        "command": "go.packageOutline.sortByPosition",
+        "title": "Package Outline: Sort By Position",
+        "description": "Sort Package Outline symbols by source position."
+      },
+      {
         "command": "go.test.cursor",
         "title": "Go: Test Function At Cursor",
         "description": "Runs a unit test at the cursor."
@@ -3810,6 +3830,26 @@
           "command": "go.explorer.refresh",
           "when": "view == go.explorer",
           "group": "navigation"
+        },
+        {
+          "command": "go.packageOutline.enableFollowCursor",
+          "when": "view == go.package.outline && !go.packageOutline.followCursor",
+          "group": "2_packageOutline"
+        },
+        {
+          "command": "go.packageOutline.disableFollowCursor",
+          "when": "view == go.package.outline && go.packageOutline.followCursor",
+          "group": "2_packageOutline"
+        },
+        {
+          "command": "go.packageOutline.sortByName",
+          "when": "view == go.package.outline && go.packageOutline.sortOrder != 'name'",
+          "group": "2_packageOutline"
+        },
+        {
+          "command": "go.packageOutline.sortByPosition",
+          "when": "view == go.package.outline && go.packageOutline.sortOrder != 'position'",
+          "group": "2_packageOutline"
         }
       ],
       "view/item/context": [
