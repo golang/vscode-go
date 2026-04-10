@@ -39,6 +39,22 @@ See the currently set GOROOT.
 
 List all the Go tools being used by this extension along with their locations.
 
+### `Package Outline: Enable Follow Cursor`
+
+Keep the Package Outline selection synced with the active editor cursor.
+
+### `Package Outline: Disable Follow Cursor`
+
+Stop syncing the Package Outline selection with the active editor cursor.
+
+### `Package Outline: Sort By Name`
+
+Sort Package Outline symbols alphabetically.
+
+### `Package Outline: Sort By Position`
+
+Sort Package Outline symbols by source position.
+
 ### `Go: Test Function At Cursor`
 
 Runs a unit test at the cursor.
