@@ -29,7 +29,6 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	setup(async () => {
-		await vscode.commands.executeCommand('go.packageOutline.disableFollowCursor');
 		await vscode.commands.executeCommand('go.packageOutline.sortByPosition');
 	});
 
@@ -42,7 +41,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		const res = provider.result;
 		assert.strictEqual(res?.PackageName, 'package_outline_test');
 		assert.strictEqual(res?.Files.length, 2);
@@ -56,7 +55,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		await vscode.commands.executeCommand('setContext', 'go.showPackageOutline');
 		const children = await provider.getChildren();
 		const receiver = children?.find((symbol) => symbol.label === 'TestReceiver');
@@ -75,7 +74,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		await vscode.commands.executeCommand('setContext', 'go.showPackageOutline');
 		const children = await provider.getChildren();
 		const receiver = children?.find((symbol) => symbol.label === 'TestReceiver');
@@ -97,7 +96,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		await vscode.commands.executeCommand('go.packageOutline.sortByName');
 		const children = await provider.getChildren();
 		assert.deepStrictEqual(
@@ -118,7 +117,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		const children = await provider.getChildren();
 		assert.deepStrictEqual(
 			(children ?? []).slice(1).map((symbol) => symbol.label),
@@ -126,13 +125,12 @@ suite('GoPackageOutlineProvider', function () {
 		);
 	});
 
-	test('follow cursor selects the active symbol', async () => {
+	test('cursor changes reveal the active symbol', async () => {
 		const document1 = await vscode.workspace.openTextDocument(
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
 		);
 		await window.showTextDocument(document1);
-		await sleep(500); // wait for gopls response
-		await vscode.commands.executeCommand('go.packageOutline.enableFollowCursor');
+		await waitForOutlineResult(provider, 'package_outline_test');
 		await moveCursor(document1, 19);
 		await sleep(500); // wait for tree view reveal
 		assert.strictEqual(
@@ -144,7 +142,7 @@ suite('GoPackageOutlineProvider', function () {
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_2.go'))
 		);
 		await window.showTextDocument(document2);
-		await sleep(500); // wait for gopls response
+		await waitForOutlineResult(provider, 'package_outline_test');
 		await moveCursor(document2, 2);
 		await sleep(500); // wait for tree view reveal
 		assert.strictEqual(
@@ -165,6 +163,17 @@ suite('GoPackageOutlineProvider', function () {
 
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForOutlineResult(provider: GoPackageOutlineProvider, packageName: string) {
+	const deadline = Date.now() + 5000;
+	while (Date.now() < deadline) {
+		if (provider.result?.PackageName === packageName) {
+			return;
+		}
+		await sleep(100);
+	}
+	assert.fail(`timed out waiting for outline result for ${packageName}`);
 }
 
 async function moveCursor(document: vscode.TextDocument, line: number, character = 0) {

@@ -31,7 +31,6 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	private readonly collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 	private packageSymbols: PackageSymbol[] = [];
 	private packageItem = this.createPackageItem();
-	private followCursor = false;
 	private sortOrder = PackageOutlineSortOrder.Position;
 	private lastRevealedSymbol?: PackageSymbol;
 
@@ -43,12 +42,6 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		});
 		ctx.subscriptions.push(provider.view);
 		ctx.subscriptions.push(
-			vscode.commands.registerCommand('go.packageOutline.enableFollowCursor', () =>
-				provider.setFollowCursor(true)
-			),
-			vscode.commands.registerCommand('go.packageOutline.disableFollowCursor', () =>
-				provider.setFollowCursor(false)
-			),
 			vscode.commands.registerCommand('go.packageOutline.sortByName', () =>
 				provider.setSortOrder(PackageOutlineSortOrder.Name)
 			),
@@ -201,16 +194,6 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		return a.range.start.character - b.range.start.character;
 	}
 
-	private setFollowCursor(enabled: boolean) {
-		if (this.followCursor === enabled) {
-			return;
-		}
-		this.followCursor = enabled;
-		vscode.commands.executeCommand('setContext', 'go.packageOutline.followCursor', enabled);
-		this.lastRevealedSymbol = undefined;
-		void this.revealActiveSymbol(vscode.window.activeTextEditor);
-	}
-
 	private setSortOrder(sortOrder: PackageOutlineSortOrder) {
 		if (this.sortOrder === sortOrder) {
 			return;
@@ -223,12 +206,11 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	}
 
 	private updateContextKeys() {
-		vscode.commands.executeCommand('setContext', 'go.packageOutline.followCursor', this.followCursor);
 		vscode.commands.executeCommand('setContext', 'go.packageOutline.sortOrder', this.sortOrder);
 	}
 
 	private async revealActiveSymbol(editor?: vscode.TextEditor) {
-		if (!this.followCursor || !this.view || !editor || editor.document !== this.activeDocument) {
+		if (!this.view || !editor || editor.document !== this.activeDocument) {
 			return;
 		}
 		const symbol = this.findSymbolAtPosition(this.packageSymbols, editor.document.uri, editor.selection.active);
