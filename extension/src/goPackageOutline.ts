@@ -84,6 +84,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		return element;
 	}
 
+	// TreeView.reveal uses getParent to expand the path to nested symbols.
 	getParent(element: PackageSymbol): PackageSymbol | undefined {
 		return element.parent;
 	}
@@ -169,6 +170,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		return [...symbols].sort((a, b) => this.compareSymbols(a, b));
 	}
 
+	// Sort alphabetically when requested, otherwise preserve source order.
 	private compareSymbols(a: PackageSymbol, b: PackageSymbol): number {
 		if (this.sortOrder === PackageOutlineSortOrder.Name) {
 			const byName = this.collator.compare(a.symbolName, b.symbolName);
