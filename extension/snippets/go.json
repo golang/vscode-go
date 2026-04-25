@@ -80,6 +80,11 @@
 			"body": "for ${1:_}, ${2:v} := range ${3:v} {\n\t$0\n}",
 			"description": "Snippet for a for range loop"
 		},
+		"for range channel statement": {
+			"prefix": "forrch",
+			"body": "for ${1:v} := range ${2:v} {\n\t$0\n}",
+			"description": "Snippet for a for range loop with single variable (channel)"
+		},
 		"channel declaration": {
 			"prefix": "ch",
 			"body": "chan ${1:type}",
