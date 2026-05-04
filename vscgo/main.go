@@ -1,4 +1,4 @@
-// Copyright 2024 The Go Authors. All rights reserved.
+// Copyright 2023 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,8 +7,12 @@
 // the extension is first activated.
 package main
 
-import "github.com/golang/vscode-go/internal/vscgo"
+import (
+	"fmt"
+	"os"
+)
 
 func main() {
-	vscgo.Main()
+	fmt.Fprintln(os.Stderr, "This is a deprecated version of vscgo. Please reinstall:")
+	fmt.Fprintln(os.Stderr, "  go install github.com/golang/vscode-go/vscgo@latest")
 }
