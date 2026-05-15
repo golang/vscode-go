@@ -133,10 +133,7 @@ suite('GoPackageOutlineProvider', function () {
 		await waitForOutlineResult(provider, 'package_outline_test');
 		await moveCursor(document1, 19);
 		await sleep(500); // wait for tree view reveal
-		assert.strictEqual(
-			((provider as unknown) as { lastRevealedSymbol?: PackageSymbol }).lastRevealedSymbol?.label,
-			'method1'
-		);
+		assert.strictEqual(((provider as unknown) as { lastRevealed?: PackageSymbol }).lastRevealed?.label, 'method1');
 
 		const document2 = await vscode.workspace.openTextDocument(
 			vscode.Uri.file(path.join(fixtureDir, 'symbols_2.go'))
@@ -145,10 +142,7 @@ suite('GoPackageOutlineProvider', function () {
 		await waitForOutlineResult(provider, 'package_outline_test');
 		await moveCursor(document2, 2);
 		await sleep(500); // wait for tree view reveal
-		assert.strictEqual(
-			((provider as unknown) as { lastRevealedSymbol?: PackageSymbol }).lastRevealedSymbol?.label,
-			'method2'
-		);
+		assert.strictEqual(((provider as unknown) as { lastRevealed?: PackageSymbol }).lastRevealed?.label, 'method2');
 	});
 
 	test('non-go file does not trigger outline', async () => {

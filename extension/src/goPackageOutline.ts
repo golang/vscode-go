@@ -28,11 +28,11 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	public activeDocument?: vscode.TextDocument;
 	public view?: vscode.TreeView<PackageSymbol>;
 
-	private readonly collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-	private packageSymbols: PackageSymbol[] = [];
+	private sortBy = PackageOutlineSortOrder.Position; // position by default
 	private packageItem = this.createPackageItem();
-	private sortOrder = PackageOutlineSortOrder.Position;
-	private lastRevealedSymbol?: PackageSymbol;
+	private packageSymbols: PackageSymbol[] = [];
+
+	private lastRevealed?: PackageSymbol;
 
 	static setup(ctx: vscode.ExtensionContext) {
 		const provider = new this(ctx);
@@ -107,7 +107,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 			this.activeDocument = undefined;
 			this.packageSymbols = [];
 			this.packageItem = this.createPackageItem();
-			this.lastRevealedSymbol = undefined;
+			this.lastRevealed = undefined;
 			vscode.commands.executeCommand('setContext', 'go.showPackageOutline', false);
 			this._onDidChangeTreeData.fire(undefined);
 			return;
@@ -120,7 +120,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 			this.result = res;
 			this.packageSymbols = this.createPackageSymbols(res);
 			this.packageItem = this.createPackageItem(res.PackageName);
-			this.lastRevealedSymbol = undefined;
+			this.lastRevealed = undefined;
 			// Show the Package Outline explorer if the request returned symbols for the current package
 			vscode.commands.executeCommand('setContext', 'go.showPackageOutline', res?.Symbols?.length > 0);
 			this._onDidChangeTreeData.fire(undefined);
@@ -129,7 +129,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 			this.result = undefined;
 			this.packageSymbols = [];
 			this.packageItem = this.createPackageItem();
-			this.lastRevealedSymbol = undefined;
+			this.lastRevealed = undefined;
 			// Hide the Package Outline explorer
 			vscode.commands.executeCommand('setContext', 'go.showPackageOutline', false);
 			this._onDidChangeTreeData.fire(undefined);
@@ -167,48 +167,22 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	}
 
 	private sortSymbols(symbols: readonly PackageSymbol[]): PackageSymbol[] {
-		return [...symbols].sort((a, b) => this.compareSymbols(a, b));
-	}
-
-	// Sort alphabetically when requested, otherwise preserve source order.
-	private compareSymbols(a: PackageSymbol, b: PackageSymbol): number {
-		if (this.sortOrder === PackageOutlineSortOrder.Name) {
-			const byName = this.collator.compare(a.symbolName, b.symbolName);
-			if (byName !== 0) {
-				return byName;
-			}
-			return this.compareByPosition(a, b);
-		}
-		const byPosition = this.compareByPosition(a, b);
-		if (byPosition !== 0) {
-			return byPosition;
-		}
-		return this.collator.compare(a.symbolName, b.symbolName);
-	}
-
-	private compareByPosition(a: PackageSymbol, b: PackageSymbol): number {
-		if (a.fileIndex !== b.fileIndex) {
-			return a.fileIndex - b.fileIndex;
-		}
-		if (a.range.start.line !== b.range.start.line) {
-			return a.range.start.line - b.range.start.line;
-		}
-		return a.range.start.character - b.range.start.character;
+		return [...symbols].sort((a, b) => compareSymbols(a, b, this.sortBy));
 	}
 
 	private setSortOrder(sortOrder: PackageOutlineSortOrder) {
-		if (this.sortOrder === sortOrder) {
+		if (this.sortBy === sortOrder) {
 			return;
 		}
-		this.sortOrder = sortOrder;
+		this.sortBy = sortOrder;
 		vscode.commands.executeCommand('setContext', 'go.packageOutline.sortOrder', sortOrder);
-		this.lastRevealedSymbol = undefined;
+		this.lastRevealed = undefined;
 		this._onDidChangeTreeData.fire(undefined);
 		void this.revealActiveSymbol(vscode.window.activeTextEditor);
 	}
 
 	private updateContextKeys() {
-		vscode.commands.executeCommand('setContext', 'go.packageOutline.sortOrder', this.sortOrder);
+		vscode.commands.executeCommand('setContext', 'go.packageOutline.sortOrder', this.sortBy);
 	}
 
 	private async revealActiveSymbol(editor?: vscode.TextEditor) {
@@ -217,13 +191,13 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		}
 		const symbol = this.findSymbolAtPosition(this.packageSymbols, editor.document.uri, editor.selection.active);
 		if (!symbol) {
-			this.lastRevealedSymbol = undefined;
+			this.lastRevealed = undefined;
 			return;
 		}
-		if (symbol === this.lastRevealedSymbol) {
+		if (symbol === this.lastRevealed) {
 			return;
 		}
-		this.lastRevealedSymbol = symbol;
+		this.lastRevealed = symbol;
 		try {
 			await this.view.reveal(symbol, { expand: true, select: true });
 		} catch (e) {
@@ -415,5 +389,37 @@ export class PackageSymbol extends vscode.TreeItem {
 			default:
 				return [undefined, 'unknown'];
 		}
+	}
+}
+
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+/**
+ * Compares two package symbols.
+ * Sorts primarily by `compareBy`, using the secondary sort as a tie-breaker.
+ */
+function compareSymbols(a: PackageSymbol, b: PackageSymbol, compareBy: PackageOutlineSortOrder): number {
+	function compareByPosition(a: PackageSymbol, b: PackageSymbol): number {
+		if (a.fileIndex !== b.fileIndex) {
+			return a.fileIndex - b.fileIndex;
+		}
+		if (a.range.start.line !== b.range.start.line) {
+			return a.range.start.line - b.range.start.line;
+		}
+		return a.range.start.character - b.range.start.character;
+	}
+
+	if (compareBy === PackageOutlineSortOrder.Name) {
+		const byName = collator.compare(a.symbolName, b.symbolName);
+		if (byName !== 0) {
+			return byName;
+		}
+		return compareByPosition(a, b);
+	} else {
+		const byPosition = compareByPosition(a, b);
+		if (byPosition !== 0) {
+			return byPosition;
+		}
+		return collator.compare(a.symbolName, b.symbolName);
 	}
 }
