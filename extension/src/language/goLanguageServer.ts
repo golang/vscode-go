@@ -498,21 +498,10 @@ export async function buildLanguageClient(
 					const param = goCtx.languageClient.code2ProtocolConverter.asTextDocumentPositionParams(doc, pos);
 					(param as any).range = goCtx.languageClient.code2ProtocolConverter.asRange(selection);
 
-					const result: any = await vscode.commands.executeCommand('gopls.lsp', {
-						method: 'textDocument/typeDefinition',
-						param: param
-					});
+					const result: any = await c.sendRequest('textDocument/typeDefinition', param);
 					return goCtx.languageClient.protocol2CodeConverter.asDefinitionResult(result);
 				},
 				provideHover: async (doc, pos, token, next) => {
-					// gopls.lsp is a command that acts as a dispatcher, allowing
-					// the client to trigger any LSP RPC via "workspace/executeCommand"
-					// request with custom param.
-					const supportLSPCommand = goCtx.serverInfo?.Commands?.includes('gopls.lsp');
-					if (!supportLSPCommand) {
-						return await next(doc, pos, token);
-					}
-
 					const editor = vscode.window.activeTextEditor;
 					if (!editor || doc !== editor.document) {
 						return await next(doc, pos, token);
@@ -532,10 +521,8 @@ export async function buildLanguageClient(
 					const param = goCtx.languageClient.code2ProtocolConverter.asTextDocumentPositionParams(doc, pos);
 					(param as any).range = goCtx.languageClient.code2ProtocolConverter.asRange(selection);
 
-					const result: Hover = await vscode.commands.executeCommand('gopls.lsp', {
-						method: 'textDocument/hover',
-						param: param
-					});
+					const result: Hover = await c.sendRequest('textDocument/hover', param);
+
 					return goCtx.languageClient.protocol2CodeConverter.asHover(result);
 				},
 				handleWorkDoneProgress: async (token, params, next) => {
@@ -616,14 +603,11 @@ export async function buildLanguageClient(
 						if (formAnswers === undefined || formAnswers.length === 0) {
 							res = await next(command, args);
 						} else {
-							res = await vscode.commands.executeCommand('gopls.lsp', {
-								method: 'workspace/executeCommand',
-								param: {
-									command: command,
-									arguments: args,
-									formAnswers: formAnswers
-								} as InteractiveExecuteCommandParams
-							});
+							res = await c.sendRequest('workspace/executeCommand', {
+								command: command,
+								arguments: args,
+								formAnswers: formAnswers
+							} as InteractiveExecuteCommandParams);
 						}
 
 						const progressToken = res?.Token as ProgressToken;
@@ -653,7 +637,7 @@ export async function buildLanguageClient(
 					} catch (e) {
 						// Suppress error messages for frequently triggered
 						// or programmatically triggered commads.
-						if (command === 'gopls.package_symbols' || command === 'gopls.lsp') {
+						if (command === 'gopls.package_symbols') {
 							return null;
 						}
 						// TODO: how to print ${e} reliably???

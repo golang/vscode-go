@@ -280,41 +280,27 @@ export async function ResolveCommand(
 		return { command: command, args: args };
 	}
 
-	// Prevent infinite recursion. Since "gopls.lsp" is the mechanism used to
-	// resolve commands, attempting to resolve it would create a nested loop:
-	// { command: 'gopls.lsp', args: { method: 'command/resolve', param: { command: 'gopls.lsp'... } } }
-	if (command === 'gopls.lsp') {
-		return { command: command, args: args };
-	}
-
-	const supportLSPCommand = goCtx.serverInfo?.Commands?.includes('gopls.lsp');
-	if (!supportLSPCommand) {
-		return { command: command, args: args };
-	}
-
 	if (goCtx.languageClient === undefined) {
 		return { command: command, args: args };
 	}
 
-	const protocolCommand = await asProtocolCommand(goCtx.languageClient, command, args);
 	let param = {
-		command: protocolCommand.command,
-		arguments: protocolCommand.arguments
+		command: command,
+		arguments: args
 	} as InteractiveExecuteCommandParams;
 
 	// Invoke "command/resolve" at least once to ensure the command
 	// is fully specified, as the initial input may lack necessary parameters.
 	for (let i = 0; i < MAX_RETRY; i++) {
-		const response: any = await vscode.commands.executeCommand('gopls.lsp', {
-			method: 'command/resolve',
-			param: param
-		});
-
+		const response = await goCtx.languageClient.sendRequest<InteractiveExecuteCommandParams>(
+			'command/resolve',
+			param
+		);
 		if (!response) {
 			return undefined;
 		}
 
-		param = response as InteractiveExecuteCommandParams;
+		param = response;
 
 		// "formAnswers" are validated by the language server.
 		if (param.formFields === undefined) {
@@ -333,7 +319,7 @@ export async function ResolveCommand(
 			}
 		}
 
-		const answers = await CollectAnswers(param.formFields, param.formAnswers);
+		const answers = await CollectAnswers(goCtx, param.formFields, param.formAnswers);
 		if (answers === undefined) {
 			return undefined;
 		}
@@ -360,6 +346,7 @@ export async function ResolveCommand(
  * the user cancelled the process.
  */
 export async function CollectAnswers(
+	goCtx: GoExtensionContext,
 	formFields: FormField[] | undefined,
 	formAnswers: any[] | undefined
 ): Promise<any[] | undefined> {
@@ -372,7 +359,7 @@ export async function CollectAnswers(
 	for (let i = 0; i < formFields.length; i++) {
 		const field = formFields[i];
 		const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
-		const answer = await promptForField(field, previousAnswer);
+		const answer = await promptForField(goCtx, field, previousAnswer);
 
 		// An 'undefined' result occurs if the user manually cancels (e.g.,
 		// "Escape" or cancel file picker) or if a new refactoring request is
@@ -427,7 +414,12 @@ interface InteractiveListEnumParams {
 /**
  * Opens a Quick Pick that dynamically fetches options from the Language Server.
  */
-export async function pickLazyEnum(description: string, source: string, config: any = {}): Promise<string | undefined> {
+export async function pickLazyEnum(
+	goCtx: GoExtensionContext,
+	description: string,
+	source: string,
+	config: any = {}
+): Promise<string | undefined> {
 	return new Promise((resolve) => {
 		const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { value: string }>();
 
@@ -448,17 +440,17 @@ export async function pickLazyEnum(description: string, source: string, config: 
 					config: config,
 					query: query
 				};
-				const result = await vscode.commands.executeCommand<FormEnumEntry[]>('gopls.lsp', {
-					method: 'interactive/listEnum',
-					param: params
-				});
+				const response = await goCtx.languageClient?.sendRequest<FormEnumEntry[]>(
+					'interactive/listEnum',
+					params
+				);
 
-				if (!result) {
+				if (!response) {
 					quickPick.items = [];
 					return;
 				}
 
-				quickPick.items = result.map((entry) => ({
+				quickPick.items = response.map((entry) => ({
 					label: entry.description,
 					detail: entry.value !== entry.description ? entry.value : undefined,
 					value: entry.value
@@ -496,7 +488,11 @@ export async function pickLazyEnum(description: string, source: string, config: 
 /**
  * Helper to prompt for a single field based on its type.
  */
-async function promptForField(field: FormField, prevAnswer: any | undefined): Promise<any | undefined> {
+async function promptForField(
+	goCtx: GoExtensionContext,
+	field: FormField,
+	prevAnswer: any | undefined
+): Promise<any | undefined> {
 	const type = field.type;
 
 	switch (type.kind) {
@@ -606,7 +602,7 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 		}
 
 		case 'lazyEnum': {
-			return await pickLazyEnum(field.description, type.source, type.config);
+			return await pickLazyEnum(goCtx, field.description, type.source, type.config);
 		}
 
 		case 'bool': {
@@ -675,38 +671,4 @@ async function promptForField(field: FormField, prevAnswer: any | undefined): Pr
 		default:
 			return undefined;
 	}
-}
-
-/**
- * asProtocolCommand uses the language client's converter to transform the input
- * ExecuteCommandParams (i.e. command and args) into LSP-compatible types.
- *
- * This is equivalent of `converter.AsExecuteCommandParams`.
- */
-async function asProtocolCommand(
-	client: LanguageClient,
-	command: string,
-	args: any[]
-): Promise<{ command: string; arguments: any[] }> {
-	// The LanguageClient does not expose a direct method to convert an LSP
-	// ExecuteCommandParams. (i.e. there is no converter.AsExecuteCommandParams)
-	//
-	// However, it does perform this conversion for commands embedded inside
-	// CodeActions.
-	// We wrap the args in a dummy CodeAction to "piggyback" on this existing
-	// logic, ensuring we convert types exactly as the client expects without
-	// manual handling.
-	const dummyAction = new vscode.CodeAction('dummy', vscode.CodeActionKind.Refactor);
-	dummyAction.command = {
-		title: 'dummy',
-		command: command,
-		arguments: args
-	};
-
-	const protocolAction = (await client.code2ProtocolConverter.asCodeAction(dummyAction)) as any;
-
-	return {
-		command: protocolAction.command?.command,
-		arguments: protocolAction.command?.arguments || []
-	};
 }
