@@ -146,8 +146,8 @@ const internal = new Map<string, Tool>([
 			description: 'Language Server from Google',
 			usePrereleaseInPreviewMode: true,
 			minimumGoVersion: semver.coerce('1.19'),
-			latestVersion: semver.parse('v0.21.1'),
-			latestVersionTimestamp: moment('2026-02-10', 'YYYY-MM-DD')
+			latestVersion: semver.parse('v0.22.0'),
+			latestVersionTimestamp: moment('2026-05-15', 'YYYY-MM-DD')
 		}
 	],
 	[
