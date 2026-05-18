@@ -5,7 +5,6 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { GoExtensionContext } from '../context';
 import { LanguageClient } from 'vscode-languageclient/node';
 
 // ----------------------------------------------------------------------------
@@ -271,16 +270,12 @@ const MAX_RETRY = 5;
 // See [InteractiveParams] for the complete multi-step client-server handshake
 // and the architectural reasoning behind dedicated ResolveXXX methods.
 export async function ResolveCommand(
-	goCtx: GoExtensionContext,
+	languageClient: LanguageClient,
 	command: string,
 	args: any[]
 ): Promise<{ command: string; args: any[]; formAnswers?: any[] } | undefined> {
 	// Avoid resolving for frequently triggered commands for performance.
 	if (command === 'gopls.package_symbols') {
-		return { command: command, args: args };
-	}
-
-	if (goCtx.languageClient === undefined) {
 		return { command: command, args: args };
 	}
 
@@ -292,10 +287,7 @@ export async function ResolveCommand(
 	// Invoke "command/resolve" at least once to ensure the command
 	// is fully specified, as the initial input may lack necessary parameters.
 	for (let i = 0; i < MAX_RETRY; i++) {
-		const response = await goCtx.languageClient.sendRequest<InteractiveExecuteCommandParams>(
-			'command/resolve',
-			param
-		);
+		const response = await languageClient.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param);
 		if (!response) {
 			return undefined;
 		}
@@ -319,7 +311,7 @@ export async function ResolveCommand(
 			}
 		}
 
-		const answers = await CollectAnswers(goCtx, param.formFields, param.formAnswers);
+		const answers = await CollectAnswers(languageClient, param.formFields, param.formAnswers);
 		if (answers === undefined) {
 			return undefined;
 		}
@@ -346,7 +338,7 @@ export async function ResolveCommand(
  * the user cancelled the process.
  */
 export async function CollectAnswers(
-	goCtx: GoExtensionContext,
+	languageClient: LanguageClient,
 	formFields: FormField[] | undefined,
 	formAnswers: any[] | undefined
 ): Promise<any[] | undefined> {
@@ -359,7 +351,7 @@ export async function CollectAnswers(
 	for (let i = 0; i < formFields.length; i++) {
 		const field = formFields[i];
 		const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
-		const answer = await promptForField(goCtx, field, previousAnswer);
+		const answer = await promptForField(languageClient, field, previousAnswer);
 
 		// An 'undefined' result occurs if the user manually cancels (e.g.,
 		// "Escape" or cancel file picker) or if a new refactoring request is
@@ -415,7 +407,7 @@ interface InteractiveListEnumParams {
  * Opens a Quick Pick that dynamically fetches options from the Language Server.
  */
 export async function pickLazyEnum(
-	goCtx: GoExtensionContext,
+	languageClient: LanguageClient,
 	description: string,
 	source: string,
 	config: any = {}
@@ -440,10 +432,7 @@ export async function pickLazyEnum(
 					config: config,
 					query: query
 				};
-				const response = await goCtx.languageClient?.sendRequest<FormEnumEntry[]>(
-					'interactive/listEnum',
-					params
-				);
+				const response = await languageClient?.sendRequest<FormEnumEntry[]>('interactive/listEnum', params);
 
 				if (!response) {
 					quickPick.items = [];
@@ -489,7 +478,7 @@ export async function pickLazyEnum(
  * Helper to prompt for a single field based on its type.
  */
 async function promptForField(
-	goCtx: GoExtensionContext,
+	languageClient: LanguageClient,
 	field: FormField,
 	prevAnswer: any | undefined
 ): Promise<any | undefined> {
@@ -602,7 +591,7 @@ async function promptForField(
 		}
 
 		case 'lazyEnum': {
-			return await pickLazyEnum(goCtx, field.description, type.source, type.config);
+			return await pickLazyEnum(languageClient, field.description, type.source, type.config);
 		}
 
 		case 'bool': {

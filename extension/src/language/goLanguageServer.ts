@@ -568,8 +568,8 @@ export async function buildLanguageClient(
 				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
 					let formAnswers: any[] | undefined;
 					const supported = c.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
-					if (Array.isArray(supported) && supported.includes('command')) {
-						const resolved = await ResolveCommand(goCtx, command, args);
+					if (goCtx.languageClient && Array.isArray(supported) && supported.includes('command')) {
+						const resolved = await ResolveCommand(goCtx.languageClient, command, args);
 						if (!resolved) {
 							return undefined;
 						}
