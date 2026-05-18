@@ -5,7 +5,7 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { LanguageClient } from 'vscode-languageclient/node';
+import { LanguageClient, RequestType } from 'vscode-languageclient/node';
 
 // ----------------------------------------------------------------------------
 // Form Field Type Definitions
@@ -253,46 +253,24 @@ export interface InteractiveExecuteCommandParams extends InteractiveParams {
  */
 const MAX_RETRY = 5;
 
-// ResolveCommand handles the interactive resolution of a command prior to
-// its execution.
-//
-// It processes an [ExecuteCommandParams] to determine if the command requires
-// interactive input, or to validate user-provided answers submitted via the
-// embedded [InteractiveParams].
-//
-// If the command requires user input (e.g., the initial probe) or if the
-// provided answers are invalid, it returns a modified [ExecuteCommandParams]
-// populated with FormFields to prompt the user. If the input is valid and
-// complete, or if the command requires no interaction at all, it returns an
-// [ExecuteCommandParams] with an empty form, signaling the client to proceed
-// with execution.
-//
-// See [InteractiveParams] for the complete multi-step client-server handshake
-// and the architectural reasoning behind dedicated ResolveXXX methods.
-export async function ResolveCommand(
+export async function resolveCommandInteractively(
 	languageClient: LanguageClient,
-	command: string,
-	args: any[]
-): Promise<{ command: string; args: any[]; formAnswers?: any[] } | undefined> {
+	param: InteractiveExecuteCommandParams
+): Promise<InteractiveExecuteCommandParams | undefined> {
 	// Avoid resolving for frequently triggered commands for performance.
-	if (command === 'gopls.package_symbols') {
-		return { command: command, args: args };
+	if (param.command === 'gopls.package_symbols') {
+		return param;
 	}
-
-	let param = {
-		command: command,
-		arguments: args
-	} as InteractiveExecuteCommandParams;
 
 	// Invoke "command/resolve" at least once to ensure the command
 	// is fully specified, as the initial input may lack necessary parameters.
 	for (let i = 0; i < MAX_RETRY; i++) {
-		const response = await languageClient.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param);
-		if (!response) {
+		const result = await ResolveCommand(languageClient, param);
+		if (!result) {
 			return undefined;
 		}
 
-		param = response;
+		param = result;
 
 		// "formAnswers" are validated by the language server.
 		if (param.formFields === undefined) {
@@ -319,7 +297,69 @@ export async function ResolveCommand(
 		param.formFields = undefined;
 	}
 
-	return { command: param.command, args: param.arguments ? param.arguments : [], formAnswers: param.formAnswers };
+	return param;
+}
+
+// ResolveCommand handles the interactive resolution of a command prior to its
+// execution.
+//
+// It processes an [InteractiveExecuteCommandParams] to determine if the command
+// requires interactive input, or to validate user-provided answers submitted
+// via the embedded [InteractiveParams].
+//
+// If the command requires user input (e.g., the initial probe) or if the
+// provided answers are invalid, it returns a modified [InteractiveExecuteCommandParams]
+// populated with FormFields to prompt the user. If the input is valid and
+// complete, or if the command requires no interaction at all, it returns an
+// [InteractiveExecuteCommandParams] with an empty form, signaling the client to
+// proceed with execution.
+//
+// See [InteractiveParams] for the complete multi-step client-server handshake
+// and the architectural reasoning behind dedicated ResolveXXX methods.
+export async function ResolveCommand(
+	languageClient: LanguageClient,
+	param: InteractiveExecuteCommandParams
+): Promise<InteractiveExecuteCommandParams | undefined> {
+	const requestType = new RequestType<InteractiveExecuteCommandParams, InteractiveExecuteCommandParams, void>(
+		'command/resolve'
+	);
+	return languageClient
+		.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param)
+		.then(undefined, (error) => {
+			return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
+		});
+}
+
+// Executes an LSP command with an extended payload containing interactive form
+// answers.
+export async function InteractiveExecuteCommand(
+	languageClient: LanguageClient,
+	command: string,
+	args: any[],
+	formAnswers: any[]
+): Promise<any> {
+	const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
+	return languageClient
+		.sendRequest('workspace/executeCommand', {
+			command: command,
+			arguments: args,
+			formAnswers: formAnswers
+		} as InteractiveExecuteCommandParams)
+		.then(undefined, (error) => {
+			return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
+		});
+}
+
+// Queries the language server to dynamically retrieve enumeration entries for
+// interactive form fields of type 'lazyEnum'.
+export async function InteractiveListEnum(
+	languageClient: LanguageClient,
+	param: InteractiveListEnumParams
+): Promise<FormEnumEntry[] | undefined> {
+	const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>('interactive/listEnum');
+	return languageClient.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
+		return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
+	});
 }
 
 /**
@@ -337,7 +377,7 @@ export async function ResolveCommand(
  * @returns An array of answers matching the order of fields, or undefined if
  * the user cancelled the process.
  */
-export async function CollectAnswers(
+async function CollectAnswers(
 	languageClient: LanguageClient,
 	formFields: FormField[] | undefined,
 	formAnswers: any[] | undefined
@@ -432,7 +472,7 @@ export async function pickLazyEnum(
 					config: config,
 					query: query
 				};
-				const response = await languageClient?.sendRequest<FormEnumEntry[]>('interactive/listEnum', params);
+				const response = await InteractiveListEnum(languageClient, params);
 
 				if (!response) {
 					quickPick.items = [];

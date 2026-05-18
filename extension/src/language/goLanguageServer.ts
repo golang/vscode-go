@@ -69,7 +69,7 @@ import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
-import { InteractiveExecuteCommandParams, ResolveCommand } from './form';
+import { InteractiveExecuteCommand, InteractiveExecuteCommandParams, resolveCommandInteractively } from './form';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -569,14 +569,17 @@ export async function buildLanguageClient(
 					let formAnswers: any[] | undefined;
 					const supported = c.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
 					if (goCtx.languageClient && Array.isArray(supported) && supported.includes('command')) {
-						const resolved = await ResolveCommand(goCtx.languageClient, command, args);
+						const resolved = await resolveCommandInteractively(goCtx.languageClient, {
+							command: command,
+							arguments: args
+						} as InteractiveExecuteCommandParams);
 						if (!resolved) {
 							return undefined;
 						}
 
 						// Replace original command and result with resolved command and args.
 						command = resolved.command;
-						args = resolved.args;
+						args = resolved.arguments || [];
 						formAnswers = resolved.formAnswers;
 					}
 
@@ -603,11 +606,7 @@ export async function buildLanguageClient(
 						if (formAnswers === undefined || formAnswers.length === 0) {
 							res = await next(command, args);
 						} else {
-							res = await c.sendRequest('workspace/executeCommand', {
-								command: command,
-								arguments: args,
-								formAnswers: formAnswers
-							} as InteractiveExecuteCommandParams);
+							res = await InteractiveExecuteCommand(goCtx.languageClient!, command, args, formAnswers);
 						}
 
 						const progressToken = res?.Token as ProgressToken;
