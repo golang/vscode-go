@@ -14,7 +14,7 @@ import path = require('path');
 import semver = require('semver');
 import util = require('util');
 import vscode = require('vscode');
-import { InitializeParams, LSPObject } from 'vscode-languageserver-protocol';
+import { InitializeParams } from 'vscode-languageserver-protocol';
 import {
 	CancellationToken,
 	CloseAction,
@@ -363,10 +363,9 @@ export class GoLanguageClient extends InteractiveLanguageClient implements vscod
 		// library. Experimental capabilities not used by vscode-languageserver-node
 		// can be used for custom communication between vscode-go and gopls.
 		// See https://github.com/microsoft/vscode-languageserver-node/issues/1607
-		const experimental: LSPObject = {
-			progressMessageStyles: ['log'],
-			interactiveInputTypes: ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string']
-		};
+		const experimental = (params.capabilities.experimental as any) || {};
+		experimental.progressMessageStyles = ['log'];
+
 		params.capabilities.experimental = experimental;
 	}
 }

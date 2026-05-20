@@ -5,6 +5,7 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { InitializeParams } from 'vscode-languageserver-protocol';
 import { LanguageClient, RequestType, ServerOptions, LanguageClientOptions } from 'vscode-languageclient/node';
 
 // ----------------------------------------------------------------------------
@@ -291,6 +292,25 @@ export class InteractiveLanguageClient extends LanguageClient {
 		forceDebug?: boolean
 	) {
 		super(id, name, serverOptions, clientOptions, forceDebug);
+	}
+
+	/**
+	 * Fills in the LSP initialize parameters during the handshake, and registers
+	 * client capabilities to support interactive refactoring prompts.
+	 *
+	 * @important Subclasses overriding this method must:
+	 * 1. Call `super.fillInitializeParams(params)` first to preserve base client
+	 *    configurations.
+	 * 2. Amend or merge properties into `params.capabilities.experimental`
+	 *    rather than overwriting the entire field, to prevent erasing the
+	 * 		interactive capabilities.
+	 */
+	protected fillInitializeParams(params: InitializeParams): void {
+		super.fillInitializeParams(params);
+
+		const experimental = params.capabilities.experimental || {};
+		experimental.interactiveInputTypes = ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string'];
+		params.capabilities.experimental = experimental;
 	}
 
 	/**
