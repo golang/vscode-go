@@ -5,7 +5,7 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { LanguageClient, RequestType } from 'vscode-languageclient/node';
+import { LanguageClient, RequestType, ServerOptions, LanguageClientOptions } from 'vscode-languageclient/node';
 
 // ----------------------------------------------------------------------------
 // Form Field Type Definitions
@@ -282,422 +282,412 @@ export interface InteractiveListEnumParams {
 	query: string;
 }
 
-/**
- * MAX_RETRY defined the maximum number of user collection allowed for when
- * resolving a command.
- */
-const MAX_RETRY = 5;
+export class InteractiveLanguageClient extends LanguageClient {
+	constructor(
+		id: string,
+		name: string,
+		serverOptions: ServerOptions,
+		clientOptions: LanguageClientOptions,
+		forceDebug?: boolean
+	) {
+		super(id, name, serverOptions, clientOptions, forceDebug);
+	}
 
-export async function resolveCommandInteractively(
-	languageClient: LanguageClient,
-	param: InteractiveExecuteCommandParams
-): Promise<InteractiveExecuteCommandParams | undefined> {
-	// Avoid resolving for frequently triggered commands for performance.
-	if (param.command === 'gopls.package_symbols') {
+	/**
+	 * MAX_RETRY defined the maximum number of user collection allowed for when
+	 * resolving a command.
+	 */
+	static MAX_RETRY = 5;
+
+	async resolveCommandInteractively(
+		param: InteractiveExecuteCommandParams
+	): Promise<InteractiveExecuteCommandParams | undefined> {
+		// Avoid resolving for frequently triggered commands for performance.
+		if (param.command === 'gopls.package_symbols') {
+			return param;
+		}
+
+		// Invoke "command/resolve" at least once to ensure the command
+		// is fully specified, as the initial input may lack necessary parameters.
+		for (let i = 0; i < InteractiveLanguageClient.MAX_RETRY; i++) {
+			const result = await this.ResolveCommand(param);
+			if (!result) {
+				return undefined;
+			}
+
+			param = result;
+
+			// "formAnswers" are validated by the language server.
+			if (param.formFields === undefined) {
+				break;
+			}
+
+			// Exhaust all retries.
+			if (i === InteractiveLanguageClient.MAX_RETRY - 1) {
+				vscode.window.showWarningMessage(
+					`Retried ${InteractiveLanguageClient.MAX_RETRY} exceeds the maximum allowed attempts`
+				);
+				return undefined;
+			}
+
+			for (const [index, field] of param.formFields.entries()) {
+				if (field.error) {
+					vscode.window.showWarningMessage(`Question ${index + 1}: ${field.error}`);
+				}
+			}
+
+			const answers = await this.collectAnswers(param.formFields, param.formAnswers);
+			if (answers === undefined) {
+				return undefined;
+			}
+			param.formAnswers = answers;
+			param.formFields = undefined;
+		}
+
 		return param;
 	}
 
-	// Invoke "command/resolve" at least once to ensure the command
-	// is fully specified, as the initial input may lack necessary parameters.
-	for (let i = 0; i < MAX_RETRY; i++) {
-		const result = await ResolveCommand(languageClient, param);
-		if (!result) {
-			return undefined;
-		}
-
-		param = result;
-
-		// "formAnswers" are validated by the language server.
-		if (param.formFields === undefined) {
-			break;
-		}
-
-		// Exhaust all retries.
-		if (i === MAX_RETRY - 1) {
-			vscode.window.showWarningMessage(`Retried ${MAX_RETRY} exceeds the maximum allowed attempts`);
-			return undefined;
-		}
-
-		for (const [index, field] of param.formFields.entries()) {
-			if (field.error) {
-				vscode.window.showWarningMessage(`Question ${index + 1}: ${field.error}`);
-			}
-		}
-
-		const answers = await CollectAnswers(languageClient, param.formFields, param.formAnswers);
-		if (answers === undefined) {
-			return undefined;
-		}
-		param.formAnswers = answers;
-		param.formFields = undefined;
+	// ResolveCommand handles the interactive resolution of a command prior to its
+	// execution.
+	//
+	// It processes an [InteractiveExecuteCommandParams] to determine if the command
+	// requires interactive input, or to validate user-provided answers submitted
+	// via the embedded [InteractiveParams].
+	//
+	// If the command requires user input (e.g., the initial probe) or if the
+	// provided answers are invalid, it returns a modified [InteractiveExecuteCommandParams]
+	// populated with FormFields to prompt the user. If the input is valid and
+	// complete, or if the command requires no interaction at all, it returns an
+	// [InteractiveExecuteCommandParams] with an empty form, signaling the client to
+	// proceed with execution.
+	//
+	// See [InteractiveParams] for the complete multi-step client-server handshake
+	// and the architectural reasoning behind dedicated ResolveXXX methods.
+	async ResolveCommand(param: InteractiveExecuteCommandParams): Promise<InteractiveExecuteCommandParams | undefined> {
+		const requestType = new RequestType<InteractiveExecuteCommandParams, InteractiveExecuteCommandParams, void>(
+			'command/resolve'
+		);
+		return this.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param).then(undefined, (error) => {
+			return this.handleFailedRequest(requestType, undefined, error, undefined);
+		});
 	}
 
-	return param;
-}
-
-// ResolveCommand handles the interactive resolution of a command prior to its
-// execution.
-//
-// It processes an [InteractiveExecuteCommandParams] to determine if the command
-// requires interactive input, or to validate user-provided answers submitted
-// via the embedded [InteractiveParams].
-//
-// If the command requires user input (e.g., the initial probe) or if the
-// provided answers are invalid, it returns a modified [InteractiveExecuteCommandParams]
-// populated with FormFields to prompt the user. If the input is valid and
-// complete, or if the command requires no interaction at all, it returns an
-// [InteractiveExecuteCommandParams] with an empty form, signaling the client to
-// proceed with execution.
-//
-// See [InteractiveParams] for the complete multi-step client-server handshake
-// and the architectural reasoning behind dedicated ResolveXXX methods.
-export async function ResolveCommand(
-	languageClient: LanguageClient,
-	param: InteractiveExecuteCommandParams
-): Promise<InteractiveExecuteCommandParams | undefined> {
-	const requestType = new RequestType<InteractiveExecuteCommandParams, InteractiveExecuteCommandParams, void>(
-		'command/resolve'
-	);
-	return languageClient
-		.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param)
-		.then(undefined, (error) => {
-			return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
-		});
-}
-
-// Executes an LSP command with an extended payload containing interactive form
-// answers.
-export async function InteractiveExecuteCommand(
-	languageClient: LanguageClient,
-	command: string,
-	args: any[],
-	formAnswers: any[]
-): Promise<any> {
-	const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
-	return languageClient
-		.sendRequest('workspace/executeCommand', {
+	// Executes an LSP command with an extended payload containing interactive form
+	// answers.
+	async InteractiveExecuteCommand(command: string, args: any[], formAnswers: any[]): Promise<any> {
+		const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
+		return this.sendRequest('workspace/executeCommand', {
 			command: command,
 			arguments: args,
 			formAnswers: formAnswers
-		} as InteractiveExecuteCommandParams)
-		.then(undefined, (error) => {
-			return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
+		} as InteractiveExecuteCommandParams).then(undefined, (error) => {
+			return this.handleFailedRequest(requestType, undefined, error, undefined);
 		});
-}
-
-// Queries the language server to dynamically retrieve enumeration entries for
-// interactive form fields of type 'lazyEnum'.
-export async function InteractiveListEnum(
-	languageClient: LanguageClient,
-	param: InteractiveListEnumParams
-): Promise<FormEnumEntry[] | undefined> {
-	const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>('interactive/listEnum');
-	return languageClient.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
-		return languageClient.handleFailedRequest(requestType, undefined, error, undefined);
-	});
-}
-
-/**
- * Iterates through the provided form fields and prompts the user for input
- * using VS Code's native UI (e.g. InputBox, QuickPick...).
- *
- * Implementation Note:
- * While multiple async calls could start this function simultaneously, a mutex
- * is not needed. VS Code automatically cancels any active input box when a new
- * one is requested. Because this function treats an 'undefined' result as a
- * signal to terminate the entire flow, any previous sessions are effectively
- * dropped, ensuring only the latest interactive refactoring proceeds.
- *
- * * @param formFields The fields to collect answers for.
- * @returns An array of answers matching the order of fields, or undefined if
- * the user cancelled the process.
- */
-async function CollectAnswers(
-	languageClient: LanguageClient,
-	formFields: FormField[] | undefined,
-	formAnswers: any[] | undefined
-): Promise<any[] | undefined> {
-	if (formFields === undefined) {
-		return undefined;
 	}
 
-	const answers: any[] = [];
+	// Queries the language server to dynamically retrieve enumeration entries for
+	// interactive form fields of type 'lazyEnum'.
+	async InteractiveListEnum(param: InteractiveListEnumParams): Promise<FormEnumEntry[] | undefined> {
+		const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>('interactive/listEnum');
+		return this.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
+			return this.handleFailedRequest(requestType, undefined, error, undefined);
+		});
+	}
 
-	for (let i = 0; i < formFields.length; i++) {
-		const field = formFields[i];
-		const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
-		const answer = await promptForField(languageClient, field, previousAnswer);
-
-		// An 'undefined' result occurs if the user manually cancels (e.g.,
-		// "Escape" or cancel file picker) or if a new refactoring request is
-		// triggered, which automatically interrupts and cancels the current
-		// active input box.
-		// In both cases, we stop the sequence and drop the entire flow.
-		if (answer === undefined) {
+	/**
+	 * Iterates through the provided form fields and prompts the user for input
+	 * using VS Code's native UI (e.g. InputBox, QuickPick...).
+	 *
+	 * Implementation Note:
+	 * While multiple async calls could start this function simultaneously, a mutex
+	 * is not needed. VS Code automatically cancels any active input box when a new
+	 * one is requested. Because this function treats an 'undefined' result as a
+	 * signal to terminate the entire flow, any previous sessions are effectively
+	 * dropped, ensuring only the latest interactive refactoring proceeds.
+	 *
+	 * @param formFields The fields to collect answers for.
+	 * @returns An array of answers matching the order of fields, or undefined if
+	 * the user cancelled the process.
+	 */
+	private async collectAnswers(
+		formFields: FormField[] | undefined,
+		formAnswers: any[] | undefined
+	): Promise<any[] | undefined> {
+		if (formFields === undefined) {
 			return undefined;
 		}
 
-		answers.push(answer);
+		const answers: any[] = [];
+
+		for (let i = 0; i < formFields.length; i++) {
+			const field = formFields[i];
+			const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
+			const answer = await this.promptForField(field, previousAnswer);
+
+			// An 'undefined' result occurs if the user manually cancels (e.g.,
+			// "Escape" or cancel file picker) or if a new refactoring request is
+			// triggered, which automatically interrupts and cancels the current
+			// active input box.
+			// In both cases, we stop the sequence and drop the entire flow.
+			if (answer === undefined) {
+				return undefined;
+			}
+
+			answers.push(answer);
+		}
+
+		return answers;
 	}
 
-	return answers;
-}
+	/**
+	 * Opens a Quick Pick that dynamically fetches options from the Language Server.
+	 */
+	private async pickLazyEnum(description: string, source: string, config: any = {}): Promise<string | undefined> {
+		return new Promise((resolve) => {
+			const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { value: string }>();
 
-/**
- * Opens a Quick Pick that dynamically fetches options from the Language Server.
- */
-export async function pickLazyEnum(
-	languageClient: LanguageClient,
-	description: string,
-	source: string,
-	config: any = {}
-): Promise<string | undefined> {
-	return new Promise((resolve) => {
-		const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { value: string }>();
+			quickPick.title = description;
+			quickPick.placeholder = 'Type to search ' + source;
+			quickPick.matchOnDescription = true;
 
-		quickPick.title = description;
-		quickPick.placeholder = 'Type to search ' + source;
-		quickPick.matchOnDescription = true;
+			let debounceTimeout: NodeJS.Timeout | undefined;
+			let isResolved = false;
 
-		let debounceTimeout: NodeJS.Timeout | undefined;
-		let isResolved = false;
-
-		// Call "interactive/listEnum" and render result as entries as quick
-		// pick items.
-		const search = async (query: string) => {
-			quickPick.busy = true;
-			try {
-				const params: InteractiveListEnumParams = {
-					source: source,
-					config: config,
-					query: query
-				};
-				const response = await InteractiveListEnum(languageClient, params);
-
-				if (!response) {
-					quickPick.items = [];
-					return;
-				}
-
-				quickPick.items = response.map((entry) => ({
-					label: entry.description,
-					detail: entry.value !== entry.description ? entry.value : undefined,
-					value: entry.value
-				}));
-			} catch (e) {
-				console.error('Error fetching enum options:', e);
-				quickPick.items = [];
-			} finally {
-				quickPick.busy = false;
-			}
-		};
-
-		quickPick.onDidChangeValue((value) => {
-			if (debounceTimeout) clearTimeout(debounceTimeout);
-			debounceTimeout = setTimeout(() => search(value), 400);
-		});
-
-		quickPick.onDidAccept(() => {
-			const selection = quickPick.selectedItems[0];
-			isResolved = true;
-			resolve(selection ? selection.value : undefined);
-			quickPick.hide();
-		});
-
-		quickPick.onDidHide(() => {
-			if (!isResolved) resolve(undefined);
-			quickPick.dispose();
-		});
-
-		quickPick.show();
-		search(''); // Initial Trigger
-	});
-}
-
-/**
- * Helper to prompt for a single field based on its type.
- */
-async function promptForField(
-	languageClient: LanguageClient,
-	field: FormField,
-	prevAnswer: any | undefined
-): Promise<any | undefined> {
-	const type = field.type;
-
-	switch (type.kind) {
-		case 'file': {
-			// TODO(hxjiang): support reading the resource kind & existence
-			// from the file kind.
-
-			// UX Decision: Explicitly separate "Open" and "Create" flows.
-			//
-			// We use this "Intent Menu" to bypass a limitation in the
-			// native OS Save Dialog.
-			//
-			// While vscode.window.showSaveDialog allows selecting both new
-			// and existing paths, it forces a system-level "Do you want to
-			// replace it?" warning if an existing file is selected.
-			//
-			// Since our server will NOT actually overwrite the file (it
-			// just needs the URI), this warning is a false alarm that
-			// confuses users. We cannot disable this warning in the OS, so
-			// we split the flow:
-			//
-			// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
-			// - "Create New": Uses showSaveDialog (The "Overwrite" warning
-			// is unavoidable here, but users expect some friction when
-			// "creating" over an existing name, so it is acceptable).
-			const action = await vscode.window.showQuickPick(
-				[
-					{
-						label: '$(file) Open Existing File',
-						description: 'Select a file that already exists',
-						target: 'open'
-					},
-					{
-						label: '$(new-file) Create New File',
-						description: 'Select a destination for a new file',
-						target: 'save'
-					}
-				],
-				{
-					placeHolder: field.description || 'Select file action',
-					ignoreFocusOut: true
-				}
-			);
-
-			if (!action) {
-				return undefined; // User cancelled
-			}
-
-			let defaultUri: vscode.Uri | undefined;
-			const defaultUriString = (prevAnswer as string) || (field.default as string);
-
-			if (defaultUriString) {
+			// Call "interactive/listEnum" and render result as entries as quick
+			// pick items.
+			const search = async (query: string) => {
+				quickPick.busy = true;
 				try {
-					defaultUri = vscode.Uri.parse(defaultUriString);
-				} catch {
-					// Ignore invalid URIs
+					const params: InteractiveListEnumParams = {
+						source: source,
+						config: config,
+						query: query
+					};
+					const response = await this.InteractiveListEnum(params);
+
+					if (!response) {
+						quickPick.items = [];
+						return;
+					}
+
+					quickPick.items = response.map((entry) => ({
+						label: entry.description,
+						detail: entry.value !== entry.description ? entry.value : undefined,
+						value: entry.value
+					}));
+				} catch (e) {
+					console.error('Error fetching enum options:', e);
+					quickPick.items = [];
+				} finally {
+					quickPick.busy = false;
+				}
+			};
+
+			quickPick.onDidChangeValue((value) => {
+				if (debounceTimeout) clearTimeout(debounceTimeout);
+				debounceTimeout = setTimeout(() => search(value), 400);
+			});
+
+			quickPick.onDidAccept(() => {
+				const selection = quickPick.selectedItems[0];
+				isResolved = true;
+				resolve(selection ? selection.value : undefined);
+				quickPick.hide();
+			});
+
+			quickPick.onDidHide(() => {
+				if (!isResolved) resolve(undefined);
+				quickPick.dispose();
+			});
+
+			quickPick.show();
+			search(''); // Initial Trigger
+		});
+	}
+
+	/**
+	 * Helper to prompt for a single field based on its type.
+	 */
+	private async promptForField(field: FormField, prevAnswer: any | undefined): Promise<any | undefined> {
+		const type = field.type;
+
+		switch (type.kind) {
+			case 'file': {
+				// UX Decision: Explicitly separate "Open" and "Create" flows.
+				//
+				// We use this "Intent Menu" to bypass a limitation in the
+				// native OS Save Dialog.
+				//
+				// While vscode.window.showSaveDialog allows selecting both new
+				// and existing paths, it forces a system-level "Do you want to
+				// replace it?" warning if an existing file is selected.
+				//
+				// Since our server will NOT actually overwrite the file (it
+				// just needs the URI), this warning is a false alarm that
+				// confuses users. We cannot disable this warning in the OS, so
+				// we split the flow:
+				//
+				// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
+				// - "Create New": Uses showSaveDialog (The "Overwrite" warning
+				// is unavoidable here, but users expect some friction when
+				// "creating" over an existing name, so it is acceptable).
+				const action = await vscode.window.showQuickPick(
+					[
+						{
+							label: '$(file) Open Existing File',
+							description: 'Select a file that already exists',
+							target: 'open'
+						},
+						{
+							label: '$(new-file) Create New File',
+							description: 'Select a destination for a new file',
+							target: 'save'
+						}
+					],
+					{
+						placeHolder: field.description || 'Select file action',
+						ignoreFocusOut: true
+					}
+				);
+
+				// TODO(hxjiang): support reading the resource kind & existence
+				// from the file kind.
+
+				if (!action) {
+					return undefined; // User cancelled
+				}
+
+				let defaultUri: vscode.Uri | undefined;
+				const defaultUriString = (prevAnswer as string) || (field.default as string);
+
+				if (defaultUriString) {
+					try {
+						defaultUri = vscode.Uri.parse(defaultUriString);
+					} catch {
+						// Ignore invalid URIs
+					}
+				}
+
+				if (action.target === 'open') {
+					const uri = await vscode.window.showOpenDialog({
+						canSelectFiles: true,
+						canSelectFolders: true,
+						canSelectMany: false,
+						openLabel: 'Select',
+						defaultUri: defaultUri,
+						title: field.description || 'Select Existing File'
+					} as vscode.OpenDialogOptions);
+					return uri && uri[0] ? uri[0].toString() : undefined;
+				} else {
+					const uri = await vscode.window.showSaveDialog({
+						defaultUri: defaultUri,
+						saveLabel: 'Select',
+						title: field.description || 'Create New File'
+					} as vscode.SaveDialogOptions);
+					return uri ? uri.toString() : undefined;
 				}
 			}
+			case 'string':
+				return await vscode.window.showInputBox({
+					prompt: field.description,
+					value: prevAnswer ? prevAnswer : field.default,
+					placeHolder: field.description,
+					// Keep the input box open when focus is lost. This allows the
+					// user to  browse the workspace or inspect code (e.g., checking
+					// destination files or existing struct tags) before answering.
+					ignoreFocusOut: true
+				} as vscode.InputBoxOptions);
 
-			if (action.target === 'open') {
-				const uri = await vscode.window.showOpenDialog({
-					canSelectFiles: true,
-					canSelectFolders: true,
-					canSelectMany: false,
-					openLabel: 'Select',
-					defaultUri: defaultUri,
-					title: field.description || 'Select Existing File'
-				} as vscode.OpenDialogOptions);
-				return uri && uri[0] ? uri[0].toString() : undefined;
-			} else {
-				const uri = await vscode.window.showSaveDialog({
-					defaultUri: defaultUri,
-					saveLabel: 'Select',
-					title: field.description || 'Create New File'
-				} as vscode.SaveDialogOptions);
-				return uri ? uri.toString() : undefined;
-			}
-		}
-		case 'string':
-			return await vscode.window.showInputBox({
-				prompt: field.description,
-				value: prevAnswer ? prevAnswer : field.default,
-				placeHolder: field.description,
-				// Keep the input box open when focus is lost. This allows the
-				// user to  browse the workspace or inspect code (e.g., checking
-				// destination files or existing struct tags) before answering.
-				ignoreFocusOut: true
-			} as vscode.InputBoxOptions);
+			case 'enum': {
+				const pickItems = type.entries.map((entry, _) => {
+					return {
+						// Use description if it exists, otherwise use value
+						label: entry.description || entry.value,
+						// Show value in detail if description exists
+						description: entry.description ? entry.value : undefined,
+						value: entry.value
+					};
+				});
 
-		case 'enum': {
-			const pickItems = type.entries.map((entry, _) => {
-				return {
-					// Use description if it exists, otherwise use value
-					label: entry.description || entry.value,
-					// Show value in detail if description exists
-					description: entry.description ? entry.value : undefined,
-					value: entry.value
-				};
-			});
-
-			const selected = await vscode.window.showQuickPick(pickItems, {
-				placeHolder: field.description,
-				ignoreFocusOut: true
-			});
-
-			return selected ? selected.value : undefined;
-		}
-
-		case 'lazyEnum': {
-			return await pickLazyEnum(languageClient, field.description, type.source, type.config);
-		}
-
-		case 'bool': {
-			const boolItems = [
-				{ label: 'Yes', value: true },
-				{ label: 'No', value: false }
-			];
-
-			const selectedBool = await vscode.window.showQuickPick(boolItems, {
-				placeHolder: field.description,
-				ignoreFocusOut: true
-			});
-
-			return selectedBool ? selectedBool.value : undefined;
-		}
-
-		case 'number': {
-			let value: string | undefined;
-			if (prevAnswer) {
-				value = String(prevAnswer);
-			} else if (field.default) {
-				value = String(field.default);
-			}
-			const numResult = await vscode.window.showInputBox({
-				prompt: field.description,
-				value: value,
-				placeHolder: '0',
-				ignoreFocusOut: true,
-				validateInput: (text) => {
-					return isNaN(Number(text)) ? 'Please enter a valid number' : null;
-				}
-			});
-
-			return numResult !== undefined ? Number(numResult) : undefined;
-		}
-
-		case 'list': {
-			// Basic support for lists of primitive strings/numbers via comma-separated input
-			if (type.elementType.kind === 'string' || type.elementType.kind === 'number') {
-				const rawList = await vscode.window.showInputBox({
-					prompt: `${field.description} (comma separated)`,
+				const selected = await vscode.window.showQuickPick(pickItems, {
+					placeHolder: field.description,
 					ignoreFocusOut: true
 				});
 
-				if (rawList === undefined) {
-					return undefined;
-				}
-
-				// If empty input, return empty list
-				if (rawList.trim() === '') {
-					return [];
-				}
-
-				const parts = rawList.split(',').map((s) => s.trim());
-
-				if (type.elementType.kind === 'number') {
-					return parts.map(Number).filter((n) => !isNaN(n));
-				}
-				return parts;
+				return selected ? selected.value : undefined;
 			}
 
-			vscode.window.showErrorMessage(`List input for ${type.elementType.kind} is not supported in this version.`);
-			return undefined;
-		}
+			case 'lazyEnum': {
+				return await this.pickLazyEnum(field.description, type.source, type.config);
+			}
 
-		default:
-			return undefined;
+			case 'bool': {
+				const boolItems = [
+					{ label: 'Yes', value: true },
+					{ label: 'No', value: false }
+				];
+
+				const selectedBool = await vscode.window.showQuickPick(boolItems, {
+					placeHolder: field.description,
+					ignoreFocusOut: true
+				});
+
+				return selectedBool ? selectedBool.value : undefined;
+			}
+
+			case 'number': {
+				let value: string | undefined;
+				if (prevAnswer) {
+					value = String(prevAnswer);
+				} else if (field.default) {
+					value = String(field.default);
+				}
+				const numResult = await vscode.window.showInputBox({
+					prompt: field.description,
+					value: value,
+					placeHolder: '0',
+					ignoreFocusOut: true,
+					validateInput: (text) => {
+						return isNaN(Number(text)) ? 'Please enter a valid number' : null;
+					}
+				});
+
+				return numResult !== undefined ? Number(numResult) : undefined;
+			}
+
+			case 'list': {
+				// Basic support for lists of primitive strings/numbers via comma-separated input
+				if (type.elementType.kind === 'string' || type.elementType.kind === 'number') {
+					const rawList = await vscode.window.showInputBox({
+						prompt: `${field.description} (comma separated)`,
+						ignoreFocusOut: true
+					});
+
+					if (rawList === undefined) {
+						return undefined;
+					}
+
+					// If empty input, return empty list
+					if (rawList.trim() === '') {
+						return [];
+					}
+
+					const parts = rawList.split(',').map((s) => s.trim());
+
+					if (type.elementType.kind === 'number') {
+						return parts.map(Number).filter((n) => !isNaN(n));
+					}
+					return parts;
+				}
+
+				vscode.window.showErrorMessage(
+					`List input for ${type.elementType.kind} is not supported in this version.`
+				);
+				return undefined;
+			}
+
+			default:
+				return undefined;
+		}
 	}
 }

@@ -37,7 +37,7 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { Executable, LanguageClient, ServerOptions } from 'vscode-languageclient/node';
+import { Executable, ServerOptions } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, getFormatTool } from './legacy/goFormat';
@@ -69,7 +69,7 @@ import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
-import { InteractiveExecuteCommand, InteractiveExecuteCommandParams, resolveCommandInteractively } from './form';
+import { InteractiveExecuteCommandParams, InteractiveLanguageClient } from './form';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -336,7 +336,7 @@ export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
 	return info;
 }
 
-export class GoLanguageClient extends LanguageClient implements vscode.Disposable {
+export class GoLanguageClient extends InteractiveLanguageClient implements vscode.Disposable {
 	constructor(
 		id: string,
 		name: string,
@@ -569,7 +569,7 @@ export async function buildLanguageClient(
 					let formAnswers: any[] | undefined;
 					const supported = c.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
 					if (goCtx.languageClient && Array.isArray(supported) && supported.includes('command')) {
-						const resolved = await resolveCommandInteractively(goCtx.languageClient, {
+						const resolved = await goCtx.languageClient.resolveCommandInteractively({
 							command: command,
 							arguments: args
 						} as InteractiveExecuteCommandParams);
@@ -606,7 +606,7 @@ export async function buildLanguageClient(
 						if (formAnswers === undefined || formAnswers.length === 0) {
 							res = await next(command, args);
 						} else {
-							res = await InteractiveExecuteCommand(goCtx.languageClient!, command, args, formAnswers);
+							res = await goCtx.languageClient!.InteractiveExecuteCommand(command, args, formAnswers);
 						}
 
 						const progressToken = res?.Token as ProgressToken;
