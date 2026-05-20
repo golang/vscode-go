@@ -248,6 +248,41 @@ export interface InteractiveExecuteCommandParams extends InteractiveParams {
 }
 
 /**
+ * InteractiveListEnumParams defines the parameters for the
+ * 'interactive/listEnum' request.
+ */
+export interface InteractiveListEnumParams {
+	/**
+	 * Source identifies the data source on the server.
+	 *
+	 * The client treats this as opaque data and echoes it back in the
+	 * 'interactive/listEnum' request.
+	 *
+	 * Examples: "workspace/symbol", "database/schema", "git/tags".
+	 */
+	source: string;
+
+	/**
+	 * Config contains the static settings for the specified source.
+	 *
+	 * The client treats this as opaque data and echoes it back in the
+	 * 'interactive/listEnum' request.
+	 */
+	config?: any;
+
+	/**
+	 * A query string to filter enum entries by.
+	 *
+	 * The exact interpretation of this string (e.g., fuzzy matching, exact
+	 * match, prefix search, or regular expression) is entirely up to the
+	 * server and may vary depending on the source. This follows the similar
+	 * semantics as the standard 'workspace/symbol' request. Clients may
+	 * send an empty string here to request a default set of enum entries.
+	 */
+	query: string;
+}
+
+/**
  * MAX_RETRY defined the maximum number of user collection allowed for when
  * resolving a command.
  */
@@ -406,41 +441,6 @@ async function CollectAnswers(
 	}
 
 	return answers;
-}
-
-/**
- * InteractiveListEnumParams defines the parameters for the
- * 'interactive/listEnum' request.
- */
-interface InteractiveListEnumParams {
-	/**
-	 * Source identifies the data source on the server.
-	 *
-	 * The client treats this as opaque data and echoes it back in the
-	 * 'interactive/listEnum' request.
-	 *
-	 * Examples: "workspace/symbol", "database/schema", "git/tags".
-	 */
-	source: string;
-
-	/**
-	 * Config contains the static settings for the specified source.
-	 *
-	 * The client treats this as opaque data and echoes it back in the
-	 * 'interactive/listEnum' request.
-	 */
-	config?: any;
-
-	/**
-	 * A query string to filter enum entries by.
-	 *
-	 * The exact interpretation of this string (e.g., fuzzy matching, exact
-	 * match, prefix search, or regular expression) is entirely up to the
-	 * server and may vary depending on the source. This follows the similar
-	 * semantics as the standard 'workspace/symbol' request. Clients may
-	 * send an empty string here to request a default set of enum entries.
-	 */
-	query: string;
 }
 
 /**
