@@ -6,7 +6,13 @@
 
 import * as vscode from 'vscode';
 import { InitializeParams } from 'vscode-languageserver-protocol';
-import { LanguageClient, RequestType, ServerOptions, LanguageClientOptions } from 'vscode-languageclient/node';
+import {
+	LanguageClient,
+	RequestType,
+	ServerOptions,
+	LanguageClientOptions,
+	Middleware
+} from 'vscode-languageclient/node';
 
 // ----------------------------------------------------------------------------
 // Form Field Type Definitions
@@ -283,12 +289,42 @@ export interface InteractiveListEnumParams {
 	query: string;
 }
 
+/**
+ * InteractiveLanguageClientOptions extends LanguageClientOptions with
+ * interactive middleware support.
+ */
+export interface InteractiveLanguageClientOptions extends LanguageClientOptions {
+	middleware?: InteractiveMiddleware;
+}
+
+/**
+ * InteractiveMiddleware extends the standard Language Server Protocol (LSP)
+ * `Middleware` to support interactive refactoring workflows.
+ *
+ * This allows extension authors to intercept key lifecycle events of the
+ * interactive dialog, including the command resolution phase, the execution of
+ * the validated command, and dynamic enumeration requests for lazy-loaded options.
+ */
+export type InteractiveMiddleware = Middleware & InteractiveListEnumMiddleware;
+
+export interface InteractiveListEnumSignature {
+	(this: void, param: InteractiveListEnumParams): vscode.ProviderResult<FormEnumEntry[]>;
+}
+
+export interface InteractiveListEnumMiddleware {
+	interactiveListEnum?: (
+		this: void,
+		param: InteractiveListEnumParams,
+		next: InteractiveListEnumSignature
+	) => vscode.ProviderResult<FormEnumEntry[]>;
+}
+
 export class InteractiveLanguageClient extends LanguageClient {
 	constructor(
 		id: string,
 		name: string,
 		serverOptions: ServerOptions,
-		clientOptions: LanguageClientOptions,
+		clientOptions: InteractiveLanguageClientOptions,
 		forceDebug?: boolean
 	) {
 		super(id, name, serverOptions, clientOptions, forceDebug);
@@ -405,14 +441,35 @@ export class InteractiveLanguageClient extends LanguageClient {
 		});
 	}
 
-	// Queries the language server to dynamically retrieve enumeration entries for
-	// interactive form fields of type 'lazyEnum'.
-	async InteractiveListEnum(param: InteractiveListEnumParams): Promise<FormEnumEntry[] | undefined> {
-		const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>('interactive/listEnum');
-		return this.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
-			return this.handleFailedRequest(requestType, undefined, error, undefined);
-		});
-	}
+	/**
+	 * Queries the language server to dynamically retrieve enumeration entries for
+	 * interactive form fields of type 'lazyEnum'.
+	 *
+	 * This field uses an arrow function to preserve the lexical `this` context of
+	 * the client. It routes the query through the `interactiveListEnum`
+	 * middleware hook if registered, falling back to the default
+	 * `'interactive/listEnum'` LSP request.
+	 *
+	 * @param param The query parameters, including the data source name, static
+	 * config, and filter string.
+	 * @returns A provider result resolving to the matching list of form
+	 * enumeration entries.
+	 */
+	private interactiveListEnum = (param: InteractiveListEnumParams): vscode.ProviderResult<FormEnumEntry[]> => {
+		const _interactiveListEnum: InteractiveListEnumSignature = (param) => {
+			const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>(
+				'interactive/listEnum'
+			);
+			return this.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
+				return this.handleFailedRequest(requestType, undefined, error, undefined);
+			});
+		};
+
+		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		return middleware?.interactiveListEnum
+			? middleware.interactiveListEnum(param, _interactiveListEnum)
+			: _interactiveListEnum(param);
+	};
 
 	/**
 	 * Iterates through the provided form fields and prompts the user for input
@@ -483,7 +540,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 						config: config,
 						query: query
 					};
-					const response = await this.InteractiveListEnum(params);
+					const response = await this.interactiveListEnum(params);
 
 					if (!response) {
 						quickPick.items = [];

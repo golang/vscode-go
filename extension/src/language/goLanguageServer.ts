@@ -69,7 +69,7 @@ import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
-import { InteractiveExecuteCommandParams, InteractiveLanguageClient } from './form';
+import { InteractiveExecuteCommandParams, InteractiveLanguageClient, InteractiveMiddleware } from './form';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -839,7 +839,7 @@ export async function buildLanguageClient(
 						return null;
 					}
 				}
-			}
+			} as InteractiveMiddleware
 		} as LanguageClientOptions,
 		onDidChangeVulncheckResultEmitter
 	);
