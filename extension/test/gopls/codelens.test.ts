@@ -15,6 +15,8 @@ import { subTestAtCursor, testAtCursor } from '../../src/goTest';
 import { MockExtensionContext } from '../mocks/MockContext';
 import { Env } from './goplsTestEnv.utils';
 import * as testUtils from '../../src/testUtils';
+import * as config from '../../src/config';
+import { MockCfg } from '../mocks/MockCfg';
 
 suite('Code lenses for testing and benchmarking', function () {
 	this.timeout(20000);
@@ -223,7 +225,6 @@ suite('Code lenses for testing and benchmarking', function () {
 			type: 'go',
 			request: 'launch',
 			args: ['-test.run', '^TestSample$/^sample_test_passing$'],
-			buildFlags: '',
 			env: {},
 			sessionID: undefined,
 			mode: 'test',
@@ -309,7 +310,6 @@ suite('Code lenses with stretchr/testify/suite', function () {
 			type: 'go',
 			request: 'launch',
 			args: ['-test.run', '^TestExampleTestSuite$/^TestExample$'],
-			buildFlags: '',
 			env: {},
 			sessionID: undefined,
 			mode: 'test',
@@ -337,12 +337,32 @@ suite('Code lenses with stretchr/testify/suite', function () {
 			type: 'go',
 			request: 'launch',
 			args: ['-test.run', '^TestExampleTestSuite$/^TestExampleInAnotherFile$'],
-			buildFlags: '',
 			env: {},
 			sessionID: undefined,
 			mode: 'test',
 			envFile: null,
 			program: ''
 		});
+	});
+
+	// Regression test for golang/vscode-go#3933: build flag values that contain spaces
+	// (e.g. -ldflags "-X k=v") must be passed as an array so delve sees each flag as a
+	// separate argument. Joining them into a single string corrupts the value.
+	test('Debug test at cursor preserves buildFlags as array', async () => {
+		const goConfig = new MockCfg({
+			buildFlags: ['-ldflags', '-X github.com/org/pkg/info.version=v25.8.0']
+		});
+		sinon.stub(config, 'getGoConfig').returns(goConfig);
+		const startDebuggingStub = sinon.stub(vscode.debug, 'startDebugging').returns(Promise.resolve(true));
+
+		const editor = await vscode.window.showTextDocument(vscode.Uri.file(path.join(testdataDir, 'suite_test.go')));
+		editor.selection = new vscode.Selection(25, 4, 25, 4);
+
+		const result = await testAtCursor('debug')(ctx, env.goCtx)([]);
+		assert.strictEqual(result, true);
+
+		assert.strictEqual(startDebuggingStub.callCount, 1, 'expected one call to startDebugging');
+		const gotConfig = startDebuggingStub.getCall(0).args[1] as vscode.DebugConfiguration;
+		assert.deepStrictEqual(gotConfig.buildFlags, ['-ldflags', '-X github.com/org/pkg/info.version=v25.8.0']);
 	});
 });
