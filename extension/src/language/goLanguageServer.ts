@@ -69,7 +69,12 @@ import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
-import { InteractiveExecuteCommandParams, InteractiveLanguageClient, InteractiveMiddleware } from './form';
+import {
+	InteractiveExecuteCommandParams,
+	InteractiveResolveCommandSignature,
+	InteractiveLanguageClient,
+	InteractiveMiddleware
+} from './form';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -564,24 +569,17 @@ export async function buildLanguageClient(
 					}
 					next(token, params);
 				},
-				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
-					let formAnswers: any[] | undefined;
-					const supported = c.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
-					if (goCtx.languageClient && Array.isArray(supported) && supported.includes('command')) {
-						const resolved = await goCtx.languageClient.resolveCommandInteractively({
-							command: command,
-							arguments: args
-						} as InteractiveExecuteCommandParams);
-						if (!resolved) {
-							return undefined;
-						}
-
-						// Replace original command and result with resolved command and args.
-						command = resolved.command;
-						args = resolved.arguments || [];
-						formAnswers = resolved.formAnswers;
+				resolveCommand: async (
+					param: InteractiveExecuteCommandParams,
+					next: InteractiveResolveCommandSignature
+				) => {
+					// Avoid resolving for frequently triggered commands.
+					if (param.command === 'gopls.package_symbols') {
+						return param;
 					}
-
+					return await next(param);
+				},
+				executeCommand: async (command: string, args: any[], next: ExecuteCommandSignature) => {
 					try {
 						if (command === 'gopls.tidy' || command === 'gopls.vulncheck') {
 							await vscode.workspace.saveAll(false);
@@ -601,12 +599,7 @@ export async function buildLanguageClient(
 							govulncheckTerminal.show();
 						}
 
-						let res: any;
-						if (formAnswers === undefined || formAnswers.length === 0) {
-							res = await next(command, args);
-						} else {
-							res = await goCtx.languageClient!.InteractiveExecuteCommand(command, args, formAnswers);
-						}
+						const res: any = await next(command, args);
 
 						const progressToken = res?.Token as ProgressToken;
 						// The progressToken from executeCommand indicates that

@@ -7,6 +7,7 @@
 import * as vscode from 'vscode';
 import { InitializeParams } from 'vscode-languageserver-protocol';
 import {
+	ExecuteCommandSignature,
 	LanguageClient,
 	RequestType,
 	ServerOptions,
@@ -305,7 +306,53 @@ export interface InteractiveLanguageClientOptions extends LanguageClientOptions 
  * interactive dialog, including the command resolution phase, the execution of
  * the validated command, and dynamic enumeration requests for lazy-loaded options.
  */
-export type InteractiveMiddleware = Middleware & InteractiveListEnumMiddleware;
+export type InteractiveMiddleware = Middleware &
+	InteractiveListEnumMiddleware &
+	InteractiveExecuteCommandMiddleware &
+	InteractiveResolveCommandMiddleware;
+
+export interface InteractiveResolveCommandSignature {
+	(this: void, param: InteractiveExecuteCommandParams): vscode.ProviderResult<InteractiveExecuteCommandParams>;
+}
+
+export interface InteractiveResolveCommandMiddleware {
+	interactiveResolveCommand?: (
+		this: void,
+		param: InteractiveExecuteCommandParams,
+		next: InteractiveResolveCommandSignature
+	) => vscode.ProviderResult<InteractiveExecuteCommandParams>;
+}
+
+/**
+ * Signature for the command execution handler with user form answers.
+ *
+ * This signature is distinct from standard `ExecuteCommandSignature` because it
+ * accepts an additional `formAnswers` argument containing user-provided,
+ * server-validated inputs.
+ */
+export interface InteractiveExecuteCommandSignature {
+	(this: void, command: string, args: any[], formAnswers: any[]): vscode.ProviderResult<any>;
+}
+
+/**
+ * InteractiveExecuteCommandMiddleware allows middleware implementations to
+ * intercept the execution of commands that require user-provided form answers.
+ *
+ * Note: This middleware is defined as a new, separate hook rather than reusing
+ * the standard `executeCommand` middleware. Reusing the standard middleware
+ * would require modifying its signature to accept the additional `formAnswers`
+ * parameter, which would break backward compatibility for existing extension
+ * middleware configurations.
+ */
+export interface InteractiveExecuteCommandMiddleware {
+	interactiveExecuteCommand?: (
+		this: void,
+		command: string,
+		args: any[],
+		formAnswers: any[],
+		next: InteractiveExecuteCommandSignature
+	) => vscode.ProviderResult<any>;
+}
 
 export interface InteractiveListEnumSignature {
 	(this: void, param: InteractiveListEnumParams): vscode.ProviderResult<FormEnumEntry[]>;
@@ -328,6 +375,54 @@ export class InteractiveLanguageClient extends LanguageClient {
 		forceDebug?: boolean
 	) {
 		super(id, name, serverOptions, clientOptions, forceDebug);
+
+		const interactiveOptions = this.clientOptions as InteractiveLanguageClientOptions;
+		const middleware = interactiveOptions.middleware;
+
+		// Memorize the language client author defined "executeCommand" middleware.
+		const original = middleware?.executeCommand;
+
+		// Intercept standard command execution to resolve required inputs interactively.
+		// Once resolved, route the execution to the appropriate middleware:
+		// - If the command required user answers, execute it using the
+		//   "interactiveExecuteCommand" middleware.
+		// - If no user answers were collected, execute it using the standard
+		//   "executeCommand" middleware.
+		const overwrite = async (cmd: string, args: any[], next: ExecuteCommandSignature) => {
+			const supported = this.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
+
+			// Language server does not support interactive command execution.
+			if (!Array.isArray(supported) || !supported.includes('command')) {
+				return original ? original(cmd, args, next) : next(cmd, args);
+			}
+
+			const resolved = await this.resolveCommandInteractively({
+				command: cmd,
+				arguments: args
+			} as InteractiveExecuteCommandParams);
+			if (!resolved) {
+				return undefined;
+			}
+
+			cmd = resolved.command;
+			args = resolved.arguments || [];
+			const formAnswers = resolved.formAnswers;
+
+			if (formAnswers === undefined || formAnswers.length === 0) {
+				// Execute the vscode language client provided "workspace/executeCommand"
+				// method if the user does not provide any answers.
+				return original ? original(cmd, args, next) : next(cmd, args);
+			} else {
+				// Execute the interactive language client provided "workspace/executeCommand"
+				// method if the user does provide answers.
+				return this.interactiveExecuteCommand(cmd, args, formAnswers);
+			}
+		};
+
+		interactiveOptions.middleware = {
+			...middleware,
+			executeCommand: overwrite
+		};
 	}
 
 	/**
@@ -358,15 +453,10 @@ export class InteractiveLanguageClient extends LanguageClient {
 	async resolveCommandInteractively(
 		param: InteractiveExecuteCommandParams
 	): Promise<InteractiveExecuteCommandParams | undefined> {
-		// Avoid resolving for frequently triggered commands for performance.
-		if (param.command === 'gopls.package_symbols') {
-			return param;
-		}
-
 		// Invoke "command/resolve" at least once to ensure the command
 		// is fully specified, as the initial input may lack necessary parameters.
 		for (let i = 0; i < InteractiveLanguageClient.MAX_RETRY; i++) {
-			const result = await this.ResolveCommand(param);
+			const result = await this.interactiveResolveCommand(param);
 			if (!result) {
 				return undefined;
 			}
@@ -403,52 +493,86 @@ export class InteractiveLanguageClient extends LanguageClient {
 		return param;
 	}
 
-	// ResolveCommand handles the interactive resolution of a command prior to its
-	// execution.
-	//
-	// It processes an [InteractiveExecuteCommandParams] to determine if the command
-	// requires interactive input, or to validate user-provided answers submitted
-	// via the embedded [InteractiveParams].
-	//
-	// If the command requires user input (e.g., the initial probe) or if the
-	// provided answers are invalid, it returns a modified [InteractiveExecuteCommandParams]
-	// populated with FormFields to prompt the user. If the input is valid and
-	// complete, or if the command requires no interaction at all, it returns an
-	// [InteractiveExecuteCommandParams] with an empty form, signaling the client to
-	// proceed with execution.
-	//
-	// See [InteractiveParams] for the complete multi-step client-server handshake
-	// and the architectural reasoning behind dedicated ResolveXXX methods.
-	async ResolveCommand(param: InteractiveExecuteCommandParams): Promise<InteractiveExecuteCommandParams | undefined> {
-		const requestType = new RequestType<InteractiveExecuteCommandParams, InteractiveExecuteCommandParams, void>(
-			'command/resolve'
-		);
-		return this.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param).then(undefined, (error) => {
-			return this.handleFailedRequest(requestType, undefined, error, undefined);
-		});
-	}
+	/**
+	 * Executes a command on the language server with the validated form answers.
+	 *
+	 * It routes the execution through the `interactiveExecuteCommand` middleware
+	 * hook if registered, falling back to sending a `'workspace/executeCommand'`
+	 * LSP request with the user's answered form.
+	 *
+	 * @param command The identifier of the actual command handler to execute.
+	 * @param args Arguments that the command should be invoked with.
+	 * @param formAnswers The finalized, server-validated answers collected from the user.
+	 * @returns A provider result resolving to the command execution result.
+	 */
+	private interactiveExecuteCommand = (
+		command: string,
+		args: any[],
+		formAnswers: any[]
+	): vscode.ProviderResult<any> => {
+		const _interactiveExecuteCommand: InteractiveExecuteCommandSignature = (command, args, formAnswers) => {
+			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
+			return this.sendRequest<FormEnumEntry[]>('workspace/executeCommand', {
+				command: command,
+				arguments: args,
+				formAnswers: formAnswers
+			} as InteractiveExecuteCommandParams).then(undefined, (error) => {
+				return this.handleFailedRequest(requestType, undefined, error, undefined);
+			});
+		};
 
-	// Executes an LSP command with an extended payload containing interactive form
-	// answers.
-	async InteractiveExecuteCommand(command: string, args: any[], formAnswers: any[]): Promise<any> {
-		const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
-		return this.sendRequest('workspace/executeCommand', {
-			command: command,
-			arguments: args,
-			formAnswers: formAnswers
-		} as InteractiveExecuteCommandParams).then(undefined, (error) => {
-			return this.handleFailedRequest(requestType, undefined, error, undefined);
-		});
-	}
+		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		return middleware?.interactiveExecuteCommand
+			? middleware.interactiveExecuteCommand(command, args, formAnswers, _interactiveExecuteCommand)
+			: _interactiveExecuteCommand(command, args, formAnswers);
+	};
+
+	/**
+	 * Handles the interactive resolution of a command prior to its execution.
+	 *
+	 * It processes an [InteractiveExecuteCommandParams] to determine if the command
+	 * requires interactive input, or to validate user-provided answers submitted
+	 * via the embedded [InteractiveParams].
+	 *
+	 * If the command requires user input (e.g., the initial probe) or if the
+	 * provided answers are invalid, it returns a modified [InteractiveExecuteCommandParams]
+	 * populated with FormFields to prompt the user. If the input is valid and
+	 * complete, or if the command requires no interaction at all, it returns an
+	 * [InteractiveExecuteCommandParams] with an empty form, signaling the client to
+	 * proceed with execution.
+	 *
+	 * See [InteractiveParams] for the complete multi-step client-server handshake
+	 * and the architectural reasoning behind dedicated ResolveXXX methods.
+	 *
+	 * It routes the resolution through the `interactiveResolveCommand`
+	 * middleware hook if registered, falling back to sending a `'command/resolve'`
+	 * LSP request.
+	 *
+	 * @param param The command parameters and previous answers to resolve/validate.
+	 * @returns A provider result resolving to the updated command execution parameters.
+	 */
+	private interactiveResolveCommand = (
+		param: InteractiveExecuteCommandParams
+	): vscode.ProviderResult<InteractiveExecuteCommandParams> => {
+		const _interactiveResolveCommand: InteractiveResolveCommandSignature = (param) => {
+			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('command/resolve');
+			return this.sendRequest<FormEnumEntry[]>('command/resolve', param).then(undefined, (error) => {
+				return this.handleFailedRequest(requestType, undefined, error, undefined);
+			});
+		};
+
+		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		return middleware?.interactiveResolveCommand
+			? middleware.interactiveResolveCommand(param, _interactiveResolveCommand)
+			: _interactiveResolveCommand(param);
+	};
 
 	/**
 	 * Queries the language server to dynamically retrieve enumeration entries for
-	 * interactive form fields of type 'lazyEnum'.
+	 * interactive form fields of type `'lazyEnum'`.
 	 *
-	 * This field uses an arrow function to preserve the lexical `this` context of
-	 * the client. It routes the query through the `interactiveListEnum`
-	 * middleware hook if registered, falling back to the default
-	 * `'interactive/listEnum'` LSP request.
+	 * It routes the query through the `interactiveListEnum` middleware hook if
+	 * registered, falling back to sending an `'interactive/listEnum'` LSP request.
 	 *
 	 * @param param The query parameters, including the data source name, static
 	 * config, and filter string.
