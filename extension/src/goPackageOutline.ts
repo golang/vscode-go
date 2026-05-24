@@ -32,7 +32,8 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	private packageItem = this.createPackageItem();
 	private packageSymbols: PackageSymbol[] = [];
 
-	private lastRevealed?: PackageSymbol;
+	// public for testing purpose.
+	public lastRevealed?: PackageSymbol;
 
 	static setup(ctx: vscode.ExtensionContext) {
 		const provider = new this(ctx);
@@ -41,6 +42,13 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 			showCollapseAll: true
 		});
 		ctx.subscriptions.push(provider.view);
+		ctx.subscriptions.push(
+			provider.view.onDidChangeVisibility((e) => {
+				if (e.visible) {
+					void provider.revealActiveSymbol(vscode.window.activeTextEditor);
+				}
+			})
+		);
 		ctx.subscriptions.push(
 			vscode.commands.registerCommand('go.packageOutline.sortByName', () =>
 				provider.setSortOrder(PackageOutlineSortOrder.Name)
@@ -186,7 +194,7 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 	}
 
 	private async revealActiveSymbol(editor?: vscode.TextEditor) {
-		if (!this.view || !editor || editor.document !== this.activeDocument) {
+		if (!this.view || !this.view.visible || !editor || editor.document !== this.activeDocument) {
 			return;
 		}
 		const symbol = this.findSymbolAtPosition(this.packageSymbols, editor.document.uri, editor.selection.active);
@@ -201,7 +209,9 @@ export class GoPackageOutlineProvider implements vscode.TreeDataProvider<Package
 		try {
 			await this.view.reveal(symbol, { expand: true, select: true });
 		} catch (e) {
-			console.log('ERROR', e);
+			// Catch race condition errors when reveal active symbol fire while the
+			// package outline is closing.
+			console.log('Package outline reveal error', e);
 		}
 	}
 

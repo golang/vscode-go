@@ -10,7 +10,7 @@ import { GoPackageOutlineProvider, PackageSymbol } from '../../src/goPackageOutl
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { window } from 'vscode';
 import { Env } from '../gopls/goplsTestEnv.utils';
-
+import { sleep, poll } from './testutils';
 import { getGoConfig } from '../../src/config';
 
 import vscode = require('vscode');
@@ -37,11 +37,7 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('opening a document should trigger package outline response', async () => {
-		const document = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		await openDocInPkgOutline('symbols_1.go');
 		const res = provider.result;
 		assert.strictEqual(res?.PackageName, 'package_outline_test');
 		assert.strictEqual(res?.Files.length, 2);
@@ -51,11 +47,7 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('clicking on symbol should navigate to definition', async () => {
-		const document = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		const document = await openDocInPkgOutline('symbols_1.go');
 		await vscode.commands.executeCommand('setContext', 'go.showPackageOutline');
 		const children = await provider.getChildren();
 		const receiver = children?.find((symbol) => symbol.label === 'TestReceiver');
@@ -70,11 +62,7 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('clicking on symbol in different file should open file', async () => {
-		const document = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		await openDocInPkgOutline('symbols_1.go');
 		await vscode.commands.executeCommand('setContext', 'go.showPackageOutline');
 		const children = await provider.getChildren();
 		const receiver = children?.find((symbol) => symbol.label === 'TestReceiver');
@@ -92,11 +80,7 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('sort by name orders symbols alphabetically', async () => {
-		const document = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		await openDocInPkgOutline('symbols_1.go');
 		await vscode.commands.executeCommand('go.packageOutline.sortByName');
 		const children = await provider.getChildren();
 		assert.deepStrictEqual(
@@ -113,11 +97,7 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('sort by position orders symbols by source location', async () => {
-		const document = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		await openDocInPkgOutline('symbols_1.go');
 		const children = await provider.getChildren();
 		assert.deepStrictEqual(
 			(children ?? []).slice(1).map((symbol) => symbol.label),
@@ -126,23 +106,64 @@ suite('GoPackageOutlineProvider', function () {
 	});
 
 	test('cursor changes reveal the active symbol', async () => {
-		const document1 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_1.go'))
-		);
-		await window.showTextDocument(document1);
-		await waitForOutlineResult(provider, 'package_outline_test');
-		await moveCursor(document1, 19);
-		await sleep(500); // wait for tree view reveal
-		assert.strictEqual(((provider as unknown) as { lastRevealed?: PackageSymbol }).lastRevealed?.label, 'method1');
+		const document1 = await openDocInPkgOutline('symbols_1.go');
+		await vscode.commands.executeCommand('go.package.outline.focus');
+		await poll(() => assert.strictEqual(provider.view?.visible, true));
 
-		const document2 = await vscode.workspace.openTextDocument(
-			vscode.Uri.file(path.join(fixtureDir, 'symbols_2.go'))
-		);
-		await window.showTextDocument(document2);
-		await waitForOutlineResult(provider, 'package_outline_test');
+		await moveCursor(document1, 19);
+		await poll(() => assert.strictEqual(provider.lastRevealed?.label, 'method1'));
+
+		const document2 = await openDocInPkgOutline('symbols_2.go');
 		await moveCursor(document2, 2);
-		await sleep(500); // wait for tree view reveal
-		assert.strictEqual(((provider as unknown) as { lastRevealed?: PackageSymbol }).lastRevealed?.label, 'method2');
+		await poll(() => assert.strictEqual(provider.lastRevealed?.label, 'method2'));
+	});
+
+	test('does not reveal active symbol when sidebar is closed', async () => {
+		const document = await openDocInPkgOutline('symbols_1.go');
+
+		const view = provider.view;
+		assert.ok(view, 'view is undefined');
+
+		await vscode.commands.executeCommand('go.package.outline.focus');
+		await sleep(500);
+		assert.strictEqual(view.visible, true, 'view should be visible initially');
+
+		await vscode.commands.executeCommand('workbench.action.closeSidebar');
+		await sleep(500);
+		assert.strictEqual(view.visible, false, 'view should be invisible after closing sidebar');
+
+		// Reset to verify that no new symbol is revealed when the cursor moves.
+		provider.lastRevealed = undefined;
+		await moveCursor(document, 19);
+		await sleep(500);
+
+		assert.strictEqual(view.visible, false, 'view should remain invisible');
+		assert.strictEqual(provider.lastRevealed, undefined, 'should not reveal active symbol');
+	});
+
+	test('does not reveal active symbol when focused on "Code Search" view', async () => {
+		const document = await openDocInPkgOutline('symbols_1.go');
+
+		const view = provider.view;
+		assert.ok(view, 'view is undefined');
+
+		await vscode.commands.executeCommand('go.package.outline.focus');
+		await sleep(500);
+		assert.strictEqual(view.visible, true, 'view should be visible initially');
+
+		await vscode.commands.executeCommand('workbench.view.search');
+		await sleep(500);
+		assert.strictEqual(view.visible, false, 'view should be invisible after switching container');
+
+		// Reset to verify that no new symbol is revealed when the cursor moves.
+		provider.lastRevealed = undefined;
+
+		// Move the cursor to the position of a package symbol.
+		await moveCursor(document, 19);
+		await sleep(500);
+
+		assert.strictEqual(view.visible, false, 'view should remain invisible');
+		assert.strictEqual(provider.lastRevealed, undefined, 'should not reveal active symbol');
 	});
 
 	test('non-go file does not trigger outline', async () => {
@@ -153,21 +174,25 @@ suite('GoPackageOutlineProvider', function () {
 		await sleep(500); // wait for gopls response
 		assert.strictEqual(provider.result, undefined);
 	});
+
+	/**
+	 * Helper to open a file, show it in the active window editor, and wait until
+	 * the outline result is available for the package 'package_outline_test'.
+	 *
+	 * @param filename The name of the file to open, relative to the fixture directory.
+	 */
+	async function openDocInPkgOutline(filename: string): Promise<vscode.TextDocument> {
+		const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(fixtureDir, filename)));
+		await window.showTextDocument(document);
+		await waitForOutlineResult(provider, 'package_outline_test');
+		return document;
+	}
 });
 
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function waitForOutlineResult(provider: GoPackageOutlineProvider, packageName: string) {
-	const deadline = Date.now() + 5000;
-	while (Date.now() < deadline) {
-		if (provider.result?.PackageName === packageName) {
-			return;
-		}
-		await sleep(100);
-	}
-	assert.fail(`timed out waiting for outline result for ${packageName}`);
+	await poll(() => {
+		assert.strictEqual(provider.result?.PackageName, packageName, `expected package name to be ${packageName}`);
+	}, 5000);
 }
 
 async function moveCursor(document: vscode.TextDocument, line: number, character = 0) {
