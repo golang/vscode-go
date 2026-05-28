@@ -11,7 +11,8 @@ import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 
-suite('Interactive Refactoring', function () {
+// TODO(hxjiang): enable after gopls migration.
+suite.skip('Interactive Refactoring', function () {
 	this.timeout(30000);
 
 	let document: vscode.TextDocument;
@@ -62,9 +63,11 @@ suite('Interactive Refactoring', function () {
 		inputBoxStub.onFirstCall().resolves('json,x x,html'); // invalid, space not allowed in a tag "x x"
 		quickPickStub.onFirstCall().resolves({ value: 'camelcase', label: 'camelCase' } as any);
 
-		// Second attempt succeeds. vscode-go will ask the second question regardless.
+		// Second attempt succeeds. vscode-go will skip the second question because it was already answered and has no errors.
 		inputBoxStub.onSecondCall().resolves('json,xml');
-		quickPickStub.onSecondCall().resolves({ value: 'camelcase', label: 'camelCase' } as any);
+		quickPickStub
+			.onSecondCall()
+			.throws(new Error('Unexpected showQuickPick call. The second question should be skipped.'));
 
 		// Trigger the command. The middleware handles the interactive handshake
 		// with gopls, collects answers via our stubs, and executes the refactoring.

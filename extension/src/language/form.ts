@@ -60,12 +60,18 @@ export interface FormFieldTypeFile {
 	kind: 'file';
 
 	// Existence constraint.
-	existence: FileExistence;
+	existence?: FileExistence;
 
 	// Type specifies the set of allowed file types (regular file, directory, etc).
 	//
 	// Only applicable against existing file.
-	type: FileType;
+	type?: FileType;
+
+	// Filters specifies the allowed file extensions without the leading dot. A file
+	// is valid if it matches any of the extensions (OR logic). e.g. ["png", "jpg"].
+	//
+	// If omitted or empty, no extension filter is applied.
+	filters?: string[];
 }
 
 // FormFieldTypeBool defines a boolean input.
@@ -157,11 +163,18 @@ export type FormFieldType =
 
 // FormField describes a single question in a form and its validation state.
 export interface FormField {
+	// ID is a unique identifier for this field. This key is used as the property
+	// name in FormAnswers to map the user's input back to this specific field.
+	id: string;
+
 	// Description is the text content of the question (the prompt) presented to the user.
 	description: string;
 
 	// Type specifies the data type and validation constraints for the answer.
 	type: FormFieldType;
+
+	// Required specifies whether an answer is absolutely required for this field.
+	required: boolean;
 
 	// Default specifies an optional initial value for the answer.
 	// If Type is FormFieldTypeEnum, this value must be present in the enum's values array.
@@ -170,6 +183,16 @@ export interface FormField {
 	// Error provides a validation message from the language server.
 	// If empty or undefined, the current answer is considered valid.
 	error?: string;
+}
+
+// FormAnswer describes a single answer to a FormField, identified by its unique
+// ID.
+export interface FormAnswer {
+	// The ID of the FormField being answered.
+	id: string;
+
+	// The user's answer value.
+	value: any;
 }
 
 // InteractiveParams facilitates a multi-step, interactive dialogue between the
@@ -226,16 +249,20 @@ export interface InteractiveParams {
 	// response where this slice is omitted.
 	formFields?: FormField[];
 
-	// FormAnswers contains the values for the form questions.
+	// FormAnswers contains the answers for the form questions.
 	//
-	// When sent by the language server, this field is optional but recommended
-	// to support editing previous values.
+	// When sent by the language server, this field is optional and contains the
+	// current or default answers to the questions to support editing previous values.
 	//
-	// When sent by the language client as part of the ResolveXXX request, this
-	// field is required. The slice must have the same length as FormFields (one
-	// answer per question), where the answer at index i corresponds to the
-	// field at index i.
-	formAnswers?: any[];
+	// When sent by the language client, this field contains the user's answers.
+	// Answers are linked to their respective questions using the field's unique
+	// `id` rather than their array index. The list must not contain duplicate IDs,
+	// and each answer's ID must correspond to a field ID defined in `formFields`.
+	//
+	// The client must include answers for all required fields (where `required`
+	// is true). Answers for optional fields (where `required` is false)
+	// may be omitted if no answer was provided, or included if an answer is available.
+	formAnswers?: FormAnswer[];
 }
 
 // ----------------------------------------------------------------------------
@@ -288,6 +315,32 @@ export interface InteractiveListEnumParams {
 	 * send an empty string here to request a default set of enum entries.
 	 */
 	query: string;
+}
+
+// ----------------------------------------------------------------------------
+// Client Capability
+// ----------------------------------------------------------------------------
+
+export interface InteractiveResolveClientCapabilities {
+	/**
+	 * The input types the client supports for interactive dialogs.
+	 * The presence of this field implies support for interactive refactoring.
+	 */
+	inputTypes?: string[];
+}
+
+// ----------------------------------------------------------------------------
+// Server Capability
+// ----------------------------------------------------------------------------
+
+export interface interactiveResolveOptions {
+	/**
+	 * The kinds of interactive resolutions that the server supports.
+	 *
+	 * For example, "command" indicates that the server supports resolving
+	 * `ExecuteCommandParams` interactively through "command/resolve".
+	 */
+	kinds?: string[];
 }
 
 /**
@@ -389,10 +442,12 @@ export class InteractiveLanguageClient extends LanguageClient {
 		// - If no user answers were collected, execute it using the standard
 		//   "executeCommand" middleware.
 		const overwrite = async (cmd: string, args: any[], next: ExecuteCommandSignature) => {
-			const supported = this.initializeResult?.capabilities?.experimental?.interactiveResolveProvider;
+			const option = this.initializeResult?.capabilities?.experimental?.interactiveResolveProvider as
+				| interactiveResolveOptions
+				| undefined;
 
 			// Language server does not support interactive command execution.
-			if (!Array.isArray(supported) || !supported.includes('command')) {
+			if (!option || !Array.isArray(option.kinds) || !option.kinds.includes('command')) {
 				return original ? original(cmd, args, next) : next(cmd, args);
 			}
 
@@ -440,7 +495,9 @@ export class InteractiveLanguageClient extends LanguageClient {
 		super.fillInitializeParams(params);
 
 		const experimental = params.capabilities.experimental || {};
-		experimental.interactiveInputTypes = ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string'];
+		experimental.interactiveResolve = {
+			inputTypes: ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string']
+		} as InteractiveResolveClientCapabilities;
 		params.capabilities.experimental = experimental;
 	}
 
@@ -512,7 +569,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 	): vscode.ProviderResult<any> => {
 		const _interactiveExecuteCommand: InteractiveExecuteCommandSignature = (command, args, formAnswers) => {
 			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
-			return this.sendRequest<FormEnumEntry[]>('workspace/executeCommand', {
+			return this.sendRequest<any>('workspace/executeCommand', {
 				command: command,
 				arguments: args,
 				formAnswers: formAnswers
@@ -556,9 +613,12 @@ export class InteractiveLanguageClient extends LanguageClient {
 	): vscode.ProviderResult<InteractiveExecuteCommandParams> => {
 		const _interactiveResolveCommand: InteractiveResolveCommandSignature = (param) => {
 			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('command/resolve');
-			return this.sendRequest<FormEnumEntry[]>('command/resolve', param).then(undefined, (error) => {
-				return this.handleFailedRequest(requestType, undefined, error, undefined);
-			});
+			return this.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param).then(
+				undefined,
+				(error) => {
+					return this.handleFailedRequest(requestType, undefined, error, undefined);
+				}
+			);
 		};
 
 		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
@@ -612,29 +672,45 @@ export class InteractiveLanguageClient extends LanguageClient {
 	 */
 	private async collectAnswers(
 		formFields: FormField[] | undefined,
-		formAnswers: any[] | undefined
-	): Promise<any[] | undefined> {
+		formAnswers: FormAnswer[] | undefined
+	): Promise<FormAnswer[] | undefined> {
 		if (formFields === undefined) {
 			return undefined;
 		}
 
-		const answers: any[] = [];
+		const previousAnswers = new Map<string, any>();
+		if (formAnswers) {
+			for (const answer of formAnswers) {
+				previousAnswers.set(answer.id, answer.value);
+			}
+		}
+
+		const answers: FormAnswer[] = [];
 
 		for (let i = 0; i < formFields.length; i++) {
 			const field = formFields[i];
-			const previousAnswer = formAnswers && i < formAnswers.length ? formAnswers[i] : undefined;
-			const answer = await this.promptForField(field, previousAnswer);
+
+			const previousAnswer = previousAnswers.get(field.id);
+			if (previousAnswer !== undefined && field.error === undefined) {
+				answers.push({ id: field.id, value: previousAnswer } as FormAnswer);
+				continue;
+			}
+
+			const value = await this.promptForField(field, previousAnswer);
 
 			// An 'undefined' result occurs if the user manually cancels (e.g.,
 			// "Escape" or cancel file picker) or if a new refactoring request is
 			// triggered, which automatically interrupts and cancels the current
 			// active input box.
 			// In both cases, we stop the sequence and drop the entire flow.
-			if (answer === undefined) {
+			if (value === undefined) {
 				return undefined;
 			}
 
-			answers.push(answer);
+			answers.push({
+				id: field.id,
+				value: value
+			} as FormAnswer);
 		}
 
 		return answers;
