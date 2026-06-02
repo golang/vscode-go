@@ -5,15 +5,15 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { InitializeParams } from 'vscode-languageserver-protocol';
 import {
 	ExecuteCommandSignature,
 	LanguageClient,
-	RequestType,
-	ServerOptions,
 	LanguageClientOptions,
-	Middleware
+	Middleware,
+	RequestType,
+	ServerOptions
 } from 'vscode-languageclient/node';
+import { InitializeParams } from 'vscode-languageserver-protocol';
 
 // ----------------------------------------------------------------------------
 // Form Field Type Definitions
@@ -687,9 +687,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 
 		const answers: FormAnswer[] = [];
 
-		for (let i = 0; i < formFields.length; i++) {
-			const field = formFields[i];
-
+		for (const field of formFields) {
 			const previousAnswer = previousAnswers.get(field.id);
 			if (previousAnswer !== undefined && field.error === undefined) {
 				answers.push({ id: field.id, value: previousAnswer } as FormAnswer);
@@ -778,7 +776,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 			});
 
 			quickPick.show();
-			search(''); // Initial Trigger
+			void search(''); // Initial Trigger
 		});
 	}
 
@@ -855,17 +853,23 @@ export class InteractiveLanguageClient extends LanguageClient {
 					}
 				}
 
+				let filters: { [name: string]: string[] } | undefined;
+				if (fieldType.filters && fieldType.filters.length > 0) {
+					filters = {
+						'Supported Files': fieldType.filters
+					};
+				}
+
 				if (actionTarget === 'open') {
 					let canSelectFiles = true;
 					let canSelectFolders = true;
-
 					if (fieldType.type !== undefined) {
 						canSelectFiles = (fieldType.type & FileType.Regular) !== 0;
 						canSelectFolders = (fieldType.type & FileType.Directory) !== 0;
 
-						// Safe fallback: if the constraint evaluates to allowing neither
-						// (which is likely a bug/misconfiguration in the language server),
-						// allow both so the file picker dialog is not completely disabled.
+						// Safe fallback: if the constraint evaluates to allowing neither (which is
+						// likely a bug/misconfiguration in the language server), allow both so
+						// the file picker dialog is not completely disabled.
 						if (!canSelectFiles && !canSelectFolders) {
 							canSelectFiles = true;
 							canSelectFolders = true;
@@ -878,13 +882,15 @@ export class InteractiveLanguageClient extends LanguageClient {
 						canSelectMany: false,
 						openLabel: 'Select',
 						defaultUri: defaultUri,
+						filters: canSelectFiles ? filters : undefined,
 						title: field.description || 'Select Existing File'
 					} as vscode.OpenDialogOptions);
-					return uri && uri[0] ? uri[0].toString() : undefined;
+					return uri?.[0] ? uri[0].toString() : undefined;
 				} else {
 					const uri = await vscode.window.showSaveDialog({
 						defaultUri: defaultUri,
 						saveLabel: 'Select',
+						filters: filters,
 						title: field.description || 'Create New File'
 					} as vscode.SaveDialogOptions);
 					return uri ? uri.toString() : undefined;
