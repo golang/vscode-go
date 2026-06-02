@@ -786,52 +786,62 @@ export class InteractiveLanguageClient extends LanguageClient {
 	 * Helper to prompt for a single field based on its type.
 	 */
 	private async promptForField(field: FormField, prevAnswer: any | undefined): Promise<any | undefined> {
-		const type = field.type;
+		const fieldType = field.type;
 
-		switch (type.kind) {
+		switch (fieldType.kind) {
 			case 'file': {
-				// UX Decision: Explicitly separate "Open" and "Create" flows.
-				//
-				// We use this "Intent Menu" to bypass a limitation in the
-				// native OS Save Dialog.
-				//
-				// While vscode.window.showSaveDialog allows selecting both new
-				// and existing paths, it forces a system-level "Do you want to
-				// replace it?" warning if an existing file is selected.
-				//
-				// Since our server will NOT actually overwrite the file (it
-				// just needs the URI), this warning is a false alarm that
-				// confuses users. We cannot disable this warning in the OS, so
-				// we split the flow:
-				//
-				// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
-				// - "Create New": Uses showSaveDialog (The "Overwrite" warning
-				// is unavoidable here, but users expect some friction when
-				// "creating" over an existing name, so it is acceptable).
-				const action = await vscode.window.showQuickPick(
-					[
-						{
-							label: '$(file) Open Existing File',
-							description: 'Select a file that already exists',
-							target: 'open'
-						},
-						{
-							label: '$(new-file) Create New File',
-							description: 'Select a destination for a new file',
-							target: 'save'
-						}
-					],
-					{
-						placeHolder: field.description || 'Select file action',
-						ignoreFocusOut: true
+				let actionTarget: 'open' | 'save' | undefined;
+				if (fieldType.existence !== undefined) {
+					const allowsNew = (fieldType.existence & FileExistence.New) !== 0;
+					const allowsExisting = (fieldType.existence & FileExistence.Existing) !== 0;
+					if (allowsNew && !allowsExisting) {
+						actionTarget = 'save';
+					} else if (allowsExisting && !allowsNew) {
+						actionTarget = 'open';
 					}
-				);
+				}
 
-				// TODO(hxjiang): support reading the resource kind & existence
-				// from the file kind.
+				if (actionTarget === undefined) {
+					// UX Decision: If the file existence constraint is not specified or
+					// allows both options, we explicitly separate the "Open" and "Create"
+					// flows to bypass a limitation in the native OS Save Dialog.
+					//
+					// While vscode.window.showSaveDialog allows selecting both new
+					// and existing paths, it forces a system-level "Do you want to
+					// replace it?" warning if an existing file is selected.
+					//
+					// Since our server will NOT actually overwrite the file (it
+					// just needs the URI), this warning is a false alarm that
+					// confuses users. We cannot disable this warning in the OS, so
+					// we split the flow:
+					//
+					// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
+					// - "Create New": Uses showSaveDialog (The "Overwrite" warning
+					// is unavoidable here, but users expect some friction when
+					// "creating" over an existing name, so it is acceptable).
+					const action = await vscode.window.showQuickPick(
+						[
+							{
+								label: '$(file) Open Existing File',
+								description: 'Select a file that already exists',
+								target: 'open' as const
+							},
+							{
+								label: '$(new-file) Create New File',
+								description: 'Select a destination for a new file',
+								target: 'save' as const
+							}
+						],
+						{
+							placeHolder: field.description || 'Select file action',
+							ignoreFocusOut: true
+						}
+					);
 
-				if (!action) {
-					return undefined; // User cancelled
+					if (!action) {
+						return undefined; // User cancelled
+					}
+					actionTarget = action.target;
 				}
 
 				let defaultUri: vscode.Uri | undefined;
@@ -845,7 +855,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 					}
 				}
 
-				if (action.target === 'open') {
+				if (actionTarget === 'open') {
 					const uri = await vscode.window.showOpenDialog({
 						canSelectFiles: true,
 						canSelectFolders: true,
@@ -876,7 +886,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 				} as vscode.InputBoxOptions);
 
 			case 'enum': {
-				const pickItems = type.entries.map((entry, _) => {
+				const pickItems = fieldType.entries.map((entry, _) => {
 					return {
 						// Use description if it exists, otherwise use value
 						label: entry.description || entry.value,
@@ -895,7 +905,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 			}
 
 			case 'lazyEnum': {
-				return await this.pickLazyEnum(field.description, type.source, type.config);
+				return await this.pickLazyEnum(field.description, fieldType.source, fieldType.config);
 			}
 
 			case 'bool': {
@@ -934,7 +944,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 
 			case 'list': {
 				// Basic support for lists of primitive strings/numbers via comma-separated input
-				if (type.elementType.kind === 'string' || type.elementType.kind === 'number') {
+				if (fieldType.elementType.kind === 'string' || fieldType.elementType.kind === 'number') {
 					const rawList = await vscode.window.showInputBox({
 						prompt: `${field.description} (comma separated)`,
 						ignoreFocusOut: true
@@ -951,14 +961,14 @@ export class InteractiveLanguageClient extends LanguageClient {
 
 					const parts = rawList.split(',').map((s) => s.trim());
 
-					if (type.elementType.kind === 'number') {
+					if (fieldType.elementType.kind === 'number') {
 						return parts.map(Number).filter((n) => !isNaN(n));
 					}
 					return parts;
 				}
 
 				vscode.window.showErrorMessage(
-					`List input for ${type.elementType.kind} is not supported in this version.`
+					`List input for ${fieldType.elementType.kind} is not supported in this version.`
 				);
 				return undefined;
 			}
