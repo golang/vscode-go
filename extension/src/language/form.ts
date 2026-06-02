@@ -856,9 +856,25 @@ export class InteractiveLanguageClient extends LanguageClient {
 				}
 
 				if (actionTarget === 'open') {
+					let canSelectFiles = true;
+					let canSelectFolders = true;
+
+					if (fieldType.type !== undefined) {
+						canSelectFiles = (fieldType.type & FileType.Regular) !== 0;
+						canSelectFolders = (fieldType.type & FileType.Directory) !== 0;
+
+						// Safe fallback: if the constraint evaluates to allowing neither
+						// (which is likely a bug/misconfiguration in the language server),
+						// allow both so the file picker dialog is not completely disabled.
+						if (!canSelectFiles && !canSelectFolders) {
+							canSelectFiles = true;
+							canSelectFolders = true;
+						}
+					}
+
 					const uri = await vscode.window.showOpenDialog({
-						canSelectFiles: true,
-						canSelectFolders: true,
+						canSelectFiles: canSelectFiles,
+						canSelectFolders: canSelectFolders,
 						canSelectMany: false,
 						openLabel: 'Select',
 						defaultUri: defaultUri,
