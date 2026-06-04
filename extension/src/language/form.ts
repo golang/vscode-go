@@ -173,7 +173,7 @@ export interface FormField {
 	// Type specifies the data type and validation constraints for the answer.
 	type: FormFieldType;
 
-	// Required specifies whether an answer is absolutely required for this field.
+	// Required specifies whether an answer is required for this field.
 	required: boolean;
 
 	// Default specifies an optional initial value for the answer.
@@ -788,6 +788,28 @@ export class InteractiveLanguageClient extends LanguageClient {
 
 		switch (fieldType.kind) {
 			case 'file': {
+				let canSelectFiles = true;
+				let canSelectFolders = true;
+				if (fieldType.type !== undefined) {
+					canSelectFiles = (fieldType.type & FileType.Regular) !== 0;
+					canSelectFolders = (fieldType.type & FileType.Directory) !== 0;
+
+					// Safe fallback: if the constraint evaluates to allowing neither (which is
+					// likely a bug/misconfiguration in the language server), allow both so
+					// the file picker dialog is not completely disabled.
+					if (!canSelectFiles && !canSelectFolders) {
+						canSelectFiles = true;
+						canSelectFolders = true;
+					}
+				}
+
+				const isFolderOnly = canSelectFolders && !canSelectFiles;
+				const isFileOnly = canSelectFiles && !canSelectFolders;
+
+				const resourceName = isFolderOnly ? 'Folder' : isFileOnly ? 'File' : 'File or Folder';
+				const openIcon = isFolderOnly ? '$(folder)' : '$(file)';
+				const newIcon = isFolderOnly ? '$(new-folder)' : '$(new-file)';
+
 				let actionTarget: 'open' | 'save' | undefined;
 				if (fieldType.existence !== undefined) {
 					const allowsNew = (fieldType.existence & FileExistence.New) !== 0;
@@ -813,25 +835,25 @@ export class InteractiveLanguageClient extends LanguageClient {
 					// confuses users. We cannot disable this warning in the OS, so
 					// we split the flow:
 					//
-					// - "Open Existing": Uses showOpenDialog (Clean UX, no warnings)
+					// - "Select Existing": Uses showOpenDialog (Clean UX, no warnings)
 					// - "Create New": Uses showSaveDialog (The "Overwrite" warning
 					// is unavoidable here, but users expect some friction when
 					// "creating" over an existing name, so it is acceptable).
 					const action = await vscode.window.showQuickPick(
 						[
 							{
-								label: '$(file) Open Existing File',
-								description: 'Select a file that already exists',
+								label: `${openIcon} Select Existing ${resourceName}`,
+								description: `Select a ${resourceName.toLowerCase()} that already exists`,
 								target: 'open' as const
 							},
 							{
-								label: '$(new-file) Create New File',
-								description: 'Select a destination for a new file',
+								label: `${newIcon} Create New ${resourceName}`,
+								description: `Select a destination for a new ${resourceName.toLowerCase()}`,
 								target: 'save' as const
 							}
 						],
 						{
-							placeHolder: field.description || 'Select file action',
+							placeHolder: field.description || `Select ${resourceName.toLowerCase()} action`,
 							ignoreFocusOut: true
 						}
 					);
@@ -861,21 +883,6 @@ export class InteractiveLanguageClient extends LanguageClient {
 				}
 
 				if (actionTarget === 'open') {
-					let canSelectFiles = true;
-					let canSelectFolders = true;
-					if (fieldType.type !== undefined) {
-						canSelectFiles = (fieldType.type & FileType.Regular) !== 0;
-						canSelectFolders = (fieldType.type & FileType.Directory) !== 0;
-
-						// Safe fallback: if the constraint evaluates to allowing neither (which is
-						// likely a bug/misconfiguration in the language server), allow both so
-						// the file picker dialog is not completely disabled.
-						if (!canSelectFiles && !canSelectFolders) {
-							canSelectFiles = true;
-							canSelectFolders = true;
-						}
-					}
-
 					const uri = await vscode.window.showOpenDialog({
 						canSelectFiles: canSelectFiles,
 						canSelectFolders: canSelectFolders,
@@ -883,7 +890,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 						openLabel: 'Select',
 						defaultUri: defaultUri,
 						filters: canSelectFiles ? filters : undefined,
-						title: field.description || 'Select Existing File'
+						title: field.description || `Select Existing ${resourceName}`
 					} as vscode.OpenDialogOptions);
 					return uri?.[0] ? uri[0].toString() : undefined;
 				} else {
@@ -891,7 +898,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 						defaultUri: defaultUri,
 						saveLabel: 'Select',
 						filters: filters,
-						title: field.description || 'Create New File'
+						title: field.description || `Create New ${resourceName}`
 					} as vscode.SaveDialogOptions);
 					return uri ? uri.toString() : undefined;
 				}
