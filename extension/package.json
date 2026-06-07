@@ -197,6 +197,7 @@
       "[go]": {
         "editor.insertSpaces": false,
         "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
         "editor.codeActionsOnSave": {
           "source.organizeImports": "explicit"
         }
