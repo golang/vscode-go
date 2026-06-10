@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * Interactive code actions: Support has been added for interactive refactorings that prompt the user for input before proceeding. This enables more sophisticated code actions that require user choices like "add/remove tags to struct fields", "implement interface".
 
-  This integration follows the language client implementation [guidelines](https://github.com/golang/tools/blob/gopls/v0.22.0/gopls/doc/design/integrating-interactive-refactoring.md). See supported interactive refactoring from gopls [feature doc](https://github.com/golang/tools/blob/gopls/v0.22.0/gopls/doc/features/transformation.md#interactive-code-actions).
+  This integration follows the language client implementation [guidelines](https://github.com/golang/tools/blob/master/gopls/doc/design/integrating-interactive-refactoring.md). See supported interactive refactoring from gopls [feature doc](https://github.com/golang/tools/blob/master/gopls/doc/features/transformation.md#interactive-code-actions).
 
   Dialog support is a non-standard feature of LSP. It is currently supported only by `gopls` and `vscode-go`. We plan to work with the broader LSP community toward a standard specification.
 
