@@ -17,6 +17,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * In the Package Outline view, added support for following the cursor and sorting by name or position.
 
+## v0.55.0 (prerelease)
+
+Date: 2026-06-10
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.56.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.54.0-rc.1...v0.55.0
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.56.0
+
 ## v0.53.1 (prerelease)
 
 Date: 2026-01-27
