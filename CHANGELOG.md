@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 * Added menu in a debugger that will show variable in a new document with respect to special chars like `\r\n\t`
 
+* In the Package Outline view, added support for following the cursor and sorting by name or position.
+
 ## v0.53.1 (prerelease)
 
 Date: 2026-01-27
