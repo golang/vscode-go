@@ -1,19 +1,31 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable @typescript-eslint/consistent-indexed-object-style */
+/* eslint-disable arrow-body-style */
+/* eslint-disable no-bitwise */
+/* eslint-disable object-shorthand */
+/* eslint-disable quotes */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/*---------------------------------------------------------
+/* eslint-disable @typescript-eslint/prefer-function-type */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/* ---------------------------------------------------------
  * Copyright 2025 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
 import {
+	ClientCapabilities,
 	ExecuteCommandSignature,
+	FeatureState,
 	LanguageClient,
 	LanguageClientOptions,
 	Middleware,
 	RequestType,
-	ServerOptions
+	StaticFeature
 } from 'vscode-languageclient/node';
-import { InitializeParams } from 'vscode-languageserver-protocol';
 
 // ----------------------------------------------------------------------------
 // Form Field Type Definitions
@@ -173,7 +185,7 @@ export interface FormField {
 	// Type specifies the data type and validation constraints for the answer.
 	type: FormFieldType;
 
-	// Required specifies whether an answer is required for this field.
+	// Required specifies whether an answer is absolutely required for this field.
 	required: boolean;
 
 	// Default specifies an optional initial value for the answer.
@@ -419,20 +431,20 @@ export interface InteractiveListEnumMiddleware {
 	) => vscode.ProviderResult<FormEnumEntry[]>;
 }
 
-export class InteractiveLanguageClient extends LanguageClient {
-	constructor(
-		id: string,
-		name: string,
-		serverOptions: ServerOptions,
-		clientOptions: InteractiveLanguageClientOptions,
-		forceDebug?: boolean
-	) {
-		super(id, name, serverOptions, clientOptions, forceDebug);
+export class InteractiveFormsFeature implements StaticFeature {
+	constructor(private readonly client: LanguageClient) {
+		this.addMiddleware();
+	}
 
-		const interactiveOptions = this.clientOptions as InteractiveLanguageClientOptions;
+	public clear() {}
+	public getState(): FeatureState {
+		return { kind: 'static' };
+	}
+	public initialize() {}
+
+	private addMiddleware() {
+		const interactiveOptions = this.client.clientOptions as InteractiveLanguageClientOptions;
 		const middleware = interactiveOptions.middleware;
-
-		// Memorize the language client author defined "executeCommand" middleware.
 		const original = middleware?.executeCommand;
 
 		// Intercept standard command execution to resolve required inputs interactively.
@@ -442,7 +454,7 @@ export class InteractiveLanguageClient extends LanguageClient {
 		// - If no user answers were collected, execute it using the standard
 		//   "executeCommand" middleware.
 		const overwrite = async (cmd: string, args: any[], next: ExecuteCommandSignature) => {
-			const option = this.initializeResult?.capabilities?.experimental?.interactiveResolveProvider as
+			const option = this.client.initializeResult?.capabilities?.experimental?.interactiveResolveProvider as
 				| interactiveResolveOptions
 				| undefined;
 
@@ -481,38 +493,27 @@ export class InteractiveLanguageClient extends LanguageClient {
 	}
 
 	/**
-	 * Fills in the LSP initialize parameters during the handshake, and registers
-	 * client capabilities to support interactive refactoring prompts.
-	 *
-	 * @important Subclasses overriding this method must:
-	 * 1. Call `super.fillInitializeParams(params)` first to preserve base client
-	 *    configurations.
-	 * 2. Amend or merge properties into `params.capabilities.experimental`
-	 *    rather than overwriting the entire field, to prevent erasing the
-	 * 		interactive capabilities.
+	 * Fills in the LSP client capabilities to support interactive refactoring prompts.
 	 */
-	protected fillInitializeParams(params: InitializeParams): void {
-		super.fillInitializeParams(params);
-
-		const experimental = params.capabilities.experimental || {};
-		experimental.interactiveResolve = {
+	public fillClientCapabilities(capabilities: ClientCapabilities): void {
+		capabilities.experimental ??= {};
+		capabilities.experimental.interactiveResolve = {
 			inputTypes: ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string']
 		} as InteractiveResolveClientCapabilities;
-		params.capabilities.experimental = experimental;
 	}
 
 	/**
-	 * MAX_RETRY defined the maximum number of user collection allowed for when
+	 * MAX_RETRY defines the maximum number of user collection allowed for when
 	 * resolving a command.
 	 */
 	static MAX_RETRY = 5;
 
-	async resolveCommandInteractively(
+	private async resolveCommandInteractively(
 		param: InteractiveExecuteCommandParams
 	): Promise<InteractiveExecuteCommandParams | undefined> {
 		// Invoke "command/resolve" at least once to ensure the command
 		// is fully specified, as the initial input may lack necessary parameters.
-		for (let i = 0; i < InteractiveLanguageClient.MAX_RETRY; i++) {
+		for (let i = 0; i < InteractiveFormsFeature.MAX_RETRY; i++) {
 			const result = await this.interactiveResolveCommand(param);
 			if (!result) {
 				return undefined;
@@ -526,9 +527,9 @@ export class InteractiveLanguageClient extends LanguageClient {
 			}
 
 			// Exhaust all retries.
-			if (i === InteractiveLanguageClient.MAX_RETRY - 1) {
+			if (i === InteractiveFormsFeature.MAX_RETRY - 1) {
 				vscode.window.showWarningMessage(
-					`Retried ${InteractiveLanguageClient.MAX_RETRY} exceeds the maximum allowed attempts`
+					`Retried ${InteractiveFormsFeature.MAX_RETRY} exceeds the maximum allowed attempts`
 				);
 				return undefined;
 			}
@@ -569,16 +570,18 @@ export class InteractiveLanguageClient extends LanguageClient {
 	): vscode.ProviderResult<any> => {
 		const _interactiveExecuteCommand: InteractiveExecuteCommandSignature = (command, args, formAnswers) => {
 			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('workspace/executeCommand');
-			return this.sendRequest<any>('workspace/executeCommand', {
-				command: command,
-				arguments: args,
-				formAnswers: formAnswers
-			} as InteractiveExecuteCommandParams).then(undefined, (error) => {
-				return this.handleFailedRequest(requestType, undefined, error, undefined);
-			});
+			return this.client
+				.sendRequest<any>('workspace/executeCommand', {
+					command: command,
+					arguments: args,
+					formAnswers: formAnswers
+				} as InteractiveExecuteCommandParams)
+				.then(undefined, (error) => {
+					return this.client.handleFailedRequest(requestType, undefined, error, undefined);
+				});
 		};
 
-		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		const middleware = this.client.clientOptions.middleware as InteractiveMiddleware | undefined;
 		return middleware?.interactiveExecuteCommand
 			? middleware.interactiveExecuteCommand(command, args, formAnswers, _interactiveExecuteCommand)
 			: _interactiveExecuteCommand(command, args, formAnswers);
@@ -613,15 +616,14 @@ export class InteractiveLanguageClient extends LanguageClient {
 	): vscode.ProviderResult<InteractiveExecuteCommandParams> => {
 		const _interactiveResolveCommand: InteractiveResolveCommandSignature = (param) => {
 			const requestType = new RequestType<InteractiveExecuteCommandParams, any, void>('command/resolve');
-			return this.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param).then(
-				undefined,
-				(error) => {
-					return this.handleFailedRequest(requestType, undefined, error, undefined);
-				}
-			);
+			return this.client
+				.sendRequest<InteractiveExecuteCommandParams>('command/resolve', param)
+				.then(undefined, (error) => {
+					return this.client.handleFailedRequest(requestType, undefined, error, undefined);
+				});
 		};
 
-		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		const middleware = this.client.clientOptions.middleware as InteractiveMiddleware | undefined;
 		return middleware?.interactiveResolveCommand
 			? middleware.interactiveResolveCommand(param, _interactiveResolveCommand)
 			: _interactiveResolveCommand(param);
@@ -644,12 +646,12 @@ export class InteractiveLanguageClient extends LanguageClient {
 			const requestType = new RequestType<InteractiveListEnumParams, FormEnumEntry[], void>(
 				'interactive/listEnum'
 			);
-			return this.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
-				return this.handleFailedRequest(requestType, undefined, error, undefined);
+			return this.client.sendRequest<FormEnumEntry[]>('interactive/listEnum', param).then(undefined, (error) => {
+				return this.client.handleFailedRequest(requestType, undefined, error, undefined);
 			});
 		};
 
-		const middleware = this.clientOptions.middleware as InteractiveMiddleware | undefined;
+		const middleware = this.client.clientOptions.middleware as InteractiveMiddleware | undefined;
 		return middleware?.interactiveListEnum
 			? middleware.interactiveListEnum(param, _interactiveListEnum)
 			: _interactiveListEnum(param);
@@ -781,7 +783,26 @@ export class InteractiveLanguageClient extends LanguageClient {
 	}
 
 	/**
+	 * Validates a string, returning a user-facing error message if it's not valid.
+	 */
+	private validateString(text: string, required: boolean): string | null {
+		if (required && text.trim() === '') return 'Please enter a value';
+		return null;
+	}
+
+	/**
+	 * Validates a number, returning a user-facing error message if it's not valid.
+	 */
+	private validateNumber(text: string, required: boolean): string | null {
+		if (text.trim() === '') return required ? 'Please enter a number' : null;
+		return !Number.isFinite(Number(text)) ? 'Please enter a valid number' : null;
+	}
+
+	/**
 	 * Helper to prompt for a single field based on its type.
+	 *
+	 * Returns `undefined` if an input is cancelled.
+	 * Returns `null` if an answer was skipped/no answer (for example an empty input).
 	 */
 	private async promptForField(field: FormField, prevAnswer: any | undefined): Promise<any | undefined> {
 		const fieldType = field.type;
@@ -803,12 +824,18 @@ export class InteractiveLanguageClient extends LanguageClient {
 					}
 				}
 
-				const isFolderOnly = canSelectFolders && !canSelectFiles;
-				const isFileOnly = canSelectFiles && !canSelectFolders;
-
-				const resourceName = isFolderOnly ? 'Folder' : isFileOnly ? 'File' : 'File or Folder';
-				const openIcon = isFolderOnly ? '$(folder)' : '$(file)';
-				const newIcon = isFolderOnly ? '$(new-folder)' : '$(new-file)';
+				let resourceName = 'File or Folder';
+				let openIcon = '$(file)';
+				let newIcon = '$(new-file)';
+				if (canSelectFiles && !canSelectFolders) {
+					resourceName = 'File';
+					openIcon = '$(file)';
+					newIcon = '$(new-file)';
+				} else if (!canSelectFiles && canSelectFolders) {
+					resourceName = 'Folder';
+					openIcon = '$(folder)';
+					newIcon = '$(new-folder)';
+				}
 
 				let actionTarget: 'open' | 'save' | undefined;
 				if (fieldType.existence !== undefined) {
@@ -903,19 +930,29 @@ export class InteractiveLanguageClient extends LanguageClient {
 					return uri ? uri.toString() : undefined;
 				}
 			}
-			case 'string':
-				return await vscode.window.showInputBox({
+			case 'string': {
+				const value = await vscode.window.showInputBox({
 					prompt: field.description,
-					value: prevAnswer ? prevAnswer : field.default,
+					value: prevAnswer !== undefined && prevAnswer !== null ? prevAnswer : field.default,
 					placeHolder: field.description,
 					// Keep the input box open when focus is lost. This allows the
 					// user to  browse the workspace or inspect code (e.g., checking
 					// destination files or existing struct tags) before answering.
-					ignoreFocusOut: true
+					ignoreFocusOut: true,
+					validateInput: (text) => this.validateString(text, field.required)
 				} as vscode.InputBoxOptions);
 
+				if (value === undefined) {
+					return undefined; // Cancelled.
+				}
+				if (value.trim() === '') {
+					return null; // Treat empty as no answer.
+				}
+				return value;
+			}
+
 			case 'enum': {
-				const pickItems = fieldType.entries.map((entry, _) => {
+				const pickItems = fieldType.entries.map((entry) => {
 					return {
 						// Use description if it exists, otherwise use value
 						label: entry.description || entry.value,
@@ -953,9 +990,9 @@ export class InteractiveLanguageClient extends LanguageClient {
 
 			case 'number': {
 				let value: string | undefined;
-				if (prevAnswer) {
+				if (prevAnswer !== undefined && prevAnswer !== null) {
 					value = String(prevAnswer);
-				} else if (field.default) {
+				} else if (field.default !== undefined && field.default !== null) {
 					value = String(field.default);
 				}
 				const numResult = await vscode.window.showInputBox({
@@ -963,12 +1000,16 @@ export class InteractiveLanguageClient extends LanguageClient {
 					value: value,
 					placeHolder: '0',
 					ignoreFocusOut: true,
-					validateInput: (text) => {
-						return isNaN(Number(text)) ? 'Please enter a valid number' : null;
-					}
+					validateInput: (text) => this.validateNumber(text, field.required)
 				});
 
-				return numResult !== undefined ? Number(numResult) : undefined;
+				if (numResult === undefined) {
+					return undefined; // Cancelled.
+				}
+				if (numResult.trim() === '') {
+					return null; // Treat empty as no answer.
+				}
+				return Number(numResult);
 			}
 
 			case 'list': {
@@ -976,22 +1017,43 @@ export class InteractiveLanguageClient extends LanguageClient {
 				if (fieldType.elementType.kind === 'string' || fieldType.elementType.kind === 'number') {
 					const rawList = await vscode.window.showInputBox({
 						prompt: `${field.description} (comma separated)`,
-						ignoreFocusOut: true
+						ignoreFocusOut: true,
+						validateInput: (text) => {
+							if (text.trim() === '') {
+								return field.required ? 'Please enter at least one item' : null;
+							}
+							const parts = text.split(',').map((s) => s.trim());
+							if (fieldType.elementType.kind === 'string') {
+								for (const part of parts) {
+									if (this.validateString(part, true)) {
+										return 'Please enter valid values';
+									}
+								}
+							} else if (fieldType.elementType.kind === 'number') {
+								for (const part of parts) {
+									if (this.validateNumber(part, true)) {
+										return 'Please enter valid numbers';
+									}
+								}
+							}
+							return null;
+						}
 					});
 
 					if (rawList === undefined) {
-						return undefined;
+						return undefined; // Cancelled.
 					}
 
-					// If empty input, return empty list
 					if (rawList.trim() === '') {
-						return [];
+						// Treat empty as no answer. We shouldn't get here if required because
+						// of validation.
+						return null;
 					}
 
 					const parts = rawList.split(',').map((s) => s.trim());
-
 					if (fieldType.elementType.kind === 'number') {
-						return parts.map(Number).filter((n) => !isNaN(n));
+						// Validation should prevent us having NaNs here.
+						return parts.map(Number);
 					}
 					return parts;
 				}

@@ -100,7 +100,7 @@ suite('writeVulns', function () {
 		const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(workspaceDir, 'go.mod')));
 		const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 
-		languageClient.middleware!.executeCommand!(command, [{ URI: uri }], async (cmd, args) => {
+		languageClient.middleware!.executeCommand!(command, [{ URI: uri }], async (cmd: string, args: any[]) => {
 			const params: ExecuteCommandParams = {
 				command: cmd,
 				arguments: args

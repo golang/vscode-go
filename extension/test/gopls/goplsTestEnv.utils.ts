@@ -11,12 +11,12 @@ import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import {
 	buildLanguageClient,
+	GoLanguageClient,
 	LanguageServerConfig,
 	buildLanguageServerConfig,
 	toServerInfo
 } from '../../src/language/goLanguageServer';
 import { GoExtensionContext } from '../../src/context';
-import { InteractiveLanguageClient } from '../../src/language/form';
 
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
@@ -65,7 +65,7 @@ export class FakeOutputChannel implements vscode.OutputChannel {
 // Env is a collection of test-related variables and lsp client.
 // Currently, this works only in module-aware mode.
 export class Env {
-	public languageClient?: InteractiveLanguageClient;
+	public languageClient?: GoLanguageClient;
 	public goCtx: GoExtensionContext = {};
 
 	private fakeOutputChannel?: FakeOutputChannel;

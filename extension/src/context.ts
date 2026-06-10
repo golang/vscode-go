@@ -4,9 +4,7 @@
  *--------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { InteractiveLanguageClient } from './language/form';
-
-import { LanguageServerConfig, Restart, ServerInfo } from './language/goLanguageServer';
+import { GoLanguageClient, LanguageServerConfig, Restart, ServerInfo } from './language/goLanguageServer';
 import { LegacyLanguageService } from './language/registerDefaultProviders';
 import { TelemetryService } from './goTelemetry';
 
@@ -14,7 +12,7 @@ import { TelemetryService } from './goTelemetry';
 // They are global so that the server can be easily restarted with
 // new configurations.
 export interface GoExtensionContext {
-	languageClient?: InteractiveLanguageClient;
+	languageClient?: GoLanguageClient;
 	legacyLanguageService?: LegacyLanguageService;
 	latestConfig?: LanguageServerConfig;
 	telemetryService?: TelemetryService;

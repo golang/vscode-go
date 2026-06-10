@@ -37,7 +37,7 @@ import {
 	ResponseError,
 	RevealOutputChannelOn
 } from 'vscode-languageclient';
-import { Executable, ServerOptions } from 'vscode-languageclient/node';
+import { Executable, ServerOptions, LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig, getGoplsConfig, extensionInfo } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { GoDocumentFormattingEditProvider, getFormatTool } from './legacy/goFormat';
@@ -72,7 +72,7 @@ import { TelemetryKey, telemetryReporter } from '../goTelemetry';
 import {
 	InteractiveExecuteCommandParams,
 	InteractiveResolveCommandSignature,
-	InteractiveLanguageClient,
+	InteractiveFormsFeature,
 	InteractiveMiddleware
 } from './form';
 
@@ -341,7 +341,7 @@ export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
 	return info;
 }
 
-export class GoLanguageClient extends InteractiveLanguageClient implements vscode.Disposable {
+export class GoLanguageClient extends LanguageClient implements vscode.Disposable {
 	constructor(
 		id: string,
 		name: string,
@@ -836,6 +836,7 @@ export async function buildLanguageClient(
 		} as LanguageClientOptions,
 		onDidChangeVulncheckResultEmitter
 	);
+	c.registerFeature(new InteractiveFormsFeature(c));
 	onDidChangeVulncheckResultEmitter.event(async (e: VulncheckEvent) => {
 		if (!govulncheckTerminal) {
 			return;
