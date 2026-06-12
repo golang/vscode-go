@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.55.0 (prerelease)
+
+Date: 2026-06-10
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.56.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.54.0-rc.1...v0.55.0
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.56.0
+
+## v0.54.0
+
+Date: 2026-06-10
+
 ### Changes
 
 * Interactive code actions: Support has been added for interactive refactorings that prompt the user for input before proceeding. This enables more sophisticated code actions that require user choices like "add/remove tags to struct fields", "implement interface".
@@ -16,15 +29,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 * Added menu in a debugger that will show variable in a new document with respect to special chars like `\r\n\t`
 
 * In the Package Outline view, added support for following the cursor and sorting by name or position.
-
-## v0.55.0 (prerelease)
-
-Date: 2026-06-10
-
-This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.56.
-
-**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.54.0-rc.1...v0.55.0
-**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.56.0
 
 ## v0.53.1 (prerelease)
 
