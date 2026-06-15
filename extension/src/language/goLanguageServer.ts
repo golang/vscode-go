@@ -1222,7 +1222,6 @@ export async function shouldUpdateLanguageServer(
 	// If the user's version does not contain a timestamp,
 	// default to a semver comparison of the two versions.
 	const usersVersionSemver = semver.parse(usersVersion.version, {
-		includePrerelease: true,
 		loose: true
 	});
 	return semver.lt(usersVersionSemver!, version!) ? version : null;

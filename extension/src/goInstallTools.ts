@@ -859,7 +859,7 @@ export async function shouldUpdateTool(tool: Tool, toolPath: string): Promise<bo
 		return false; // failed to inspect the tool version.
 	}
 
-	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
+	const localVersion = semver.parse(moduleVersion);
 	if (!localVersion) {
 		// local version can't be determined. e.g. (devel)
 		return false;

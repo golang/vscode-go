@@ -598,7 +598,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 // exported for testing.
 export async function maybeJoinFlags(dlvToolPath: string, flags: string | string[]) {
 	const { moduleVersion } = await inspectGoToolVersion(dlvToolPath);
-	const localVersion = semver.parse(moduleVersion, { includePrerelease: true });
+	const localVersion = semver.parse(moduleVersion);
 	if (typeof flags !== 'string' && (!localVersion || semver.lt(localVersion, '1.22.2'))) {
 		flags = flags.join(' ');
 	}
