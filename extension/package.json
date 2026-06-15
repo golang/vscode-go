@@ -61,8 +61,8 @@
     "tree-kill": "file:third_party/tree-kill",
     "vscode-debugadapter": "1.45.0",
     "vscode-debugprotocol": "1.45.0",
-    "vscode-languageclient": "8.1.0",
-    "vscode-languageserver-protocol": "3.17.3",
+    "vscode-languageclient": "9.0.1",
+    "vscode-languageserver-protocol": "3.17.5",
     "vscode-uri": "3.0.3"
   },
   "devDependencies": {
