@@ -4,18 +4,6 @@ import { Tool } from './goTools';
 
 const internal = new Map<string, Tool>([
 	[
-		'gomodifytags',
-		{
-			name: 'gomodifytags',
-			importPath: 'github.com/fatih/gomodifytags',
-			modulePath: 'github.com/fatih/gomodifytags',
-			replacedByGopls: true,
-			isImportant: false,
-			description: 'Modify tags on structs',
-			defaultVersion: 'v1.17.0'
-		}
-	],
-	[
 		'goplay',
 		{
 			name: 'goplay',

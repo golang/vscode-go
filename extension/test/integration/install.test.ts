@@ -375,7 +375,6 @@ suite('getRequiredTools', () => {
 				'impl',
 				'goplay',
 				// include third party tool that is replaced by gopls
-				'gomodifytags',
 				'gotests'
 			]
 		},

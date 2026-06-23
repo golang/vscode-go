@@ -138,7 +138,7 @@ export function getRequiredTools(goConfig: vscode.WorkspaceConfiguration): Tool[
 	const useLanguageServer = goConfig.get<boolean>('useLanguageServer');
 
 	// The default tools that is required by the extension's functionality.
-	const toolNames = new Set<string>(['gotests', 'gomodifytags', 'impl', 'goplay']);
+	const toolNames = new Set<string>(['gotests', 'impl', 'goplay']);
 
 	// Check if the system supports dlv, i.e. is 64-bit.
 	// There doesn't seem to be a good way to check if the mips and s390

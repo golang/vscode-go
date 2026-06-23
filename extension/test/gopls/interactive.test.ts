@@ -11,8 +11,7 @@ import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 
-// TODO(hxjiang): enable after gopls migration.
-suite.skip('Interactive Refactoring', function () {
+suite('Interactive Refactoring', function () {
 	this.timeout(30000);
 
 	let document: vscode.TextDocument;

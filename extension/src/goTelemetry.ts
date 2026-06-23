@@ -54,7 +54,6 @@ export enum TelemetryKey {
 	// Indicates the tools usage.
 	TOOL_USAGE_GOTESTS = 'vscode-go/tool/usage:gotests',
 	TOOL_USAGE_GOPLAY = 'vscode-go/tool/usage:goplay',
-	TOOL_USAGE_GOMODIFYTAGS = 'vscode-go/tool/usage:gomodifytags',
 
 	// Indicates the command and the source of trigger.
 	// The bucket have two elements, the command and it's trigger source.
