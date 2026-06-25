@@ -720,21 +720,63 @@ function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
 
 let suggestedDownloadGo = false;
 
-async function suggestDownloadGo() {
-	const msg =
-		`Failed to find the "go" binary in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()}). ` +
-		'Check PATH, or Install Go and reload the window. ' +
-		"If PATH isn't what you expected, see https://github.com/golang/vscode-go/issues/971";
+// Actions shown when the extension cannot locate the go binary.
+const SHOW_PATH_ENTRIES_ACTION = 'Show PATH Entries';
+const GO_DOWNLOAD_PAGE_ACTION = 'Go to Download Page';
+const GO_DOWNLOAD_URL = 'https://golang.org/dl/';
 
-	if (suggestedDownloadGo) {
-		vscode.window.showErrorMessage(msg);
+// Split PATH using the platform delimiter and drop empty entries for display.
+function getPathEntries(): string[] {
+	return (getEnvPath() ?? '')
+		.split(path.delimiter)
+		.map((entry: string) => entry.trim())
+		.filter(Boolean);
+}
+
+async function handleDownloadGoChoice(choice: string | undefined): Promise<void> {
+	if (choice === SHOW_PATH_ENTRIES_ACTION) {
+		await showPathEntriesQuickPick();
 		return;
 	}
 
-	const choice = await vscode.window.showErrorMessage(msg, 'Go to Download Page');
-	if (choice === 'Go to Download Page') {
-		vscode.env.openExternal(vscode.Uri.parse('https://golang.org/dl/'));
+	if (choice === GO_DOWNLOAD_PAGE_ACTION) {
+		await vscode.env.openExternal(vscode.Uri.parse(GO_DOWNLOAD_URL));
 	}
+	return;
+}
+
+async function showPathEntriesQuickPick() {
+	const pathEntries = getPathEntries();
+
+	if (!pathEntries.length) {
+		await vscode.window.showInformationMessage('PATH is empty.');
+		return;
+	}
+
+	await vscode.window.showQuickPick(pathEntries, {
+		title: 'PATH Entries Searched for go',
+		placeHolder: 'Entries from PATH used when searching for the go binary',
+		ignoreFocusOut: true
+	});
+}
+
+async function suggestDownloadGo() {
+	const goRoot = getCurrentGoRoot() ?? '(not set)';
+	const message =
+		`Failed to find the "go" binary in either GOROOT(${goRoot}) or PATH. ` +
+		'Check PATH, or install Go and reload the window.';
+	const choice = await vscode.window.showErrorMessage(
+		message,
+		SHOW_PATH_ENTRIES_ACTION,
+		GO_DOWNLOAD_PAGE_ACTION
+	);
+
+	if (suggestedDownloadGo) {
+		await handleDownloadGoChoice(choice);
+		return;
+	}
+
+	await handleDownloadGoChoice(choice);
 	suggestedDownloadGo = true;
 }
 
