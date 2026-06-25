@@ -2314,7 +2314,7 @@
                 },
                 "S1005": {
                   "type": "boolean",
-                  "markdownDescription": "Drop unnecessary use of the blank identifier\n\nIn many cases, assigning to the blank identifier is unnecessary.\n\nBefore:\n\n    for _ = range s {}\n    x, _ = someMap[key]\n    _ = <-ch\n\nAfter:\n\n    for range s{}\n    x = someMap[key]\n    <-ch\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "Drop unnecessary use of the blank identifier\n\nIn many cases, assigning to the blank identifier is unnecessary.\n\nBefore:\n\n    for _ = range s {}\n    _ = <-ch\n\nAfter:\n\n    for range s{}\n    <-ch\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "S1006": {
@@ -2474,7 +2474,7 @@
                 },
                 "SA1002": {
                   "type": "boolean",
-                  "markdownDescription": "Invalid format in time.Parse\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "Invalid format in time.Parse\n\ntime.Parse requires a layout string that uses Go's reference time:\n'Mon Jan 2 15:04:05 MST 2006'. The layout must represent this date and time\nexactly. See https://pkg.go.dev/time#pkg-constants for layout examples.\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "SA1003": {
@@ -2514,7 +2514,7 @@
                 },
                 "SA1012": {
                   "type": "boolean",
-                  "markdownDescription": "A nil context.Context is being passed to a function, consider using context.TODO instead\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "A nil context.Context is being passed to a function, consider using context.TODO instead\n\nThe context package prohibits the use of a nil context.\nIf no parent context is available, a new context should be used,\ne.g. context.TODO or context.Background.\n\nAvailable since\n    2017.1\n",
                   "default": true
                 },
                 "SA1013": {
@@ -2524,7 +2524,7 @@
                 },
                 "SA1014": {
                   "type": "boolean",
-                  "markdownDescription": "Non-pointer value passed to Unmarshal or Decode\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "Non-pointer value passed to Unmarshal or Decode\n\nFunctions such as encoding/json.Unmarshal and\n(*encoding/json.Decoder).Decode require a pointer to the value that should\nbe populated. Passing a non-pointer value results in the function returning an\nerror at runtime, as it cannot modify the target value.\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "SA1015": {
@@ -2549,7 +2549,7 @@
                 },
                 "SA1020": {
                   "type": "boolean",
-                  "markdownDescription": "Using an invalid host:port pair with a net.Listen-related function\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "Using an invalid host:port pair with a net.Listen-related function\n\nFunctions such as net.Listen, net.ListenTCP, and similar,\nexpect a valid network address in the form of host:port. The host, the port,\nor both, can be omitted, e.g. localhost:8080, :8080 or : are valid\nhost:port pairs.\nSee https://pkg.go.dev/net#Listen for the full documentation.\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "SA1021": {
@@ -2619,7 +2619,7 @@
                 },
                 "SA2003": {
                   "type": "boolean",
-                  "markdownDescription": "Deferred Lock right after locking, likely meant to defer Unlock instead\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "Deferred Lock right after locking, likely meant to defer Unlock instead\n\nDeferring a call to Lock immediately after locking is almost always\na typo. For example:\n\n    mu.Lock()\n    defer mu.Lock()\n\nWhile this does not strictly guarantee a deadlock depending on how the\nsurrounding code is structured, it is highly likely to be a mistake.\nThe intended code was likely this:\n\n    mu.Lock()\n    defer mu.Unlock()\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "SA3000": {
@@ -2674,7 +2674,7 @@
                 },
                 "SA4010": {
                   "type": "boolean",
-                  "markdownDescription": "The result of append will never be observed anywhere\n\nAvailable since\n    2017.1\n",
+                  "markdownDescription": "The result of append will never be observed anywhere\n\nCalls to append produce a new slice value. When the result of\nappend is assigned to a variable that is never subsequently read, the\nappend operation may have an unintended effect.\n\nAvailable since\n    2017.1\n",
                   "default": false
                 },
                 "SA4011": {
@@ -2827,11 +2827,6 @@
                   "markdownDescription": "Impossible type assertion\n\nSome type assertions can be statically proven to be\nimpossible. This is the case when the method sets of both\narguments of the type assertion conflict with each other, for\nexample by containing the same method with different\nsignatures.\n\nThe Go compiler already applies this check when asserting from an\ninterface value to a concrete type. If the concrete type misses\nmethods from the interface, or if function signatures don't match,\nthen the type assertion can never succeed.\n\nThis check applies the same logic when asserting from one interface to\nanother. If both interface types contain the same method but with\ndifferent signatures, then the type assertion can never succeed,\neither.\n\nAvailable since\n    2020.1\n",
                   "default": false
                 },
-                "SA5011": {
-                  "type": "boolean",
-                  "markdownDescription": "Possible nil pointer dereference\n\nA pointer is being dereferenced unconditionally, while\nalso being checked against nil in another place. This suggests that\nthe pointer may be nil and dereferencing it may panic. This is\ncommonly a result of improperly ordered code or missing return\nstatements. Consider the following examples:\n\n    func fn(x *int) {\n        fmt.Println(*x)\n\n        // This nil check is equally important for the previous dereference\n        if x != nil {\n            foo(*x)\n        }\n    }\n\n    func TestFoo(t *testing.T) {\n        x := compute()\n        if x == nil {\n            t.Errorf(\"nil pointer received\")\n        }\n\n        // t.Errorf does not abort the test, so if x is nil, the next line will panic.\n        foo(*x)\n    }\n\nStaticcheck tries to deduce which functions abort control flow.\nFor example, it is aware that a function will not continue\nexecution after a call to panic or log.Fatal. However, sometimes\nthis detection fails, in particular in the presence of\nconditionals. Consider the following example:\n\n    func Log(msg string, level int) {\n        fmt.Println(msg)\n        if level == levelFatal {\n            os.Exit(1)\n        }\n    }\n\n    func Fatal(msg string) {\n        Log(msg, levelFatal)\n    }\n\n    func fn(x *int) {\n        if x == nil {\n            Fatal(\"unexpected nil pointer\")\n        }\n        fmt.Println(*x)\n    }\n\nStaticcheck will flag the dereference of x, even though it is perfectly\nsafe. Staticcheck is not able to deduce that a call to\nFatal will exit the program. For the time being, the easiest\nworkaround is to modify the definition of Fatal like so:\n\n    func Fatal(msg string) {\n        Log(msg, levelFatal)\n        panic(\"unreachable\")\n    }\n\nWe also hard-code functions from common logging packages such as\nlogrus. Please file an issue if we're missing support for a\npopular package.\n\nAvailable since\n    2020.1\n",
-                  "default": false
-                },
                 "SA5012": {
                   "type": "boolean",
                   "markdownDescription": "Passing odd-sized slice to function expecting even size\n\nSome functions that take slices as parameters expect the slices to have an even number of elements. \nOften, these functions treat elements in a slice as pairs. \nFor example, strings.NewReplacer takes pairs of old and new strings, \nand calling it with an odd number of elements would be an error.\n\nAvailable since\n    2020.2\n",
@@ -2910,6 +2905,11 @@
                 "SA9009": {
                   "type": "boolean",
                   "markdownDescription": "Ineffectual Go compiler directive\n\nA potential Go compiler directive was found, but is ineffectual as it begins\nwith whitespace.\n\nAvailable since\n    2024.1\n",
+                  "default": true
+                },
+                "SA9010": {
+                  "type": "boolean",
+                  "markdownDescription": "Returned function should be called in defer\n\nIf you have a function such as:\n\n    func f() func() {\n        // Do something.\n        return func() {\n            // Do something.\n        }\n    }\n\nThen calling that in defer:\n\n    defer f()\n\nIs almost always a mistake, since you typically want to call the returned\nfunction:\n\n    defer f()()\n\nAvailable since\n    2026.2\n",
                   "default": true
                 },
                 "ST1000": {
@@ -3104,12 +3104,17 @@
                 },
                 "errorsas": {
                   "type": "boolean",
-                  "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analyzer reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.\nFor example:\n\n\tvar unwrappedErr net.DNSError\n\terrors.As(err, unwrappedErr) // should use &unwrappedErr, DNSError.Error has a pointer reciever\n",
+                  "markdownDescription": "report passing non-pointer or non-error values to errors.As\n\nThe errorsas analyzer reports calls to errors.As where the type\nof the second argument is not a pointer to a type implementing error.\nFor example:\n\n\tvar unwrappedErr net.DNSError\n\terrors.As(err, unwrappedErr) // should use &unwrappedErr, DNSError.Error has a pointer receiver\n",
                   "default": true
                 },
                 "errorsastype": {
                   "type": "boolean",
-                  "markdownDescription": "Reports misuse of errors.AsType[T] in if/else chains.\nFor example:\n\n\terr := f()\n\tif err, ok := errors.AsType[*FooErr](err); ok {\n\t    useFoo(err)\n\t} else if err, ok := errors.AsType[*BarErr](err); ok {\n\t    useBar(err)\n\t}\n\nIn this case, the second call to errors.AsType does not operate on the\noriginal error. Instead, its operand is the zero value of type *FooErr\nproduced by the first if statement; this is invariably a mistake.\n",
+                  "markdownDescription": "replace errors.As with errors.AsType[T]\n\nThis analyzer suggests fixes to simplify uses of [errors.As] of\nthis form:\n\n\tvar myerr *MyErr\n\tif errors.As(err, &myerr) {\n\t\thandle(myerr)\n\t}\n\nby using the less error-prone generic [errors.AsType] function,\nintroduced in Go 1.26:\n\n\tif myerr, ok := errors.AsType[*MyErr](err); ok {\n\t\thandle(myerr)\n\t}\n\nThe fix is only offered if the var declaration has the form shown and\nthere are no uses of myerr outside the if statement.",
+                  "default": true
+                },
+                "errorsastypeshadow": {
+                  "type": "boolean",
+                  "markdownDescription": "report shadowing of errors.AsType[T] in if/else chains\n\nFor example:\n\n\terr := f()\n\tif err, ok := errors.AsType[*FooErr](err); ok {\n\t    useFoo(err)\n\t} else if err, ok := errors.AsType[*BarErr](err); ok {\n\t    useBar(err)\n\t}\n\nIn this case, the second call to errors.AsType does not operate on the\noriginal error. Instead, its operand is the zero value of type *FooErr\nproduced by the first if statement; this is invariably a mistake.",
                   "default": true
                 },
                 "fieldalignment": {
@@ -3159,7 +3164,7 @@
                 },
                 "inline": {
                   "type": "boolean",
-                  "markdownDescription": "apply fixes based on 'go:fix inline' comment directives\n\nThe inline analyzer inlines functions and constants that are marked for inlining.\n\n## Functions\n\nGiven a function that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nthis analyzer will recommend that calls to the function elsewhere, in the same\nor other packages, should be inlined.\n\nInlining can be used to move off of a deprecated function:\n\n\t// Deprecated: prefer Pow(x, 2).\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nIt can also be used to move off of an obsolete package,\nas when the import path has changed or a higher major version is available:\n\n\tpackage pkg\n\n\timport pkg2 \"pkg/v2\"\n\n\t//go:fix inline\n\tfunc F() { pkg2.F(nil) }\n\nReplacing a call pkg.F() by pkg2.F(nil) can have no effect on the program,\nso this mechanism provides a low-risk way to update large numbers of calls.\nWe recommend, where possible, expressing the old API in terms of the new one\nto enable automatic migration.\n\nThe inliner takes care to avoid behavior changes, even subtle ones,\nsuch as changes to the order in which argument expressions are\nevaluated. When it cannot safely eliminate all parameter variables,\nit may introduce a \"binding declaration\" of the form\n\n\tvar params = args\n\nto evaluate argument expressions in the correct order and bind them to\nparameter variables. Since the resulting code transformation may be\nstylistically suboptimal, such inlinings may be disabled by specifying\nthe -inline.allow_binding_decl=false flag to the analyzer driver.\n\n(In cases where it is not safe to \"reduce\" a call—that is, to replace\na call f(x) by the body of function f, suitably substituted—the\ninliner machinery is capable of replacing f by a function literal,\nfunc(){...}(). However, the inline analyzer discards all such\n\"literalizations\" unconditionally, again on grounds of style.)\n\n## Constants\n\nGiven a constant that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tconst Ptr = Pointer\n\nthis analyzer will recommend that uses of Ptr should be replaced with Pointer.\n\nAs with functions, inlining can be used to replace deprecated constants and\nconstants in obsolete packages.\n\nA constant definition can be marked for inlining only if it refers to another\nnamed constant.\n\nThe \"//go:fix inline\" comment must appear before a single const declaration on its own,\nas above; before a const declaration that is part of a group, as in this case:\n\n\tconst (\n\t   C = 1\n\t   //go:fix inline\n\t   Ptr = Pointer\n\t)\n\nor before a group, applying to every constant in the group:\n\n\t//go:fix inline\n\tconst (\n\t\tPtr = Pointer\n\t    Val = Value\n\t)\n\nThe proposal https://go.dev/issue/32816 introduces the \"//go:fix inline\" directives.\n\nYou can use this command to apply inline fixes en masse:\n\n\t$ go run golang.org/x/tools/go/analysis/passes/inline/cmd/inline@latest -fix ./...",
+                  "markdownDescription": "apply fixes based on 'go:fix inline' comment directives\n\nThe inline analyzer inlines functions, constants, and type aliases\nthat are marked for inlining.\n\nUse this command to apply (just) inline fixes en masse:\n\n\t$ go fix -inline ./...\n\n## Functions\n\nGiven a function that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nthis analyzer will recommend that calls to the function elsewhere, in the same\nor other packages, should be inlined.\n\nInlining can be used to move off of a deprecated function:\n\n\t// Deprecated: prefer Pow(x, 2).\n\t//go:fix inline\n\tfunc Square(x int) int { return Pow(x, 2) }\n\nIt can also be used to move off of an obsolete package,\nas when the import path has changed or a higher major version is available:\n\n\tpackage pkg\n\n\timport pkg2 \"pkg/v2\"\n\n\t//go:fix inline\n\tfunc F() { pkg2.F(nil) }\n\nReplacing a call pkg.F() by pkg2.F(nil) can have no effect on the program,\nso this mechanism provides a low-risk way to update large numbers of calls.\nWe recommend, where possible, expressing the old API in terms of the new one\nto enable automatic migration.\n\nThe inliner takes care to avoid behavior changes, even subtle ones,\nsuch as changes to the order in which argument expressions are\nevaluated. When it cannot safely eliminate all parameter variables,\nit may introduce a \"binding declaration\" of the form\n\n\tvar params = args\n\nto evaluate argument expressions in the correct order and bind them to\nparameter variables. Since the resulting code transformation may be\nstylistically suboptimal, such inlinings may be disabled by specifying\nthe -inline.allow_binding_decl=false flag to the analyzer driver.\n\n(In cases where it is not safe to \"reduce\" a call—that is, to replace\na call f(x) by the body of function f, suitably substituted—the\ninliner machinery is capable of replacing f by a function literal,\nfunc(){...}(). However, the inline analyzer discards all such\n\"literalizations\" unconditionally, again on grounds of style.)\n\n## Constants\n\nGiven a constant that is marked for inlining, like this one:\n\n\t//go:fix inline\n\tconst Ptr = Pointer\n\nthis analyzer will recommend that uses of Ptr should be replaced with Pointer.\n\nAs with functions, inlining can be used to replace deprecated constants and\nconstants in obsolete packages.\n\nA constant definition can be marked for inlining only if it refers to another\nnamed constant.\n\nThe \"//go:fix inline\" comment must appear before a single const declaration on its own,\nas above; before a const declaration that is part of a group, as in this case:\n\n\tconst (\n\t   C = 1\n\t   //go:fix inline\n\t   Ptr = Pointer\n\t)\n\nor before a group, applying to every constant in the group:\n\n\t//go:fix inline\n\tconst (\n\t\tPtr = Pointer\n\t\tVal = Value\n\t)\n\n## Type aliases\n\nSimilar to named constants, a type alias can also be marked for inlining:\n\n\t//go:fix inline\n\ttype A = newpkg.A\n\nThe analyzer will replace all references to the annotated type\n(A) by the type on the right-hand side of the declaration (newpkg.A).\n\n## Tests\n\nA use of a function, named constant, or type alias X from its\ndedicated test (TestX), is not inlined, since the purpose of the test\nis to exercise X itself, even if it is deprecated and other uses of it\nshould be inlined.\nThis applies to benchmarks and examples too, and follows the usual\nconventions of test function naming.\n\nSimilarly, if the symbol X is declared in a file named foo.go, any use\nof it within a file named foo_test.go will also not be inlined.",
                   "default": true
                 },
                 "loopclosure": {
@@ -3277,6 +3282,11 @@
                   "markdownDescription": "check for slice simplifications\n\nA slice expression of the form:\n\n\ts[a:len(s)]\n\nwill be simplified to:\n\n\ts[a:]\n\nThis is one of the simplifications that \"gofmt -s\" applies.\n\nThis analyzer ignores generated code.",
                   "default": true
                 },
+                "slicesbackward": {
+                  "type": "boolean",
+                  "markdownDescription": "replace backward loops over slices with slices.Backward\n\nThe slicesbackward analyzer suggests replacing manually-written backward\nloops of the form\n\n\tfor i := len(s) - 1; i >= 0; i-- {\n\t    use(s[i])\n\t}\n\nwith the more readable Go 1.23 style using slices.Backward:\n\n\tfor _, v := range slices.Backward(s) {\n\t    use(v)\n\t}\n\nIf the loop index is needed beyond just indexing into the slice, both\nthe index and value variables are kept:\n\n\tfor i, v := range slices.Backward(s) { ... }",
+                  "default": true
+                },
                 "slicescontains": {
                   "type": "boolean",
                   "markdownDescription": "replace loops with slices.Contains or slices.ContainsFunc\n\nThe slicescontains analyzer simplifies loops that check for the existence of\nan element in a slice. It replaces them with calls to `slices.Contains` or\n`slices.ContainsFunc`, which were added in Go 1.21.\n\nIf the expression for the target element has side effects, this\ntransformation will cause those effects to occur only once, not\nonce per tested slice element.",
@@ -3300,6 +3310,11 @@
                 "sortslice": {
                   "type": "boolean",
                   "markdownDescription": "check the argument type of sort.Slice\n\nsort.Slice requires an argument of a slice type. Check that\nthe interface{} value passed to sort.Slice is actually a slice.",
+                  "default": true
+                },
+                "sqlrowserr": {
+                  "type": "boolean",
+                  "markdownDescription": "sqlrowserr: report failure to check sql.Rows.Err\n\nThis analyzer reports uses of sql.Rows in which the result of a query\nsuch as db.Query() is assigned to a local variable that is then used\nin a loop that calls Rows.Next, but lacks a final check of Rows.Err.\nThis causes row iteration errors to be discarded.\n\nFor example:\n\n\trows, err := db.Query(\"select ...\") // error: \"sql.Rows rows is used in Next loop without final check of rows.Err()\"\n\tif err != nil {\n\t\treturn err\n\t}\n\tdefer rows.Close() // ignore error\n\tfor rows.Next() {\n\t\tvar x int\n\t\tif err := rows.Scan(&x); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tuse(x)\n\t}\n\t/* ...no use of rows.Err()... */\n\nCorrect usage of sql.Rows demands both a call to Rows.Close to release\nresources and a call to Rows.Err to report iteration errors. It is\nnot critical to report resource cleanup errors, but it is crucial to\nreport iteration errors as they would otherwise be indistinguishable\nfrom a smaller result.\n\nTo avoid false positives, the analyzer is silent if the Rows is passed\ninto or out of the function or assigned somewhere other than a local\nvariable.\n\nIt is not this analyzer's goal to ensure proper handling of errors in\nall cases, but merely the simple mistakes where the user may have been\noblivious to the existence of the Rows.Err method.\n",
                   "default": true
                 },
                 "stditerators": {
@@ -3544,6 +3559,12 @@
               "default": true,
               "scope": "resource"
             },
+            "ui.moveType": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) moveType enables producing Move Type codeactions. The implementation\nis unfinished so we use this setting to gate its use.\n",
+              "default": false,
+              "scope": "resource"
+            },
             "ui.navigation.importShortcut": {
               "type": "string",
               "markdownDescription": "importShortcut specifies whether import statements should link to\ndocumentation or go to definitions.\n",
@@ -3646,7 +3667,7 @@
             },
             "ui.semanticTokens": {
               "type": "boolean",
-              "markdownDescription": "(Experimental) semanticTokens determines whether gopls will return a\nSemanticTokensProvider at initialization, or respond\nto request for semantic tokens.\n",
+              "markdownDescription": "(Experimental) semanticTokens determines whether gopls will return a\nSemanticTokensProvider at initialization, or respond\nto requests for semantic tokens.\n\nThis setting being `false` won't necessary disable the client's calls\nfor semantic tokens. If you want that, it would need to be configured in\nthe client. For example, in VSCode, this would disable all Go semantic\ntoken calls to the LSP server:\n\n```json5\n\"[go]\": {\n    \"editor.semanticHighlighting.enabled\": false,\n}\n```\n",
               "default": false,
               "scope": "resource"
             },
@@ -3676,42 +3697,42 @@
         },
         "go.inlayHints.assignVariableTypes": {
           "type": "boolean",
-          "markdownDescription": "`\"assignVariableTypes\"` controls inlay hints for variable types in assign statements:\n```go\n\ti/* int*/, j/* int*/ := 0, len(r)-1\n```\n",
+          "markdownDescription": "`\"assignVariableTypes\"` controls inlay hints for variable types in assign statements:\n```go\n\ti« int», j« int» := 0, len(r)-1\n```\n",
           "default": false
         },
         "go.inlayHints.compositeLiteralFields": {
           "type": "boolean",
-          "markdownDescription": "`\"compositeLiteralFields\"` inlay hints for composite literal field names:\n```go\n\t{/*in: */\"Hello, world\", /*want: */\"dlrow ,olleH\"}\n```\n",
+          "markdownDescription": "`\"compositeLiteralFields\"` inlay hints for composite literal field names:\n```go\n\tPoint2D{«X: »1, «Y: »2}\n\n\tOuter{«Embedded.»Field: 0}\n```\n",
           "default": false
         },
         "go.inlayHints.compositeLiteralTypes": {
           "type": "boolean",
-          "markdownDescription": "`\"compositeLiteralTypes\"` controls inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t/*struct{ in string; want string }*/{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```\n",
+          "markdownDescription": "`\"compositeLiteralTypes\"` controls inlay hints for composite literal types:\n```go\n\tfor _, c := range []struct {\n\t\tin, want string\n\t}{\n\t\t«struct{ in string; want string }»{\"Hello, world\", \"dlrow ,olleH\"},\n\t}\n```\n",
           "default": false
         },
         "go.inlayHints.constantValues": {
           "type": "boolean",
-          "markdownDescription": "`\"constantValues\"` controls inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota/* = 0*/\n\t\tKindPrint/*  = 1*/\n\t\tKindPrintf/* = 2*/\n\t\tKindErrorf/* = 3*/\n\t)\n```\n",
+          "markdownDescription": "`\"constantValues\"` controls inlay hints for constant values:\n```go\n\tconst (\n\t\tKindNone   Kind = iota« = 0»\n\t\tKindPrint«  = 1»\n\t\tKindPrintf« = 2»\n\t\tKindErrorf« = 3»\n\t)\n```\n",
           "default": false
         },
         "go.inlayHints.functionTypeParameters": {
           "type": "boolean",
-          "markdownDescription": "`\"functionTypeParameters\"` inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo/*[int, string]*/(1, \"hello\")\n```\n",
+          "markdownDescription": "`\"functionTypeParameters\"` inlay hints for implicit type parameters on generic functions:\n```go\n\tmyFoo«[int, string]»(1, \"hello\")\n```\n",
           "default": false
         },
         "go.inlayHints.parameterNames": {
           "type": "boolean",
-          "markdownDescription": "`\"parameterNames\"` controls inlay hints for parameter names:\n```go\n\tparseInt(/* str: */ \"123\", /* radix: */ 8)\n```\n",
+          "markdownDescription": "`\"parameterNames\"` controls inlay hints for parameter names:\n```go\n\tparseInt(« str: » \"123\", « radix: » 8)\n```\n",
           "default": false
         },
         "go.inlayHints.rangeVariableTypes": {
           "type": "boolean",
-          "markdownDescription": "`\"rangeVariableTypes\"` controls inlay hints for variable types in range statements:\n```go\n\tfor k/* int*/, v/* string*/ := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```\n",
+          "markdownDescription": "`\"rangeVariableTypes\"` controls inlay hints for variable types in range statements:\n```go\n\tfor k« int», v« string» := range []string{} {\n\t\tfmt.Println(k, v)\n\t}\n```\n",
           "default": false
         },
         "go.inlayHints.ignoredError": {
           "type": "boolean",
-          "markdownDescription": "`\"ignoredError\"` inlay hints for implicitly discarded errors:\n```go\n\tf.Close() // ignore error\n```\nThis check inserts an `// ignore error` hint following any\nstatement that is a function call whose error result is\nimplicitly ignored.\n\nTo suppress the hint, write an actual comment containing\n\"ignore error\" following the call statement, or explicitly\nassign the result to a blank variable. A handful of common\nfunctions such as `fmt.Println` are excluded from the\ncheck.\n",
+          "markdownDescription": "`\"ignoredError\"` inlay hints for implicitly discarded errors:\n```go\n\tf.Close()« // ignore error»\n```\nThis check inserts an `// ignore error` hint following any\nstatement that is a function call whose error result is\nimplicitly ignored.\n\nTo suppress the hint, write an actual comment containing\n\"ignore error\" following the call statement, or explicitly\nassign the result to a blank variable. A handful of common\nfunctions such as `fmt.Println` are excluded from the\ncheck.\n",
           "default": false
         }
       }
