@@ -1002,7 +1002,7 @@ async function passLinkifyShowMessageToGopls(cfg: LanguageServerConfig, goplsCon
 	return goplsConfig;
 }
 
-// createTestCodeLens adds the go.test.cursor and go.debug.cursor code lens
+// createTestCodeLens adds the go.test.cursor, go.debug.cursor, and optionally go.rr.cursor code lenses
 function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	// CodeLens argument signature in gopls is [fileName: string, testFunctions: string[], benchFunctions: string[]],
 	// so this needs to be deconstructured here
@@ -1010,19 +1010,30 @@ function createTestCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
 	if ((lens.command?.arguments?.length ?? 0) < 2 || (lens.command?.arguments?.[1].length ?? 0) < 1) {
 		return [lens];
 	}
-	return [
+	const functionName = lens.command?.arguments?.[1][0];
+	const lenses = [
 		new vscode.CodeLens(lens.range, {
 			title: '',
 			...lens.command,
 			command: 'go.test.cursor',
-			arguments: [{ functionName: lens.command?.arguments?.[1][0] }]
+			arguments: [{ functionName }]
 		}),
 		new vscode.CodeLens(lens.range, {
 			title: 'debug test',
 			command: 'go.debug.cursor',
-			arguments: [{ functionName: lens.command?.arguments?.[1][0] }]
+			arguments: [{ functionName }]
 		})
 	];
+	if (getGoConfig().get<{ [key: string]: boolean }>('enableCodeLens')?.rrtest) {
+		lenses.push(
+			new vscode.CodeLens(lens.range, {
+				title: 'rr test',
+				command: 'go.rr.cursor',
+				arguments: [{ functionName }]
+			})
+		);
+	}
+	return lenses;
 }
 
 function createBenchmarkCodeLens(lens: vscode.CodeLens): vscode.CodeLens[] {
