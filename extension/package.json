@@ -1650,6 +1650,27 @@
           "description": "Automatically update the tools used by the extension, without prompting the user.",
           "scope": "resource"
         },
+        "go.toolsManagement.buildEnvVars": {
+          "type": "object",
+          "default": {},
+          "description": "Environment variables that will be used to install the Go tools.",
+          "scope": "machine-overridable"
+        },
+        "go.toolsManagement.buildFlags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Flags to `go install` used to install the Go tools. (e.g. [\"-ldflags\", \"-s -w\"])",
+          "scope": "machine-overridable"
+        },
+        "go.toolsManagement.buildTags": {
+          "type": "string",
+          "default": "",
+          "description": "The Go build tags used to install the Go tools.",
+          "scope": "machine-overridable"
+        },
         "go.enableCodeLens": {
           "type": "object",
           "properties": {
