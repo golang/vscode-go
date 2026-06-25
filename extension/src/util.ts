@@ -700,14 +700,24 @@ export function removeDuplicateDiagnostics(
 
 /**
  * Removes any diagnostics in otherDiagnostics, where there is a diagnostic in
- * buildDiagnostics on the same line.
+ * buildDiagnostics on the same line that has equal or higher severity.
  */
 function deDupeDiagnostics(
 	buildDiagnostics: vscode.Diagnostic[],
 	otherDiagnostics: vscode.Diagnostic[]
 ): vscode.Diagnostic[] {
-	const buildDiagnosticsLines = buildDiagnostics.map((x) => x.range.start.line);
-	return otherDiagnostics.filter((x) => buildDiagnosticsLines.indexOf(x.range.start.line) === -1);
+	return otherDiagnostics.filter((otherDiag) => {
+		const otherLine = otherDiag.range.start.line;
+		const otherSeverity = otherDiag.severity ?? vscode.DiagnosticSeverity.Error;
+		const shouldDrop = buildDiagnostics.some((buildDiag) => {
+			if (buildDiag.range.start.line !== otherLine) {
+				return false;
+			}
+			const buildSeverity = buildDiag.severity ?? vscode.DiagnosticSeverity.Error;
+			return buildSeverity <= otherSeverity;
+		});
+		return !shouldDrop;
+	});
 }
 
 function mapSeverityToVSCodeSeverity(sev: string): vscode.DiagnosticSeverity {
