@@ -857,6 +857,16 @@
                 "description": "Maximum depth of stack trace collected from Delve.",
                 "default": 50
               },
+              "maxStringLen": {
+                "type": "number",
+                "description": "Maximum number of bytes read to load a string. Longer strings are truncated. Only applies when using `dlv-dap` mode.",
+                "default": 512
+              },
+              "maxArrayValues": {
+                "type": "number",
+                "description": "Maximum number of elements read to load an array, slice or map. Only applies when using `dlv-dap` mode.",
+                "default": 64
+              },
               "showGlobalVariables": {
                 "type": "boolean",
                 "default": false,
@@ -1123,6 +1133,16 @@
                 "type": "number",
                 "description": "Maximum depth of stack trace collected from Delve.",
                 "default": 50
+              },
+              "maxStringLen": {
+                "type": "number",
+                "description": "Maximum number of bytes read to load a string. Longer strings are truncated. Only applies when using `dlv-dap` mode.",
+                "default": 512
+              },
+              "maxArrayValues": {
+                "type": "number",
+                "description": "Maximum number of elements read to load an array, slice or map. Only applies when using `dlv-dap` mode.",
+                "default": 64
               },
               "showGlobalVariables": {
                 "type": "boolean",
