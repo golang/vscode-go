@@ -300,6 +300,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	/** Delve maximum stack trace depth */
 	stackTraceDepth: number;
 
+	maxStringLen?: number;
+	maxArrayValues?: number;
+
 	showGlobalVariables?: boolean;
 	packagePathToGoModPathMap: { [key: string]: string };
 
@@ -340,6 +343,9 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
 	apiVersion: number;
 	/** Delve maximum stack trace depth */
 	stackTraceDepth: number;
+
+	maxStringLen?: number;
+	maxArrayValues?: number;
 
 	showGlobalVariables?: boolean;
 	waitFor?: string;
