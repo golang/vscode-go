@@ -41,10 +41,10 @@ describe('#getLatestGoVersion()', function () {
 			{ version: 'go1.14.2', stable: true }
 		]);
 		const fetchMock = sandbox.mock(fetchModule);
-		fetchMock.expects('default')
+		fetchMock
+			.expects('default')
 			.withArgs('https://go.dev/dl/?mode=json')
-			.returns(Promise.resolve(
-				new fetchModule.Response(responseJSON)));
+			.returns(Promise.resolve(new fetchModule.Response(responseJSON)));
 		const mmnt = sandbox.mock(moment);
 		mmnt.expects('now').returns(now);
 	});

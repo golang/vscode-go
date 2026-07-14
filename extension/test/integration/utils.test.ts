@@ -146,15 +146,17 @@ suite('goEnv', () => {
 
 	test('toolExecutionEnvironment', () => {
 		const goConfig = Object.create(getGoConfig(), {
-			toolsEnvVars: { value: {
-				'FOOBAR': '${env:ENV_VAR_FOR_GO_ENV_TEST}/baz',
-				'FOOBAR2': '${env:UNKNOWN_ENV_VAR}/foo',
-			} }
+			toolsEnvVars: {
+				value: {
+					FOOBAR: '${env:ENV_VAR_FOR_GO_ENV_TEST}/baz',
+					FOOBAR2: '${env:UNKNOWN_ENV_VAR}/foo'
+				}
+			}
 		});
 		sandbox.stub(config, 'getGoConfig').returns(goConfig);
 		process.env['ENV_VAR_FOR_GO_ENV_TEST'] = 'foobar';
 		const toolExecEnv = toolExecutionEnvironment(undefined, true);
 		assert.strictEqual(toolExecEnv.FOOBAR, 'foobar/baz');
 		assert.strictEqual(toolExecEnv.FOOBAR2, '/foo');
-	})
+	});
 });
