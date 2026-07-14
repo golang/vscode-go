@@ -1,3 +1,4 @@
+/* eslint-disable id-blacklist */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/consistent-indexed-object-style */
@@ -36,6 +37,19 @@ import {
 // FormFieldTypeString defines a text input.
 export interface FormFieldTypeString {
 	kind: 'string';
+
+	/* Validators for this form field.
+	 *
+	 * Field validators only validate the input/answer to a field in isolation
+	 * and cannot depend on the answers to other fields. For example a string
+	 * field may have a regex validator, or a numeric field may have a range
+	 * validator. Multiple validators of the same kind are allowed.
+	 *
+	 * Answers must pass all (supported) validators to be considered valid.
+	 *
+	 * Clients must ignore validators they do not support.
+	 */
+	validators?: StringValidator[];
 }
 
 // FileExistence whether the file denoted by a DocumentURI exists.
@@ -339,6 +353,26 @@ export interface InteractiveResolveClientCapabilities {
 	 * The presence of this field implies support for interactive refactoring.
 	 */
 	inputTypes?: string[];
+
+	/**
+	 * Field validators supported by the client.
+	 *
+	 * Servers may adapt the validators they include based on this field but
+	 * they are not required to. Clients must simply ignore validators they
+	 * do not understand. Servers must re-validate all fields as part of
+	 * the overall form resolution.
+	 *
+	 * Clients show higher-severity validation messages before lower severity
+	 * messages. If they are only showing the result of one validator they
+	 * should process them first by severity, and then the order provided by
+	 * the server.
+	 */
+	validators?: {
+		/**
+		 * Validators supported on string fields.
+		 */
+		string?: string[];
+	};
 }
 
 // ----------------------------------------------------------------------------
@@ -431,6 +465,69 @@ export interface InteractiveListEnumMiddleware {
 	) => vscode.ProviderResult<FormEnumEntry[]>;
 }
 
+/**
+ * The severity of a violation of a validator.
+ */
+export enum ValidationSeverity {
+	/**
+	 * An informational message that does not block submission of the value.
+	 */
+	Info = 1,
+	/**
+	 * A warning message that does not block submission of the value.
+	 */
+	Warning = 2,
+	/**
+	 * An error message that prevents submission of the value.
+	 */
+	Error = 3
+}
+
+export interface Validator {
+	/**
+	 * The severity of a violation of this validator.
+	 */
+	severity: ValidationSeverity;
+
+	/**
+	 * The message to show if the answer fails this validator.
+	 */
+	message: string;
+}
+
+/**
+ * Validators applicable to string fields.
+ */
+export type StringValidator = RegexValidator /* | FooValidator */;
+
+/**
+ * A regex-based validator that ensures an answer matches a given
+ * regex.
+ */
+export interface RegexValidator extends Validator {
+	kind: 'regex';
+
+	/**
+	 * The regex pattern to validate the input.
+	 *
+	 * The server must only provide regular expressions for the engine supported by the client
+	 * in the `general.regularExpressions` client capability. If the server cannot provide an
+	 * appropriate regular expression it should not provide the regex validator.
+	 */
+	pattern: string;
+
+	/**
+	 * Whether the answer matching the pattern means it is valid (no message
+	 * reported) or invalid (message reported).
+	 */
+	matchIsValid: boolean;
+
+	/**
+	 * The message to show if the answer is not valid according to `pattern` and `matchIsValid`.
+	 */
+	message: string;
+}
+
 export class InteractiveFormsFeature implements StaticFeature {
 	constructor(private readonly client: LanguageClient) {
 		this.addMiddleware();
@@ -498,7 +595,10 @@ export class InteractiveFormsFeature implements StaticFeature {
 	public fillClientCapabilities(capabilities: ClientCapabilities): void {
 		capabilities.experimental ??= {};
 		capabilities.experimental.interactiveResolve = {
-			inputTypes: ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string']
+			inputTypes: ['bool', 'file', 'enum', 'lazyEnum', 'number', 'string'],
+			validators: {
+				string: ['regex']
+			}
 		} as InteractiveResolveClientCapabilities;
 	}
 
@@ -785,17 +885,64 @@ export class InteractiveFormsFeature implements StaticFeature {
 	/**
 	 * Validates a string, returning a user-facing error message if it's not valid.
 	 */
-	private validateString(text: string, required: boolean): string | null {
-		if (required && text.trim() === '') return 'Please enter a value';
+	private validateString(
+		text: string,
+		fieldType: FormFieldTypeString,
+		{ required }: { required: boolean }
+	): vscode.InputBoxValidationMessage | null {
+		if (text.trim() === '') {
+			return required ? this.error('Please enter a value') : null;
+		}
+
+		if (fieldType.validators) {
+			for (const validator of this.sortedValidators(fieldType.validators)) {
+				if (validator.kind === 'regex') {
+					let isMatch: boolean;
+					try {
+						isMatch = new RegExp(validator.pattern).test(text);
+					} catch {
+						// If the regex pattern is invalid, skip over this validator.
+						continue;
+					}
+					if (isMatch !== validator.matchIsValid) {
+						const message = validator.message;
+						// ValidationSeverity and vscode.InputBoxValidationSeverity match.
+						const severity = (validator.severity as unknown) as vscode.InputBoxValidationSeverity;
+						return { message, severity };
+					}
+				}
+			}
+		}
+
 		return null;
+	}
+
+	/**
+	 * Sorts validators so that highest severity validators are first, but
+	 * within each severity they preserve the original order.
+	 *
+	 * Validating a single value in this order means we can stop validating on
+	 * the first validation message.
+	 */
+	private sortedValidators<T extends Validator>(validators: T[]): T[] {
+		return validators.slice().sort((a, b) => b.severity - a.severity);
 	}
 
 	/**
 	 * Validates a number, returning a user-facing error message if it's not valid.
 	 */
-	private validateNumber(text: string, required: boolean): string | null {
-		if (text.trim() === '') return required ? 'Please enter a number' : null;
-		return !Number.isFinite(Number(text)) ? 'Please enter a valid number' : null;
+	private validateNumber(
+		text: string,
+		{ required, isList }: { required: boolean; isList: boolean }
+	): vscode.InputBoxValidationMessage | null {
+		if (text.trim() === '') return required ? this.error('Please enter a number') : null;
+		return !Number.isFinite(Number(text))
+			? this.error(isList ? 'Please enter only valid numbers' : 'Please enter a valid number')
+			: null;
+	}
+
+	private error(message: string): vscode.InputBoxValidationMessage {
+		return { message, severity: vscode.InputBoxValidationSeverity.Error };
 	}
 
 	/**
@@ -939,7 +1086,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 					// user to  browse the workspace or inspect code (e.g., checking
 					// destination files or existing struct tags) before answering.
 					ignoreFocusOut: true,
-					validateInput: (text) => this.validateString(text, field.required)
+					validateInput: (text) => this.validateString(text, fieldType, { required: field.required })
 				} as vscode.InputBoxOptions);
 
 				if (value === undefined) {
@@ -952,7 +1099,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 			}
 
 			case 'enum': {
-				const pickItems = fieldType.entries.map((entry) => {
+				const pickItems = fieldType.entries.map((entry, _) => {
 					return {
 						// Use description if it exists, otherwise use value
 						label: entry.description || entry.value,
@@ -1000,7 +1147,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 					value: value,
 					placeHolder: '0',
 					ignoreFocusOut: true,
-					validateInput: (text) => this.validateNumber(text, field.required)
+					validateInput: (text) => this.validateNumber(text, { required: field.required, isList: false })
 				});
 
 				if (numResult === undefined) {
@@ -1020,19 +1167,37 @@ export class InteractiveFormsFeature implements StaticFeature {
 						ignoreFocusOut: true,
 						validateInput: (text) => {
 							if (text.trim() === '') {
-								return field.required ? 'Please enter at least one item' : null;
+								return field.required ? this.error('Please enter at least one item') : null;
 							}
 							const parts = text.split(',').map((s) => s.trim());
 							if (fieldType.elementType.kind === 'string') {
+								// For a list, we need to validate each item but keep the most severe validation
+								// message across all.
+								let mostSevereValidationIssue: vscode.InputBoxValidationMessage | undefined;
 								for (const part of parts) {
-									if (this.validateString(part, true)) {
-										return 'Please enter valid values';
+									const partValidationResult = this.validateString(part, fieldType.elementType, {
+										required: true
+									});
+									if (partValidationResult) {
+										if (
+											!mostSevereValidationIssue ||
+											partValidationResult.severity > mostSevereValidationIssue.severity
+										) {
+											mostSevereValidationIssue = partValidationResult;
+										}
 									}
+								}
+								if (mostSevereValidationIssue) {
+									return mostSevereValidationIssue;
 								}
 							} else if (fieldType.elementType.kind === 'number') {
 								for (const part of parts) {
-									if (this.validateNumber(part, true)) {
-										return 'Please enter valid numbers';
+									const partValidationResult = this.validateNumber(part, {
+										required: true,
+										isList: true
+									});
+									if (partValidationResult) {
+										return partValidationResult;
 									}
 								}
 							}
