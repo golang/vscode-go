@@ -173,6 +173,9 @@ export interface FormFieldTypeList {
 	elementType: FormFieldType;
 }
 
+// FormFieldKind defines the set of supported input type identifiers.
+export type FormFieldKind = 'string' | 'file' | 'bool' | 'number' | 'enum' | 'lazyEnum' | 'list';
+
 // FormFieldType acts as a Discriminated Union based on the 'kind' property.
 export type FormFieldType =
 	| FormFieldTypeString
@@ -352,7 +355,7 @@ export interface InteractiveResolveClientCapabilities {
 	 * The input types the client supports for interactive dialogs.
 	 * The presence of this field implies support for interactive refactoring.
 	 */
-	inputTypes?: string[];
+	inputTypes?: FormFieldKind[];
 
 	/**
 	 * Field validators supported by the client.
