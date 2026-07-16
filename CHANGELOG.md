@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.57.0 (prerelease)
+
+Date: 2026-07-16
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.58.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.56.0-rc.1...v0.57.0
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.58.0
+
 ## v0.56.0
 
 Date: 2026-07-15
