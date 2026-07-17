@@ -78,7 +78,7 @@
     "@vscode/debugadapter-testsupport": "1.68.0",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "2.23.0",
-    "adm-zip": "0.4.16",
+    "adm-zip": "0.6.0",
     "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
