@@ -251,7 +251,7 @@ suite('Installation Tests', function () {
 			[{ name: 'gofumpt', versions: ['v0.4.7', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.23.0' // Go Version
+			'go1.25' // Go Version
 		);
 	});
 

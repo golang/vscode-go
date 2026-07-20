@@ -38,7 +38,7 @@ const internal = new Map<string, Tool>([
 			replacedByGopls: false,
 			isImportant: false,
 			description: 'Formatter',
-			defaultVersion: 'v0.7.0'
+			defaultVersion: 'v0.10.0'
 		}
 	],
 	[
