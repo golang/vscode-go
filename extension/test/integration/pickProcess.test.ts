@@ -33,6 +33,11 @@ suite('Pick Process Tests', () => {
 				input:
 					'/path/to/process/a: go11a62b12\n/path/to/process/b: go1/15/4\n/path/to/process/a b c: gob.v.b\n/path/to/process/d: gp1.14',
 				want: []
+			},
+			{
+				// Match go versions with custom suffixes like "X:nodwarf5" or "rc1".
+				input: '/path/to/process/a: go1.26.5-X:nodwarf5\n/path/to/process/b: go1.22rc1',
+				want: ['/path/to/process/a', '/path/to/process/b']
 			}
 		];
 		for (const tc of tt) {
