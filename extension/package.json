@@ -77,7 +77,7 @@
     "@types/vscode": "1.90.0",
     "@vscode/debugadapter-testsupport": "1.68.0",
     "@vscode/test-electron": "2.5.2",
-    "@vscode/vsce": "2.23.0",
+    "@vscode/vsce": "3.9.2",
     "adm-zip": "0.4.16",
     "esbuild": "0.17.10",
     "fs-extra": "9.1.0",
