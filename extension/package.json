@@ -1677,11 +1677,17 @@
               "type": "boolean",
               "default": true,
               "description": "If true, enables code lens for running and debugging tests"
+            },
+            "rrtest": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, enables 'rr test' code lens for recording and replaying tests with Mozilla rr. Requires Linux and rr to be installed."
             }
           },
           "additionalProperties": false,
           "default": {
-            "runtest": true
+            "runtest": true,
+            "rrtest": false
           },
           "description": "Feature level setting to enable/disable code lens for references and run/debug tests",
           "scope": "resource"

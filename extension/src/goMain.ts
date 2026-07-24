@@ -174,6 +174,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.subtest.cursor', commands.subTestAtCursor('test'));
 	registerCommand('go.debug.cursor', commands.testAtCursor('debug'));
 	registerCommand('go.debug.subtest.cursor', commands.subTestAtCursor('debug'));
+	registerCommand('go.rr.cursor', commands.rrAtCursor);
 	registerCommand('go.benchmark.cursor', commands.testAtCursor('benchmark'));
 	registerCommand('go.test.package', commands.testCurrentPackage(false));
 	registerCommand('go.benchmark.package', commands.testCurrentPackage(true));

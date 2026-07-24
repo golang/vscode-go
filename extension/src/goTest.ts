@@ -5,11 +5,15 @@
  *--------------------------------------------------------*/
 'use strict';
 
+import cp = require('child_process');
+import os = require('os');
 import path = require('path');
+import util = require('util');
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
+import { toolExecutionEnvironment } from './goEnv';
 import { isModSupported } from './goModules';
 import { escapeSubTestName } from './subTestUtils';
 import {
@@ -25,6 +29,7 @@ import {
 	SuiteToTestMap,
 	getTestFunctions
 } from './testUtils';
+import { getBinPath } from './util';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.
@@ -345,6 +350,115 @@ export async function debugTestAtCursor(
 	}
 	return await vscode.debug.startDebugging(workspaceFolder, debugConfig);
 }
+
+/**
+ * Records and replays the test at cursor using Mozilla rr via `dlv replay`.
+ * Only supported on Linux with rr installed.
+ */
+export const rrAtCursor: CommandFactory = (_, goCtx) => async (args?: { functionName: string }) => {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showInformationMessage('No editor is active.');
+		return;
+	}
+	if (!editor.document.fileName.endsWith('_test.go')) {
+		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
+		return;
+	}
+	if (os.platform() !== 'linux') {
+		vscode.window.showErrorMessage("'rr test' is only supported on Linux.");
+		return;
+	}
+
+	const rrPath = getBinPath('rr');
+	if (!rrPath || rrPath === 'rr') {
+		// getBinPath returns the input unchanged when not found
+		try {
+			cp.execFileSync('rr', ['--version'], { stdio: 'ignore' });
+		} catch {
+			vscode.window.showErrorMessage("'rr' not found on PATH. Install Mozilla rr to use this feature.");
+			return;
+		}
+	}
+
+	const { testFunctions } = await getTestFunctionsAndTestSuite(false, goCtx, editor.document);
+	const testFunctionName =
+		args && args.functionName
+			? args.functionName
+			: testFunctions?.filter((func) => func.range.contains(editor.selection.start)).map((el) => el.name)[0];
+	if (!testFunctionName) {
+		vscode.window.showInformationMessage('No test function found at cursor.');
+		return;
+	}
+
+	await editor.document.save();
+
+	const goConfig = getGoConfig(editor.document.uri);
+	const pkgDir = path.dirname(editor.document.fileName);
+	const traceDir = path.join(os.tmpdir(), `vscode-go-rr-${Date.now()}`);
+	const testBin = path.join(os.tmpdir(), `vscode-go-rr-bin-${Date.now()}`);
+
+	const tags = getTestTags(goConfig);
+	const buildFlags = tags ? ['-tags', tags] : [];
+	const flagsFromConfig = getTestFlags(goConfig);
+	flagsFromConfig.forEach((x) => {
+		if (x !== '-args') buildFlags.push(x);
+	});
+
+	const goRuntime = getBinPath('go');
+	const execFile = util.promisify(cp.execFile);
+	const env = toolExecutionEnvironment();
+
+	try {
+		await execFile(goRuntime, ['test', '-c', '-o', testBin, ...buildFlags, pkgDir], { env, cwd: pkgDir });
+	} catch (e) {
+		vscode.window.showErrorMessage(`Failed to build test binary: ${e}`);
+		return;
+	}
+
+	const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+
+	const exitCode = await new Promise<number>((resolve) => {
+		const writeEmitter = new vscode.EventEmitter<string>();
+		const pty: vscode.Pseudoterminal = {
+			onDidWrite: writeEmitter.event,
+			open() {
+				const proc = cp.spawn(
+					'rr',
+					['record', `--output-trace-dir=${traceDir}`, testBin, '-test.run', `^${testFunctionName}$`],
+					{ cwd: pkgDir, env: { ...process.env, ...env } }
+				);
+				const onData = (chunk: Buffer | string) => {
+					writeEmitter.fire(chunk.toString().replace(/\n/g, '\r\n'));
+				};
+				proc.stdout?.on('data', onData);
+				proc.stderr?.on('data', onData);
+				proc.on('close', (code) => {
+					writeEmitter.fire(`\r\nrr exited with code ${code}.\r\n`);
+					resolve(code ?? 1);
+				});
+			},
+			close() {}
+		};
+		vscode.window.createTerminal({ name: `rr: ${testFunctionName}`, pty }).show();
+	});
+
+	if (exitCode !== 0) {
+		vscode.window.showErrorMessage(`rr record failed (exit code ${exitCode}). Check the terminal for details.`);
+		return;
+	}
+
+	const debugConfig: vscode.DebugConfiguration = {
+		name: `rr replay: ${testFunctionName}`,
+		type: 'go',
+		request: 'launch',
+		mode: 'replay',
+		traceDirPath: traceDir,
+		env: goConfig.get('testEnvVars', {}),
+		envFile: goConfig.get('testEnvFile')
+	};
+	await vscode.debug.startDebugging(workspaceFolder, debugConfig);
+};
 
 /**
  * Runs all tests in the package of the source of the active editor.
