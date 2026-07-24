@@ -89,6 +89,9 @@ export function getImportPathWithVersion(
 		if (goVersion.lt('1.19')) return importPath + '@v0.4.0'; // pre-go1.19
 		if (goVersion.lt('1.20')) return importPath + '@v0.5.0'; // go1.19
 		if (goVersion.lt('1.22')) return importPath + '@v0.6.0'; // go1.20~1.21
+		if (goVersion.lt('1.23')) return importPath + '@v0.7.0'; // go1.22
+		if (goVersion.lt('1.24')) return importPath + '@v0.8.0'; // go1.23
+		if (goVersion.lt('1.25')) return importPath + '@v0.9.0'; // go1.24
 	}
 	if (tool.name === 'golangci-lint') {
 		if (goVersion.lt('1.20')) return importPath + '@v1.53.3';
