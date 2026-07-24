@@ -14,7 +14,7 @@ import path = require('path');
 import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
 import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
-import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
+import { toolExecutionEnvironment, toolInstallationEnvironment, toolInstallationArgs } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { GoExtensionContext } from './context';
 import { addGoStatus, initGoStatusBar, outputChannel, removeGoStatus } from './goStatus';
@@ -372,9 +372,11 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 		cwd: getWorkspaceFolderPath()
 	};
 
+	const args: string[] = toolInstallationArgs(['-v', importPath]);
+
 	const execFile = util.promisify(cp.execFile);
 	outputChannel.trace(`${goBinary} install -v ${importPath} (cwd: ${opts.cwd})`);
-	await execFile(goBinary, ['install', '-v', importPath], opts);
+	await execFile(goBinary, args, opts);
 }
 
 export function declinedToolInstall(toolName: string): boolean {
@@ -1009,8 +1011,11 @@ export async function maybeInstallVSCGO(
 		if (!goBinary) {
 			throw new Error('"go" binary is not found');
 		}
-		const args = ['install', '-trimpath', `${importPath}${version}`];
-		console.log(`installing vscgo: ${args.join(' ')}`);
+
+		const originArgs: string[] = ['-trimpath', `${importPath}${version}`];
+		const args: string[] = toolInstallationArgs(originArgs);
+
+		console.log(`installing vscgo: install ${originArgs.join(' ')}`);
 		await execFile(goBinary, args, { cwd, env });
 		return progPath;
 	} catch (e) {
