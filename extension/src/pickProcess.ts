@@ -199,8 +199,8 @@ async function getAllProcesses(): Promise<AttachItem[]> {
 
 async function runCommand(
 	processCmd: ProcessListCommand
-): Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }> {
-	return await new Promise<{ err: cp.ExecException | null; stdout: string; stderr: string }>((resolve) => {
+): Promise<{ err: cp.ExecFileException | null; stdout: string; stderr: string }> {
+	return await new Promise<{ err: cp.ExecFileException | null; stdout: string; stderr: string }>((resolve) => {
 		cp.execFile(processCmd.command, processCmd.args, (err, stdout, stderr) => {
 			resolve({ err, stdout, stderr });
 		});

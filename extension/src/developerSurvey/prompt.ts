@@ -69,7 +69,7 @@ export async function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 		const { lastUserAction = new Date() } = goCtx;
 		// Make sure the user has been idle for at least a minute.
 		if (minutesBetween(lastUserAction, currentTime) < 1) {
-			setTimeout(prompt, 5 * timeMinute);
+			setTimeout(() => prompt(state), 5 * timeMinute);
 			return;
 		}
 		state = await promptForDeveloperSurvey(now, state, config);
