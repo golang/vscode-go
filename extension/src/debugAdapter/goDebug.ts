@@ -606,11 +606,11 @@ export class Delve {
 						this.debugProcess.on('close', (code) => {
 							if (code) {
 								logError(`Process exiting with code: ${code} signal: ${this.debugProcess?.killed}`);
+								if (this.onclose) {
+									this.onclose(code);
+								}
 							} else {
 								log(`Process exiting normally ${this.debugProcess?.killed}`);
-							}
-							if (this.onclose) {
-								this.onclose(code);
 							}
 						});
 						this.debugProcess.on('error', (err) => {
@@ -730,7 +730,7 @@ export class Delve {
 
 					conn.on('connect', () => resolve(conn))
 						.on('error', reject)
-						.on('close', (hadError) => {
+						.on('close', (hadError: any) => {
 							logError('Socket connection to remote was closed');
 							onClose?.(hadError ? 1 : 0);
 						});
@@ -757,10 +757,12 @@ export class Delve {
 				}
 			});
 			this.debugProcess.on('close', (code) => {
-				// TODO: Report `dlv` crash to user.
-				logError('Process exiting with code: ' + code);
-				if (this.onclose) {
-					this.onclose(code);
+				if (code) {
+					// TODO: Report `dlv` crash to user.
+					logError('Process exiting with code: ' + code);
+					if (this.onclose) {
+						this.onclose(code);
+					}
 				}
 			});
 			this.debugProcess.on('error', (err) => {

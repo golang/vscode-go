@@ -13,7 +13,7 @@ export function killProcessTree(p: ChildProcess, logger: (...args: any[]) => voi
 		return Promise.resolve();
 	}
 	return new Promise((resolve) => {
-		kill(p.pid, (err) => {
+		kill(p.pid!, (err) => {
 			if (err) {
 				logger(`Error killing process ${p.pid}: ${err}`);
 			}

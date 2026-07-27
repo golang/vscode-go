@@ -222,7 +222,7 @@ export class TelemetryReporter implements vscode.Disposable {
 
 			// 'close' fires after exit or error when the subprocess closes all stdio.
 			p.on('close', (exitCode, signal) => {
-				if (exitCode > 0) {
+				if (exitCode !== 0) {
 					reject(`exited with code=${exitCode} signal=${signal} stderr=${stderr}`);
 				} else {
 					resolve(exitCode);
