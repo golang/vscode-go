@@ -69,7 +69,6 @@ export class Env {
 	public goCtx: GoExtensionContext = {};
 
 	private fakeOutputChannel?: FakeOutputChannel;
-	private disposables = [] as { dispose(): void }[];
 
 	public flushTrace(print: boolean) {
 		if (print) {
@@ -150,9 +149,7 @@ export class Env {
 			console.log(`failed to stop gopls within 10sec: ${e}`);
 			this.flushTrace(true);
 		} finally {
-			for (const d of this.disposables) {
-				d.dispose();
-			}
+			this.languageClient?.dispose();
 			this.languageClient = undefined;
 			this.goCtx = {};
 		}

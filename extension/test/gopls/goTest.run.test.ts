@@ -65,24 +65,22 @@ suite('Go Test Runner', () => {
 			testParseOutput('file.go:1: line1 . file.go:2: line2 \n', [{ file: filePath, line: 1, msg: 'line2 \n' }]));
 	});
 
-	suite('Profile', function () {
+	suite('Profile', () => {
 		const sandbox = sinon.createSandbox();
 		const ctx = MockExtensionContext.new();
 		const env = new Env();
 
-		let uri: Uri;
 		let stub: sinon.SinonStub<[testUtils.TestConfig], Promise<boolean>>;
 
 		suiteSetup(async () => {
-			uri = Uri.file(path.join(fixtureDir, 'codelens', 'testnames', 'testnames_test.go'));
-			await env.startGopls(uri.fsPath);
+			const profileDir = path.join(fixtureDir, 'codelens', 'testnames');
+			const uri = Uri.file(path.join(profileDir, 'testnames_test.go'));
+			await env.startGopls(uri.fsPath, undefined, profileDir);
 			testExplorer = GoTestExplorer.new(ctx, env.goCtx);
 			ctx.subscriptions.push(testExplorer);
 
 			await forceDidOpenTextDocument(workspace, testExplorer, uri);
-		});
 
-		setup(() => {
 			stub = sandbox.stub(testUtils, 'goTest');
 			stub.callsFake((cfg) => {
 				const send = cfg.goTestOutputConsumer;
@@ -94,18 +92,22 @@ suite('Go Test Runner', () => {
 			});
 		});
 
-		teardown(() => {
+		suiteTeardown(async () => {
+			await env.teardown();
+			ctx.teardown();
 			sandbox.restore();
 		});
 
-		// suiteTeardown
-		this.afterEach(async function () {
-			await env.teardown();
+		setup(() => {
+			// Clear counts and history between each test.
+			stub.resetHistory();
+		});
+
+		teardown(async function () {
 			// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 			// I don't know why but this.currentTest.state does not have the expected value when
 			// used with teardown.
 			env.flushTrace(this.currentTest?.state === 'failed');
-			ctx.teardown();
 		});
 
 		test('creates a profile', async () => {
@@ -211,12 +213,17 @@ suite('Go Test Runner', () => {
 			spy = sandbox.spy(testUtils, 'goTest');
 		});
 
-		// suiteTeardown
-		this.afterEach(async function () {
+		suiteTeardown(async () => {
 			await env.teardown();
-			env.flushTrace(this.currentTest?.state === 'failed');
 			ctx.teardown();
 			sandbox.restore();
+		});
+
+		teardown(async function () {
+			// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
+			// I don't know why but this.currentTest.state does not have the expected value when
+			// used with teardown.
+			env.flushTrace(this.currentTest?.state === 'failed');
 		});
 
 		test('discover and run', async () => {
