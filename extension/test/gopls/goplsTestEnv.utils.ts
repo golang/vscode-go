@@ -21,8 +21,13 @@ import { GoExtensionContext } from '../../src/context';
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
 // string array until cleared.
-export class FakeOutputChannel implements vscode.OutputChannel {
+export class FakeOutputChannel implements vscode.LogOutputChannel {
 	public name = 'FakeOutputChannel';
+
+	// Satisfies vscode.LogOutputChannel interface.
+	public logLevel = vscode.LogLevel.Info;
+	public onDidChangeLogLevel = new vscode.EventEmitter<vscode.LogLevel>().event;
+
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
 	public dispose = sinon.fake(); // no-empty
@@ -42,6 +47,16 @@ export class FakeOutputChannel implements vscode.OutputChannel {
 
 	public append = (v: string) => this.enqueue(v);
 	public appendLine = (v: string) => this.enqueue(v);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public error = (...args: any[]) => this.enqueue(args.join(' '));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public warn = (...args: any[]) => this.enqueue(args.join(' '));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public info = (...args: any[]) => this.enqueue(args.join(' '));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public debug = (...args: any[]) => this.enqueue(args.join(' '));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public trace = (...args: any[]) => this.enqueue(args.join(' '));
 	public clear = () => {
 		this.buf = [];
 	};

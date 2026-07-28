@@ -55,7 +55,7 @@ import {
 import { getToolFromToolPath } from '../utils/pathUtils';
 import fetch from 'node-fetch';
 import { CompletionItemKind, FoldingContext } from 'vscode';
-import { ProvideFoldingRangeSignature } from 'vscode-languageclient/lib/common/foldingRange';
+import { ProvideFoldingRangeSignature } from 'vscode-languageclient';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';
 import { maybePromptForDeveloperSurvey } from '../developerSurvey/prompt';
 import { CommandFactory } from '../commands';
@@ -389,10 +389,10 @@ export async function buildLanguageClient(
 	// Reuse the same output channel for each instance of the server.
 	if (cfg.enabled) {
 		if (!goCtx.serverOutputChannel) {
-			goCtx.serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)');
+			goCtx.serverOutputChannel = vscode.window.createOutputChannel(cfg.serverName + ' (server)', { log: true });
 		}
 		if (!goCtx.serverTraceChannel) {
-			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName);
+			goCtx.serverTraceChannel = vscode.window.createOutputChannel(cfg.serverName, { log: true });
 		}
 	}
 

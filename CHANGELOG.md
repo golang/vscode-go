@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+vscode-go now supports [v3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification) of the Language Server Protocol.
+
 ## v0.57.0 (prerelease)
 
 Date: 2026-07-16

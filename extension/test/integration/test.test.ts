@@ -224,8 +224,13 @@ suite('Test Go Test', function () {
 // FakeOutputChannel is a fake output channel used to buffer
 // the output of the tested language client in an in-memory
 // string array until cleared.
-class FakeOutputChannel implements vscode.OutputChannel {
+class FakeOutputChannel implements vscode.LogOutputChannel {
 	public name = 'FakeOutputChannel';
+
+	// Satisfies vscode.LogOutputChannel interface.
+	public logLevel = vscode.LogLevel.Info;
+	public onDidChangeLogLevel = new vscode.EventEmitter<vscode.LogLevel>().event;
+
 	public show = sinon.fake(); // no-empty
 	public hide = sinon.fake(); // no-empty
 	public dispose = sinon.fake(); // no-empty
@@ -235,6 +240,11 @@ class FakeOutputChannel implements vscode.OutputChannel {
 
 	public append = (v: string) => this.enqueue(v);
 	public appendLine = (v: string) => this.enqueue(v);
+	public error = (...args: any[]) => this.enqueue(args.join(' '));
+	public warn = (...args: any[]) => this.enqueue(args.join(' '));
+	public info = (...args: any[]) => this.enqueue(args.join(' '));
+	public debug = (...args: any[]) => this.enqueue(args.join(' '));
+	public trace = (...args: any[]) => this.enqueue(args.join(' '));
 	public clear = () => {
 		this.buf = [];
 	};
