@@ -24,7 +24,7 @@ const internal = new Map<string, Tool>([
 			replacedByGopls: false,
 			isImportant: false,
 			description: 'Stubs for interfaces',
-			defaultVersion: 'v1.4.0'
+			defaultVersion: 'v1.5.0'
 		}
 	],
 	[
