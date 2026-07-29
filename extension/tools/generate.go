@@ -65,9 +65,9 @@ type PackageJSON struct {
 		Commands      []Command `json:"commands,omitempty"`
 		Configuration struct {
 			Properties map[string]*Property `json:"properties,omitempty"`
-		} `json:"configuration,omitempty"`
+		} `json:"configuration"`
 		Debuggers []Debugger `json:"debuggers,omitempty"`
-	} `json:"contributes,omitempty"`
+	} `json:"contributes"`
 }
 
 type Command struct {
@@ -82,13 +82,13 @@ type Property struct {
 	// Below are defined in package.json
 	Properties                 map[string]*Property `json:"properties,omitempty"`
 	AnyOf                      []Property           `json:"anyOf,omitempty"`
-	Default                    interface{}          `json:"default,omitempty"`
+	Default                    any                  `json:"default,omitempty"`
 	MarkdownDescription        string               `json:"markdownDescription,omitempty"`
 	Description                string               `json:"description,omitempty"`
 	MarkdownDeprecationMessage string               `json:"markdownDeprecationMessage,omitempty"`
 	DeprecationMessage         string               `json:"deprecationMessage,omitempty"`
-	Type                       interface{}          `json:"type,omitempty"`
-	Enum                       []interface{}        `json:"enum,omitempty"`
+	Type                       any                  `json:"type,omitempty"`
+	Enum                       []any                `json:"enum,omitempty"`
 	EnumDescriptions           []string             `json:"enumDescriptions,omitempty"`
 	MarkdownEnumDescriptions   []string             `json:"markdownEnumDescriptions,omitempty"`
 	Items                      *Property            `json:"items,omitempty"`
@@ -100,7 +100,7 @@ type Debugger struct {
 	ConfigurationAttributes struct {
 		Launch Configuration
 		Attach Configuration
-	} `json:"configurationAttributes,omitempty"`
+	} `json:"configurationAttributes"`
 }
 
 type Configuration struct {
@@ -341,7 +341,7 @@ func defaultDescriptionSnippet(p *Property) string {
 	b := &bytes.Buffer{}
 	switch p.Type {
 	case "object":
-		x, ok := p.Default.(map[string]interface{})
+		x, ok := p.Default.(map[string]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected type of object: %v", *p))
 		} else if len(x) > 0 {
@@ -353,7 +353,7 @@ func defaultDescriptionSnippet(p *Property) string {
 	case "boolean", "number":
 		fmt.Fprintf(b, "%v", p.Default)
 	case "array":
-		x, ok := p.Default.([]interface{})
+		x, ok := p.Default.([]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected type for array: %v", *p))
 		} else if len(x) > 0 {
@@ -372,7 +372,7 @@ func defaultDescriptionSnippet(p *Property) string {
 	return b.String()
 }
 
-func writeMapObject(b *bytes.Buffer, indent string, obj map[string]interface{}) {
+func writeMapObject(b *bytes.Buffer, indent string, obj map[string]any) {
 	keys := []string{}
 	for k := range obj {
 		keys = append(keys, k)
@@ -386,7 +386,7 @@ func writeMapObject(b *bytes.Buffer, indent string, obj map[string]interface{}) 
 		switch v := v.(type) {
 		case string:
 			fmt.Fprintf(b, "%q", v)
-		case map[string]interface{}:
+		case map[string]any:
 			writeMapObject(b, indent+"\t", v)
 		default:
 			fmt.Fprintf(b, "%v", v)

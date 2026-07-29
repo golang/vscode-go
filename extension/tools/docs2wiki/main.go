@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 //go:build !windows
-// +build !windows
 
 // Tool docs2wiki rewrites links in ./docs/* to wiki link format.
 // This program may call the 'diff' tool which may be missing on Windows.
@@ -108,11 +107,11 @@ func stripTitleInPage(src []byte) []byte {
 	if len(src) == 0 || src[0] != '#' {
 		return src
 	}
-	index := bytes.Index(src, []byte("\n"))
-	if index < 0 {
+	_, after, ok := bytes.Cut(src, []byte("\n"))
+	if !ok {
 		return src
 	}
-	return src[index+1:]
+	return after
 }
 
 // find pattern like '](link.md)'
@@ -136,7 +135,7 @@ func markdownLink2WikiLink(src []byte) []byte {
 	})
 }
 
-func errorf(format string, a ...interface{}) {
+func errorf(format string, a ...any) {
 	fmt.Fprintf(os.Stderr, format+"\n", a...)
 }
 

@@ -105,7 +105,7 @@ func Main() {
 	}
 }
 
-func output(msgs ...interface{}) {
+func output(msgs ...any) {
 	fmt.Fprintln(flag.CommandLine.Output(), msgs...)
 }
 

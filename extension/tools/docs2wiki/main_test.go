@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 // Tool docs2wiki rewrites links in ./docs/* to wiki link format.
 package main

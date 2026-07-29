@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -80,7 +81,7 @@ func main() {
 	}
 }
 
-func exitf(format string, args ...interface{}) {
+func exitf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 	os.Exit(1)
 }
@@ -101,9 +102,9 @@ func goVersion() (int, error) {
 	}
 	// Split up "[go1.1 go1.15]"
 	tags := strings.Fields(result[1 : len(result)-2])
-	for i := len(tags) - 1; i >= 0; i-- {
+	for _, tag := range slices.Backward(tags) {
 		var version int
-		if _, err := fmt.Sscanf(tags[i], "go1.%d", &version); err != nil {
+		if _, err := fmt.Sscanf(tag, "go1.%d", &version); err != nil {
 			continue
 		}
 		return version, nil
