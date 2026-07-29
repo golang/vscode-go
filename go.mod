@@ -2,8 +2,8 @@ module github.com/golang/vscode-go
 
 go 1.25.0
 
-require golang.org/x/telemetry v0.0.0-20241004145657-5eebfecbdf1f
+require golang.org/x/telemetry v0.0.0-20260717140457-bdb89881bb75
 
-require github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8
+require github.com/google/pprof v0.0.0-20260709232956-b9395ee17fa0
 
-require golang.org/x/sys v0.26.0 // indirect
+require golang.org/x/sys v0.47.0 // indirect
