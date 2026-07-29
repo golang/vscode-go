@@ -1,3 +1,3 @@
 module github.com/golang/vscode-go/docs
 
-go 1.21
+go 1.25.0

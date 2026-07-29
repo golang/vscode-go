@@ -1,6 +1,6 @@
 module github.com/golang/vscode-go
 
-go 1.23.1
+go 1.25.0
 
 require golang.org/x/telemetry v0.0.0-20241004145657-5eebfecbdf1f
 
