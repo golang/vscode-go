@@ -34,7 +34,11 @@ import fetch from 'node-fetch';
 
 export class GoEnvironmentOption implements vscode.QuickPickItem {
 	readonly description: string;
-	constructor(readonly binpath: string, readonly label: string, readonly available = true) {
+	constructor(
+		readonly binpath: string,
+		readonly label: string,
+		readonly available = true
+	) {
 		this.description = available ? binpath : `download ${binpath}`;
 	}
 }
@@ -638,9 +642,8 @@ export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionCo
 					title: "Don't Show Again",
 					async command() {
 						// Mark these versions as seen.
-						let dismissedVersions: GoEnvironmentOption[] = await getFromGlobalState(
-							DISMISSED_GO_VERSION_KEY
-						);
+						let dismissedVersions: GoEnvironmentOption[] =
+							await getFromGlobalState(DISMISSED_GO_VERSION_KEY);
 						if (!dismissedVersions) {
 							dismissedVersions = [];
 						}

@@ -6,7 +6,7 @@ export class MockExtensionContext implements Partial<ExtensionContext> {
 	subscriptions: Disposable[] = [];
 
 	static new(): ExtensionContextPlus {
-		return (new this() as unknown) as ExtensionContextPlus;
+		return new this() as unknown as ExtensionContextPlus;
 	}
 
 	teardown() {

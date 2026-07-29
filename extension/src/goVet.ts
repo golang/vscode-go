@@ -77,7 +77,7 @@ export async function goVet(
 	tokenSource = new vscode.CancellationTokenSource();
 
 	const currentWorkspace = getWorkspaceFolderPath(fileUri);
-	const cwd = vetWorkspace && currentWorkspace ? currentWorkspace : (fileUri && path.dirname(fileUri.fsPath)) ?? '';
+	const cwd = vetWorkspace && currentWorkspace ? currentWorkspace : ((fileUri && path.dirname(fileUri.fsPath)) ?? '');
 	if (!path.isAbsolute(cwd)) {
 		return Promise.resolve([]);
 	}

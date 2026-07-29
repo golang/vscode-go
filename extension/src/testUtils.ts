@@ -441,7 +441,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 						currentGoWorkspace,
 						outputChannel,
 						testconfig.goTestOutputConsumer
-				  )
+					)
 				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
 
 			outBuf.onLine((line) => processTestResultLine(line));

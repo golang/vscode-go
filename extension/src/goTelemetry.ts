@@ -141,7 +141,10 @@ export class TelemetryReporter implements vscode.Disposable {
 	 * @param counterFile is the file path for writing telemetry data (used for
 	 * testing).
 	 */
-	constructor(flushIntervalMs = 60_000, private counterFile: string = '') {
+	constructor(
+		flushIntervalMs = 60_000,
+		private counterFile: string = ''
+	) {
 		if (flushIntervalMs > 0) {
 			// Periodically call flush.
 			this._flushTimer = setInterval(this.flush.bind(this), flushIntervalMs);

@@ -1,4 +1,4 @@
-/* eslint-disable node/no-unsupported-features/node-builtins */
+/* eslint-disable n/no-unsupported-features/node-builtins */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -43,7 +43,10 @@ export class GoTestProfiler {
 	// Maps test IDs to profile files. See docs/test-explorer.md for details.
 	private readonly runs = new Map<string, File[]>();
 
-	constructor(private readonly resolver: GoTestResolver, private readonly workspaceState: Memento) {}
+	constructor(
+		private readonly resolver: GoTestResolver,
+		private readonly workspaceState: Memento
+	) {}
 
 	get options() {
 		return this.workspaceState.get<ProfilingOptions>(optionsMemento) || defaultOptions;
@@ -257,7 +260,10 @@ class File {
 	public readonly id = File.nextID++;
 	public readonly when = new Date();
 
-	constructor(public readonly kind: Kind, public readonly target: TestItem) {}
+	constructor(
+		public readonly kind: Kind,
+		public readonly target: TestItem
+	) {}
 
 	async delete() {
 		return Promise.all(

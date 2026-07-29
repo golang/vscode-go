@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-/* eslint-disable node/no-unpublished-import */
+/* eslint-disable n/no-unpublished-import */
 
 // vscode.WorkspaceConfiguration.get() returns any type. So MockWorkspaceConfiguration
 // need to take a input of a Map containing any type.

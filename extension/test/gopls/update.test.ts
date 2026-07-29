@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable node/no-deprecated-api */
+/* eslint-disable n/no-deprecated-api */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.

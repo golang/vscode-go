@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable node/no-unpublished-import */
+/* eslint-disable n/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright 2020 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.

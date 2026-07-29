@@ -9,25 +9,23 @@ import { check } from '../goCheck';
 import { CommandFactory } from '.';
 import { handleDiagnosticErrors } from '../util';
 
-export const runBuilds: CommandFactory = (ctx, goCtx) => (
-	document: vscode.TextDocument,
-	goConfig: vscode.WorkspaceConfiguration
-) => {
-	if (document.languageId !== 'go') {
-		return;
-	}
+export const runBuilds: CommandFactory =
+	(ctx, goCtx) => (document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) => {
+		if (document.languageId !== 'go') {
+			return;
+		}
 
-	const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
-	buildDiagnosticCollection?.clear();
-	lintDiagnosticCollection?.clear();
-	vetDiagnosticCollection?.clear();
-	check(goCtx, document.uri, goConfig)
-		.then((results) => {
-			results.forEach((result) => {
-				handleDiagnosticErrors(goCtx, document, result.errors, result.diagnosticCollection);
+		const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
+		buildDiagnosticCollection?.clear();
+		lintDiagnosticCollection?.clear();
+		vetDiagnosticCollection?.clear();
+		check(goCtx, document.uri, goConfig)
+			.then((results) => {
+				results.forEach((result) => {
+					handleDiagnosticErrors(goCtx, document, result.errors, result.diagnosticCollection);
+				});
+			})
+			.catch((err) => {
+				vscode.window.showInformationMessage('Error: ' + err);
 			});
-		})
-		.catch((err) => {
-			vscode.window.showInformationMessage('Error: ' + err);
-		});
-};
+	};

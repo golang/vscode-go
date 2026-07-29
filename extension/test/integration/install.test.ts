@@ -132,7 +132,7 @@ suite('Installation Tests', function () {
 		const goBinary = getBinPath('go');
 		const goVersion = withGoVersion
 			? /* we want a fake go version, but need the real 'go' binary to run `go install` */
-			  new GoVersion(goBinary, `go version ${withGoVersion} linux/amd64`)
+				new GoVersion(goBinary, `go version ${withGoVersion} linux/amd64`)
 			: await getGoVersion();
 
 		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');

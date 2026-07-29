@@ -269,25 +269,26 @@ async function runTestAtCursor(
  * @param cmd Whether the command is test or debug.
  */
 export function subTestAtCursor(cmd: SubTestAtCursorCmd): CommandFactory {
-	return (_, goCtx) => async (
-		/**
-		 * When this command is run manually by the user (e.g. via vscode's
-		 * command pallet), args is undefined. When this command is run via a
-		 * codelens provided by {@link GoRunTestCodeLensProvider}, args
-		 * specifies the function and subtest names.
-		 */
-		args?: SubTestAtCursorArgs
-	) => {
-		try {
-			return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
-		} catch (err) {
-			if (err instanceof NotFoundError) {
-				vscode.window.showInformationMessage(err.message);
-			} else {
-				console.error(err);
+	return (_, goCtx) =>
+		async (
+			/**
+			 * When this command is run manually by the user (e.g. via vscode's
+			 * command pallet), args is undefined. When this command is run via a
+			 * codelens provided by {@link GoRunTestCodeLensProvider}, args
+			 * specifies the function and subtest names.
+			 */
+			args?: SubTestAtCursorArgs
+		) => {
+			try {
+				return await _subTestAtCursor(goCtx, getGoConfig(), cmd, args);
+			} catch (err) {
+				if (err instanceof NotFoundError) {
+					vscode.window.showInformationMessage(err.message);
+				} else {
+					console.error(err);
+				}
 			}
-		}
-	};
+		};
 }
 
 /**

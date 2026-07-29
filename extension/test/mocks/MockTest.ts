@@ -81,7 +81,12 @@ class MockTestItem implements TestItem {
 	private static idNum = 0;
 	private idNum: number;
 
-	constructor(public id: string, public label: string, public uri: Uri | undefined, public ctrl: MockTestController) {
+	constructor(
+		public id: string,
+		public label: string,
+		public uri: Uri | undefined,
+		public ctrl: MockTestController
+	) {
 		this.idNum = MockTestItem.idNum;
 		MockTestItem.idNum++;
 	}
@@ -182,7 +187,10 @@ export class MockTestController implements TestController {
 type DirEntry = [string, FileType];
 
 class MockTestFileSystem implements FileSystem {
-	constructor(public dirs: Map<string, DirEntry[]>, public files: Map<string, MockTestDocument>) {}
+	constructor(
+		public dirs: Map<string, DirEntry[]>,
+		public files: Map<string, MockTestDocument>
+	) {}
 
 	readDirectory(uri: Uri): Thenable<[string, FileType][]> {
 		const k = uri.with({ query: '', fragment: '' }).toString();
@@ -255,7 +263,10 @@ export class MockTestWorkspace implements Workspace {
 		return new this(wsdirs, new MockTestFileSystem(dirs, files));
 	}
 
-	constructor(public workspaceFolders: WorkspaceFolder[], public fs: MockTestFileSystem) {}
+	constructor(
+		public workspaceFolders: WorkspaceFolder[],
+		public fs: MockTestFileSystem
+	) {}
 
 	openTextDocument(uri: Uri): Thenable<TextDocument> {
 		const doc = this.fs.files.get(uri.toString());

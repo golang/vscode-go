@@ -82,10 +82,10 @@
     "esbuild": "0.28.1",
     "fs-extra": "9.1.0",
     "get-port": "5.1.1",
-    "gts": "4.0.0",
+    "gts": "7.0.0",
     "js-green-licenses": "4.0.0",
     "mocha": "11.7.6",
-    "prettier": "2.2.1",
+    "prettier": "3.9.6",
     "sinon": "9.2.4",
     "typescript": "5.9.3",
     "yarn": "1.22.22"

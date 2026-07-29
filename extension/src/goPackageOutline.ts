@@ -314,7 +314,7 @@ export class PackageSymbol extends vscode.TreeItem {
 							selection: new vscode.Range(data.range.start, data.range.start)
 						}
 					]
-			  }
+				}
 			: undefined;
 	}
 

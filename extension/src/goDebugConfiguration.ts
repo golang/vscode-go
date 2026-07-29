@@ -172,8 +172,10 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 		const goConfig = getGoConfig(folder && folder.uri);
 		const dlvConfig = goConfig['delveConfig'];
-		const defaultConfig = vscode.extensions.getExtension(extensionId)?.packageJSON.contributes.configuration
-			.properties['go.delveConfig'].properties;
+		const defaultConfig =
+			vscode.extensions.getExtension(extensionId)?.packageJSON.contributes.configuration.properties[
+				'go.delveConfig'
+			].properties;
 
 		// Figure out which debugAdapter is being used first, so we can use this to send warnings
 		// for properties that don't apply.

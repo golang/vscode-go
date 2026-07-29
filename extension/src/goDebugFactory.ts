@@ -237,7 +237,10 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 // VSCode and a dlv dap process spawned and managed by this adapter.
 // It turns the process's stdout/stderrr into OutputEvent.
 export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
-	constructor(private configuration: vscode.DebugConfiguration, logger: ILogger) {
+	constructor(
+		private configuration: vscode.DebugConfiguration,
+		logger: ILogger
+	) {
 		super(logger);
 	}
 

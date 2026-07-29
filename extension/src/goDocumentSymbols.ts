@@ -17,7 +17,10 @@ export function GoDocumentSymbolProvider(
 
 const GOPLS_LIST_IMPORTS = 'gopls.list_imports';
 export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
-	constructor(private readonly goCtx: GoExtensionContext, private includeImports?: boolean) {}
+	constructor(
+		private readonly goCtx: GoExtensionContext,
+		private includeImports?: boolean
+	) {}
 
 	public async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
 		if (!this.goCtx.languageServerIsRunning) {

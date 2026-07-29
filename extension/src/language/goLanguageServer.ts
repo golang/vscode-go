@@ -1229,7 +1229,8 @@ export async function shouldUpdateLanguageServer(
 }
 
 // Copied from src/cmd/vendor/golang.org/x/mod/module/pseudo.go
-const pseudoVersionRE = /^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/;
+const pseudoVersionRE =
+	/^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/;
 
 // parseTimestampFromPseudoversion returns the timestamp for the given
 // pseudoversion. The timestamp is the center component, and it has the

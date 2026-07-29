@@ -931,7 +931,11 @@ export class GoDebugSession extends LoggingDebugSession {
 	private continueRequestRunning = false;
 	private nextEpoch = 0;
 	private nextRequestRunning = false;
-	public constructor(debuggerLinesStartAt1: boolean, isServer = false, readonly fileSystem = fs) {
+	public constructor(
+		debuggerLinesStartAt1: boolean,
+		isServer = false,
+		readonly fileSystem = fs
+	) {
 		super('', debuggerLinesStartAt1, isServer);
 		this.variableHandles = new Handles<DebugVariable>();
 		this.skipStopEventOnce = false;
@@ -1725,17 +1729,15 @@ export class GoDebugSession extends LoggingDebugSession {
 		if (vari.kind === GoReflectKind.Array || vari.kind === GoReflectKind.Slice) {
 			variablesPromise = Promise.all(
 				vari.children.map((v, i) => {
-					return loadChildren(`*(*"${v.type}")(${v.addr})`, v).then(
-						(): DebugProtocol.Variable => {
-							const { result, variablesReference } = this.convertDebugVariableToProtocolVariable(v);
-							return {
-								name: '[' + i + ']',
-								value: result,
-								evaluateName: vari.fullyQualifiedName + '[' + i + ']',
-								variablesReference
-							};
-						}
-					);
+					return loadChildren(`*(*"${v.type}")(${v.addr})`, v).then((): DebugProtocol.Variable => {
+						const { result, variablesReference } = this.convertDebugVariableToProtocolVariable(v);
+						return {
+							name: '[' + i + ']',
+							value: result,
+							evaluateName: vari.fullyQualifiedName + '[' + i + ']',
+							variablesReference
+						};
+					});
 				})
 			);
 		} else if (vari.kind === GoReflectKind.Map) {
@@ -1764,18 +1766,16 @@ export class GoDebugSession extends LoggingDebugSession {
 		} else {
 			variablesPromise = Promise.all(
 				vari.children.map((v) => {
-					return loadChildren(`*(*"${v.type}")(${v.addr})`, v).then(
-						(): DebugProtocol.Variable => {
-							const { result, variablesReference } = this.convertDebugVariableToProtocolVariable(v);
+					return loadChildren(`*(*"${v.type}")(${v.addr})`, v).then((): DebugProtocol.Variable => {
+						const { result, variablesReference } = this.convertDebugVariableToProtocolVariable(v);
 
-							return {
-								name: v.name,
-								value: result,
-								evaluateName: v.fullyQualifiedName,
-								variablesReference
-							};
-						}
-					);
+						return {
+							name: v.name,
+							value: result,
+							evaluateName: v.fullyQualifiedName,
+							variablesReference
+						};
+					});
 				})
 			);
 		}
@@ -2005,8 +2005,8 @@ export class GoDebugSession extends LoggingDebugSession {
 			args.trace === 'verbose' || args.trace === 'trace'
 				? Logger.LogLevel.Verbose
 				: args.trace === 'log' || args.trace === 'info' || args.trace === 'warn'
-				? Logger.LogLevel.Log
-				: Logger.LogLevel.Error;
+					? Logger.LogLevel.Log
+					: Logger.LogLevel.Error;
 		const logPath =
 			this.logLevel !== Logger.LogLevel.Error ? path.join(os.tmpdir(), 'vscode-go-debug.txt') : undefined;
 		logger.setup(this.logLevel, logPath);

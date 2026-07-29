@@ -501,7 +501,7 @@ export interface Validator {
 /**
  * Validators applicable to string fields.
  */
-export type StringValidator = RegexValidator /* | FooValidator */;
+export type StringValidator = RegexValidator; /* | FooValidator */
 
 /**
  * A regex-based validator that ensures an answer matches a given
@@ -555,8 +555,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 		//   "executeCommand" middleware.
 		const overwrite = async (cmd: string, args: any[], next: ExecuteCommandSignature) => {
 			const option = this.client.initializeResult?.capabilities?.experimental?.interactiveResolveProvider as
-				| interactiveResolveOptions
-				| undefined;
+				interactiveResolveOptions | undefined;
 
 			// Language server does not support interactive command execution.
 			if (!option || !Array.isArray(option.kinds) || !option.kinds.includes('command')) {
@@ -910,7 +909,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 					if (isMatch !== validator.matchIsValid) {
 						const message = validator.message;
 						// ValidationSeverity and vscode.InputBoxValidationSeverity match.
-						const severity = (validator.severity as unknown) as vscode.InputBoxValidationSeverity;
+						const severity = validator.severity as unknown as vscode.InputBoxValidationSeverity;
 						return { message, severity };
 					}
 				}

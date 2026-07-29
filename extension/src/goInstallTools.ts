@@ -1000,8 +1000,8 @@ export async function maybeInstallVSCGO(
 		extensionMode !== vscode.ExtensionMode.Production
 			? ''
 			: extensionId !== 'golang.go' || isPreview
-			? '@master'
-			: `@v${extensionVersion}`;
+				? '@master'
+				: `@v${extensionVersion}`;
 	// build from source acquired from the module proxy if this is a non-preview version.
 	try {
 		const goForInstall = await getGoVersionForInstall();

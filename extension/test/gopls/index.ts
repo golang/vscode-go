@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable node/no-unpublished-import */
+/* eslint-disable n/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable node/no-unpublished-import */
+/* eslint-disable n/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright 2025 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -127,10 +127,7 @@ suite('Linting', function () {
 		);
 		const warnings = await goLint(
 			file.uri,
-			new MockWorkspaceConfiguration(
-				getGoConfig(),
-				new Map<string, any>([['useLanguageServer', true]])
-			)
+			new MockWorkspaceConfiguration(getGoConfig(), new Map<string, any>([['useLanguageServer', true]]))
 		);
 
 		assert(warnings.length === 0);

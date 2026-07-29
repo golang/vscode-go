@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable node/no-unsupported-features/node-builtins */
+/* eslint-disable n/no-unsupported-features/node-builtins */
 /* eslint-disable no-async-promise-executor */
-/* eslint-disable node/no-unpublished-import */
+/* eslint-disable n/no-unpublished-import */
 import assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/quotes */
+/* eslint-disable quotes */
 /*---------------------------------------------------------
  * Copyright 2023 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -23,12 +23,12 @@ export function parseArgsString(args: string): string[] | ParseError {
 	let word = '';
 	let bufferedWord = false;
 
-	for (let i = 0; i < args.length; ) {
+	for (let i = 0; i < args.length;) {
 		if (args[i] === "'" || args[i] === '"') {
 			const quoteBegin = args[i];
 			let j = i + 1;
 			let k = i + 1;
-			for (; k < args.length && args[k] !== quoteBegin; ) {
+			for (; k < args.length && args[k] !== quoteBegin;) {
 				// escaped quotes
 				if (args[k] === '\\' && k + 1 < args.length && (args[k + 1] === "'" || args[k + 1] === '"')) {
 					bufferedWord = true;

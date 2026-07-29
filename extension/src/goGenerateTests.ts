@@ -225,7 +225,7 @@ export async function promptForFeedback(tool: string) {
 		return;
 	}
 
-	const suggested: Boolean = getFromGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, false);
+	const suggested: boolean = getFromGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, false);
 	if (suggested) {
 		return;
 	}
