@@ -5,12 +5,13 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { CommandFactory } from './commands';
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import { inspectGoToolVersion } from './goInstallTools';
-import { getBinPath, getWorkspaceFolderPath, handleDiagnosticErrors, ICheckResult, resolvePath, runTool } from './util';
+import { CommandFactory } from '../commands';
+import { getGoConfig } from '../config';
+import { toolExecutionEnvironment } from '../goEnv';
+import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
+import { inspectGoToolVersion } from '../goInstallTools';
+import { getBinPath, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
+import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
 
 /**
  * Runs linter on the current file, package or workspace.

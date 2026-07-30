@@ -9,7 +9,7 @@
 
 import cp = require('child_process');
 import fs = require('fs');
-import moment = require('moment');
+import moment from 'moment';
 import path = require('path');
 import semver = require('semver');
 import util = require('util');

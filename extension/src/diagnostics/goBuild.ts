@@ -5,23 +5,16 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { CommandFactory } from './commands';
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { isModSupported } from './goModules';
-import { getNonVendorPackages } from './goPackages';
-import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import { getTestFlags } from './testUtils';
-import {
-	getCurrentGoPath,
-	getModuleCache,
-	getTempFilePath,
-	getWorkspaceFolderPath,
-	handleDiagnosticErrors,
-	ICheckResult,
-	runTool
-} from './util';
-import { getCurrentGoWorkspaceFromGOPATH } from './utils/pathUtils';
+import { CommandFactory } from '../commands';
+import { getGoConfig } from '../config';
+import { toolExecutionEnvironment } from '../goEnv';
+import { isModSupported } from '../goModules';
+import { getNonVendorPackages } from '../goPackages';
+import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
+import { getTestFlags } from '../testUtils';
+import { getCurrentGoPath, getModuleCache, getTempFilePath, getWorkspaceFolderPath, runTool } from '../util';
+import { getCurrentGoWorkspaceFromGOPATH } from '../utils/pathUtils';
+import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
 
 /**
  * Builds current package or workspace.

@@ -8,7 +8,7 @@
 import cp = require('child_process');
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
-import { buildCode } from './goBuild';
+import { buildCode } from './diagnostics/goBuild';
 import { outputChannel } from './goStatus';
 import { getBinPath, getCurrentGoPath, getImportPath } from './util';
 import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';

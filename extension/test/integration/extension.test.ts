@@ -13,7 +13,7 @@ import * as sinon from 'sinon';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import { FilePatch, getEdits, getEditsFromUnifiedDiffStr } from '../../src/diffUtils';
-import { check } from '../../src/goCheck';
+import { check } from '../../src/diagnostics/goCheck';
 import {
 	generateTestCurrentFile,
 	generateTestCurrentFunction,

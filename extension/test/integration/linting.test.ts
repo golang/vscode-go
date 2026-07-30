@@ -12,7 +12,7 @@ import * as sinon from 'sinon';
 import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { goLint } from '../../src/goLint';
+import { goLint } from '../../src/diagnostics/goLint';
 import { handleDiagnosticErrors } from '../../src/util';
 import os = require('os');
 import { MockWorkspaceConfiguration } from './mocks/configuration';

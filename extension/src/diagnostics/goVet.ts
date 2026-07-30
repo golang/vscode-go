@@ -5,18 +5,12 @@
 
 import path = require('path');
 import vscode = require('vscode');
-import { CommandFactory } from './commands';
-import { getGoConfig } from './config';
-import { toolExecutionEnvironment } from './goEnv';
-import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
-import {
-	getGoVersion,
-	getWorkspaceFolderPath,
-	handleDiagnosticErrors,
-	ICheckResult,
-	resolvePath,
-	runTool
-} from './util';
+import { CommandFactory } from '../commands';
+import { getGoConfig } from '../config';
+import { toolExecutionEnvironment } from '../goEnv';
+import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
+import { getGoVersion, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
+import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
 
 /**
  * Runs go vet in the current package or workspace.

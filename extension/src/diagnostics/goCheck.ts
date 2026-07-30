@@ -11,12 +11,12 @@ import path = require('path');
 import vscode = require('vscode');
 import { goBuild } from './goBuild';
 import { goLint } from './goLint';
-import { isModSupported } from './goModules';
-import { diagnosticsStatusBarItem, outputChannel } from './goStatus';
+import { isModSupported } from '../goModules';
+import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { goVet } from './goVet';
-import { getTestFlags, goTest, TestConfig } from './testUtils';
-import { ICheckResult } from './util';
-import { GoExtensionContext } from './context';
+import { getTestFlags, goTest, TestConfig } from '../testUtils';
+import { ICheckResult } from './diagnostics';
+import { GoExtensionContext } from '../context';
 
 const STATUS_BAR_ITEM_NAME = 'Go Test';
 const statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ITEM_NAME, vscode.StatusBarAlignment.Left);

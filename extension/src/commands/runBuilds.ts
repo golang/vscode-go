@@ -5,9 +5,9 @@
 
 import * as vscode from 'vscode';
 
-import { check } from '../goCheck';
+import { check } from '../diagnostics/goCheck';
 import { CommandFactory } from '.';
-import { handleDiagnosticErrors } from '../util';
+import { handleDiagnosticErrors } from '../diagnostics/diagnostics';
 
 export const runBuilds: CommandFactory =
 	(ctx, goCtx) => (document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) => {

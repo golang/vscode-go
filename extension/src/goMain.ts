@@ -9,8 +9,6 @@
 'use strict';
 
 import { browsePackages } from './goBrowsePackage';
-import { buildCode } from './goBuild';
-import { notifyIfGeneratedFile, removeTestStatus } from './goCheck';
 import {
 	applyCodeCoverage,
 	initCoverageDecorators,
@@ -39,14 +37,16 @@ import {
 	maybeInstallImportantTools
 } from './goInstallTools';
 import { RestartReason, showServerOutputChannel, promptAboutGoplsOptOut } from './language/goLanguageServer';
-import { lintCode } from './goLint';
 import { GO_MODE } from './goMode';
 import { GO111MODULE, goModInit } from './goModules';
 import { playgroundCommand } from './goPlayground';
 import { GoRunTestCodeLensProvider } from './goRunTestCodelens';
 import { disposeGoStatusBar, expandGoStatusBar, updateGoStatusBar } from './goStatus';
 
-import { vetCode } from './goVet';
+import { buildCode } from './diagnostics/goBuild';
+import { lintCode } from './diagnostics/goLint';
+import { vetCode } from './diagnostics/goVet';
+import { notifyIfGeneratedFile, removeTestStatus } from './diagnostics/goCheck';
 import {
 	getFromGlobalState,
 	resetGlobalState,
