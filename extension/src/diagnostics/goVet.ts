@@ -10,7 +10,7 @@ import { getGoConfig } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { getGoVersion, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
-import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
+import { handleErrors, ICheckResult } from './diagnostics';
 
 /**
  * Runs go vet in the current package or workspace.
@@ -38,7 +38,7 @@ export function vetCode(vetWorkspace?: boolean): CommandFactory {
 
 		goVet(documentUri, goConfig, vetWorkspace)
 			.then((warnings) => {
-				handleDiagnosticErrors(goCtx, editor?.document, warnings, goCtx.vetDiagnosticCollection);
+				handleErrors(goCtx, editor?.document, warnings, goCtx.vetDiagnosticCollection);
 				diagnosticsStatusBarItem.hide();
 			})
 			.catch((err) => {

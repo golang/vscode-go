@@ -27,7 +27,7 @@ import {
 } from './utils/pathUtils';
 import { killProcessTree } from './utils/processUtils';
 import { ICheckResult } from './diagnostics/diagnostics';
-export { ICheckResult, handleDiagnosticErrors, removeDuplicateDiagnostics } from './diagnostics/diagnostics';
+export { ICheckResult, handleErrors, removeDuplicateDiagnostics } from './diagnostics/diagnostics';
 
 export class GoVersion {
 	public sv?: semver.SemVer;

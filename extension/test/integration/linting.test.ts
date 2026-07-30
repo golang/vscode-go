@@ -13,7 +13,7 @@ import * as vscode from 'vscode';
 import { getGoConfig } from '../../src/config';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { goLint } from '../../src/diagnostics/goLint';
-import { handleDiagnosticErrors } from '../../src/util';
+import { handleErrors } from '../../src/diagnostics/diagnostics';
 import os = require('os');
 import { MockWorkspaceConfiguration } from './mocks/configuration';
 
@@ -105,7 +105,7 @@ suite('Linting', function () {
 			const warnings = await goLint(file2.uri, config, 'package');
 
 			const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-			handleDiagnosticErrors({}, file2, warnings, diagnosticCollection);
+			handleErrors({}, file2, warnings, diagnosticCollection);
 
 			// The first diagnostic message for each file should be about the use of MixedCaps in package name.
 			// Both files belong to the same package name, and we want them to be identical.

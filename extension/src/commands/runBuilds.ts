@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 
 import { check } from '../diagnostics/goCheck';
 import { CommandFactory } from '.';
-import { handleDiagnosticErrors } from '../diagnostics/diagnostics';
+import { handleErrors } from '../diagnostics/diagnostics';
 
 export const runBuilds: CommandFactory =
 	(ctx, goCtx) => (document: vscode.TextDocument, goConfig: vscode.WorkspaceConfiguration) => {
@@ -21,9 +21,9 @@ export const runBuilds: CommandFactory =
 		vetDiagnosticCollection?.clear();
 		check(goCtx, document.uri, goConfig)
 			.then((results) => {
-				results.forEach((result) => {
-					handleDiagnosticErrors(goCtx, document, result.errors, result.diagnosticCollection);
-				});
+				for (const result of results) {
+					handleErrors(goCtx, document, result.errors, result.diagnosticCollection);
+				}
 			})
 			.catch((err) => {
 				vscode.window.showInformationMessage('Error: ' + err);

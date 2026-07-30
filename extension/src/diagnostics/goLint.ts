@@ -11,7 +11,7 @@ import { toolExecutionEnvironment } from '../goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { inspectGoToolVersion } from '../goInstallTools';
 import { getBinPath, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
-import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
+import { handleErrors, ICheckResult } from './diagnostics';
 
 /**
  * Runs linter on the current file, package or workspace.
@@ -41,12 +41,7 @@ export function lintCode(scope?: string): CommandFactory {
 
 		goLint(documentUri, goConfig, scope)
 			.then((warnings) => {
-				handleDiagnosticErrors(
-					goCtx,
-					editor ? editor.document : undefined,
-					warnings,
-					goCtx.lintDiagnosticCollection
-				);
+				handleErrors(goCtx, editor ? editor.document : undefined, warnings, goCtx.lintDiagnosticCollection);
 				diagnosticsStatusBarItem.hide();
 			})
 			.catch((err) => {

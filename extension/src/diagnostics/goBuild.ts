@@ -14,7 +14,7 @@ import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { getTestFlags } from '../testUtils';
 import { getCurrentGoPath, getModuleCache, getTempFilePath, getWorkspaceFolderPath, runTool } from '../util';
 import { getCurrentGoWorkspaceFromGOPATH } from '../utils/pathUtils';
-import { handleDiagnosticErrors, ICheckResult } from './diagnostics';
+import { handleErrors, ICheckResult } from './diagnostics';
 
 /**
  * Builds current package or workspace.
@@ -44,7 +44,7 @@ export function buildCode(buildWorkspace?: boolean): CommandFactory {
 		isModSupported(documentUri).then((isMod) => {
 			goBuild(documentUri, isMod, goConfig, buildWorkspace)
 				.then((errors) => {
-					handleDiagnosticErrors(goCtx, editor?.document, errors, goCtx.buildDiagnosticCollection);
+					handleErrors(goCtx, editor?.document, errors, goCtx.buildDiagnosticCollection);
 					diagnosticsStatusBarItem.hide();
 				})
 				.catch((err) => {
