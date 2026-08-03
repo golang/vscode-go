@@ -520,7 +520,7 @@ export function runTool(
 	if (token) {
 		token.onCancellationRequested(() => {
 			if (p) {
-				killProcessTree(p);
+				void killProcessTree(p);
 			}
 		});
 	}

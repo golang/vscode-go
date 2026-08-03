@@ -158,7 +158,7 @@ export class Env {
 			console.log(`failed to stop gopls within 10sec: ${e}`);
 			this.flushTrace(true);
 		} finally {
-			this.languageClient?.dispose();
+			void this.languageClient?.dispose();
 			this.languageClient = undefined;
 			this.goCtx = {};
 		}

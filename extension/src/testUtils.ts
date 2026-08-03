@@ -690,7 +690,7 @@ export function showTestOutput() {
 export function cancelRunningTests(): Thenable<boolean> {
 	return new Promise<boolean>((resolve) => {
 		runningTestProcesses.forEach((tp) => {
-			killProcessTree(tp);
+			void killProcessTree(tp);
 		});
 		// All processes are now dead. Empty the array to prepare for the next run.
 		runningTestProcesses.splice(0, runningTestProcesses.length);

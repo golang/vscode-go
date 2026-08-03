@@ -75,7 +75,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			(edits) => edits,
 			(err) => {
 				if (typeof err === 'string' && err.startsWith('flag provided but not defined: -srcdir')) {
-					promptForUpdatingTool(formatTool);
+					void promptForUpdatingTool(formatTool);
 					return Promise.resolve([]);
 				}
 				if (err) {
@@ -99,7 +99,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 		const formatCommandBinPath = getBinPath(formatTool);
 		if (!path.isAbsolute(formatCommandBinPath)) {
 			// executable not found.
-			promptForMissingTool(formatTool);
+			void promptForMissingTool(formatTool);
 			return Promise.reject('failed to find tool ' + formatTool);
 		}
 		return new Promise<vscode.TextEdit[]>((resolve, reject) => {
@@ -116,7 +116,7 @@ export class GoDocumentFormattingEditProvider implements vscode.DocumentFormatti
 			p.stderr.on('data', (data) => (stderr += data));
 			p.on('error', (err) => {
 				if (err && (<any>err).code === 'ENOENT') {
-					promptForMissingTool(formatTool);
+					void promptForMissingTool(formatTool);
 					return reject(`failed to find format tool: ${formatTool}`);
 				}
 			});

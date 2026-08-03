@@ -84,7 +84,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				console.log(`${ctx.currentTest?.title} FAILED: DAP Trace`);
 				d.printLog();
 			}
-			d.dispose();
+			void d.dispose();
 		} else {
 			if (ctx.currentTest?.state === 'failed' && dapTraced) {
 				console.log(`${ctx.currentTest?.title} FAILED: Debug Adapter Trace`);
@@ -101,7 +101,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					console.log(`Failed to read trace: ${e}`);
 				}
 			}
-			dc?.stop();
+			void dc?.stop();
 		}
 		sinon.restore();
 	});
@@ -505,7 +505,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					// instead, sends error messages and TerminatedEvent as delve is closed.
 					// The promise from dc.launchRequest resolves when the launch response
 					// is received, so the promise will never get resolved.
-					dc.launchRequest(debugConfig as any);
+					void dc.launchRequest(debugConfig as any);
 				})
 			]);
 		});
@@ -565,7 +565,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			const debugConfig = await initializeDebugConfig(config);
 			await Promise.all([
 				dc.configurationSequence().then(() => {
-					dc.threadsRequest().then((response) => {
+					void dc.threadsRequest().then((response) => {
 						assert.ok(response.success);
 					});
 				}),
@@ -710,7 +710,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			dc.launch(debugConfig);
+			void dc.launch(debugConfig);
 			const event = await waitForHelloGoodbyeOutput(dc);
 			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
@@ -728,7 +728,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			dc.launch(debugConfig);
+			void dc.launch(debugConfig);
 			const event = await waitForHelloGoodbyeOutput(dc);
 			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
@@ -747,7 +747,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			dc.launch(debugConfig);
+			void dc.launch(debugConfig);
 			const event = await waitForHelloGoodbyeOutput(dc);
 			assert.strictEqual(event.body.output, 'Hello, World!\n');
 		});
@@ -764,7 +764,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 				noDebug: true
 			};
 			const debugConfig = await initializeDebugConfig(config);
-			dc.launch(debugConfig);
+			void dc.launch(debugConfig);
 			const event = await waitForHelloGoodbyeOutput(dc);
 			assert.strictEqual(event.body.output, 'Goodbye, World.\n');
 		});
@@ -785,7 +785,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		});
 
 		teardown(async () => {
-			await dc.stop();
+			await dc?.stop();
 			await killProcessTree(childProcess);
 			// Wait 2 seconds for the process to be killed.
 			await new Promise((resolve) => setTimeout(resolve, 2_000));
@@ -1386,8 +1386,8 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 
 			await Promise.all([
 				new Promise<void>((resolve) => {
-					dc.disconnectRequest({ restart: false });
-					dc.disconnectRequest({ restart: false });
+					void dc.disconnectRequest({ restart: false });
+					void dc.disconnectRequest({ restart: false });
 					resolve();
 				}),
 				dc.waitForEvent('terminated')
@@ -2129,7 +2129,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 				this.log('>> accepted connection from client');
 				c.on('end', () => {
 					this.log('>> client disconnected');
-					this.dispose();
+					void this.dispose();
 				});
 				this.run(c, c);
 			});
@@ -2197,7 +2197,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 		}
 
 		this.log(`-> server: ${JSON.stringify(resp)}`);
-		this.handleMessage(resp);
+		void this.handleMessage(resp);
 
 		return true;
 	}
@@ -2246,7 +2246,7 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 						try {
 							this.log(`-> server: ${message}`);
 							const msg: DebugProtocol.ProtocolMessage = JSON.parse(message);
-							this.handleMessage(msg);
+							void this.handleMessage(msg);
 						} catch (e) {
 							throw new Error('Error handling data: ' + (e && (e as Error).message));
 						}

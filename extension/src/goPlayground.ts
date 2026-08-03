@@ -54,7 +54,7 @@ export function goPlay(code: string, goConfig?: vscode.WorkspaceConfiguration): 
 	return new Promise<string>((resolve, reject) => {
 		const p = execFile(binaryLocation, [...cliArgs, '-'], (err, stdout, stderr) => {
 			if (err && (<any>err).code === 'ENOENT') {
-				promptForMissingTool(TOOL_CMD_NAME);
+				void promptForMissingTool(TOOL_CMD_NAME);
 				return reject();
 			}
 			if (err) {

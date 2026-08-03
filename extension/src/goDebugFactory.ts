@@ -347,7 +347,7 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 
 			this.dlvDapServer = dlvDapServer;
 			this.socket = socket;
-			this.start(this.socket, this.socket);
+			void this.start(this.socket, this.socket);
 		} catch (err) {
 			return { connected: false, reason: err };
 		}
@@ -691,7 +691,7 @@ export async function toggleHideSystemGoroutinesCustomRequest(cr: (command: stri
 const toggleHideSystemGoroutines = () => {
 	const ds = vscode.debug.activeDebugSession;
 	if (ds) {
-		toggleHideSystemGoroutinesCustomRequest((command, args) => {
+		void toggleHideSystemGoroutinesCustomRequest((command, args) => {
 			return ds.customRequest(command, args);
 		});
 	}

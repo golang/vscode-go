@@ -285,7 +285,7 @@ export const showSurveyStates: CommandFactory = (_, goCtx) => async () => {
 	let selected = await vscode.window.showInformationMessage('Prompt for HaTS survey?', 'Yes', 'Maybe', 'No');
 	switch (selected) {
 		case 'Yes':
-			promptForGoplsSurvey(goCtx, getGoplsSurveyState(), now);
+			void promptForGoplsSurvey(goCtx, getGoplsSurveyState(), now);
 			break;
 		case 'Maybe':
 			maybePromptForGoplsSurvey(goCtx);
@@ -300,11 +300,11 @@ export const showSurveyStates: CommandFactory = (_, goCtx) => async () => {
 			if (!config) {
 				return;
 			}
-			promptForDeveloperSurvey(now, getDeveloperSurveyState(), config);
+			void promptForDeveloperSurvey(now, getDeveloperSurveyState(), config);
 			break;
 		}
 		case 'Maybe':
-			maybePromptForDeveloperSurvey(goCtx);
+			void maybePromptForDeveloperSurvey(goCtx);
 			break;
 		default:
 			break;

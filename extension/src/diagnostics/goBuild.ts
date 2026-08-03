@@ -41,7 +41,7 @@ export function buildCode(buildWorkspace?: boolean): CommandFactory {
 		diagnosticsStatusBarItem.show();
 		diagnosticsStatusBarItem.text = 'Building...';
 
-		isModSupported(documentUri).then((isMod) => {
+		void isModSupported(documentUri).then((isMod) => {
 			goBuild(documentUri, isMod, goConfig, buildWorkspace)
 				.then((errors) => {
 					handleErrors(goCtx, editor?.document, errors, goCtx.buildDiagnosticCollection);

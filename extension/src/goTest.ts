@@ -403,7 +403,7 @@ export const testWorkspace: CommandFactory = () => (args: any) => {
 	// Remember this config as the last executed test.
 	lastTestConfig = testConfig;
 
-	isModSupported(workspaceUri, true).then((isMod) => {
+	void isModSupported(workspaceUri, true).then((isMod) => {
 		testConfig.isMod = isMod;
 		goTest(testConfig).then(null, (err) => {
 			console.error(err);

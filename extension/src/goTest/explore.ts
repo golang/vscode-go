@@ -81,7 +81,7 @@ export class GoTestExplorer {
 
 		// Process already open editors
 		vscode.window.visibleTextEditors.forEach((ed) => {
-			inst.documentUpdate(ed.document);
+			void inst.documentUpdate(ed.document);
 		});
 
 		inst.subscriptions.push(vscode.window.registerTreeDataProvider('go.test.profile', inst.profiler.view));
@@ -343,7 +343,7 @@ export class GoTestExplorer {
 		});
 
 		if (update) {
-			this.resolver.resolve();
+			void this.resolver.resolve();
 			this.resolver.updateGoTestContext();
 		}
 	}

@@ -35,7 +35,7 @@ export const applyCoverprofile: CommandFactory = () => {
 				if (coverProfilePath !== lastCoverProfilePath) {
 					updateWorkspaceState(lastCoverProfilePathKey, coverProfilePath);
 				}
-				applyCodeCoverageToAllEditors(
+				void applyCodeCoverageToAllEditors(
 					coverProfilePath,
 					getWorkspaceFolderPath(vscode.window.activeTextEditor?.document.uri)
 				);

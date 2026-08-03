@@ -361,7 +361,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 		);
 		if (terminalShellArgs.includes('-l') || terminalShellArgs.includes('--login')) {
 			for (const term of vscode.window.terminals) {
-				updateIntegratedTerminal(term);
+				void updateIntegratedTerminal(term);
 			}
 			if (terminalCreationListener) {
 				terminalCreationListener.dispose();
@@ -619,7 +619,7 @@ export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionCo
 			currentVersion
 		)}.`;
 		vscode.window.showInformationMessage(text, download).then((selection) => {
-			selection?.command();
+			void selection?.command();
 		});
 	}
 
@@ -666,7 +666,7 @@ export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionCo
 				}
 				text = text + ` You are currently using ${formatGoVersion(currentVersion)}.`;
 				vscode.window.showInformationMessage(text, download, neverAgain).then((selection) => {
-					selection?.command();
+					void selection?.command();
 					removeGoStatus(STATUS_BAR_ITEM_NAME);
 				});
 			})

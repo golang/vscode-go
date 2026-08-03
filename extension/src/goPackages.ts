@@ -124,7 +124,7 @@ function getAllPackagesNoCache(workDir: string): Promise<Map<string, PackageInfo
 		if (!goListPkgsRunning.has(workDir)) {
 			goListPkgsRunning.add(workDir);
 
-			goListPkgs(workDir).then((pkgMap) => {
+			void goListPkgs(workDir).then((pkgMap) => {
 				goListPkgsRunning.delete(workDir);
 				goListPkgsSubscriptions.delete(workDir);
 				subs?.forEach((cb) => cb(pkgMap));

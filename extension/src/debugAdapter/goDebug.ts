@@ -1630,7 +1630,7 @@ export class GoDebugSession extends LoggingDebugSession {
 							return;
 						}
 
-						this.getPackageInfo(this.debugState).then((packageName) => {
+						void this.getPackageInfo(this.debugState).then((packageName) => {
 							if (!packageName) {
 								this.sendResponse(response);
 								log('ScopesResponse');
@@ -1775,7 +1775,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				})
 			);
 		}
-		variablesPromise.then((variables) => {
+		void variablesPromise.then((variables) => {
 			response.body = { variables };
 			this.sendResponse(response);
 			log('VariablesResponse', JSON.stringify(variables, null, ' '));
@@ -2707,7 +2707,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		}
 
 		logError(message + ' - ' + errorMessage);
-		this.dumpStacktrace();
+		void this.dumpStacktrace();
 	}
 
 	private async dumpStacktrace() {

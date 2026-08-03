@@ -1042,7 +1042,7 @@ suite('Debug Configuration Infers Default Mode Property', () => {
 			program: '/path/to/main_test.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		void debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['mode'], 'test');
 	});
@@ -1055,7 +1055,7 @@ suite('Debug Configuration Infers Default Mode Property', () => {
 			program: '/path/to/main.go'
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		void debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['mode'], 'debug');
 	});
@@ -1069,7 +1069,7 @@ suite('Debug Configuration Infers Default Mode Property', () => {
 			processId: 12345 // set a bogus process ID to provent process quickPick popup.
 		};
 
-		debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		void debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['mode'], 'local');
 	});

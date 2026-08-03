@@ -303,7 +303,7 @@ export async function installTools(
 	}
 	if (missing.some((tool) => tool.isImportant)) {
 		// if we just installed important tools, update the status bar.
-		updateImportantToolsStatus(tm);
+		void updateImportantToolsStatus(tm);
 	}
 	return failures;
 }
@@ -535,7 +535,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 	if (!goRuntimePath || !path.isAbsolute(goRuntimePath)) {
 		// getBinPath returns the absolute path to the tool if it exists.
 		// Otherwise, it may return the tool name (e.g. 'go').
-		suggestDownloadGo();
+		void suggestDownloadGo();
 		return Promise.reject();
 	}
 
@@ -589,7 +589,7 @@ export function updateGoVarsFromConfig(goCtx: GoExtensionContext): Promise<void>
 					// clear pre-existing terminal PATH mutation logic set up by this extension.
 					clearGoRuntimeBaseFromPATH();
 				}
-				initGoStatusBar(goCtx);
+				void initGoStatusBar(goCtx);
 				// TODO: restart language server or synchronize with language server update.
 
 				return resolve();
@@ -892,7 +892,7 @@ export async function suggestUpdates() {
 	// without prompting.
 	const toolsManagementConfig = getGoConfig()['toolsManagement'];
 	if (toolsManagementConfig && toolsManagementConfig['autoUpdate'] === true) {
-		installTools(toolsToUpdate, configuredGoVersion, { silent: true });
+		void installTools(toolsToUpdate, configuredGoVersion, { silent: true });
 	} else {
 		const updateToolsCmdText = 'Update tools';
 		const selected = await vscode.window.showWarningMessage(
@@ -902,7 +902,7 @@ export async function suggestUpdates() {
 			updateToolsCmdText
 		);
 		if (selected === updateToolsCmdText) {
-			installTools(toolsToUpdate, configuredGoVersion);
+			void installTools(toolsToUpdate, configuredGoVersion);
 		}
 	}
 }

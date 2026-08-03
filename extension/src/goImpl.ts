@@ -56,7 +56,7 @@ function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.Te
 		{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
 		(err, stdout, stderr) => {
 			if (err && (<any>err).code === 'ENOENT') {
-				promptForMissingTool('impl');
+				void promptForMissingTool('impl');
 				return;
 			}
 

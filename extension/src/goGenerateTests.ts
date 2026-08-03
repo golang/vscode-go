@@ -254,7 +254,7 @@ function generateTests(
 		telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOTESTS, 1);
 
 		if (goConfig.get('useLanguageServer') === 'true') {
-			promptForFeedback('gotests');
+			void promptForFeedback('gotests');
 		}
 
 		const cmd = getBinPath('gotests');
@@ -290,7 +290,7 @@ function generateTests(
 
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
-					promptForMissingTool('gotests');
+					void promptForMissingTool('gotests');
 					return resolve(false);
 				}
 				if (err) {

@@ -178,13 +178,13 @@ describe('# telemetry reporter using vscgo', async function () {
 	suiteTeardown(() => {
 		rmdirRecursive(tmpDir);
 		if (executableFileExists(vscgo)) {
-			fs.unlink(vscgo);
+			void fs.unlink(vscgo);
 		}
 	});
 
 	teardown(() => {
 		if (fileExists(counterfile)) {
-			fs.unlink(counterfile);
+			void fs.unlink(counterfile);
 		}
 	});
 

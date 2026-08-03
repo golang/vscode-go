@@ -187,7 +187,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 				console.log(`gopls ${versionToUpdate} is too new, try to update later`);
 			}
 		} else {
-			promptForUpdatingTool(tool.name, versionToUpdate);
+			void promptForUpdatingTool(tool.name, versionToUpdate);
 		}
 	};
 	const update = async () => {
@@ -207,7 +207,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 			return;
 		}
 		maybePromptForGoplsSurvey(goCtx);
-		maybePromptForDeveloperSurvey(goCtx);
+		void maybePromptForDeveloperSurvey(goCtx);
 	};
 	const telemetry = () => {
 		if (!usingGo) {
@@ -310,11 +310,9 @@ export async function stopLanguageClient(goCtx: GoExtensionContext) {
 	// LanguageClient.stop may hang if the language server
 	// crashes during shutdown before responding to the
 	// shutdown request. Enforce client-side timeout.
-	try {
-		c.stop(2000);
-	} catch (e) {
+	c.stop(2000).catch((e) => {
 		c.outputChannel?.appendLine(`Failed to stop client: ${e}`);
-	}
+	});
 }
 
 export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
@@ -455,7 +453,7 @@ export async function buildLanguageClient(
 				},
 				closed: () => {
 					if (initializationError !== undefined) {
-						suggestActionAfterGoplsStartError(goCtx, cfg);
+						void suggestActionAfterGoplsStartError(goCtx, cfg);
 						initializationError = undefined;
 						// In case of initialization failure, do not try to restart.
 						return {
@@ -474,7 +472,7 @@ export async function buildLanguageClient(
 							action: CloseAction.Restart
 						};
 					}
-					suggestActionAfterGoplsStartError(goCtx, cfg);
+					void suggestActionAfterGoplsStartError(goCtx, cfg);
 					updateLanguageServerIconGoStatusBar(c, true);
 					return {
 						message: '', // suppresses error popups - there will be other popups.
@@ -615,7 +613,11 @@ export async function buildLanguageClient(
 								case 'gopls.vulncheck':
 									// Write the vulncheck report to the terminal.
 									if (ActiveProgressTerminals.has(progressToken)) {
-										writeVulns(res.Result, ActiveProgressTerminals.get(progressToken), cfg.path);
+										void writeVulns(
+											res.Result,
+											ActiveProgressTerminals.get(progressToken),
+											cfg.path
+										);
 									}
 									break;
 								default:
@@ -765,19 +767,19 @@ export async function buildLanguageClient(
 				// user if they are actively working.
 				didOpen: async (e, next) => {
 					goCtx.lastUserAction = new Date();
-					next(e);
+					void next(e);
 				},
 				didChange: async (e, next) => {
 					goCtx.lastUserAction = new Date();
-					next(e);
+					void next(e);
 				},
 				didClose: async (e, next) => {
 					goCtx.lastUserAction = new Date();
-					next(e);
+					void next(e);
 				},
 				didSave: async (e, next) => {
 					goCtx.lastUserAction = new Date();
-					next(e);
+					void next(e);
 				},
 				workspace: {
 					configuration: async (
@@ -1134,7 +1136,7 @@ Please install it and reload this VS Code window.`
 	}
 
 	// Prompt the user to install gopls.
-	promptForMissingTool('gopls');
+	void promptForMissingTool('gopls');
 }
 
 function allFoldersHaveSameGopath(): boolean {
@@ -1429,7 +1431,7 @@ export async function suggestActionAfterGoplsStartError(
 	const tool: Tool = getTool('gopls')!;
 	const versionToUpdate = await shouldUpdateLanguageServer(tool, goCtx.latestConfig, true);
 	if (versionToUpdate) {
-		promptForUpdatingTool(tool.name, versionToUpdate, true);
+		void promptForUpdatingTool(tool.name, versionToUpdate, true);
 		return;
 	}
 
@@ -1574,7 +1576,7 @@ export function maybePromptForTelemetry(goCtx: GoExtensionContext) {
 			setTimeout(callback, 5 * timeMinute - Math.max(idleTime, 0));
 			return;
 		}
-		goCtx.telemetryService?.promptForTelemetry();
+		void goCtx.telemetryService?.promptForTelemetry();
 	};
-	callback();
+	void callback();
 }

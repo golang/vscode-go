@@ -337,7 +337,8 @@ suite('gopls opt out', () => {
 		[{ prompt: true, lastDatePrompted: yesterday }, '', 0]
 	];
 
-	testCases.map(async ([testConfig, choice, wantCount], i) => {
+	for (let i = 0; i < testCases.length; i++) {
+		const [testConfig, choice, wantCount] = testCases[i];
 		test(`opt out: ${i}`, async () => {
 			const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves({ title: choice });
 			const getGoplsOptOutConfigStub = sandbox.stub(goLanguageServer, 'getGoplsOptOutConfig').returns(testConfig);
@@ -356,5 +357,5 @@ suite('gopls opt out', () => {
 					`unexpected lastDatePrompted: ${JSON.stringify(got.lastDatePrompted)}`
 				);
 		});
-	});
+	}
 });

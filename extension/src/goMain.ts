@@ -136,8 +136,8 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	await maybeInstallImportantTools(cfg.get('alternateTools'));
 	await commands.startLanguageServer(ctx, goCtx)(RestartReason.ACTIVATION);
 
-	suggestUpdates();
-	offerToInstallLatestGoVersion(ctx);
+	void suggestUpdates();
+	void offerToInstallLatestGoVersion(ctx);
 
 	initCoverageDecorators(ctx);
 
@@ -257,7 +257,7 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			const goConfig = getGoConfig();
 			const goplsConfig = getGoplsConfig();
 
-			validateConfig(goConfig, goplsConfig);
+			void validateConfig(goConfig, goplsConfig);
 
 			if (!e.affectsConfiguration('go')) {
 				return;
@@ -275,7 +275,7 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			}
 
 			if (e.affectsConfiguration('go.useLanguageServer') && goConfig['useLanguageServer'] === false) {
-				promptAboutGoplsOptOut(goCtx);
+				void promptAboutGoplsOptOut(goCtx);
 			}
 		})
 	);
@@ -287,7 +287,7 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 			const goConfig = getGoConfig();
 			const goplsConfig = getGoplsConfig();
 
-			validateConfig(goConfig, goplsConfig);
+			void validateConfig(goConfig, goplsConfig);
 
 			if (e.affectsConfiguration('go.goroot')) {
 				const configGOROOT = goConfig['goroot'];
@@ -302,7 +302,7 @@ export function addConfigChangeListener(ctx: vscode.ExtensionContext) {
 				e.affectsConfiguration('go.toolsEnvVars') ||
 				e.affectsConfiguration('go.testEnvFile')
 			) {
-				updateGoVarsFromConfig(goCtx);
+				void updateGoVarsFromConfig(goCtx);
 			}
 			// If there was a change in "toolsGopath" setting, then clear cache for go tools
 			if (getToolsGopath() !== getToolsGopath(false)) {
@@ -400,7 +400,7 @@ function checkToolExists(tool: string) {
 		return;
 	}
 	if (tool === getBinPath(tool)) {
-		promptForMissingTool(tool);
+		void promptForMissingTool(tool);
 	}
 }
 

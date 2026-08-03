@@ -77,7 +77,7 @@ export async function maybePromptForDeveloperSurvey(goCtx: GoExtensionContext) {
 			storeSurveyState(DEVELOPER_SURVEY_STATE_KEY, state);
 		}
 	};
-	prompt(state);
+	void prompt(state);
 }
 
 /**
