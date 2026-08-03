@@ -170,7 +170,7 @@ suite('Test Go Test', function () {
 			const result = await goTest(testConfig);
 			assert.equal(result, false); // we expect tests to fail.
 		} catch (e) {
-			console.log('exception: ${e}');
+			console.log(`exception: ${e}`);
 		}
 
 		const testOutput = outputChannel.toString();

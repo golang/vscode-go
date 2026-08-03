@@ -12,7 +12,7 @@ import fs = require('fs');
 import path = require('path');
 import semver = require('semver');
 import { ConfigurationTarget } from 'vscode';
-import { extensionInfo, getGoConfig, getGoplsConfig } from './config';
+import { extensionInfo, getGoConfig } from './config';
 import { toolExecutionEnvironment, toolInstallationEnvironment } from './goEnv';
 import { addGoRuntimeBaseToPATH, clearGoRuntimeBaseFromPATH } from './goEnvironmentStatus';
 import { GoExtensionContext } from './context';
@@ -132,7 +132,7 @@ async function _getGoVersionForInstall(goVersion?: GoVersion): Promise<GoVersion
 		// Compute the local toolchain version. (GOTOOLCHAIN=local go version)
 		const go = await getGoVersion(configuredGoForInstall, 'local');
 		if (go) return go;
-	} catch (e) {
+	} catch {
 		outputChannel.error(
 			`failed to run "go version" with "${configuredGoForInstall}". Provide a valid path to the Go binary`
 		);
@@ -661,7 +661,7 @@ async function updateImportantToolsStatus(tm: IToolsManager = defaultToolsManage
 		missing = await tm.getMissingTools((tool: Tool) => {
 			return tool.isImportant;
 		}); // expect gopls and a linter.
-	} catch (e) {
+	} catch {
 		// ignore.
 	}
 
@@ -707,7 +707,7 @@ function getMissingTools(matcher?: (value: Tool) => boolean): Promise<Tool[]> {
 	return Promise.all(
 		keys.map(
 			(tool) =>
-				new Promise<Tool | null>((resolve, reject) => {
+				new Promise<Tool | null>((resolve) => {
 					const toolPath = getBinPath(tool.name);
 					resolve(path.isAbsolute(toolPath) ? null : tool);
 				})
@@ -836,7 +836,7 @@ async function defaultInspectGoToolVersion(
 		const goVersion = lines[0] && lines[0].match(/\s+(go\d+.\d+\S*)/)?.[1];
 		const moduleVersion = lines[2].split(/\s+/)[3];
 		return { goVersion, moduleVersion };
-	} catch (e) {
+	} catch {
 		// either go version failed (e.g. the tool was compiled with a more recent version of go)
 		// or stdout is not in the expected format.
 		return { debugInfo };

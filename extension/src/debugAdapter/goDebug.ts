@@ -228,6 +228,8 @@ interface ListGoroutinesOut {
 	Goroutines: DebugGoroutine[];
 }
 
+// Corresponds to api.Goroutine in Delve API:
+// https://github.com/go-delve/delve/blob/master/service/api/types.go
 interface DebugGoroutine {
 	id: number;
 	currentLoc: DebugLocation;
@@ -235,6 +237,9 @@ interface DebugGoroutine {
 	goStatementLoc: DebugLocation;
 }
 
+// Corresponds to api.DebuggerCommand in Delve API:
+// https://github.com/go-delve/delve/blob/master/service/api/types.go
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface DebuggerCommand {
 	name: string;
 	threadID?: number;
@@ -245,6 +250,9 @@ interface ListBreakpointsOut {
 	Breakpoints: DebugBreakpoint[];
 }
 
+// Corresponds to RestartOut in Delve API:
+// https://github.com/go-delve/delve/blob/master/service/rpc2/server.go
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface RestartOut {
 	DiscardedBreakpoints: DiscardedBreakpoint[];
 }
@@ -942,10 +950,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		this.stackFrameHandles = new Handles<[number, number]>();
 	}
 
-	protected initializeRequest(
-		response: DebugProtocol.InitializeResponse,
-		args: DebugProtocol.InitializeRequestArguments
-	): void {
+	protected initializeRequest(response: DebugProtocol.InitializeResponse): void {
 		log('InitializeRequest');
 		// Set the capabilities that this debug adapter supports.
 		response.body = response.body ?? {};
@@ -996,7 +1001,7 @@ export class GoDebugSession extends LoggingDebugSession {
 			// Since users want to reset when they issue a disconnect request,
 			// we should have a timeout in case disconnectRequestHelper hangs.
 			await Promise.race([
-				this.disconnectRequestHelper(response, args),
+				this.disconnectRequestHelper(),
 				new Promise<void>((resolve) =>
 					setTimeout(() => {
 						log('DisconnectRequestHelper timed out after 5s.');
@@ -1010,10 +1015,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		log('DisconnectResponse');
 	}
 
-	protected async disconnectRequestHelper(
-		response: DebugProtocol.DisconnectResponse,
-		args: DebugProtocol.DisconnectArguments
-	): Promise<void> {
+	protected async disconnectRequestHelper(): Promise<void> {
 		// There is a chance that a second disconnectRequest can come through
 		// if users click detach multiple times. In that case, we want to
 		// guard against talking to the closed Delve connection.
@@ -1038,10 +1040,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		await this.delve?.close();
 	}
 
-	protected async configurationDoneRequest(
-		response: DebugProtocol.ConfigurationDoneResponse,
-		args: DebugProtocol.ConfigurationDoneArguments
-	): Promise<void> {
+	protected async configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse): Promise<void> {
 		log('ConfigurationDoneRequest');
 		if (this.stopOnEntry) {
 			this.sendEvent(new StoppedEvent('entry', 1));
@@ -2249,7 +2248,7 @@ export class GoDebugSession extends LoggingDebugSession {
 				let convertedBreakpoints: (DebugBreakpoint | null)[];
 				if (!this.delve?.isApiV1) {
 					// Unwrap breakpoints from v2 apicall
-					convertedBreakpoints = newBreakpoints.map((bp, i) => {
+					convertedBreakpoints = newBreakpoints.map((bp) => {
 						return bp ? (bp as CreateBreakpointOut).Breakpoint : null;
 					});
 				} else {
@@ -2587,7 +2586,7 @@ export class GoDebugSession extends LoggingDebugSession {
 		};
 
 		// If called when setting breakpoint internally, we want the error to bubble up.
-		let errorCallback = (_: unknown): any => void 0;
+		let errorCallback: (err: any) => any = () => void 0;
 		if (!calledWhenSettingBreakpoint) {
 			errorCallback = (err: any) => {
 				if (err) {
@@ -2851,17 +2850,12 @@ async function removeFile(filePath: string): Promise<void> {
 // queryGOROOT returns `go env GOROOT`.
 function queryGOROOT(cwd: any, env: any): Promise<string> {
 	return new Promise<string>((resolve) => {
-		execFile(
-			getBinPathWithPreferredGopathGoroot('go', []),
-			['env', 'GOROOT'],
-			{ cwd, env },
-			(err, stdout, stderr) => {
-				if (err) {
-					return resolve('');
-				}
-				return resolve(stdout.trim());
+		execFile(getBinPathWithPreferredGopathGoroot('go', []), ['env', 'GOROOT'], { cwd, env }, (err, stdout) => {
+			if (err) {
+				return resolve('');
 			}
-		);
+			return resolve(stdout.trim());
+		});
 	});
 }
 

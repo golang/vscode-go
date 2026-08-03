@@ -6,7 +6,7 @@
 'use strict';
 
 import vscode = require('vscode');
-import { CancellationToken, CodeLens, TextDocument } from 'vscode';
+import { CodeLens, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
@@ -55,7 +55,7 @@ export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
 
 	private readonly benchmarkRegex = /^Benchmark.+/;
 
-	public async provideCodeLenses(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+	public async provideCodeLenses(document: TextDocument): Promise<CodeLens[]> {
 		if (!this.enabled) {
 			return [];
 		}
@@ -67,13 +67,13 @@ export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
 		}
 
 		const codelenses = await Promise.all([
-			this.getCodeLensForPackage(document, token),
-			this.getCodeLensForFunctions(document, token)
+			this.getCodeLensForPackage(document),
+			this.getCodeLensForFunctions(document)
 		]);
 		return ([] as CodeLens[]).concat(...codelenses);
 	}
 
-	private async getCodeLensForPackage(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+	private async getCodeLensForPackage(document: TextDocument): Promise<CodeLens[]> {
 		const documentSymbolProvider = GoDocumentSymbolProvider(this.goCtx);
 		const symbols = await documentSymbolProvider.provideDocumentSymbols(document);
 		if (!symbols || symbols.length === 0) {
@@ -109,11 +109,11 @@ export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
 		return packageCodeLens;
 	}
 
-	private async getCodeLensForFunctions(document: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+	private async getCodeLensForFunctions(document: TextDocument): Promise<CodeLens[]> {
 		const testPromise = async (): Promise<CodeLens[]> => {
 			const codelens: CodeLens[] = [];
 
-			const testFunctions = await getTestFunctions(this.goCtx, document, token);
+			const testFunctions = await getTestFunctions(this.goCtx, document);
 			if (!testFunctions) {
 				return codelens;
 			}
@@ -166,7 +166,7 @@ export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
 		};
 
 		const benchmarkPromise = async (): Promise<CodeLens[]> => {
-			const benchmarkFunctions = await getBenchmarkFunctions(this.goCtx, document, token);
+			const benchmarkFunctions = await getBenchmarkFunctions(this.goCtx, document);
 			if (!benchmarkFunctions) {
 				return [];
 			}

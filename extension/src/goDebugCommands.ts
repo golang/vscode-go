@@ -137,7 +137,7 @@ function parseVariable(variable: Variable) {
 
 	try {
 		return JSON.parse(raw);
-	} catch (_) {
+	} catch {
 		return raw.replace(/\\[nrt\\"'`]/, (_, s) => (s in escapeCodes ? escapeCodes[s] : s));
 	}
 }

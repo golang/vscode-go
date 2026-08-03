@@ -285,7 +285,7 @@ function generateTests(
 			args = args.concat(['-all', conf.dir]);
 		}
 
-		cp.execFile(cmd, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
+		cp.execFile(cmd, args, { env: toolExecutionEnvironment() }, (err, stdout) => {
 			outputChannel.info('Generating Tests: ' + cmd + ' ' + args.join(' '));
 
 			try {

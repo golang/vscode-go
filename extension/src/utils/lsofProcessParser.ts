@@ -24,7 +24,7 @@ export function parseLsofProcesses(processes: string): AttachItem[] {
 	return parseProcessesFromLsofArray(lines);
 }
 
-function parseProcessesFromLsofArray(processArray: string[], includesEnv?: boolean): AttachItem[] {
+function parseProcessesFromLsofArray(processArray: string[]): AttachItem[] {
 	const processEntries: AttachItem[] = [];
 	let i = 0;
 	while (i < processArray.length) {

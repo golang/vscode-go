@@ -6,7 +6,6 @@
 import assert from 'assert';
 import path from 'path';
 import {
-	CancellationTokenSource,
 	CustomExecution,
 	ProcessExecution,
 	ShellExecution,
@@ -65,7 +64,7 @@ suite('GoTaskProvider', () => {
 		});
 		assert(provider);
 
-		const tasks = await provider.provideTasks(new CancellationTokenSource().token);
+		const tasks = await provider.provideTasks();
 		assert(tasks && tasks.length > 0, `want some tasks, got zero tasks: ${JSON.stringify(tasks)}`);
 		tasks.forEach((task) => {
 			assert(isProcessExecution(task.execution) && isWorkspaceFolder(task.scope));
@@ -91,7 +90,7 @@ suite('GoTaskProvider', () => {
 		});
 
 		assert(provider);
-		const tasks = await provider.provideTasks(new CancellationTokenSource().token);
+		const tasks = await provider.provideTasks();
 		assert(tasks && tasks.length > 0, `want some tasks, got zero tasks: ${JSON.stringify(tasks)}`);
 		tasks.forEach((task) => {
 			assert(isProcessExecution(task.execution) && isWorkspaceFolder(task.scope));
@@ -112,7 +111,7 @@ suite('GoTaskProvider', () => {
 		});
 
 		assert(provider);
-		const tasks = await provider!.provideTasks(new CancellationTokenSource().token);
+		const tasks = await provider!.provideTasks();
 		assert(!tasks || tasks.length === 0, `want no tasks, got some tasks: ${JSON.stringify(tasks)}`);
 	});
 

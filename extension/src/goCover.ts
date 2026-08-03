@@ -380,7 +380,7 @@ export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 		doc = fixDriveCasingInWindows(doc);
 		try {
 			doc = fs.realpathSync(doc);
-		} catch (e) {
+		} catch {
 			// Failed to resolve the path, but we can still try using the original.
 		}
 	}
@@ -391,7 +391,7 @@ export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 		let normalizedFilename = fixDriveCasingInWindows(filename);
 		try {
 			normalizedFilename = fs.realpathSync(normalizedFilename);
-		} catch (e) {
+		} catch {
 			// Failed to resolve the path, but we can still try using the original.
 		}
 

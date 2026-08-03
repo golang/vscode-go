@@ -61,7 +61,7 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 		goRuntimePath,
 		['list', '-f', '{{.Dir}}:{{.GoFiles}}:{{.TestGoFiles}}:{{.XTestGoFiles}}', pkg],
 		options,
-		(err, stdout, stderr) => {
+		(err, stdout) => {
 			if (!stdout || stdout.indexOf(':') === -1) {
 				if (showAllPkgsIfPkgNotFound) {
 					return showPackageList(workDir);

@@ -9,7 +9,7 @@ import { GoTestExplorer } from '../../src/goTest/explore';
 import { Workspace } from '../../src/goTest/utils';
 import { MockTestWorkspace } from '../mocks/MockTest';
 
-export function getSymbols_Regex(doc: TextDocument, token: unknown): Thenable<DocumentSymbol[]> {
+export function getSymbols_Regex(doc: TextDocument): Thenable<DocumentSymbol[]> {
 	const syms: DocumentSymbol[] = [];
 	const range = new Range(new Position(0, 0), new Position(0, 0));
 	doc.getText().replace(/^func (Test|Benchmark|Example|Fuzz)([A-Z]\w+)(\(.*\))/gm, (m, type, name, details) => {

@@ -47,7 +47,7 @@ suite('Mutex Tests', () => {
 		const safeWorker = async (delay: number) => {
 			try {
 				await worker(delay);
-			} catch (e) {
+			} catch {
 				// swallow the exception
 			}
 		};

@@ -10,8 +10,7 @@ import vscode = require('vscode');
 import { ExecuteCommandRequest, ExecuteCommandParams } from 'vscode-languageserver-protocol';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
-import { getImportablePackages } from './goPackages';
-import { getBinPath, getImportPath, parseFilePrelude } from './util';
+import { getBinPath, getImportPath } from './util';
 import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 import { GoExtensionContext } from './context';
 import { CommandFactory } from './commands';
@@ -142,7 +141,7 @@ export const addImportToWorkspace: CommandFactory = () => () => {
 	}
 	const env = toolExecutionEnvironment();
 
-	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout, stderr) => {
+	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout) => {
 		const dirs = (stdout || '').split('\n');
 		if (!dirs.length || !dirs[0].trim()) {
 			vscode.window.showErrorMessage(`Could not find package ${importPath}`);

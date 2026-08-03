@@ -36,7 +36,6 @@ suite('Debug Environment Variable Merge Test', () => {
 
 	let sandbox: sinon.SinonSandbox;
 	let tmpDir = '';
-	const toolExecutionEnv: NodeJS.Dict<string> = {};
 	setup(() => {
 		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'godebugconfig_test'));
 		sandbox = sinon.createSandbox();

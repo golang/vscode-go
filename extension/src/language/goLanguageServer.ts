@@ -335,7 +335,7 @@ export function toServerInfo(res?: InitializeResult): ServerInfo | undefined {
 		const v = <serverVersionJSON>(res.serverInfo?.version ? JSON.parse(res.serverInfo.version) : {});
 		info.Version = v.Version || v.version;
 		info.GoVersion = v.GoVersion;
-	} catch (e) {
+	} catch {
 		// gopls is not providing any info, that's ok.
 	}
 	return info;
@@ -1317,7 +1317,7 @@ export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 			cfg.version = { version: v.Main.Version, goVersion: v.GoVersion };
 			return cfg.version;
 		}
-	} catch (e) {
+	} catch {
 		// do nothing
 	}
 
@@ -1326,7 +1326,7 @@ export const getLocalGoplsVersion = async (cfg?: LanguageServerConfig) => {
 	try {
 		const { stdout } = await execFile(cfg.path, ['version'], { env, cwd });
 		output = stdout;
-	} catch (e) {
+	} catch {
 		// The "gopls version" command is not supported, or something else went wrong.
 		// TODO: Should we propagate this error?
 		return;
@@ -1556,7 +1556,7 @@ async function goplsFetchVulncheckResult(goCtx: GoExtensionContext, uri: string)
 			if (modFileURI.fsPath === uriFsPath) {
 				return res[modFile];
 			}
-		} catch (e) {
+		} catch {
 			console.log(`gopls returned an unparseable file uri in govulncheck result: ${modFile}`);
 		}
 	}

@@ -237,7 +237,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	 * output event with any of the provided strings is observed.
 	 */
 	async function waitForOutputMessage(dc: DebugClient, ...patterns: string[]): Promise<DebugProtocol.Event> {
-		return await new Promise<DebugProtocol.Event>((resolve, reject) => {
+		return await new Promise<DebugProtocol.Event>((resolve) => {
 			dc.on('output', (event) => {
 				for (const pattern of patterns) {
 					if (event.body.output.includes(pattern)) {
@@ -321,7 +321,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					columnsStartAt1: true,
 					pathFormat: 'url'
 				});
-			} catch (err) {
+			} catch {
 				return; // want error
 			}
 			throw new Error("does not report error on invalid 'pathFormat' attribute");
@@ -350,7 +350,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					value: { FOO: 'BAR' }
 				}
 			});
-			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+			sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
 
 			const config = {
 				name: 'Launch',
@@ -377,7 +377,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 					value: { FOO: 'BAR' }
 				}
 			});
-			const configStub = sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
+			sandbox.stub(extConfig, 'getGoConfig').returns(goConfig);
 
 			const config = {
 				name: 'Launch',
@@ -500,7 +500,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			await Promise.all([
 				dc.assertOutput('stderr', 'Error: unknown flag: --invalid\n', 5000),
 				dc.waitForEvent('terminated'),
-				dc.initializeRequest().then((response) => {
+				dc.initializeRequest().then(() => {
 					// The current debug adapter does not respond to launch request but,
 					// instead, sends error messages and TerminatedEvent as delve is closed.
 					// The promise from dc.launchRequest resolves when the launch response

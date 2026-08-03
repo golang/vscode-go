@@ -50,10 +50,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 	constructor(private defaultDebugAdapterType: string = 'go') {}
 
-	public async provideDebugConfigurations(
-		_folder: vscode.WorkspaceFolder | undefined,
-		_token?: vscode.CancellationToken
-	): Promise<vscode.DebugConfiguration[] | undefined> {
+	public async provideDebugConfigurations(): Promise<vscode.DebugConfiguration[] | undefined> {
 		return await this.pickConfiguration();
 	}
 
@@ -135,8 +132,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 	public async resolveDebugConfiguration(
 		folder: vscode.WorkspaceFolder | undefined,
-		debugConfiguration: vscode.DebugConfiguration,
-		_token?: vscode.CancellationToken
+		debugConfiguration: vscode.DebugConfiguration
 	): Promise<vscode.DebugConfiguration | undefined> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!debugConfiguration || !debugConfiguration.request) {
@@ -396,12 +392,8 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 		return new Promise((resolve) => {
 			const child = spawn(getBinPath('dlv'), ['substitute-path-guess-helper']);
 			let stdoutData = '';
-			let stderrData = '';
 			child.stdout.on('data', (data) => {
 				stdoutData += data;
-			});
-			child.stderr.on('data', (data) => {
-				stderrData += data;
 			});
 
 			child.on('close', (code) => {
@@ -410,13 +402,13 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				} else {
 					try {
 						resolve(JSON.parse(stdoutData));
-					} catch (error) {
+					} catch {
 						resolve(null);
 					}
 				}
 			});
 
-			child.on('error', (error) => {
+			child.on('error', () => {
 				resolve(null);
 			});
 		});
@@ -461,8 +453,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 
 	public resolveDebugConfigurationWithSubstitutedVariables(
 		folder: vscode.WorkspaceFolder | undefined,
-		debugConfiguration: vscode.DebugConfiguration,
-		_token?: vscode.CancellationToken
+		debugConfiguration: vscode.DebugConfiguration
 	): vscode.DebugConfiguration | null {
 		const debugAdapter = debugConfiguration['debugAdapter'];
 		if (debugAdapter === '') {

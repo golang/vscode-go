@@ -12,7 +12,6 @@ import util = require('util');
 import vscode = require('vscode');
 import { getGoConfig } from './config';
 import { extensionId } from './const';
-import { GoExtensionContext } from './context';
 import { toolExecutionEnvironment } from './goEnv';
 import { outputChannel } from './goStatus';
 import { getFromWorkspaceState } from './stateUtils';
@@ -362,7 +361,7 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 				if (fs.statSync(path.join(currentRoot, 'src')).isDirectory()) {
 					inferredGopath = currentRoot;
 				}
-			} catch (e) {
+			} catch {
 				// No op
 			}
 		}
@@ -372,7 +371,7 @@ export function getCurrentGoPath(workspaceUri?: vscode.Uri): string {
 				if (fs.existsSync(path.join(inferredGopath, 'go.mod'))) {
 					inferredGopath = '';
 				}
-			} catch (e) {
+			} catch {
 				// No op
 			}
 		}

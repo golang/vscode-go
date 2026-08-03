@@ -52,12 +52,7 @@ export class MockCfg implements vscode.WorkspaceConfiguration {
 		return i;
 	}
 
-	public update(
-		section: string,
-		value: any,
-		configurationTarget?: boolean | vscode.ConfigurationTarget,
-		overrideInLanguage?: boolean
-	): Thenable<void> {
+	public update(): Thenable<void> {
 		throw new Error('Method not implemented.');
 	}
 }

@@ -8,7 +8,6 @@ import {
 	EndOfLine,
 	Event,
 	EventEmitter,
-	FileCoverage,
 	FileType,
 	MarkdownString,
 	Position,
@@ -16,7 +15,6 @@ import {
 	TestController,
 	TestItem,
 	TestItemCollection,
-	TestMessage,
 	TestRun,
 	TestRunProfile,
 	TestRunProfileKind,
@@ -70,7 +68,7 @@ class MockTestCollection implements TestItemCollection {
 		return this.m.get(id);
 	}
 
-	replace(items: readonly TestItem[]): void {
+	replace(): void {
 		throw new Error('not impelemented');
 	}
 }
@@ -141,15 +139,15 @@ class MockTestRun implements TestRun {
 		this.onDidDispose = emitter.event;
 	}
 
-	addCoverage(fileCoverage: FileCoverage): void {}
+	addCoverage(): void {}
 	onDidDispose: Event<void>;
-	enqueued(test: TestItem): void {}
-	started(test: TestItem): void {}
-	skipped(test: TestItem): void {}
-	failed(test: TestItem, message: TestMessage | readonly TestMessage[], duration?: number): void {}
-	errored(test: TestItem, message: TestMessage | readonly TestMessage[], duration?: number): void {}
-	passed(test: TestItem, duration?: number): void {}
-	appendOutput(output: string): void {}
+	enqueued(): void {}
+	started(): void {}
+	skipped(): void {}
+	failed(): void {}
+	errored(): void {}
+	passed(): void {}
+	appendOutput(): void {}
 	end(): void {}
 }
 
@@ -161,7 +159,7 @@ export class MockTestController implements TestController {
 	resolveHandler?: (item: TestItem | undefined) => void | Thenable<void>;
 	refreshHandler: ((token: CancellationToken) => void | Thenable<void>) | undefined;
 
-	createTestRun(request: TestRunRequest, name?: string, persist?: boolean): TestRun {
+	createTestRun(): TestRun {
 		return new MockTestRun();
 	}
 
@@ -178,7 +176,7 @@ export class MockTestController implements TestController {
 		return new MockTestItem(id, label, uri, this);
 	}
 
-	invalidateTestResults(items?: TestItem | readonly TestItem[]): void {}
+	invalidateTestResults(): void {}
 	dispose(): void {}
 }
 
@@ -318,15 +316,15 @@ class MockTestDocument implements TextDocument {
 
 	lineAt(line: number): TextLine;
 	lineAt(position: Position): TextLine;
-	lineAt(position: any): TextLine {
+	lineAt(): TextLine {
 		throw new Error('Method not implemented.');
 	}
 
-	offsetAt(position: Position): number {
+	offsetAt(): number {
 		throw new Error('Method not implemented.');
 	}
 
-	positionAt(offset: number): Position {
+	positionAt(): Position {
 		throw new Error('Method not implemented.');
 	}
 
@@ -337,15 +335,15 @@ class MockTestDocument implements TextDocument {
 		return this._contents;
 	}
 
-	getWordRangeAtPosition(position: Position, regex?: RegExp): Range {
+	getWordRangeAtPosition(): Range {
 		throw new Error('Method not implemented.');
 	}
 
-	validateRange(range: Range): Range {
+	validateRange(): Range {
 		throw new Error('Method not implemented.');
 	}
 
-	validatePosition(position: Position): Position {
+	validatePosition(): Position {
 		throw new Error('Method not implemented.');
 	}
 }

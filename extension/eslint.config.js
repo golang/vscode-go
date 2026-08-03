@@ -12,8 +12,7 @@ module.exports = [
 		rules: {
 			// TODO(hxjiang): fix problem reported and enable all the rules below.
 			'@typescript-eslint/no-floating-promises': 'off',
-			'@typescript-eslint/no-explicit-any': 'off',
-			'@typescript-eslint/no-unused-vars': 'off'
+			'@typescript-eslint/no-explicit-any': 'off'
 		}
 	}
 ];

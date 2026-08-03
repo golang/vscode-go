@@ -45,7 +45,7 @@ export class GoTaskProvider implements vscode.TaskProvider {
 	}
 
 	// provides the default tasks.
-	provideTasks(_: vscode.CancellationToken): vscode.ProviderResult<vscode.Task[]> {
+	provideTasks(): vscode.ProviderResult<vscode.Task[]> {
 		const folders = this.workspace.workspaceFolders;
 		if (!folders || !folders.length) {
 			// zero workspace folder setup.
@@ -80,14 +80,14 @@ export class GoTaskProvider implements vscode.TaskProvider {
 	}
 
 	// fill an incomplete task definition ('tasks.json') whose type is "go".
-	resolveTask(_task: vscode.Task, _: vscode.CancellationToken): vscode.ProviderResult<vscode.Task> {
+	resolveTask(task: vscode.Task): vscode.ProviderResult<vscode.Task> {
 		// vscode calls resolveTask for every 'go' type task in tasks.json.
-		const def = _task.definition;
+		const def = task.definition;
 		if (def && def.type === TASK_TYPE) {
 			if (!def.command) {
 				def.command = 'build';
 			}
-			return buildGoTask(_task.scope ?? vscode.TaskScope.Workspace, def as GoTaskDefinition);
+			return buildGoTask(task.scope ?? vscode.TaskScope.Workspace, def as GoTaskDefinition);
 		}
 		return undefined;
 	}

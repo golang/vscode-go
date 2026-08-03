@@ -1088,7 +1088,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 			}
 
 			case 'enum': {
-				const pickItems = fieldType.entries.map((entry, _) => {
+				const pickItems = fieldType.entries.map((entry) => {
 					return {
 						// Use description if it exists, otherwise use value
 						label: entry.description || entry.value,

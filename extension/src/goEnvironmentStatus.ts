@@ -527,7 +527,7 @@ async function getDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 	try {
 		const response = await fetch('https://go.dev/dl/?mode=json');
 		webResults = (await response.json()) as GoVersionWebResult[];
-	} catch (error) {
+	} catch {
 		return [];
 	}
 
@@ -565,7 +565,7 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 				timestamp: now,
 				goVersions: results
 			});
-		} catch (e) {
+		} catch {
 			results = [];
 		}
 	}

@@ -69,7 +69,7 @@ class TestRunOutput implements OutputChannel {
 	}
 
 	clear() {}
-	show(...args: unknown[]) {}
+	show() {}
 	hide() {}
 	dispose() {}
 	replace() {}

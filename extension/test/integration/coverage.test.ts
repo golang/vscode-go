@@ -37,7 +37,7 @@ suite('Coverage for tests', function () {
 	});
 	test('resolve import paths', async () => {
 		initForTest();
-		const x = vscode.workspace.openTextDocument(coverFilePath);
+		await vscode.workspace.openTextDocument(coverFilePath);
 		await applyCodeCoverageToAllEditors(coverFilePath, fixtureSourcePath);
 		const files = Object.keys(coverageFilesForTest());
 		const aDotGo = files.includes(path.join(fixtureSourcePath, 'a', 'a.go'));
