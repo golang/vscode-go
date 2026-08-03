@@ -9,7 +9,6 @@ import { GoTestExplorer } from '../../src/goTest/explore';
 import { Workspace } from '../../src/goTest/utils';
 import { MockTestWorkspace } from '../mocks/MockTest';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getSymbols_Regex(doc: TextDocument, token: unknown): Thenable<DocumentSymbol[]> {
 	const syms: DocumentSymbol[] = [];
 	const range = new Range(new Position(0, 0), new Position(0, 0));
@@ -53,8 +52,6 @@ export async function forceDidOpenTextDocument(
 
 	// Force didOpenTextDocument to fire. Without this, the test may run
 	// before the event is handled.
-	//
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	await (testExplorer as any).didOpenTextDocument(doc);
 
 	return doc;

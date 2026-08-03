@@ -3,11 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------*/
 
-/* eslint-disable n/no-unpublished-import */
-
 // vscode.WorkspaceConfiguration.get() returns any type. So MockWorkspaceConfiguration
 // need to take a input of a Map containing any type.
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import assert from 'assert';
 import * as sinon from 'sinon';

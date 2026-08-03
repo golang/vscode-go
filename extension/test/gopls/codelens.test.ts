@@ -21,7 +21,6 @@ suite('Code lenses for testing and benchmarking', function () {
 
 	let document: vscode.TextDocument;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const ctx = new MockExtensionContext() as any;
 	const cancellationTokenSource = new vscode.CancellationTokenSource();
 

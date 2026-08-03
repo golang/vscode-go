@@ -86,7 +86,6 @@ export async function getLatestDeveloperSurvey(now: Date): Promise<DeveloperSurv
 	}
 
 	const [content, version] = res;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const config = JSON.parse(content.toString(), (key: string, value: any) => {
 		// Manually parse date fields.
 		if (key === 'StartDate' || key === 'EndDate') {

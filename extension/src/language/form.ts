@@ -1,16 +1,3 @@
-/* eslint-disable id-blacklist */
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/consistent-indexed-object-style */
-/* eslint-disable arrow-body-style */
-/* eslint-disable no-bitwise */
-/* eslint-disable object-shorthand */
-/* eslint-disable quotes */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/prefer-function-type */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /* ---------------------------------------------------------
  * Copyright 2025 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.

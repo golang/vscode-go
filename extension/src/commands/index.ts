@@ -24,7 +24,6 @@ export { toggleGCDetails } from './toggleGCDetails';
 
 type CommandCallback<T extends unknown[]> = (...args: T) => Promise<unknown> | unknown;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CommandFactory<T extends unknown[] = any[]> = (
 	ctx: vscode.ExtensionContext,
 	goCtx: GoExtensionContext

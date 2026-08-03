@@ -69,7 +69,6 @@ class TestRunOutput implements OutputChannel {
 	}
 
 	clear() {}
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	show(...args: unknown[]) {}
 	hide() {}
 	dispose() {}

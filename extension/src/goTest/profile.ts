@@ -1,4 +1,3 @@
-/* eslint-disable n/no-unsupported-features/node-builtins */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -153,7 +152,6 @@ async function show(profile: string) {
 		const proc = spawn(correctBinname('dot'), ['-V']);
 
 		proc.on('error', (err) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			if ((err as any).code === 'ENOENT') resolve(false);
 			else reject(err);
 		});

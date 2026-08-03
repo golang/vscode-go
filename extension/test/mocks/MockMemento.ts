@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-prototype-builtins */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.

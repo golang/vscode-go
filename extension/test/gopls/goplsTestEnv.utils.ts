@@ -1,4 +1,3 @@
-/* eslint-disable n/no-unpublished-import */
 /*---------------------------------------------------------
  * Copyright 2023 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -47,15 +46,10 @@ export class FakeOutputChannel implements vscode.LogOutputChannel {
 
 	public append = (v: string) => this.enqueue(v);
 	public appendLine = (v: string) => this.enqueue(v);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public error = (...args: any[]) => this.enqueue(args.join(' '));
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public warn = (...args: any[]) => this.enqueue(args.join(' '));
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public info = (...args: any[]) => this.enqueue(args.join(' '));
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public debug = (...args: any[]) => this.enqueue(args.join(' '));
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public trace = (...args: any[]) => this.enqueue(args.join(' '));
 	public clear = () => {
 		this.buf = [];

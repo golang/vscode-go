@@ -76,7 +76,6 @@ class VariableContentProvider implements vscode.TextDocumentContentProvider {
 		let offset = 0;
 		const full: Uint8Array[] = [];
 
-		// eslint-disable-next-line no-constant-condition
 		while (true) {
 			const resp = (await session.customRequest('readMemory', {
 				memoryReference: v.memoryReference,

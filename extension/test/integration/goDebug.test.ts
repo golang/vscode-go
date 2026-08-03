@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable n/no-unsupported-features/node-builtins */
 /* eslint-disable no-async-promise-executor */
-/* eslint-disable n/no-unpublished-import */
+/*---------------------------------------------------------
+ * Copyright 2026 The Go Authors. All rights reserved.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------*/
+
 import assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -2235,7 +2236,6 @@ class DelveDAPDebugAdapterOnSocket extends proxy.DelveDAPOutputAdapter {
 	private _handleData(data: Buffer): void {
 		this._rawData = Buffer.concat([this._rawData!, data]);
 
-		// eslint-disable-next-line no-constant-condition
 		while (true) {
 			if (this._contentLength! >= 0) {
 				if (this._rawData.length >= this._contentLength!) {

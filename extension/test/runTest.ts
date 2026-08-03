@@ -1,5 +1,3 @@
-/* eslint-disable no-process-exit */
-/* eslint-disable n/no-unpublished-import */
 import * as path from 'path';
 import { SilentReporter, runTests } from '@vscode/test-electron';
 

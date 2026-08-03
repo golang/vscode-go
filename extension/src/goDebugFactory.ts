@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -200,7 +199,6 @@ export class ProxyDebugAdapter implements vscode.DebugAdapter {
 	private handleDataFromServer(data: Buffer): void {
 		this.rawData = Buffer.concat([this.rawData, data]);
 
-		// eslint-disable-next-line no-constant-condition
 		while (true) {
 			if (this.contentLength >= 0) {
 				if (this.rawData.length >= this.contentLength) {
@@ -666,10 +664,7 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 
 // toggleHideSystemGoroutineCustomRequest is a helper function extracted
 // for testing the command.
-export async function toggleHideSystemGoroutinesCustomRequest(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	cr: (command: string, args?: any) => Thenable<any>
-) {
+export async function toggleHideSystemGoroutinesCustomRequest(cr: (command: string, args?: any) => Thenable<any>) {
 	const debugConsole = vscode.debug.activeDebugConsole;
 	try {
 		const response = await cr('evaluate', {

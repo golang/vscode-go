@@ -45,7 +45,6 @@ export class GoTaskProvider implements vscode.TaskProvider {
 	}
 
 	// provides the default tasks.
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	provideTasks(_: vscode.CancellationToken): vscode.ProviderResult<vscode.Task[]> {
 		const folders = this.workspace.workspaceFolders;
 		if (!folders || !folders.length) {
@@ -81,7 +80,6 @@ export class GoTaskProvider implements vscode.TaskProvider {
 	}
 
 	// fill an incomplete task definition ('tasks.json') whose type is "go".
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	resolveTask(_task: vscode.Task, _: vscode.CancellationToken): vscode.ProviderResult<vscode.Task> {
 		// vscode calls resolveTask for every 'go' type task in tasks.json.
 		const def = _task.definition;

@@ -4,7 +4,6 @@
  *--------------------------------------------------------*/
 
 // vscode.WorkspaceConfiguration.get() returns any type.
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as semver from 'semver';
 import * as vscode from 'vscode';

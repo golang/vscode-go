@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-async-promise-executor */
 /*---------------------------------------------------------
  * Copyright 2021 The Go Authors. All rights reserved.
