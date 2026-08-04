@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -10,14 +8,27 @@
 import vscode = require('vscode');
 import { CancellationToken, CodeLens, TextDocument } from 'vscode';
 import { getGoConfig } from './config';
-import { GoBaseCodeLensProvider } from './goBaseCodelens';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
 import { GoExtensionContext } from './context';
 import { GO_MODE } from './goMode';
 import { experiments } from './experimental';
 
-export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
+export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
+	private enabled = true;
+	private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
+
+	public get onDidChangeCodeLenses(): vscode.Event<void> {
+		return this.onDidChangeCodeLensesEmitter.event;
+	}
+
+	public setEnabled(enabled: boolean): void {
+		if (this.enabled !== enabled) {
+			this.enabled = enabled;
+			this.onDidChangeCodeLensesEmitter.fire();
+		}
+	}
+
 	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 		const testCodeLensProvider = new this(goCtx);
 		const setEnabled = () => {
@@ -40,9 +51,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 		);
 	}
 
-	constructor(private readonly goCtx: GoExtensionContext) {
-		super();
-	}
+	constructor(private readonly goCtx: GoExtensionContext) {}
 
 	private readonly benchmarkRegex = /^Benchmark.+/;
 
