@@ -74,6 +74,7 @@ import {
 	InteractiveFormsFeature,
 	InteractiveMiddleware
 } from './form';
+import { GoSemanticTokensFeature } from './goSemanticTokens';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -836,6 +837,7 @@ export async function buildLanguageClient(
 		onDidChangeVulncheckResultEmitter
 	);
 	c.registerFeature(new InteractiveFormsFeature(c));
+	c.registerFeature(new GoSemanticTokensFeature());
 	onDidChangeVulncheckResultEmitter.event(async (e: VulncheckEvent) => {
 		if (!govulncheckTerminal) {
 			return;
