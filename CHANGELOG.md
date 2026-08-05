@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 * The "Go: Generate Interface Stubs" command (`go.impl.cursor`) is now powered by `gopls` by default using interactive refactoring. Place your cursor inside the target type declaration (e.g. `type Foo struct`), and `gopls` will prompt for the interface to implement and insert the method stubs after the type declaration.
   The previous implementation remains available via the "Go: Generate Interface Stubs (legacy)" command (`go.impl.cursor.legacy`), which inserts method stubs directly at the cursor location.
 * Replaced the `wmic`-based Windows process picker for attach debugging with the native `@vscode/win32-app-container-tokens` module, as the `wmic` tool itself is deprecated on Windows ([#3687](https://github.com/golang/vscode-go/issues/3687)).
+* Language client trace logging is now integrated with VS Code's `LogOutputChannel` log level system. To view verbose trace logs in the `gopls` output channel, in addition to setting `"go.trace.server": "verbose"`, you must also set the `gopls` channel log level to `Trace` (using the `Developer: Set Log Level...` command or channel settings).
 
 ## v0.57.2 (prerelease)
 

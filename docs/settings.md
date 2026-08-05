@@ -535,7 +535,7 @@ The path to the `go` binary used to install the Go tools. If it's empty, the sam
 Default: `""`
 ### `go.trace.server`
 
-Trace the communication between VS Code and the Go language server.<br/>
+Trace the communication between VS Code and the Go language server. Also requires setting the 'gopls' output channel log level to 'Trace' ('Developer: Set Log Level...').<br/>
 Allowed Options: `off`, `messages`, `verbose`
 
 Default: `"off"`

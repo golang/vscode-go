@@ -1642,7 +1642,7 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Trace the communication between VS Code and the Go language server."
+          "description": "Trace the communication between VS Code and the Go language server. Also requires setting the 'gopls' output channel log level to 'Trace' ('Developer: Set Log Level...')."
         },
         "go.logging.level": {
           "type": "string",
