@@ -120,7 +120,7 @@ const internal = new Map<string, Tool>([
 			modulePath: 'github.com/mgechev/revive',
 			isImportant: true,
 			description: 'Linter',
-			defaultVersion: 'v1.3.9'
+			defaultVersion: 'v1.15.0'
 		}
 	],
 	[
