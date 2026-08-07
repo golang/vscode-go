@@ -45,7 +45,36 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	delete env['GOENV'];
 	delete env['GO111MODULE']; // we require module mode (default) for tools installation.
 
+	const toolsBuildEnv = getGoConfig().get('toolsManagement.buildEnvVars') ?? {};
+	if (toolsBuildEnv && typeof toolsBuildEnv === 'object') {
+		Object.keys(toolsBuildEnv).forEach(
+			(key) =>
+				(env[key] =
+					typeof toolsBuildEnv[key] === 'string'
+						? resolvePath(substituteEnv(toolsBuildEnv[key]))
+						: toolsBuildEnv[key])
+		);
+	}
+
 	return env;
+}
+
+export function toolInstallationArgs(buildArgs?: string[]): string[] {
+	const goConfig = getGoConfig();
+	const buildFlags: string[] = goConfig.get('toolsManagement.buildFlags') ?? [];
+	const buildTags: string = goConfig.get('toolsManagement.buildTags') ?? "";
+
+	const args: string[] = ['install'];
+	args.push(...buildFlags);
+	if (buildTags.length > 0 && buildFlags.indexOf('-tags') === -1) {
+		args.push('-tags');
+		args.push(buildTags);
+	}
+	if (buildArgs) {
+		args.push(...buildArgs);
+	}
+
+	return args;
 }
 
 // toolExecutionEnvironment returns the environment in which tools should
