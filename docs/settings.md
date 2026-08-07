@@ -213,11 +213,13 @@ Default:
 Feature level setting to enable/disable code lens for references and run/debug tests
 | Properties | Description |
 | --- | --- |
+| `rrtest` | If true, enables 'rr test' code lens for recording and replaying tests with Mozilla rr. Requires Linux and rr to be installed. <br/> Default: `false` |
 | `runtest` | If true, enables code lens for running and debugging tests <br/> Default: `true` |
 
 Default:
 ```
 {
+	"rrtest" :	false,
 	"runtest" :	true,
 }
 ```
