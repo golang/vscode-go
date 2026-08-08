@@ -6,8 +6,7 @@
 import assert from 'assert';
 import * as vscode from 'vscode';
 import { GoVersion, substituteEnv } from '../../src/util';
-import { removeDuplicateDiagnostics } from '../../src/diagnostics/diagnostics';
-import path = require('path');
+import { filterDiags } from '../../src/diagnostics/diagnostics';
 import { toolExecutionEnvironment } from '../../src/goEnv';
 import sinon = require('sinon');
 import { getGoConfig } from '../../src/config';
@@ -56,16 +55,9 @@ suite('utils Tests', () => {
 	});
 });
 
-suite('Duplicate Diagnostics Tests', () => {
-	test('remove duplicate diagnostics', async () => {
-		const fixturePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
-		const uri1 = vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_1.go'));
-		const uri2 = vscode.Uri.file(path.join(fixturePath, 'linterTest', 'linter_2.go'));
-
-		const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-
-		// Populate the diagnostic collection
-		const diag1 = [
+suite('Diagnostic Deduplication Tests', () => {
+	test('filterDiags removes duplicate diagnostics on same line', async () => {
+		const targetDiagnostics = [
 			new vscode.Diagnostic(
 				new vscode.Range(1, 2, 1, 3),
 				'first line diagnostic',
@@ -83,36 +75,8 @@ suite('Duplicate Diagnostics Tests', () => {
 				vscode.DiagnosticSeverity.Warning
 			)
 		];
-		const diag2 = [
-			new vscode.Diagnostic(
-				new vscode.Range(1, 2, 1, 3),
-				'first line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 3),
-				'second line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(
-				new vscode.Range(4, 0, 4, 3),
-				'fourth line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			)
-		];
-		diagnosticCollection.set(uri1, diag1);
-		diagnosticCollection.set(uri2, diag2);
 
-		// After removing diagnostics from uri1, there should only be one diagnostic remaining, and
-		// the diagnostics for uri2 should not be changed.
-		const want1 = [diag1[3]];
-		const want2: vscode.Diagnostic[] = [];
-		diag2.forEach((diag) => {
-			want2.push(diag);
-		});
-
-		const newDiagnostics: vscode.Diagnostic[] = [
+		const maskingDiagnostics = [
 			new vscode.Diagnostic(
 				new vscode.Range(1, 2, 1, 3),
 				'first line diagnostic',
@@ -121,17 +85,11 @@ suite('Duplicate Diagnostics Tests', () => {
 			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error)
 		];
 
-		removeDuplicateDiagnostics(diagnosticCollection, uri1, newDiagnostics);
+		const result = filterDiags(targetDiagnostics, maskingDiagnostics);
 
-		assert.strictEqual(diagnosticCollection.get(uri1)?.length, want1.length);
-		for (let i = 0; i < want1.length; i++) {
-			assert.strictEqual(diagnosticCollection.get(uri1)?.[i], want1[i]);
-		}
-
-		assert.strictEqual(diagnosticCollection.get(uri2)?.length, want2.length);
-		for (let i = 0; i < want2.length; i++) {
-			assert.strictEqual(diagnosticCollection.get(uri2)?.[i], want2[i]);
-		}
+		// Diagnostics on line 1 and 2 are masked; only line 4 remains.
+		assert.strictEqual(result.length, 1);
+		assert.strictEqual(result[0], targetDiagnostics[3]);
 	});
 });
 

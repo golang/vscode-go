@@ -102,13 +102,13 @@ suite('Linting', function () {
 			);
 			const warnings = await goLint(file2.uri, config, 'package');
 
-			const diagnosticCollection = vscode.languages.createDiagnosticCollection('linttest');
-			handleErrors({}, file2, warnings, diagnosticCollection);
+			const collection = vscode.languages.createDiagnosticCollection('linttest');
+			handleErrors({ lintDiagnosticCollection: collection }, file2, warnings, collection);
 
 			// The first diagnostic message for each file should be about the use of MixedCaps in package name.
 			// Both files belong to the same package name, and we want them to be identical.
-			const file1Diagnostics = diagnosticCollection.get(file1.uri);
-			const file2Diagnostics = diagnosticCollection.get(file2.uri);
+			const file1Diagnostics = collection.get(file1.uri);
+			const file2Diagnostics = collection.get(file2.uri);
 			assert(file1Diagnostics);
 			assert(file2Diagnostics);
 			assert(file1Diagnostics.length > 0);
