@@ -5,7 +5,8 @@
 
 import assert from 'assert';
 import * as vscode from 'vscode';
-import { GoVersion, removeDuplicateDiagnostics, substituteEnv } from '../../src/util';
+import { GoVersion, substituteEnv } from '../../src/util';
+import { removeDuplicateDiagnostics } from '../../src/diagnostics/diagnostics';
 import path = require('path');
 import { toolExecutionEnvironment } from '../../src/goEnv';
 import sinon = require('sinon');

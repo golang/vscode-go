@@ -12,9 +12,9 @@ import { isModSupported } from '../goModules';
 import { getNonVendorPackages } from '../goPackages';
 import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { getTestFlags } from '../testUtils';
-import { getCurrentGoPath, getModuleCache, getTempFilePath, getWorkspaceFolderPath, runTool } from '../util';
+import { getCurrentGoPath, getModuleCache, getTempFilePath, getWorkspaceFolderPath } from '../util';
 import { getCurrentGoWorkspaceFromGOPATH } from '../utils/pathUtils';
-import { handleErrors, ICheckResult } from './diagnostics';
+import { handleErrors, ICheckResult, runTool } from './diagnostics';
 
 /**
  * Builds current package or workspace.

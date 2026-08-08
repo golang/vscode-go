@@ -23,7 +23,6 @@ import {
 	ExecuteCommandParams,
 	ExecuteCommandRequest,
 	ExecuteCommandSignature,
-	HandleDiagnosticsSignature,
 	InitializeError,
 	InitializeResult,
 	LanguageClientOptions,
@@ -48,8 +47,7 @@ import {
 	getCheckForToolsUpdatesConfig,
 	getCurrentGoPath,
 	getGoVersion,
-	getWorkspaceFolderPath,
-	removeDuplicateDiagnostics
+	getWorkspaceFolderPath
 } from '../util';
 import { getToolFromToolPath } from '../utils/pathUtils';
 import fetch from 'node-fetch';
@@ -64,6 +62,7 @@ import { VulncheckReport, writeVulns } from '../goVulncheck';
 import { ActiveProgressTerminals, IProgressTerminal, ProgressTerminal } from '../progressTerminal';
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
+import { GoDiagnosticsFeature } from '../diagnostics/diagnostics';
 import { GoDocumentSelector } from '../goMode';
 import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
@@ -692,19 +691,6 @@ export async function buildLanguageClient(
 					// Otherwise, fall back to gopls.
 					return next(document, options, token);
 				},
-				handleDiagnostics: (
-					uri: vscode.Uri,
-					diagnostics: vscode.Diagnostic[],
-					next: HandleDiagnosticsSignature
-				) => {
-					const { buildDiagnosticCollection, lintDiagnosticCollection, vetDiagnosticCollection } = goCtx;
-					// Deduplicate diagnostics with those found by the other tools.
-					removeDuplicateDiagnostics(vetDiagnosticCollection, uri, diagnostics);
-					removeDuplicateDiagnostics(buildDiagnosticCollection, uri, diagnostics);
-					removeDuplicateDiagnostics(lintDiagnosticCollection, uri, diagnostics);
-
-					return next(uri, diagnostics);
-				},
 				provideCompletionItem: async (
 					document: vscode.TextDocument,
 					position: vscode.Position,
@@ -840,6 +826,7 @@ export async function buildLanguageClient(
 	);
 	c.registerFeature(new InteractiveFormsFeature(c));
 	c.registerFeature(new GoSemanticTokensFeature());
+	c.registerFeature(new GoDiagnosticsFeature(c, goCtx));
 	onDidChangeVulncheckResultEmitter.event(async (e: VulncheckEvent) => {
 		if (!govulncheckTerminal) {
 			return;

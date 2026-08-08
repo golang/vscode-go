@@ -41,9 +41,9 @@ suite('Linting', function () {
 	});
 
 	test('Linting - concurrent process cancelation', async () => {
-		const util = require('../../src/util');
+		const diagnostics = require('../../src/diagnostics/diagnostics');
 		const processutil = require('../../src/utils/processUtils');
-		const runToolSpy = sinon.spy(util, 'runTool');
+		const runToolSpy = sinon.spy(diagnostics, 'runTool');
 		const killProcessTreeSpy = sinon.spy(processutil, 'killProcessTree');
 
 		try {
@@ -79,7 +79,7 @@ suite('Linting', function () {
 
 	test('Linting - lint errors with multiple open files', async () => {
 		try {
-			// handleDiagnosticErrors may adjust the lint errors' ranges to make the error more visible.
+			// handleErrors may adjust the lint errors' ranges to make the error more visible.
 			// This adjustment applies only to the text documents known to vscode. This test checks
 			// the adjustment is made consistently across multiple open text documents.
 			const file1 = await vscode.workspace.openTextDocument(

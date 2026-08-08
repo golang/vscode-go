@@ -9,8 +9,8 @@ import { CommandFactory } from '../commands';
 import { getGoConfig } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
-import { getGoVersion, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
-import { handleErrors, ICheckResult } from './diagnostics';
+import { getGoVersion, getWorkspaceFolderPath, resolvePath } from '../util';
+import { handleErrors, ICheckResult, runTool } from './diagnostics';
 
 /**
  * Runs go vet in the current package or workspace.

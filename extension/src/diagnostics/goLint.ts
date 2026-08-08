@@ -10,8 +10,8 @@ import { getGoConfig } from '../config';
 import { toolExecutionEnvironment } from '../goEnv';
 import { diagnosticsStatusBarItem, outputChannel } from '../goStatus';
 import { inspectGoToolVersion } from '../goInstallTools';
-import { getBinPath, getWorkspaceFolderPath, resolvePath, runTool } from '../util';
-import { handleErrors, ICheckResult } from './diagnostics';
+import { getBinPath, getWorkspaceFolderPath, resolvePath } from '../util';
+import { handleErrors, ICheckResult, runTool } from './diagnostics';
 
 /**
  * Runs linter on the current file, package or workspace.
