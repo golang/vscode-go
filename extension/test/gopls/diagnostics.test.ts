@@ -5,33 +5,53 @@
 
 import assert from 'assert';
 import os = require('os');
-import path = require('path');
+import * as path from 'path';
+import sinon from 'sinon';
 import * as vscode from 'vscode';
+import * as config from '../../src/config';
 import { GoExtensionContext } from '../../src/context';
 import { handleErrors, ICheckResult } from '../../src/diagnostics/diagnostics';
+import { lintCode } from '../../src/diagnostics/goLint';
+import { MockWorkspaceConfiguration } from '../integration/mocks/configuration';
+import { Env } from './goplsTestEnv.utils';
 
-interface DiagnosticTestCase {
-	name: string;
-	diags: {
-		gopls?: ICheckResult[];
-		build?: ICheckResult[];
-		vet?: ICheckResult[];
-		lint?: ICheckResult[];
-	};
-	want: {
-		line: number;
-		source: string;
-		severity: vscode.DiagnosticSeverity;
-	}[];
+interface expectedDiagnostic {
+	line: number;
+	source: string;
+	severity: vscode.DiagnosticSeverity;
 }
 
-suite('Diagnostic consolidation', () => {
+function compareDiags(a: vscode.Diagnostic, b: vscode.Diagnostic): number {
+	if (a.range.start.line !== b.range.start.line) {
+		return a.range.start.line - b.range.start.line;
+	}
+	if (a.range.start.character !== b.range.start.character) {
+		return a.range.start.character - b.range.start.character;
+	}
+	if (a.severity !== b.severity) {
+		return a.severity - b.severity;
+	}
+	return (a.source ?? '').localeCompare(b.source ?? '');
+}
+
+suite('Diagnostic consolidation - unit', () => {
 	let goCtx: GoExtensionContext;
 
 	const fileURI = vscode.Uri.file(path.join(os.tmpdir(), 'diagnostic_priority_test.go')); // fake file
 	const filePath = fileURI.fsPath;
 
-	const testCases: DiagnosticTestCase[] = [
+	interface TestDiagnosticTestCase {
+		name: string;
+		diags: {
+			gopls?: ICheckResult[];
+			build?: ICheckResult[];
+			vet?: ICheckResult[];
+			lint?: ICheckResult[];
+		};
+		want: expectedDiagnostic[];
+	}
+
+	const testCases: TestDiagnosticTestCase[] = [
 		{
 			name: 'Symmetric priority masking (Gopls > Build > Vet > Lint)',
 			diags: {
@@ -163,24 +183,12 @@ suite('Diagnostic consolidation', () => {
 
 				// Read diagnostics directly from the "PROBLEMS" tab.
 				const problems = vscode.languages.getDiagnostics(fileURI);
-
-				const sorted = [...problems].sort((a, b) => {
-					if (a.range.start.line !== b.range.start.line) {
-						return a.range.start.line - b.range.start.line;
-					}
-					if (a.range.start.character !== b.range.start.character) {
-						return a.range.start.character - b.range.start.character;
-					}
-					if (a.severity !== b.severity) {
-						return a.severity - b.severity;
-					}
-					return a.source!.localeCompare(b.source!);
-				});
+				const sorted = [...problems].sort(compareDiags);
 
 				assert.strictEqual(
 					sorted.length,
 					tc.want.length,
-					`[${tc.name}] Expected ${tc.want.length} diagnostics in problem tab, got ${sorted.length}: ${JSON.stringify(sorted.map((p) => ({ source: p.source, msg: p.message })))}`
+					`[${tc.name}] Expected ${tc.want.length} diagnostics, got ${sorted.length}: ${JSON.stringify(sorted.map((p) => ({ line: p.range.start.line + 1, source: p.source, msg: p.message })))}`
 				);
 
 				for (let i = 0; i < tc.want.length; i++) {
@@ -192,5 +200,124 @@ suite('Diagnostic consolidation', () => {
 				}
 			});
 		}
+	}
+});
+
+// Regression tests for golang/vscode-go#3511.
+suite('Diagnostic consolidation - regression (#3511)', function () {
+	this.timeout(30000);
+	const projectDir = path.join(__dirname, '..', '..', '..');
+	const testdataDir = path.join(projectDir, 'test', 'testdata', 'diagnosticsTest');
+	let env: Env;
+
+	async function pollDiagnostics(uri: vscode.Uri, predicate: (diags: vscode.Diagnostic[]) => boolean): Promise<void> {
+		const start = Date.now();
+		// Polling deadline of 10s. Analyzing a module with only a few files
+		// should finish within 10s for both gopls and external linters.
+		while (Date.now() - start < 10000) {
+			const problems = vscode.languages.getDiagnostics(uri);
+			if (predicate(problems)) {
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		}
+		assert.fail(
+			`timed out waiting for expected diags on ${path.basename(uri.fsPath)}, got: ${JSON.stringify(
+				vscode.languages
+					.getDiagnostics(uri)
+					.map((p) => ({ line: p.range.start.line + 1, source: p.source, msg: p.message }))
+			)}`
+		);
+	}
+
+	suiteSetup(async () => {
+		env = new Env();
+		const goplsConfig = new MockWorkspaceConfiguration(
+			config.getGoplsConfig(),
+			new Map<string, any>([
+				['ui.diagnostic.staticcheck', true],
+				['ui.diagnostic.analyses', { ST1017: true }]
+			])
+		);
+		sinon.stub(config, 'getGoplsConfig').returns(goplsConfig);
+
+		const goConfig = new MockWorkspaceConfiguration(
+			config.getGoConfig(),
+			new Map<string, any>([
+				['lintTool', 'golangci-lint-v2'],
+				['lintOnSave', 'package']
+			])
+		);
+		sinon.stub(config, 'getGoConfig').returns(goConfig);
+
+		env.goCtx.lintDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-lint');
+
+		// Start gopls with workspace
+		await env.startGopls(path.join(testdataDir, 'masked.go'), undefined, testdataDir);
+
+		// Open both documents to trigger gopls diagnostics
+		const { doc: coexistDoc } = await env.openDoc(path.join(testdataDir, 'coexist.go'));
+		const { doc: maskedDoc } = await env.openDoc(path.join(testdataDir, 'masked.go'));
+		await vscode.window.showTextDocument(coexistDoc);
+
+		// Run linter once for the package
+		lintCode('package')(undefined as any, env.goCtx)();
+
+		// Wait until diagnostics from both gopls and linter are ready
+		await pollDiagnostics(coexistDoc.uri, (diags) => diags.length >= 2);
+		await pollDiagnostics(maskedDoc.uri, (diags) => diags.length >= 1);
+	});
+
+	suiteTeardown(async () => {
+		sinon.restore();
+		env.goCtx.lintDiagnosticCollection?.dispose();
+		await env.teardown();
+		env.flushTrace(false);
+	});
+
+	interface DiagnosticTestCase {
+		name: string;
+		fileName: string;
+		want: expectedDiagnostic[];
+	}
+
+	const testCases: DiagnosticTestCase[] = [
+		{
+			name: 'coexist',
+			fileName: 'coexist.go',
+			// golangci-lint-v2 report a more severe diags so that persist.
+			want: [
+				{ line: 8, source: 'any', severity: vscode.DiagnosticSeverity.Hint },
+				{ line: 8, source: 'go-lint', severity: vscode.DiagnosticSeverity.Warning }
+			]
+		},
+		{
+			name: 'masked',
+			fileName: 'masked.go',
+			// golangci-lint-v2 will report the same diags but prefer gopls'.
+			want: [{ line: 4, source: 'ST1017', severity: vscode.DiagnosticSeverity.Warning }]
+		}
+	];
+
+	for (const tc of testCases) {
+		test(tc.name, () => {
+			const uri = vscode.Uri.file(path.join(testdataDir, tc.fileName));
+			const problems = vscode.languages.getDiagnostics(uri);
+			const sorted = [...problems].sort(compareDiags);
+
+			assert.strictEqual(
+				sorted.length,
+				tc.want.length,
+				`[${tc.name}] Expected ${tc.want.length} diagnostics, got ${sorted.length}: ${JSON.stringify(sorted.map((p) => ({ line: p.range.start.line + 1, source: p.source, msg: p.message })))}`
+			);
+
+			for (let i = 0; i < tc.want.length; i++) {
+				const want = tc.want[i];
+				const got = sorted[i];
+				assert.strictEqual(got.range.start.line, want.line - 1, `[${tc.name}] Line mismatch at index ${i}`);
+				assert.strictEqual(got.source, want.source, `[${tc.name}] Source mismatch at index ${i}`);
+				assert.strictEqual(got.severity, want.severity, `[${tc.name}] Severity mismatch at index ${i}`);
+			}
+		});
 	}
 });
