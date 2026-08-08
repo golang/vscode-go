@@ -21,6 +21,7 @@ interface DiagnosticTestCase {
 	want: {
 		line: number;
 		source: string;
+		severity: vscode.DiagnosticSeverity;
 	}[];
 }
 
@@ -52,10 +53,10 @@ suite('Diagnostic consolidation', () => {
 				]
 			},
 			want: [
-				{ line: 10, source: 'gopls-test' },
-				{ line: 20, source: 'build-test' },
-				{ line: 30, source: 'vet-test' },
-				{ line: 40, source: 'lint-test' }
+				{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Warning },
+				{ line: 20, source: 'build-test', severity: vscode.DiagnosticSeverity.Warning },
+				{ line: 30, source: 'vet-test', severity: vscode.DiagnosticSeverity.Warning },
+				{ line: 40, source: 'lint-test', severity: vscode.DiagnosticSeverity.Warning }
 			]
 		},
 		{
@@ -76,13 +77,13 @@ suite('Diagnostic consolidation', () => {
 				]
 			},
 			want: [
-				{ line: 10, source: 'gopls-test' },
-				{ line: 20, source: 'build-test' },
-				{ line: 30, source: 'vet-test' },
-				{ line: 40, source: 'lint-test' }
+				{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 20, source: 'build-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 30, source: 'vet-test', severity: vscode.DiagnosticSeverity.Warning },
+				{ line: 40, source: 'lint-test', severity: vscode.DiagnosticSeverity.Warning }
 			]
 		},
-		// TODO(hxjiang): update test case once dedup based on line and column and severity
+		// TODO(hxjiang): update test case once dedup based on line and column
 		{
 			name: 'Same line, different columns, same severity',
 			diags: {
@@ -94,19 +95,27 @@ suite('Diagnostic consolidation', () => {
 				vet: [{ file: filePath, line: 10, col: 25, msg: 'masked by gopls', severity: 'error' }],
 				lint: [{ file: filePath, line: 10, col: 35, msg: 'masked by gopls', severity: 'error' }]
 			},
-			want: [{ line: 10, source: 'gopls-test' }]
+			want: [{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Error }]
 		},
-		// TODO(hxjiang): update test case once dedup based on line and column and severity
 		{
 			name: 'Same line and column, lower priority has higher severity',
 			diags: {
 				gopls: [{ file: filePath, line: 10, col: 5, msg: 'unmasked - highest priority', severity: 'warning' }],
 				lint: [
 					{ file: filePath, line: 10, col: 5, msg: 'masked by gopls', severity: 'warning' },
-					{ file: filePath, line: 10, col: 5, msg: 'masked by gopls', severity: 'error' }
+					{
+						file: filePath,
+						line: 10,
+						col: 5,
+						msg: 'unmasked - higher severity than gopls warning',
+						severity: 'error'
+					}
 				]
 			},
-			want: [{ line: 10, source: 'gopls-test' }]
+			want: [
+				{ line: 10, source: 'lint-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Warning }
+			]
 		}
 	];
 
@@ -154,17 +163,32 @@ suite('Diagnostic consolidation', () => {
 
 				// Read diagnostics directly from the "PROBLEMS" tab.
 				const problems = vscode.languages.getDiagnostics(fileURI);
+
+				const sorted = [...problems].sort((a, b) => {
+					if (a.range.start.line !== b.range.start.line) {
+						return a.range.start.line - b.range.start.line;
+					}
+					if (a.range.start.character !== b.range.start.character) {
+						return a.range.start.character - b.range.start.character;
+					}
+					if (a.severity !== b.severity) {
+						return a.severity - b.severity;
+					}
+					return a.source!.localeCompare(b.source!);
+				});
+
 				assert.strictEqual(
-					problems.length,
+					sorted.length,
 					tc.want.length,
-					`[${tc.name}] Expected ${tc.want.length} diagnostics in problem tab, got ${problems.length}: ${JSON.stringify(problems.map((p) => ({ source: p.source, msg: p.message })))}`
+					`[${tc.name}] Expected ${tc.want.length} diagnostics in problem tab, got ${sorted.length}: ${JSON.stringify(sorted.map((p) => ({ source: p.source, msg: p.message })))}`
 				);
-				const sorted = [...problems].sort((a, b) => a.range.start.line - b.range.start.line);
+
 				for (let i = 0; i < tc.want.length; i++) {
 					const want = tc.want[i];
 					const got = sorted[i];
 					assert.strictEqual(got.range.start.line, want.line - 1, `[${tc.name}] Line mismatch at index ${i}`);
 					assert.strictEqual(got.source, want.source, `[${tc.name}] Source mismatch at index ${i}`);
+					assert.strictEqual(got.severity, want.severity, `[${tc.name}] Severity mismatch at index ${i}`);
 				}
 			});
 		}

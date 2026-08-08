@@ -21,11 +21,12 @@
  *
  * 1. Upstream Filtering:
  *    When a lower-priority tool runs, any incoming diagnostic on a line that already
- *    contains a diagnostic from a higher-priority source is ignored.
+ *    contains a diagnostic from a higher-priority source with equal or higher severity
+ *    is ignored. If the incoming diagnostic is strictly more severe, it is surfaced.
  *
  * 2. Downstream Eviction:
  *    When a higher-priority source publishes diagnostics, any existing diagnostics
- *    from lower-priority sources on those same lines are evicted.
+ *    from lower-priority sources on those same lines with equal or lower severity are evicted.
  *
  * -------------------------------------------------------------------------------------
  * ### Runtime Modes
@@ -251,20 +252,30 @@ export function handleErrors(
 
 /**
  * Returns targetDiags with any diagnostics that coincide on the same line
- * with a diagnostic in maskingDiags removed.
+ * with a diagnostic in maskingDiags of equal or higher severity removed.
+ *
+ * Diagnostics from targetDiags that are strictly more severe than all masking
+ * diagnostics on the same line are preserved.
  */
 export function filterDiags(
 	targetDiags: readonly vscode.Diagnostic[],
 	maskingDiags: readonly vscode.Diagnostic[]
 ): vscode.Diagnostic[] {
-	const lines = new Set<number>();
+	// Max severity for each line number.
+	const maxSeverity = new Map<number, vscode.DiagnosticSeverity>();
 	for (const diag of maskingDiags) {
-		lines.add(diag.range.start.line);
+		const line = diag.range.start.line;
+		const current = maxSeverity.get(line);
+		// Lower numerical values represent higher severity (0 = Error, 1 = Warning, etc.).
+		if (current === undefined || diag.severity < current) {
+			maxSeverity.set(line, diag.severity);
+		}
 	}
 
 	const deduped: vscode.Diagnostic[] = [];
 	for (const diag of targetDiags) {
-		if (!lines.has(diag.range.start.line)) {
+		const maxMaskingSeverity = maxSeverity.get(diag.range.start.line);
+		if (maxMaskingSeverity === undefined || diag.severity < maxMaskingSeverity) {
 			deduped.push(diag);
 		}
 	}
