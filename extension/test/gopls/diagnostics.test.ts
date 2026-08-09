@@ -103,19 +103,23 @@ suite('Diagnostic consolidation - unit', () => {
 				{ line: 40, source: 'lint-test', severity: vscode.DiagnosticSeverity.Warning }
 			]
 		},
-		// TODO(hxjiang): update test case once dedup based on line and column
 		{
 			name: 'Same line, different columns, same severity',
 			diags: {
 				gopls: [{ file: filePath, line: 10, col: 5, msg: 'unmasked - highest priority', severity: 'error' }],
 				build: [
 					{ file: filePath, line: 10, col: 5, msg: 'masked by gopls', severity: 'error' },
-					{ file: filePath, line: 10, col: 15, msg: 'masked by gopls', severity: 'error' }
+					{ file: filePath, line: 10, col: 15, msg: 'unmasked - no higher priority', severity: 'error' }
 				],
-				vet: [{ file: filePath, line: 10, col: 25, msg: 'masked by gopls', severity: 'error' }],
-				lint: [{ file: filePath, line: 10, col: 35, msg: 'masked by gopls', severity: 'error' }]
+				vet: [{ file: filePath, line: 10, col: 25, msg: 'unmasked - no higher priority', severity: 'error' }],
+				lint: [{ file: filePath, line: 10, col: 35, msg: 'unmasked - no higher priority', severity: 'error' }]
 			},
-			want: [{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Error }]
+			want: [
+				{ line: 10, source: 'gopls-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 10, source: 'build-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 10, source: 'vet-test', severity: vscode.DiagnosticSeverity.Error },
+				{ line: 10, source: 'lint-test', severity: vscode.DiagnosticSeverity.Error }
+			]
 		},
 		{
 			name: 'Same line and column, lower priority has higher severity',

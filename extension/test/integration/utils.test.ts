@@ -4,9 +4,7 @@
  *--------------------------------------------------------*/
 
 import assert from 'assert';
-import * as vscode from 'vscode';
 import { GoVersion, substituteEnv } from '../../src/util';
-import { filterDiags } from '../../src/diagnostics/diagnostics';
 import { toolExecutionEnvironment } from '../../src/goEnv';
 import sinon = require('sinon');
 import { getGoConfig } from '../../src/config';
@@ -52,79 +50,6 @@ suite('utils Tests', () => {
 			assert.equal(go.format(), wantFormat, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 			assert.equal(go.format(true), wantFormatIncludePrerelease, `GoVersion(${input}) = ${JSON.stringify(go)}`);
 		}
-	});
-});
-
-suite('Diagnostic Deduplication Tests', () => {
-	test('filterDiags removes duplicate diagnostics on same line with equal or lower severity', async () => {
-		const targetDiagnostics = [
-			new vscode.Diagnostic(
-				new vscode.Range(1, 2, 1, 3),
-				'first line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 3),
-				'second line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(
-				new vscode.Range(4, 0, 4, 3),
-				'fourth line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			)
-		];
-
-		const maskingDiagnostics = [
-			new vscode.Diagnostic(
-				new vscode.Range(1, 2, 1, 3),
-				'first line diagnostic',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(new vscode.Range(2, 3, 2, 5), 'second line error', vscode.DiagnosticSeverity.Error)
-		];
-
-		const result = filterDiags(targetDiagnostics, maskingDiagnostics);
-
-		// Diagnostics on line 1 and 2 are masked; only line 4 remains.
-		assert.strictEqual(result.length, 1);
-		assert.strictEqual(result[0], targetDiagnostics[3]);
-	});
-
-	test('filterDiags preserves lower priority diagnostics if they have strictly higher severity', async () => {
-		const targetDiagnostics = [
-			new vscode.Diagnostic(
-				new vscode.Range(1, 2, 1, 3),
-				'first line error (lower priority, higher severity)',
-				vscode.DiagnosticSeverity.Error
-			),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 3),
-				'second line warning (lower priority, equal severity)',
-				vscode.DiagnosticSeverity.Warning
-			)
-		];
-
-		const maskingDiagnostics = [
-			new vscode.Diagnostic(
-				new vscode.Range(1, 0, 1, 5),
-				'first line warning (higher priority, lower severity)',
-				vscode.DiagnosticSeverity.Warning
-			),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 5),
-				'second line warning (higher priority, equal severity)',
-				vscode.DiagnosticSeverity.Warning
-			)
-		];
-
-		const result = filterDiags(targetDiagnostics, maskingDiagnostics);
-
-		// Line 1 Error is preserved because Error (0) is more severe than Warning (1).
-		// Line 2 Warning is masked because Warning (1) is not more severe than Warning (1).
-		assert.strictEqual(result.length, 1);
-		assert.strictEqual(result[0], targetDiagnostics[0]);
 	});
 });
 
