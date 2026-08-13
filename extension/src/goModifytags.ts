@@ -18,6 +18,7 @@ export const COMMAND = 'gopls.modify_tags';
 interface GoModifyTagsArgs {
 	URI: string;
 	range: vscode.Range;
+	modification?: 'add' | 'remove';
 	add?: string;
 	addOptions?: string;
 	remove?: string;
@@ -48,6 +49,10 @@ export const addTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	if (!args) {
 		return;
 	}
+
+	// Introduced since gopls v0.23.0, but older gopls will ignore this field.
+	args.modification = 'add';
+
 	const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
 	if (!tags && !options) {
 		return;
@@ -78,6 +83,10 @@ export const removeTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	if (!args) {
 		return;
 	}
+
+	// Introduced since gopls v0.23.0, but older gopls will ignore this field.
+	args.modification = 'remove';
+
 	const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
 	if (!tags && !options) {
 		args.clear = true;
@@ -89,7 +98,7 @@ export const removeTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	if (options) {
 		args.removeOptions = options;
 	}
-	vscode.commands.executeCommand(COMMAND, args);
+	await vscode.commands.executeCommand(COMMAND, args);
 };
 
 // getCommonArgs produces the args used for calling the gopls.modify_tags command.

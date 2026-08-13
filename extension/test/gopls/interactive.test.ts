@@ -9,6 +9,8 @@ import sinon = require('sinon');
 import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
+import { addTags } from '../../src/goModifytags';
+import { MockExtensionContext } from '../mocks/MockContext';
 
 suite('Interactive Refactoring', function () {
 	this.timeout(30000);
@@ -19,7 +21,9 @@ suite('Interactive Refactoring', function () {
 	const testdataDir = path.join(projectDir, 'test', 'testdata', 'interactive');
 	const env = new Env();
 
-	this.afterEach(function () {
+	this.afterEach(async function () {
+		// Revert any unsaved document changes made during refactoring tests.
+		await vscode.commands.executeCommand('workbench.action.files.revert');
 		env.flushTrace(this.currentTest?.state === 'failed');
 		sandbox.restore();
 	});
@@ -121,5 +125,25 @@ suite('Interactive Refactoring', function () {
 		assert.match(docText, /func \(f \*Foo\) Error\(\) string/);
 		assert.match(docText, /func \(f \*Foo\) Temporary\(\) bool/);
 		assert.match(docText, /func \(f \*Foo\) Timeout\(\) bool/);
+	});
+
+	// Regression test for golang/vscode-go#4070.
+	//
+	// TODO: Add tests with settings in place. Currently, with no custom settings,
+	// we expect prompts to be shown; when settings are configured, no prompts
+	// should be expected.
+	test('Add struct tags via addTags', async () => {
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+		editor.selection = new vscode.Selection(3, 1, 3, 11);
+
+		sandbox.stub(vscode.window, 'showInputBox').resolves('json,xml');
+		sandbox.stub(vscode.window, 'showQuickPick').resolves({ value: 'camelcase', label: 'camelCase' } as any);
+
+		await addTags(ctx, env.goCtx)(editor.document.uri);
+
+		const docText = document.getText();
+		assert.match(docText, /Foo string `json:"foo,omitempty" xml:"foo"`/);
+		ctx.teardown();
 	});
 });
