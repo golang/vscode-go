@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
-vscode-go now supports [v3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification) of the Language Server Protocol.
+* The "Go: Generate Interface Stubs" command (`go.impl.cursor`) is now powered by `gopls` by default using interactive refactoring. Place your cursor inside the target type declaration (e.g. `type Foo struct`), and `gopls` will prompt for the interface to implement and insert the method stubs after the type declaration.
+  The previous implementation remains available via the "Go: Generate Interface Stubs (legacy)" command (`go.impl.cursor.legacy`), which inserts method stubs directly at the cursor location.
+* vscode-go now supports [v3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification) of the Language Server Protocol.
 
 ## v0.57.0 (prerelease)
 

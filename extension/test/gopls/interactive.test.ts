@@ -10,7 +10,7 @@ import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { addTags } from '../../src/goModifytags';
-import { implCursor } from '../../src/goImpl';
+import { goplsImpl, legacyImpl } from '../../src/goImpl';
 import { MockExtensionContext } from '../mocks/MockContext';
 
 suite('Interactive Refactoring', function () {
@@ -152,7 +152,7 @@ suite('Interactive Refactoring', function () {
 		ctx.teardown();
 	});
 
-	test('Implement interface via implCursor', async () => {
+	test('Implement interface via gopls', async () => {
 		const ctx = MockExtensionContext.new();
 		const editor = await vscode.window.showTextDocument(document);
 
@@ -174,7 +174,28 @@ suite('Interactive Refactoring', function () {
 			dispose: sinon.fake()
 		} as any);
 
-		await implCursor(ctx, env.goCtx)();
+		await goplsImpl(ctx, env.goCtx)();
+
+		const docText = document.getText();
+		assert.match(docText, /func \(f \*Foo\) Error\(\) string/);
+		assert.match(docText, /func \(f \*Foo\) Temporary\(\) bool/);
+		assert.match(docText, /func \(f \*Foo\) Timeout\(\) bool/);
+		ctx.teardown();
+	});
+
+	test('Implement interface via impl', async () => {
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string
+		// }
+		// //@loc(editor.selection, "")
+		editor.selection = new vscode.Selection(5, 0, 5, 0);
+
+		sandbox.stub(vscode.window, 'showInputBox').resolves('f *Foo net.Error');
+
+		await legacyImpl(ctx, env.goCtx)();
 
 		const docText = document.getText();
 		assert.match(docText, /func \(f \*Foo\) Error\(\) string/);

@@ -166,7 +166,8 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('go.locate.tools', commands.getConfiguredGoTools);
 	registerCommand('go.add.tags', commands.addTags);
 	registerCommand('go.remove.tags', commands.removeTags);
-	registerCommand('go.impl.cursor', commands.implCursor);
+	registerCommand('go.impl.cursor', commands.goplsImpl);
+	registerCommand('go.impl.cursor.legacy', commands.legacyImpl);
 	registerCommand('go.test.cursor', commands.testAtCursor('test'));
 	registerCommand('go.test.cursorOrPrevious', commands.testAtCursorOrPrevious('test'));
 	registerCommand('go.subtest.cursor', commands.subTestAtCursor('test'));

@@ -363,7 +363,12 @@
       {
         "command": "go.impl.cursor",
         "title": "Go: Generate Interface Stubs",
-        "description": "Generates method stub for implementing the provided interface and inserts at the cursor."
+        "description": "Generates method stub for implementing the provided interface for the type at the cursor using gopls."
+      },
+      {
+        "command": "go.impl.cursor.legacy",
+        "title": "Go: Generate Interface Stubs (legacy)",
+        "description": "Generates method stub for implementing the provided interface and inserts at the cursor using impl."
       },
       {
         "command": "go.extractServerChannel",
@@ -3830,6 +3835,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.implCursor && resourceLangId == go",
           "command": "go.impl.cursor",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.implCursor && resourceLangId == go",
+          "command": "go.impl.cursor.legacy",
           "group": "Go group 1"
         },
         {

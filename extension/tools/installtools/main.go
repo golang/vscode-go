@@ -38,6 +38,8 @@ var tools = []struct {
 	// For regression test: golang/vscode-go#3511
 	{"github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "golangci-lint-v2", false, "v2.12.2"},
 	{"github.com/go-delve/delve/cmd/dlv", "", false, ""},
+	// TODO(hxjiang): remove from test after deprecate the "impl".
+	{"github.com/josharian/impl", "", false, "v1.5.0"},
 }
 
 func main() {

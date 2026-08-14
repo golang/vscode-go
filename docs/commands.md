@@ -145,7 +145,11 @@ Generates unit tests for the selected function in the current file using gotests
 
 ### `Go: Generate Interface Stubs`
 
-Generates method stub for implementing the provided interface and inserts at the cursor.
+Generates method stub for implementing the provided interface for the type at the cursor using gopls.
+
+### `Go: Generate Interface Stubs (legacy)`
+
+Generates method stub for implementing the provided interface and inserts at the cursor using impl.
 
 ### `Go: Extract Language Server Logs To Editor`
 

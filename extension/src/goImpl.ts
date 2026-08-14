@@ -41,25 +41,22 @@ function supportsImplementInterface(goCtx: GoExtensionContext): boolean {
 	return true;
 }
 
-// implCursor generates method stubs for implementing the provided interface
-// based on the type defined at cursor.
-//
-// If the gopls support gopls.implement_interface command, the function calls
-// gopls's command in favor of the "impl".
-export const implCursor: CommandFactory = (_ctx, goCtx) => async (uri?: vscode.Uri) => {
-	const useGoplsCommand = supportsImplementInterface(goCtx);
-	if (useGoplsCommand) {
-		telemetryReporter.add(
-			uri
-				? TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CONTEXT_MENU
-				: TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_COMMAND_PALETTE,
-			1
+/**
+ * Generates interface stubs for the type at the cursor using 'gopls.implement_interface'.
+ */
+export const goplsImpl: CommandFactory = (_ctx, goCtx) => async (uri?: vscode.Uri) => {
+	telemetryReporter.add(
+		uri
+			? TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CONTEXT_MENU
+			: TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_COMMAND_PALETTE,
+		1
+	);
+
+	if (!supportsImplementInterface(goCtx)) {
+		vscode.window.showWarningMessage(
+			`Please upgrade gopls to at least v0.23.0 to use the '${GOPLS_IMPLEMENT_INTERFACE_COMMAND}' command`
 		);
-	} else {
-		telemetryReporter.add(
-			uri ? TelemetryKey.COMMAND_TRIGGER_IMPL_CONTEXT_MENU : TelemetryKey.COMMAND_TRIGGER_IMPL_COMMAND_PALETTE,
-			1
-		);
+		return;
 	}
 
 	const editor = vscode.window.activeTextEditor;
@@ -68,13 +65,26 @@ export const implCursor: CommandFactory = (_ctx, goCtx) => async (uri?: vscode.U
 		return;
 	}
 
-	if (useGoplsCommand) {
-		await vscode.commands.executeCommand(GOPLS_IMPLEMENT_INTERFACE_COMMAND, {
-			location: {
-				uri: editor.document.uri.toString(),
-				range: editor.selection
-			}
-		});
+	await vscode.commands.executeCommand(GOPLS_IMPLEMENT_INTERFACE_COMMAND, {
+		location: {
+			uri: editor.document.uri.toString(),
+			range: editor.selection
+		}
+	});
+};
+
+/**
+ * Generates interface stubs at the cursor using the legacy 'impl' tool.
+ */
+export const legacyImpl: CommandFactory = () => async (uri?: vscode.Uri) => {
+	telemetryReporter.add(
+		uri ? TelemetryKey.COMMAND_TRIGGER_IMPL_CONTEXT_MENU : TelemetryKey.COMMAND_TRIGGER_IMPL_COMMAND_PALETTE,
+		1
+	);
+
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showErrorMessage('No active editor found.');
 		return;
 	}
 
