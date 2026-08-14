@@ -1,5 +1,3 @@
-/* eslint-disable no-useless-escape */
-
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -16,10 +14,12 @@ import vscode = require('vscode');
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
 import { interactiveResolveOptions } from './language/form';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 export const GOPLS_IMPLEMENT_INTERFACE_COMMAND = 'gopls.implement_interface';
 
 // Supports only passing interface, see TODO in implCursor to finish
+// eslint-disable-next-line no-useless-escape
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
 
 // supportsImplementInterface checks if gopls supports interactive execution of
@@ -46,14 +46,29 @@ function supportsImplementInterface(goCtx: GoExtensionContext): boolean {
 //
 // If the gopls support gopls.implement_interface command, the function calls
 // gopls's command in favor of the "impl".
-export const implCursor: CommandFactory = (_ctx, goCtx) => async () => {
+export const implCursor: CommandFactory = (_ctx, goCtx) => async (uri?: vscode.Uri) => {
+	const useGoplsCommand = supportsImplementInterface(goCtx);
+	if (useGoplsCommand) {
+		telemetryReporter.add(
+			uri
+				? TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CONTEXT_MENU
+				: TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_COMMAND_PALETTE,
+			1
+		);
+	} else {
+		telemetryReporter.add(
+			uri ? TelemetryKey.COMMAND_TRIGGER_IMPL_CONTEXT_MENU : TelemetryKey.COMMAND_TRIGGER_IMPL_COMMAND_PALETTE,
+			1
+		);
+	}
+
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found.');
 		return;
 	}
 
-	if (supportsImplementInterface(goCtx)) {
+	if (useGoplsCommand) {
 		await vscode.commands.executeCommand(GOPLS_IMPLEMENT_INTERFACE_COMMAND, {
 			location: {
 				uri: editor.document.uri.toString(),

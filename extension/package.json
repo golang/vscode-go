@@ -1816,6 +1816,11 @@
               "default": true,
               "description": "If true, adds command to fill struct literal with default values to the editor context menu"
             },
+            "implCursor": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, adds command to generate interface stubs to the editor context menu"
+            },
             "testAtCursor": {
               "type": "boolean",
               "default": false,
@@ -1883,6 +1888,7 @@
             "addTags": true,
             "removeTags": false,
             "fillStruct": false,
+            "implCursor": true,
             "testAtCursor": true,
             "testFile": false,
             "testPackage": false,
@@ -3819,6 +3825,11 @@
         {
           "when": "editorTextFocus && config.go.editorContextMenuCommands.removeTags && resourceLangId == go",
           "command": "go.remove.tags",
+          "group": "Go group 1"
+        },
+        {
+          "when": "editorTextFocus && config.go.editorContextMenuCommands.implCursor && resourceLangId == go",
+          "command": "go.impl.cursor",
           "group": "Go group 1"
         },
         {
