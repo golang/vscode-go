@@ -10,6 +10,7 @@ import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
 import { addTags } from '../../src/goModifytags';
+import { implCursor } from '../../src/goImpl';
 import { MockExtensionContext } from '../mocks/MockContext';
 
 suite('Interactive Refactoring', function () {
@@ -135,6 +136,10 @@ suite('Interactive Refactoring', function () {
 	test('Add struct tags via addTags', async () => {
 		const ctx = MockExtensionContext.new();
 		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string //@loc(editor.selection, "Foo string")
+		// }
 		editor.selection = new vscode.Selection(3, 1, 3, 11);
 
 		sandbox.stub(vscode.window, 'showInputBox').resolves('json,xml');
@@ -144,6 +149,26 @@ suite('Interactive Refactoring', function () {
 
 		const docText = document.getText();
 		assert.match(docText, /Foo string `json:"foo,omitempty" xml:"foo"`/);
+		ctx.teardown();
+	});
+
+	test('Implement interface via implCursor', async () => {
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string //@loc(editor.selection, "Foo string")
+		// }
+		editor.selection = new vscode.Selection(3, 1, 3, 11);
+
+		sandbox.stub(vscode.window, 'showInputBox').resolves('f *Foo net.Error');
+
+		await implCursor(ctx, env.goCtx)();
+
+		const docText = document.getText();
+		assert.match(docText, /func \(f \*Foo\) Error\(\) string/);
+		assert.match(docText, /func \(f \*Foo\) Temporary\(\) bool/);
+		assert.match(docText, /func \(f \*Foo\) Timeout\(\) bool/);
 		ctx.teardown();
 	});
 });

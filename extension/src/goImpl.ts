@@ -18,6 +18,8 @@ import { CommandFactory } from './commands';
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
 
+// implCursor generates method stubs for implementing the provided interface
+// based on the type defined at cursor.
 export const implCursor: CommandFactory = () => () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
@@ -44,33 +46,40 @@ export const implCursor: CommandFactory = () => () => {
 			// if matches[1] is undefined then detect receiver type
 			// take first character and use as receiver name
 
-			runGoImpl([matches[1], matches[2]], cursor.start, editor);
+			return runGoImpl([matches[1], matches[2]], cursor.start, editor);
 		});
 };
 
-function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor) {
-	const goimpl = getBinPath('impl');
-	const p = cp.execFile(
-		goimpl,
-		args,
-		{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
-		(err, stdout, stderr) => {
-			if (err && (<any>err).code === 'ENOENT') {
-				void promptForMissingTool('impl');
-				return;
-			}
+function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor): Promise<void> {
+	return new Promise((resolve) => {
+		const goimpl = getBinPath('impl');
+		const p = cp.execFile(
+			goimpl,
+			args,
+			{ env: toolExecutionEnvironment(), cwd: dirname(editor.document.fileName) },
+			(err, stdout, stderr) => {
+				if (err && (<any>err).code === 'ENOENT') {
+					void promptForMissingTool('impl');
+					return resolve();
+				}
 
-			if (err) {
-				vscode.window.showInformationMessage(`Cannot stub interface: ${stderr}`);
-				return;
-			}
+				if (err) {
+					vscode.window.showInformationMessage(`Cannot stub interface: ${stderr}`);
+					return resolve();
+				}
 
-			editor.edit((editBuilder) => {
-				editBuilder.insert(insertPos, stdout);
-			});
+				editor
+					.edit((editBuilder) => {
+						editBuilder.insert(insertPos, stdout);
+					})
+					.then(
+						() => resolve(),
+						() => resolve()
+					);
+			}
+		);
+		if (p.pid) {
+			p.stdin?.end();
 		}
-	);
-	if (p.pid) {
-		p.stdin?.end();
-	}
+	});
 }
