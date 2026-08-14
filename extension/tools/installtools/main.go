@@ -34,19 +34,16 @@ var tools = []struct {
 	path          string
 	dest          string
 	preferPreview bool
-	// versions is a list of supportedVersions sorted by
-	// goMinorVersion. If we want to pin a tool's version
-	// add a fake entry with a large goMinorVersion
-	// value and the pinned tool version as the last entry.
-	// Nil of empty list indicates we can use the `latest` version.
-	versions []finalVersion
+	version       string // pinned version, or empty string to use "latest" (or preview if preferPreview)
 }{
 	// TODO: auto-generate based on allTools.ts.in.
-	{"golang.org/x/tools/gopls", "", true, nil},
-	{"github.com/cweill/gotests/gotests", "", false, nil},
-	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
-	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{21, "v0.4.7"}}},
-	{"github.com/go-delve/delve/cmd/dlv", "", false, nil},
+	{"golang.org/x/tools/gopls", "", true, ""},
+	{"github.com/cweill/gotests/gotests", "", false, ""},
+	{"github.com/haya14busa/goplay/cmd/goplay", "", false, ""},
+	{"honnef.co/go/tools/cmd/staticcheck", "", false, ""},
+	// TODO(hxjiang): remove from test environment later.
+	{"github.com/josharian/impl", "", false, "v1.5.0"},
+	{"github.com/go-delve/delve/cmd/dlv", "", false, ""},
 }
 
 // pickVersion returns the version to install based on the supported
@@ -134,7 +131,10 @@ func installTools(binDir string, goMinorVersion int) error {
 	// For tools installation, ensure GOTOOLCHAIN=auto.
 	env := append(os.Environ(), "GO111MODULE=on", "GOTOOLCHAIN=auto")
 	for _, tool := range tools {
-		ver := pickVersion(goMinorVersion, tool.versions, pickLatest(tool.path, tool.preferPreview))
+		ver := tool.version
+		if ver == "" {
+			ver = pickLatest(tool.path, tool.preferPreview)
+		}
 		path := tool.path + "@" + ver
 		cmd := exec.Command("go", installCmd, path)
 		cmd.Env = env
