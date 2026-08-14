@@ -37,8 +37,6 @@ var tools = []struct {
 	{"honnef.co/go/tools/cmd/staticcheck", "", false, ""},
 	// For regression test: golang/vscode-go#3511
 	{"github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "golangci-lint-v2", false, "v2.12.2"},
-	// TODO(hxjiang): remove from test environment later.
-	{"github.com/josharian/impl", "", false, "v1.5.0"},
 	{"github.com/go-delve/delve/cmd/dlv", "", false, ""},
 }
 

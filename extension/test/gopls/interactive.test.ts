@@ -161,7 +161,18 @@ suite('Interactive Refactoring', function () {
 		// }
 		editor.selection = new vscode.Selection(3, 1, 3, 11);
 
-		sandbox.stub(vscode.window, 'showInputBox').resolves('f *Foo net.Error');
+		sandbox.stub(vscode.window, 'createQuickPick').returns({
+			onDidAccept: (cb: () => void) => cb(),
+			selectedItems: [{ label: 'net.Error', value: 'net.Error' }],
+			title: '',
+			placeholder: '',
+			matchOnDescription: true,
+			onDidChangeValue: sinon.fake(),
+			onDidHide: sinon.fake(),
+			show: sinon.fake(),
+			hide: sinon.fake(),
+			dispose: sinon.fake()
+		} as any);
 
 		await implCursor(ctx, env.goCtx)();
 

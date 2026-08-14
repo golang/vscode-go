@@ -22,7 +22,7 @@ import { getFromGlobalState, updateGlobalState } from './stateUtils';
 
 const generatedWord = 'Generated ';
 
-export const COMMAND = 'gopls.add_test';
+export const GOPLS_ADD_TEST_COMMAND = 'gopls.add_test';
 
 /**
  * If current active editor has a Go file, returns the editor.
@@ -131,8 +131,8 @@ export const goplsGenerateTest: CommandFactory = (_, goCtx) => async (uri: vscod
 	} else {
 		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_COMMAND_PALETTE, 1);
 	}
-	if (!goCtx.serverInfo?.Commands?.includes(COMMAND)) {
-		vscode.window.showWarningMessage(`Please upgrade gopls to use the '${COMMAND}' command`);
+	if (!goCtx.serverInfo?.Commands?.includes(GOPLS_ADD_TEST_COMMAND)) {
+		vscode.window.showWarningMessage(`Please upgrade gopls to use the '${GOPLS_ADD_TEST_COMMAND}' command`);
 		return;
 	}
 
@@ -141,7 +141,7 @@ export const goplsGenerateTest: CommandFactory = (_, goCtx) => async (uri: vscod
 		return;
 	}
 
-	await vscode.commands.executeCommand(COMMAND, {
+	await vscode.commands.executeCommand(GOPLS_ADD_TEST_COMMAND, {
 		URI: editor.document.uri.toString(),
 		range: editor.selection
 	});

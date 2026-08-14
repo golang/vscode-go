@@ -14,18 +14,55 @@ import { promptForMissingTool } from './goInstallTools';
 import { getBinPath } from './util';
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
+import { GoExtensionContext } from './context';
+import { interactiveResolveOptions } from './language/form';
+
+export const GOPLS_IMPLEMENT_INTERFACE_COMMAND = 'gopls.implement_interface';
 
 // Supports only passing interface, see TODO in implCursor to finish
 const inputRegex = /^(\w+\ \*?\w+\ )?([\w\.\-\/]+)$/;
 
+// supportsImplementInterface checks if gopls supports interactive execution of
+// the "implement_interface" command.
+//
+// Unlike other commands, checking command existence is insufficient because gopls
+// v0.22.+ exposed the command before the interactive command resolution protocol
+// was finalized in v0.23.0. Therefore, we check whether the language server
+// advertises 'command' in its server capability.
+function supportsImplementInterface(goCtx: GoExtensionContext): boolean {
+	if (!goCtx.serverInfo?.Commands?.includes(GOPLS_IMPLEMENT_INTERFACE_COMMAND)) {
+		return false;
+	}
+	const option = goCtx.languageClient?.initializeResult?.capabilities?.experimental?.interactiveResolveProvider as
+		interactiveResolveOptions | undefined;
+	if (!option || !Array.isArray(option.kinds) || !option.kinds.includes('command')) {
+		return false;
+	}
+	return true;
+}
+
 // implCursor generates method stubs for implementing the provided interface
 // based on the type defined at cursor.
-export const implCursor: CommandFactory = () => () => {
+//
+// If the gopls support gopls.implement_interface command, the function calls
+// gopls's command in favor of the "impl".
+export const implCursor: CommandFactory = (_ctx, goCtx) => async () => {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showErrorMessage('No active editor found.');
 		return;
 	}
+
+	if (supportsImplementInterface(goCtx)) {
+		await vscode.commands.executeCommand(GOPLS_IMPLEMENT_INTERFACE_COMMAND, {
+			location: {
+				uri: editor.document.uri.toString(),
+				range: editor.selection
+			}
+		});
+		return;
+	}
+
 	const cursor = editor.selection;
 	return vscode.window
 		.showInputBox({
@@ -50,6 +87,7 @@ export const implCursor: CommandFactory = () => () => {
 		});
 };
 
+// TODO(hxjiang): remove impl from the vscode-go extension.
 function runGoImpl(args: string[], insertPos: vscode.Position, editor: vscode.TextEditor): Promise<void> {
 	return new Promise((resolve) => {
 		const goimpl = getBinPath('impl');

@@ -10,7 +10,7 @@ import { CommandFactory } from './commands';
 import { getGoConfig } from './config';
 import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
-export const COMMAND = 'gopls.modify_tags';
+export const GOPLS_MODIFY_TAGS_COMMAND = 'gopls.modify_tags';
 
 // Interface for the arguments passed to gopls.modify_tags command. URI and range
 // are required parameters collected by the extension based on the open editor,
@@ -69,7 +69,7 @@ export const addTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	if (template) {
 		args.valueFormat = template;
 	}
-	await vscode.commands.executeCommand(COMMAND, args);
+	await vscode.commands.executeCommand(GOPLS_MODIFY_TAGS_COMMAND, args);
 };
 
 export const removeTags: CommandFactory = () => async (uri: vscode.Uri) => {
@@ -98,7 +98,7 @@ export const removeTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	if (options) {
 		args.removeOptions = options;
 	}
-	await vscode.commands.executeCommand(COMMAND, args);
+	await vscode.commands.executeCommand(GOPLS_MODIFY_TAGS_COMMAND, args);
 };
 
 // getCommonArgs produces the args used for calling the gopls.modify_tags command.
