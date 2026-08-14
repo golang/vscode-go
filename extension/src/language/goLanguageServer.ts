@@ -68,6 +68,7 @@ import { GoExtensionContext } from '../context';
 import { GoDocumentSelector } from '../goMode';
 import { GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
 import { GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
+import { GOPLS_IMPLEMENT_INTERFACE_COMMAND } from '../goImpl';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
 import {
 	InteractiveExecuteCommandParams,
@@ -813,6 +814,12 @@ export async function buildLanguageClient(
 						switch (item.command.command) {
 							case GOPLS_ADD_TEST_COMMAND:
 								telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_CODE_ACTION, 1);
+								break;
+							case GOPLS_IMPLEMENT_INTERFACE_COMMAND:
+								telemetryReporter.add(
+									TelemetryKey.COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CODE_ACTION,
+									1
+								);
 								break;
 							case GOPLS_MODIFY_TAGS_COMMAND:
 								telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CODE_ACTION, 1);

@@ -65,11 +65,18 @@ export enum TelemetryKey {
 	COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU = 'vscode-go/command/trigger:gopls.modify_tags-context_menu',
 	COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CODE_ACTION = 'vscode-go/command/trigger:gopls.modify_tags-code_action',
 
+	COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_COMMAND_PALETTE = 'vscode-go/command/trigger:gopls.implement_interface-command_palette',
+	COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CONTEXT_MENU = 'vscode-go/command/trigger:gopls.implement_interface-context_menu',
+	COMMAND_TRIGGER_GOPLS_IMPLEMENT_INTERFACE_CODE_ACTION = 'vscode-go/command/trigger:gopls.implement_interface-code_action',
+
 	COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE = 'vscode-go/command/trigger:gotests-command_palette',
 	COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU = 'vscode-go/command/trigger:gotests-context_menu',
 
 	COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE = 'vscode-go/command/trigger:gomodifytags-command_palette',
-	COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU = 'vscode-go/command/trigger:gomodifytags-context_menu'
+	COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU = 'vscode-go/command/trigger:gomodifytags-context_menu',
+
+	COMMAND_TRIGGER_IMPL_COMMAND_PALETTE = 'vscode-go/command/trigger:impl-command_palette',
+	COMMAND_TRIGGER_IMPL_CONTEXT_MENU = 'vscode-go/command/trigger:impl-context_menu'
 }
 
 /**
