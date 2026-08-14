@@ -259,7 +259,11 @@ Use the [`Go: Add Tags to Struct Fields`](commands.md#go-add-tags-to-struct-fiel
 
 ### Generate interface implementation
 
-Use the [`Go: Generate Interface Stubs`](commands.md#go-generate-interface-stubs) command to automatically generate method stubs for a given interface. This feature is provided by the [`impl`](tools.md#impl) tool.
+Use the [`Go: Generate Interface Stubs`](commands.md#go-generate-interface-stubs) command to automatically generate method stubs for a given interface. With the cursor inside a type declaration (e.g. `type Foo struct`), running this command triggers an interactive prompt provided by `gopls` to select the interface, and inserts the method stubs after the type declaration.
+
+<!-- TODO(hxjiang): remove the paragraph below once fully deprecated -->
+
+Alternatively, use the [`Go: Generate Interface Stubs (legacy)`](commands.md#go-generate-interface-stubs-legacy) command provided by the [`impl`](tools.md#impl) tool to prompt for the receiver and interface, inserting the method stubs directly at the cursor location.
 
 <div style="text-align: center;"><img src="images/generateinterfaceimplementation.gif" alt="Generate functions to implement an interface" style="width: 75%"> </div>
 

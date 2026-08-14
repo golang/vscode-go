@@ -48,7 +48,7 @@ This tool provides support for the [`Go: Run on Go Playground`](features.md#go-p
 
 ### [`impl`](https://github.com/josharian/impl)
 
-This tool provides support for the [`Go: Generate Interface Stubs`](features.md#generate-interface-implementation) command.
+This tool provides support for the legacy [`Go: Generate Interface Stubs (legacy)`](features.md#generate-interface-implementation) command.
 
 ### [`gotests`](https://github.com/cweill/gotests/)
 

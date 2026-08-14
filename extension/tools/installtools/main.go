@@ -42,6 +42,8 @@ var tools = []struct {
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, ""},
 	{"honnef.co/go/tools/cmd/staticcheck", "", false, ""},
 	{"github.com/go-delve/delve/cmd/dlv", "", false, ""},
+	// TODO(hxjiang): remove from test after deprecate the "impl".
+	{"github.com/josharian/impl", "", false, "v1.5.0"},
 }
 
 // pickVersion returns the version to install based on the supported
