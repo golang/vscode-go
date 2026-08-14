@@ -66,8 +66,8 @@ import { ActiveProgressTerminals, IProgressTerminal, ProgressTerminal } from '..
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
 import { GoDocumentSelector } from '../goMode';
-import { COMMAND as GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
-import { COMMAND as GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
+import { GOPLS_ADD_TEST_COMMAND } from '../goGenerateTests';
+import { GOPLS_MODIFY_TAGS_COMMAND } from '../goModifytags';
 import { TelemetryKey, telemetryReporter } from '../goTelemetry';
 import {
 	InteractiveExecuteCommandParams,

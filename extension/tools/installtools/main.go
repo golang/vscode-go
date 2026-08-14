@@ -41,8 +41,6 @@ var tools = []struct {
 	{"github.com/cweill/gotests/gotests", "", false, ""},
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, ""},
 	{"honnef.co/go/tools/cmd/staticcheck", "", false, ""},
-	// TODO(hxjiang): remove from test environment later.
-	{"github.com/josharian/impl", "", false, "v1.5.0"},
 	{"github.com/go-delve/delve/cmd/dlv", "", false, ""},
 }
 
