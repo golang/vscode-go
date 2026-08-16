@@ -10,7 +10,7 @@ import { getBinPath } from './util';
 import { lsofDarwinCommand, parseLsofProcesses } from './utils/lsofProcessParser';
 import { getEnvPath, getCurrentGoRoot } from './utils/pathUtils';
 import { parsePsProcesses, psDarwinCommand, psLinuxCommand } from './utils/psProcessParser';
-import { parseWmicProcesses, wmicCommand } from './utils/wmicProcessParser';
+import { getWindowsProcesses } from './utils/windowsProcessParser';
 import vscode = require('vscode');
 
 export async function pickProcess(): Promise<string> {
@@ -173,27 +173,23 @@ export function mergeExecutableAttachItem(processes: AttachItem[], addlAttachIte
 }
 
 async function getAllProcesses(): Promise<AttachItem[]> {
-	let processCmd: ProcessListCommand;
 	switch (process.platform) {
 		case 'win32':
-			processCmd = wmicCommand;
-			break;
-		case 'darwin':
-			processCmd = psDarwinCommand;
-			break;
-		case 'linux':
-			processCmd = psLinuxCommand;
-			break;
+			return await getWindowsProcesses();
+		case 'darwin': {
+			const { stdout } = await runCommand(psDarwinCommand);
+			return parsePsProcesses(stdout);
+		}
+		case 'linux': {
+			const { stdout } = await runCommand(psLinuxCommand);
+			return parsePsProcesses(stdout);
+		}
 		default:
 			// Other operating systems are not supported.
 			throw new Error(
 				`'pickProcess' and 'pickGoProcess' are not supported for ${process.platform}. Set process id in launch.json instead.`
 			);
 	}
-
-	const { stdout } = await runCommand(processCmd);
-
-	return process.platform === 'win32' ? parseWmicProcesses(stdout) : parsePsProcesses(stdout);
 }
 
 async function runCommand(

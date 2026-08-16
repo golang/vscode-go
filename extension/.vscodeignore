@@ -18,6 +18,7 @@ codereview.cfg
 docs/
 go.*
 node_modules/
+!node_modules/@vscode/win32-app-container-tokens/**
 out/
 src/
 test/

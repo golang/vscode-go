@@ -6,6 +6,8 @@
 import assert from 'assert';
 import { AttachItem, compareByProcessId, mergeExecutableAttachItem, parseGoVersionOutput } from '../../src/pickProcess';
 import { parseLsofProcesses } from '../../src/utils/lsofProcessParser';
+import { parsePsProcesses } from '../../src/utils/psProcessParser';
+import { parseWindowsProcessInfo } from '../../src/utils/windowsProcessParser';
 
 suite('Pick Process Tests', () => {
 	test('Parse go version output', () => {
@@ -160,6 +162,97 @@ n/User/name/go/bin/go`,
 				assert.strictEqual(tc.processes[i].processName, tc.want[i].processName);
 				assert.strictEqual(tc.processes[i].executable, tc.want[i].executable);
 			}
+		}
+	});
+
+	test('Parse ps output (Linux/macOS)', () => {
+		const secondColumnCharacters = 50;
+		const commColumnTitle = ''.padStart(secondColumnCharacters, 'a');
+		const commVal = 'my-go-app'.padEnd(secondColumnCharacters - 1, ' ');
+		const input = `PID ${commColumnTitle} ARGS\n 1234 ${commVal} /usr/local/bin/my-go-app --flag`;
+		const got = parsePsProcesses(input);
+		assert.strictEqual(got.length, 1);
+		assert.strictEqual(got[0].id, '1234');
+		assert.strictEqual(got[0].processName, 'my-go-app');
+		assert.strictEqual(got[0].commandLine, '/usr/local/bin/my-go-app --flag');
+	});
+
+	test('Parse windows process info', () => {
+		const tt = [
+			{
+				input: {
+					processId: 1234,
+					parentProcessId: 100,
+					creationDate: 1700000000,
+					commandLine: '"C:\\Program Files\\Go\\bin\\go.exe" run main.go'
+				},
+				want: {
+					id: '1234',
+					label: 'go.exe',
+					processName: 'go.exe',
+					description: '1234',
+					detail: '"C:\\Program Files\\Go\\bin\\go.exe" run main.go',
+					executable: 'C:\\Program Files\\Go\\bin\\go.exe'
+				}
+			},
+			{
+				input: {
+					processId: 5678,
+					parentProcessId: 100,
+					creationDate: 1700000000,
+					commandLine: 'C:\\tools\\myapp.exe --port 8080'
+				},
+				want: {
+					id: '5678',
+					label: 'myapp.exe',
+					processName: 'myapp.exe',
+					description: '5678',
+					detail: 'C:\\tools\\myapp.exe --port 8080',
+					executable: 'C:\\tools\\myapp.exe'
+				}
+			},
+			{
+				input: {
+					processId: 9012,
+					parentProcessId: 100,
+					creationDate: 1700000000,
+					commandLine: '\\??\\C:\\Windows\\system32\\cmd.exe'
+				},
+				want: {
+					id: '9012',
+					label: 'cmd.exe',
+					processName: 'cmd.exe',
+					description: '9012',
+					detail: '\\??\\C:\\Windows\\system32\\cmd.exe',
+					executable: '\\??\\C:\\Windows\\system32\\cmd.exe'
+				}
+			},
+			{
+				input: {
+					processId: 44,
+					parentProcessId: 0,
+					creationDate: 1700000000,
+					commandLine: ''
+				},
+				want: {
+					id: '44',
+					label: 'Process 44',
+					processName: 'Process 44',
+					description: '44',
+					detail: '',
+					executable: ''
+				}
+			}
+		];
+
+		for (const tc of tt) {
+			const got = parseWindowsProcessInfo(tc.input);
+			assert.strictEqual(got.id, tc.want.id);
+			assert.strictEqual(got.label, tc.want.label);
+			assert.strictEqual(got.processName, tc.want.processName);
+			assert.strictEqual(got.description, tc.want.description);
+			assert.strictEqual(got.detail, tc.want.detail);
+			assert.strictEqual(got.executable, tc.want.executable);
 		}
 	});
 });
