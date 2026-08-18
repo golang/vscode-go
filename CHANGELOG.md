@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
   - Diagnostics on different columns of the same line can now coexist.
 * The "Go: Generate Interface Stubs" command (`go.impl.cursor`) is now powered by `gopls` by default using interactive refactoring. Place your cursor inside the target type declaration (e.g. `type Foo struct`), and `gopls` will prompt for the interface to implement and insert the method stubs after the type declaration.
   The previous implementation remains available via the "Go: Generate Interface Stubs (legacy)" command (`go.impl.cursor.legacy`), which inserts method stubs directly at the cursor location.
+* Replaced the `wmic`-based Windows process picker for attach debugging with the native `@vscode/win32-app-container-tokens` module, as the `wmic` tool itself is deprecated on Windows ([#3687](https://github.com/golang/vscode-go/issues/3687)).
 
 ## v0.57.2 (prerelease)
 
