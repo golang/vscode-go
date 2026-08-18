@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
   The previous implementation remains available via the "Go: Generate Interface Stubs (legacy)" command (`go.impl.cursor.legacy`), which inserts method stubs directly at the cursor location.
 * vscode-go now supports [v3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification) of the Language Server Protocol.
 
+## v0.57.1 (prerelease)
+
+Date: 2026-08-18
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.58.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.56.0-rc.1...v0.57.1
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.58.0
+
 ## v0.57.0 (prerelease)
 
 Date: 2026-07-16
