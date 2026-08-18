@@ -12,6 +12,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 * The "Go: Generate Interface Stubs" command (`go.impl.cursor`) is now powered by `gopls` by default using interactive refactoring. Place your cursor inside the target type declaration (e.g. `type Foo struct`), and `gopls` will prompt for the interface to implement and insert the method stubs after the type declaration.
   The previous implementation remains available via the "Go: Generate Interface Stubs (legacy)" command (`go.impl.cursor.legacy`), which inserts method stubs directly at the cursor location.
 
+## v0.57.2 (prerelease)
+
+Date: 2026-08-18
+
+This is the [pre-release version](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions) of v0.58.
+
+**Full Changelog**: https://github.com/golang/vscode-go/compare/v0.56.0-rc.1...v0.57.2
+**Milestone**: https://github.com/golang/vscode-go/issues?q=milestone%3Av0.58.0
+
 ## v0.57.1 (prerelease)
 
 Date: 2026-08-18
