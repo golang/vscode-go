@@ -1,6 +1,6 @@
 module github.com/golang/vscode-go/extension
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/golang/vscode-go v0.57.0
