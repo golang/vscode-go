@@ -95,18 +95,24 @@ suite('writeVulns', function () {
 		assert(output.toString().includes('No vulnerabilities found'));
 	});
 
+	// TODO(hxjiang): avoid execute the command directly through the language
+	// client. Call code lens provider instead.
 	async function testRunGovulncheck(workspaceDir: string, command: string) {
 		const languageClient = env.languageClient!;
 		const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(workspaceDir, 'go.mod')));
 		const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 
-		languageClient.middleware!.executeCommand!(command, [{ URI: uri }], async (cmd: string, args: any[]) => {
-			const params: ExecuteCommandParams = {
-				command: cmd,
-				arguments: args
-			};
-			return await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
-		});
+		languageClient.middleware!.executeCommand!(
+			command,
+			[{ URI: uri, Pattern: './...' }],
+			async (cmd: string, args: any[]) => {
+				const params: ExecuteCommandParams = {
+					command: cmd,
+					arguments: args
+				};
+				return await languageClient?.sendRequest(ExecuteCommandRequest.type, params);
+			}
+		);
 		const msg = 'vulnerabilities found';
 		const timeoutMS = 10000;
 		await new Promise<void>((resolve, reject) => {
