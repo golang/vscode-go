@@ -335,9 +335,12 @@ export async function debugTestAtCursor(
 		env: goConfig.get('testEnvVars', {}),
 		envFile: goConfig.get('testEnvFile'),
 		args,
-		buildFlags: buildFlags.join(' '),
 		sessionID
 	};
+	// Keep as array; joining here corrupts flag values that contain spaces (e.g. -ldflags '-X k=v').
+	if (buildFlags.length > 0) {
+		debugConfig.buildFlags = buildFlags;
+	}
 	lastDebugConfig = debugConfig;
 	lastDebugWorkspaceFolder = workspaceFolder;
 	if (vscode.workspace.getConfiguration().get('debug.internalConsoleOptions') !== 'neverOpen') {
