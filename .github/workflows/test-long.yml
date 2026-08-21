@@ -2,6 +2,9 @@ name: Long Tests
 
 on: [push]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: ${{ matrix.os }} ${{ matrix.version }} ${{ matrix.go }}
