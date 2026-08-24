@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright 2022 The Go Authors. All rights reserved.
  * Licensed under the MIT License. See LICENSE in the project root for license information.
@@ -95,12 +96,15 @@ suite('writeVulns', function () {
 		assert(output.toString().includes('No vulnerabilities found'));
 	});
 
+	// TODO(hxjiang): avoid execute the command directly through the language
+	// client. Call code lens provider instead.
 	async function testRunGovulncheck(workspaceDir: string, command: string) {
 		const languageClient = env.languageClient!;
 		const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(workspaceDir, 'go.mod')));
 		const uri = languageClient.code2ProtocolConverter.asTextDocumentIdentifier(document).uri;
 
-		languageClient.middleware!.executeCommand!(command, [{ URI: uri }], async (cmd: string, args: any[]) => {
+		languageClient.middleware!
+			.executeCommand!(command, [{ URI: uri, Pattern: './...' }], async (cmd: string, args: any[]) => {
 			const params: ExecuteCommandParams = {
 				command: cmd,
 				arguments: args

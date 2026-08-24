@@ -220,7 +220,7 @@ const testAll = (isModuleMode: boolean) => {
 		const file2contents = fs.readFileSync(file2path, 'utf8');
 
 		const fileEditPatches: any | FilePatch[] = await new Promise((resolve) => {
-			cp.exec(`diff -u ${file1path} ${file2path}`, (err, stdout, stderr) => {
+			cp.exec(`diff -u ${file1path} ${file2path}`, (err, stdout) => {
 				const filePatches: FilePatch[] = getEditsFromUnifiedDiffStr(stdout);
 
 				if (!filePatches || filePatches.length !== 1) {

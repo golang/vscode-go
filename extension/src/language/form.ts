@@ -498,7 +498,7 @@ export interface Validator {
 /**
  * Validators applicable to string fields.
  */
-export type StringValidator = RegexValidator /* | FooValidator */;
+export type StringValidator = RegexValidator; /* | FooValidator */
 
 /**
  * A regex-based validator that ensures an answer matches a given
@@ -1099,7 +1099,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 			}
 
 			case 'enum': {
-				const pickItems = fieldType.entries.map((entry, _) => {
+				const pickItems = fieldType.entries.map((entry) => {
 					return {
 						// Use description if it exists, otherwise use value
 						label: entry.description || entry.value,
