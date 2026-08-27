@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "0 11 * * *"  # 11 UTC, everyday
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: ${{ matrix.os }} ${{ matrix.version }} ${{ matrix.go }}
