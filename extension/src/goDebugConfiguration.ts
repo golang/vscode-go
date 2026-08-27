@@ -528,7 +528,15 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			//    because we do not control the adapter's launch process.
 			if (debugConfiguration.request === 'launch') {
 				const mode = debugConfiguration['mode'] || 'debug';
-				if (['debug', 'test', 'auto'].includes(mode)) {
+				if (
+					['debug', 'test', 'auto'].includes(mode) &&
+					// Presence of the following attributes indicates an externally launched
+					// debug adapter (e.g. a remote `dlv dap` server). The program lives on the
+					// remote and we do not control the adapter's launch process, so skip the
+					// local program validation and massaging entirely.
+					!debugConfiguration.port &&
+					!debugConfiguration.debugServer
+				) {
 					// Massage config to build the target from the package directory
 					// with a relative path. (https://github.com/golang/vscode-go/issues/1713)
 					// parseDebugProgramArgSync will throw an error if `program` is invalid.
@@ -536,13 +544,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 						debugConfiguration['program'],
 						folder?.uri.fsPath
 					);
-					if (
-						dirname &&
-						// Presence of the following attributes indicates externally launched debug adapter.
-						// Don't mess with 'program' if the debug adapter was launched externally.
-						!debugConfiguration.port &&
-						!debugConfiguration.debugServer
-					) {
+					if (dirname) {
 						debugConfiguration['__buildDir'] = dirname;
 						debugConfiguration['program'] = programIsDirectory
 							? '.'
