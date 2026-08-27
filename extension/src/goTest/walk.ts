@@ -43,6 +43,12 @@ export async function walk(
 					continue;
 				}
 
+				// Ignore testdata directories. The go command treats them as
+				// inert, so they never hold packages or tests we care about.
+				if (type === vscode.FileType.Directory && file === 'testdata') {
+					continue;
+				}
+
 				if (type === vscode.FileType.Directory) {
 					dirs2.push(vscode.Uri.joinPath(uri, file));
 				}
