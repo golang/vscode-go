@@ -8,6 +8,11 @@ If you suspect that the Go extension is not working correctly, please follow the
 
 Verify that your project is in good shape by working with it at the command line. Running a command like `go build ./...` in the workspace directory will compile everything. For modules, `go mod tidy` is another good check, though it may modify your `go.mod`.
 
+## Open file in corresponding workspace
+
+Make sure the you edit belongs to your module. If you open a file from a different module, then autocomplete might not work. Use "Open Folder" 
+to open a different go module.
+
 ## Look for serious errors and diagnostics
 
 Check that there aren't any diagnostics that indicate a problem with your workspace. First, check the bottom-center of the VS Code window for any errors. After that, check the package declaration of the any Go files you're working in, and your `go.mod` file. Problems in the workspace configuration can cause many different symptoms. See the [`gopls` workspace setup instructions](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md) for help.
