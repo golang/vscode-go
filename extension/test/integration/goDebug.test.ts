@@ -413,7 +413,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			const wrapperPath = path.join(wrapperDir, 'alternate dlv.bat');
 			fs.writeFileSync(wrapperPath, `@echo off\r\n"${dlvPath}" %*\r\n`);
 
-			const goConfig = new MockCfg({ alternateTools: { dlv: wrapperPath } });
+			const goConfig = new MockCfg({ delveConfig: {}, alternateTools: { dlv: wrapperPath } });
 			const configStub = sinon.stub(extConfig, 'getGoConfig').returns(goConfig);
 
 			try {
