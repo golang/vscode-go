@@ -23,9 +23,11 @@ import * as extConfig from '../../src/config';
 import { GoDebugConfigurationProvider, parseDebugProgramArgSync } from '../../src/goDebugConfiguration';
 import { getBinPath, rmdirRecursive } from '../../src/util';
 import { killProcessTree } from '../../src/utils/processUtils';
+import { clearCacheForTools } from '../../src/utils/pathUtils';
 import getPort = require('get-port');
 import util = require('util');
 import { affectedByIssue832 } from './testutils';
+import { MockCfg } from '../mocks/MockCfg';
 
 // For debugging test and streaming the trace instead of buffering, set this.
 const DEBUG = process.env['DEBUG'] === '1';
@@ -400,6 +402,39 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 		if (!isDlvDap) {
 			return;
 		}
+		test('should run with dlv provided as a batch file through alternateTools', async function () {
+			if (withConsole || process.platform !== 'win32') {
+				this.skip();
+			}
+
+			clearCacheForTools();
+			const dlvPath = getBinPath('dlv');
+			const wrapperDir = fs.mkdtempSync(path.join(tmpdir(), 'vscode-go-dlv-wrapper '));
+			const wrapperPath = path.join(wrapperDir, 'alternate dlv.bat');
+			fs.writeFileSync(wrapperPath, `@echo off\r\n"${dlvPath}" %*\r\n`);
+
+			const goConfig = new MockCfg({ alternateTools: { dlv: wrapperPath } });
+			const configStub = sinon.stub(extConfig, 'getGoConfig').returns(goConfig);
+
+			try {
+				const program = path.join(DATA_ROOT, 'baseTest');
+				const config = {
+					name: 'Launch',
+					type: 'go',
+					request: 'launch',
+					mode: 'debug',
+					program
+				};
+				const debugConfig = await initializeDebugConfig(config);
+				assert.strictEqual(debugConfig?.dlvToolPath, wrapperPath);
+				await Promise.all([dc.configurationSequence(), dc.launch(debugConfig), dc.waitForEvent('terminated')]);
+			} finally {
+				configStub.restore();
+				clearCacheForTools();
+				tryRmdirRecursive(wrapperDir);
+			}
+		});
+
 		test('should run program to the end', async () => {
 			const PROGRAM = path.join(DATA_ROOT, 'baseTest');
 

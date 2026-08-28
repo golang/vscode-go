@@ -151,6 +151,16 @@ export function correctBinname(toolName: string) {
 	return toolName;
 }
 
+// Windows batch files must be run through a shell. Quote the path because
+// child_process.spawn does not do so when the shell option is enabled.
+export function getToolSpawnCommand(
+	filePath: string,
+	platform = process.platform
+): { command: string; shell: boolean } {
+	const shell = platform === 'win32' && /\.(bat|cmd)$/i.test(filePath);
+	return { command: shell ? `"${filePath}"` : filePath, shell };
+}
+
 export function executableFileExists(filePath: string): boolean {
 	let exists = true;
 	try {

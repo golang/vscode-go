@@ -41,7 +41,8 @@ import {
 	fixDriveCasingInWindows,
 	getBinPathWithPreferredGopathGoroot,
 	getCurrentGoWorkspaceFromGOPATH,
-	getInferredGopath
+	getInferredGopath,
+	getToolSpawnCommand
 } from '../utils/pathUtils';
 import { killProcessTree } from '../utils/processUtils';
 
@@ -721,10 +722,12 @@ export class Delve {
 
 			log(`Current working directory: ${dlvCwd}`);
 			log(`Running: ${launchArgs.dlvToolPath} ${dlvArgs.join(' ')}`);
+			const dlvSpawn = getToolSpawnCommand(launchArgs.dlvToolPath);
 
-			this.debugProcess = spawn(launchArgs.dlvToolPath, dlvArgs, {
+			this.debugProcess = spawn(dlvSpawn.command, dlvArgs, {
 				cwd: dlvCwd,
-				env
+				env,
+				shell: dlvSpawn.shell
 			});
 
 			function connectClient(port: number, host: string, onClose?: Delve['onclose']) {
