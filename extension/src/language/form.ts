@@ -935,6 +935,25 @@ export class InteractiveFormsFeature implements StaticFeature {
 	}
 
 	/**
+	 * Returns the first uri that exists starting from `uri` and walking upwards.
+	 */
+	private async findExistingResource(uri: vscode.Uri): Promise<vscode.Uri> {
+		while (uri) {
+			try {
+				await vscode.workspace.fs.stat(uri);
+				return uri; // No FileNotFound exception, use this.
+			} catch {
+				const parent = vscode.Uri.joinPath(uri, '..');
+				if (parent.path === uri.path) return uri; // Hit the root, stop searching here.
+
+				uri = parent; // Continue up the tree.
+			}
+		}
+
+		return uri;
+	}
+
+	/**
 	 * Helper to prompt for a single field based on its type.
 	 *
 	 * Returns `undefined` if an input is cancelled.
@@ -1046,6 +1065,12 @@ export class InteractiveFormsFeature implements StaticFeature {
 				}
 
 				if (actionTarget === 'open') {
+					// defaultUri is ignored if it doesn't exist, so walk up
+					// to the first ancestor that does exist otherwise the
+					// dialog will start from the last folder the user had
+					// visited in this dialog.
+					if (defaultUri) defaultUri = await this.findExistingResource(defaultUri);
+
 					const uri = await vscode.window.showOpenDialog({
 						canSelectFiles: canSelectFiles,
 						canSelectFolders: canSelectFolders,
