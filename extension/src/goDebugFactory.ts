@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as net from 'net';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getWorkspaceFolderPath } from './util';
-import { getEnvPath, getBinPathFromEnvVar } from './utils/pathUtils';
+import { getEnvPath, getBinPathFromEnvVar, getToolSpawnCommand } from './utils/pathUtils';
 import { GoExtensionContext } from './context';
 import { createRegisterCommand } from './commands';
 
@@ -539,15 +539,17 @@ function spawnDlvDapServerProcess(
 	const logDestStream = logDest ? fs.createWriteStream(logDest) : undefined;
 
 	logConsole(`Starting: ${dlvPath} ${dlvArgs.join(' ')} from ${dir}\n`);
+	const dlvSpawn = getToolSpawnCommand(dlvPath);
 
 	// TODO(hyangah): In module-module workspace mode, the program should be build in the super module directory
 	// where go.work (gopls.mod) file is present. Where dlv runs determines the build directory currently. Two options:
 	//  1) launch dlv in the super-module module directory and adjust launchArgs.cwd (--wd).
 	//  2) introduce a new buildDir launch attribute.
 	return new Promise<ChildProcess>((resolve, reject) => {
-		const p = spawn(dlvPath, dlvArgs, {
+		const p = spawn(dlvSpawn.command, dlvArgs, {
 			cwd: dir,
 			env: envForSpawn,
+			shell: dlvSpawn.shell,
 			stdio: onWindows ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe', 'pipe'] // --log-dest=3 if !onWindows.
 		});
 		let started = false;
