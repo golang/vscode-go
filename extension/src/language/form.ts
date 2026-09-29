@@ -595,7 +595,7 @@ export class InteractiveFormsFeature implements StaticFeature {
 	 * MAX_RETRY defines the maximum number of user collection allowed for when
 	 * resolving a command.
 	 */
-	static MAX_RETRY = 5;
+	static MAX_RETRY = 8;
 
 	private async resolveCommandInteractively(
 		param: InteractiveExecuteCommandParams
