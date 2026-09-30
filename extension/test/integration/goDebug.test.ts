@@ -143,7 +143,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 			});
 
 			let started = false;
-			const timeoutToken: NodeJS.Timer = setTimeout(() => {
+			const timeoutToken: NodeJS.Timeout = setTimeout(() => {
 				console.log(`dlv debug server (PID: ${p.pid}) is not responding`);
 				reject(new Error('timed out while waiting for DAP server to start'));
 			}, 30_000);
