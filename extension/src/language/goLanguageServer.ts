@@ -50,7 +50,6 @@ import {
 	getWorkspaceFolderPath
 } from '../util';
 import { getToolFromToolPath } from '../utils/pathUtils';
-import fetch from 'node-fetch';
 import { CompletionItemKind, FoldingContext } from 'vscode';
 import { ProvideFoldingRangeSignature } from 'vscode-languageclient';
 import { daysBetween, getStateConfig, maybePromptForGoplsSurvey, timeDay, timeMinute } from '../goSurvey';

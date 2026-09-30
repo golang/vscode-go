@@ -30,7 +30,6 @@ import {
 import vscode = require('vscode');
 import { installTool } from './goInstallTools';
 import { CommandFactory } from './commands';
-import fetch from 'node-fetch';
 
 export class GoEnvironmentOption implements vscode.QuickPickItem {
 	readonly description: string;

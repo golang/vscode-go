@@ -10,7 +10,6 @@ import * as vscode from 'vscode';
 import { getLatestGoVersions, GoEnvironmentOption, latestGoVersionKey } from '../../src/goEnvironmentStatus';
 import { getGlobalState, setGlobalState, updateGlobalState } from '../../src/stateUtils';
 import { MockMemento } from '../mocks/MockMemento';
-import * as fetchModule from 'node-fetch';
 
 import moment = require('moment');
 
@@ -37,11 +36,10 @@ describe('#getLatestGoVersion()', function () {
 			{ version: 'go1.15.1', stable: true },
 			{ version: 'go1.14.2', stable: true }
 		]);
-		const fetchMock = sandbox.mock(fetchModule);
-		fetchMock
-			.expects('default')
+		sandbox
+			.stub(globalThis, 'fetch')
 			.withArgs('https://go.dev/dl/?mode=json')
-			.returns(Promise.resolve(new fetchModule.Response(responseJSON)));
+			.callsFake(async () => new Response(responseJSON));
 		const mmnt = sandbox.mock(moment);
 		mmnt.expects('now').returns(now);
 	});
