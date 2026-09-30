@@ -328,7 +328,7 @@ export async function getSuiteToTestMap(goCtx: GoExtensionContext, doc: vscode.T
 		.map((dirent) => dirent.name)
 		.filter((name) => name.endsWith('.go'));
 	const packageDocs = await Promise.all(
-		packageFilenames.map((e) => path.join(packageDir, e)).map(vscode.workspace.openTextDocument)
+		packageFilenames.map((e) => vscode.workspace.openTextDocument(path.join(packageDir, e)))
 	);
 
 	const suiteToTest: SuiteToTestMap = {};

@@ -292,6 +292,7 @@ class MockTestDocument implements TextDocument {
 
 	readonly version: number = 1;
 	readonly eol: EndOfLine = EndOfLine.LF;
+	readonly encoding: string = 'utf8';
 
 	get lineCount() {
 		return this._contents.split('\n').length;
