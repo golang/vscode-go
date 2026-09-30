@@ -203,14 +203,14 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 	const survey = async () => {
 		setTimeout(survey, timeDay);
 		// Only prompt for the survey if the user is working on Go code.
-		if (!usingGo) {
+		if (!usingGo()) {
 			return;
 		}
 		maybePromptForGoplsSurvey(goCtx);
 		void maybePromptForDeveloperSurvey(goCtx);
 	};
 	const telemetry = () => {
-		if (!usingGo) {
+		if (!usingGo()) {
 			return;
 		}
 		maybePromptForTelemetry(goCtx);

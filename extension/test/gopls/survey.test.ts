@@ -10,6 +10,7 @@ import * as goLanguageServer from '../../src/language/goLanguageServer';
 import * as goSurvey from '../../src/goSurvey';
 import * as goDeveloperSurvey from '../../src/developerSurvey/prompt';
 import * as config from '../../src/developerSurvey/config';
+import * as goConfig from '../../src/config';
 
 suite('gopls survey tests', () => {
 	test('prompt for survey', () => {
@@ -304,6 +305,48 @@ suite('developer survey tests', () => {
 				);
 			}
 		});
+	});
+
+	test('prompt message uses 1-indexed month', async () => {
+		const stub = sandbox.stub(vscode.window, 'showInformationMessage').resolves(undefined);
+		const now = new Date(2025, 8, 15);
+		const surveyConfig: config.DeveloperSurveyConfig = {
+			StartDate: new Date(2025, 8, 1),
+			EndDate: new Date(2025, 8, 30), // Month index 8 = September (month 9)
+			URL: 'https://go.dev/survey'
+		};
+
+		await goDeveloperSurvey.promptForDeveloperSurvey(now, {}, surveyConfig);
+		sandbox.assert.calledOnce(stub);
+		const msg = stub.getCall(0).args[0];
+		assert.ok(msg.includes('(2025-9)'), `expected survey prompt message to contain "(2025-9)", got: ${msg}`);
+	});
+
+	test('scheduleGoplsSuggestions respects usingGo()', () => {
+		const clock = sandbox.useFakeTimers();
+		sandbox.stub(goConfig.extensionInfo, 'isInCloudIDE').value(false);
+		const getGoConfigStub = sandbox.stub(goConfig, 'getGoConfig').returns({ get: () => false } as any);
+		const textDocsStub = sandbox.stub(vscode.workspace, 'textDocuments');
+		const promptForTelemetry = sandbox.spy();
+		const goCtx: any = {
+			lastUserAction: new Date(0),
+			telemetryService: { promptForTelemetry }
+		};
+
+		// When no Go documents are open, neither telemetry (6m) nor survey (30m) prompts should fire.
+		textDocsStub.value([{ languageId: 'plaintext' }]);
+		goLanguageServer.scheduleGoplsSuggestions(goCtx);
+		clock.tick(30 * goSurvey.timeMinute);
+		sandbox.assert.notCalled(promptForTelemetry);
+		sandbox.assert.notCalled(getGoConfigStub);
+		clock.reset();
+
+		// When a Go document is open, telemetry (6m) and both surveys (30m) should run.
+		textDocsStub.value([{ languageId: 'go' }]);
+		goLanguageServer.scheduleGoplsSuggestions(goCtx);
+		clock.tick(30 * goSurvey.timeMinute);
+		sandbox.assert.calledOnce(promptForTelemetry);
+		sandbox.assert.calledTwice(getGoConfigStub);
 	});
 });
 

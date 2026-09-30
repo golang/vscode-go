@@ -148,7 +148,9 @@ export async function promptForDeveloperSurvey(
 ): Promise<DeveloperSurveyState> {
 	const selected = await vscode.window.showInformationMessage(
 		`Help shape Go’s future! Would you like to help ensure that Go is meeting your needs
-by participating in this 10-minute Go Developer Survey (${config.EndDate.getFullYear().toString()}-${config.EndDate.getMonth().toString()}) before ${config.EndDate.toDateString()}?`,
+by participating in this 10-minute Go Developer Survey (${config.EndDate.getFullYear()}-${
+			config.EndDate.getMonth() + 1
+		}) before ${config.EndDate.toDateString()}?`,
 		'Yes',
 		'Remind me later',
 		'Never'
