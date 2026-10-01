@@ -14,7 +14,8 @@ export const GOPLS_MODIFY_TAGS_COMMAND = 'gopls.modify_tags';
 
 // Interface for the arguments passed to gopls.modify_tags command. URI and range
 // are required parameters collected by the extension based on the open editor,
-// and the rest of the args are collected by user input or user settings.
+// and the rest of the args are collected from user settings. gopls prompts the
+// user for the tags if neither the tags nor the options are specified.
 interface GoModifyTagsArgs {
 	URI: string;
 	range: vscode.Range;
@@ -25,17 +26,15 @@ interface GoModifyTagsArgs {
 	removeOptions?: string;
 	transform?: string;
 	valueFormat?: string;
-	clear?: boolean;
-	clearOptions?: boolean;
 }
 
 // Interface for settings configuration for adding and removing tags
 interface GoTagsConfig {
-	[key: string]: any;
-	tags: string;
-	options: string;
-	promptForTags: boolean;
-	template: string;
+	tags?: string;
+	options?: string;
+	promptForTags?: boolean;
+	transform?: string;
+	template?: string;
 }
 
 export const addTags: CommandFactory = () => async (uri: vscode.Uri) => {
@@ -53,21 +52,15 @@ export const addTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	// Introduced since gopls v0.23.0, but older gopls will ignore this field.
 	args.modification = 'add';
 
-	const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
-	if (!tags && !options) {
-		return;
-	}
-	if (tags) {
-		args.add = tags;
-	}
-	if (options) {
-		args.addOptions = options;
-	}
-	if (transformValue) {
-		args.transform = transformValue;
-	}
-	if (template) {
-		args.valueFormat = template;
+	// If promptForTags is set, ignore the settings so that gopls prompts the
+	// user. Otherwise, pass the settings along; gopls prompts only if neither
+	// tags nor options are set.
+	const config = getGoConfig().get<GoTagsConfig>('addTags');
+	if (!config?.promptForTags) {
+		args.add = config?.tags;
+		args.addOptions = config?.options;
+		args.transform = config?.transform;
+		args.valueFormat = config?.template;
 	}
 	await vscode.commands.executeCommand(GOPLS_MODIFY_TAGS_COMMAND, args);
 };
@@ -87,16 +80,13 @@ export const removeTags: CommandFactory = () => async (uri: vscode.Uri) => {
 	// Introduced since gopls v0.23.0, but older gopls will ignore this field.
 	args.modification = 'remove';
 
-	const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
-	if (!tags && !options) {
-		args.clear = true;
-		args.clearOptions = true;
-	}
-	if (tags) {
-		args.remove = tags;
-	}
-	if (options) {
-		args.removeOptions = options;
+	// If promptForTags is set, ignore the settings so that gopls prompts the
+	// user. Otherwise, pass the settings along; gopls prompts only if neither
+	// tags nor options are set.
+	const config = getGoConfig().get<GoTagsConfig>('removeTags');
+	if (!config?.promptForTags) {
+		args.remove = config?.tags;
+		args.removeOptions = config?.options;
 	}
 	await vscode.commands.executeCommand(GOPLS_MODIFY_TAGS_COMMAND, args);
 };
@@ -117,28 +107,4 @@ function getCommonArgs(): GoModifyTagsArgs | undefined {
 		range: editor.selection
 	};
 	return args;
-}
-
-async function getTagsAndOptions(config: GoTagsConfig): Promise<(string | undefined)[]> {
-	if (!config.promptForTags) {
-		return Promise.resolve([config.tags, config.options, config.transform, config.template]);
-	}
-
-	const inputTags = await vscode.window.showInputBox({
-		value: config.tags,
-		prompt: 'Enter comma separated tag names'
-	});
-	const inputOptions = await vscode.window.showInputBox({
-		value: config.options,
-		prompt: 'Enter comma separated options'
-	});
-	const transformOption = await vscode.window.showInputBox({
-		value: config.transform,
-		prompt: 'Enter transform value'
-	});
-	const template = await vscode.window.showInputBox({
-		value: config.template,
-		prompt: 'Enter template value'
-	});
-	return [inputTags, inputOptions, transformOption, template];
 }

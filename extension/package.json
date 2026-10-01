@@ -1698,16 +1698,16 @@
             "promptForTags": {
               "type": "boolean",
               "default": false,
-              "description": "If true, Go: Add Tags command will prompt the user to provide tags, options, transform values instead of using the configured values"
+              "description": "If true, Go: Add Tags command will always prompt the user to provide tags, options, and transform values instead of using the configured values"
             },
             "tags": {
               "type": "string",
-              "default": "json",
+              "default": "",
               "description": "Comma separated tags to be used by Go: Add Tags command"
             },
             "options": {
               "type": "string",
-              "default": "json=omitempty",
+              "default": "",
               "description": "Comma separated tag=options pairs to be used by Go: Add Tags command"
             },
             "transform": {
@@ -1719,8 +1719,8 @@
                 "pascalcase",
                 "keep"
               ],
-              "default": "snakecase",
-              "description": "Transformation rule used by Go: Add Tags command to add tags"
+              "default": "",
+              "description": "Transformation rule used by Go: Add Tags command to add tags. Defaults to snakecase if empty."
             },
             "template": {
               "type": "string",
@@ -1730,13 +1730,13 @@
           },
           "additionalProperties": false,
           "default": {
-            "tags": "json",
-            "options": "json=omitempty",
+            "tags": "",
+            "options": "",
             "promptForTags": false,
-            "transform": "snakecase",
+            "transform": "",
             "template": ""
           },
-          "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, json tags are added.",
+          "description": "Tags and options configured here will be used by the Add Tags command to add tags to struct fields. If promptForTags is true, or if neither tags nor options are configured, the user will be prompted for tags and the transformation rule.",
           "scope": "resource"
         },
         "go.removeTags": {
@@ -1745,16 +1745,16 @@
             "promptForTags": {
               "type": "boolean",
               "default": false,
-              "description": "If true, Go: Remove Tags command will prompt the user to provide tags and options instead of using the configured values"
+              "description": "If true, Go: Remove Tags command will always prompt the user to provide tags and options instead of using the configured values"
             },
             "tags": {
               "type": "string",
-              "default": "json",
+              "default": "",
               "description": "Comma separated tags to be used by Go: Remove Tags command"
             },
             "options": {
               "type": "string",
-              "default": "json=omitempty",
+              "default": "",
               "description": "Comma separated tag=options pairs to be used by Go: Remove Tags command"
             }
           },
@@ -1764,7 +1764,7 @@
             "options": "",
             "promptForTags": false
           },
-          "description": "Tags and options configured here will be used by the Remove Tags command to remove tags to struct fields. If promptForTags is true, then user will be prompted for tags and options. By default, all tags and options will be removed.",
+          "description": "Tags and options configured here will be used by the Remove Tags command to remove tags from struct fields. If promptForTags is true, or if neither tags nor options are configured, the user will be prompted for tags.",
           "scope": "resource"
         },
         "go.playground": {
@@ -2164,6 +2164,12 @@
             "maxFileCacheBytes": {
               "type": "number",
               "markdownDescription": "(Experimental) maxFileCacheBytes sets a soft limit on the file cache size in bytes.\nIf zero, the default budget is used.\n\nThe cache may temporarily use more than this amount.\nAlso, this parameter limits file contents; disk block usage\nas measured by du(1) may be significantly higher.\n",
+              "default": 0,
+              "scope": "resource"
+            },
+            "memoryLimit": {
+              "type": "number",
+              "markdownDescription": "(Experimental) memoryLimit sets a soft memory limit (in bytes) for the gopls process, via\nruntime/debug.SetMemoryLimit. If non-positive (the default), no limit is set.\n\nOn large workspaces, a single edit that invalidates many\npackages (for example a syntax error in a widely-imported\npackage) can make the heap briefly grow well above the\nsteady-state working set before the garbage collector\ncatches up, spiking memory and, on memory-constrained\nmachines, causing swapping. A soft limit makes the GC work\nharder to stay near the limit, trading some CPU for a lower\nmemory peak.\n\nThe limit is soft and may be exceeded. Set it comfortably above the\nsteady-state working set, as too low a value causes excessive GC.\n\nUnlike the GOMEMLIMIT environment variable, this setting is\nstrictly numeric; SI suffixes are not permitted.\n",
               "default": 0,
               "scope": "resource"
             },
@@ -3041,7 +3047,7 @@
                 },
                 "appendclipped": {
                   "type": "boolean",
-                  "markdownDescription": "simplify append chains using slices.Concat\n\nThe appendclipped analyzer suggests replacing chains of append calls with a\nsingle call to slices.Concat, which was added in Go 1.21. For example,\nappend(append(s, s1...), s2...) would be simplified to slices.Concat(s, s1, s2).\n\nIn the simple case of appending to a newly allocated slice, such as\nappend([]T(nil), s...), the analyzer suggests the more concise slices.Clone(s).\nFor byte slices, it will prefer bytes.Clone if the \"bytes\" package is\nalready imported.\n\nThis fix is only applied when the base of the append tower is a\n\"clipped\" slice, meaning its length and capacity are equal (e.g.\nx[:0:0] or []T{}). This is to avoid changing program behavior by\neliminating intended side effects on the base slice's underlying\narray.\n\nThis analyzer is currently disabled by default as the\ntransformation does not preserve the nilness of the base slice in\nall cases; see https://go.dev/issue/73557.",
+                  "markdownDescription": "simplify append chains using slices.Concat\n\nThe appendclipped analyzer suggests replacing chains of append calls with a\nsingle call to slices.Concat, which was added in Go 1.21. For example,\nappend(append(s, s1...), s2...) would be simplified to slices.Concat(s, s1, s2).\n\nIn the simple case of appending to a newly allocated slice, such as\nappend([]T(nil), s...), the analyzer suggests the more concise slices.Clone(s).\nFor byte slices, it will prefer bytes.Clone if the \"bytes\" package is\nalready imported.\n\nSince the replacement (slices.Concat, or slices.Clone) allocates a new\nslice, any slices.Clone or bytes.Clone wrapping one of the operands is\nredundant and is removed, e.g. append(append([]T{}, slices.Clone(s)...),\nt...) becomes slices.Concat(s, t). The clone of os.Environ in\nappend([]string(nil), os.Environ()...) is likewise elided.\n\nThis fix is only applied when the base of the append tower is a\n\"clipped\" slice, meaning its length and capacity are equal (e.g.\nx[:0:0] or []T{}). This is to avoid changing program behavior by\neliminating intended side effects on the base slice's underlying\narray.\n\nThis analyzer is currently disabled by default as the\ntransformation does not preserve the nilness of the base slice in\nall cases; see https://go.dev/issue/73557.",
                   "default": false
                 },
                 "appends": {
@@ -3189,6 +3195,11 @@
                   "markdownDescription": "detect impossible interface-to-interface type assertions\n\nThis checker flags type assertions v.(T) and corresponding type-switch cases\nin which the static type V of v is an interface that cannot possibly implement\nthe target interface T. This occurs when V and T contain methods with the same\nname but different signatures. Example:\n\n\tvar v interface {\n\t\tRead()\n\t}\n\t_ = v.(io.Reader)\n\nThe Read method in v has a different signature than the Read method in\nio.Reader, so this assertion cannot succeed.",
                   "default": true
                 },
+                "importcomment": {
+                  "type": "boolean",
+                  "markdownDescription": "remove obsolete comments specifying canonical import path\n\nThe importcomment analyzer removes comments specifying the canonical\nimport path, such as\n\n\tpackage foo // import \"example.com/foo\"\n\nThe go command enforced these comments in GOPATH mode via \"go get\", but\nignores them in module mode, so they are obsolete once the package\nbelongs to a module. The fix removes the comment.",
+                  "default": true
+                },
                 "infertypeargs": {
                   "type": "boolean",
                   "markdownDescription": "check for unnecessary type arguments in call expressions\n\nExplicit type arguments may be omitted from call expressions if they can be\ninferred from function arguments, or from other type arguments:\n\n\tfunc f[T any](T) {}\n\t\n\tfunc _() {\n\t\tf[string](\"foo\") // string could be inferred\n\t}\n",
@@ -3264,6 +3275,11 @@
                   "markdownDescription": "check consistency of Printf format strings and arguments\n\nThe check applies to calls of the formatting functions such as\n[fmt.Printf] and [fmt.Sprintf], as well as any detected wrappers of\nthose functions such as [log.Printf]. It reports a variety of\nmistakes such as syntax errors in the format string and mismatches\n(of number and type) between the verbs and their arguments.\n\nSee the documentation of the fmt package for the complete set of\nformat operators and their operand types.",
                   "default": true
                 },
+                "ptrtoerror": {
+                  "type": "boolean",
+                  "markdownDescription": "detect inconsistent conversions of concrete types to error\n\nThe ptrtoerror analyzer detects when a concrete type E is converted\nto the error interface inconsistently, both as a value of type E\nand as a pointer of type *E. Such inconsistency defeats attempts by\nclient code to test for specific error types using type assertions\nor library functions such as [errors.As] and [errors.Is].\n\nThe analyzer also detects when both E and *E implement error but\nneither of those types is converted to error within the defining\npackage, leaving the intended error form (E or *E) ambiguous. This\ndiagnostic offers two alternative fixes to add declarations that\nmake the intent explicit.",
+                  "default": true
+                },
                 "rangeint": {
                   "type": "boolean",
                   "markdownDescription": "replace 3-clause for loops with for-range over integers\n\nThe rangeint analyzer suggests replacing traditional for loops such\nas\n\n\tfor i := 0; i < n; i++ { ... }\n\nwith the more idiomatic Go 1.22 style:\n\n\tfor i := range n { ... }\n\nThis transformation is applied only if (a) the loop variable is not\nmodified within the loop body and (b) the loop's limit expression\nis not modified within the loop, as `for range` evaluates its\noperand only once.",
@@ -3272,6 +3288,11 @@
                 "recursiveiter": {
                   "type": "boolean",
                   "markdownDescription": "check for inefficient recursive iterators\n\nThis analyzer reports when a function that returns an iterator\n(iter.Seq or iter.Seq2) calls itself as the operand of a range\nstatement, as this is inefficient.\n\nWhen implementing an iterator (e.g. iter.Seq[T]) for a recursive\ndata type such as a tree or linked list, it is tempting to\nrecursively range over the iterator for each child element.\n\nHere's an example of a naive iterator over a binary tree:\n\n\ttype tree struct {\n\t\tvalue       int\n\t\tleft, right *tree\n\t}\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\tif t != nil {\n\t\t\t\tfor elem := range t.left.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif !yield(t.value) {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tfor elem := range t.right.All() { // \"inefficient recursive iterator\"\n\t\t\t\t\tif !yield(elem) {\n\t\t\t\t\t\treturn\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\nThough it correctly enumerates the elements of the tree, it hides a\nsignificant performance problem--two, in fact. Consider a balanced\ntree of N nodes. Iterating the root node will cause All to be\ncalled once on every node of the tree. This results in a chain of\nnested active range-over-func statements when yield(t.value) is\ncalled on a leaf node.\n\nThe first performance problem is that each range-over-func\nstatement must typically heap-allocate a variable, so iteration of\nthe tree allocates as many variables as there are elements in the\ntree, for a total of O(N) allocations, all unnecessary.\n\nThe second problem is that each call to yield for a leaf of the\ntree causes each of the enclosing range loops to receive a value,\nwhich they then immediately pass on to their respective yield\nfunction. This results in a chain of log(N) dynamic yield calls per\nelement, a total of O(N*log N) dynamic calls overall, when only\nO(N) are necessary.\n\nA better implementation strategy for recursive iterators is to\nfirst define the \"every\" operator for your recursive data type,\nwhere every(f) reports whether an arbitrary predicate f(x) is true\nfor every element x in the data type. For our tree, the every\nfunction would be:\n\n\tfunc (t *tree) every(f func(int) bool) bool {\n\t\treturn t == nil ||\n\t\t\tt.left.every(f) && f(t.value) && t.right.every(f)\n\t}\n\nFor example, this use of the every operator prints whether every\nelement in the tree is an even number:\n\n\teven := func(x int) bool { return x&1 == 0 }\n\tprintln(t.every(even))\n\nThen the iterator can be simply expressed as a trivial wrapper\naround the every operator:\n\n\tfunc (t *tree) All() iter.Seq[int] {\n\t\treturn func(yield func(int) bool) {\n\t\t\t_ = t.every(yield)\n\t\t}\n\t}\n\nIn effect, tree.All computes whether yield returns true for each\nelement, short-circuiting if it ever returns false, then discards\nthe final boolean result.\n\nThis has much better performance characteristics: it makes one\ndynamic call per element of the tree, and it doesn't heap-allocate\nanything. It is also clearer.",
+                  "default": true
+                },
+                "reflecttypeassert": {
+                  "type": "boolean",
+                  "markdownDescription": "replace v.Interface().(T) with reflect.TypeAssert[T](v)\n\nThis analyzer suggests fixes to replace two-valued type assertions on\nthe result of (reflect.Value).Interface with reflect.TypeAssert,\nintroduced in go1.25, which avoids the intermediate allocation of an\ninterface value, for example:\n\n\tx, ok := v.Interface().(string)  ->  x, ok := reflect.TypeAssert[string](v)\n\nNo fix is offered for single-valued assertions, since they panic when\nthe assertion fails whereas reflect.TypeAssert does not. Nor is a fix\noffered for a type switch.",
                   "default": true
                 },
                 "reflecttypefor": {
@@ -3319,6 +3340,11 @@
                   "markdownDescription": "replace backward loops over slices with slices.Backward\n\nThe slicesbackward analyzer suggests replacing manually-written backward\nloops of the form\n\n\tfor i := len(s) - 1; i >= 0; i-- {\n\t    use(s[i])\n\t}\n\nwith the more readable Go 1.23 style using slices.Backward:\n\n\tfor _, v := range slices.Backward(s) {\n\t    use(v)\n\t}\n\nIf the loop index is needed beyond just indexing into the slice, both\nthe index and value variables are kept:\n\n\tfor i, v := range slices.Backward(s) { ... }",
                   "default": true
                 },
+                "slicesclip": {
+                  "type": "boolean",
+                  "markdownDescription": "replace three-index slice expressions with slices.Clip\n\nThe slicesclip analyzer suggests replacing a full slice expression of\nthe form\n\n\tx[:len(x):len(x)]\n\nwhich clips the capacity of a slice to its length, with the simpler\nand more readable\n\n\tslices.Clip(x)\n\nadded in Go 1.21.",
+                  "default": true
+                },
                 "slicescontains": {
                   "type": "boolean",
                   "markdownDescription": "replace loops with slices.Contains or slices.ContainsFunc\n\nThe slicescontains analyzer simplifies loops that check for the existence of\nan element in a slice. It replaces them with calls to `slices.Contains` or\n`slices.ContainsFunc`, which were added in Go 1.21.\n\nIf the expression for the target element has side effects, this\ntransformation will cause those effects to occur only once, not\nonce per tested slice element.",
@@ -3351,7 +3377,7 @@
                 },
                 "stditerators": {
                   "type": "boolean",
-                  "markdownDescription": "use iterators instead of Len/At-style APIs\n\nThis analyzer suggests a fix to replace each loop of the form:\n\n\tfor i := 0; i < x.Len(); i++ {\n\t\tuse(x.At(i))\n\t}\n\nor its \"for elem := range x.Len()\" equivalent by a range loop over an\niterator offered by the same data type:\n\n\tfor elem := range x.All() {\n\t\tuse(x.At(i)\n\t}\n\nwhere x is one of various well-known types in the standard library.",
+                  "markdownDescription": "use iterators instead of Len/At-style APIs\n\nThis analyzer suggests a fix to replace each loop of the form:\n\n\tfor i := 0; i < x.Len(); i++ {\n\t\tuse(x.At(i))\n\t}\n\nor its \"for elem := range x.Len()\" equivalent by a range loop over an\niterator offered by the same data type:\n\n\tfor elem := range x.All() {\n\t\tuse(elem)\n\t}\n\nwhere x is one of various well-known types in the standard library.",
                   "default": true
                 },
                 "stdmethods": {
@@ -3376,7 +3402,7 @@
                 },
                 "stringscut": {
                   "type": "boolean",
-                  "markdownDescription": "replace strings.Index etc. with strings.Cut\n\nThis analyzer replaces certain patterns of use of [strings.Index] and string slicing by [strings.Cut], added in go1.18.\n\nFor example:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return s[:idx]\n\t}\n\nis replaced by:\n\n\tbefore, _, ok := strings.Cut(s, substr)\n\tif ok {\n\t    return before\n\t}\n\nAnd:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return\n\t}\n\nis replaced by:\n\n\tfound := strings.Contains(s, substr)\n\tif found {\n\t    return\n\t}\n\nIt also handles variants using [strings.IndexByte] instead of Index, or the bytes package instead of strings.\n\nFixes are offered only in cases in which there are no potential modifications of the idx, s, or substr expressions between their definition and use.\n\nIt also replaces [strings.SplitN](s, sep, 2)[0] and [strings.Split](s, sep)[0] with the \"before\" result of strings.Cut, when sep is a non-empty string constant:\n\n\tx := strings.SplitN(s, sep, 2)[0]\n\nis replaced by:\n\n\tx, _, _ := strings.Cut(s, sep)\n\nThe fix is only offered when sep is a non-empty string literal. When sep is a variable or the empty string, the semantics differ (strings.Split(s, \"\")[0] returns the first character of s, but strings.Cut(s, \"\").before is \"\"), so no fix is suggested.",
+                  "markdownDescription": "replace strings.Index etc. with strings.Cut\n\nThis analyzer replaces certain patterns of use of [strings.Index] and string slicing by [strings.Cut], added in go1.18.\nIt also replaces analogous uses of [strings.LastIndex] by [strings.CutLast], added in go1.27.\n\nFor example:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return s[:idx]\n\t}\n\nis replaced by:\n\n\tbefore, _, ok := strings.Cut(s, substr)\n\tif ok {\n\t    return before\n\t}\n\nAnd:\n\n\tidx := strings.LastIndex(s, substr)\n\tif idx >= 0 {\n\t    return s[:idx]\n\t}\n\nis replaced by:\n\n\tbefore, _, ok := strings.CutLast(s, substr)\n\tif ok {\n\t    return before\n\t}\n\nAnd:\n\n\tidx := strings.Index(s, substr)\n\tif idx >= 0 {\n\t    return\n\t}\n\nis replaced by:\n\n\tfound := strings.Contains(s, substr)\n\tif found {\n\t    return\n\t}\n\n(LastIndex used only as a presence check is also rewritten to Contains.)\n\nIt also handles variants using [strings.IndexByte] or [strings.LastIndexByte]\ninstead of Index/LastIndex, or the bytes package instead of strings.\n\nFixes are offered only in cases in which there are no potential modifications of the idx, s, or substr expressions between their definition and use.\nCutLast fixes are offered only when the file's Go version is at least 1.27.\n\nIt also replaces [strings.SplitN](s, sep, 2)[0] and [strings.Split](s, sep)[0] with the \"before\" result of strings.Cut, when sep is a non-empty string constant:\n\n\tx := strings.SplitN(s, sep, 2)[0]\n\nis replaced by:\n\n\tx, _, _ := strings.Cut(s, sep)\n\nThe fix is only offered when sep is a non-empty string literal. When sep is a variable or the empty string, the semantics differ (strings.Split(s, \"\")[0] returns the first character of s, but strings.Cut(s, \"\").before is \"\"), so no fix is suggested.",
                   "default": true
                 },
                 "stringscutprefix": {
@@ -3591,6 +3617,12 @@
               "default": true,
               "scope": "resource"
             },
+            "ui.moveDeclaration": {
+              "type": "boolean",
+              "markdownDescription": "(Experimental) moveDeclaration enables producing Move Declaration codeactions. The implementation\nis unfinished so we use this setting to gate its use.\n",
+              "default": false,
+              "scope": "resource"
+            },
             "ui.moveType": {
               "type": "boolean",
               "markdownDescription": "(Experimental) moveType enables producing Move Type codeactions. The implementation\nis unfinished so we use this setting to gate its use.\n",
@@ -3764,7 +3796,7 @@
         },
         "go.inlayHints.ignoredError": {
           "type": "boolean",
-          "markdownDescription": "`\"ignoredError\"` inlay hints for implicitly discarded errors:\n```go\n\tf.Close()« // ignore error»\n```\nThis check inserts an `// ignore error` hint following any\nstatement that is a function call whose error result is\nimplicitly ignored.\n\nTo suppress the hint, write an actual comment containing\n\"ignore error\" following the call statement, or explicitly\nassign the result to a blank variable. A handful of common\nfunctions such as `fmt.Println` are excluded from the\ncheck.\n",
+          "markdownDescription": "`\"ignoredError\"` inlay hints for implicitly discarded errors:\n```go\n\tf.Close()« // ignore error»\n```\nThis check inserts an `// ignore error` hint following any\nstatement that is a function call whose error result is\nimplicitly ignored.\n\nTo suppress the hint, write an actual comment containing\none of the following strings:\n```\nignore error\ndiscard error\ncan't fail\ncannot fail\n```\nfollowing the call statement, or explicitly assign the\nresult to a blank variable.\n\nA handful of common functions such as `fmt.Println` are\nexcluded from the check.\n",
           "default": false
         }
       }

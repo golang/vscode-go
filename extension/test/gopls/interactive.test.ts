@@ -5,11 +5,13 @@
 
 import assert from 'assert';
 import path = require('path');
+import semver = require('semver');
 import sinon = require('sinon');
 import vscode = require('vscode');
 import { Env } from './goplsTestEnv.utils';
+import * as config from '../../src/config';
 import { updateGoVarsFromConfig } from '../../src/goInstallTools';
-import { addTags } from '../../src/goModifytags';
+import { addTags, removeTags } from '../../src/goModifytags';
 import { goplsImpl, legacyImpl } from '../../src/goImpl';
 import { MockExtensionContext } from '../mocks/MockContext';
 
@@ -28,6 +30,21 @@ suite('Interactive Refactoring', function () {
 		env.flushTrace(this.currentTest?.state === 'failed');
 		sandbox.restore();
 	});
+
+	// stubTagsSetting overrides the "go.<section>" setting with the given value.
+	// Other settings are read as usual.
+	function stubTagsSetting(section: 'addTags' | 'removeTags', value: object) {
+		const getGoConfig = config.getGoConfig;
+		sandbox.stub(config, 'getGoConfig').callsFake((uri?: vscode.Uri) => {
+			const goConfig = getGoConfig(uri);
+			return Object.create(goConfig, {
+				get: {
+					value: (key: string, defaultValue?: unknown) =>
+						key === section ? value : goConfig.get(key, defaultValue)
+				}
+			});
+		});
+	}
 
 	suiteSetup(async () => {
 		await updateGoVarsFromConfig({});
@@ -130,9 +147,7 @@ suite('Interactive Refactoring', function () {
 
 	// Regression test for golang/vscode-go#4070.
 	//
-	// TODO: Add tests with settings in place. Currently, with no custom settings,
-	// we expect prompts to be shown; when settings are configured, no prompts
-	// should be expected.
+	// Without custom settings, gopls prompts for the tags and the transform.
 	test('Add struct tags via addTags', async () => {
 		const ctx = MockExtensionContext.new();
 		const editor = await vscode.window.showTextDocument(document);
@@ -148,7 +163,90 @@ suite('Interactive Refactoring', function () {
 		await addTags(ctx, env.goCtx)(editor.document.uri);
 
 		const docText = document.getText();
-		assert.match(docText, /Foo string `json:"foo,omitempty" xml:"foo"`/);
+		assert.match(docText, /Foo string `json:"foo" xml:"foo"`/);
+		ctx.teardown();
+	});
+
+	// With custom "go.addTags" settings, the settings are used without prompting.
+	test('Add struct tags via addTags with settings', async function () {
+		// gopls before v0.24.0 prompts even if the arguments specify the tags.
+		const goplsVersion = semver.coerce(env.goCtx.serverInfo?.Version);
+		if (!goplsVersion || semver.lt(goplsVersion, '0.24.0')) {
+			this.skip();
+		}
+
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string //@loc(editor.selection, "Foo string")
+		// }
+		editor.selection = new vscode.Selection(3, 1, 3, 11);
+
+		stubTagsSetting('addTags', {
+			tags: 'yaml',
+			options: 'yaml=omitempty',
+			promptForTags: false,
+			transform: 'snakecase',
+			template: ''
+		});
+		sandbox.stub(vscode.window, 'showInputBox').rejects(new Error('unexpected showInputBox call'));
+		sandbox.stub(vscode.window, 'showQuickPick').rejects(new Error('unexpected showQuickPick call'));
+
+		await addTags(ctx, env.goCtx)(editor.document.uri);
+
+		const docText = document.getText();
+		assert.match(docText, /Foo string `yaml:"foo,omitempty"`/);
+		ctx.teardown();
+	});
+
+	// With promptForTags, gopls prompts even if tags are configured.
+	test('Add struct tags via addTags with promptForTags', async () => {
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string //@loc(editor.selection, "Foo string")
+		// }
+		editor.selection = new vscode.Selection(3, 1, 3, 11);
+
+		stubTagsSetting('addTags', {
+			tags: 'yaml',
+			options: 'yaml=omitempty',
+			promptForTags: true,
+			transform: 'snakecase',
+			template: ''
+		});
+		sandbox.stub(vscode.window, 'showInputBox').resolves('json,xml');
+		sandbox.stub(vscode.window, 'showQuickPick').resolves({ value: 'camelcase', label: 'camelCase' } as any);
+
+		await addTags(ctx, env.goCtx)(editor.document.uri);
+
+		const docText = document.getText();
+		assert.match(docText, /Foo string `json:"foo" xml:"foo"`/);
+		ctx.teardown();
+	});
+
+	// Without custom settings, gopls prompts for the tags to remove instead of
+	// removing all tags.
+	test('Remove struct tags via removeTags', async () => {
+		const ctx = MockExtensionContext.new();
+		const editor = await vscode.window.showTextDocument(document);
+
+		// type Foo struct {
+		//	Foo string `json:"foo" xml:"foo"`
+		// }
+		const edit = new vscode.WorkspaceEdit();
+		edit.insert(document.uri, new vscode.Position(3, 11), ' `json:"foo" xml:"foo"`');
+		assert.ok(await vscode.workspace.applyEdit(edit), 'failed to add struct tags');
+		editor.selection = new vscode.Selection(3, 1, 3, 11);
+
+		sandbox.stub(vscode.window, 'showInputBox').resolves('xml');
+
+		await removeTags(ctx, env.goCtx)(editor.document.uri);
+
+		const docText = document.getText();
+		assert.match(docText, /Foo string `json:"foo"`/);
 		ctx.teardown();
 	});
 
