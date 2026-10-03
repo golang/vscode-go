@@ -29,7 +29,7 @@ import { getFromGlobalState, updateGlobalState } from './stateUtils';
 import { getBinPath, getGoVersion } from './util';
 import { parseArgsString } from './utils/argsUtil';
 import { parseEnvFiles } from './utils/envUtils';
-import { resolveHomeDir } from './utils/pathUtils';
+import { getToolSpawnCommand, resolveHomeDir } from './utils/pathUtils';
 import { createRegisterCommand } from './commands';
 import { GoExtensionContext } from './context';
 import { spawn } from 'child_process';
@@ -390,7 +390,9 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 	 */
 	async guessSubstitutePath(): Promise<object | null> {
 		return new Promise((resolve) => {
-			const child = spawn(getBinPath('dlv'), ['substitute-path-guess-helper']);
+			const dlvPath = getBinPath('dlv');
+			const dlvSpawn = getToolSpawnCommand(dlvPath);
+			const child = spawn(dlvSpawn.command, ['substitute-path-guess-helper'], { shell: dlvSpawn.shell });
 			let stdoutData = '';
 			child.stdout.on('data', (data) => {
 				stdoutData += data;
