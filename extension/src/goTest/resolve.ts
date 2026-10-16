@@ -208,6 +208,11 @@ export class GoTestResolver {
 	// the file will be disposed. If the document contains no tests, it will be
 	// disposed.
 	async processDocument(doc: TextDocument, ranges?: Range[]) {
+		// Don't resolve tests from files inside a testdata directory. The go
+		// command treats testdata as inert, and walkPackages already skips it,
+		// but a user can still open such a file directly.
+		if (isInTestdata(doc.uri)) return;
+
 		const seen = new Set<string>();
 		const item = await this.getFile(doc.uri);
 		const symbols = await this.provideDocumentSymbols(doc);
@@ -495,6 +500,11 @@ export class GoTestResolver {
 			}
 		}
 	}
+}
+
+// Reports whether the URI is inside a directory named 'testdata'.
+function isInTestdata(uri: Uri): boolean {
+	return uri.path.split('/').includes('testdata');
 }
 
 // Walk the workspace, looking for Go modules. Returns a map indicating paths
