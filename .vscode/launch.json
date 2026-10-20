@@ -87,7 +87,7 @@
 			"type": "node",
 			"request": "launch",
 			"name": "Launch Unit Tests",
-			"program": "${workspaceFolder}/extension/node_modules/mocha/bin/_mocha",
+			"program": "${workspaceFolder}/extension/node_modules/mocha/bin/mocha.js",
 			"args": [
 				"-u",
 				"tdd",
