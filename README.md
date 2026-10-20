@@ -10,7 +10,7 @@ provides rich language support for the
 
 ## Requirements
 
-* Visual Studio Code 1.110 or newer (or editors compatible with VS Code 1.110+ APIs)
+* Visual Studio Code 1.125 or newer (or editors compatible with VS Code 1.125+ APIs)
 * Go 1.21 or newer.
 
 ## Quick Start
