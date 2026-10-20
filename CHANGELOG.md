@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Unreleased
 
+## v0.58.0
+
+Date: 2026-10-20
+
 * vscode-go now supports [v3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification) of the Language Server Protocol.
 * Improved diagnostic deduplication across `gopls`, build, vet, and linters ([#3511](https://github.com/golang/vscode-go/issues/3511)):
   - Deduplication now checks start position (line and column), and severity level.
