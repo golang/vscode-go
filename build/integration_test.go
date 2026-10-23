@@ -18,10 +18,17 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("failed to read current dir: %v", err)
 	}
 
+	dockerCmd := "docker"
+	if _, err := exec.LookPath("docker"); err != nil {
+		if _, err := exec.LookPath("podman"); err == nil {
+			dockerCmd = "podman"
+		}
+	}
+
 	// Build docker image.
 	// TODO(hxjiang): use Go in PATH instead of env GOVERSION. LUCI will prepare
 	// the Go in different version so vscode-go test don't need to worry.
-	dockerBuild := exec.Command("docker", "build", "-q", "-f", "./build/Dockerfile", ".")
+	dockerBuild := exec.Command(dockerCmd, "build", "-q", "-f", "./build/Dockerfile", ".")
 	// The docker build must be executed at the root of the vscode-go repository
 	// to ensure the entire repository is copied into the image.
 	dockerBuild.Dir = filepath.Dir(dir)
@@ -33,7 +40,7 @@ func TestIntegration(t *testing.T) {
 
 	// Cleanup the image if built successfully.
 	defer func() {
-		dockerRmi := exec.Command("docker", "rmi", "-f", imageID)
+		dockerRmi := exec.Command(dockerCmd, "rmi", "-f", imageID)
 		output, err := dockerRmi.CombinedOutput()
 		if err != nil {
 			t.Errorf("failed to remove image %v", imageID)
@@ -75,7 +82,7 @@ FORCE_COLOR=0 npm test --silent;
 echo "**** Run lint ****";
 npm run lint`
 	// For debug tests, we need ptrace.
-	cmd := exec.Command("docker", "run", "--cap-add", "SYS_PTRACE", "--shm-size=8G", "--workdir=/workspace/extension", "--entrypoint", "/bin/bash", imageID, "-c", script)
+	cmd := exec.Command(dockerCmd, "run", "--cap-add", "SYS_PTRACE", "--shm-size=8G", "--workdir=/workspace/extension", "--entrypoint", "/bin/bash", imageID, "-c", script)
 	output, err = cmd.CombinedOutput()
 	t.Logf("integration test log:\n%s\n", output)
 	if err != nil {

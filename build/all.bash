@@ -70,11 +70,15 @@ run_lint() {
 }
 
 run_test_in_docker() {
+  local docker_cmd="docker"
+  if ! command -v docker &> /dev/null && command -v podman &> /dev/null; then
+    docker_cmd="podman"
+  fi
   echo "**** Building the docker image ***"
-  docker build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
+  "${docker_cmd}" build -t vscode-test-env ${GOVERSION:+ --build-arg GOVERSION="${GOVERSION}"} -f ./build/Dockerfile .
 
   # For debug tests, we need ptrace.
-  docker run --cap-add SYS_PTRACE --shm-size=8G --workdir=/workspace vscode-test-env ci
+  "${docker_cmd}" run --cap-add SYS_PTRACE --shm-size=8G --workdir=/workspace vscode-test-env ci
 }
 
 main() {
