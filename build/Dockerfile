@@ -1,6 +1,6 @@
 # This Docker container is used for testing on GCB.
 ARG GOVERSION=1
-FROM golang:${GOVERSION} AS gobuilder
+FROM docker.io/golang:${GOVERSION} AS gobuilder
 
 ENV GOBIN /gobin
 
