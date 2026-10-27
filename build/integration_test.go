@@ -28,7 +28,14 @@ func TestIntegration(t *testing.T) {
 	// Build docker image.
 	// TODO(hxjiang): use Go in PATH instead of env GOVERSION. LUCI will prepare
 	// the Go in different version so vscode-go test don't need to worry.
-	dockerBuild := exec.Command(dockerCmd, "build", "-q", "-f", "./build/Dockerfile", ".")
+	buildArgs := []string{"build"}
+	if os.Getenv("GO_BUILDER_NAME") != "" {
+		// Caching the layers is slow on the builders and they're ephemeral
+		// so the cahing does nothing anyways, so don't cache layers on builders.
+		buildArgs = append(buildArgs, "--layers=false")
+	}
+	buildArgs = append(buildArgs, "-q", "-f", "./build/Dockerfile", ".")
+	dockerBuild := exec.Command(dockerCmd, buildArgs...)
 	// The docker build must be executed at the root of the vscode-go repository
 	// to ensure the entire repository is copied into the image.
 	dockerBuild.Dir = filepath.Dir(dir)
