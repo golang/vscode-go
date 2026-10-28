@@ -135,6 +135,15 @@ export class GoRunTestCodeLensProvider implements vscode.CodeLensProvider {
 						arguments: [{ functionName }]
 					})
 				);
+				if (getGoConfig(document.uri).get<{ [key: string]: boolean }>('enableCodeLens')?.rrtest) {
+					codelens.push(
+						new CodeLens(f.range, {
+							title: 'rr test',
+							command: 'go.rr.cursor',
+							arguments: [{ functionName }]
+						})
+					);
+				}
 
 				for (let i = f.range.start.line; i < f.range.end.line; i++) {
 					const line = document.lineAt(i);
