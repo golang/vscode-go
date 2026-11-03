@@ -434,10 +434,11 @@ export class DelveDAPOutputAdapter extends ProxyDebugAdapter {
 		}
 
 		try {
-			const port = await getPort();
-			const rendezvousServerPromise = waitForDAPServer(port, 30_000, this.logger);
+			const host = '127.0.0.1';
+			const port = await getPort({ host });
+			const rendezvousServerPromise = waitForDAPServer(host, port, 30_000, this.logger);
 
-			dlvArgs.push(`--client-addr=:${port}`);
+			dlvArgs.push(`--client-addr=${host}:${port}`);
 
 			super.sendMessageToClient({
 				seq: 0,
@@ -468,7 +469,7 @@ function getSudo(): string | null {
 	return sudoPath;
 }
 
-function waitForDAPServer(port: number, timeoutMs: number, logger: ILogger): Promise<net.Socket> {
+function waitForDAPServer(host: string, port: number, timeoutMs: number, logger: ILogger): Promise<net.Socket> {
 	return new Promise((resolve, reject) => {
 		// eslint-disable-next-line prefer-const
 		let s: net.Server | undefined;
@@ -493,7 +494,7 @@ function waitForDAPServer(port: number, timeoutMs: number, logger: ILogger): Pro
 			reject(err);
 		});
 		s.maxConnections = 1;
-		s.listen(port);
+		s.listen(port, host);
 	});
 }
 
