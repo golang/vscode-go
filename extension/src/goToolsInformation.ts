@@ -109,8 +109,8 @@ const internal = new Map<string, Tool>([
 			replacedByGopls: false,
 			isImportant: true,
 			description: 'Linter',
-			minimumGoVersion: semver.coerce('1.23'),
-			defaultVersion: 'v2.12.2'
+			minimumGoVersion: semver.coerce('1.26'),
+			defaultVersion: 'v2.15.0'
 		}
 	],
 	[
