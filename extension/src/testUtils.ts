@@ -15,6 +15,7 @@ import { applyCodeCoverageToAllEditors } from './goCover';
 import { toolExecutionEnvironment } from './goEnv';
 import { getCurrentPackage } from './goModules';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
+import { processTestResultLineInJSONMode } from './goTestOutput';
 import { getNonVendorPackages } from './goPackages';
 import { getBinPath, getCurrentGoPath, getTempFilePath, LineBuffer, resolvePath } from './util';
 import { parseEnvFile } from './utils/envUtils';
@@ -431,6 +432,7 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 						pkgMap,
 						currentGoWorkspace,
 						outputChannel,
+						testconfig.dir,
 						testconfig.goTestOutputConsumer
 					)
 				: processTestResultLineInStandardMode(pkgMap, currentGoWorkspace, testResultLines, outputChannel);
@@ -611,40 +613,6 @@ export function computeTestCommand(
 		outArgs,
 		tmpCoverPath,
 		addJSONFlag
-	};
-}
-
-function processTestResultLineInJSONMode(
-	pkgMap: Map<string, string>,
-	currentGoWorkspace: string,
-	outputChannel: vscode.OutputChannel,
-	goTestOutputConsumer?: (_: GoTestOutput) => void
-) {
-	return (line: string) => {
-		try {
-			const m = <GoTestOutput>JSON.parse(line);
-			if (goTestOutputConsumer) {
-				goTestOutputConsumer(m);
-			}
-			if (m.Action !== 'output' || !m.Output) {
-				return;
-			}
-			const out = m.Output;
-			const pkg = m.Package;
-			if (pkg && (pkgMap.has(pkg) || currentGoWorkspace)) {
-				const pkgNameArr = pkg.split('/');
-				const baseDir = pkgMap.get(pkg) || path.join(currentGoWorkspace, ...pkgNameArr);
-				// go test emits test results on stdout, which contain file names relative to the package under test
-				outputChannel.appendLine(expandFilePathInOutput(out, baseDir).trimRight());
-			} else {
-				outputChannel.appendLine(out.trimRight());
-			}
-		} catch (e) {
-			// TODO: disable this log if it becomes too spammy.
-			console.log(`failed to parse JSON: ${e}: ${line}`);
-			// Build failures or other messages come in non-JSON format. So, output as they are.
-			outputChannel.appendLine(line);
-		}
 	};
 }
 
