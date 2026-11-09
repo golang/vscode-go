@@ -115,6 +115,17 @@ suite('Go Test Resolver', () => {
 					'file:///src/proj/foo/bar?package',
 					'file:///src/proj/main_test.go?file'
 				]
+			},
+			'Skips testdata': {
+				workspace: ['/src/proj'],
+				files: {
+					'/src/proj/go.mod': 'module test',
+					'/src/proj/foo/main_test.go': 'package main',
+					'/src/proj/testdata/main_test.go': 'package main',
+					'/src/proj/foo/testdata/nested_test.go': 'package main'
+				},
+				item: [['test', '/src/proj', 'module']],
+				expect: ['file:///src/proj/foo?package']
 			}
 		},
 		Package: {
@@ -193,6 +204,22 @@ suite('Go Test Resolver', () => {
 					'file:///src/proj/main_test.go?example#ExampleBaz',
 					'file:///src/proj/main_test.go?fuzz#FuzzFuss'
 				]
+			},
+			'In testdata': {
+				workspace: ['/src/proj'],
+				files: {
+					'/src/proj/go.mod': 'module test',
+					'/src/proj/testdata/main_test.go': `
+						package main
+
+						func TestFoo(*testing.T) {}
+					`
+				},
+				item: [
+					['test', '/src/proj', 'module'],
+					['main_test.go', '/src/proj/testdata/main_test.go', 'file']
+				],
+				expect: []
 			}
 		}
 	};
