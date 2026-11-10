@@ -37,7 +37,7 @@ export const browsePackages: CommandFactory = () => () => {
 	showPackageFiles(selectedText, true, workDir);
 };
 
-function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDir: string) {
+export function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDir = '') {
 	const goRuntimePath = getBinPath('go');
 	if (!goRuntimePath) {
 		return vscode.window.showErrorMessage(
@@ -59,7 +59,7 @@ function showPackageFiles(pkg: string, showAllPkgsIfPkgNotFound: boolean, workDi
 
 	cp.execFile(
 		goRuntimePath,
-		['list', '-f', '{{.Dir}}:{{.GoFiles}}:{{.TestGoFiles}}:{{.XTestGoFiles}}', pkg],
+		['list', '-f', '{{.Dir}}:{{.GoFiles}}:{{.TestGoFiles}}:{{.XTestGoFiles}}', '--', pkg],
 		options,
 		(err, stdout) => {
 			if (!stdout || stdout.indexOf(':') === -1) {

@@ -141,7 +141,7 @@ export const addImportToWorkspace: CommandFactory = () => () => {
 	}
 	const env = toolExecutionEnvironment();
 
-	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', importPath], { env }, (err, stdout) => {
+	cp.execFile(goRuntimePath, ['list', '-f', '{{.Dir}}', '--', importPath], { env }, (err, stdout) => {
 		const dirs = (stdout || '').split('\n');
 		if (!dirs.length || !dirs[0].trim()) {
 			vscode.window.showErrorMessage(`Could not find package ${importPath}`);
