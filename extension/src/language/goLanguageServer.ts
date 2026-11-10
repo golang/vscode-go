@@ -566,6 +566,32 @@ export async function buildLanguageClient(
 					}
 					next(token, params);
 				},
+				window: {
+					// gopls sends window/showDocument requests in response to
+					// clicks on source links in its web pages (e.g. the assembly
+					// listing of golang/go#67478), in which case the browser,
+					// not VS Code, is the foreground application. VS Code's
+					// showDocument handler honors takeFocus only within the
+					// workbench, so we must explicitly raise the window.
+					// See microsoft/vscode#208093.
+					showDocument: async (params, token, next) => {
+						const result = await next(params, token);
+						if (
+							!(result instanceof ResponseError) &&
+							result.success &&
+							params.takeFocus &&
+							!params.external
+						) {
+							try {
+								// Added in VS Code 1.128; fails on older versions.
+								await vscode.commands.executeCommand('workbench.action.focusWindow');
+							} catch {
+								// ignore
+							}
+						}
+						return result;
+					}
+				},
 				resolveCommand: async (
 					param: InteractiveExecuteCommandParams,
 					next: InteractiveResolveCommandSignature
