@@ -659,6 +659,32 @@ suite('Debug Configuration With Invalid Program', () => {
 			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
 		}, /The program attribute.* must be a valid directory or .go file/);
 	});
+
+	test('program is not validated locally when connecting to an external dlv dap server (port)', () => {
+		// With 'port' set, the debug adapter is launched externally and the
+		// program lives on the remote, so it must not be validated locally.
+		const config = { ...debugConfig('dlv-dap'), program: '/notexists', port: 12345 };
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		assert.doesNotThrow(() => {
+			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		});
+	});
+
+	test('program is not validated locally with an external debug adapter (debugServer)', () => {
+		const config = { ...debugConfig('dlv-dap'), program: '/notexists', debugServer: 4711 };
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		assert.doesNotThrow(() => {
+			debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(workspaceFolder, config);
+		});
+	});
 });
 
 suite('Debug Configuration Converts Relative Paths', () => {
