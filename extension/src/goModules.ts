@@ -142,7 +142,7 @@ export const goModInit: CommandFactory = () => async () => {
 		const env = toolExecutionEnvironment();
 		const cwd = getWorkspaceFolderPath() ?? '';
 		outputChannel.info(`Running "${goRuntimePath} mod init ${moduleName}"`);
-		await execFile(goRuntimePath, ['mod', 'init', moduleName], { env, cwd });
+		await execFile(goRuntimePath, ['mod', 'init', '--', moduleName], { env, cwd });
 		outputChannel.info('Module successfully initialized. You are ready to Go :)');
 		vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(cwd, 'go.mod')));
 	} catch (e) {
