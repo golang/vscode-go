@@ -54,6 +54,22 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 			},
 		},
 		{
+			name: "semantic tokens remain opt-in",
+			in: &Option{
+				Name:      "semanticTokens",
+				Hierarchy: "ui",
+				Type:      "bool",
+				Default:   "true",
+			},
+			want: map[string]*Object{
+				"ui.semanticTokens": {
+					Type:    "boolean",
+					Default: false,
+					Scope:   "resource",
+				},
+			},
+		},
+		{
 			name: "time",
 			in: &Option{
 				Name:    "completionBudget",

@@ -4,12 +4,14 @@
  *--------------------------------------------------------*/
 
 import assert from 'assert';
-import { getGoplsConfig } from '../../src/config';
+import sinon from 'sinon';
+import * as config from '../../src/config';
 import * as lsp from '../../src/language/goLanguageServer';
+import { MockWorkspaceConfiguration } from '../integration/mocks/configuration';
 
 suite('gopls configuration tests', () => {
 	test('filterGoplsDefaultConfigValues', async () => {
-		const defaultGoplsConfig = getGoplsConfig();
+		const defaultGoplsConfig = config.getGoplsConfig();
 		interface TestCase {
 			name: string;
 			section: string;
@@ -63,6 +65,48 @@ suite('gopls configuration tests', () => {
 			assert.deepStrictEqual(actual, tc.want, `Failed: ${tc.name}`);
 		});
 	});
+
+	for (const { name, settings, want } of [
+		{ name: 'defaults to off', settings: {}, want: { 'ui.semanticTokens': false } },
+		{ name: 'preserves opt-in', settings: { 'ui.semanticTokens': true }, want: { 'ui.semanticTokens': true } },
+		{ name: 'preserves opt-out', settings: { 'ui.semanticTokens': false }, want: { 'ui.semanticTokens': false } },
+		{ name: 'preserves the short spelling', settings: { semanticTokens: true }, want: { semanticTokens: true } }
+	]) {
+		test(`language client semantic tokens ${name}`, async () => {
+			const goplsConfig = new MockWorkspaceConfiguration(
+				config.getGoplsConfig(),
+				new Map(Object.entries(settings))
+			);
+			const stub = sinon.stub(config, 'getGoplsConfig').returns(goplsConfig);
+			try {
+				const client = await lsp.buildLanguageClient(
+					{},
+					{
+						serverName: 'gopls',
+						path: '',
+						enabled: false,
+						flags: [],
+						features: {},
+						env: {},
+						checkForUpdates: 'off'
+					}
+				);
+				try {
+					const options = client.clientOptions.initializationOptions;
+					assert.deepStrictEqual(
+						Object.fromEntries(
+							Object.entries(options).filter(([key]) => key.split('.').pop() === 'semanticTokens')
+						),
+						want
+					);
+				} finally {
+					await client.dispose();
+				}
+			} finally {
+				stub.restore();
+			}
+		});
+	}
 
 	test('passGoConfigToGoplsConfigValues', async () => {
 		interface TestCase {
