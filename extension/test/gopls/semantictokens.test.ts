@@ -5,10 +5,7 @@
 
 import assert from 'assert';
 import * as path from 'path';
-import sinon from 'sinon';
 import * as vscode from 'vscode';
-import * as config from '../../src/config';
-import { MockWorkspaceConfiguration } from '../integration/mocks/configuration';
 import { Env } from './goplsTestEnv.utils';
 
 suite('Gopls custom semantic token modifiers', function () {
@@ -17,14 +14,17 @@ suite('Gopls custom semantic token modifiers', function () {
 	const testdataDir = path.join(projectDir, 'test', 'testdata', 'semantictokens');
 	let env: Env;
 	let docUri: vscode.Uri;
+	let previousGoplsConfig: Record<string, unknown> | undefined;
 
 	suiteSetup(async () => {
 		env = new Env();
-		const goplsConfig = new MockWorkspaceConfiguration(
-			config.getGoplsConfig(),
-			new Map<string, any>([['ui.semanticTokens', true]])
+		const config = vscode.workspace.getConfiguration();
+		previousGoplsConfig = config.inspect<Record<string, unknown>>('gopls')?.globalValue;
+		await config.update(
+			'gopls',
+			{ ...previousGoplsConfig, 'ui.semanticTokens': true },
+			vscode.ConfigurationTarget.Global
 		);
-		sinon.stub(config, 'getGoplsConfig').returns(goplsConfig);
 
 		await env.startGopls(path.join(testdataDir, 'main.go'), undefined, testdataDir);
 
@@ -34,8 +34,10 @@ suite('Gopls custom semantic token modifiers', function () {
 	});
 
 	suiteTeardown(async () => {
-		sinon.restore();
 		await env.teardown();
+		await vscode.workspace
+			.getConfiguration()
+			.update('gopls', previousGoplsConfig, vscode.ConfigurationTarget.Global);
 		env.flushTrace(false);
 	});
 

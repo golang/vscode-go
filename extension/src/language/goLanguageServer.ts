@@ -968,6 +968,11 @@ async function adjustGoplsWorkspaceConfiguration(
 	}
 
 	workspaceConfig = filterGoplsDefaultConfigValues(workspaceConfig, resource) || {};
+	// Keep semantic highlighting opt-in in VS Code even if gopls enables it by
+	// default. Gopls accepts any dotted prefix for the semanticTokens setting.
+	if (!Object.keys(workspaceConfig).some((key) => key === 'semanticTokens' || key.endsWith('.semanticTokens'))) {
+		workspaceConfig['ui.semanticTokens'] = false;
+	}
 	// note: workspaceConfig is a modifiable, valid object.
 	const goConfig = getGoConfig(resource);
 	workspaceConfig = passGoConfigToGoplsConfigValues(workspaceConfig, goConfig);

@@ -331,6 +331,10 @@ func toObject(opt *Option) (*Object, error) {
 		}
 	}
 	obj.Default = formatOptionDefault(opt)
+	if opt.Name == "semanticTokens" {
+		// VS Code Go keeps semantic highlighting opt-in.
+		obj.Default = false
+	}
 
 	return obj, nil
 }
